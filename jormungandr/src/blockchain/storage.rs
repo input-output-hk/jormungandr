@@ -5,8 +5,8 @@ use crate::{
 use chain_core::property::{Deserialize, Serialize};
 use chain_storage::{BlockInfo, BlockStore, Error as StorageError};
 use futures::prelude::*;
-use slog::Logger;
 use thiserror::Error;
+use tracing::Span;
 
 use std::convert::identity;
 use std::path::Path;
@@ -45,7 +45,7 @@ impl From<StorageError> for Error {
 #[derive(Clone)]
 pub struct Storage {
     storage: BlockStore,
-    logger: Logger,
+    span: Span,
 }
 
 pub struct Ancestor {
@@ -62,14 +62,14 @@ enum StreamingError {
 }
 
 impl Storage {
-    pub fn file<P: AsRef<Path>>(path: P, logger: Logger) -> Result<Self, Error> {
+    pub fn file<P: AsRef<Path>>(path: P, span: Span) -> Result<Self, Error> {
         let storage = BlockStore::file(path, HeaderHash::zero_hash().as_bytes().to_vec())?;
-        Ok(Storage { storage, logger })
+        Ok(Storage { storage, span })
     }
 
-    pub fn memory(logger: Logger) -> Result<Self, Error> {
+    pub fn memory(span: Span) -> Result<Self, Error> {
         let storage = BlockStore::memory(HeaderHash::zero_hash().as_bytes().to_vec())?;
-        Ok(Storage { storage, logger })
+        Ok(Storage { storage, span })
     }
 
     pub fn get_tag(&self, tag: &str) -> Result<Option<HeaderHash>, Error> {
@@ -263,14 +263,14 @@ impl Storage {
     }
 
     pub fn gc(&self, threshold_depth: u32, main_branch_tip: &[u8]) -> Result<(), Error> {
+        let _enter = self.span.enter();
         let main_info = self.storage.get_block_info(main_branch_tip)?;
         let threshold_length = match main_info.chain_length().checked_sub(threshold_depth) {
             Some(result) => result,
             None => return Ok(()),
         };
 
-        debug!(
-            self.logger,
+        tracing::debug!(
             "pruning all branches below stability depth {} (chain length: {})",
             threshold_depth,
             threshold_length
@@ -287,8 +287,7 @@ impl Storage {
 
             self.storage.prune_branch(id.as_ref())?;
 
-            debug!(
-                self.logger,
+            tracing::debug!(
                 "removed branch with head {}",
                 HeaderHash::hash_bytes(id.as_ref())
             );
@@ -301,8 +300,7 @@ impl Storage {
             .storage
             .flush_to_permanent_store(to_block_info.id().as_ref(), MINIMUM_BLOCKS_TO_FLUSH)?;
 
-        debug!(
-            self.logger,
+        tracing::debug!(
             "flushed all blocks ({}) up to {} to the permanent store",
             blocks_flushed,
             HeaderHash::hash_bytes(to_block_info.id().as_ref())

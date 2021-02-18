@@ -1,24 +1,26 @@
-use crate::log::AsyncableDrain;
-use slog::{Drain, FilterLevel, Logger};
-use slog_async::Async;
-#[cfg(feature = "gelf")]
-use slog_gelf::Gelf;
-#[cfg(feature = "systemd")]
-use slog_journald::JournaldDrain;
-#[cfg(unix)]
-use slog_syslog::Facility;
-use slog_term::{PlainDecorator, TermDecorator};
-use std::error;
 use std::fmt::{self, Display};
 use std::fs;
-use std::io;
+use std::io::{self, Write};
+#[cfg(feature = "gelf")]
+use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::str::FromStr;
+
+use tracing::{level_filters::LevelFilter, Event, Id, Metadata, Subscriber};
+use tracing_appender::non_blocking::WorkerGuard;
+
+use tracing::span::{Attributes, Record};
+use tracing::subscriber::SetGlobalDefaultError;
+use tracing_subscriber::fmt::SubscriberBuilder;
+#[allow(unused_imports)]
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::layer::{Layer, Layered};
 
 pub struct LogSettings(pub Vec<LogSettingsEntry>);
 
 #[derive(Debug)]
 pub struct LogSettingsEntry {
-    pub level: FilterLevel,
+    pub level: LevelFilter,
     pub format: LogFormat,
     pub output: LogOutput,
 }
@@ -27,13 +29,21 @@ pub struct LogSettingsEntry {
 #[serde(rename_all = "lowercase")]
 /// Format of the logger.
 pub enum LogFormat {
+    Default,
     Plain,
     Json,
+}
+
+impl Default for LogFormat {
+    fn default() -> Self {
+        LogFormat::Default
+    }
 }
 
 impl Display for LogFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
+            LogFormat::Default => "default",
             LogFormat::Plain => "plain",
             LogFormat::Json => "json",
         };
@@ -47,21 +57,14 @@ impl Display for LogFormat {
 pub enum LogOutput {
     Stdout,
     Stderr,
-    #[cfg(unix)]
-    Syslog,
-    #[cfg(unix)]
-    SyslogUdp {
-        host: String,
-        hostname: String,
-    },
+    File(PathBuf),
     #[cfg(feature = "systemd")]
     Journald,
     #[cfg(feature = "gelf")]
     Gelf {
-        backend: String,
+        backend: SocketAddr,
         log_id: String,
     },
-    File(String),
 }
 
 impl FromStr for LogFormat {
@@ -71,6 +74,7 @@ impl FromStr for LogFormat {
         match &*s.trim().to_lowercase() {
             "plain" => Ok(LogFormat::Plain),
             "json" => Ok(LogFormat::Json),
+            "default" => Ok(LogFormat::Default),
             other => Err(format!("unknown log format '{}'", other)),
         }
     }
@@ -83,8 +87,6 @@ impl FromStr for LogOutput {
         match s.trim().to_lowercase().as_str() {
             "stdout" => Ok(LogOutput::Stdout),
             "stderr" => Ok(LogOutput::Stderr),
-            #[cfg(unix)]
-            "syslog" => Ok(LogOutput::Syslog),
             #[cfg(feature = "systemd")]
             "journald" => Ok(LogOutput::Journald),
             other => Err(format!("unknown log output '{}'", other)),
@@ -92,216 +94,175 @@ impl FromStr for LogOutput {
     }
 }
 
-#[derive(Debug)]
-struct DrainMux<D>(Vec<D>);
+struct BoxedSubscriber(Box<dyn Subscriber + Send + Sync>);
 
-impl<D> DrainMux<D> {
-    pub fn new(d: Vec<D>) -> Self {
-        Self(d)
+impl Subscriber for BoxedSubscriber {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        self.0.enabled(metadata)
+    }
+
+    fn new_span(&self, span: &Attributes<'_>) -> Id {
+        self.0.new_span(span)
+    }
+
+    fn record(&self, span: &Id, values: &Record<'_>) {
+        self.0.record(span, values)
+    }
+
+    fn record_follows_from(&self, span: &Id, follows: &Id) {
+        self.0.record_follows_from(span, follows)
+    }
+
+    fn event(&self, event: &Event<'_>) {
+        self.0.event(event)
+    }
+
+    fn enter(&self, span: &Id) {
+        self.0.enter(span)
+    }
+
+    fn exit(&self, span: &Id) {
+        self.0.exit(span)
     }
 }
 
-impl<D: Drain> Drain for DrainMux<D> {
-    type Ok = ();
-    type Err = D::Err;
-
-    fn log(
-        &self,
-        record: &slog::Record,
-        values: &slog::OwnedKVList,
-    ) -> Result<Self::Ok, Self::Err> {
-        self.0
-            .iter()
-            .try_for_each(|drain| drain.log(record, values).map(|_| ()))
-    }
-}
+impl Layer<BoxedSubscriber> for BoxedSubscriber {}
 
 impl LogSettings {
-    pub fn to_logger(&self) -> Result<Logger, Error> {
-        let mut drains = Vec::new();
-        for config in self.0.iter() {
-            drains.push(config.to_logger()?);
+    pub fn init_log(self) -> Result<Vec<WorkerGuard>, Error> {
+        use tracing_subscriber::prelude::*;
+        let mut guards = Vec::new();
+        let mut layers: Vec<Layered<_, BoxedSubscriber>> = Vec::new();
+        for config in self.0.into_iter() {
+            let (subscriber, guard) = config.to_subscriber()?;
+            let subscriber = BoxedSubscriber(subscriber);
+
+            let layer: Layered<_, _, BoxedSubscriber> =
+                tracing_subscriber::layer::Identity::new().with_subscriber(subscriber);
+
+            layers.push(layer);
+            if let Some(guard) = guard {
+                guards.push(guard);
+            }
         }
-        let common_drain = DrainMux::new(drains).fuse();
-        Ok(slog::Logger::root(common_drain, o!()))
+
+        let mut layer_iter = layers.into_iter();
+        if let Some(layer) = layer_iter.next() {
+            let mut init_layer: BoxedSubscriber = BoxedSubscriber(Box::new(layer));
+            for layer in layer_iter {
+                init_layer = BoxedSubscriber(Box::new(init_layer.with(layer)));
+            }
+            tracing::subscriber::set_global_default(init_layer)
+                .map_err(Error::SetGlobalSubscriberError)?;
+        }
+
+        Ok(guards)
     }
 }
 
 impl LogSettingsEntry {
-    pub fn to_logger(&self) -> Result<slog::Filter<Async, impl slog::FilterFn>, Error> {
-        let filter_level = self.level;
-        let drain = self
-            .output
-            .to_logger(&self.format)?
-            .filter(move |record| filter_level.accepts(record.level()));
-        Ok(drain)
-    }
-}
+    fn to_subscriber(
+        &self,
+    ) -> Result<(Box<dyn Subscriber + Send + Sync>, Option<WorkerGuard>), Error> {
+        let Self {
+            output,
+            level,
+            format,
+        } = self;
 
-impl LogOutput {
-    fn to_logger(&self, format: &LogFormat) -> Result<Async, Error> {
-        match self {
-            LogOutput::Stdout => Ok(format.decorate_stdout()),
-            LogOutput::Stderr => Ok(format.decorate_stderr()),
-            #[cfg(unix)]
-            LogOutput::Syslog => {
-                format.require_plain()?;
-                match slog_syslog::unix_3164(Facility::LOG_USER) {
-                    Ok(drain) => Ok(drain.into_async()),
-                    Err(e) => Err(Error::SyslogAccessFailed(e)),
-                }
-            }
-            #[cfg(unix)]
-            LogOutput::SyslogUdp { host, hostname } => {
-                use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+        let builder = SubscriberBuilder::default();
 
-                format.require_plain()?;
+        fn build_writer_subscriber(
+            builder: SubscriberBuilder,
+            writer: impl Write + Send + Sync + 'static,
+            level: LevelFilter,
+            format: LogFormat,
+        ) -> (Box<dyn Subscriber + Send + Sync>, Option<WorkerGuard>) {
+            let (subscriber, guard) = tracing_appender::non_blocking(writer);
+            let builder = builder.with_writer(subscriber).with_max_level(level);
+            let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
+                LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
+                LogFormat::Json => Box::new(builder.json().finish()),
+            };
+            (subscriber, Some(guard))
+        }
 
-                let mut local_port = 30_000;
-                let host = host.parse().map_err(Error::SyslogInvalidHost)?;
-
-                // automatically select local port
-                loop {
-                    let local =
-                        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), local_port);
-                    let res = slog_syslog::SyslogBuilder::new()
-                        .facility(Facility::LOG_USER)
-                        .udp(local, host, hostname)
-                        .start();
-                    match res {
-                        Ok(drain) => break Ok(drain.into_async()),
-                        Err(e) => {
-                            if e.kind() == std::io::ErrorKind::AddrInUse && local_port < 65_535 {
-                                local_port += 1;
-                                continue;
-                            }
-
-                            break Err(Error::SyslogAccessFailed(e));
-                        }
-                    }
-                }
-            }
-            #[cfg(feature = "systemd")]
-            LogOutput::Journald => {
-                format.require_plain()?;
-                Ok(JournaldDrain.into_async())
-            }
-            #[cfg(feature = "gelf")]
-            LogOutput::Gelf {
-                backend: graylog_host_port,
-                log_id: graylog_source,
-            } => {
-                // Both currently recognized formats can be understood to apply:
-                // GELF formats payloads in JSON so 'json' is redundant,
-                // and plain messages are worked into JSON just the same.
-                // Match them irrefutably so that any new format will need to
-                // be addressed here when added.
-                match format {
-                    LogFormat::Plain | LogFormat::Json => {}
-                };
-                let gelf_drain = Gelf::new(graylog_source, graylog_host_port)
-                    .map_err(Error::GelfConnectionFailed)?;
-                Ok(gelf_drain.into_async())
-            }
+        match output {
+            LogOutput::Stdout => Ok(build_writer_subscriber(
+                builder,
+                std::io::stdout(),
+                *level,
+                *format,
+            )),
+            LogOutput::Stderr => Ok(build_writer_subscriber(
+                builder,
+                std::io::stderr(),
+                *level,
+                *format,
+            )),
             LogOutput::File(path) => {
                 let file = fs::OpenOptions::new()
                     .create(true)
                     .write(true)
                     .append(true)
-                    .open(path)
-                    .map_err(Error::FileError)?;
-                Ok(format.decorate_writer(file))
+                    .open(&path)
+                    .map_err(|cause| Error::FileError {
+                        path: path.clone(),
+                        cause,
+                    })?;
+                Ok(build_writer_subscriber(builder, file, *level, *format))
+            }
+            #[cfg(feature = "systemd")]
+            LogOutput::Journald => {
+                format.require_default()?;
+                let layer = tracing_journald::layer().map_err(Error::Journald)?;
+                let subscriber = builder.with_max_level(*level).finish().with(layer);
+                Ok((Box::new(subscriber), None))
+            }
+            #[cfg(feature = "gelf")]
+            LogOutput::Gelf {
+                backend: address,
+                log_id: _graylog_source,
+            } => {
+                format.require_default()?;
+                // TODO: maybe handle this tasks outside somehow.
+                let (layer, task) = tracing_gelf::Logger::builder()
+                    .connect_tcp(address.clone())
+                    .map_err(Error::Gelf)?;
+                tokio::spawn(task);
+                let subscriber = builder.with_max_level(*level).finish().with(layer);
+                Ok((Box::new(subscriber), None))
             }
         }
     }
-}
-
-fn term_drain_with_decorator<D>(d: D) -> slog_term::FullFormat<D>
-where
-    D: slog_term::Decorator + Send + 'static,
-{
-    slog_term::FullFormat::new(d).build()
 }
 
 impl LogFormat {
     #[allow(dead_code)]
-    fn require_plain(&self) -> Result<(), Error> {
+    fn require_default(&self) -> Result<(), Error> {
         match self {
-            LogFormat::Plain => Ok(()),
-            _ => Err(Error::PlainFormatRequired { specified: *self }),
-        }
-    }
-
-    fn decorate_stdout(&self) -> Async {
-        match self {
-            LogFormat::Plain => {
-                term_drain_with_decorator(TermDecorator::new().stdout().build()).into_async()
-            }
-            LogFormat::Json => slog_json::Json::default(io::stdout()).into_async(),
-        }
-    }
-
-    fn decorate_stderr(&self) -> Async {
-        match self {
-            LogFormat::Plain => {
-                term_drain_with_decorator(TermDecorator::new().stderr().build()).into_async()
-            }
-            LogFormat::Json => slog_json::Json::default(io::stderr()).into_async(),
-        }
-    }
-
-    fn decorate_writer<T: io::Write + Send + 'static>(&self, w: T) -> Async {
-        match self {
-            LogFormat::Plain => term_drain_with_decorator(PlainDecorator::new(w)).into_async(),
-            LogFormat::Json => slog_json::Json::default(w).into_async(),
+            LogFormat::Default => Ok(()),
+            _ => Err(Error::FormatNotSupported { specified: *self }),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    PlainFormatRequired {
-        specified: LogFormat,
+    #[error("log format `{specified}` is not supported for this output")]
+    FormatNotSupported { specified: LogFormat },
+    #[error("failed to open the log file `{}`", .path.to_string_lossy())]
+    FileError {
+        path: PathBuf,
+        #[source]
+        cause: io::Error,
     },
-    #[cfg(unix)]
-    SyslogAccessFailed(io::Error),
-    #[cfg(unix)]
-    SyslogInvalidHost(std::net::AddrParseError),
+    #[cfg(feature = "systemd")]
+    #[error("cannot open journald socket")]
+    Journald(#[source] io::Error),
     #[cfg(feature = "gelf")]
-    GelfConnectionFailed(io::Error),
-    FileError(io::Error),
-}
-
-impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Error::PlainFormatRequired { specified } => write!(
-                f,
-                "log format `{}` is not supported for this output",
-                specified
-            ),
-            #[cfg(unix)]
-            Error::SyslogAccessFailed(_) => write!(f, "syslog access failed"),
-            #[cfg(unix)]
-            Error::SyslogInvalidHost(_) => write!(f, "invalid syslog host address"),
-            #[cfg(feature = "gelf")]
-            Error::GelfConnectionFailed(_) => write!(f, "GELF connection failed"),
-            Error::FileError(e) => write!(f, "failed to open the log file: {}", e),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self {
-            Error::PlainFormatRequired { .. } => None,
-            #[cfg(unix)]
-            Error::SyslogAccessFailed(err) => Some(err),
-            #[cfg(unix)]
-            Error::SyslogInvalidHost(err) => Some(err),
-            #[cfg(feature = "gelf")]
-            Error::GelfConnectionFailed(err) => Some(err),
-            Error::FileError(err) => Some(err),
-        }
-    }
+    #[error("GELF connection failed")]
+    Gelf(tracing_gelf::BuilderError),
+    #[error("failed to set global subscriber")]
+    SetGlobalSubscriberError(#[source] SetGlobalDefaultError),
 }

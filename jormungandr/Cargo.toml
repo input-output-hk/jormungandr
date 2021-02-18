@@ -47,14 +47,14 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0.59"
 serde_yaml = "0.8"
-slog = { version = "^2.7.0", features = [ "max_level_trace", "release_max_level_trace" ] }
-slog-async = "2.5.0"
-slog-gelf = { version = "0.1.2", optional = true }
-slog-journald = { version = "2.1.1", optional = true }
-slog-json = "2.3.0"
-slog-term = "2.6.0"
 structopt = "^0.3"
 thiserror = "1.0.21"
+tracing = "0.1"
+tracing-futures = "0.2"
+tracing-gelf = { version = "0.5", optional = true }
+tracing-journald = { version = "0.1.0", optional = true }
+tracing-subscriber = { version = "0.2", features = ["fmt", "json"] }
+tracing-appender = "0.1.2"
 tokio = { version = "^1.0", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
 tokio-stream = "0.1.2"
 tokio-util = { version = "0.6.0", features = ["time"] }
@@ -88,5 +88,5 @@ with-bench = []
 codegen-rustfmt = ["chain-network/codegen-rustfmt"]
 integration-test = []
 soak-test = []
-systemd = ["slog-journald"]
-gelf = ["slog-gelf"]
+systemd = ["tracing-journald"]
+gelf = ["tracing-gelf"]

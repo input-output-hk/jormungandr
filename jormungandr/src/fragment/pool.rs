@@ -12,14 +12,12 @@ use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
 use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
-use slog::Logger;
 use thiserror::Error;
 
 pub struct Pools {
     logs: Logs,
     pools: Vec<internal::Pool>,
     network_msg_box: MessageBox<NetworkMsg>,
-    logger: Logger,
 }
 
 #[derive(Debug, Error)]
@@ -34,7 +32,6 @@ impl Pools {
         n_pools: usize,
         logs: Logs,
         network_msg_box: MessageBox<NetworkMsg>,
-        logger: Logger,
     ) -> Self {
         let pools = (0..=n_pools)
             .map(|_| internal::Pool::new(max_entries))
@@ -43,7 +40,6 @@ impl Pools {
             logs,
             pools,
             network_msg_box,
-            logger,
         }
     }
 
@@ -57,10 +53,10 @@ impl Pools {
         origin: FragmentOrigin,
         mut fragments: Vec<Fragment>,
     ) -> Result<usize, Error> {
-        debug!(self.logger, "received {} fragments", fragments.len(); "origin" => ?origin);
+        tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
         fragments.retain(is_fragment_valid);
         if fragments.is_empty() {
-            debug!(self.logger, "none of the received fragments are valid");
+            tracing::debug!("none of the received fragments are valid");
             return Ok(0);
         }
         let mut network_msg_box = self.network_msg_box.clone();
@@ -77,9 +73,10 @@ impl Pools {
         for (i, pool) in self.pools.iter_mut().enumerate() {
             let new_fragments = pool.insert_all(new_fragments.clone());
             let count = new_fragments.len();
-            debug!(
-                self.logger,
-                "{} of the received fragments were added to the pool number {}", count, i
+            tracing::debug!(
+                "{} of the received fragments were added to the pool number {}",
+                count,
+                i
             );
             let fragment_logs = new_fragments
                 .iter()
@@ -102,16 +99,11 @@ impl Pools {
         Ok(max_added)
     }
 
-    pub fn remove_added_to_block(
-        &mut self,
-        fragment_ids: Vec<FragmentId>,
-        status: FragmentStatus,
-        logger: &Logger,
-    ) {
+    pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
         for pool in &mut self.pools {
             pool.remove_all(fragment_ids.iter());
         }
-        self.logs.modify_all(fragment_ids, status, logger);
+        self.logs.modify_all(fragment_ids, status);
     }
 
     pub fn select(
@@ -126,7 +118,7 @@ impl Pools {
         let pool = &mut pools[pool_idx];
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
-                let mut selection_alg = OldestFirst::new(self.logger.clone());
+                let mut selection_alg = OldestFirst::new();
                 selection_alg.select(&ledger, &ledger_params, block_date, logs, pool);
                 selection_alg.finalize()
             }

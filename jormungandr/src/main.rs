@@ -8,15 +8,6 @@ extern crate error_chain;
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
-extern crate serde_json;
-#[macro_use]
-extern crate slog;
-#[cfg(feature = "gelf")]
-extern crate slog_gelf;
-#[cfg(feature = "systemd")]
-extern crate slog_journald;
-#[cfg(unix)]
-extern crate slog_syslog;
 
 use crate::{
     blockcfg::{HeaderHash, Leader},
@@ -30,9 +21,9 @@ use futures::executor::block_on;
 use futures::prelude::*;
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
-use slog::Logger;
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
+use tracing::{span, Level, Span};
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -58,6 +49,8 @@ pub mod utils;
 
 use stats_counter::StatsCounter;
 use tokio_compat_02::FutureExt;
+use tracing_appender::non_blocking::WorkerGuard;
+use tracing_futures::Instrument;
 
 fn start() -> Result<(), start_up::Error> {
     let initialized_node = initialize_node()?;
@@ -72,10 +65,10 @@ pub struct BootstrappedNode {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
-    logger: Logger,
     explorer_db: Option<explorer::ExplorerDB>,
     rest_context: Option<rest::ContextLock>,
     services: Services,
+    _logger_guards: Vec<WorkerGuard>,
 }
 
 const BLOCK_TASK_QUEUE_LEN: usize = 32;
@@ -170,9 +163,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         bootstrapped_node.block0_hash,
         bootstrapped_node.settings.network.clone(),
         stats_counter.clone(),
-        bootstrapped_node
-            .logger
-            .new(o!(crate::log::KEY_TASK => "network")),
+        span!(Level::TRACE, "task", kind = "network"),
     ));
 
     {
@@ -267,9 +258,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             .settings
             .no_blockchain_updates_warning_interval;
 
-        services.spawn_future("stuck_notifier", move |info| {
+        services.spawn_future("stuck_notifier", move |_| {
             stuck_notifier::check_last_block_time(
-                info,
                 blockchain_tip,
                 no_blockchain_updates_warning_interval,
             )
@@ -278,14 +268,13 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     match services.wait_any_finished() {
         Ok(()) => {
-            info!(bootstrapped_node.logger, "Shutting down node");
+            tracing::info!("Shutting down node");
             Ok(())
         }
         Err(err) => {
-            crit!(
-                bootstrapped_node.logger,
-                "Service has terminated with an error";
-                "reason" => err.to_string(),
+            tracing::error!(
+                reason = %err.to_string(),
+                "Service has terminated with an error"
             );
             Err(start_up::Error::ServiceTerminatedWithError(err))
         }
@@ -307,10 +296,10 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         settings,
         block0,
         storage,
-        logger,
         rest_context,
         mut services,
         cancellation_token,
+        _logger_guards,
     } = initialized_node;
 
     let BootstrapData {
@@ -323,7 +312,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
     } = services.block_on_task("bootstrap", |info| {
         bootstrap_internal(
             rest_context,
-            info.logger().clone(),
+            info.span().clone(),
             block0,
             storage,
             settings,
@@ -336,10 +325,10 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         block0_hash,
         blockchain,
         blockchain_tip,
-        logger,
         explorer_db,
         rest_context,
         services,
+        _logger_guards,
     })
 }
 
@@ -354,7 +343,7 @@ struct BootstrapData {
 
 async fn bootstrap_internal(
     rest_context: Option<rest::ContextLock>,
-    logger: Logger,
+    span: Span,
     block0: blockcfg::Block,
     storage: blockchain::Storage,
     settings: Settings,
@@ -377,14 +366,9 @@ async fn bootstrap_internal(
 
     let cache_capacity = 102_400;
 
-    let (blockchain, blockchain_tip) = start_up::load_blockchain(
-        block0,
-        storage,
-        cache_capacity,
-        settings.rewards_report_all,
-        &logger,
-    )
-    .await?;
+    let (blockchain, blockchain_tip) =
+        start_up::load_blockchain(block0, storage, cache_capacity, settings.rewards_report_all)
+            .await?;
 
     if let Some(context) = &rest_context {
         let mut context = context.write().await;
@@ -402,10 +386,7 @@ async fn bootstrap_internal(
         // bootstrap loop.
         if let Some(max_bootstrap_attempt) = settings.network.max_bootstrap_attempts {
             if bootstrap_attempt > max_bootstrap_attempt {
-                warn!(
-                    &logger,
-                    "maximum allowable bootstrap attempts exceeded, continuing..."
-                );
+                tracing::warn!("maximum allowable bootstrap attempts exceeded, continuing...");
                 break; // maximum bootstrap attempts exceeded, exit loop
             };
         }
@@ -416,15 +397,14 @@ async fn bootstrap_internal(
             blockchain.clone(),
             blockchain_tip.clone(),
             cancellation_token.clone(),
-            &logger,
+            &span,
         )
         .await?
         {
             break; // bootstrap succeeded, exit loop
         }
 
-        info!(
-            &logger,
+        tracing::info!(
             "bootstrap attempt #{} failed, trying again in {} seconds...",
             bootstrap_attempt,
             BOOTSTRAP_RETRY_WAIT.as_secs()
@@ -466,10 +446,10 @@ pub struct InitializedNode {
     pub settings: Settings,
     pub block0: blockcfg::Block,
     pub storage: blockchain::Storage,
-    pub logger: Logger,
     pub rest_context: Option<rest::ContextLock>,
     pub services: Services,
     pub cancellation_token: CancellationToken,
+    pub _logger_guards: Vec<WorkerGuard>,
 }
 
 #[cfg(unix)]
@@ -484,21 +464,21 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
         }
     }
 
-    services.spawn_future("sigterm_watcher", move |info| {
+    services.spawn_future("sigterm_watcher", move |_info| {
         match signal::unix::signal(SignalKind::terminate()) {
             Ok(signal) => recv_signal_and_cancel(signal, token).left_future(),
             Err(e) => {
-                warn!(info.logger(), "failed to install handler for SIGTERM"; "reason" => %e);
+                tracing::warn!(reason = %e, "failed to install handler for SIGTERM");
                 future::pending().right_future()
             }
         }
     });
 
-    services.spawn_future("sigint_watcher", move |info| {
+    services.spawn_future("sigint_watcher", move |_info| {
         match signal::unix::signal(SignalKind::interrupt()) {
             Ok(signal) => recv_signal_and_cancel(signal, token_1).left_future(),
             Err(e) => {
-                warn!(info.logger(), "failed to install handler for SIGINT"; "reason" => %e);
+                tracing::warn!(reason = %e, "failed to install handler for SIGINT");
                 future::pending().right_future()
             }
         }
@@ -509,14 +489,14 @@ fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
 fn init_os_signal_watchers(services: &mut Services, token: CancellationToken) {
     use signal::ctrl_c;
 
-    services.spawn_future("ctrl_c_watcher", move |info| {
+    services.spawn_future("ctrl_c_watcher", move |_info| {
         ctrl_c().then(move |result| match result {
             Ok(()) => {
                 token.cancel();
                 future::ready(()).left_future()
             }
             Err(e) => {
-                warn!(info.logger(), "ctrl+c watcher failed"; "reason" => %e);
+                tracing::warn!(reason = %e, "ctrl+c watcher failed");
                 future::pending().right_future()
             }
         })
@@ -538,20 +518,23 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let raw_settings = RawSettings::load(command_line)?;
 
     let log_settings = raw_settings.log_settings();
-    let logger = log_settings.to_logger()?;
+    let _logger_guards = log_settings.init_log()?;
 
-    let init_logger = logger.new(o!(log::KEY_TASK => "init"));
-    info!(init_logger, "Starting {}", env!("FULL_VERSION"),);
+    let init_span = span!(Level::TRACE, "task", kind = "init");
+    let async_span = init_span.clone();
+    let _enter = init_span.enter();
+    tracing::info!("Starting {}", env!("FULL_VERSION"),);
 
     let diagnostic = Diagnostic::new()?;
-    debug!(init_logger, "system settings are: {}", diagnostic);
+    tracing::debug!("system settings are: {}", diagnostic);
 
-    let settings = raw_settings.try_into_settings(&init_logger)?;
+    let settings = raw_settings.try_into_settings()?;
 
-    let storage = start_up::prepare_storage(&settings, &init_logger)?;
+    let storage = start_up::prepare_storage(&settings)?;
     if exit_after_storage_setup {
-        info!(init_logger, "Exiting after successful storage setup");
-        std::mem::drop(init_logger);
+        tracing::info!("Exiting after successful storage setup");
+        std::mem::drop(_enter);
+        std::mem::drop(init_span);
         std::mem::drop(storage);
         std::process::exit(0);
     }
@@ -560,7 +543,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         return Err(network::bootstrap::Error::EmptyTrustedPeers.into());
     }
 
-    let mut services = Services::new(logger.clone());
+    let mut services = Services::new();
 
     let cancellation_token = CancellationToken::new();
     init_os_signal_watchers(&mut services, cancellation_token.clone());
@@ -578,7 +561,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let explorer = settings.explorer;
             let server_handler = rest::start_rest_server(rest, explorer, context.clone()).compat();
             services.spawn_future("rest", move |info| async move {
-                service_context.write().await.set_logger(info.into_logger());
+                service_context.write().await.set_span(info.span().clone());
                 server_handler.await
             });
             Some(context)
@@ -597,7 +580,8 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         })
     }
 
-    let block0 = services.block_on_task("prepare_block_0", |_service_info| async {
+    let block0 = services.block_on_task("prepare_block_0", |_service_info| {
+        async {
         use futures::future::FutureExt;
 
         let cancellation_token = CancellationToken::new();
@@ -607,12 +591,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             context.set_bootstrap_stopper(cancellation_token.clone());
         }
 
-        let prepare_block0_fut = start_up::prepare_block_0(
-            &settings,
-            &storage,
-            &init_logger, /* add network to fetch block0 */
-        )
-        .map_err(Into::into);
+        let prepare_block0_fut = start_up::prepare_block_0(&settings, &storage).map_err(Into::into);
 
         let result = futures::select! {
             result = prepare_block0_fut.fuse() => result,
@@ -625,16 +604,17 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         }
 
         result
+    }.instrument(async_span)
     })?;
 
     Ok(InitializedNode {
         settings,
         block0,
         storage,
-        logger,
         rest_context,
         services,
         cancellation_token,
+        _logger_guards,
     })
 }
 

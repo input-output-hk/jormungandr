@@ -6,12 +6,12 @@ use self::network::{Protocol, TrustedPeer};
 use crate::settings::logging::{LogFormat, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
 pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Tls};
-use slog::{FilterLevel, Logger};
 use std::{fs::File, path::PathBuf};
 use thiserror::Error;
+use tracing::level_filters::LevelFilter;
 
-const DEFAULT_FILTER_LEVEL: FilterLevel = FilterLevel::Info;
-const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Plain;
+const DEFAULT_FILTER_LEVEL: LevelFilter = LevelFilter::TRACE;
+const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Default;
 const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
 const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min
 
@@ -118,14 +118,14 @@ impl RawSettings {
     /// - from the config
     ///
     /// This function will print&exit if anything is not as it should be.
-    pub fn try_into_settings(self, logger: &Logger) -> Result<Settings, Error> {
+    pub fn try_into_settings(self) -> Result<Settings, Error> {
         let rest = self.rest_config();
         let RawSettings {
             command_line,
             config,
         } = self;
         let command_arguments = &command_line.start_arguments;
-        let network = generate_network(&command_arguments, &config, &logger)?;
+        let network = generate_network(&command_arguments, &config)?;
 
         let storage = match (
             command_arguments.storage.as_ref(),
@@ -142,8 +142,7 @@ impl RawSettings {
         }
 
         if secrets.is_empty() {
-            warn!(
-                logger,
+            tracing::warn!(
                 "Node started without path to the stored secret keys (not a stake pool or a BFT leader)"
             );
         };
@@ -194,7 +193,6 @@ impl RawSettings {
 fn generate_network(
     command_arguments: &StartArguments,
     config: &Option<Config>,
-    logger: &Logger,
 ) -> Result<network::Configuration, Error> {
     let (mut p2p, http_fetch_block0_service, skip_bootstrap, bootstrap_from_trusted_peers) =
         if let Some(cfg) = config {
@@ -221,18 +219,18 @@ fn generate_network(
             .iter()
             .filter_map(|config_peer| match TrustedPeer::resolve(config_peer) {
                 Ok(peer) => {
-                    info!(
-                        logger,
-                        "DNS resolved for trusted peer";
-                        "config" => %config_peer.address, "resolved" => %peer.address,
+                    tracing::info!(
+                        config = %config_peer.address,
+                        resolved = %peer.address,
+                        "DNS resolved for trusted peer"
                     );
                     Some(peer)
                 }
                 Err(e) => {
-                    warn!(
-                        logger,
-                        "failed to resolve trusted peer address";
-                        "config" => %config_peer.address, "reason" => %e,
+                    tracing::warn!(
+                        config = %config_peer.address,
+                        reason = %e,
+                        "failed to resolve trusted peer address"
                     );
                     None
                 }
@@ -301,8 +299,7 @@ fn generate_network(
     };
 
     if network.max_inbound_connections > network.max_connections {
-        warn!(
-            logger,
+        tracing::warn!(
             "p2p.max_inbound_connections is larger than p2p.max_connections, decreasing from {} to {}",
             network.max_inbound_connections,
             network.max_connections

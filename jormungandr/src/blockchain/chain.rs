@@ -59,7 +59,6 @@ use crate::{
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
 use chain_time::TimeFrame;
-use slog::Logger;
 use std::sync::Arc;
 use tokio_stream::StreamExt;
 
@@ -671,7 +670,7 @@ impl Blockchain {
     /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
-    pub async fn load_from_storage(&self, block0: Block, logger: &Logger) -> Result<Branch> {
+    pub async fn load_from_storage(&self, block0: Block) -> Result<Branch> {
         let block0_id = block0.header.hash();
         let already_exist = self
             .storage
@@ -719,8 +718,7 @@ impl Blockchain {
 
                     const PROCESS_LOGGING_DISTANCE: u64 = 2500;
                     if count % PROCESS_LOGGING_DISTANCE == 0 {
-                        info!(
-                            logger,
+                        tracing::info!(
                             "loading from storage, currently at {} processing={:?} ({:?} per block) ...",
                             header.description(),
                             block_processing,

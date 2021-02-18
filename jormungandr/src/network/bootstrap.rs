@@ -6,7 +6,6 @@ use chain_core::property::{Deserialize, HasHeader};
 use chain_network::data as net_data;
 use chain_network::error::Error as NetworkError;
 use futures::{prelude::*, stream, task::Poll};
-use slog::Logger;
 use tokio_util::sync::CancellationToken;
 
 use std::fmt::Debug;
@@ -53,11 +52,8 @@ pub enum Error {
 
 const MAX_BOOTSTRAP_PEERS: u32 = 32;
 
-pub async fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<Peer>, Error> {
-    info!(
-        logger,
-        "getting peers from bootstrap peer {}", peer.connection
-    );
+pub async fn peers_from_trusted_peer(peer: &Peer) -> Result<Vec<Peer>, Error> {
+    tracing::info!("getting peers from bootstrap peer {}", peer.connection);
 
     let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
     let peers = client
@@ -65,12 +61,7 @@ pub async fn peers_from_trusted_peer(peer: &Peer, logger: Logger) -> Result<Vec<
         .await
         .map_err(Error::PeersNotAvailable)?;
 
-    info!(
-        logger,
-        "peer {} : peers known : {}",
-        peer.connection,
-        peers.len()
-    );
+    tracing::info!("peer {} : peers known : {}", peer.connection, peers.len());
     let peers = peers.iter().map(|peer| Peer::new(peer.addr())).collect();
     Ok(peers)
 }
@@ -80,7 +71,6 @@ pub async fn bootstrap_from_peer(
     blockchain: Blockchain,
     tip: Tip,
     cancellation_token: CancellationToken,
-    logger: Logger,
 ) -> Result<(), Error> {
     use crate::network::convert::Decode;
     use chain_network::data::BlockId;
@@ -98,7 +88,7 @@ pub async fn bootstrap_from_peer(
         }
     }
 
-    debug!(logger, "connecting to bootstrap peer {}", peer.connection);
+    tracing::debug!("connecting to bootstrap peer {}", peer.connection);
 
     let mut client = with_cancellation_token(grpc::connect(&peer).boxed(), &cancellation_token)
         .await?
@@ -120,9 +110,10 @@ pub async fn bootstrap_from_peer(
 
         let remote_tip = BlockId::try_from(remote_tip.as_ref()).unwrap();
 
-        info!(
-            logger,
-            "pulling blocks starting from checkpoints: {:?}; to tip {:?}", checkpoints, remote_tip,
+        tracing::info!(
+            "pulling blocks starting from checkpoints: {:?}; to tip {:?}",
+            checkpoints,
+            remote_tip,
         );
 
         let stream = with_cancellation_token(
@@ -137,7 +128,6 @@ pub async fn bootstrap_from_peer(
             tip.clone(),
             stream,
             cancellation_token.clone(),
-            logger.clone(),
         )
         .await?;
     }
@@ -171,7 +161,7 @@ impl BootstrapInfo {
         self.last_block_description = Some(b.header.description());
     }
 
-    pub fn report(&mut self, logger: &Logger) {
+    pub fn report(&mut self) {
         fn print_sz(n: f64) -> String {
             if n > 1_000_000.0 {
                 format!("{:.2}mb", n / (1024 * 1024) as f64)
@@ -195,8 +185,7 @@ impl BootstrapInfo {
 
         self.last_reported = current;
         self.last_bytes_received = self.bytes_received;
-        info!(
-            logger,
+        tracing::info!(
             "receiving from network bytes={} {}/s, blockchain {}",
             bytes,
             kbs,
@@ -213,7 +202,6 @@ async fn bootstrap_from_stream<S>(
     branch: Tip,
     stream: S,
     cancellation_token: CancellationToken,
-    logger: Logger,
 ) -> Result<(), Error>
 where
     S: Stream<Item = Result<net_data::Block, NetworkError>> + Unpin,
@@ -255,10 +243,10 @@ where
                 bootstrap_info.append_block(&block);
 
                 if bootstrap_info.block_received % PROCESS_LOGGING_DISTANCE == 0 {
-                    bootstrap_info.report(&logger);
+                    bootstrap_info.report();
                 }
 
-                handle_block(&blockchain, block, &logger).await
+                handle_block(&blockchain, block).await
             }
             Err(err) => Err(err),
         };
@@ -270,7 +258,6 @@ where
             Err(err) => {
                 if let Some(parent_tip) = maybe_parent_tip {
                     if let Err(err) = blockchain::process_new_ref(
-                        &logger,
                         &mut blockchain,
                         branch.clone(),
                         parent_tip.clone(),
@@ -278,7 +265,7 @@ where
                     )
                     .await
                     {
-                        warn!(logger, "couldn't gracefully exit from failed netboot"; "error" => ?err);
+                        tracing::warn!(error = ?err, "couldn't gracefully exit from failed netboot");
                     }
                 }
                 return Err(err);
@@ -287,20 +274,16 @@ where
     }
 
     if let Some(parent_tip) = maybe_parent_tip {
-        blockchain::process_new_ref(&logger, &mut blockchain, branch, parent_tip, None)
+        blockchain::process_new_ref(&mut blockchain, branch, parent_tip, None)
             .await
             .map_err(Error::ChainSelectionFailed)
     } else {
-        info!(logger, "no new blocks in bootstrap stream");
+        tracing::info!("no new blocks in bootstrap stream");
         Ok(())
     }
 }
 
-async fn handle_block(
-    blockchain: &Blockchain,
-    block: Block,
-    logger: &Logger,
-) -> Result<Arc<Ref>, Error> {
+async fn handle_block(blockchain: &Blockchain, block: Block) -> Result<Arc<Ref>, Error> {
     let header = block.header();
     let pre_checked = blockchain
         .pre_check_header(header, true)
@@ -324,11 +307,10 @@ async fn handle_block(
                 .await
                 .map_err(Error::HeaderCheckFailed)?;
 
-            debug!(
-                logger,
-                "validated block";
-                "hash" => %post_checked.header().hash(),
-                "block_date" => %post_checked.header().block_date(),
+            tracing::debug!(
+                hash = %post_checked.header().hash(),
+                block_date = %post_checked.header().block_date(),
+                "validated block"
             );
             let applied = blockchain
                 .apply_and_store_block(post_checked, block)

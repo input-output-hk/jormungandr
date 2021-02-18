@@ -5,14 +5,13 @@
 //! modules utilized in jormungandr.
 //!
 
-use crate::log;
-
 use futures::prelude::*;
 use futures::stream::FuturesUnordered;
-use slog::Logger;
 use thiserror::Error;
 use tokio::runtime::{Handle, Runtime};
 use tokio::task::JoinHandle;
+use tracing::{span, Level, Span};
+use tracing_futures::Instrument;
 
 use std::error;
 use std::fmt::Debug;
@@ -22,7 +21,6 @@ use std::time::{Duration, Instant};
 
 /// hold onto the different services created
 pub struct Services {
-    logger: Logger,
     services: Vec<Service>,
     finish_listener: FuturesUnordered<JoinHandle<Result<(), Box<dyn error::Error + Send + Sync>>>>,
     runtime: Runtime,
@@ -62,11 +60,11 @@ pub struct Service {
 
 /// the current future service information
 ///
-/// retrieve the name, the up time, the logger and the handle
+/// retrieve the name, the up time, the tracing span and the handle
 pub struct TokioServiceInfo {
     name: &'static str,
     up_time: Instant,
-    logger: Logger,
+    span: tracing::Span,
     handle: Handle,
 }
 
@@ -86,9 +84,8 @@ pub enum Input<Msg> {
 
 impl Services {
     /// create a new set of services
-    pub fn new(logger: Logger) -> Self {
+    pub fn new() -> Self {
         Services {
-            logger,
             services: Vec::new(),
             finish_listener: FuturesUnordered::new(),
             runtime: Runtime::new().unwrap(),
@@ -102,25 +99,29 @@ impl Services {
         F: Send + 'static,
         T: Future<Output = ()> + Send + 'static,
     {
-        let logger = self
-            .logger
-            .new(o!(crate::log::KEY_TASK => name))
-            .into_erased();
-
         let handle = self.runtime.handle().clone();
         let now = Instant::now();
+        let tracing_span = span!(Level::TRACE, "service", kind = name);
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
-            logger: logger.clone(),
+            span: tracing_span,
             handle,
         };
-
-        let handle = self.runtime.spawn(async move {
-            f(future_service_info).await;
-            info!(logger, "service finished");
-            Ok::<_, std::convert::Infallible>(()).map_err(Into::into)
-        });
+        let span_parent = future_service_info.span.clone();
+        let handle = self.runtime.spawn(
+            async move {
+                f(future_service_info).await;
+                tracing::info!("service `{}` finished", name);
+                Ok::<_, std::convert::Infallible>(()).map_err(Into::into)
+            }
+            .instrument(span!(
+                parent: span_parent,
+                Level::TRACE,
+                "service",
+                kind = name
+            )),
+        );
         self.finish_listener.push(handle);
 
         let task = Service::new(name, now);
@@ -135,29 +136,34 @@ impl Services {
         T: Future<Output = Result<(), E>> + Send + 'static,
         E: error::Error + Send + Sync + 'static,
     {
-        let logger = self
-            .logger
-            .new(o!(crate::log::KEY_TASK => name))
-            .into_erased();
-
         let handle = self.runtime.handle().clone();
         let now = Instant::now();
+        let tracing_span = span!(Level::TRACE, "service", kind = name);
+
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
-            logger: logger.clone(),
+            span: tracing_span,
             handle,
         };
-
-        let handle = self.runtime.spawn(async move {
-            let res = f(future_service_info).await;
-            if let Err(err) = &res {
-                error!(logger, "service finished with error"; "reason" => err.to_string());
-            } else {
-                info!(logger, "service finished successfully");
+        let parent_span = future_service_info.span.clone();
+        let handle = self.runtime.spawn(
+            async move {
+                let res = f(future_service_info).await;
+                if let Err(err) = &res {
+                    tracing::error!(reason = %err.to_string(), "service finished with error");
+                } else {
+                    tracing::info!("service `{}` finished successfully", name);
+                }
+                res.map_err(Into::into)
             }
-            res.map_err(Into::into)
-        });
+            .instrument(span!(
+                parent: parent_span,
+                Level::TRACE,
+                "service",
+                kind = name
+            )),
+        );
         self.finish_listener.push(handle);
 
         let task = Service::new(name, now);
@@ -195,19 +201,29 @@ impl Services {
         F: FnOnce(TokioServiceInfo) -> Fut,
         Fut: Future<Output = T>,
     {
-        let logger = self
-            .logger
-            .new(o!(crate::log::KEY_TASK => name))
-            .into_erased();
         let handle = self.runtime.handle().clone();
         let now = Instant::now();
+        let tracing_span = span!(Level::TRACE, "service", kind = name);
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
-            logger,
+            span: tracing_span,
             handle,
         };
-        self.runtime.block_on(f(future_service_info))
+        let parent_span = future_service_info.span.clone();
+        self.runtime
+            .block_on(f(future_service_info).instrument(span!(
+                parent: parent_span,
+                Level::TRACE,
+                "service",
+                kind = name
+            )))
+    }
+}
+
+impl Default for Services {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -230,17 +246,10 @@ impl TokioServiceInfo {
         &self.handle
     }
 
-    /// access the service's logger
+    /// Access the parent service span
     #[inline]
-    pub fn logger(&self) -> &Logger {
-        &self.logger
-    }
-
-    /// Extract the service's logger, dropping the rest of the
-    /// `TokioServiceInfo` instance.
-    #[inline]
-    pub fn into_logger(self) -> Logger {
-        self.logger
+    pub fn span(&self) -> &Span {
+        &self.span
     }
 
     /// spawn a std::future within the service's tokio handle
@@ -248,9 +257,9 @@ impl TokioServiceInfo {
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        let logger = self.logger.clone();
-        trace!(logger, "spawning {}", name);
-        self.handle.spawn(future);
+        tracing::trace!("service `{}` spawning task `{}`", self.name, name);
+        self.handle
+            .spawn(future.instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)));
     }
 
     /// just like spawn but instead log an error on Result::Err
@@ -260,14 +269,18 @@ impl TokioServiceInfo {
         E: Debug,
         F: Future<Output = Result<(), E>>,
     {
-        let logger = self.logger.clone();
-        trace!(logger, "spawning {}", name);
-        self.handle.spawn(async move {
-            match future.await {
-                Ok(()) => trace!(logger, "{} finished successfully", name),
-                Err(e) => error!(logger, "{} finished with error", name; "error" => ?e),
+        tracing::trace!("service `{}` spawning task `{}`", self.name, name);
+        self.handle.spawn(
+            async move {
+                match future.await {
+                    Ok(()) => tracing::trace!("task {} finished successfully", name),
+                    Err(e) => {
+                        tracing::error!(reason = ?e, "task {} finished with error", name)
+                    }
+                }
             }
-        });
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
+        );
     }
 
     /// just like spawn but add a timeout
@@ -275,14 +288,16 @@ impl TokioServiceInfo {
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        let logger = self.logger.clone();
-        trace!(logger, "spawning {}", name);
-        self.handle.spawn(async move {
-            match tokio::time::timeout(timeout, future).await {
-                Err(_) => error!(logger, "task {} timedout", name),
-                Ok(()) => {}
-            };
-        });
+        tracing::trace!("spawning {}", name);
+        self.handle.spawn(
+            async move {
+                match tokio::time::timeout(timeout, future).await {
+                    Err(_) => tracing::error!("task {} timed out", name),
+                    Ok(()) => {}
+                };
+            }
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
+        );
     }
 
     /// just like spawn_failable but add a timeout
@@ -292,15 +307,17 @@ impl TokioServiceInfo {
         E: Debug,
         F: Future<Output = Result<(), E>>,
     {
-        let logger = self.logger.clone();
-        trace!(logger, "spawning {}", name);
-        self.handle.spawn(async move {
-            match tokio::time::timeout(timeout, future).await {
-                Err(_) => error!(logger, "task {} timedout", name),
-                Ok(Err(e)) => error!(logger, "task {} finished with error", name; "error" => ?e),
-                Ok(Ok(())) => {}
-            };
-        });
+        tracing::trace!("spawning {}", name);
+        self.handle.spawn(
+            async move {
+                match tokio::time::timeout(timeout, future).await {
+                    Err(_) => tracing::error!("task {} timed out", name),
+                    Ok(Err(e)) => tracing::error!(reason = ?e, "task {} finished with error", name),
+                    Ok(Ok(())) => {}
+                };
+            }
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
+        );
     }
 
     // Run the closure with the specified period on the handle
@@ -311,21 +328,32 @@ impl TokioServiceInfo {
         F: Send + 'static,
         U: Future<Output = ()> + Send + 'static,
     {
-        let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
-        self.spawn(name, async move {
-            let mut interval = tokio::time::interval(period);
-            loop {
-                let t_now = Instant::now();
-                interval.tick().await;
-                let t_last = Instant::now();
-                let elapsed = t_last.duration_since(t_now);
-                if elapsed > period * 2 {
-                    warn!(logger, "periodic task started late"; "period" => ?period, "elapsed" => ?elapsed);
+        self.spawn(
+            name,
+            async move {
+                let mut interval = tokio::time::interval(period);
+                loop {
+                    let t_now = Instant::now();
+                    interval.tick().await;
+                    let t_last = Instant::now();
+                    let elapsed = t_last.duration_since(t_now);
+                    if elapsed > period * 2 {
+                        tracing::warn!(
+                            period = ?period,
+                            elapsed = ?elapsed,
+                            "periodic task `{}` started late", name
+                        );
+                    }
+                    f().await;
+                    tracing::trace!(
+                        triggered_at = ?t_now,
+                        "periodic task `{}` finished successfully",
+                        name
+                    );
                 }
-                f().await;
-                trace!(logger, "periodic {} finished successfully", name; "triggered_at" => ?t_now);
             }
-        });
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
+        );
     }
 
     // Run the closure with the specified period on the handle
@@ -338,27 +366,42 @@ impl TokioServiceInfo {
         E: Debug,
         U: Future<Output = Result<(), E>> + Send + 'static,
     {
-        let logger = self.logger.new(o!(log::KEY_SUB_TASK => name));
-        self.spawn(name, async move {
-            let mut interval = tokio::time::interval(period);
-            loop {
-                let t_now = Instant::now();
-                interval.tick().await;
-                let t_last = Instant::now();
-                let elapsed = t_last.duration_since(t_now);
-                if elapsed > period * 2 {
-                    warn!(logger, "periodic task started late"; "period" => ?period, "elapsed" => ?elapsed);
+        self.spawn(
+            name,
+            async move {
+                let mut interval = tokio::time::interval(period);
+                loop {
+                    let t_now = Instant::now();
+                    interval.tick().await;
+                    let t_last = Instant::now();
+                    let elapsed = t_last.duration_since(t_now);
+                    if elapsed > period * 2 {
+                        tracing::warn!(
+                            period = ?period,
+                            elapsed = ?elapsed,
+                            "periodic task `{}` started late", name
+                        );
+                    }
+                    match f().await {
+                        Ok(()) => {
+                            tracing::trace!(
+                                triggered_at = ?t_now,
+                                "periodic task `{}` finished successfully",
+                                name,
+                            );
+                        }
+                        Err(e) => {
+                            tracing::error!(
+                                triggered_at = ?t_now,
+                                error = ?e,
+                                "periodic task `{}` failed", name
+                            );
+                        }
+                    };
                 }
-                match f().await {
-                    Ok(()) => {
-                        trace!(logger, "periodic {} finished successfully", name; "triggered_at" => ?t_now);
-                    },
-                    Err(e) => {
-                        error!(logger, "periodic task failed"; "error" => ?e, "triggered_at" => ?t_now);
-                    },
-                };
             }
-        });
+            .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
+        );
     }
 }
 

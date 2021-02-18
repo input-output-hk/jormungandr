@@ -23,7 +23,8 @@ use chain_network::data::block::{BlockEvent, BlockIds, ChainPullRequest};
 
 use futures::prelude::*;
 use futures::ready;
-use slog::Logger;
+use tracing::{span, Level, Span};
+use tracing_futures::Instrument;
 
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -33,7 +34,6 @@ pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
 #[must_use = "Client must be polled"]
 pub struct Client {
     inner: grpc::Client,
-    logger: Logger,
     global_state: GlobalStateR,
     inbound: InboundSubscriptions,
     block_solicitations: OutboundSubscription<BlockIds>,
@@ -45,16 +45,17 @@ pub struct Client {
     incoming_block_announcement: Option<net_data::Header>,
     incoming_solicitation: Option<ClientMsg>,
     shutting_down: bool,
+    span: Span,
 }
 
 struct ClientBuilder {
-    pub logger: Logger,
+    pub span: Span,
     pub channels: Channels,
 }
 
 impl Client {
-    pub fn logger(&self) -> &Logger {
-        &self.logger
+    pub fn span(&self) -> &Span {
+        &self.span
     }
 }
 
@@ -66,29 +67,46 @@ impl Client {
         inbound: InboundSubscriptions,
         comms: &mut PeerComms,
     ) -> Self {
-        let logger = builder.logger;
+        let parent_span = builder.span;
 
         let block_sink = BlockAnnouncementProcessor::new(
             builder.channels.block_box,
             inbound.peer_address.clone(),
             global_state.clone(),
-            logger.new(o!("stream" => "block_events", "direction" => "in")),
+            span!(
+                parent: &parent_span,
+                Level::TRACE,
+                "block_announcement_processor",
+                stream = "block_events",
+                direction = "in"
+            ),
         );
         let fragment_sink = FragmentProcessor::new(
             builder.channels.transaction_box,
             inbound.peer_address.clone(),
             global_state.clone(),
-            logger.new(o!("stream" => "fragments", "direction" => "in")),
+            span!(
+                parent: &parent_span,
+                Level::TRACE,
+                "block_announcement_processor",
+                stream = "fragments",
+                direction = "in"
+            ),
         );
         let gossip_sink = GossipProcessor::new(
             inbound.peer_address.clone(),
             global_state.clone(),
-            logger.new(o!("stream" => "gossip", "direction" => "in")),
+            span!(
+                parent: &parent_span,
+                Level::TRACE,
+                "block_announcement_processor",
+                stream = "gossip",
+                direction = "in"
+            ),
         );
 
         Client {
             inner,
-            logger,
             global_state,
             inbound,
             block_solicitations: comms.subscribe_to_block_solicitations(),
@@ -100,6 +118,7 @@ impl Client {
             incoming_block_announcement: None,
             incoming_solicitation: None,
             shutting_down: false,
+            span: parent_span,
         }
     }
 }
@@ -157,10 +176,11 @@ impl Client {
         // Drive sending of a message to block task to clear the buffered
         // announcement before polling more events from the block subscription
         // stream.
-        let logger = self.logger().clone();
+        let span = self.span().clone();
+        let _enter = span.enter();
         let mut block_sink = Pin::new(&mut self.block_sink);
         ready!(block_sink.as_mut().poll_ready(cx))
-            .map_err(|e| debug!(logger, "failed getting block sink"; "reason" => %e))?;
+            .map_err(|e| tracing::debug!(reason = %e, "failed getting block sink"))?;
         if let Some(header) = self.incoming_block_announcement.take() {
             block_sink.start_send(header).map_err(|_| ())?;
         } else {
@@ -180,20 +200,17 @@ impl Client {
         // the buffered solicitation before polling more events from the
         // block subscription stream.
         let mut client_box = Pin::new(&mut self.client_box);
-        let logger = &self.logger;
         ready!(client_box.as_mut().poll_ready(cx)).map_err(|e| {
-            error!(
-                logger,
-                "processing of incoming client requests failed";
-                "reason" => %e,
+            tracing::error!(
+                reason = %e,
+                "processing of incoming client requests failed"
             );
         })?;
         if let Some(msg) = self.incoming_solicitation.take() {
             client_box.start_send(msg).map_err(|e| {
-                error!(
-                    self.logger,
-                    "failed to send client request for processing";
-                    "reason" => %e,
+                tracing::error!(
+                    reason = %e,
+                    "failed to send client request for processing"
                 );
             })?;
         } else {
@@ -206,10 +223,9 @@ impl Client {
                 }
                 Poll::Ready(Ok(())) => Ok(()),
                 Poll::Ready(Err(e)) => {
-                    error!(
-                        self.logger,
-                        "processing of incoming client requests failed";
-                        "reason" => %e,
+                    tracing::error!(
+                        reason = %e,
+                        "processing of incoming client requests failed"
                     );
                     Err(())
                 }
@@ -221,14 +237,13 @@ impl Client {
         let event = match maybe_event {
             Some(Ok(event)) => event,
             None => {
-                debug!(self.logger, "block event subscription ended by the peer");
+                tracing::debug!("block event subscription ended by the peer");
                 return Ok(Disconnect).into();
             }
             Some(Err(e)) => {
-                debug!(
-                    self.logger,
-                    "block subscription stream failure";
-                    "error" => ?e,
+                tracing::debug!(
+                    error = ?e,
+                    "block subscription stream failure"
                 );
                 return Err(()).into();
             }
@@ -249,205 +264,229 @@ impl Client {
     }
 
     fn upload_blocks(&mut self, block_ids: BlockIds) -> Result<(), ()> {
-        let logger = self.logger.new(o!("solicitation" => "UploadBlocks"));
+        let span = span!(
+            parent: &self.span,
+            Level::TRACE,
+            "solicitation",
+            kind = "UploadBlocks"
+        );
+        let _enter = span.enter();
+
         if block_ids.is_empty() {
-            info!(logger, "peer has sent an empty block solicitation");
+            tracing::info!("peer has sent an empty block solicitation");
             return Err(());
         }
         let block_ids = block_ids.decode().map_err(|e| {
-            info!(
-                logger,
-                "failed to decode block IDs from solicitation request";
-                "reason" => %e,
+            tracing::info!(
+                reason = %e,
+                "failed to decode block IDs from solicitation request"
             );
         })?;
-        info!(
-            logger,
+        tracing::info!(
             "peer requests {} blocks starting from {}",
             block_ids.len(),
             block_ids[0]
         );
-        let (reply_handle, future) =
-            intercom::stream_reply(buffer_sizes::outbound::BLOCKS, logger.clone());
+        let (reply_handle, future) = intercom::stream_reply(buffer_sizes::outbound::BLOCKS);
+        let future = future.instrument(span.clone());
         debug_assert!(self.incoming_solicitation.is_none());
         self.incoming_solicitation = Some(ClientMsg::GetBlocks(block_ids, reply_handle));
         let mut client = self.inner.clone();
-        self.global_state.spawn(async move {
-            let stream = match future.await {
-                Ok(stream) => stream.upload().map(|item| item.encode()),
-                Err(e) => {
-                    info!(
-                        logger,
-                        "cannot serve peer's solicitation";
-                        "reason" => %e,
-                    );
-                    return;
-                }
-            };
-            match client.upload_blocks(stream).await {
-                Ok(()) => {
-                    debug!(logger, "finished uploading blocks");
-                }
-                Err(e) => {
-                    info!(
-                        logger,
-                        "UploadBlocks request failed";
-                        "error" => ?e,
-                    );
+        self.global_state.spawn(
+            async move {
+                let stream = match future.await {
+                    Ok(stream) => stream.upload().map(|item| item.encode()),
+                    Err(e) => {
+                        tracing::info!(
+                            reason = %e,
+                            "cannot serve peer's solicitation"
+                        );
+                        return;
+                    }
+                };
+                match client.upload_blocks(stream).await {
+                    Ok(()) => {
+                        tracing::debug!("finished uploading blocks");
+                    }
+                    Err(e) => {
+                        tracing::info!(
+                            error = ?e,
+                            "UploadBlocks request failed"
+                        );
+                    }
                 }
             }
-        });
+            .instrument(span.clone()),
+        );
         Ok(())
     }
 
     fn push_missing_headers(&mut self, req: ChainPullRequest) -> Result<(), ()> {
-        let logger = self.logger.new(o!("solicitation" => "PushHeaders"));
+        let span = span!(
+            parent: &self.span,
+            Level::TRACE,
+            "solicitation",
+            kind = "PushHeaders"
+        );
+        let _enter = span.enter();
+
         let from = req.from.decode().map_err(|e| {
-            info!(
-                logger,
-                "failed to decode checkpoint block IDs from header pull request";
-                "reason" => %e,
+            tracing::info!(
+                reason = %e,
+                "failed to decode checkpoint block IDs from header pull request"
             );
         })?;
         let to = req.to.decode().map_err(|e| {
-            info!(
-                logger,
-                "failed to decode tip block ID from header pull request";
-                "reason" => %e,
+            tracing::info!(
+                reason = %e,
+                "failed to decode tip block ID from header pull request"
             );
         })?;
-        debug!(
-            logger,
-            "peer requests missing part of the chain";
-            "checkpoints" => ?from,
-            "to" => ?to,
+        tracing::debug!(
+            checkpoints = ?from,
+            to = ?to,
+            "peer requests missing part of the chain"
         );
-        let (reply_handle, future) =
-            intercom::stream_reply(buffer_sizes::outbound::HEADERS, logger.clone());
+        let (reply_handle, future) = intercom::stream_reply(buffer_sizes::outbound::HEADERS);
+        let future = future.instrument(span.clone());
         debug_assert!(self.incoming_solicitation.is_none());
         self.incoming_solicitation = Some(ClientMsg::GetHeadersRange(from, to, reply_handle));
         let mut client = self.inner.clone();
-        let logger = self.logger.clone();
-        self.global_state.spawn(async move {
-            let stream = match future.await {
-                Ok(stream) => stream.upload().map(|item| item.encode()),
-                Err(e) => {
-                    info!(
-                        logger,
-                        "cannot serve peer's solicitation";
-                        "reason" => %e,
-                    );
-                    return;
-                }
-            };
-            match client.push_headers(stream).await {
-                Ok(()) => {
-                    debug!(logger, "finished pushing headers");
-                }
-                Err(e) => {
-                    info!(
-                        logger,
-                        "PushHeaders request failed";
-                        "error" => ?e,
-                    );
+        self.global_state.spawn(
+            async move {
+                let stream = match future.await {
+                    Ok(stream) => stream.upload().map(|item| item.encode()),
+                    Err(e) => {
+                        tracing::info!(
+                            reason = %e,
+                            "cannot serve peer's solicitation"
+                        );
+                        return;
+                    }
+                };
+                match client.push_headers(stream).await {
+                    Ok(()) => {
+                        tracing::debug!("finished pushing headers");
+                    }
+                    Err(e) => {
+                        tracing::info!(
+                            error = ?e,
+                            "PushHeaders request failed"
+                        );
+                    }
                 }
             }
-        });
+            .instrument(span.clone()),
+        );
         Ok(())
     }
 
     fn pull_headers(&mut self, req: ChainPullRequest) {
         let mut block_box = self.block_sink.message_box();
-        let logger = self.logger.new(o!("request" => "PullHeaders"));
-        let logger1 = logger.clone();
-        let (handle, sink, _) =
-            intercom::stream_request(buffer_sizes::inbound::HEADERS, logger.clone());
+        let span = span!(
+            parent: &self.span,
+            Level::TRACE,
+            "request",
+            kind = "PullHeaders"
+        );
+        let _enter = span.enter();
+
+        let (handle, sink, _) = intercom::stream_request(buffer_sizes::inbound::HEADERS);
         // TODO: make sure that back pressure on the number of requests
         // in flight prevents unlimited spawning of these tasks.
         // https://github.com/input-output-hk/jormungandr/issues/1034
-        self.global_state.spawn(async move {
-            let res = block_box.send(BlockMsg::ChainHeaders(handle)).await;
-            if let Err(e) = res {
-                error!(
-                    logger,
-                    "failed to enqueue request for processing";
-                    "reason" => %e,
-                );
-            }
-        });
-        let mut client = self.inner.clone();
-        self.global_state.spawn(async move {
-            match client.pull_headers(req.from, req.to).await {
-                Err(e) => {
-                    info!(
-                        logger1,
-                        "request failed";
-                        "reason" => %e,
+        self.global_state.spawn(
+            async move {
+                let res = block_box.send(BlockMsg::ChainHeaders(handle)).await;
+                if let Err(e) = res {
+                    tracing::error!(
+                        reason = %e,
+                        "failed to enqueue request for processing"
                     );
                 }
-                Ok(stream) => {
-                    let stream = stream.and_then(|item| async { item.decode() });
-                    let res = stream.forward(sink.sink_err_into()).await;
-                    if let Err(e) = res {
-                        info!(
-                            logger1,
-                            "response stream failed";
-                            "reason" => %e,
+            }
+            .instrument(span.clone()),
+        );
+        let mut client = self.inner.clone();
+        self.global_state.spawn(
+            async move {
+                match client.pull_headers(req.from, req.to).await {
+                    Err(e) => {
+                        tracing::info!(
+                            reason = %e,
+                            "request failed"
                         );
+                    }
+                    Ok(stream) => {
+                        let stream = stream.and_then(|item| async { item.decode() });
+                        let res = stream.forward(sink.sink_err_into()).await;
+                        if let Err(e) = res {
+                            tracing::info!(
+                                reason = %e,
+                                "response stream failed"
+                            );
+                        }
                     }
                 }
             }
-        });
+            .instrument(span.clone()),
+        );
     }
 
     fn solicit_blocks(&mut self, block_ids: BlockIds) {
         let mut block_box = self.block_sink.message_box();
-        let logger = self.logger.new(o!("request" => "GetBlocks"));
-        let req_err_logger = logger.clone();
-        let res_logger = logger.clone();
-        let (handle, sink, _) =
-            intercom::stream_request(buffer_sizes::inbound::BLOCKS, logger.clone());
+        let span = span!(
+            parent: self.span(),
+            Level::TRACE,
+            "request",
+            kind = "GetBlocks"
+        );
+        let (handle, sink, _) = intercom::stream_request(buffer_sizes::inbound::BLOCKS);
         // TODO: make sure that back pressure on the number of requests
         // in flight prevents unlimited spawning of these tasks.
         // https://github.com/input-output-hk/jormungandr/issues/1034
-        self.global_state.spawn(async move {
-            let res = block_box.send(BlockMsg::NetworkBlocks(handle)).await;
-            if let Err(e) = res {
-                error!(
-                    logger,
-                    "failed to enqueue request for processing";
-                    "reason" => %e,
-                );
-            }
-        });
-        let mut client = self.inner.clone();
-        self.global_state.spawn(async move {
-            match client.get_blocks(block_ids).await {
-                Err(e) => {
-                    info!(
-                        req_err_logger,
-                        "request failed";
-                        "reason" => %e,
+        self.global_state.spawn(
+            async move {
+                let res = block_box.send(BlockMsg::NetworkBlocks(handle)).await;
+                if let Err(e) = res {
+                    tracing::error!(
+                        reason = %e,
+                        "failed to enqueue request for processing"
                     );
                 }
-                Ok(stream) => {
-                    let stream = stream.and_then(|item| async { item.decode() });
-                    let res = stream.forward(sink.sink_err_into()).await;
-                    if let Err(e) = res {
-                        info!(
-                            res_logger,
-                            "response stream failed";
-                            "reason" => %e,
+            }
+            .instrument(span.clone()),
+        );
+        let mut client = self.inner.clone();
+        self.global_state.spawn(
+            async move {
+                match client.get_blocks(block_ids).await {
+                    Err(e) => {
+                        tracing::info!(
+                            reason = %e,
+                            "request failed"
                         );
+                    }
+                    Ok(stream) => {
+                        let stream = stream.and_then(|item| async { item.decode() });
+                        let res = stream.forward(sink.sink_err_into()).await;
+                        if let Err(e) = res {
+                            tracing::info!(
+                                reason = %e,
+                                "response stream failed"
+                            );
+                        }
                     }
                 }
             }
-        });
+            .instrument(span),
+        );
     }
 
     fn process_fragments(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
-
+        let span = self.span().clone();
+        let _enter = span.enter();
         let mut fragment_sink = Pin::new(&mut self.fragment_sink);
         ready!(fragment_sink.as_mut().poll_ready(cx)).map_err(|_| ())?;
 
@@ -466,14 +505,13 @@ impl Client {
                 Ok(Continue).into()
             }
             Poll::Ready(None) => {
-                debug!(self.logger, "fragment subscription ended by the peer");
+                tracing::debug!("fragment subscription ended by the peer");
                 Ok(Disconnect).into()
             }
             Poll::Ready(Some(Err(e))) => {
-                debug!(
-                    self.logger,
-                    "fragment subscription stream failure";
-                    "error" => ?e,
+                tracing::debug!(
+                    error = ?e,
+                    "fragment subscription stream failure"
                 );
                 Err(()).into()
             }
@@ -482,7 +520,8 @@ impl Client {
 
     fn process_gossip(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
-
+        let span = self.span().clone();
+        let _enter = span.enter();
         let mut gossip_sink = Pin::new(&mut self.gossip_sink);
         ready!(gossip_sink.as_mut().poll_ready(cx)).map_err(|_| ())?;
 
@@ -498,14 +537,13 @@ impl Client {
                 Ok(Continue).into()
             }
             Poll::Ready(None) => {
-                debug!(self.logger, "gossip subscription ended by the peer");
+                tracing::debug!("gossip subscription ended by the peer");
                 Ok(Disconnect).into()
             }
             Poll::Ready(Some(Err(e))) => {
-                debug!(
-                    self.logger,
-                    "gossip subscription stream failure";
-                    "error" => ?e,
+                tracing::debug!(
+                    error = ?e,
+                    "gossip subscription stream failure"
                 );
                 Err(()).into()
             }
@@ -513,14 +551,15 @@ impl Client {
     }
 
     fn poll_shut_down(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        let span = self.span().clone();
+        let _enter = span.enter();
         ready!(Pin::new(&mut self.block_sink).poll_close(cx)).unwrap_or(());
         ready!(Pin::new(&mut self.fragment_sink).poll_close(cx)).unwrap_or(());
         ready!(Pin::new(&mut self.gossip_sink).poll_close(cx)).unwrap_or(());
         ready!(Pin::new(&mut self.client_box).poll_close(cx)).unwrap_or_else(|e| {
-            warn!(
-                self.logger,
-                "failed to close communication channel to the client task";
-                "reason" => %e,
+            tracing::warn!(
+                reason = %e,
+                "failed to close communication channel to the client task"
             );
         });
         Poll::Ready(())
@@ -555,7 +594,7 @@ impl Future for Client {
                             Ok(Continue)
                         }
                         None => {
-                            debug!(self.logger, "outbound block solicitation stream closed");
+                            tracing::debug!("outbound block solicitation stream closed");
                             Ok(Disconnect)
                         }
                     })
@@ -569,7 +608,7 @@ impl Future for Client {
                             Ok(Continue)
                         }
                         None => {
-                            debug!(self.logger, "outbound header pull stream closed");
+                            tracing::debug!("outbound header pull stream closed");
                             Ok(Disconnect)
                         }
                     })
@@ -579,7 +618,7 @@ impl Future for Client {
                 Progress(Poll::Pending) => return Poll::Pending,
                 Progress(Poll::Ready(Continue)) => continue,
                 Progress(Poll::Ready(Disconnect)) => {
-                    info!(self.logger, "disconnecting client");
+                    tracing::info!("disconnecting client");
                     return ().into();
                 }
             }

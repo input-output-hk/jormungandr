@@ -21,10 +21,11 @@ use jormungandr_lib::{
     interfaces::{EnclaveLeaderId, LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
 };
-use slog::Logger;
 use std::cmp::Ordering;
 use std::{sync::Arc, time::Instant};
 use thiserror::Error;
+use tracing::{span, Level, Span};
+use tracing_futures::Instrument;
 
 #[derive(Error, Debug)]
 pub enum LeadershipError {
@@ -241,32 +242,41 @@ impl Module {
                 // there is no other schedule to have for the current epoch. Better
                 // wait for the next epoch
 
-                debug!(
-                    self.service_info.logger(),
-                    "no item scheduled, waiting for next epoch"
-                );
+                tracing::debug!("no item scheduled, waiting for next epoch");
                 self.next_epoch_instant()
             }
             Some(event) => {
-                let logger = self.service_info.logger().new(o!(
-                    "event_date" => event.date.to_string(),
-                    "leader_id" => event.id.to_string(),
-                ));
+                let span = tracing::span!(
+                    parent: self.service_info.span(),
+                    Level::TRACE, "leader_event",
+                    event_date = %event.date.to_string(),
+                    leader_id = %event.id.to_string()
+                );
+
                 let epoch = Epoch(event.date.epoch);
                 let slot = EpochSlotOffset(event.date.slot_id);
                 if let Some(instant) = self.slot_instant(epoch, slot) {
-                    debug!(logger, "awaiting");
-                    Ok(instant)
+                    async move {
+                        tracing::debug!("awaiting");
+                        Ok(instant)
+                    }
+                    .instrument(span)
+                    .await
                 } else {
                     // if the entry didn't have a valid epoch instant it means
                     // we are looking at passed entry already or it is happening
                     // now. so don't wait any further
-                    debug!(logger, "scheduled time for event was missed");
-                    Ok(Instant::now())
+                    async move {
+                        tracing::debug!("scheduled time for event was missed");
+                        Ok(Instant::now())
+                    }
+                    .instrument(span)
+                    .await
                 }
             }
         }
     }
+
     async fn action(mut self) -> Result<Self, LeadershipError> {
         match self.schedule.as_mut() {
             Some(schedule) => match schedule.next().await {
@@ -302,56 +312,58 @@ impl Module {
         let event_start = self.event_slot_time(&entry.event);
         let event_end = self.event_following_slot_time(&entry.event);
 
-        let logger = self.service_info.logger().new(o!(
-            "leader_id" => entry.event.id.to_string(),
-            "event_date" => entry.event.date.to_string(),
-            "event_start" => event_start.to_string(),
-            "event_end" => event_end.to_string(),
-        ));
+        let span = span!(
+            parent: self.service_info.span(),
+            Level::TRACE,
+            "action_run_entry",
+            leader_id = %entry.event.id.to_string(),
+            event_date = %entry.event.date.to_string(),
+            event_start = %event_start.to_string(),
+            event_end = %event_end.to_string()
+        );
 
-        if too_late(now, event_end) {
-            // the event happened out of bounds, ignore it and move to the next one
-            error!(
-                logger,
-                "Eek... Too late, we missed an event schedule, system time might be off?"
-            );
-
-            entry
-                .log
-                .set_status(LeadershipLogStatus::Rejected {
-                    reason: "Missed the deadline to compute the schedule".to_owned(),
-                })
-                .await;
-
-            Ok(self)
-        } else {
-            let right_time = entry.instant(&self);
-
-            if let Some(right_time) = right_time {
-                warn!(
-                    logger,
-                    "system woke a bit early for the event, delaying until right time."
+        async move {
+            if too_late(now, event_end) {
+                // the event happened out of bounds, ignore it and move to the next one
+                tracing::error!(
+                    "Eek... Too late, we missed an event schedule, system time might be off?"
                 );
 
-                // await the right_time before starting the action
-                tokio::time::sleep_until(tokio::time::Instant::from_std(right_time)).await;
-                self.action_run_entry_in_bound(entry, logger, event_end)
-                    .await
+                entry
+                    .log
+                    .set_status(LeadershipLogStatus::Rejected {
+                        reason: "Missed the deadline to compute the schedule".to_owned(),
+                    })
+                    .await;
+
+                Ok(self)
             } else {
-                // because we checked that the entry's slot was below the current
-                // time, if we cannot compute the _right_time_ it means the time
-                // is just starting now to be correct. So it's okay to start
-                // running it now still
-                self.action_run_entry_in_bound(entry, logger, event_end)
-                    .await
+                let right_time = entry.instant(&self);
+
+                if let Some(right_time) = right_time {
+                    tracing::warn!(
+                        "system woke a bit early for the event, delaying until right time."
+                    );
+
+                    // await the right_time before starting the action
+                    tokio::time::sleep_until(tokio::time::Instant::from_std(right_time)).await;
+                    self.action_run_entry_in_bound(entry, event_end).await
+                } else {
+                    // because we checked that the entry's slot was below the current
+                    // time, if we cannot compute the _right_time_ it means the time
+                    // is just starting now to be correct. So it's okay to start
+                    // running it now still
+                    self.action_run_entry_in_bound(entry, event_end).await
+                }
             }
         }
+        .instrument(span)
+        .await
     }
 
     async fn action_run_entry_in_bound(
         self,
         entry: Entry,
-        logger: Logger,
         event_end: SystemTime,
     ) -> Result<Self, LeadershipError> {
         let event_logs = entry.log.clone();
@@ -367,40 +379,39 @@ impl Module {
             .duration_since(now)
             .expect("event end in the future");
         let deadline = Instant::now() + remaining_time.into();
-
-        let logger = logger.new(o!(
-            "event_remaining_time" => remaining_time.to_string()
-        ));
-
-        info!(logger, "Leader event started");
-
-        let timed_out_log = logger.clone();
+        // handle to the current span, created in `action_run_entry`
+        let parent_span = Span::current();
+        let span = tracing::span!(
+            parent: &parent_span,
+            Level::TRACE,
+            "action_run_entry_in_bound",
+            event_remaining_time = %remaining_time.to_string()
+        );
+        async move {
+            tracing::info!("Leader event started");
 
         let res = tokio::time::timeout_at(
             tokio::time::Instant::from_std(deadline),
-            self.action_run_entry_build_block(entry, logger),
+            self.action_run_entry_build_block(entry),
         )
         .await;
 
-        match res {
-            Ok(future_res) => future_res,
-            Err(timeout_error) => {
-                error!(timed_out_log, "Eek... took too long to process the event..." ; "reason" => %timeout_error);
-                event_logs
-                    .set_status(LeadershipLogStatus::Rejected {
-                        reason: "Failed to compute the schedule within time boundaries".to_owned(),
-                    })
-                    .await;
-                Ok(())
-            }
-        }.map(|()| self)
+            match res {
+                Ok(future_res) => future_res,
+                Err(timeout_error) => {
+                    tracing::error!(reason = %timeout_error, "Eek... took too long to process the event...");
+                    event_logs
+                        .set_status(LeadershipLogStatus::Rejected {
+                            reason: "Failed to compute the schedule within time boundaries".to_owned(),
+                        })
+                        .await;
+                    Ok(())
+                }
+            }.map(|()| self)
+        }.instrument(span).await
     }
 
-    async fn action_run_entry_build_block(
-        &self,
-        entry: Entry,
-        logger: Logger,
-    ) -> Result<(), LeadershipError> {
+    async fn action_run_entry_build_block(&self, entry: Entry) -> Result<(), LeadershipError> {
         let event = entry.event;
         let event_logs = entry.log;
 
@@ -427,8 +438,7 @@ impl Module {
             // * reminder that there is a timeout
             // * jumping epoch is might not be acceptable
 
-            warn!(
-                logger,
+            tracing::warn!(
                 "It appears the node is running a bit behind schedule, system time might be off?"
             );
 
@@ -441,15 +451,7 @@ impl Module {
             return Ok(());
         };
 
-        let contents = prepare_block(
-            pool,
-            event.id,
-            event.date,
-            ledger,
-            ledger_parameters,
-            logger.clone(),
-        )
-        .await?;
+        let contents = prepare_block(pool, event.id, event.date, ledger, ledger_parameters).await?;
 
         let event_logs_error = event_logs.clone();
         let signing = {
@@ -549,62 +551,69 @@ impl Module {
 
         let epoch_tip = Epoch(self.tip_ref.block_date().epoch);
 
-        let logger = self.service_info.logger().new(o!(
-            "epoch_tip" => epoch_tip.0,
-            "current_epoch" => current_slot_position.epoch.0,
-            "current_slot" => current_slot_position.slot.0,
-        ));
+        let parent_span = self.service_info.span();
+        let span = tracing::span!(
+            parent: parent_span,
+            Level::TRACE,
+            "action_schedule",
+            epoch_tip = epoch_tip.0,
+            current_epoch = current_slot_position.epoch.0,
+            current_slot = current_slot_position.slot.0
+        );
 
-        match epoch_tip.cmp(&current_slot_position.epoch) {
-            Ordering::Less => {
-                let EpochLeadership { leadership, .. } = new_epoch_leadership_from(
-                    current_slot_position.epoch.0,
-                    Arc::clone(&self.tip_ref),
-                    false,
-                );
+        async move {
+            match epoch_tip.cmp(&current_slot_position.epoch) {
+                Ordering::Less => {
+                    let EpochLeadership { leadership, .. } = new_epoch_leadership_from(
+                        current_slot_position.epoch.0,
+                        Arc::clone(&self.tip_ref),
+                        false,
+                    );
 
-                let slot_start = current_slot_position.slot.0 + 1;
-                let nb_slots = leadership.era().slots_per_epoch() - slot_start;
-                let running_ref = leadership;
+                    let slot_start = current_slot_position.slot.0 + 1;
+                    let nb_slots = leadership.era().slots_per_epoch() - slot_start;
+                    let running_ref = leadership;
 
-                debug!(logger, "scheduling events" ;
-                    "slot_start" => slot_start,
-                    "nb_slots" => nb_slots,
-                );
+                    tracing::debug!(
+                        slot_start = slot_start,
+                        nb_slots = nb_slots,
+                        "scheduling events",
+                    );
 
-                self.action_run_schedule(running_ref, slot_start, nb_slots)
-                    .await
-            }
-            Ordering::Equal => {
-                // check for current epoch
-                let slot_start = current_slot_position.slot.0 + 1;
-                let nb_slots = self
-                    .tip_ref
-                    .epoch_leadership_schedule()
-                    .era()
-                    .slots_per_epoch()
-                    - slot_start;
-                let running_ref = Arc::clone(self.tip_ref.epoch_leadership_schedule());
+                    self.action_run_schedule(running_ref, slot_start, nb_slots)
+                        .await
+                }
+                Ordering::Equal => {
+                    // check for current epoch
+                    let slot_start = current_slot_position.slot.0 + 1;
+                    let nb_slots = self
+                        .tip_ref
+                        .epoch_leadership_schedule()
+                        .era()
+                        .slots_per_epoch()
+                        - slot_start;
+                    let running_ref = Arc::clone(self.tip_ref.epoch_leadership_schedule());
 
-                debug!(logger, "scheduling events" ;
-                    "slot_start" => slot_start,
-                    "nb_slots" => nb_slots,
-                );
+                    tracing::debug!(
+                        slot_start = slot_start,
+                        nb_slots = nb_slots,
+                        "scheduling events"
+                    );
 
-                self.action_run_schedule(running_ref, slot_start, nb_slots)
-                    .await
-            }
-            Ordering::Greater => {
-                // The only reason this would happen is if we had accepted a block
-                // that is set in the future or our system local date time is off
+                    self.action_run_schedule(running_ref, slot_start, nb_slots)
+                        .await
+                }
+                Ordering::Greater => {
+                    // The only reason this would happen is if we had accepted a block
+                    // that is set in the future or our system local date time is off
 
-                error!(
-                    logger,
-                    "It seems the current epoch tip is way ahead of its time."
-                );
-                Ok(self)
+                    tracing::error!("It seems the current epoch tip is way ahead of its time.");
+                    Ok(self)
+                }
             }
         }
+        .instrument(span)
+        .await
     }
 
     async fn action_run_schedule(
@@ -638,11 +647,10 @@ async fn prepare_block(
     block_date: BlockDate,
     ledger: Arc<Ledger>,
     epoch_parameters: Arc<LedgerParameters>,
-    logger: Logger,
 ) -> Result<Contents, LeadershipError> {
     use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 
-    let (reply_handle, reply_future) = unary_reply(logger.clone());
+    let (reply_handle, reply_future) = unary_reply();
 
     let pool_idx: u32 = leader_id.into();
 
@@ -656,10 +664,7 @@ async fn prepare_block(
     };
 
     if fragment_pool.try_send(msg).is_err() {
-        error!(
-            logger,
-            "cannot send query to the fragment pool for some fragments"
-        );
+        tracing::error!("cannot send query to the fragment pool for some fragments");
         Err(LeadershipError::CannotConnectToFragmentPool)
     } else {
         reply_future.await.map_err(Into::into)

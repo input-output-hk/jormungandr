@@ -1,9 +1,9 @@
 use crate::settings::{start::config::TrustedPeer, LOG_FILTER_LEVEL_POSSIBLE_VALUES};
 use poldercast::Address;
-use slog::FilterLevel;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use tracing::level_filters::LevelFilter;
 
 use crate::{
     blockcfg::HeaderHash,
@@ -78,7 +78,7 @@ pub struct CommandLine {
         parse(try_from_str = log_level_parse),
         possible_values = &LOG_FILTER_LEVEL_POSSIBLE_VALUES
     )]
-    pub log_level: Option<FilterLevel>,
+    pub log_level: Option<LevelFilter>,
 
     /// Set format of the log emitted. Can be "json" or "plain".
     /// If not configured anywhere, defaults to "plain".
@@ -131,7 +131,7 @@ impl CommandLine {
     }
 }
 
-fn log_level_parse(level: &str) -> Result<FilterLevel, String> {
+fn log_level_parse(level: &str) -> Result<LevelFilter, String> {
     level
         .parse()
         .map_err(|_| format!("Unknown log level value: '{}'", level))

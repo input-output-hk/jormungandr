@@ -9,6 +9,9 @@ use thiserror::Error;
 
 use crate::testing::Timestamp;
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
+use serde::de::Error;
+use std::collections::HashMap;
+
 #[derive(Debug, Error)]
 pub enum LoggerError {
     #[error("{log_file}")]
@@ -24,20 +27,18 @@ pub struct JormungandrLogger {
 pub enum Level {
     WARN,
     INFO,
-    ERRO,
-    TRCE,
-    DEBG,
+    ERROR,
+    TRACE,
+    DEBUG,
 }
 
 const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfully stored";
 
-// TODO: convert strings to enums for level/task/
-// TODO: convert ts to DateTime
 #[derive(Serialize, Deserialize, Debug)]
-pub struct LogEntry {
+pub struct Fields {
+    #[serde(alias = "message", default = "String::new")]
     pub msg: String,
-    pub level: Level,
-    pub ts: String,
+    #[serde(alias = "kind")]
     pub task: Option<String>,
     pub hash: Option<String>,
     pub reason: Option<String>,
@@ -46,23 +47,65 @@ pub struct LogEntry {
     pub peer_addr: Option<String>,
 }
 
+// TODO: convert strings to enums for level/task/
+// TODO: convert ts to DateTime
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LogEntry {
+    pub level: Level,
+    #[serde(alias = "timestamp")]
+    pub ts: String,
+    pub fields: Fields,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LogEntryLegacy {
+    pub level: Level,
+    pub ts: String,
+    pub msg: String,
+    pub task: Option<String>,
+    pub hash: Option<String>,
+    pub reason: Option<String>,
+    pub error: Option<String>,
+    pub block_date: Option<String>,
+    pub peer_addr: Option<String>,
+}
+
+impl From<LogEntryLegacy> for LogEntry {
+    fn from(log_entry: LogEntryLegacy) -> Self {
+        Self {
+            level: log_entry.level,
+            ts: log_entry.ts,
+            fields: Fields {
+                msg: log_entry.msg,
+                task: log_entry.task,
+                hash: log_entry.hash,
+                reason: log_entry.reason,
+                error: log_entry.error,
+                block_date: log_entry.block_date,
+                peer_addr: log_entry.peer_addr,
+            },
+        }
+    }
+}
+
 impl LogEntry {
     pub fn reason_contains(&self, reason_part: &str) -> bool {
-        match &self.reason {
+        match &self.fields.reason {
             Some(reason) => reason.contains(reason_part),
             None => false,
         }
     }
 
     pub fn error_contains(&self, error_part: &str) -> bool {
-        match &self.error {
+        match &self.fields.error {
             Some(error) => error.contains(error_part),
             None => false,
         }
     }
 
     pub fn block_date(&self) -> Option<BlockDate> {
-        self.block_date
+        self.fields
+            .block_date
             .clone()
             .map(|block| block::BlockDate::from_str(&block).unwrap().into())
     }
@@ -115,7 +158,7 @@ impl JormungandrLogger {
 
     pub fn last_validated_block_date(&self) -> Option<BlockDate> {
         self.get_log_entries()
-            .filter(|x| x.msg.contains("validated block"))
+            .filter(|x| x.fields.msg.contains("validated block"))
             .map(|x| x.block_date())
             .last()
             .unwrap_or(None)
@@ -136,7 +179,9 @@ impl JormungandrLogger {
 
     pub fn contains_message(&self, message: &str) -> Result<bool, LoggerError> {
         self.verify_file_exists()?;
-        Ok(self.get_log_entries().any(|x| x.msg.contains(message)))
+        Ok(self
+            .get_log_entries()
+            .any(|x| x.fields.msg.contains(message)))
     }
 
     pub fn get_lines_with_warn(&self) -> impl Iterator<Item = String> + '_ {
@@ -151,14 +196,14 @@ impl JormungandrLogger {
 
     pub fn get_created_blocks_hashes(&self) -> Vec<Hash> {
         self.filter_entries_with_block_creation()
-            .map(|item| Hash::from_str(&item.hash.unwrap()).unwrap())
+            .map(|item| Hash::from_str(&item.fields.hash.unwrap()).unwrap())
             .collect()
     }
 
     pub fn get_created_blocks_hashes_after(&self, reference_time: SystemTime) -> Vec<Hash> {
         self.filter_entries_with_block_creation()
             .filter(|item| item.is_later_than(&reference_time))
-            .map(|item| Hash::from_str(&item.hash.unwrap()).unwrap())
+            .map(|item| Hash::from_str(&item.fields.hash.unwrap()).unwrap())
             .collect()
     }
 
@@ -169,13 +214,15 @@ impl JormungandrLogger {
     fn filter_entries_with_block_creation(&self) -> impl Iterator<Item = LogEntry> + '_ {
         let expected_task = Some("block".to_string());
         self.get_log_entries().filter(move |x| {
-            x.msg == SUCCESFULLY_CREATED_BLOCK_MSG && x.task == expected_task && x.hash.is_some()
+            x.fields.msg == SUCCESFULLY_CREATED_BLOCK_MSG
+                && x.fields.task == expected_task
+                && x.fields.hash.is_some()
         })
     }
 
     fn is_error_line(&self, line: &str) -> bool {
         match self.try_parse_line_as_entry(line) {
-            Ok(entry) => entry.level == Level::ERRO,
+            Ok(entry) => entry.level == Level::ERROR,
             Err(_) => false,
         }
     }
@@ -189,13 +236,47 @@ impl JormungandrLogger {
 
     fn is_error_line_or_invalid(&self, line: &str) -> bool {
         match self.try_parse_line_as_entry(&line) {
-            Ok(entry) => entry.level == Level::ERRO,
+            Ok(entry) => entry.level == Level::ERROR,
             Err(_) => true,
         }
     }
 
     fn try_parse_line_as_entry(&self, line: &str) -> Result<LogEntry, impl std::error::Error> {
-        serde_json::from_str(&line)
+        // try legacy log first
+        let legacy_entry: Result<LogEntryLegacy, _> = serde_json::from_str(line);
+        if let Ok(result) = legacy_entry {
+            return Ok(result.into());
+        }
+        // parse and aggregate spans fields
+        let mut jsonize_entry: serde_json::Value = serde_json::from_str(&line)?;
+        let mut aggreagated: HashMap<String, serde_json::Value> = HashMap::new();
+        if let Some(fields) = jsonize_entry.get("fields") {
+            // main span "fields" is ensured be an object, it is safe to unwrap here
+            for (k, v) in fields.as_object().unwrap().iter() {
+                aggreagated.insert(k.clone(), v.clone());
+            }
+        }
+        if let Some(main_span) = jsonize_entry.get("span") {
+            // main span "span" is ensured be an object, it is safe to unwrap here
+            for (k, v) in main_span.as_object().unwrap().iter() {
+                aggreagated.insert(k.clone(), v.clone());
+            }
+        }
+        if let Some(spans) = jsonize_entry.get("spans") {
+            // spans is ensured to be an array, so it should be safe to unwrap here
+            for s in spans.as_array().unwrap() {
+                // same here, inner spans are represented as objects
+                let span_values = s.as_object().unwrap();
+                for (k, v) in span_values.iter() {
+                    aggreagated.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        *(jsonize_entry
+            .get_mut("fields")
+            .ok_or_else(|| serde_json::error::Error::custom("Could not get mutable `fields`"))?) =
+            serde_json::to_value(aggreagated)?;
+        serde_json::from_value(jsonize_entry)
     }
 
     pub fn get_lines_from_log(&self) -> impl Iterator<Item = String> {
@@ -230,7 +311,7 @@ impl JormungandrLogger {
 
         Ok(self
             .get_log_entries()
-            .filter(|x| x.msg.contains(message))
+            .filter(|x| x.fields.msg.contains(message))
             .count()
             == count)
     }

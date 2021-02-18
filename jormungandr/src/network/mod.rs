@@ -78,7 +78,6 @@ use self::p2p::{comm::Peers, P2pTopology};
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
-use crate::log;
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::utils::{
     async_msg::{MessageBox, MessageQueue},
@@ -88,8 +87,9 @@ use chain_network::data::gossip::Gossip;
 use chain_network::data::NodeKeyPair;
 use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
-use slog::Logger;
 use tonic::transport;
+use tracing::{span, Level, Span};
+use tracing_futures::Instrument;
 
 use std::collections::BTreeMap;
 use std::error;
@@ -150,7 +150,7 @@ pub struct GlobalState {
     topology: P2pTopology,
     peers: Peers,
     keypair: NodeKeyPair,
-    logger: Logger,
+    span: Span,
 }
 
 pub type GlobalStateR = Arc<GlobalState>;
@@ -161,9 +161,12 @@ impl GlobalState {
         block0_hash: HeaderHash,
         config: Configuration,
         stats_counter: StatsCounter,
-        logger: Logger,
+        span: Span,
     ) -> Self {
-        let peers = Peers::new(config.max_connections, logger.clone());
+        let peers = Peers::new(
+            config.max_connections,
+            span!(parent: &span, Level::TRACE, "peers"),
+        );
 
         let mut rng_seed = [0; 32];
         rand::thread_rng().fill(&mut rng_seed);
@@ -173,7 +176,7 @@ impl GlobalState {
 
         let topology = P2pTopology::new(
             &config,
-            logger.new(o!(log::KEY_SUB_TASK => "poldercast")),
+            span!(parent: &span, Level::TRACE, "sub_task", kind = "poldercast"),
             prng,
         );
 
@@ -184,12 +187,12 @@ impl GlobalState {
             topology,
             peers,
             keypair,
-            logger,
+            span,
         }
     }
 
-    fn logger(&self) -> &Logger {
-        &self.logger
+    pub fn span(&self) -> &Span {
+        &self.span
     }
 
     pub fn node_address(&self) -> Option<&Address> {
@@ -242,15 +245,15 @@ pub struct ConnectionState {
     /// the local (to the task) connection details
     pub connection: Connection,
 
-    logger: Logger,
+    pub span: Span,
 }
 
 impl ConnectionState {
-    fn new(global: GlobalStateR, peer: &Peer, logger: Logger) -> Self {
+    fn new(global: GlobalStateR, peer: &Peer, span: Span) -> Self {
         ConnectionState {
             timeout: peer.timeout,
             connection: peer.connection,
-            logger,
+            span,
             global,
         }
     }
@@ -259,8 +262,8 @@ impl ConnectionState {
         Peer::with_timeout(self.connection, self.timeout)
     }
 
-    fn logger(&self) -> &Logger {
-        &self.logger
+    fn span(&self) -> &Span {
+        &self.span
     }
 }
 
@@ -281,7 +284,6 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
     // open the port for listening/accepting other peers to connect too
     let listen_state = global_state.clone();
     let listen_channels = channels.clone();
-    let logger = service_info.logger();
     let listener = async move {
         if let Some(listen) = listen_state.config.listen() {
             match listen.protocol {
@@ -289,10 +291,10 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
                     grpc::run_listen_socket(&listen, listen_state, listen_channels)
                         .await
                         .unwrap_or_else(|e| {
-                            error!(
-                            logger,
-                            "failed to listen for P2P connections at {}", listen.connection;
-                            "reason" => %e);
+                            tracing::error!(
+                                reason = %e,
+                                "failed to listen for P2P connections at {}", listen.connection
+                            );
                         });
                 }
                 Protocol::Ntt => unimplemented!(),
@@ -363,119 +365,129 @@ async fn handle_network_input(
 }
 
 async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
-    let prop_state = state.clone();
-    let propagate_res = match &msg {
-        PropagateMsg::Block(header) => {
-            debug!(state.logger(), "block to propagate"; "hash" => %header.hash());
-            let header = header.encode();
-            let view = state
-                .topology
-                .view(poldercast::Selection::Topic {
-                    topic: p2p::topic::BLOCKS,
-                })
-                .await;
-            prop_state.peers.propagate_block(view.peers, header).await
-        }
-        PropagateMsg::Fragment(fragment) => {
-            debug!(state.logger(), "fragment to propagate"; "hash" => %fragment.hash());
-            let fragment = fragment.encode();
-            let view = state
-                .topology
-                .view(poldercast::Selection::Topic {
-                    topic: p2p::topic::MESSAGES,
-                })
-                .await;
-            prop_state
-                .peers
-                .propagate_fragment(view.peers, fragment)
-                .await
-        }
-    };
-    // If any nodes selected for propagation are not in the
-    // active subscriptions map, connect to them and deliver
-    // the item.
-    if let Err(unreached_nodes) = propagate_res {
-        debug!(
-            state.logger(),
-            "will try to connect to the peers not immediately reachable for propagation: {:?}",
-            unreached_nodes,
-        );
-        for node in unreached_nodes {
-            let mut options = p2p::comm::ConnectOptions::default();
-            match &msg {
-                PropagateMsg::Block(header) => {
-                    options.pending_block_announcement = Some(header.encode());
-                }
-                PropagateMsg::Fragment(fragment) => {
-                    options.pending_fragment = Some(fragment.encode());
-                }
-            };
-            connect_and_propagate(node, state.clone(), channels.clone(), options);
+    async {
+        let prop_state = state.clone();
+        let propagate_res = match &msg {
+            PropagateMsg::Block(header) => {
+                tracing::debug!(hash = %header.hash(), "block to propagate");
+                let header = header.encode();
+                let view = state
+                    .topology
+                    .view(poldercast::Selection::Topic {
+                        topic: p2p::topic::BLOCKS,
+                    })
+                    .await;
+                prop_state.peers.propagate_block(view.peers, header).await
+            }
+            PropagateMsg::Fragment(fragment) => {
+                tracing::debug!(hash = %fragment.hash(), "fragment to propagate");
+                let fragment = fragment.encode();
+                let view = state
+                    .topology
+                    .view(poldercast::Selection::Topic {
+                        topic: p2p::topic::MESSAGES,
+                    })
+                    .await;
+                prop_state
+                    .peers
+                    .propagate_fragment(view.peers, fragment)
+                    .await
+            }
+        };
+        // If any nodes selected for propagation are not in the
+        // active subscriptions map, connect to them and deliver
+        // the item.
+        if let Err(unreached_nodes) = propagate_res {
+            tracing::debug!(
+                "will try to connect to the peers not immediately reachable for propagation: {:?}",
+                unreached_nodes,
+            );
+            for node in unreached_nodes {
+                let mut options = p2p::comm::ConnectOptions::default();
+                match &msg {
+                    PropagateMsg::Block(header) => {
+                        options.pending_block_announcement = Some(header.encode());
+                    }
+                    PropagateMsg::Fragment(fragment) => {
+                        options.pending_fragment = Some(fragment.encode());
+                    }
+                };
+                connect_and_propagate(node, state.clone(), channels.clone(), options);
+            }
         }
     }
+    .instrument(state.span.clone())
+    .await
 }
 
 async fn start_gossiping(state: GlobalStateR, channels: Channels) {
     let config = &state.config;
     let topology = &state.topology;
-    let logger = state.logger().new(o!(log::KEY_SUB_TASK => "start_gossip"));
+    let span = span!(parent: &state.span, Level::TRACE, "sub_task", kind = "start_gossip");
     // inject the trusted peers as initial gossips, this will make the node
     // gossip with them at least at the beginning
-
-    for tp in config.trusted_peers.iter() {
-        topology
-            .accept_gossips(tp.address.clone(), {
-                let mut builder = poldercast::NodeProfileBuilder::new();
-                builder.address(tp.address.clone());
-                if let Some(id) = tp.legacy_node_id {
-                    builder.id(id);
-                }
-                p2p::Gossips::from(vec![p2p::Gossip::from(builder.build())])
-            })
-            .await;
-    }
-    let view = topology.view(poldercast::Selection::Any).await;
-    let peers: Vec<p2p::Address> = view.peers;
-    debug!(logger, "sending gossip to {} peers", peers.len());
-    for address in peers {
-        let gossips = topology.initiate_gossips(address.clone()).await;
-        let propagate_res = state
-            .peers
-            .propagate_gossip_to(address.clone(), Gossip::from(gossips))
-            .await;
-        if let Err(gossip) = propagate_res {
-            let options = p2p::comm::ConnectOptions {
-                pending_gossip: Some(gossip),
-                ..Default::default()
-            };
-            connect_and_propagate(address, state.clone(), channels.clone(), options);
+    async {
+        for tp in config.trusted_peers.iter() {
+            topology
+                .accept_gossips(tp.address.clone(), {
+                    let mut builder = poldercast::NodeProfileBuilder::new();
+                    builder.address(tp.address.clone());
+                    if let Some(id) = tp.legacy_node_id {
+                        builder.id(id);
+                    }
+                    p2p::Gossips::from(vec![p2p::Gossip::from(builder.build())])
+                })
+                .await;
+        }
+        let view = topology.view(poldercast::Selection::Any).await;
+        let peers: Vec<p2p::Address> = view.peers;
+        tracing::debug!("sending gossip to {} peers", peers.len());
+        for address in peers {
+            let gossips = topology.initiate_gossips(address.clone()).await;
+            let propagate_res = state
+                .peers
+                .propagate_gossip_to(address.clone(), Gossip::from(gossips))
+                .await;
+            if let Err(gossip) = propagate_res {
+                let options = p2p::comm::ConnectOptions {
+                    pending_gossip: Some(gossip),
+                    ..Default::default()
+                };
+                connect_and_propagate(address, state.clone(), channels.clone(), options);
+            }
         }
     }
+    .instrument(span)
+    .await
 }
 
 async fn send_gossip(state: GlobalStateR, channels: Channels) {
     let topology = &state.topology;
-    let logger = state.logger().new(o!(log::KEY_SUB_TASK => "send_gossip"));
-    let view = topology.view(poldercast::Selection::Any).await;
-    let peers = view.peers;
-    debug!(logger, "sending gossip to {} peers", peers.len());
-    for address in peers {
-        let state_prop = state.clone();
-        let state_err = state.clone();
-        let channels_err = channels.clone();
-        let gossips = topology.initiate_gossips(address.clone()).await;
-        let res = state_prop
-            .peers
-            .propagate_gossip_to(address.clone(), Gossip::from(gossips))
-            .await;
-        if let Err(gossip) = res {
-            let options = p2p::comm::ConnectOptions {
-                pending_gossip: Some(gossip),
-                ..Default::default()
-            };
-            connect_and_propagate(address, state_err, channels_err, options);
+    let span = span!(parent: &state.span, Level::TRACE, "sub_task", kind = "send_gossip");
+    async {
+        let view = topology.view(poldercast::Selection::Any).await;
+        let peers = view.peers;
+        tracing::debug!("sending gossip to {} peers", peers.len());
+        for address in peers {
+            let state_prop = state.clone();
+            let state_err = state.clone();
+            let channels_err = channels.clone();
+            let gossips = topology.initiate_gossips(address.clone()).await;
+            let res = state_prop
+                .peers
+                .propagate_gossip_to(address.clone(), Gossip::from(gossips))
+                .await;
+            if let Err(gossip) = res {
+                let options = p2p::comm::ConnectOptions {
+                    pending_gossip: Some(gossip),
+                    ..Default::default()
+                };
+                connect_and_propagate(address, state_err, channels_err, options);
+            }
         }
     }
+    .instrument(span)
+    .await
 }
 
 fn connect_and_propagate(
@@ -484,26 +496,28 @@ fn connect_and_propagate(
     channels: Channels,
     mut options: p2p::comm::ConnectOptions,
 ) {
+    let _enter = state.span.enter();
     let addr = match node.to_socket_addr() {
         Some(addr) => addr,
         None => {
-            debug!(
-                state.logger(),
-                "ignoring P2P node without an IP address" ;
-                "peer" => %node
+            tracing::debug!(
+                peer = %node,
+                "ignoring P2P node without an IP address"
             );
             return;
         }
     };
     options.evict_clients = state.num_clients_to_bump();
     if Some(&node) == state.node_address() {
-        error!(state.logger(), "topology tells the node to connect to itself, ignoring"; "peer" => %node);
+        tracing::error!(peer = %node, "topology tells the node to connect to itself, ignoring");
         return;
     }
+    drop(_enter);
     let peer = Peer::new(addr);
-    let conn_logger = state.logger().new(o!("peer" => node.to_string()));
-    let conn_state = ConnectionState::new(state.clone(), &peer, conn_logger.clone());
-    info!(conn_logger, "connecting to peer");
+    let conn_span = span!(parent: &state.span, Level::TRACE, "peer", node = %node.to_string());
+    let _enter = conn_span.enter();
+    let conn_state = ConnectionState::new(state.clone(), &peer, conn_span.clone());
+    tracing::info!("connecting to peer");
     let (handle, connecting) = client::connect(conn_state, channels);
     let spawn_state = state.clone();
     let cf = async move {
@@ -515,19 +529,19 @@ fn connect_and_propagate(
             Err(e) => {
                 let benign = match e {
                     ConnectError::Transport(e) => {
-                        info!(conn_logger, "gRPC connection to peer failed"; "reason" => %e);
+                        tracing::info!(reason = %e, "gRPC connection to peer failed");
                         false
                     }
                     ConnectError::Handshake(e) => {
-                        info!(conn_logger, "protocol handshake with peer failed"; "reason" => %e);
+                        tracing::info!(reason = %e, "protocol handshake with peer failed");
                         false
                     }
                     ConnectError::Canceled => {
-                        debug!(conn_logger, "connection to peer has been canceled");
+                        tracing::debug!("connection to peer has been canceled");
                         true
                     }
                     _ => {
-                        info!(conn_logger, "connection to peer failed"; "error" => ?e);
+                        tracing::info!(error = ?e, "connection to peer failed");
                         false
                     }
                 };
@@ -543,16 +557,13 @@ fn connect_and_propagate(
             }
             Ok(client) => {
                 state.inc_client_count();
-                debug!(
-                    client.logger(),
-                    "connected to peer";
-                    "client_count" => state.client_count(),
-                );
+                tracing::debug!(client_count = state.client_count(), "connected to peer");
                 client.await;
                 state.dec_client_count();
             }
         }
-    };
+    }
+    .instrument(conn_span.clone());
     spawn_state.spawn(cf);
 }
 
@@ -609,7 +620,7 @@ impl BootstrapPeers {
 }
 
 /// Try to get sufficient peers to do a netboot from
-async fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeers {
+async fn netboot_peers(config: &Configuration, parent_span: &Span) -> BootstrapPeers {
     let mut peers = BootstrapPeers::new();
 
     // extract the trusted peers from the config
@@ -625,20 +636,28 @@ async fn netboot_peers(config: &Configuration, logger: &Logger) -> BootstrapPeer
         let mut trusted_peers = trusted_peers;
         trusted_peers.shuffle(&mut rng);
         for tpeer in trusted_peers {
-            // let peer = Peer::new(peer, Protocol::Grpc);
-            let tp_logger = logger.new(o!("peer_addr" => tpeer.address().to_string()));
-            let received_peers = bootstrap::peers_from_trusted_peer(&tpeer, tp_logger.clone())
-                .await
-                .unwrap_or_else(|e| {
-                    warn!(
-                        tp_logger,
-                        "failed to retrieve the list of bootstrap peers from trusted peer";
-                        "reason" => %e,
-                    );
-                    vec![tpeer]
-                });
-            let added = peers.add_peers(&received_peers);
-            info!(logger, "adding {} peers from peer", added);
+            let span = span!(
+                parent: parent_span,
+                Level::TRACE,
+                "netboot_peers",
+                peer_addr = %tpeer.address().to_string()
+            );
+            peers = async move {
+                let received_peers = bootstrap::peers_from_trusted_peer(&tpeer)
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::warn!(
+                            reason = %e,
+                            "failed to retrieve the list of bootstrap peers from trusted peer"
+                        );
+                        vec![tpeer]
+                    });
+                let added = peers.add_peers(&received_peers);
+                tracing::info!("adding {} peers from peer", added);
+                peers
+            }
+            .instrument(span)
+            .await;
 
             if peers.count() > 32 {
                 break;
@@ -653,7 +672,7 @@ pub async fn bootstrap(
     blockchain: NewBlockchain,
     branch: Tip,
     cancellation_token: CancellationToken,
-    logger: &Logger,
+    span: &Span,
 ) -> Result<bool, bootstrap::Error> {
     use futures::future::{select, Either, FutureExt};
 
@@ -672,7 +691,7 @@ pub async fn bootstrap(
     let mut bootstrapped = false;
 
     let (netboot_peers, _) = match select(
-        netboot_peers(config, logger).boxed(),
+        netboot_peers(config, span).boxed(),
         cancellation_token.cancelled().boxed(),
     )
     .await
@@ -682,29 +701,46 @@ pub async fn bootstrap(
     };
 
     for peer in netboot_peers.randomly() {
-        let logger = logger.new(o!("peer_addr" => peer.address().to_string()));
+        let span =
+            span!(parent: span, Level::TRACE, "bootstrap", peer_addr = %peer.address().to_string());
         let res = bootstrap::bootstrap_from_peer(
             peer,
             blockchain.clone(),
             branch.clone(),
             cancellation_token.clone(),
-            logger.clone(),
         )
         .await;
 
         match res {
             Err(bootstrap::Error::Connect(e)) => {
-                warn!(logger, "unable to reach peer for initial bootstrap"; "reason" => %e);
+                async move {
+                    tracing::warn!(reason = %e, "unable to reach peer for initial bootstrap");
+                }
+                .instrument(span)
+                .await;
             }
             Err(bootstrap::Error::Interrupted) => {
-                warn!(logger, "the bootstrap process was interrupted");
+                async move {
+                    tracing::warn!("the bootstrap process was interrupted");
+                }
+                .instrument(span)
+                .await;
                 return Err(bootstrap::Error::Interrupted);
             }
             Err(e) => {
-                warn!(logger, "initial bootstrap failed"; "error" => ?e);
+                async move {
+                    tracing::warn!(error = ?e, "initial bootstrap failed");
+                }
+                .instrument(span)
+                .await;
             }
             Ok(()) => {
-                info!(logger, "initial bootstrap completed");
+                async move {
+                    tracing::info!("initial bootstrap completed");
+                }
+                .instrument(span)
+                .await;
+
                 bootstrapped = true;
                 break;
             }
@@ -726,7 +762,6 @@ pub async fn bootstrap(
 pub async fn fetch_block(
     config: &Configuration,
     hash: HeaderHash,
-    logger: &Logger,
 ) -> Result<Block, FetchBlockError> {
     if config.protocol != Protocol::Grpc {
         unimplemented!()
@@ -738,33 +773,52 @@ pub async fn fetch_block(
 
     let mut block = None;
 
-    let logger = logger.new(o!("block" => hash.to_string()));
+    let span = span!(Level::TRACE, "fetch_block", block = %hash.to_string());
+    async {
+        for address in trusted_peers_shuffled(&config) {
+            let peer_span = span!(Level::TRACE, "peer_address", address = %address.to_string());
+            let peer = Peer::new(address);
+            match grpc::fetch_block(&peer, hash)
+                .instrument(peer_span.clone())
+                .await
+            {
+                Err(grpc::FetchBlockError::Connect { source: e }) => {
+                    async {
+                        tracing::warn!(reason = %e, "unable to reach peer for block download");
+                    }
+                    .instrument(peer_span)
+                    .await
+                }
+                Err(e) => {
+                    async {
+                        tracing::warn!(error = ?e, "failed to download block");
+                    }
+                    .instrument(peer_span)
+                    .await
+                }
+                Ok(b) => {
+                    async {
+                        tracing::info!("genesis block fetched");
+                    }
+                    .instrument(peer_span)
+                    .await;
 
-    for address in trusted_peers_shuffled(&config) {
-        let logger = logger.new(o!("peer_address" => address.to_string()));
-        let peer = Peer::new(address);
-        match grpc::fetch_block(&peer, hash, &logger).await {
-            Err(grpc::FetchBlockError::Connect { source: e }) => {
-                warn!(logger, "unable to reach peer for block download"; "reason" => %e);
-            }
-            Err(e) => {
-                warn!(logger, "failed to download block"; "error" => ?e);
-            }
-            Ok(b) => {
-                info!(logger, "genesis block fetched");
-                block = Some(b);
-                break;
+                    block = Some(b);
+                    break;
+                }
             }
         }
-    }
 
-    if let Some(block) = block {
-        Ok(block)
-    } else {
-        Err(FetchBlockError::CouldNotDownloadBlock {
-            block: hash.to_owned(),
-        })
+        if let Some(block) = block {
+            Ok(block)
+        } else {
+            Err(FetchBlockError::CouldNotDownloadBlock {
+                block: hash.to_owned(),
+            })
+        }
     }
+    .instrument(span)
+    .await
 }
 
 #[derive(Debug, Error)]

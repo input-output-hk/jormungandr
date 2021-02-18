@@ -8,7 +8,6 @@ use chain_network::data as net_data;
 use chain_network::error as net_error;
 use chain_network::grpc::{client::Builder, legacy};
 use futures::prelude::*;
-use slog::Logger;
 use thiserror::Error;
 use tonic::transport;
 
@@ -62,12 +61,8 @@ fn destination_endpoint(addr: SocketAddr) -> transport::Endpoint {
 
 // Fetches a block from a network peer.
 // This function is used during node bootstrap to fetch the genesis block.
-pub async fn fetch_block(
-    peer: &Peer,
-    hash: HeaderHash,
-    logger: &Logger,
-) -> Result<Block, FetchBlockError> {
-    info!(logger, "fetching block {}", hash);
+pub async fn fetch_block(peer: &Peer, hash: HeaderHash) -> Result<Block, FetchBlockError> {
+    tracing::info!("fetching block {}", hash);
     let mut client = connect(peer)
         .await
         .map_err(|err| FetchBlockError::Connect { source: err })?;

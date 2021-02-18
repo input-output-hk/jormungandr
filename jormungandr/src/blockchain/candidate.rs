@@ -11,7 +11,6 @@ use futures::{
     ready,
     task::{Context, Poll},
 };
-use slog::Logger;
 use std::{marker::Unpin, pin::Pin};
 
 // derive
@@ -116,7 +115,6 @@ where
     parent_header: Header,
     header: Option<Header>,
     new_hashes: Vec<HeaderHash>,
-    logger: Logger,
 }
 
 mod chain_advance {
@@ -141,11 +139,10 @@ where
         // when that can pre-validate headers without
         // up-to-date ledger.
         chain::pre_verify_link(&header, &self.parent_header)?;
-        debug!(
-            self.logger,
-            "adding block to fetch";
-            "hash" => %block_hash,
-            "parent" => %parent_hash,
+        tracing::debug!(
+            hash = %block_hash,
+            parent = %parent_hash,
+            "adding block to fetch"
         );
         self.new_hashes.push(block_hash);
         self.parent_header = header;
@@ -177,7 +174,6 @@ where
 async fn land_header_chain<S>(
     blockchain: Blockchain,
     stream: S,
-    logger: Logger,
 ) -> Result<Option<ChainAdvance<S>>, Error>
 where
     S: Stream<Item = Header> + Unpin,
@@ -191,11 +187,10 @@ where
             // Find an existing root or create a new one.
             let root_hash = header.hash();
             let root_parent_hash = header.block_parent_hash();
-            debug!(
-                logger,
-                "landed the header chain";
-                "hash" => %root_hash,
-                "parent" => %root_parent_hash,
+            tracing::debug!(
+                hash = %root_hash,
+                parent = %root_parent_hash,
+                "landed the header chain"
             );
             let new_hashes = vec![root_hash];
             let landing = ChainAdvance {
@@ -203,12 +198,11 @@ where
                 parent_header: header,
                 header: None,
                 new_hashes,
-                logger,
             };
             Ok(Some(landing))
         }
         None => {
-            debug!(logger, "all blocks already present for the header chain");
+            tracing::debug!("all blocks already present for the header chain");
             Ok(None)
         }
     }
@@ -224,9 +218,8 @@ where
 pub async fn advance_branch(
     blockchain: Blockchain,
     header_stream: HeaderStream,
-    logger: Logger,
 ) -> Result<(Vec<HeaderHash>, Option<impl Stream<Item = Header>>), Error> {
-    let mut advance = land_header_chain(blockchain, header_stream, logger).await?;
+    let mut advance = land_header_chain(blockchain, header_stream).await?;
 
     if advance.is_some() {
         poll_fn(|cx| {

@@ -13,6 +13,8 @@ use self::indexing::{
     StakePoolData, Transactions, VotePlans,
 };
 use self::persistent_sequence::PersistentSequence;
+use tracing::{span, Level};
+use tracing_futures::Instrument;
 
 use crate::blockcfg::{
     Block, ChainLength, ConfigParam, ConfigParams, ConsensusVersion, Epoch, Fragment, FragmentId,
@@ -116,36 +118,52 @@ impl Explorer {
 
     pub async fn start(&self, info: TokioServiceInfo, messages: MessageQueue<ExplorerMsg>) {
         let tip_candidate: Arc<Mutex<Option<HeaderHash>>> = Arc::new(Mutex::new(None));
-
+        let span_parent = info.span();
         messages
             .for_each(|input| {
                 let explorer_db = self.db.clone();
                 let tip_candidate = Arc::clone(&tip_candidate);
                 match input {
                     ExplorerMsg::NewBlock(block) => {
-                        info.spawn_fallible::<_, Error>("apply block to explorer", async move {
-                            let _state_ref = explorer_db.apply_block(block.clone()).await?;
+                        info.spawn_fallible::<_, Error>(
+                            "apply block to explorer",
+                            async move {
+                                let _state_ref = explorer_db.apply_block(block.clone()).await?;
 
-                            let mut guard = tip_candidate.lock().await;
-                            if guard.map(|hash| hash == block.header.id()).unwrap_or(false) {
-                                let hash = guard.take().unwrap();
-                                explorer_db.set_tip(hash).await;
+                                let mut guard = tip_candidate.lock().await;
+                                if guard.map(|hash| hash == block.header.id()).unwrap_or(false) {
+                                    let hash = guard.take().unwrap();
+                                    explorer_db.set_tip(hash).await;
+                                }
+
+                                Ok(())
                             }
-
-                            Ok(())
-                        });
+                            .instrument(span!(
+                                parent: span_parent,
+                                Level::TRACE,
+                                "apply block",
+                            )),
+                        );
                     }
                     ExplorerMsg::NewTip(hash) => {
-                        info.spawn_fallible::<_, Error>("apply block to explorer", async move {
-                            let successful = explorer_db.set_tip(hash).await;
+                        info.spawn_fallible::<_, Error>(
+                            "apply tip to explorer",
+                            async move {
+                                let successful = explorer_db.set_tip(hash).await;
 
-                            if !successful {
-                                let mut guard = tip_candidate.lock().await;
-                                guard.replace(hash);
+                                if !successful {
+                                    let mut guard = tip_candidate.lock().await;
+                                    guard.replace(hash);
+                                }
+
+                                Ok(())
                             }
-
-                            Ok(())
-                        });
+                            .instrument(span!(
+                                parent: span_parent,
+                                Level::TRACE,
+                                "apply tip",
+                            )),
+                        );
                     }
                 };
 
