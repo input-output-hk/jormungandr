@@ -350,7 +350,7 @@ impl Client {
         let (reply_handle, future) = intercom::stream_reply(buffer_sizes::outbound::HEADERS);
         let future = future.instrument(span.clone());
         debug_assert!(self.incoming_solicitation.is_none());
-        self.incoming_solicitation = Some(ClientMsg::GetHeadersRange(from, to, reply_handle));
+        self.incoming_solicitation = Some(ClientMsg::PullHeaders(from, to, reply_handle));
         let mut client = self.inner.clone();
         self.global_state.spawn(
             async move {

@@ -68,12 +68,12 @@ fn handle_input(info: &TokioServiceInfo, task_data: &mut TaskData, input: Client
                 handle_get_headers(storage, ids, handle),
             );
         }
-        ClientMsg::GetHeadersRange(checkpoints, to, handle) => {
+        ClientMsg::PullHeaders(from, to, handle) => {
             let storage = task_data.storage.clone();
             info.timeout_spawn_fallible(
-                "GetHeadersRange",
+                "PullHeaders",
                 Duration::from_secs(PROCESS_TIMEOUT_GET_HEADERS_RANGE),
-                handle_get_headers_range(storage, checkpoints, to, handle),
+                handle_get_headers_range(storage, from, to, handle),
             );
         }
         ClientMsg::GetBlocks(ids, handle) => {
@@ -147,7 +147,7 @@ where
 // The transformation function is applied to the block contents before
 // sending it.
 //
-// Commong behavior for GetHeadersRange, PullBlocks, PullBlocksToTip
+// Commong behavior for PullHeaders, PullBlocks, PullBlocksToTip
 async fn send_range_from_storage<T, F>(
     storage: Storage,
     from: Vec<HeaderHash>,
