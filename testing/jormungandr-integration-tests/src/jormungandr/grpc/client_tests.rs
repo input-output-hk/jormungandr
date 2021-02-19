@@ -202,7 +202,7 @@ pub async fn pull_headers_correct_hash() {
     let hashes: Vec<Hash> = headers.iter().map(|x| x.hash()).collect();
 
     let hashes_from_logs = server.logger.get_created_blocks_hashes();
-    assert!(is_long_prefix(&hashes, &hashes_from_logs));
+    assert!(is_long_prefix(&hashes_from_logs, &hashes));
 }
 
 // L1019 Pull headers incorrect hash
@@ -428,7 +428,7 @@ pub async fn pull_blocks_correct_hashes_partial() {
 
     let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
 
-    assert!(is_long_prefix(&expected_hashes[1..], &blocks_hashes));
+    assert_eq!(&expected_hashes[1..], &blocks_hashes);
 }
 
 // L1023 PullBlocks to and from in wrong order
