@@ -160,7 +160,7 @@ where
     F: Send + 'static,
     T: Send + 'static,
 {
-    let closes_ancestor = storage
+    let closest_ancestor = storage
         .find_closest_ancestor(from, to)
         .map_err(Into::into)
         .and_then(move |maybe_ancestor| {
@@ -168,7 +168,7 @@ where
                 .map(|ancestor| (to, ancestor.distance))
                 .ok_or_else(|| Error::not_found("Could not find a known block in `from`"))
         });
-    match closes_ancestor {
+    match closest_ancestor {
         Ok((to, depth)) => storage.send_branch_with(to, Some(depth), handle, f).await,
         Err(e) => {
             handle.reply_error(e);
