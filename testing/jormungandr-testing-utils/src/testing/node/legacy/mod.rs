@@ -4,7 +4,7 @@ mod version;
 pub use crate::testing::node::configuration::{
     LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
 };
-use crate::testing::{decompress, CachedReleases, GitHubApi, Release};
+use crate::testing::{decompress, CachedReleases, GitHubApiBuilder, Release};
 pub use jormungandr_lib::interfaces::{
     Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
 };
@@ -19,9 +19,11 @@ pub use rest::BackwardCompatibleRest;
 
 pub use version::{version_0_8_19, Version};
 
+const GITHUB_TOKEN: &str = "GITHUB_TOKEN";
+
 lazy_static::lazy_static! {
     static ref RELEASES: CachedReleases = {
-        let api = GitHubApi::new();
+        let api = GitHubApiBuilder::new().with_token(std::env::var(GITHUB_TOKEN).ok()).build();
         api.describe_releases().unwrap()
     };
 }
