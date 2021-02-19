@@ -3,7 +3,7 @@ pub mod network;
 
 use self::config::{Config, Leadership};
 use self::network::{Protocol, TrustedPeer};
-use crate::settings::logging::{LogFormat, LogOutput, LogSettings, LogSettingsEntry};
+use crate::settings::logging::{LogFormat, LogInfoMsg, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
 pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Tls};
 use std::{fs::File, path::PathBuf};
@@ -61,6 +61,7 @@ impl RawSettings {
 
     pub fn log_settings(&self) -> LogSettings {
         let mut entries = Vec::new();
+        let mut log_info_msg: LogInfoMsg = None;
 
         //  Read log settings from the config file path.
         if let Some(log) = self.config.as_ref().and_then(|cfg| cfg.log.as_ref()) {
@@ -122,7 +123,7 @@ impl RawSettings {
             }
         }
 
-        LogSettings(entries)
+        LogSettings(entries, log_info_msg)
     }
 
     fn rest_config(&self) -> Option<Rest> {

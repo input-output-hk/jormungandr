@@ -16,7 +16,12 @@ use tracing_subscriber::fmt::SubscriberBuilder;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::layer::{Layer, Layered};
 
-pub struct LogSettings(pub Vec<LogSettingsEntry>);
+pub struct LogSettings(pub Vec<LogSettingsEntry>, pub LogInfoMsg);
+
+/// A wrapper to return an optional string message that we
+/// have to manually log with `info!`, we need this because
+/// some code executes before the logs are initialized.
+pub type LogInfoMsg = Option<String>;
 
 #[derive(Debug)]
 pub struct LogSettingsEntry {
