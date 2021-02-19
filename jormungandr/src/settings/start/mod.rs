@@ -74,16 +74,6 @@ impl RawSettings {
             });
         }
 
-        //  If no log settings are found, add LogSettingsEntry with default
-        //  values.
-        if entries.is_empty() {
-            entries.push(LogSettingsEntry {
-                level: DEFAULT_FILTER_LEVEL,
-                format: DEFAULT_LOG_FORMAT,
-                output: DEFAULT_LOG_OUTPUT,
-            });
-        }
-
         // If the command line specifies log arguments, check that the arg
         // is Some(output), else, skip.
         let cmd_output = self.command_line.log_output.clone();
@@ -92,35 +82,31 @@ impl RawSettings {
             let cmd_level = self.command_line.log_level;
             let cmd_format = self.command_line.log_format;
 
-            // Read the log settings, and look if we already
-            // have this output configured
-            for entry in entries.iter_mut() {
-                // If the output is aleady configured:
-                if entry.output == output {
-                    // overwrite entry.level if cli_entry.level is Some(level)
-                    // overwrite entry.format if cli_entry.format is Some(format)
-                    let override_entry = LogSettingsEntry {
-                        level: cmd_level.unwrap_or(entry.level),
-                        format: cmd_format.unwrap_or(entry.format),
-                        output: output.clone(),
-                    };
-                    // log to info! that the output was overriden
-                    tracing::info!(
-                        "Log settings overriden from cli: {:?} replaced with {:?}",
-                        entry,
-                        override_entry
-                    );
-                    *entry = override_entry;
-                } else {
-                    // If the output is not aleady configured:
-                    // add new entry for output with default values for other fields.
-                    *entry = LogSettingsEntry {
-                        level: cmd_level.unwrap_or(DEFAULT_FILTER_LEVEL),
-                        format: cmd_format.unwrap_or(DEFAULT_LOG_FORMAT),
-                        output: output.clone(),
-                    };
-                }
-            }
+            let command_line_entry = LogSettingsEntry {
+                level: cmd_level.unwrap_or(DEFAULT_FILTER_LEVEL),
+                format: cmd_format.unwrap_or(DEFAULT_LOG_FORMAT),
+                output,
+            };
+            // log to info! that the output was overriden,
+            // we send this as a message because tracing Subscribers
+            // do not get initiated until after this code runs
+            log_info_msg = Some(format!(
+                "log settings overriden from command line: {:?} replaced with {:?}",
+                entries, command_line_entry
+            ));
+            // Replace any existing setting entries with the
+            // command line settings entry.
+            entries = vec![command_line_entry];
+        }
+
+        //  If no log settings are found, add LogSettingsEntry with default
+        //  values.
+        if entries.is_empty() {
+            entries.push(LogSettingsEntry {
+                level: DEFAULT_FILTER_LEVEL,
+                format: DEFAULT_LOG_FORMAT,
+                output: DEFAULT_LOG_OUTPUT,
+            });
         }
 
         LogSettings(entries, log_info_msg)
