@@ -134,7 +134,7 @@ impl Subscriber for BoxedSubscriber {
 impl Layer<BoxedSubscriber> for BoxedSubscriber {}
 
 impl LogSettings {
-    pub fn init_log(self) -> Result<Vec<WorkerGuard>, Error> {
+    pub fn init_log(self) -> Result<(Vec<WorkerGuard>, LogInfoMsg), Error> {
         use tracing_subscriber::prelude::*;
         let mut guards = Vec::new();
         let mut layers: Vec<Layered<_, BoxedSubscriber>> = Vec::new();
@@ -161,7 +161,7 @@ impl LogSettings {
                 .map_err(Error::SetGlobalSubscriberError)?;
         }
 
-        Ok(guards)
+        Ok((guards, self.1))
     }
 }
 
