@@ -45,7 +45,7 @@ impl WalletTemplate {
             value,
             wallet_type,
             delegate: None,
-            discrimination: discrimination,
+            discrimination,
         }
     }
 
