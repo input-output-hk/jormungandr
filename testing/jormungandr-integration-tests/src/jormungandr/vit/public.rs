@@ -173,7 +173,7 @@ pub fn test_vote_flow_bft() {
 
     let rewards_before = jormungandr
         .explorer()
-        .status()
+        .last_block()
         .unwrap()
         .data
         .unwrap()
@@ -205,7 +205,7 @@ pub fn test_vote_flow_bft() {
 
     let rewards_after = jormungandr
         .explorer()
-        .status()
+        .last_block()
         .unwrap()
         .data
         .unwrap()
@@ -314,7 +314,7 @@ pub fn test_vote_flow_praos() {
 
     let rewards_after = jormungandr
         .explorer()
-        .status()
+        .last_block()
         .unwrap()
         .data
         .unwrap()
