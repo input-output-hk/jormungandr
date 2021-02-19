@@ -4,6 +4,8 @@ version = "0.10.0-alpha.3"
 authors = ["dev@iohk.io"]
 edition = "2018"
 
+description = "Data structures and formats used by Jormungandr node API and configuration files"
+
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
