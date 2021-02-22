@@ -64,6 +64,9 @@ pub async fn tip_request() {
         setup::client::bootstrap(ConfigurationBuilder::new().with_slot_duration(9).to_owned())
             .await;
 
+    while setup.client.tip().await.chain_length() < 1.into() {
+        tokio::time::sleep(CLIENT_RETRY_WAIT).await;
+    }
     let tip_header = setup.client.tip().await;
     let block_hashes = setup.server.logger.get_created_blocks_hashes();
 
