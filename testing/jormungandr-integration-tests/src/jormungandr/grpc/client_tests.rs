@@ -88,7 +88,12 @@ pub async fn get_headers_correct_hash() {
         .await
         .expect("unexpected error returned");
     let headers_hashes: Vec<Hash> = headers.iter().map(|x| x.hash()).collect();
-    assert!(is_long_prefix(&block_hashes, &headers_hashes));
+    assert!(
+        is_long_prefix(&block_hashes, &headers_hashes),
+        "server blocks: {:?} | client blocks: {:?}",
+        block_hashes,
+        headers_hashes,
+    );
 }
 
 // L1010 GetHeaders incorrect hash
@@ -146,7 +151,12 @@ pub async fn pull_blocks_to_tip_correct_hash() {
     let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
 
     let block_hashes_from_logs = setup.server.logger.get_created_blocks_hashes();
-    assert!(is_long_prefix(&block_hashes_from_logs, &blocks_hashes));
+    assert!(
+        is_long_prefix(&block_hashes_from_logs, &blocks_hashes),
+        "server blocks: {:?} | client blocks: {:?}",
+        block_hashes_from_logs,
+        blocks_hashes
+    );
 }
 
 // Disable until the error returned from gRPC methods is stabilized
@@ -196,7 +206,12 @@ pub async fn pull_headers_correct_hash() {
     let hashes: Vec<Hash> = headers.iter().map(|x| x.hash()).collect();
 
     let hashes_from_logs = setup.server.logger.get_created_blocks_hashes();
-    assert!(is_long_prefix(&hashes_from_logs, &hashes));
+    assert!(
+        is_long_prefix(&hashes_from_logs, &hashes),
+        "server blocks: {:?} | client blocks: {:?}",
+        hashes_from_logs,
+        hashes,
+    );
 }
 
 // L1020 Push headers incorrect header
@@ -344,7 +359,12 @@ pub async fn pull_blocks_correct_hashes_all_blocks() {
 
     let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
     let block_hashes_from_logs = setup.server.logger.get_created_blocks_hashes();
-    assert!(is_long_prefix(&block_hashes_from_logs, &blocks_hashes));
+    assert!(
+        is_long_prefix(&block_hashes_from_logs, &blocks_hashes),
+        "server blocks: {:?} | client blocks: {:?}",
+        block_hashes_from_logs,
+        blocks_hashes
+    );
 }
 
 // L1022 PullBlocks correct hashes
