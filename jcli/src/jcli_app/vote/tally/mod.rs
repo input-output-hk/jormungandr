@@ -11,20 +11,10 @@ pub enum Tally {
     ///
     /// The decryption share data will be printed in hexadecimal encoding
     /// on standard output.
-    DecryptionShare(decryption_tally::TallyGenerateDecryptionShare),
-    /// Create a decryption share for private voting tally.
-    ///
-    /// The decryption share data will be printed in hexadecimal encoding
-    /// on standard output.
     DecryptionShares(decryption_tally::TallyGenerateVotePlanDecryptionShares),
     /// Merge multiple sets of shares in a single object to be used in the
     /// decryption of a vote plan.
     MergeShares(decryption_tally::MergeShares),
-    /// Decrypt a tally with decryption shares.
-    ///
-    /// The decrypted tally data will be printed in hexadecimal encoding
-    /// on standard output.
-    Decrypt(decrypt_shares::TallyDecryptWithAllShares),
     /// Decrypt all proposals in a vote plan.
     ///
     /// The decrypted tally data will be printed in hexadecimal encoding
@@ -35,9 +25,7 @@ pub enum Tally {
 impl Tally {
     pub fn exec(self) -> Result<(), Error> {
         match self {
-            Tally::DecryptionShare(cmd) => cmd.exec(),
             Tally::DecryptionShares(cmd) => cmd.exec(),
-            Tally::Decrypt(cmd) => cmd.exec(),
             Tally::DecryptResults(cmd) => cmd.exec(),
             Tally::MergeShares(cmd) => cmd.exec(),
         }

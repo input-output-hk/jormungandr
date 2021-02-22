@@ -10,22 +10,6 @@ use std::path::Path;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
-// TODO: this generate shares for a single proposal, we might remove it later
-/// Create the decryption share for decrypting the tally of private voting.
-/// The outputs are provided as hex-encoded byte sequences.
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
-pub struct TallyGenerateDecryptionShare {
-    /// The path to hex-encoded encrypted tally state. If this parameter is not
-    /// specified, the encrypted tally state will be read from the standard
-    /// input.
-    #[structopt(long = "tally")]
-    encrypted_tally: Option<PathBuf>,
-    /// The path to hex-encoded decryption key.
-    #[structopt(long = "key")]
-    decryption_key: PathBuf,
-}
-
 /// Create decryption shares for all proposals in a vote plan.
 ///
 /// The decryption share data will be printed in hexadecimal encoding
@@ -71,20 +55,6 @@ fn read_decryption_key<P: AsRef<Path>>(path: &Option<P>) -> Result<OpeningVoteKe
             )
             .ok_or(Error::DecryptionKeyRead)
         })
-}
-
-impl TallyGenerateDecryptionShare {
-    pub fn exec(&self) -> Result<(), Error> {
-        let encrypted_tally_hex = io::read_line(&self.encrypted_tally)?;
-        let encrypted_tally_bytes = base64::decode(encrypted_tally_hex)?;
-        let encrypted_tally =
-            EncryptedTally::from_bytes(&encrypted_tally_bytes).ok_or(Error::EncryptedTallyRead)?;
-        let decryption_key = read_decryption_key(&Some(&self.decryption_key))?;
-        let (_state, share) = encrypted_tally.finish(&decryption_key);
-        println!("{}", base64::encode(share.to_bytes()));
-
-        Ok(())
-    }
 }
 
 impl TallyGenerateVotePlanDecryptionShares {
