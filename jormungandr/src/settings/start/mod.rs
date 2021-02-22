@@ -3,7 +3,7 @@ pub mod network;
 
 use self::config::{Config, Leadership};
 use self::network::{Protocol, TrustedPeer};
-use crate::settings::logging::{LogFormat, LogOutput, LogSettings, LogSettingsEntry};
+use crate::settings::logging::{LogFormat, LogInfoMsg, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
 pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Tls};
 use std::{fs::File, path::PathBuf};
@@ -61,7 +61,9 @@ impl RawSettings {
 
     pub fn log_settings(&self) -> LogSettings {
         let mut entries = Vec::new();
+        let mut log_info_msg: LogInfoMsg = None;
 
+        //  Read log settings from the config file path.
         if let Some(log) = self.config.as_ref().and_then(|cfg| cfg.log.as_ref()) {
             log.0.iter().for_each(|entry| {
                 entries.push(LogSettingsEntry {
@@ -72,18 +74,36 @@ impl RawSettings {
             });
         }
 
-        let cmd_level = self.command_line.log_level;
-        let cmd_format = self.command_line.log_format;
+        // If the command line specifies log arguments, check that the arg
+        // is Some(output), else, skip.
         let cmd_output = self.command_line.log_output.clone();
 
-        if cmd_level.is_some() || cmd_format.is_some() || cmd_output.is_some() {
-            entries.push(LogSettingsEntry {
+        if let Some(output) = cmd_output {
+            let cmd_level = self.command_line.log_level;
+            let cmd_format = self.command_line.log_format;
+
+            let command_line_entry = LogSettingsEntry {
                 level: cmd_level.unwrap_or(DEFAULT_FILTER_LEVEL),
                 format: cmd_format.unwrap_or(DEFAULT_LOG_FORMAT),
-                output: cmd_output.unwrap_or(DEFAULT_LOG_OUTPUT),
-            });
+                output,
+            };
+            // check if there are entries being overriden
+            if !entries.is_empty() {
+                // log to info! that the output was overriden,
+                // we send this as a message because tracing Subscribers
+                // do not get initiated until after this code runs
+                log_info_msg = Some(format!(
+                    "log settings overriden from command line: {:?} replaced with {:?}",
+                    entries, command_line_entry
+                ));
+            }
+            // Replace any existing setting entries with the
+            // command line settings entry.
+            entries = vec![command_line_entry];
         }
 
+        //  If no log settings are found, add LogSettingsEntry with default
+        //  values.
         if entries.is_empty() {
             entries.push(LogSettingsEntry {
                 level: DEFAULT_FILTER_LEVEL,
@@ -92,7 +112,7 @@ impl RawSettings {
             });
         }
 
-        LogSettings(entries)
+        LogSettings(entries, log_info_msg)
     }
 
     fn rest_config(&self) -> Option<Rest> {

@@ -518,12 +518,18 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let raw_settings = RawSettings::load(command_line)?;
 
     let log_settings = raw_settings.log_settings();
-    let _logger_guards = log_settings.init_log()?;
+    let (_logger_guards, log_info_msg) = log_settings.init_log()?;
 
     let init_span = span!(Level::TRACE, "task", kind = "init");
     let async_span = init_span.clone();
     let _enter = init_span.enter();
     tracing::info!("Starting {}", env!("FULL_VERSION"),);
+
+    if let Some(msg) = log_info_msg {
+        // if log settings were overriden, we will have an info
+        // message which we can unpack at this point.
+        tracing::info!("{}", msg);
+    }
 
     let diagnostic = Diagnostic::new()?;
     tracing::debug!("system settings are: {}", diagnostic);

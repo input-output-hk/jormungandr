@@ -16,7 +16,12 @@ use tracing_subscriber::fmt::SubscriberBuilder;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::layer::{Layer, Layered};
 
-pub struct LogSettings(pub Vec<LogSettingsEntry>);
+pub struct LogSettings(pub Vec<LogSettingsEntry>, pub LogInfoMsg);
+
+/// A wrapper to return an optional string message that we
+/// have to manually log with `info!`, we need this because
+/// some code executes before the logs are initialized.
+pub type LogInfoMsg = Option<String>;
 
 #[derive(Debug)]
 pub struct LogSettingsEntry {
@@ -129,7 +134,7 @@ impl Subscriber for BoxedSubscriber {
 impl Layer<BoxedSubscriber> for BoxedSubscriber {}
 
 impl LogSettings {
-    pub fn init_log(self) -> Result<Vec<WorkerGuard>, Error> {
+    pub fn init_log(self) -> Result<(Vec<WorkerGuard>, LogInfoMsg), Error> {
         use tracing_subscriber::prelude::*;
         let mut guards = Vec::new();
         let mut layers: Vec<Layered<_, BoxedSubscriber>> = Vec::new();
@@ -156,7 +161,7 @@ impl LogSettings {
                 .map_err(Error::SetGlobalSubscriberError)?;
         }
 
-        Ok(guards)
+        Ok((guards, self.1))
     }
 }
 
