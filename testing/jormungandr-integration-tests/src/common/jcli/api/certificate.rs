@@ -37,13 +37,28 @@ impl Certificate {
             .as_single_line()
     }
 
-    pub fn new_private_vote_tally<S: Into<String>, P: AsRef<Path>>(
+    pub fn new_private_vote_tally<P: AsRef<Path>, S: Into<String>, Q: AsRef<Path>>(
+        self,
+        vote_plan: P,
+        vote_plan_id: S,
+        shares: Q,
+    ) -> String {
+        self.command
+            .private_vote_tally(vote_plan, vote_plan_id, shares)
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
+    }
+
+    pub fn new_encrypted_vote_tally<S: Into<String>, P: AsRef<Path>>(
         self,
         vote_plan_id: S,
         shares: P,
     ) -> String {
         self.command
-            .private_vote_tally(vote_plan_id, shares)
+            .encrypted_vote_tally(vote_plan_id, shares)
             .build()
             .assert()
             .success()

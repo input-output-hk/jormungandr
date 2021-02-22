@@ -8,40 +8,51 @@ impl TallyCommand {
         Self { command }
     }
 
-    pub fn generate_decryption_share<P: AsRef<Path>, Q: AsRef<Path>>(
+    pub fn decryption_shares<P: AsRef<Path>, Q: AsRef<Path>, S: Into<String>>(
         mut self,
-        decryption_key: P,
-        encrypted_tally: Q,
+        vote_plan: Q,
+        vote_plan_id: S,
+        member_key: P,
     ) -> Self {
         self.command
-            .arg("decryption-share")
+            .arg("decryption-shares")
+            .arg("--vote-plan")
+            .arg(vote_plan.as_ref())
+            .arg("--vote-plan-id")
+            .arg(vote_plan_id.into())
             .arg("--key")
-            .arg(decryption_key.as_ref())
-            .arg("--tally")
-            .arg(encrypted_tally.as_ref());
+            .arg(member_key.as_ref());
         self
     }
 
-    pub fn decrypt_with_shares<P: AsRef<Path>, R: AsRef<Path>>(
+    pub fn decrypt_results<P: AsRef<Path>, R: AsRef<Path>, S: Into<String>>(
         mut self,
-        encrypted_tally: P,
-        max_votes: u32,
+        vote_plan: P,
+        vote_plan_id: S,
         shares: R,
-        tablesize: u32,
         threshold: u32,
     ) -> Self {
         self.command
-            .arg("decrypt-with-shares")
-            .arg("--tally")
-            .arg(encrypted_tally.as_ref())
-            .arg("--maxvotes")
-            .arg(max_votes.to_string())
+            .arg("decrypt-results")
+            .arg("--vote-plan")
+            .arg(vote_plan.as_ref())
+            .arg("--vote-plan-id")
+            .arg(vote_plan_id.into())
             .arg("--shares")
             .arg(shares.as_ref())
-            .arg("--tablesize")
-            .arg(tablesize.to_string())
             .arg("--threshold")
-            .arg(threshold.to_string());
+            .arg(threshold.to_string())
+            .arg("--output-format")
+            .arg("json");
+        self
+    }
+
+    pub fn merge_shares<P: AsRef<Path>>(mut self, shares: Vec<P>) -> Self {
+        self.command.arg("merge-shares");
+
+        for share in shares {
+            self.command.arg(share.as_ref());
+        }
         self
     }
 

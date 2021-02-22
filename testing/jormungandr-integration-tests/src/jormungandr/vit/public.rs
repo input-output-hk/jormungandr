@@ -339,7 +339,7 @@ pub fn test_vote_flow_praos() {
 pub fn jcli_e2e_flow() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
-
+    let rewards_increase = 10;
     let yes_choice = Choice::new(1);
 
     let mut rng = OsRng;
@@ -349,7 +349,11 @@ pub fn jcli_e2e_flow() {
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
-        .action_type(VoteAction::OffChain)
+        .action_type(VoteAction::Treasury {
+            action: TreasuryGovernanceAction::TransferToRewards {
+                value: Value(rewards_increase),
+            },
+        })
         .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
         .with_tally_start(BlockDate::from_epoch_slot_id(2, 0))
         .with_tally_end(BlockDate::from_epoch_slot_id(3, 0))
@@ -377,6 +381,7 @@ pub fn jcli_e2e_flow() {
         .with_consensus_genesis_praos_active_slot_coeff(
             ActiveSlotCoefficient::new(Milli::from_millis(100)).unwrap(),
         )
+        .with_treasury(1000.into())
         .with_slot_duration(4)
         .with_slots_per_epoch(10)
         .build(&temp_dir);
@@ -403,6 +408,21 @@ pub fn jcli_e2e_flow() {
         .assert_in_block();
 
     alice.confirm_transaction();
+
+    let rewards_before = jormungandr
+        .explorer()
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .treasury
+        .unwrap()
+        .rewards
+        .parse::<u64>()
+        .unwrap();
+
     time::wait_for_epoch(1, jormungandr.explorer());
 
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
@@ -493,5 +513,25 @@ pub fn jcli_e2e_flow() {
             .unwrap()
             .votes_cast,
         3
+    );
+
+    let rewards_after = jormungandr
+        .explorer()
+        .status()
+        .unwrap()
+        .data
+        .unwrap()
+        .status
+        .latest_block
+        .treasury
+        .unwrap()
+        .rewards
+        .parse::<u64>()
+        .unwrap();
+
+    // We want to make sure that our small rewards increase is reflexed in current rewards amount
+    assert!(
+        rewards_after == rewards_before + rewards_increase,
+        "Vote was unsuccessful"
     );
 }
