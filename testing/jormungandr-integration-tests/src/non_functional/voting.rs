@@ -1,27 +1,34 @@
 use crate::common::jormungandr::{ConfigurationBuilder, Starter};
 use assert_fs::TempDir;
 use chain_core::property::BlockDate;
+use chain_impl_mockchain::testing::data::CommitteeMembersManager;
 use chain_impl_mockchain::{
     certificate::{VoteAction, VoteTallyPayload},
     ledger::governance::TreasuryGovernanceAction,
+    testing::decrypt_tally,
     value::Value,
 };
-use chain_impl_mockchain::testing::build_tally_decrypt_share;
-use jormungandr_lib::interfaces::{InitialUTxO,BlockDate as BlockDateLib};
+use jormungandr_lib::interfaces::{BlockDate as BlockDateLib, InitialUTxO};
 use jormungandr_testing_utils::testing::VoteCastsGenerator;
 use jormungandr_testing_utils::testing::{
     benchmark_consumption, FragmentStatusProvider, ResourcesUsage, VotePlanBuilder,
 };
 use jormungandr_testing_utils::{
-    testing::{node::time::{wait_for_epoch,wait_for_date}, vote_plan_cert, FragmentSender, FragmentSenderSetup},
+    testing::{
+        node::time::{wait_for_date, wait_for_epoch},
+        vote_plan_cert, FragmentSender, FragmentSenderSetup,
+    },
     wallet::Wallet,
 };
-use jortestkit::load::{self, Configuration, Monitor};
+use jortestkit::{
+    load::{self, Configuration, Monitor},
+    measurement::Status,
+};
 use rand::rngs::OsRng;
-use chain_impl_mockchain::testing::data::CommitteeMembersManager;
 
 #[test]
 pub fn tally_public_vote_load_test() {
+    let measurement_name = "tallying_public_vote_with_10_000_votes";
     let rewards_increase = 10u64;
     let initial_fund_per_wallet = 10_000;
     let temp_dir = TempDir::new().unwrap();
@@ -79,11 +86,10 @@ pub fn tally_public_vote_load_test() {
         FragmentSenderSetup::no_verify(),
     );
 
-    let benchmark_consumption_monitor =
-        benchmark_consumption("tallying_public_vote_with_10_000_votes")
-            .target(ResourcesUsage::new(10, 200_000, 5_000_000))
-            .for_process("Node", jormungandr.pid() as usize)
-            .start_async(std::time::Duration::from_secs(30));
+    let benchmark_consumption_monitor = benchmark_consumption(measurement_name)
+        .target(ResourcesUsage::new(10, 200_000, 5_000_000))
+        .for_process("Node", jormungandr.pid() as usize)
+        .start_async(std::time::Duration::from_secs(30));
 
     let votes_generator = VoteCastsGenerator::new(
         voters,
@@ -92,26 +98,15 @@ pub fn tally_public_vote_load_test() {
         transaction_sender.clone(),
     );
 
-    load::start_async(
+    let stats = load::start_async(
         votes_generator,
         FragmentStatusProvider::new(jormungandr.to_remote()),
         configuration,
         "Wallet backend load test",
     );
 
-    let rewards_before = jormungandr
-        .explorer()
-        .status()
-        .unwrap()
-        .data
-        .unwrap()
-        .status
-        .latest_block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
+    stats.print_summary(measurement_name);
+    assert_eq!(stats.measure(measurement_name, 95).status(), Status::Green);
 
     wait_for_epoch(5, jormungandr.explorer().clone());
 
@@ -128,28 +123,12 @@ pub fn tally_public_vote_load_test() {
 
     benchmark_consumption_monitor.stop();
 
-    let rewards_after = jormungandr
-        .explorer()
-        .status()
-        .unwrap()
-        .data
-        .unwrap()
-        .status
-        .latest_block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
-
-
-    assert_eq!(rewards_after,rewards_before + rewards_increase,"rewards not increased");
-
     jormungandr.assert_no_errors_in_log();
 }
 
 #[test]
 pub fn tally_private_vote_load_test() {
+    let measurement_name = "tallying_public_vote_with_10_000_votes";
     let rewards_increase = 10u64;
     let initial_fund_per_wallet = 10_000;
     let temp_dir = TempDir::new().unwrap().into_persistent();
@@ -166,14 +145,12 @@ pub fn tally_private_vote_load_test() {
         .map(|committee_member| committee_member.public_key())
         .collect::<Vec<_>>();
 
-
     let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::new_account(&mut rng)))
         .take(1_000)
         .collect();
 
     let mut rng = OsRng;
     let mut committee = Wallet::new_account(&mut rng);
-    let mut committee_2 = Wallet::new_account(&mut rng);
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(1)
@@ -213,7 +190,7 @@ pub fn tally_private_vote_load_test() {
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
 
-    let configuration = Configuration::requests_per_thread(5, 5, 0, Monitor::Standard(100), 100);
+    let configuration = Configuration::requests_per_thread(5, 5, 100, Monitor::Standard(100), 100);
 
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -222,7 +199,7 @@ pub fn tally_private_vote_load_test() {
     );
 
     let benchmark_consumption_monitor =
-        benchmark_consumption("tallying_public_vote_with_10_000_votes")
+        benchmark_consumption("tallying_private_vote_with_10_000_votes")
             .target(ResourcesUsage::new(10, 200_000, 5_000_000))
             .for_process("Node", jormungandr.pid() as usize)
             .start_async(std::time::Duration::from_secs(30));
@@ -234,79 +211,42 @@ pub fn tally_private_vote_load_test() {
         transaction_sender.clone(),
     );
 
-    load::start_async(
+    let stats = load::start_async(
         votes_generator,
         FragmentStatusProvider::new(jormungandr.to_remote()),
         configuration,
         "Wallet backend load test",
     );
 
-    let fragment_sender = FragmentSender::new(jormungandr.genesis_block_hash(), jormungandr.fees(), Default::default());
-    fragment_sender.send_transaction(&mut committee,&committee_2,&jormungandr,1.into()).unwrap();
-
-
-    let rewards_before = jormungandr
-        .explorer()
-        .status()
-        .unwrap()
-        .data
-        .unwrap()
-        .status
-        .latest_block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
+    stats.print_summary(measurement_name);
+    assert_eq!(stats.measure(measurement_name, 90).status(), Status::Green);
 
     wait_for_epoch(5, jormungandr.explorer().clone());
 
-    transaction_sender.send_encrypted_tally(&mut committee,&vote_plan,&jormungandr).unwrap();
+    transaction_sender
+        .send_encrypted_tally(&mut committee, &vote_plan, &jormungandr)
+        .unwrap();
 
-
-    wait_for_date(BlockDateLib::new(5,30),jormungandr.explorer().clone());
+    wait_for_date(BlockDateLib::new(5, 30), jormungandr.explorer().clone());
 
     let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
     let vote_plan_status = active_vote_plans
         .iter()
-        .find(|c_vote_plan| {
-            c_vote_plan.id == vote_plan.to_id().into()
-        })
+        .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
         .unwrap();
 
-        println!("{:?}",vote_plan_status);
-    
-
-    let shares = build_tally_decrypt_share(&vote_plan_status.clone().into(), &members);
+    let shares = decrypt_tally(&vote_plan_status.clone().into(), &members);
 
     transaction_sender
         .send_vote_tally(
             &mut committee,
             &vote_plan,
             &jormungandr,
-            VoteTallyPayload::Private{ shares },
+            VoteTallyPayload::Private { inner: shares },
         )
         .unwrap();
 
     wait_for_epoch(7, jormungandr.explorer().clone());
-
-    let rewards_after = jormungandr
-        .explorer()
-        .status()
-        .unwrap()
-        .data
-        .unwrap()
-        .status
-        .latest_block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
-
-
-    assert_eq!(rewards_after,rewards_before + rewards_increase,"rewards not increased");
-
 
     benchmark_consumption_monitor.stop();
 

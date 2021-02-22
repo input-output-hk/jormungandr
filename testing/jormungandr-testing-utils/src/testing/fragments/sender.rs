@@ -10,7 +10,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
-    certificate::{VotePlan, VoteTallyPayload},
+    certificate::{DecryptedPrivateTally, VotePlan, VoteTallyPayload},
     fee::LinearFee,
     fragment::Fragment,
     vote::Choice,
@@ -20,7 +20,6 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentStatus, Value},
 };
-use chain_impl_mockchain::certificate::TallyDecryptShares;
 use std::time::Duration;
 
 #[derive(custom_debug::Debug, thiserror::Error)]
@@ -248,23 +247,19 @@ impl<'a> FragmentSender<'a> {
         vote_plan: &VotePlan,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_encrypted_tally_cert(
-            &self.block0_hash,
-            &self.fees,
-            vote_plan
-        )?;
+        let fragment = from.issue_encrypted_tally_cert(&self.block0_hash, &self.fees, vote_plan)?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
-    }    
+    }
 
     pub fn send_private_vote_tally<A: FragmentNode + SyncNode + Sized + Sync + Send>(
         &self,
         from: &mut Wallet,
         vote_plan: &VotePlan,
-        shares: TallyDecryptShares,
+        inner: DecryptedPrivateTally,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        self.send_vote_tally(from, vote_plan, via, VoteTallyPayload::Private{ shares })
+        self.send_vote_tally(from, vote_plan, via, VoteTallyPayload::Private { inner })
     }
 
     pub fn send_vote_tally<A: FragmentNode + SyncNode + Sized + Sync + Send>(

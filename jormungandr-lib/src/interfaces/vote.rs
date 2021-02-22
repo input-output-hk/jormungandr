@@ -17,7 +17,7 @@ use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::convert::TryInto;
 use std::str;
-use vote::{Weight, Choice};
+use vote::{Choice, Weight};
 
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(remote = "PayloadType", rename_all = "snake_case")]
@@ -428,7 +428,7 @@ pub struct VotePlanStatus {
     pub proposals: Vec<VoteProposalStatus>,
 }
 
-#[derive(Serialize, Deserialize, Debug,Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Tally {
     Public { result: TallyResult },
     Private { state: PrivateTallyState },
@@ -521,7 +521,7 @@ pub mod serde_base64_bytes {
     }
 }
 
-impl Into<chain_vote::EncryptedTally> for EncryptedTally{
+impl Into<chain_vote::EncryptedTally> for EncryptedTally {
     fn into(self) -> chain_vote::EncryptedTally {
         chain_vote::EncryptedTally::from_bytes(&self.0).unwrap()
     }
@@ -595,11 +595,22 @@ impl From<vote::TallyResult> for TallyResult {
     }
 }
 
+impl From<chain_vote::Tally> for TallyResult {
+    fn from(this: chain_vote::Tally) -> Self {
+        Self {
+            results: this.votes.iter().copied().collect(),
+            options: 0..this.votes.len() as u8,
+        }
+    }
+}
+
 impl Into<vote::TallyResult> for TallyResult {
     fn into(self) -> vote::TallyResult {
-        let mut result = vote::TallyResult::new(Options::new_length(self.options.end - self.options.start).unwrap());
-        
-        for (idx,value) in self.results().iter().enumerate() {
+        let mut result = vote::TallyResult::new(
+            Options::new_length(self.options.end - self.options.start).unwrap(),
+        );
+
+        for (idx, value) in self.results().iter().enumerate() {
             let weight: Weight = (*value).into();
             result.add_vote(Choice::new(idx as u8), weight).unwrap()
         }
@@ -630,7 +641,6 @@ impl From<vote::Tally> for Tally {
         }
     }
 }
-
 
 impl Into<vote::Tally> for Tally {
     fn into(self) -> vote::Tally {
