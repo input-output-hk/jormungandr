@@ -12,13 +12,14 @@ impl Tally {
         Self { tally_command }
     }
 
-    pub fn generate_decryption_share<P: AsRef<Path>, Q: AsRef<Path>>(
+    pub fn decryption_shares<P: AsRef<Path>, Q: AsRef<Path>, S: Into<String>>(
         self,
-        decryption_key: P,
-        encrypted_tally: Q,
+        vote_plan: Q,
+        vote_plan_id: S,
+        member_key: P,
     ) -> String {
         self.tally_command
-            .generate_decryption_share(decryption_key, encrypted_tally)
+            .decryption_shares(vote_plan, vote_plan_id, member_key)
             .build()
             .assert()
             .success()
@@ -26,15 +27,25 @@ impl Tally {
             .as_single_line()
     }
 
-    pub fn decrypt_with_shares<P: AsRef<Path>, R: AsRef<Path>>(
+    pub fn decrypt_results<P: AsRef<Path>, R: AsRef<Path>, S: Into<String>>(
         self,
-        encrypted_tally: P,
-        max_votes: u64,
+        vote_plan: P,
+        vote_plan_id: S,
         shares: R,
         threshold: u32,
     ) -> String {
         self.tally_command
-            .decrypt_with_shares(encrypted_tally, max_votes, shares, threshold)
+            .decrypt_results(vote_plan, vote_plan_id, shares, threshold)
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_lossy_string()
+    }
+
+    pub fn merge_shares<P: AsRef<Path>>(self, shares_to_merge: Vec<P>) -> String {
+        self.tally_command
+            .merge_shares(shares_to_merge)
             .build()
             .assert()
             .success()

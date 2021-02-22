@@ -217,86 +217,42 @@ pub fn jcli_e2e_flow_private_vote() {
 
     alice.confirm_transaction();
 
-    let vote_tally = jormungandr.rest().vote_plan_statuses().unwrap();
-    let vote_tally_file = temp_dir.child("vote_tally_proposal_0.yaml");
-
-    let vote_plan_status = temp_dir.child("vote_plan_status.json");
-    vote_plan_status
-        .write_str(&serde_json::to_string(&vote_tally).unwrap())
+    let active_plans = jormungandr.rest().vote_plan_statuses().unwrap();
+    let active_plans_file = temp_dir.child("active_plans.json");
+    active_plans_file
+        .write_str(&serde_json::to_string(&active_plans).unwrap())
         .unwrap();
 
-    let encrypted_tally = match vote_tally
-        .get(0)
-        .unwrap()
-        .proposals
-        .get(0)
-        .unwrap()
-        .tally
-        .as_ref()
-        .unwrap()
-    {
-        jormungandr_lib::interfaces::Tally::Private { state } => match state {
-            jormungandr_lib::interfaces::PrivateTallyState::Encrypted {
-                encrypted_tally,
-                total_stake: _,
-            } => serde_json::to_string(&encrypted_tally)
-                .unwrap()
-                .replace("\"", ""),
-            _ => panic!("tally state should be encrypted"),
-        },
-        _ => panic!("voting should be private"),
-    };
+    let decryption_shares = jcli.votes().tally().decryption_shares(
+        active_plans_file.path(),
+        &vote_plan_id,
+        member_sk_file.path(),
+    );
 
-    vote_tally_file.write_str(&encrypted_tally).unwrap();
+    let decryption_share_file = temp_dir.child("decryption_share.json");
+    decryption_share_file.write_str(&decryption_shares).unwrap();
 
-    let decryption_share = jcli
+    let merged_shares = jcli
         .votes()
         .tally()
-        .generate_decryption_share(member_sk_file.path(), vote_tally_file.path());
+        .merge_shares(vec![decryption_share_file.path()]);
+    let merged_shares_file = temp_dir.child("shares.json");
+    merged_shares_file.write_str(&merged_shares).unwrap();
 
-    let decryption_share_file = temp_dir.child("decryption_share");
-    decryption_share_file.write_str(&decryption_share).unwrap();
-
-    let generated_share = jcli.votes().tally().decrypt_with_shares(
-        vote_tally_file.path(),
-        3_000_000,
-        decryption_share_file.path(),
+    let result = jcli.votes().tally().decrypt_results(
+        active_plans_file.path(),
+        &vote_plan_id,
+        merged_shares_file.path(),
         1,
     );
 
-    println!("{:#?}", generated_share);
-
-    let generated_share_yaml: serde_json::Value = serde_json::from_str(&generated_share).unwrap();
-
-    let shares_file = temp_dir.child("shares.json");
-
-    let json = format!(
-        r#"
-        [
-            [
-                "{}"
-            ]
-        ]"#,
-        decryption_share
-    );
-
-    shares_file.write_str(&json).unwrap();
-
-    println!("{:#?}", generated_share_yaml);
-    /*  let results = &generated_share_yaml["results"];
-    assert_eq!(
-        results[0].as_u64(),
-        wallet_initial_funds * 2
-    );
-    assert_eq!(
-        results[1].as_u64(),
-        (wallet_initial_funds)
-    );*/
+    let result_file = temp_dir.child("result.json");
+    result_file.write_str(&result).unwrap();
 
     let vote_tally_cert = jcli.certificate().new_private_vote_tally(
-        &vote_plan_status.path(),
+        result_file.path(),
         vote_plan_id,
-        shares_file.path(),
+        merged_shares_file.path(),
     );
 
     let tx = jcli
