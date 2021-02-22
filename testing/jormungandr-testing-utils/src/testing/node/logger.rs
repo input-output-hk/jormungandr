@@ -283,7 +283,7 @@ impl JormungandrLogger {
         let file = File::open(self.log_file_path.clone())
             .unwrap_or_else(|_| panic!("cannot find log file: {:?}", &self.log_file_path));
         let reader = BufReader::new(file);
-        reader.lines().map(|line| line.unwrap())
+        reader.lines().flat_map(|line| line.ok())
     }
 
     pub fn get_log_entries(&self) -> impl Iterator<Item = LogEntry> + '_ {
