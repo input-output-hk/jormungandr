@@ -87,13 +87,16 @@ impl RawSettings {
                 format: cmd_format.unwrap_or(DEFAULT_LOG_FORMAT),
                 output,
             };
-            // log to info! that the output was overriden,
-            // we send this as a message because tracing Subscribers
-            // do not get initiated until after this code runs
-            log_info_msg = Some(format!(
-                "log settings overriden from command line: {:?} replaced with {:?}",
-                entries, command_line_entry
-            ));
+            // check if there are entries being overriden
+            if !entries.is_empty() {
+                // log to info! that the output was overriden,
+                // we send this as a message because tracing Subscribers
+                // do not get initiated until after this code runs
+                log_info_msg = Some(format!(
+                    "log settings overriden from command line: {:?} replaced with {:?}",
+                    entries, command_line_entry
+                ));
+            }
             // Replace any existing setting entries with the
             // command line settings entry.
             entries = vec![command_line_entry];
