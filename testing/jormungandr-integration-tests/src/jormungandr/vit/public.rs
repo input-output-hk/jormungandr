@@ -349,7 +349,11 @@ pub fn jcli_e2e_flow() {
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
-        .action_type(VoteAction::OffChain)
+        .action_type(VoteAction::Treasury {
+            action: TreasuryGovernanceAction::TransferToRewards {
+                value: Value(rewards_increase),
+            },
+        })
         .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
         .with_tally_start(BlockDate::from_epoch_slot_id(2, 0))
         .with_tally_end(BlockDate::from_epoch_slot_id(3, 0))
@@ -377,6 +381,7 @@ pub fn jcli_e2e_flow() {
         .with_consensus_genesis_praos_active_slot_coeff(
             ActiveSlotCoefficient::new(Milli::from_millis(100)).unwrap(),
         )
+        .with_treasury(1000.into())
         .with_slot_duration(4)
         .with_slots_per_epoch(10)
         .build(&temp_dir);
