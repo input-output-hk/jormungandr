@@ -165,7 +165,7 @@ impl Settings {
         external_wallets: Vec<ExternalWalletTemplate>,
     ) {
         for template in external_wallets {
-            let external_fragment = Initial::LegacyFund(vec![LegacyUTxO {
+            let external_fragment = Initial::Fund(vec![InitialUTxO {
                 address: template.address().parse().unwrap(),
                 value: (*template.value()).into(),
             }]);
