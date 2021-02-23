@@ -21,7 +21,7 @@ use tokio::time::sleep;
 use rand::Rng;
 use std::time::Duration;
 
-const CLIENT_RETRY_WAIT: Duration = Duration::from_millis(500);
+const CHAIN_GROWTH_TIMEOUT: Duration = Duration::from_secs(60);
 
 // check that affix is a long enough (at least half the size) prefix of word
 fn is_long_prefix<T: PartialEq>(word: &[T], affix: &[T]) -> bool {
@@ -64,9 +64,11 @@ pub async fn tip_request() {
         setup::client::bootstrap(ConfigurationBuilder::new().with_slot_duration(9).to_owned())
             .await;
 
-    while setup.client.tip().await.chain_length() < 1.into() {
-        tokio::time::sleep(CLIENT_RETRY_WAIT).await;
-    }
+    setup
+        .client
+        .wait_for_chain_length(1.into(), CHAIN_GROWTH_TIMEOUT)
+        .await;
+
     let tip_header = setup.client.tip().await;
     let block_hashes = setup.server.logger.get_created_blocks_hashes();
 
@@ -371,9 +373,10 @@ pub async fn pull_blocks_correct_hashes_all_blocks() {
 #[tokio::test]
 pub async fn pull_blocks_correct_hashes_partial() {
     let setup = setup::client::default().await;
-    while setup.client.tip().await.chain_length() < 10.into() {
-        tokio::time::sleep(CLIENT_RETRY_WAIT).await;
-    }
+    setup
+        .client
+        .wait_for_chain_length(10.into(), CHAIN_GROWTH_TIMEOUT)
+        .await;
 
     let block_hashes_from_logs = setup.server.logger.get_created_blocks_hashes();
     let start = 2;
@@ -398,9 +401,11 @@ pub async fn pull_blocks_correct_hashes_partial() {
 #[tokio::test]
 pub async fn pull_blocks_hashes_wrong_order() {
     let setup = setup::client::default().await;
-    while setup.client.tip().await.chain_length() < 10.into() {
-        tokio::time::sleep(CLIENT_RETRY_WAIT).await;
-    }
+
+    setup
+        .client
+        .wait_for_chain_length(10.into(), CHAIN_GROWTH_TIMEOUT)
+        .await;
 
     let block_hashes_from_logs = setup.server.logger.get_created_blocks_hashes();
     let start = 2;

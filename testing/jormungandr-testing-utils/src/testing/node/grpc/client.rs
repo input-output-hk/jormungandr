@@ -7,17 +7,21 @@ use super::proto::{
 };
 
 use chain_impl_mockchain::{
-    block::Block as LibBlock, fragment::Fragment as LibFragment, header::Header as LibHeader,
-    key::Hash,
+    block::Block as LibBlock, fragment::Fragment as LibFragment, header::ChainLength,
+    header::Header as LibHeader, key::Hash,
 };
 use futures::stream;
+use futures::FutureExt;
 use std::fmt;
+use std::time::Duration;
 
 use chain_core::property::FromStr;
 use chain_core::property::Serialize;
 use tonic::transport::Channel;
 
 use thiserror::Error;
+
+const CLIENT_RETRY_WAIT: Duration = Duration::from_millis(500);
 
 #[derive(Error, Debug, PartialEq)]
 pub enum MockClientError {
@@ -83,6 +87,17 @@ impl JormungandrClient {
 
     fn client(&self) -> NodeClient<Channel> {
         self.inner_client.clone()
+    }
+
+    pub async fn wait_for_chain_length(&self, lenght: ChainLength, timeout: Duration) {
+        futures::select! {
+            _ = async {
+                while self.tip().await.chain_length() < lenght {
+                    tokio::time::sleep(CLIENT_RETRY_WAIT).await;
+                }
+            }.fuse() => {},
+            _ = tokio::time::sleep(timeout).fuse() => panic!("Timeout elapsed while waiting for chain to grow"),
+        }
     }
 
     pub async fn handshake(&self, nonce: &[u8]) -> HandshakeResponse {
