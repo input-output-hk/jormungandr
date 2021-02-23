@@ -122,7 +122,7 @@ mod test {
 
         assert_eq!(
             serde_yaml::to_string(&stake).unwrap(),
-            format!("---\n{}", STAKE)
+            format!("---\n{}\n", STAKE)
         );
     }
 
