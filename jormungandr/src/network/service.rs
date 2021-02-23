@@ -206,7 +206,7 @@ impl BlockService for NodeService {
         let (handle, future) = intercom::stream_reply(buffer_sizes::outbound::HEADERS);
         let future = future.instrument(span.clone());
         let client_box = self.channels.client_box.clone();
-        send_message(client_box, ClientMsg::GetHeadersRange(from, to, handle))
+        send_message(client_box, ClientMsg::PullHeaders(from, to, handle))
             .instrument(span)
             .await?;
         let stream = future.await?;

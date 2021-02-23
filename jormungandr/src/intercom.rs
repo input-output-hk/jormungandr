@@ -520,7 +520,7 @@ pub enum TransactionMsg {
 pub enum ClientMsg {
     GetBlockTip(ReplyHandle<Header>),
     GetHeaders(Vec<HeaderHash>, ReplyStreamHandle<Header>),
-    GetHeadersRange(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
+    PullHeaders(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Header>),
     GetBlocks(Vec<HeaderHash>, ReplyStreamHandle<Block>),
     PullBlocks(Vec<HeaderHash>, HeaderHash, ReplyStreamHandle<Block>),
     PullBlocksToTip(Vec<HeaderHash>, ReplyStreamHandle<Block>),
@@ -538,8 +538,8 @@ impl Debug for ClientMsg {
                 .field(ids)
                 .field(&format_args!("_"))
                 .finish(),
-            ClientMsg::GetHeadersRange(from, to, _) => f
-                .debug_tuple("GetHeadersRange")
+            ClientMsg::PullHeaders(from, to, _) => f
+                .debug_tuple("PullHeaders")
                 .field(from)
                 .field(to)
                 .field(&format_args!("_"))
