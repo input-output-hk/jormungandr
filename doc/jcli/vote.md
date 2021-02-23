@@ -165,7 +165,7 @@ jcli votes tally merge-shares  share_file1 share_file2 ... > merged_shares.json
 With the merged shares file, we are finally able to process the final tally result as follows:
 
 ```shell
-jcli votes tally decrypt \
+jcli votes tally decrypt-results \
 --vote-plan active_plans.json \
 --vote-plan-id $"vote_plan_id" \
 --shares merged_shares.json \

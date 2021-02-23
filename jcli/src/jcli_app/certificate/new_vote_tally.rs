@@ -44,7 +44,8 @@ pub struct PrivateTally {
     #[structopt(long)]
     pub vote_plan: PathBuf,
 
-    /// path to the json file containing the vote plan result
+    /// The id of the vote plan to include in the certificate.
+    /// Can be left unspecified if there is only one vote plan in the input
     #[structopt(long)]
     pub vote_plan_id: Option<Hash>,
 

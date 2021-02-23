@@ -1,38 +1,14 @@
 use super::Error;
-use crate::jcli_app::utils::vote::{self, SharesError};
-use crate::jcli_app::utils::{io, OutputFormat};
+use crate::jcli_app::utils::vote;
+use crate::jcli_app::utils::OutputFormat;
 use chain_vote::EncryptedTally;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
 use rayon::prelude::*;
 use serde::Serialize;
 use std::convert::TryInto;
-use std::io::BufRead;
 use std::path::PathBuf;
 use structopt::StructOpt;
-
-// TODO: this decrypts a single proposal, we might remove it later
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
-pub struct TallyDecryptWithAllShares {
-    /// The path to hex-encoded encrypted tally state. If this parameter is not
-    /// specified, the encrypted tally state will be read from the standard
-    /// input.
-    #[structopt(long = "tally")]
-    encrypted_tally: Option<PathBuf>,
-    /// The minimum number of shares needed for decryption
-    #[structopt(long = "threshold", default_value = "3")]
-    threshold: usize,
-    /// Maximum supported number of votes
-    #[structopt(long = "max-votes")]
-    max_votes: u64,
-    /// The path to encoded necessary shares. If this parameter is not
-    /// specified, the shares will be read from the standard input.
-    #[structopt(long = "shares")]
-    shares: Option<PathBuf>,
-    #[structopt(flatten)]
-    output_format: OutputFormat,
-}
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -61,47 +37,6 @@ pub struct TallyVotePlanWithAllShares {
 #[derive(Serialize)]
 struct Output {
     result: Vec<u64>,
-}
-
-impl TallyDecryptWithAllShares {
-    pub fn exec(&self) -> Result<(), Error> {
-        let encrypted_tally_hex = io::read_line(&self.encrypted_tally)?;
-        let encrypted_tally_bytes = base64::decode(encrypted_tally_hex)?;
-        let encrypted_tally =
-            EncryptedTally::from_bytes(&encrypted_tally_bytes).ok_or(Error::EncryptedTallyRead)?;
-
-        let mut shares_file = io::open_file_read(&self.shares)?;
-
-        let shares: Vec<chain_vote::TallyDecryptShare> = {
-            let mut shares = Vec::with_capacity(self.threshold);
-            for _ in 0..self.threshold {
-                let mut buff = String::new();
-                shares_file.read_line(&mut buff)?;
-                let buff = buff.trim_end();
-                shares.push(
-                    chain_vote::TallyDecryptShare::from_bytes(&base64::decode(buff)?)
-                        .ok_or(SharesError::InvalidBinaryShare)?,
-                );
-            }
-            shares
-        };
-        let state = encrypted_tally.state();
-        let result = chain_vote::tally(
-            self.max_votes,
-            &state,
-            &shares,
-            &chain_vote::TallyOptimizationTable::generate_with_balance(self.max_votes, 1),
-        )?;
-        let output = self
-            .output_format
-            .format_json(serde_json::to_value(Output {
-                result: result.votes,
-            })?)?;
-
-        println!("{}", output);
-
-        Ok(())
-    }
 }
 
 impl TallyVotePlanWithAllShares {
