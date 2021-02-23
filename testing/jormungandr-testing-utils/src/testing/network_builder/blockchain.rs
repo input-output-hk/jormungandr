@@ -1,4 +1,5 @@
 use super::{ExternalWalletTemplate, LegacyWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
+use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::{fee::LinearFee, testing::scenario::template::VotePlanDef};
 use jormungandr_lib::interfaces::{
@@ -20,6 +21,7 @@ pub struct Blockchain {
     kes_update_speed: KESUpdateSpeed,
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
     linear_fee: LinearFee,
+    discrimination: Discrimination,
 }
 
 impl Blockchain {
@@ -43,6 +45,7 @@ impl Blockchain {
             kes_update_speed,
             consensus_genesis_praos_active_slot_coeff,
             linear_fee: LinearFee::new(1, 1, 1),
+            discrimination: Discrimination::Test,
         }
     }
 
@@ -68,6 +71,14 @@ impl Blockchain {
 
     pub fn set_linear_fee(&mut self, linear_fee: LinearFee) {
         self.linear_fee = linear_fee;
+    }
+
+    pub fn discrimination(&self) -> Discrimination {
+        self.discrimination
+    }
+
+    pub fn set_discrimination(&mut self, discrimination: Discrimination) {
+        self.discrimination = discrimination;
     }
 
     pub fn vote_plan(&self, alias: &str) -> Option<VotePlanDef> {

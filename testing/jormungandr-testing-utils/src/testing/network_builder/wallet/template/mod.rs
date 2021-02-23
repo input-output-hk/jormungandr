@@ -3,6 +3,7 @@ mod legacy;
 
 use super::{WalletAlias, WalletType};
 use crate::testing::network_builder::NodeAlias;
+use chain_addr::Discrimination;
 use chain_impl_mockchain::value::Value;
 pub use external::ExternalWalletTemplate;
 pub use legacy::LegacyWalletTemplate;
@@ -13,28 +14,47 @@ pub struct WalletTemplate {
     value: Value,
     wallet_type: WalletType,
     delegate: Option<NodeAlias>,
+    discrimination: Discrimination,
 }
 
 impl WalletTemplate {
-    pub fn new_account<S: Into<WalletAlias>>(alias: S, value: Value) -> Self {
-        Self::new(alias, value, WalletType::Account)
+    pub fn new_account<S: Into<WalletAlias>>(
+        alias: S,
+        value: Value,
+        discrimination: Discrimination,
+    ) -> Self {
+        Self::new(alias, value, WalletType::Account, discrimination)
     }
-    pub fn new_utxo<S: Into<WalletAlias>>(alias: S, value: Value) -> Self {
-        Self::new(alias, value, WalletType::UTxO)
+    pub fn new_utxo<S: Into<WalletAlias>>(
+        alias: S,
+        value: Value,
+        discrimination: Discrimination,
+    ) -> Self {
+        Self::new(alias, value, WalletType::UTxO, discrimination)
     }
 
     #[inline]
-    fn new<S: Into<WalletAlias>>(alias: S, value: Value, wallet_type: WalletType) -> Self {
+    fn new<S: Into<WalletAlias>>(
+        alias: S,
+        value: Value,
+        wallet_type: WalletType,
+        discrimination: Discrimination,
+    ) -> Self {
         Self {
             alias: alias.into(),
             value,
             wallet_type,
             delegate: None,
+            discrimination,
         }
     }
 
     pub fn alias(&self) -> &WalletAlias {
         &self.alias
+    }
+
+    pub fn discrimination(&self) -> Discrimination {
+        self.discrimination
     }
 
     pub fn wallet_type(&self) -> &WalletType {
