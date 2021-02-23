@@ -544,7 +544,7 @@ mod test {
     #[test]
     fn identifier_serde_human_readable() {
         const EXPECTED_IDENTIFIER_STR: &str =
-            "---\ned25519_pk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqyl7vm8";
+            "---\ned25519_pk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqyl7vm8\n";
         const IDENTIFIER_BYTES: [u8; 32] = [0x20; 32];
 
         let identifier: Identifier<Ed25519> =
@@ -560,7 +560,7 @@ mod test {
     #[test]
     fn signing_key_serde_human_readable() {
         const EXPECTED_SIGNING_KEY_STR: &str =
-            "---\ned25519_sk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsq8j4ww6";
+            "---\ned25519_sk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsq8j4ww6\n";
         const SIGNING_KEY_BYTES: [u8; 32] = [0x20; 32];
 
         let signing_key: SigningKey<Ed25519> =
@@ -586,7 +586,7 @@ mod test {
     #[test]
     fn signature_serde_human_readable() {
         const EXPECTED_SIGNATURE_STR: &str =
-            "---\ned25519_sig1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgqzlcn38";
+            "---\ned25519_sig1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgqzlcn38\n";
         const SIGNATURE_BYTES: [u8; 64] = [0x20; 64];
 
         let signature: Signature<&'static [u8], Ed25519> =

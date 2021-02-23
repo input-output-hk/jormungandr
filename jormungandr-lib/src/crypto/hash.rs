@@ -155,7 +155,7 @@ mod test {
     #[test]
     fn hash_serde_human_readable() {
         const EXPECTED_HASH_STR: &str =
-            "---\n\"2020202020202020202020202020202020202020202020202020202020202020\"";
+            "---\n\"2020202020202020202020202020202020202020202020202020202020202020\"\n";
         const HASH_BYTES: [u8; 32] = [0x20; 32];
 
         let hash = Hash(Blake2b256::from(HASH_BYTES));
