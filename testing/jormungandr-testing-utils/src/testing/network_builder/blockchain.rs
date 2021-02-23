@@ -57,6 +57,10 @@ impl Blockchain {
         self.external_wallets.clone()
     }
 
+    pub fn set_external_wallets(&mut self, external_wallets: Vec<ExternalWalletTemplate>) {
+        self.external_wallets = external_wallets;
+    }
+
     pub fn legacy_wallets(&self) -> Vec<LegacyWalletTemplate> {
         self.legacy_wallets.clone()
     }
