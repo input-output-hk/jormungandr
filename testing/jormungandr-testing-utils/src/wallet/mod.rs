@@ -392,12 +392,27 @@ impl Wallet {
         proposal_index: u8,
         choice: &Choice,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).vote_cast(
-            &self,
-            vote_plan,
-            proposal_index,
-            choice,
-        ))
+        match vote_plan.payload_type() {
+            chain_impl_mockchain::vote::PayloadType::Public => Ok(FragmentBuilder::new(
+                block0_hash,
+                fees,
+            )
+            .public_vote_cast(&self, vote_plan, proposal_index, choice)),
+            chain_impl_mockchain::vote::PayloadType::Private => Ok(FragmentBuilder::new(
+                block0_hash,
+                fees,
+            )
+            .private_vote_cast(&self, vote_plan, proposal_index, choice)),
+        }
+    }
+
+    pub fn issue_encrypted_tally_cert(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        vote_plan: &VotePlan,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees).encrypted_tally(&self, vote_plan))
     }
 
     pub fn issue_vote_tally_cert(
