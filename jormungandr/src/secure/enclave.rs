@@ -184,15 +184,12 @@ impl Schedule {
             let date = self.leadership.date_at_slot(self.current_slot);
             for (id, leader) in leaders {
                 match self.leadership.is_leader_for_date(&leader, date) {
-                    Ok(LeaderOutput::None) => (),
-                    Ok(leader_output) => self.current_slot_data.push(LeaderEvent {
+                    LeaderOutput::None => (),
+                    leader_output => self.current_slot_data.push(LeaderEvent {
                         id: *id,
                         date,
                         output: leader_output,
                     }),
-                    Err(_) => {
-                        // For now silently ignore error
-                    }
                 }
             }
 

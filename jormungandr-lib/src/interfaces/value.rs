@@ -135,7 +135,7 @@ mod test {
 
         assert_eq!(
             serde_yaml::to_string(&value).unwrap(),
-            format!("---\n{}", VALUE)
+            format!("---\n{}\n", VALUE)
         );
     }
 

@@ -634,7 +634,7 @@ mod test {
 
         assert_eq!(
             serde_yaml::to_string(&epoch).unwrap(),
-            "---\n\"1970-01-01T00:00:00+00:00\""
+            "---\n\"1970-01-01T00:00:00+00:00\"\n"
         )
     }
 
@@ -667,7 +667,7 @@ mod test {
 
         assert_eq!(
             serde_yaml::to_string(&duration).unwrap(),
-            "---\n10days 17h 50m 37s 1ms 129us"
+            "---\n10days 17h 50m 37s 1ms 129us\n"
         )
     }
 
@@ -686,13 +686,13 @@ mod test {
     fn seconds_since_unix_epoch_serde_human_readable() {
         let duration = SecondsSinceUnixEpoch(9_982_716);
 
-        assert_eq!(serde_yaml::to_string(&duration).unwrap(), "---\n9982716")
+        assert_eq!(serde_yaml::to_string(&duration).unwrap(), "---\n9982716\n")
     }
 
     #[test]
     #[should_panic]
     fn out_of_bound_seconds_since_unix_epoch_serde_human_readable_fail() {
-        let invalid_yaml = format!("---\n{}", SecondsSinceUnixEpoch::MAX.0 + 1);
+        let invalid_yaml = format!("---\n{}\n", SecondsSinceUnixEpoch::MAX.0 + 1);
 
         let _: SecondsSinceUnixEpoch = serde_yaml::from_str(&invalid_yaml).unwrap();
     }

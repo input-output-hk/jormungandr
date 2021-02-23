@@ -73,7 +73,7 @@ mod test {
         assert_eq!(
             serde_yaml::to_string(&tax_type).unwrap(),
             format!(
-                "---\nfixed: {}\nratio: {}/{}",
+                "---\nfixed: {}\nratio: {}/{}\n",
                 FIXED, NUMERATOR, DENOMINATOR
             )
         );
@@ -94,7 +94,7 @@ mod test {
         assert_eq!(
             serde_yaml::to_string(&tax_type).unwrap(),
             format!(
-                "---\nfixed: {}\nratio: {}/{}\nmax_limit: {}",
+                "---\nfixed: {}\nratio: {}/{}\nmax_limit: {}\n",
                 FIXED, NUMERATOR, DENOMINATOR, MAX_LIMIT
             )
         );

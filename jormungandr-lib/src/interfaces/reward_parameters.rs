@@ -129,7 +129,7 @@ mod test {
         assert_eq!(
             serde_yaml::to_string(&parameters).unwrap(),
             format!(
-                "---\nlinear:\n  constant: {}\n  ratio: {}/{}\n  epoch_start: {}\n  epoch_rate: {}",
+                "---\nlinear:\n  constant: {}\n  ratio: {}/{}\n  epoch_start: {}\n  epoch_rate: {}\n",
                 CONSTANT, RATIO_NUMERATOR, RATIO_DENOMINATOR, EPOCH_START, EPOCH_RATE,
             )
         );
@@ -153,7 +153,7 @@ mod test {
         assert_eq!(
             serde_yaml::to_string(&parameters).unwrap(),
             format!(
-                "---\nhalving:\n  constant: {}\n  ratio: {}/{}\n  epoch_start: {}\n  epoch_rate: {}",
+                "---\nhalving:\n  constant: {}\n  ratio: {}/{}\n  epoch_start: {}\n  epoch_rate: {}\n",
                 CONSTANT, RATIO_NUMERATOR, RATIO_DENOMINATOR, EPOCH_START, EPOCH_RATE,
             )
         );

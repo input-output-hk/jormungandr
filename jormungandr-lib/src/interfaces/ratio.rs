@@ -171,7 +171,7 @@ mod test {
 
         assert_eq!(
             serde_yaml::to_string(&ratio).unwrap(),
-            format!("---\n{}/{}", NUMERATOR, DENOMINATOR)
+            format!("---\n{}/{}\n", NUMERATOR, DENOMINATOR)
         );
     }
 
