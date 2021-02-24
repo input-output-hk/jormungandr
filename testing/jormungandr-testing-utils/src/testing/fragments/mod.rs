@@ -28,7 +28,8 @@ use jormungandr_lib::{
     interfaces::{Address, Initial, Value},
 };
 pub use load::{
-    BatchFragmentGenerator, FragmentStatusProvider, TransactionGenerator, VoteCastsGenerator,
+    AdversaryFragmentGenerator, BatchFragmentGenerator, FragmentStatusProvider,
+    TransactionGenerator, VoteCastsGenerator,
 };
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
