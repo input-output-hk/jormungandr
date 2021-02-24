@@ -135,6 +135,19 @@ impl Layer<BoxedSubscriber> for BoxedSubscriber {}
 
 impl LogSettings {
     pub fn init_log(self) -> Result<(Vec<WorkerGuard>, LogInfoMsg), Error> {
+        // WIP: Replacing this code
+        //
+        // * Use tracing_subscriber::registry::Registry instead of
+        //   boxing subscribers
+        // * Create specific layer types for each output format, implement
+        //   ````
+        //   impl<S> tracing_subscriber::Layer<S> for OutputLayer
+        //   where
+        //       S: Subscriber + for<'span> LookupSpan<'span>
+        //   ```
+        //   * expand code from LogSettingsEntry::to_subscriber, to remove
+        //   * implement uniform process of composing Layer and Subscriber types
+        //     for each output format
         use tracing_subscriber::prelude::*;
         let mut guards = Vec::new();
         let mut layers: Vec<Layered<_, BoxedSubscriber>> = Vec::new();
