@@ -169,6 +169,7 @@ impl LogSettings {
             for layer in layer_iter {
                 init_layer = BoxedSubscriber(Box::new(init_layer.with(layer)));
             }
+            // FIXME: this should only be run once
             tracing::subscriber::set_global_default(init_layer)
                 .map_err(Error::SetGlobalSubscriberError)?;
         }
@@ -191,8 +192,8 @@ impl LogSettingsEntry {
 
         match output {
             LogOutput::Stdout => {
-                let (subscriber, guard) = tracing_appender::non_blocking(std::io::stdout());
-                let builder = builder.with_writer(subscriber).with_max_level(*level);
+                let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
+                let builder = builder.with_writer(non_blocking).with_max_level(*level);
                 let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
                     LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
                     LogFormat::Json => Box::new(builder.json().finish()),
@@ -200,8 +201,8 @@ impl LogSettingsEntry {
                 Ok((subscriber, Some(guard)))
             }
             LogOutput::Stderr => {
-                let (subscriber, guard) = tracing_appender::non_blocking(std::io::stderr());
-                let builder = builder.with_writer(subscriber).with_max_level(*level);
+                let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stderr());
+                let builder = builder.with_writer(non_blocking).with_max_level(*level);
                 let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
                     LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
                     LogFormat::Json => Box::new(builder.json().finish()),
@@ -218,8 +219,8 @@ impl LogSettingsEntry {
                         path: path.clone(),
                         cause,
                     })?;
-                let (subscriber, guard) = tracing_appender::non_blocking(file);
-                let builder = builder.with_writer(subscriber).with_max_level(*level);
+                let (non_blocking, guard) = tracing_appender::non_blocking(file);
+                let builder = builder.with_writer(non_blocking).with_max_level(*level);
                 let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
                     LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
                     LogFormat::Json => Box::new(builder.json().finish()),
