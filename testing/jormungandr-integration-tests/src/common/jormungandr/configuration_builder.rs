@@ -182,6 +182,24 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_fund(&mut self, initial: InitialUTxO) -> &mut Self {
+        self.funds.push(Initial::Fund(vec![initial]));
+        self
+    }
+
+    pub fn with_funds_split_if_needed(&mut self, initials: Vec<InitialUTxO>) -> &mut Self {
+        let mut funds = Vec::new();
+        for initial in initials.iter() {
+            funds.push(initial.clone());
+
+            if funds.len() >= 254 {
+                self.with_funds(funds.clone());
+                funds.clear();
+            }
+        }
+        self
+    }
+
     pub fn with_certs(&mut self, initial: Vec<SignedCertificate>) -> &mut Self {
         self.certs
             .extend(initial.iter().cloned().map(Initial::Cert));
