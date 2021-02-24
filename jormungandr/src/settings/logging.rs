@@ -145,7 +145,6 @@ impl LogSettings {
         //   where
         //       S: Subscriber + for<'span> LookupSpan<'span>
         //   ```
-        //   * expand code from LogSettingsEntry::to_subscriber, to remove
         //   * implement uniform process of composing Layer and Subscriber types
         //     for each output format
         use tracing_subscriber::prelude::*;
@@ -190,34 +189,25 @@ impl LogSettingsEntry {
 
         let builder = SubscriberBuilder::default();
 
-        fn build_writer_subscriber(
-            builder: SubscriberBuilder,
-            writer: impl Write + Send + Sync + 'static,
-            level: LevelFilter,
-            format: LogFormat,
-        ) -> (Box<dyn Subscriber + Send + Sync>, Option<WorkerGuard>) {
-            let (subscriber, guard) = tracing_appender::non_blocking(writer);
-            let builder = builder.with_writer(subscriber).with_max_level(level);
-            let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
-                LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
-                LogFormat::Json => Box::new(builder.json().finish()),
-            };
-            (subscriber, Some(guard))
-        }
-
         match output {
-            LogOutput::Stdout => Ok(build_writer_subscriber(
-                builder,
-                std::io::stdout(),
-                *level,
-                *format,
-            )),
-            LogOutput::Stderr => Ok(build_writer_subscriber(
-                builder,
-                std::io::stderr(),
-                *level,
-                *format,
-            )),
+            LogOutput::Stdout => {
+                let (subscriber, guard) = tracing_appender::non_blocking(std::io::stdout());
+                let builder = builder.with_writer(subscriber).with_max_level(*level);
+                let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
+                    LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
+                    LogFormat::Json => Box::new(builder.json().finish()),
+                };
+                Ok((subscriber, Some(guard)))
+            }
+            LogOutput::Stderr => {
+                let (subscriber, guard) = tracing_appender::non_blocking(std::io::stderr());
+                let builder = builder.with_writer(subscriber).with_max_level(*level);
+                let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
+                    LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
+                    LogFormat::Json => Box::new(builder.json().finish()),
+                };
+                Ok((subscriber, Some(guard)))
+            }
             LogOutput::File(path) => {
                 let file = fs::OpenOptions::new()
                     .create(true)
@@ -228,7 +218,13 @@ impl LogSettingsEntry {
                         path: path.clone(),
                         cause,
                     })?;
-                Ok(build_writer_subscriber(builder, file, *level, *format))
+                let (subscriber, guard) = tracing_appender::non_blocking(file);
+                let builder = builder.with_writer(subscriber).with_max_level(*level);
+                let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
+                    LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
+                    LogFormat::Json => Box::new(builder.json().finish()),
+                };
+                Ok((subscriber, Some(guard)))
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
