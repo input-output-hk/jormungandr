@@ -5,10 +5,10 @@ use chain_crypto::{Ed25519, Ed25519Extended, KeyPair, PublicKey, SecretKey};
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::{
     interfaces::{
-        ActiveSlotCoefficient, Block0Configuration, BlockchainConfiguration, CommitteeIdDef,
-        ConsensusLeaderId, EpochStabilityDepth, FeesGoTo, Initial, InitialUTxO, KESUpdateSpeed,
-        NumberOfSlotsPerEpoch, Ratio, RewardConstraints, RewardParams, SlotDuration, TaxType,
-        Value,
+        ActiveSlotCoefficient, Block0Configuration, BlockContentMaxSize, BlockchainConfiguration,
+        CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, FeesGoTo, Initial, InitialUTxO,
+        KESUpdateSpeed, NumberOfSlotsPerEpoch, Ratio, RewardConstraints, RewardParams,
+        SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -128,6 +128,14 @@ impl Block0ConfigurationBuilder {
 
     pub fn with_committee_ids(&mut self, committee_ids: Vec<CommitteeIdDef>) -> &mut Self {
         self.blockchain_configuration.committees = committee_ids;
+        self
+    }
+
+    pub fn with_block_content_max_size(
+        &mut self,
+        block_content_max_size: BlockContentMaxSize,
+    ) -> &mut Self {
+        self.blockchain_configuration.block_content_max_size = block_content_max_size;
         self
     }
 

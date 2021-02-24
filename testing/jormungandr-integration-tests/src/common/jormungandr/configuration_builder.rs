@@ -43,6 +43,7 @@ pub struct ConfigurationBuilder {
     treasury: Option<Value>,
     node_config_builder: NodeConfigBuilder,
     rewards_history: bool,
+    block_content_max_size: u32,
     configure_default_log: bool,
     committee_ids: Vec<CommitteeIdDef>,
     leader_key_pair: Option<KeyPair<Ed25519>>,
@@ -71,6 +72,7 @@ impl ConfigurationBuilder {
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,
             kes_update_speed: KESUpdateSpeed::new(12 * 3600).unwrap(),
             node_config_builder: NodeConfigBuilder::new(),
+            block_content_max_size: 4096,
             rewards_history: false,
             configure_default_log: true,
             committee_ids: vec![],
@@ -148,6 +150,11 @@ impl ConfigurationBuilder {
 
     pub fn with_rest_tls_config(&mut self, tls: Tls) -> &mut Self {
         self.node_config_builder.with_rest_tls_config(tls);
+        self
+    }
+
+    pub fn with_block_content_max_size(&mut self, block_content_max_size: u32) -> &mut Self {
+        self.block_content_max_size = block_content_max_size;
         self
     }
 
@@ -309,6 +316,7 @@ impl ConfigurationBuilder {
             .with_epoch_stability_depth(self.epoch_stability_depth)
             .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff)
             .with_linear_fees(self.linear_fees)
+            .with_block_content_max_size(self.block_content_max_size.into())
             .with_committee_ids(self.committee_ids.clone())
             .with_total_rewards_supply(self.total_reward_supply)
             .build();
