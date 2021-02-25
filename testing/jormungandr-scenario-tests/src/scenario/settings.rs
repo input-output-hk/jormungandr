@@ -137,10 +137,13 @@ impl Settings {
                         .extend(manager.member_public_keys());
                     self.private_vote_plans
                         .insert(vote_plan_def.alias(), manager);
-                    println!("{:#?}", vote_plan_def);
                     vote_plan_def.clone().into()
                 }
             };
+
+            self.network_settings
+                .vote_plans
+                .insert(vote_plan_def.alias(), vote_plan.clone());
 
             vote_plans_fragments.push(create_initial_vote_plan(
                 &vote_plan,

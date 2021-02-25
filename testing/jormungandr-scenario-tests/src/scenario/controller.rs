@@ -8,11 +8,16 @@ use crate::{
     },
     style, Node, NodeBlock0, NodeController,
 };
-
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
+use chain_impl_mockchain::certificate::{VoteAction, VotePlan};
 use chain_impl_mockchain::header::HeaderId;
-use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
+use chain_impl_mockchain::ledger::governance::{
+    ParametersGovernanceAction, TreasuryGovernanceAction,
+};
+use chain_impl_mockchain::testing::scenario::template::{
+    ProposalDefBuilder, VotePlanDef, VotePlanDefBuilder,
+};
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
@@ -200,15 +205,73 @@ impl Controller {
     }
 
     pub fn vote_plan(&self, alias: &str) -> Result<VotePlanDef> {
-        if let Some(vote_plan) = self.blockchain.vote_plan(alias) {
-            Ok(vote_plan)
+        if let Some(vote_plan) = self.settings.network_settings.vote_plans.get(alias) {
+            Ok(self.convert_to_def(alias, vote_plan))
         } else {
             Err(ErrorKind::VotePlanNotFound(alias.to_owned()).into())
         }
     }
 
     pub fn vote_plans(&self) -> Vec<VotePlanDef> {
-        self.blockchain.vote_plans()
+        self.settings
+            .network_settings
+            .vote_plans
+            .iter()
+            .map(|(x, y)| self.convert_to_def(x, y))
+            .collect()
+    }
+
+    fn convert_to_def(&self, alias: &str, vote_plan: &VotePlan) -> VotePlanDef {
+        let templates = self.blockchain.vote_plans();
+        let template = templates.iter().find(|x| x.alias() == alias).unwrap();
+        let mut builder = VotePlanDefBuilder::new(alias);
+        builder
+            .owner(&template.owner())
+            .payload_type(vote_plan.payload_type())
+            .committee_keys(vote_plan.committee_public_keys().to_vec())
+            .vote_phases(
+                vote_plan.vote_start().epoch,
+                vote_plan.committee_start().epoch,
+                vote_plan.committee_end().epoch,
+            );
+
+        for proposal in vote_plan.proposals().iter() {
+            let mut proposal_builder = ProposalDefBuilder::new(proposal.external_id().clone());
+
+            let length = proposal
+                .options()
+                .choice_range()
+                .end
+                .checked_sub(proposal.options().choice_range().start)
+                .unwrap();
+
+            proposal_builder.options(length);
+
+            match proposal.action() {
+                VoteAction::OffChain => {
+                    proposal_builder.action_off_chain();
+                }
+                VoteAction::Treasury { action } => match action {
+                    TreasuryGovernanceAction::TransferToRewards { value } => {
+                        proposal_builder.action_rewards_add(value.0);
+                    }
+                    TreasuryGovernanceAction::NoOp => {
+                        unimplemented!();
+                    }
+                },
+                VoteAction::Parameters { action } => match action {
+                    ParametersGovernanceAction::RewardAdd { value } => {
+                        proposal_builder.action_transfer_to_rewards(value.0);
+                    }
+                    ParametersGovernanceAction::NoOp => {
+                        proposal_builder.action_parameters_no_op();
+                    }
+                },
+            };
+
+            builder.with_proposal(&mut proposal_builder);
+        }
+        builder.build()
     }
 
     pub fn wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSetting)> {
