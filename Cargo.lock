@@ -661,21 +661,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "console"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7cc80946b3480f421c2f17ed1cb841753a371c7c5104f51d507e13f532c856aa"
-dependencies = [
- "encode_unicode",
- "lazy_static",
- "libc",
- "regex",
- "terminal_size",
- "unicode-width",
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1778,7 +1763,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7baab56125e25686df467fe470785512329883aab42696d661247aca2a2896e4"
 dependencies = [
- "console 0.14.0",
+ "console 0.13.0",
  "lazy_static",
  "number_prefix",
  "regex",
@@ -2143,7 +2128,7 @@ dependencies = [
 [[package]]
 name = "jortestkit"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#910d2225adfb58c1a8f68a5e899b077fc809faf5"
+source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#21f7c09c38d5d72c43ae1e797fda81eb14733e47"
 dependencies = [
  "assert_fs",
  "base64 0.12.3",

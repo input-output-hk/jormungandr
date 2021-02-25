@@ -191,6 +191,8 @@ jobs:
         with:
           command: test
           args: --tests ${{ env.CARGO_FLAGS }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   lints:
     name: Lints

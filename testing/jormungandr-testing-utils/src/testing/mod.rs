@@ -17,7 +17,7 @@ pub use fragments::{
     VoteCastsGenerator,
 };
 pub use jortestkit::archive::decompress;
-pub use jortestkit::github::{CachedReleases, GitHubApi, GitHubApiError, Release};
+pub use jortestkit::github::{CachedReleases, GitHubApiBuilder, GitHubApiError, Release};
 pub use jortestkit::measurement::{
     benchmark_consumption, benchmark_efficiency, benchmark_endurance, benchmark_speed,
     ConsumptionBenchmarkError, ConsumptionBenchmarkRun, EfficiencyBenchmarkDef,
