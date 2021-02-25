@@ -12,7 +12,7 @@ pub fn filter(
     let root = warp::path!("v1" / ..);
 
     let fragments = {
-        let root = warp::path!("fragments");
+        let root = warp::path!("fragments" / ..);
 
         let post = warp::path::end()
             .and(warp::post())
