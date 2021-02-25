@@ -3,6 +3,10 @@ use crate::testing::network_builder::WalletAlias;
 use assert_fs::fixture::{ChildPath, PathChild};
 use bech32::FromBase32;
 use bech32::ToBase32;
+use chain_impl_mockchain::{
+    certificate::{DecryptedPrivateTally, DecryptedPrivateTallyProposal},
+    vote::VotePlanStatus,
+};
 use chain_vote::{
     committee::ElectionPublicKey, MemberCommunicationKey, MemberCommunicationPublicKey,
     MemberPublicKey, MemberState, OpeningVoteKey, CRS,
@@ -197,6 +201,10 @@ impl PrivateVoteCommitteeDataManager {
         self.data.get(identifier)
     }
 
+    pub fn members(&self) -> Vec<PrivateVoteCommitteeData> {
+        self.data.values().cloned().collect()
+    }
+
     pub fn write_to(&self, directory: ChildPath) -> std::io::Result<()> {
         for (id, data) in self.data.iter() {
             let item_directory = directory.child(id.to_bech32_str());
@@ -207,5 +215,47 @@ impl PrivateVoteCommitteeDataManager {
 
     pub fn member_public_keys(&self) -> Vec<MemberPublicKey> {
         self.data.values().map(|x| x.member_public_key()).collect()
+    }
+
+    pub fn decrypt_tally(&self, vote_plan_status: &VotePlanStatus) -> DecryptedPrivateTally {
+        let encrypted_tally = vote_plan_status
+            .proposals
+            .iter()
+            .map(|proposal| {
+                let tally_state = proposal.tally.as_ref().unwrap();
+                let encrypted_tally = tally_state.private_encrypted().unwrap().0.clone();
+                let max_votes = tally_state.private_total_power().unwrap();
+                (encrypted_tally, max_votes)
+            })
+            .collect::<Vec<_>>();
+
+        let absolute_max_votes = encrypted_tally
+            .iter()
+            .map(|(_encrypted_tally, max_votes)| *max_votes)
+            .max()
+            .unwrap();
+        let table =
+            chain_vote::TallyOptimizationTable::generate_with_balance(absolute_max_votes, 1);
+
+        let proposals = encrypted_tally
+            .into_iter()
+            .map(|(encrypted_tally, max_votes)| {
+                let decrypt_shares = self
+                    .members()
+                    .iter()
+                    .map(|member| member.member_secret_key())
+                    .map(|secret_key| encrypted_tally.finish(&secret_key).1)
+                    .collect::<Vec<_>>();
+                let tally_state = encrypted_tally.state();
+                let tally =
+                    chain_vote::tally(max_votes, &tally_state, &decrypt_shares, &table).unwrap();
+                DecryptedPrivateTallyProposal {
+                    decrypt_shares: decrypt_shares.into_boxed_slice(),
+                    tally_result: tally.votes.into_boxed_slice(),
+                }
+            })
+            .collect::<Vec<_>>();
+
+        DecryptedPrivateTally::new(proposals)
     }
 }
