@@ -224,11 +224,16 @@ impl LogSettings {
         };
         #[cfg(feature = "gelf")]
         let gelf_layer = if let Some(entry) = layer_settings.gelf {
-            let (layer, task) = tracing_gelf::Logger::builder()
-                .connect_tcp(entry.output.backend.clone())
-                .map_err(Error::Gelf)?;
-            tokio::spawn(task);
-            Some(layer)
+            // have to use if let because it's an enum
+            if let LogOutput::Gelf { backend, .. } = settings.output {
+                let (layer, task) = tracing_gelf::Logger::builder()
+                    .connect_tcp(backend)
+                    .map_err(Error::Gelf)?;
+                tokio::spawn(task);
+                Some(layer)
+            } else {
+                None
+            }
         } else {
             None
         };
