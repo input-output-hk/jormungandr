@@ -239,8 +239,7 @@ impl PrivateVoteCommitteeDataManager {
             .map(|(_encrypted_tally, max_votes)| *max_votes)
             .max()
             .unwrap();
-        let table =
-            chain_vote::TallyOptimizationTable::generate_with_balance(absolute_max_votes, 1);
+        let table = chain_vote::TallyOptimizationTable::generate(absolute_max_votes);
 
         let proposals = encrypted_tally
             .into_iter()
