@@ -203,6 +203,7 @@ impl PrivateVoteCommitteeDataManager {
     }
 
     pub fn write_to(&self, directory: ChildPath) -> std::io::Result<()> {
+        std::fs::create_dir_all(directory.path()).unwrap();
         self.write_encrypting_vote_key(&directory);
         for (id, data) in self.data.iter() {
             let item_directory = directory.child(id.to_bech32_str());
