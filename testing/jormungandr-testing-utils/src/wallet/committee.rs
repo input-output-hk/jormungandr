@@ -8,8 +8,8 @@ use chain_impl_mockchain::{
     vote::VotePlanStatus,
 };
 use chain_vote::{
-    committee::ElectionPublicKey, MemberCommunicationKey, MemberCommunicationPublicKey,
-    MemberPublicKey, MemberState, OpeningVoteKey, CRS,
+    committee::ElectionPublicKey, EncryptingVoteKey, MemberCommunicationKey,
+    MemberCommunicationPublicKey, MemberPublicKey, MemberState, OpeningVoteKey, CRS,
 };
 use jormungandr_lib::crypto::account::Identifier;
 use rand_core::{CryptoRng, RngCore};
@@ -68,13 +68,6 @@ impl PrivateVoteCommitteeData {
         std::fs::create_dir_all(directory.path()).unwrap();
         self.write_communication_key(&directory);
         self.write_member_secret_key(&directory);
-        self.write_encrypting_vote_key(&directory);
-    }
-
-    fn write_encrypting_vote_key(&self, directory: &ChildPath) {
-        let path = directory.child("encrypting_vote_key.sk");
-        let mut file = File::create(path.path()).unwrap();
-        writeln!(file, "{}", self.encrypting_vote_key().to_base32().unwrap()).unwrap()
     }
 
     fn write_communication_key(&self, directory: &ChildPath) {
@@ -201,16 +194,27 @@ impl PrivateVoteCommitteeDataManager {
         self.data.get(identifier)
     }
 
+    pub fn encrypting_vote_key(&self) -> EncryptingVoteKey {
+        chain_vote::EncryptingVoteKey::from_participants(&self.member_public_keys())
+    }
+
     pub fn members(&self) -> Vec<PrivateVoteCommitteeData> {
         self.data.values().cloned().collect()
     }
 
     pub fn write_to(&self, directory: ChildPath) -> std::io::Result<()> {
+        self.write_encrypting_vote_key(&directory);
         for (id, data) in self.data.iter() {
             let item_directory = directory.child(id.to_bech32_str());
             data.write_to(item_directory);
         }
         Ok(())
+    }
+
+    fn write_encrypting_vote_key(&self, directory: &ChildPath) {
+        let path = directory.child("encrypting_vote_key.sk");
+        let mut file = File::create(path.path()).unwrap();
+        writeln!(file, "{}", self.encrypting_vote_key().to_base32().unwrap()).unwrap()
     }
 
     pub fn member_public_keys(&self) -> Vec<MemberPublicKey> {
