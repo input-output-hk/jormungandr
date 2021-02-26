@@ -42,13 +42,13 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
 }
 
-pub async fn get_fragment_statuses(
+pub async fn get_fragment_statuses<'a>(
     context: &Context,
-    ids: Vec<String>,
+    ids: impl IntoIterator<Item = &'a str>,
 ) -> Result<HashMap<String, FragmentStatus>, Error> {
     let ids = ids
         .into_iter()
-        .map(|s| FragmentId::from_str(&s))
+        .map(|s| FragmentId::from_str(s))
         .collect::<Result<Vec<_>, _>>()?;
     let span = span!(parent: context.span()?, Level::TRACE, "fragment_statuses", request = "message_statuses");
     async move {

@@ -24,11 +24,7 @@ pub async fn get_fragment_statuses(
     context: ContextLock,
 ) -> Result<impl Reply, Rejection> {
     let context = context.read().await;
-    let fragment_ids = query
-        .fragment_ids
-        .split(',')
-        .map(|s| s.to_string())
-        .collect();
+    let fragment_ids = query.fragment_ids.split(',');
     logic::get_fragment_statuses(&context, fragment_ids)
         .await
         .map_err(warp::reject::custom)
