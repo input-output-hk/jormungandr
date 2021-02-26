@@ -1,20 +1,17 @@
 use std::fmt::{self, Display};
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self};
 #[cfg(feature = "gelf")]
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use tracing::{level_filters::LevelFilter, Event, Id, Metadata, Subscriber};
+use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
 
-use tracing::span::{Attributes, Record};
 use tracing::subscriber::SetGlobalDefaultError;
-use tracing_subscriber::fmt::SubscriberBuilder;
 #[allow(unused_imports)]
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::layer::{Layer, Layered};
 
 pub struct LogSettings(pub Vec<LogSettingsEntry>, pub LogInfoMsg);
 
@@ -23,7 +20,7 @@ pub struct LogSettings(pub Vec<LogSettingsEntry>, pub LogInfoMsg);
 /// some code executes before the logs are initialized.
 pub type LogInfoMsg = Option<String>;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct LogSettingsEntry {
     pub level: LevelFilter,
     pub format: LogFormat,
@@ -99,117 +96,95 @@ impl FromStr for LogOutput {
     }
 }
 
-struct BoxedSubscriber(Box<dyn Subscriber + Send + Sync>);
-
-impl Subscriber for BoxedSubscriber {
-    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        self.0.enabled(metadata)
-    }
-
-    fn new_span(&self, span: &Attributes<'_>) -> Id {
-        self.0.new_span(span)
-    }
-
-    fn record(&self, span: &Id, values: &Record<'_>) {
-        self.0.record(span, values)
-    }
-
-    fn record_follows_from(&self, span: &Id, follows: &Id) {
-        self.0.record_follows_from(span, follows)
-    }
-
-    fn event(&self, event: &Event<'_>) {
-        self.0.event(event)
-    }
-
-    fn enter(&self, span: &Id) {
-        self.0.enter(span)
-    }
-
-    fn exit(&self, span: &Id) {
-        self.0.exit(span)
-    }
+// Settings for output layers.
+#[derive(Default)]
+struct LogOutputLayerSettings {
+    stdout: Option<LogSettingsEntry>,
+    stderr: Option<LogSettingsEntry>,
+    file: Option<LogSettingsEntry>,
+    #[cfg(feature = "systemd")]
+    journald: Option<LogSettingsEntry>,
+    #[cfg(feature = "gelf")]
+    gelf: Option<LogSettingsEntry>,
 }
 
-impl Layer<BoxedSubscriber> for BoxedSubscriber {}
+impl LogOutputLayerSettings {
+    // Overwrites settings by LogOutput variant, wrapping
+    // log settings entry into and Option
+    fn read_setting(&mut self, setting: LogSettingsEntry) {
+        match setting.output {
+            LogOutput::Stdout => {
+                self.stdout = Some(setting);
+            }
+            LogOutput::Stderr => {
+                self.stderr = Some(setting);
+            }
+            LogOutput::File(_) => {
+                self.file = Some(setting);
+            }
+            #[cfg(feature = "systemd")]
+            LogOutput::Journald => {
+                self.journald = Some(setting);
+            }
+            #[cfg(feature = "gelf")]
+            LogOutput::Gelf { .. } => {
+                self.gelf = Some(setting);
+            }
+        }
+    }
+}
 
 impl LogSettings {
     pub fn init_log(self) -> Result<(Vec<WorkerGuard>, LogInfoMsg), Error> {
-        // WIP: Replacing this code
-        //
-        // * Use tracing_subscriber::registry::Registry instead of
-        //   boxing subscribers
-        // * Create specific layer types for each output format, implement
-        //   ````
-        //   impl<S> tracing_subscriber::Layer<S> for OutputLayer
-        //   where
-        //       S: Subscriber + for<'span> LookupSpan<'span>
-        //   ```
-        //   * implement uniform process of composing Layer and Subscriber types
-        //     for each output format
         use tracing_subscriber::prelude::*;
         let mut guards = Vec::new();
-        let mut layers: Vec<Layered<_, BoxedSubscriber>> = Vec::new();
+
+        let registry = tracing_subscriber::registry();
+
+        // Parse which settings are present for possible outputs
+        let mut layer_settings = LogOutputLayerSettings::default();
         for config in self.0.into_iter() {
-            let (subscriber, guard) = config.to_subscriber()?;
-            let subscriber = BoxedSubscriber(subscriber);
-
-            let layer: Layered<_, _, BoxedSubscriber> =
-                tracing_subscriber::layer::Identity::new().with_subscriber(subscriber);
-
-            layers.push(layer);
-            if let Some(guard) = guard {
-                guards.push(guard);
-            }
+            layer_settings.read_setting(config);
         }
-
-        let mut layer_iter = layers.into_iter();
-        if let Some(layer) = layer_iter.next() {
-            let mut init_layer: BoxedSubscriber = BoxedSubscriber(Box::new(layer));
-            for layer in layer_iter {
-                init_layer = BoxedSubscriber(Box::new(init_layer.with(layer)));
+        let (std_out_layer, std_out_layer_json) = if let Some(settings) = layer_settings.stdout {
+            let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
+            guards.push(guard);
+            match settings.format {
+                LogFormat::Default | LogFormat::Plain => {
+                    let layer = tracing_subscriber::fmt::Layer::new().with_writer(non_blocking);
+                    (Some(layer), None)
+                }
+                LogFormat::Json => {
+                    let layer = tracing_subscriber::fmt::Layer::new()
+                        .json()
+                        .with_writer(non_blocking);
+                    (None, Some(layer))
+                }
             }
-            // FIXME: this should only be run once
-            tracing::subscriber::set_global_default(init_layer)
-                .map_err(Error::SetGlobalSubscriberError)?;
-        }
-
-        Ok((guards, self.1))
-    }
-}
-
-impl LogSettingsEntry {
-    fn to_subscriber(
-        &self,
-    ) -> Result<(Box<dyn Subscriber + Send + Sync>, Option<WorkerGuard>), Error> {
-        let Self {
-            output,
-            level,
-            format,
-        } = self;
-
-        let builder = SubscriberBuilder::default();
-
-        match output {
-            LogOutput::Stdout => {
-                let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
-                let builder = builder.with_writer(non_blocking).with_max_level(*level);
-                let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
-                    LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
-                    LogFormat::Json => Box::new(builder.json().finish()),
-                };
-                Ok((subscriber, Some(guard)))
+        } else {
+            (None, None)
+        };
+        let (std_err_layer, std_err_layer_json) = if let Some(settings) = layer_settings.stderr {
+            let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stderr());
+            guards.push(guard);
+            match settings.format {
+                LogFormat::Default | LogFormat::Plain => {
+                    let layer = tracing_subscriber::fmt::Layer::new().with_writer(non_blocking);
+                    (Some(layer), None)
+                }
+                LogFormat::Json => {
+                    let layer = tracing_subscriber::fmt::Layer::new()
+                        .json()
+                        .with_writer(non_blocking);
+                    (None, Some(layer))
+                }
             }
-            LogOutput::Stderr => {
-                let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stderr());
-                let builder = builder.with_writer(non_blocking).with_max_level(*level);
-                let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
-                    LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
-                    LogFormat::Json => Box::new(builder.json().finish()),
-                };
-                Ok((subscriber, Some(guard)))
-            }
-            LogOutput::File(path) => {
+        } else {
+            (None, None)
+        };
+        let (file_layer, file_layer_json) = if let Some(settings) = layer_settings.file {
+            // have to use if let because it's an enum
+            if let LogOutput::File(path) = settings.output {
                 let file = fs::OpenOptions::new()
                     .create(true)
                     .write(true)
@@ -220,35 +195,58 @@ impl LogSettingsEntry {
                         cause,
                     })?;
                 let (non_blocking, guard) = tracing_appender::non_blocking(file);
-                let builder = builder.with_writer(non_blocking).with_max_level(*level);
-                let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
-                    LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
-                    LogFormat::Json => Box::new(builder.json().finish()),
-                };
-                Ok((subscriber, Some(guard)))
+                guards.push(guard);
+                match settings.format {
+                    LogFormat::Default | LogFormat::Plain => {
+                        let layer = tracing_subscriber::fmt::Layer::new().with_writer(non_blocking);
+                        (Some(layer), None)
+                    }
+                    LogFormat::Json => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .json()
+                            .with_writer(non_blocking);
+                        (None, Some(layer))
+                    }
+                }
+            } else {
+                (None, None)
             }
-            #[cfg(feature = "systemd")]
-            LogOutput::Journald => {
-                format.require_default()?;
-                let layer = tracing_journald::layer().map_err(Error::Journald)?;
-                let subscriber = builder.with_max_level(*level).finish().with(layer);
-                Ok((Box::new(subscriber), None))
-            }
-            #[cfg(feature = "gelf")]
-            LogOutput::Gelf {
-                backend: address,
-                log_id: _graylog_source,
-            } => {
-                format.require_default()?;
-                // TODO: maybe handle this tasks outside somehow.
-                let (layer, task) = tracing_gelf::Logger::builder()
-                    .connect_tcp(address.clone())
-                    .map_err(Error::Gelf)?;
-                tokio::spawn(task);
-                let subscriber = builder.with_max_level(*level).finish().with(layer);
-                Ok((Box::new(subscriber), None))
-            }
-        }
+        } else {
+            (None, None)
+        };
+        #[cfg(feature = "systemd")]
+        let journald_layer = if let Some(entry) = layer_settings.journald {
+            entry.format.require_default()?;
+            let layer = tracing_journald::layer().map_err(Error::Journald)?;
+            Some(layer)
+        } else {
+            None
+        };
+        #[cfg(feature = "gelf")]
+        let gelf_layer = if let Some(entry) = layer_settings.gelf {
+            let (layer, task) = tracing_gelf::Logger::builder()
+                .connect_tcp(entry.output.backend.clone())
+                .map_err(Error::Gelf)?;
+            tokio::spawn(task);
+            Some(layer)
+        } else {
+            None
+        };
+
+        // configure the registry with optional outputs configured above
+        let registry = registry.with(std_out_layer_json).with(std_out_layer);
+        let registry = registry.with(std_err_layer_json).with(std_err_layer);
+        let registry = registry.with(file_layer_json).with(file_layer);
+        #[cfg(feature = "systemd")]
+        let registry = registry.with(journald_layer);
+        #[cfg(feature = "gelf")]
+        let registry = registry.with(gelf_layer);
+
+        // configure the registry subscriber as the global default,
+        // panics if something goes wrong.
+        registry.init();
+
+        Ok((guards, self.1))
     }
 }
 
