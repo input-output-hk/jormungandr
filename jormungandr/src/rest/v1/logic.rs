@@ -42,7 +42,7 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
 }
 
-pub async fn get_fragments_statuses(
+pub async fn get_fragment_statuses(
     context: &Context,
     ids: Vec<String>,
 ) -> Result<HashMap<String, FragmentStatus>, Error> {
@@ -98,7 +98,7 @@ pub async fn post_fragments(
     Ok(fragment_ids)
 }
 
-pub async fn get_fragments_logs(context: &Context) -> Result<Vec<FragmentLog>, Error> {
+pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Error> {
     let span =
         span!(parent: context.span()?, Level::TRACE, "fragment_logs", request = "fragment_logs");
     async move {
