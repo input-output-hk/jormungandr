@@ -215,15 +215,15 @@ impl LogSettings {
             (None, None)
         };
         #[cfg(feature = "systemd")]
-        let journald_layer = if let Some(entry) = layer_settings.journald {
-            entry.format.require_default()?;
+        let journald_layer = if let Some(settings) = layer_settings.journald {
+            settings.format.require_default()?;
             let layer = tracing_journald::layer().map_err(Error::Journald)?;
             Some(layer)
         } else {
             None
         };
         #[cfg(feature = "gelf")]
-        let gelf_layer = if let Some(entry) = layer_settings.gelf {
+        let gelf_layer = if let Some(settings) = layer_settings.gelf {
             // have to use if let because it's an enum
             if let LogOutput::Gelf { backend, .. } = settings.output {
                 let (layer, task) = tracing_gelf::Logger::builder()
