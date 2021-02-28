@@ -2,24 +2,26 @@ use crate::testing::AdversaryFragmentSender;
 use crate::testing::FragmentSender;
 use crate::testing::FragmentSenderSetup;
 use crate::testing::RemoteJormungandr;
+use crate::testing::SyncNode;
 use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::FragmentId;
 use jortestkit::load::{Id, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
-pub struct AdversaryFragmentGenerator<'a> {
+
+pub struct AdversaryFragmentGenerator<'a, S: SyncNode + Send> {
     wallets: Vec<Wallet>,
     jormungandr: RemoteJormungandr,
-    fragment_sender: FragmentSender<'a>,
-    adversary_fragment_sender: AdversaryFragmentSender<'a>,
+    fragment_sender: FragmentSender<'a, S>,
+    adversary_fragment_sender: AdversaryFragmentSender<'a, S>,
     rand: OsRng,
     split_marker: usize,
 }
 
-impl<'a> AdversaryFragmentGenerator<'a> {
+impl<'a, S: SyncNode + Send> AdversaryFragmentGenerator<'a, S> {
     pub fn new(
         jormungandr: RemoteJormungandr,
-        fragment_sender: FragmentSender<'a>,
-        adversary_fragment_sender: AdversaryFragmentSender<'a>,
+        fragment_sender: FragmentSender<'a, S>,
+        adversary_fragment_sender: AdversaryFragmentSender<'a, S>,
     ) -> Self {
         Self {
             wallets: Vec::new(),
@@ -85,7 +87,7 @@ impl<'a> AdversaryFragmentGenerator<'a> {
     }
 }
 
-impl<'a> RequestGenerator for AdversaryFragmentGenerator<'a> {
+impl<'a, S: SyncNode + Send> RequestGenerator for AdversaryFragmentGenerator<'a, S> {
     fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
         self.send_transaction()
             .map(|fragment_id| vec![Some(fragment_id.to_string())])

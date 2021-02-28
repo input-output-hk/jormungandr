@@ -62,30 +62,14 @@ impl AdversaryFragmentSenderError {
     }
 }
 
-pub struct AdversaryFragmentSenderSetup<'a> {
+pub struct AdversaryFragmentSenderSetup<'a, A: SyncNode + Send> {
     pub verify: bool,
-    pub sync_nodes: Vec<&'a (dyn SyncNode)>,
+    pub sync_nodes: Vec<&'a A>,
     pub dump_fragments: Option<PathBuf>,
 }
 
-impl<'a> AdversaryFragmentSenderSetup<'a> {
-    pub fn no_verify() -> Self {
-        Self {
-            verify: false,
-            sync_nodes: vec![],
-            dump_fragments: None,
-        }
-    }
-
-    pub fn with_verify() -> Self {
-        Self {
-            verify: true,
-            sync_nodes: vec![],
-            dump_fragments: None,
-        }
-    }
-
-    pub fn sync_before(nodes: Vec<&'a (dyn SyncNode)>) -> Self {
+impl<'a, A: SyncNode + Send> AdversaryFragmentSenderSetup<'a, A> {
+    pub fn sync_before(nodes: Vec<&'a A>) -> Self {
         Self {
             verify: true,
             sync_nodes: nodes,
@@ -101,22 +85,42 @@ impl<'a> AdversaryFragmentSenderSetup<'a> {
         self.sync_nodes.is_empty()
     }
 
-    pub fn sync_nodes(&self) -> Vec<&'a (dyn SyncNode)> {
+    pub fn sync_nodes(&self) -> Vec<&'a A> {
         self.sync_nodes.clone()
     }
 }
 
-pub struct AdversaryFragmentSender<'a> {
-    block0_hash: Hash,
-    fees: LinearFee,
-    setup: AdversaryFragmentSenderSetup<'a>,
+impl<'a> AdversaryFragmentSenderSetup<'a, DummySyncNode> {
+    pub fn no_verify() -> Self {
+        Self {
+            verify: false,
+            sync_nodes: vec![],
+            dump_fragments: None,
+        }
+    }
+
+    pub fn with_verify() -> Self {
+        Self {
+            verify: true,
+            sync_nodes: vec![],
+            dump_fragments: None,
+        }
+    }
 }
 
-impl<'a> AdversaryFragmentSender<'a> {
+use super::DummySyncNode;
+
+pub struct AdversaryFragmentSender<'a, S: SyncNode + Send> {
+    block0_hash: Hash,
+    fees: LinearFee,
+    setup: AdversaryFragmentSenderSetup<'a, S>,
+}
+
+impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
     pub fn new(
         block0_hash: Hash,
         fees: LinearFee,
-        setup: AdversaryFragmentSenderSetup<'a>,
+        setup: AdversaryFragmentSenderSetup<'a, S>,
     ) -> Self {
         Self {
             block0_hash,
@@ -125,9 +129,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         }
     }
 
-    pub fn send_random_faulty_transaction<
-        A: FragmentNode + SyncNode + Sized + Sync + Send + Send + Sync,
-    >(
+    pub fn send_random_faulty_transaction<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,
         to: &Wallet,
@@ -153,7 +155,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         }
     }
 
-    pub fn send_faulty_full_delegation<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+    pub fn send_faulty_full_delegation<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,
         to: PoolId,
@@ -186,7 +188,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         }
     }
 
-    pub fn send_faulty_transactions<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+    pub fn send_faulty_transactions<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         n: u32,
         mut wallet1: &mut Wallet,
@@ -200,7 +202,7 @@ impl<'a> AdversaryFragmentSender<'a> {
     }
 
     pub fn send_faulty_transactions_with_iteration_delay<
-        A: FragmentNode + SyncNode + Sized + Sync + Send,
+        A: FragmentNode + SyncNode + Sized + Send,
     >(
         &self,
         n: u32,
@@ -216,7 +218,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         Ok(())
     }
 
-    fn verify<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+    fn verify<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         check: &MemPoolCheck,
         node: &A,
@@ -249,7 +251,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         Ok(())
     }
 
-    pub fn send_fragment<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+    pub fn send_fragment<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         fragment: Fragment,
         node: &A,
@@ -266,7 +268,7 @@ impl<'a> AdversaryFragmentSender<'a> {
         Ok(MemPoolCheck::new(fragment.id()))
     }
 
-    fn wait_for_node_sync_if_enabled<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+    fn wait_for_node_sync_if_enabled<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         node: &A,
     ) -> Result<(), SyncNodeError> {

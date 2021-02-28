@@ -24,11 +24,13 @@ use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
         benchmark_consumption,
+        fragments::DummySyncNode,
         network_builder::{
             Blockchain, LeadershipMode, NodeAlias, NodeSetting, PersistenceMode, SpawnParams,
             Topology, Wallet as WalletSetting, WalletAlias,
         },
         ConsumptionBenchmarkRun, FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
+        SyncNode,
     },
     wallet::Wallet,
     Version,
@@ -458,14 +460,14 @@ impl Controller {
         }
     }
 
-    pub fn fragment_sender(&self) -> FragmentSender {
-        self.fragment_sender_with_setup(Default::default())
+    pub fn fragment_sender(&self) -> FragmentSender<DummySyncNode> {
+        self.fragment_sender_with_setup(FragmentSenderSetup::default())
     }
 
-    pub fn fragment_sender_with_setup<'a>(
+    pub fn fragment_sender_with_setup<'a, S: SyncNode + Send>(
         &self,
-        setup: FragmentSenderSetup<'a>,
-    ) -> FragmentSender<'a> {
+        setup: FragmentSenderSetup<'a, S>,
+    ) -> FragmentSender<'a, S> {
         let mut builder = FragmentSenderSetupBuilder::from(setup);
         let root_dir: PathBuf = PathBuf::from(self.working_directory().path());
         builder.dump_fragments_into(root_dir.join("fragments"));
