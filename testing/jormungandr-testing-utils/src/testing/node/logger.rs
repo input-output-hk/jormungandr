@@ -1,29 +1,23 @@
+use crate::testing::Timestamp;
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
-use jortestkit::file as file_utils;
-use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
-use thiserror::Error;
-
-use crate::testing::Timestamp;
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
 use serde::de::Error;
-use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
+use std::cell::{Ref, RefCell};
+use std::io::BufRead;
+use std::process::ChildStdout;
+use std::sync::mpsc::{self, Receiver};
+use std::time::Instant;
 
-#[derive(Debug, Error)]
-pub enum LoggerError {
-    #[error("{log_file}")]
-    LogFileDoesNotExist { log_file: String },
-}
-
-#[derive(Debug, Clone)]
+// TODO: we use a RefCell because it would be very labor intensive to change
+// the rest of the testing framework to take a mutable reference to the logger
 pub struct JormungandrLogger {
-    pub log_file_path: PathBuf,
+    collected: RefCell<Vec<LogEntry>>,
+    rx: Receiver<(Instant, String)>,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone)]
 pub enum Level {
     WARN,
     INFO,
@@ -34,7 +28,7 @@ pub enum Level {
 
 const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfully stored";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Fields {
     #[serde(alias = "message", default = "String::new")]
     pub msg: String,
@@ -49,7 +43,7 @@ pub struct Fields {
 
 // TODO: convert strings to enums for level/task/
 // TODO: convert ts to DateTime
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LogEntry {
     pub level: Level,
     #[serde(alias = "timestamp")]
@@ -123,9 +117,17 @@ impl Into<Timestamp> for LogEntry {
 }
 
 impl JormungandrLogger {
-    pub fn new(path: impl Into<PathBuf>) -> Self {
+    pub fn new(source: ChildStdout) -> Self {
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let lines = std::io::BufReader::new(source).lines();
+            for line in lines {
+                tx.send((Instant::now(), line.unwrap())).unwrap();
+            }
+        });
         JormungandrLogger {
-            log_file_path: path.into(),
+            rx,
+            collected: RefCell::new(Vec::new()),
         }
     }
 
@@ -326,6 +328,17 @@ impl JormungandrLogger {
             println!("Error lines:");
             for line in error_lines {
                 println!("{}", line);
+    fn collect_available_input(&self) {
+        let collected = &mut self.collected.borrow_mut();
+        let now = Instant::now();
+        while let Ok((time, line)) = self.rx.try_recv() {
+            // we are reading from logs produce from the node, if they are not valid there is something wrong
+            collected.push(Self::try_parse_line_as_entry(&line).unwrap());
+            // Stop reading if the are more recent messages available, otherwise
+            // we risk that a very active process could result in endless collection
+            // of its output
+            if time > now {
+                break;
             }
         }
     }
