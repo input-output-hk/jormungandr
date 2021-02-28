@@ -67,7 +67,7 @@ impl TxOnly {
 
         let mut request_gen = BatchFragmentGenerator::new(
             FragmentSenderSetup::no_verify(),
-            remote_jormungandr.clone(),
+            remote_jormungandr,
             block0_hash,
             fees,
             10,
@@ -82,6 +82,9 @@ impl TxOnly {
             30,
         );
 
+        let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
+        builder.with_rest(self.endpoint.parse().unwrap());
+        let remote_jormungandr = builder.build();
         let status_provider = FragmentStatusProvider::new(remote_jormungandr);
 
         let stats =
