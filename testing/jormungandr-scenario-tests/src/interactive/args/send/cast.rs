@@ -1,6 +1,5 @@
 use super::UserInteractionController;
 use crate::{style, test::Result};
-use jortestkit::prelude::InteractiveCommandError;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -41,54 +40,20 @@ impl CastVote {
             panic!("Either proposal_index or proposal id has to be provided")
         });
 
-        let node = controller
-            .nodes()
-            .iter()
-            .cloned()
-            .find(|x| *x.alias() == self.via);
-        let legacy_node = controller
-            .legacy_nodes()
-            .iter()
-            .cloned()
-            .find(|x| *x.alias() == self.via);
-
-        if let Some(node) = node {
-            let mem_pool_check = controller.cast_vote(
-                &self.wallet,
-                &self.vote_plan,
-                &node,
-                proposal_index,
-                self.choice,
-            )?;
-            println!(
-                "{}",
-                style::info.apply_to(format!(
-                    "vote cast fragment '{}' successfully sent",
-                    mem_pool_check.fragment_id()
-                ))
-            );
-            return Ok(());
-        } else if let Some(legacy_node) = legacy_node {
-            let mem_pool_check = controller.cast_vote(
-                &self.wallet,
-                &self.vote_plan,
-                &legacy_node,
-                proposal_index,
-                self.choice,
-            )?;
-            println!(
-                "{}",
-                style::info.apply_to(format!(
-                    "vote cast fragment '{}' successfully sent",
-                    mem_pool_check.fragment_id()
-                ))
-            );
-            return Ok(());
-        }
-
-        Err(
-            InteractiveCommandError::UserError(format!("alias not found {}", self.via.clone()))
-                .into(),
-        )
+        let mem_pool_check = controller.cast_vote(
+            &self.wallet,
+            &self.vote_plan,
+            &self.via,
+            proposal_index,
+            self.choice,
+        )?;
+        println!(
+            "{}",
+            style::info.apply_to(format!(
+                "vote cast fragment '{}' successfully sent",
+                mem_pool_check.fragment_id()
+            ))
+        );
+        Ok(())
     }
 }

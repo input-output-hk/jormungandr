@@ -2,10 +2,8 @@ use crate::{legacy::LegacyNodeController, test::Result};
 use crate::{node::NodeController, scenario::Controller};
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::Value;
-use jormungandr_testing_utils::{
-    testing::{FragmentNode, SyncNode},
-    wallet::Wallet,
-};
+use jormungandr_testing_utils::wallet::Wallet;
+use jortestkit::prelude::InteractiveCommandError;
 use structopt::{clap::AppSettings, StructOpt};
 
 pub mod describe;
@@ -63,11 +61,14 @@ impl UserInteractionController {
         &mut self.controller
     }
 
-    pub fn tally_vote<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+    // It is easier to convert to test::Result with ?, or we would have to individually
+    // map errors for each match arm with verbose Into syntax
+    #[allow(clippy::try_err)]
+    pub fn tally_vote(
         &mut self,
         committee_alias: &str,
         vote_plan_alias: &str,
-        via: &A,
+        node_alias: &str,
     ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
         let committee_address = self.controller.wallet(&committee_alias)?.address();
         let vote_plan_def = self.controller.vote_plan(vote_plan_alias)?;
@@ -78,21 +79,38 @@ impl UserInteractionController {
             .find(|x| x.address() == committee_address)
             .unwrap_or_else(|| panic!("cannot find wallet with alias: {}", committee_alias));
 
-        let check = self.controller.fragment_sender().send_public_vote_tally(
-            committee,
-            &vote_plan_def.into(),
-            via,
-        )?;
+        let node = self.nodes.iter().find(|x| x.alias() == node_alias);
+        let legacy_node = self.legacy_nodes.iter().find(|x| x.alias() == node_alias);
+
+        let check = match (node, legacy_node) {
+            (Some(node), None) => self.controller.fragment_sender().send_public_vote_tally(
+                committee,
+                &vote_plan_def.into(),
+                node,
+            )?,
+            (None, Some(node)) => self.controller.fragment_sender().send_public_vote_tally(
+                committee,
+                &vote_plan_def.into(),
+                node,
+            )?,
+            _ => Err(InteractiveCommandError::UserError(format!(
+                "alias not found {}",
+                node_alias
+            )))?,
+        };
 
         *self.wallets_mut() = temp_wallets;
         Ok(check)
     }
 
-    pub fn cast_vote<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+    // It is easier to convert to test::Result with ?, or we would have to individually
+    // map errors for each match arm with verbose Into syntax
+    #[allow(clippy::try_err)]
+    pub fn cast_vote(
         &mut self,
         wallet_alias: &str,
         vote_plan_alias: &str,
-        via: &A,
+        node_alias: &str,
         proposal_index: usize,
         choice: u8,
     ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
@@ -105,23 +123,42 @@ impl UserInteractionController {
             .find(|x| x.address() == address)
             .unwrap_or_else(|| panic!("cannot find wallet with alias: {}", wallet_alias));
 
-        let check = self.controller.fragment_sender().send_vote_cast(
-            wallet,
-            &vote_plan_def.into(),
-            proposal_index as u8,
-            &Choice::new(choice),
-            via,
-        )?;
+        let node = self.nodes.iter().find(|x| x.alias() == node_alias);
+        let legacy_node = self.legacy_nodes.iter().find(|x| x.alias() == node_alias);
+
+        let check = match (node, legacy_node) {
+            (Some(node), None) => self.controller.fragment_sender().send_vote_cast(
+                wallet,
+                &vote_plan_def.into(),
+                proposal_index as u8,
+                &Choice::new(choice),
+                node,
+            )?,
+            (None, Some(node)) => self.controller.fragment_sender().send_vote_cast(
+                wallet,
+                &vote_plan_def.into(),
+                proposal_index as u8,
+                &Choice::new(choice),
+                node,
+            )?,
+            _ => Err(InteractiveCommandError::UserError(format!(
+                "alias not found {}",
+                node_alias
+            )))?,
+        };
 
         *self.wallets_mut() = temp_wallets;
         Ok(check)
     }
 
-    pub fn send_transaction<A: FragmentNode + SyncNode + Sized + Sync + Send>(
+    // It is easier to convert to test::Result with ?, or we would have to individually
+    // map errors for each match arm with verbose Into syntax
+    #[allow(clippy::try_err)]
+    pub fn send_transaction(
         &mut self,
         from_str: &str,
         to_str: &str,
-        via: &A,
+        node_alias: &str,
         value: Value,
     ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
         let from_address = self.controller.wallet(&from_str)?.address();
@@ -140,10 +177,24 @@ impl UserInteractionController {
             .find(|x| x.address() == from_address)
             .unwrap_or_else(|| panic!("cannot find wallet with alias: {}", from_str));
 
-        let check = self
-            .controller
-            .fragment_sender()
-            .send_transaction(from, &to, via, value)?;
+        let node = self.nodes.iter().find(|x| x.alias() == node_alias);
+        let legacy_node = self.legacy_nodes.iter().find(|x| x.alias() == node_alias);
+
+        let check = match (node, legacy_node) {
+            (Some(node), None) => self
+                .controller
+                .fragment_sender()
+                .send_transaction(from, &to, node, value)?,
+            (None, Some(node)) => self
+                .controller
+                .fragment_sender()
+                .send_transaction(from, &to, node, value)?,
+            _ => Err(InteractiveCommandError::UserError(format!(
+                "alias not found {}",
+                node_alias
+            )))?,
+        };
+
         *self.wallets_mut() = temp_wallets;
         Ok(check)
     }
