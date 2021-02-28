@@ -34,13 +34,13 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 /// send query to a running node
-#[derive(Clone)]
 pub struct LegacyNodeController {
     alias: NodeAlias,
     grpc_client: JormungandrClient,
     settings: LegacySettings,
     progress_bar: ProgressBarController,
     status: Arc<Mutex<Status>>,
+    logger: JormungandrLogger,
 }
 
 pub struct LegacyNode {
@@ -503,16 +503,8 @@ impl LegacyNodeController {
         }
     }
 
-    pub fn logger(&self) -> JormungandrLogger {
-        let log_file = self
-            .settings
-            .config
-            .log
-            .as_ref()
-            .unwrap()
-            .file_path()
-            .unwrap();
-        JormungandrLogger::new(log_file)
+    pub fn logger(&self) -> &JormungandrLogger {
+        &self.logger
     }
 }
 
@@ -521,13 +513,14 @@ impl LegacyNode {
         &self.alias
     }
 
-    pub fn controller(&self) -> LegacyNodeController {
+    pub fn controller(mut self) -> LegacyNodeController {
         let p2p_address = format!("{}", self.node_settings.config().p2p.public_address);
 
         LegacyNodeController {
             alias: self.alias().clone(),
             grpc_client: JormungandrClient::from_address(&p2p_address)
                 .expect("cannot setup grpc client"),
+            logger: JormungandrLogger::new(self.process.stdout.take().unwrap()),
             settings: self.node_settings.clone(),
             status: self.status.clone(),
             progress_bar: self.progress_bar.clone(),

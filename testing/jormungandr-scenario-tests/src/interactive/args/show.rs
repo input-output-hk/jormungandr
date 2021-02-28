@@ -193,7 +193,7 @@ fn show_logs_for(
     contains: &Option<String>,
     alias: &str,
     tail: Option<usize>,
-    logger: JormungandrLogger,
+    logger: &JormungandrLogger,
 ) {
     let logs: Vec<String> = {
         if only_errors {
