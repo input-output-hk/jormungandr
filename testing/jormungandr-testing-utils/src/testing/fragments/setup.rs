@@ -29,7 +29,7 @@ impl<'a> fmt::Debug for VerifyStrategy<'a> {
 #[derive(Clone)]
 pub struct FragmentSenderSetup<'a> {
     pub resend_on_error: Option<u8>,
-    pub sync_nodes: Vec<&'a (dyn SyncNode + Sync + Send)>,
+    pub sync_nodes: Vec<&'a (dyn SyncNode)>,
     pub ignore_any_errors: bool,
     pub dump_fragments: Option<PathBuf>,
     /// Sender will confirm transaction (increment account counter)
@@ -56,7 +56,7 @@ impl<'a> FragmentSenderSetup<'a> {
         builder.into()
     }
 
-    pub fn resend_3_times_and_sync_with(sync_nodes: Vec<&'a (dyn SyncNode + Sync + Send)>) -> Self {
+    pub fn resend_3_times_and_sync_with(sync_nodes: Vec<&'a (dyn SyncNode)>) -> Self {
         let mut builder = FragmentSenderSetupBuilder::new();
         builder.resend_on_error(3).sync_nodes(sync_nodes);
         builder.into()
@@ -84,7 +84,7 @@ impl<'a> FragmentSenderSetup<'a> {
         self.resend_on_error
     }
 
-    pub fn sync_nodes(&self) -> Vec<&'a (dyn SyncNode + Send + Sync)> {
+    pub fn sync_nodes(&self) -> Vec<&'a (dyn SyncNode)> {
         self.sync_nodes.clone()
     }
 
@@ -144,7 +144,7 @@ impl<'a> FragmentSenderSetupBuilder<'a> {
         self
     }
 
-    pub fn sync_nodes(&mut self, sync_nodes: Vec<&'a (dyn SyncNode + Send + Sync)>) -> &mut Self {
+    pub fn sync_nodes(&mut self, sync_nodes: Vec<&'a (dyn SyncNode)>) -> &mut Self {
         self.setup.sync_nodes = sync_nodes;
         self
     }

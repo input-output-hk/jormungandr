@@ -64,7 +64,7 @@ impl AdversaryFragmentSenderError {
 
 pub struct AdversaryFragmentSenderSetup<'a> {
     pub verify: bool,
-    pub sync_nodes: Vec<&'a (dyn SyncNode + Sync + Send)>,
+    pub sync_nodes: Vec<&'a (dyn SyncNode)>,
     pub dump_fragments: Option<PathBuf>,
 }
 
@@ -85,7 +85,7 @@ impl<'a> AdversaryFragmentSenderSetup<'a> {
         }
     }
 
-    pub fn sync_before(nodes: Vec<&'a (dyn SyncNode + Sync + Send)>) -> Self {
+    pub fn sync_before(nodes: Vec<&'a (dyn SyncNode)>) -> Self {
         Self {
             verify: true,
             sync_nodes: nodes,
@@ -101,7 +101,7 @@ impl<'a> AdversaryFragmentSenderSetup<'a> {
         self.sync_nodes.is_empty()
     }
 
-    pub fn sync_nodes(&self) -> Vec<&'a (dyn SyncNode + Send + Sync)> {
+    pub fn sync_nodes(&self) -> Vec<&'a (dyn SyncNode)> {
         self.sync_nodes.clone()
     }
 }

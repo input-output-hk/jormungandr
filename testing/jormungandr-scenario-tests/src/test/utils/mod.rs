@@ -30,9 +30,7 @@ pub fn wait(seconds: u64) {
     std::thread::sleep(Duration::from_secs(seconds));
 }
 
-pub fn measure_single_transaction_propagation_speed<
-    A: SyncNode + FragmentNode + Send + Sized + Sync,
->(
+pub fn measure_single_transaction_propagation_speed<A: SyncNode + FragmentNode + Send + Sized>(
     controller: &mut Controller,
     mut wallet1: &mut Wallet,
     wallet2: &Wallet,
