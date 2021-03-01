@@ -292,10 +292,6 @@ impl SyncNode for JormungandrProcess {
     }
 
     fn is_running(&self) -> bool {
-        if let Status::Running = self.status(&StartupVerificationMode::Log) {
-            true
-        } else {
-            false
-        }
+        matches!(self.status(&StartupVerificationMode::Log), Status::Running)
     }
 }
