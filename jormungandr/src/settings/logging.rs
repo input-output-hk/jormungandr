@@ -196,15 +196,22 @@ impl LogSettings {
                     })?;
                 let (non_blocking, guard) = tracing_appender::non_blocking(file);
                 guards.push(guard);
+
+                use tracing_subscriber::reload;
                 match settings.format {
                     LogFormat::Default | LogFormat::Plain => {
-                        let layer = tracing_subscriber::fmt::Layer::new().with_writer(non_blocking);
+                        // create a reloadable layer, and return the handle
+                        let (layer, _handle) = reload::Layer::new(
+                            tracing_subscriber::fmt::Layer::new().with_writer(non_blocking),
+                        );
                         (Some(layer), None)
                     }
                     LogFormat::Json => {
-                        let layer = tracing_subscriber::fmt::Layer::new()
-                            .json()
-                            .with_writer(non_blocking);
+                        let (layer, _handle) = reload::Layer::new(
+                            tracing_subscriber::fmt::Layer::new()
+                                .json()
+                                .with_writer(non_blocking),
+                        );
                         (None, Some(layer))
                     }
                 }
@@ -239,9 +246,13 @@ impl LogSettings {
         };
 
         // configure the registry with optional outputs configured above
-        let registry = registry.with(std_out_layer_json).with(std_out_layer);
-        let registry = registry.with(std_err_layer_json).with(std_err_layer);
-        let registry = registry.with(file_layer_json).with(file_layer);
+        let registry = registry
+            .with(std_out_layer_json)
+            .with(std_out_layer)
+            .with(std_err_layer_json)
+            .with(std_err_layer)
+            .with(file_layer_json)
+            .with(file_layer);
         #[cfg(feature = "systemd")]
         let registry = registry.with(journald_layer);
         #[cfg(feature = "gelf")]
