@@ -121,12 +121,12 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let rewards_before = jormungandr
         .explorer()
-        .status()
+        .last_block()
         .unwrap()
         .data
         .unwrap()
-        .status
-        .latest_block
+        .main_tip
+        .block
         .treasury
         .unwrap()
         .rewards
@@ -273,12 +273,12 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let rewards_after = jormungandr
         .explorer()
-        .status()
+        .last_block()
         .unwrap()
         .data
         .unwrap()
-        .status
-        .latest_block
+        .main_tip
+        .block
         .treasury
         .unwrap()
         .rewards

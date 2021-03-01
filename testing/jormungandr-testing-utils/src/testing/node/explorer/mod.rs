@@ -97,10 +97,7 @@ impl Explorer {
     }
 
     pub fn blocks(&self, limit: i64) -> Result<Response<all_blocks::ResponseData>, ExplorerError> {
-        let query = AllBlocks::build_query(all_blocks::Variables {
-            first: 0,
-            last: limit,
-        });
+        let query = AllBlocks::build_query(all_blocks::Variables { last: limit });
         self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
