@@ -301,11 +301,18 @@ impl ConfigurationBuilder {
             (None, false) => default_log_file(),
             (None, true) => {
                 let path = default_log_file();
-                node_config.log = Some(Log(vec![LogEntry {
-                    level: "trace".to_string(),
-                    format: "json".to_string(),
-                    output: LogOutput::File(path.clone()),
-                }]));
+                node_config.log = Some(Log(vec![
+                    LogEntry {
+                        level: "trace".to_string(),
+                        format: "json".to_string(),
+                        output: LogOutput::Stdout,
+                    },
+                    LogEntry {
+                        level: "trace".to_string(),
+                        format: "json".to_string(),
+                        output: LogOutput::File(path.clone()),
+                    },
+                ]));
                 path
             }
         };
@@ -382,7 +389,6 @@ impl ConfigurationBuilder {
         );
 
         params.write_node_config();
-
         params
     }
 }
