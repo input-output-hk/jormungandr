@@ -1,0 +1,3 @@
+#!/bin/bash
+set -eo pipefail
+cargo metadata --manifest-path "jormungandr/Cargo.toml" --no-deps --locked --offline --format-version 1 | jq --raw-output '.packages[] | select(.name=="jormungandr").version'

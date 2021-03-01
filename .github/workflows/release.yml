@@ -85,10 +85,7 @@ jobs:
       - id: hash-cargo-lock
         name: Calculate dependency cache key
         run: |
-          hash=$(
-            ci/strip-own-version-from-cargo-lock.pl Cargo.lock |
-            sha1sum | cut -d ' ' -f 1
-          )
+          hash=$( ./ci/get-jormungandr-version | sha1sum | cut -d ' ' -f 1 )
           echo "$hash"
           echo "::set-output name=hash::$hash"
 
