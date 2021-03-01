@@ -21,10 +21,13 @@ pub struct JormungandrLogger {
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, PartialOrd)]
 pub enum Level {
+    #[serde(alias = "TRCE")]
     TRACE,
+    #[serde(alias = "DEBG")]
     DEBUG,
     INFO,
     WARN,
+    #[serde(alias = "ERRO")]
     ERROR,
 }
 
