@@ -31,6 +31,7 @@ use std::{
     process::{Child, Command},
     time::{Duration, Instant},
 };
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -263,9 +264,9 @@ impl Starter {
         if let Some(version) = self.legacy.as_ref() {
             ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)
                 .unwrap()
-                .start_fail(expected_msg)
+                .start_with_fail_in_stderr(expected_msg);
         } else {
-            ConfiguredStarter::new(self, params, temp_dir).start_fail(expected_msg)
+            ConfiguredStarter::new(self, params, temp_dir).start_with_fail_in_stderr(expected_msg);
         }
     }
 }
@@ -334,6 +335,20 @@ where
         }
     }
 
+    fn start_with_fail_in_stderr(self, expected_msg: &str) {
+        get_command(
+            &self.params,
+            &self.starter.jormungandr_app_path,
+            self.starter.role,
+            self.starter.from_genesis,
+        )
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(expected_msg));
+    }
+
     fn start_process(&self) -> Child {
         println!("Starting node");
         println!(
@@ -353,7 +368,6 @@ where
         );
 
         println!("Bootstrapping...");
-
         command
             .spawn()
             .expect("failed to execute 'start jormungandr node'")
