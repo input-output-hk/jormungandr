@@ -137,6 +137,8 @@ impl LogOutputLayerSettings {
 impl LogSettings {
     pub fn init_log(self) -> Result<(Vec<WorkerGuard>, LogInfoMsg), Error> {
         use tracing_subscriber::prelude::*;
+        use tracing_subscriber::reload;
+
         let mut guards = Vec::new();
 
         let registry = tracing_subscriber::registry();
@@ -197,7 +199,6 @@ impl LogSettings {
                 let (non_blocking, guard) = tracing_appender::non_blocking(file);
                 guards.push(guard);
 
-                use tracing_subscriber::reload;
                 match settings.format {
                     LogFormat::Default | LogFormat::Plain => {
                         // create a reloadable layer, and return the handle
@@ -224,7 +225,9 @@ impl LogSettings {
         #[cfg(feature = "systemd")]
         let journald_layer = if let Some(settings) = layer_settings.journald {
             settings.format.require_default()?;
-            let layer = tracing_journald::layer().map_err(Error::Journald)?;
+            // FIXME: use this handle to reload layer
+            let (layer, _handle) =
+                reload::Layer::new(tracing_journald::layer().map_err(Error::Journald)?);
             Some(layer)
         } else {
             None
@@ -237,6 +240,8 @@ impl LogSettings {
                     .connect_tcp(backend)
                     .map_err(Error::Gelf)?;
                 tokio::spawn(task);
+                // FIXME: use this handle to reload layer
+                let (layer, _handle) = reload::Layer::new(layer);
                 Some(layer)
             } else {
                 None
