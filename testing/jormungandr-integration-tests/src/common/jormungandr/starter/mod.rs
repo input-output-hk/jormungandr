@@ -1,7 +1,9 @@
 mod commands;
 pub use commands::{get_command, CommandBuilder};
 
+use super::process::{StartupVerificationMode, Status};
 use super::ConfigurationBuilder;
+use super::JormungandrError;
 use crate::common::{
     configuration::get_jormungandr_app,
     jcli::{JCli, JCliCommand},
@@ -41,22 +43,14 @@ pub enum StartupError {
     LegacyConfigConversion(#[from] LegacyConfigConverterError),
     #[error("node wasn't properly bootstrap after {timeout} s. Log file: {log_content}")]
     Timeout { timeout: u64, log_content: String },
-    #[error("error(s) in log detected: {log_content}")]
-    ErrorInLogsFound { log_content: String },
-    #[error("error(s) in log detected: port already in use")]
-    PortAlreadyInUse,
+    #[error("error(s) while starting")]
+    JormungandrError(#[from] JormungandrError),
     #[error("expected message not found: {entry} in logs: {log_content}")]
     EntryNotFoundInLogs { entry: String, log_content: String },
 }
 
 const DEFAULT_SLEEP_BETWEEN_ATTEMPTS: u64 = 2;
 const DEFAULT_MAX_ATTEMPTS: u64 = 6;
-
-#[derive(Clone, Debug, Copy)]
-pub enum StartupVerificationMode {
-    Rest,
-    Log,
-}
 
 #[derive(Clone, Debug, Copy)]
 pub enum FromGenesis {
@@ -92,92 +86,6 @@ impl From<LeadershipMode> for FromGenesis {
             LeadershipMode::Leader => FromGenesis::File,
             LeadershipMode::Passive => FromGenesis::Hash,
         }
-    }
-}
-
-trait StartupVerification {
-    fn if_stopped(&self) -> bool;
-    fn if_succeed(&self) -> bool;
-}
-
-#[derive(Clone, Debug)]
-struct RestStartupVerification<'a, Conf> {
-    config: &'a JormungandrParams<Conf>,
-}
-
-impl<'a, Conf> RestStartupVerification<'a, Conf> {
-    pub fn new(config: &'a JormungandrParams<Conf>) -> Self {
-        RestStartupVerification { config }
-    }
-}
-
-impl<'a, Conf: TestConfig> StartupVerification for RestStartupVerification<'a, Conf> {
-    fn if_stopped(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path());
-        logger.contains_error().unwrap_or(false)
-    }
-
-    fn if_succeed(&self) -> bool {
-        let jcli: JCli = Default::default();
-
-        let output = JCliCommand::new(Command::new(jcli.path()))
-            .rest()
-            .v0()
-            .node()
-            .stats(&self.config.rest_uri())
-            .build()
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap()
-            .wait_with_output()
-            .expect("failed to execute get_rest_stats command")
-            .try_as_single_node_yaml();
-
-        if output.is_err() {
-            return false;
-        }
-
-        match output.unwrap().get("uptime") {
-            Some(uptime) => {
-                uptime
-                    .parse::<i32>()
-                    .unwrap_or_else(|_| panic!("Cannot parse uptime {}", uptime.to_string()))
-                    > 2
-            }
-            None => false,
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-struct LogStartupVerification<'a, Conf> {
-    config: &'a JormungandrParams<Conf>,
-}
-
-impl<'a, Conf> LogStartupVerification<'a, Conf> {
-    pub fn new(config: &'a JormungandrParams<Conf>) -> Self {
-        LogStartupVerification { config }
-    }
-}
-
-impl<'a, Conf: TestConfig> StartupVerification for LogStartupVerification<'a, Conf> {
-    fn if_stopped(&self) -> bool {
-        let logger = JormungandrLogger::new(self.config.log_file_path());
-        logger.contains_error().unwrap_or(false)
-    }
-
-    fn if_succeed(&self) -> bool {
-        let bootstrap_completed_msgs = [
-            "listening and accepting gRPC connections",
-            "genesis block fetched",
-        ];
-
-        let logger = JormungandrLogger::new(self.config.log_file_path());
-
-        bootstrap_completed_msgs
-            .iter()
-            .any(|msg| logger.contains_message(msg).unwrap_or(false))
     }
 }
 
@@ -403,25 +311,23 @@ where
     Conf: TestConfig + Serialize + Debug,
 {
     fn start_with_fail_in_logs(self, expected_msg_in_logs: &str) -> Result<(), StartupError> {
-        let log_file_path = self.params.log_file_path().to_owned();
         let sleep_duration = self.starter.sleep;
         let timeout = self.starter.timeout;
 
         let start = Instant::now();
-        let _process = self.start_async();
+        let process = self.start_async();
 
         loop {
-            let logger = JormungandrLogger::new(log_file_path.clone());
             if start.elapsed() > timeout {
                 return Err(StartupError::EntryNotFoundInLogs {
                     entry: expected_msg_in_logs.to_string(),
-                    log_content: logger.get_log_content(),
+                    log_content: process.logger.get_log_content(),
                 });
             }
             process_utils::sleep(sleep_duration);
-            if logger
-                .raw_log_contains_any_of(&[expected_msg_in_logs])
-                .unwrap_or(false)
+            if process
+                .logger
+                .raw_log_contains_any_of(vec![expected_msg_in_logs].into_iter())
             {
                 return Ok(());
             }
@@ -472,14 +378,13 @@ where
                 self.temp_dir.take(),
                 self.starter.alias.clone(),
             );
-
-            match (self.verify_is_up(), self.starter.on_fail) {
+            match (self.verify_is_up(&mut jormungandr), self.starter.on_fail) {
                 (Ok(()), _) => {
                     return Ok(jormungandr);
                 }
 
                 (
-                    Err(StartupError::PortAlreadyInUse { .. }),
+                    Err(StartupError::JormungandrError(JormungandrError::PortAlreadyInUse)),
                     OnFail::RetryUnlimitedOnPortOccupied,
                 ) => {
                     println!(
@@ -515,78 +420,26 @@ where
         }
     }
 
-    fn start_fail(self, expected_msg: &str) {
-        get_command(
-            &self.params,
-            &self.starter.jormungandr_app_path,
-            self.starter.role,
-            self.starter.from_genesis,
-        )
-        .stderr(Stdio::piped())
-        .stdout(Stdio::piped())
-        .assert()
-        .failure()
-        .stderr(predicates::str::contains(expected_msg));
-    }
-
-    fn if_succeed(&self) -> bool {
-        match self.starter.verification_mode {
-            StartupVerificationMode::Rest => {
-                RestStartupVerification::new(&self.params).if_succeed()
-            }
-            StartupVerificationMode::Log => LogStartupVerification::new(&self.params).if_succeed(),
-        }
-    }
-
-    fn if_stopped(&self) -> bool {
-        match self.starter.verification_mode {
-            StartupVerificationMode::Rest => {
-                RestStartupVerification::new(&self.params).if_stopped()
-            }
-            StartupVerificationMode::Log => LogStartupVerification::new(&self.params).if_stopped(),
-        }
-    }
-
-    fn custom_errors_found(&self) -> Result<(), StartupError> {
-        let log_file_path = self.params.log_file_path();
-        if !log_file_path.exists() {
-            // Still too early in the startup phase
-            return Ok(());
-        }
-        let logger = JormungandrLogger::new(log_file_path);
-        let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
-        if logger
-            .raw_log_contains_any_of(&port_occupied_msgs)
-            .unwrap_or(false)
-        {
-            Err(StartupError::PortAlreadyInUse)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn verify_is_up(&self) -> Result<(), StartupError> {
+    fn verify_is_up(&self, process: &mut JormungandrProcess) -> Result<(), StartupError> {
         let start = Instant::now();
-        let log_file_path = self.params.log_file_path();
-        let logger = JormungandrLogger::new(log_file_path);
         loop {
             if start.elapsed() > self.starter.timeout {
                 return Err(StartupError::Timeout {
                     timeout: self.starter.timeout.as_secs(),
-                    log_content: file::read_file(&log_file_path),
+                    log_content: process.logger.get_log_content(),
                 });
             }
-            if self.if_succeed() {
-                println!("jormungandr is up");
-                return Ok(());
-            }
-            self.custom_errors_found()?;
-            if self.if_stopped() {
-                println!("attempt stopped due to error signal recieved");
-                logger.print_raw_log();
-                return Err(StartupError::ErrorInLogsFound {
-                    log_content: file::read_file(&log_file_path),
-                });
+            match process.status(&self.starter.verification_mode) {
+                Status::Running => {
+                    println!("jormungandr is up");
+                    return Ok(());
+                }
+                Status::Stopped(err) => {
+                    println!("attempt stopped due to error signal recieved");
+                    println!("Raw log:\n {}", process.logger.get_log_content());
+                    return Err(StartupError::JormungandrError(err));
+                }
+                Status::Starting => {}
             }
             process_utils::sleep(self.starter.sleep);
         }

@@ -1,5 +1,5 @@
 use super::JormungandrError;
-use crate::common::jcli::JCli;
+use crate::common::jcli::{JCli, JCliCommand};
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_time::TimeEra;
@@ -10,15 +10,28 @@ use jormungandr_lib::{
 use jormungandr_testing_utils::testing::{
     node::{
         uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
-        JormungandrStateVerifier,
+        JormungandrStateVerifier, LogLevel,
     },
     JormungandrParams, SyncNode, TestConfig,
 };
 use jormungandr_testing_utils::testing::{RemoteJormungandr, RemoteJormungandrBuilder};
+use jortestkit::process::{self as process_utils, output_extensions::ProcessOutput, ProcessError};
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
+use std::process::Stdio;
 use std::str::FromStr;
+
+pub enum StartupVerificationMode {
+    Log,
+    Rest,
+}
+
+pub enum Status {
+    Running,
+    Starting,
+    Stopped(JormungandrError),
+}
 
 pub struct JormungandrProcess {
     pub child: Child,
@@ -51,6 +64,66 @@ impl JormungandrProcess {
             genesis_block_hash: Hash::from_str(params.genesis_block_hash()).unwrap(),
             block0_configuration: params.block0_configuration().clone(),
             fees: params.fees(),
+        }
+    }
+
+    pub fn status(&self, strategy: &StartupVerificationMode) -> Status {
+        let port_occupied_msgs = vec!["error 87", "error 98", "panicked at 'Box<Any>'"];
+        if self
+            .logger
+            .raw_log_contains_any_of(port_occupied_msgs.into_iter())
+        {
+            return Status::Stopped(JormungandrError::PortAlreadyInUse);
+        }
+        if let Err(err) = self.check_no_errors_in_log() {
+            return Status::Stopped(err);
+        }
+
+        match strategy {
+            StartupVerificationMode::Log => {
+                let bootstrap_completed_msgs = vec![
+                    "listening and accepting gRPC connections",
+                    "genesis block fetched",
+                ];
+
+                if self
+                    .logger
+                    .raw_log_contains_any_of(bootstrap_completed_msgs.into_iter())
+                {
+                    Status::Running
+                } else {
+                    Status::Starting
+                }
+            }
+            StartupVerificationMode::Rest => {
+                let jcli: JCli = Default::default();
+
+                let output = JCliCommand::new(std::process::Command::new(jcli.path()))
+                    .rest()
+                    .v0()
+                    .node()
+                    .stats(&self.rest_uri())
+                    .build()
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .unwrap()
+                    .wait_with_output()
+                    .expect("failed to execute get_rest_stats command");
+
+                let output = output.try_as_single_node_yaml();
+
+                match output.ok().map(|x| x.get("uptime").unwrap().clone()) {
+                    Some(uptime)
+                        if uptime.parse::<i32>().unwrap_or_else(|_| {
+                            panic!("Cannot parse uptime {}", uptime.to_string())
+                        }) > 2 =>
+                    {
+                        Status::Running
+                    }
+                    a => Status::Starting,
+                }
+            }
         }
     }
 
