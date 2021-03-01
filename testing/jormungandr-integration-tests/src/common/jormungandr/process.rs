@@ -107,7 +107,7 @@ impl JormungandrProcess {
 
                 let output = output.try_as_single_node_yaml();
 
-                match output.ok().map(|x| x.get("uptime").unwrap().clone()) {
+                match output.ok().and_then(|x| x.get("uptime").cloned()) {
                     Some(uptime)
                         if uptime.parse::<i32>().unwrap_or_else(|_| {
                             panic!("Cannot parse uptime {}", uptime.to_string())
