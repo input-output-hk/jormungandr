@@ -5,7 +5,7 @@ use serde::Serialize;
 use std::fs::File;
 use std::iter::FromIterator;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 pub struct CommandBuilder<'a> {
     bin: &'a Path,
@@ -94,27 +94,12 @@ impl<'a> CommandBuilder<'a> {
             }
         }
 
-        if let Some(log_file) = self.log_file {
-            command.stderr(get_stdio_from_log_file(log_file));
-        }
+        command.stderr(std::process::Stdio::piped());
+        command.stdout(std::process::Stdio::piped());
 
         println!("Running start jormungandr command: {:?}", &command);
         command
     }
-}
-
-#[cfg(unix)]
-fn get_stdio_from_log_file(log_file_path: &Path) -> std::process::Stdio {
-    use std::os::unix::io::{FromRawFd, IntoRawFd};
-    let file = File::create(log_file_path).expect("couldn't create log file for jormungandr");
-    unsafe { Stdio::from_raw_fd(file.into_raw_fd()) }
-}
-
-#[cfg(windows)]
-fn get_stdio_from_log_file(log_file_path: &Path) -> std::process::Stdio {
-    use std::os::windows::io::{FromRawHandle, IntoRawHandle};
-    let file = File::create(log_file_path).expect("couldn't create log file for jormungandr");
-    unsafe { Stdio::from_raw_handle(file.into_raw_handle()) }
 }
 
 pub fn get_command<Conf: TestConfig + Serialize>(
