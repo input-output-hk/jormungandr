@@ -25,13 +25,13 @@ pub fn filter(
             .and(warp::get())
             .and(warp::query())
             .and(with_context.clone())
-            .and_then(handlers::get_fragments_statuses)
+            .and_then(handlers::get_fragment_statuses)
             .boxed();
 
         let logs = warp::path!("logs")
             .and(warp::get())
             .and(with_context)
-            .and_then(handlers::get_fragments_logs)
+            .and_then(handlers::get_fragment_logs)
             .boxed();
 
         root.and(post.or(status).or(logs)).boxed()

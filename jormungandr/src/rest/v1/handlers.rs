@@ -19,25 +19,21 @@ pub struct GetMessageStatusesQuery {
     fragment_ids: String,
 }
 
-pub async fn get_fragments_statuses(
+pub async fn get_fragment_statuses(
     query: GetMessageStatusesQuery,
     context: ContextLock,
 ) -> Result<impl Reply, Rejection> {
     let context = context.read().await;
-    let fragment_ids = query
-        .fragment_ids
-        .split(',')
-        .map(|s| s.to_string())
-        .collect();
-    logic::get_fragments_statuses(&context, fragment_ids)
+    let fragment_ids = query.fragment_ids.split(',');
+    logic::get_fragment_statuses(&context, fragment_ids)
         .await
         .map_err(warp::reject::custom)
         .map(|r| warp::reply::json(&r))
 }
 
-pub async fn get_fragments_logs(context: ContextLock) -> Result<impl Reply, Rejection> {
+pub async fn get_fragment_logs(context: ContextLock) -> Result<impl Reply, Rejection> {
     let context = context.read().await;
-    logic::get_fragments_logs(&context)
+    logic::get_fragment_logs(&context)
         .await
         .map_err(warp::reject::custom)
         .map(|r| warp::reply::json(&r))
