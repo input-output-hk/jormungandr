@@ -27,7 +27,7 @@ chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
-jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
+jortestkit = { git = "https://github.com/Zeegomo/jortestkit.git", branch = "add-info-on-errors" }
 rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"

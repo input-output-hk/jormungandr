@@ -2128,7 +2128,7 @@ dependencies = [
 [[package]]
 name = "jortestkit"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#21f7c09c38d5d72c43ae1e797fda81eb14733e47"
+source = "git+https://github.com/Zeegomo/jortestkit.git?branch=add-info-on-errors#5880bf5e67c59fe6109db77cb9c02cebdd544ca1"
 dependencies = [
  "assert_fs",
  "base64 0.12.3",
