@@ -202,12 +202,14 @@ impl LogSettings {
                 match settings.format {
                     LogFormat::Default | LogFormat::Plain => {
                         // create a reloadable layer, and return the handle
+                        // FIXME: use this handle to reload layer
                         let (layer, _handle) = reload::Layer::new(
                             tracing_subscriber::fmt::Layer::new().with_writer(non_blocking),
                         );
                         (Some(layer), None)
                     }
                     LogFormat::Json => {
+                        // FIXME: use this handle to reload layer
                         let (layer, _handle) = reload::Layer::new(
                             tracing_subscriber::fmt::Layer::new()
                                 .json()
