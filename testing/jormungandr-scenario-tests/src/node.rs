@@ -435,7 +435,7 @@ impl NodeController {
         Err(Error::NodeFailedToBootstrap {
             alias: self.alias().to_string(),
             duration: Duration::from_secs(sleep.as_secs() * max_try),
-            logs: self.logger().get_lines_from_log().collect(),
+            logs: self.logger().get_lines_as_string(),
         })
     }
 
@@ -454,7 +454,7 @@ impl NodeController {
                 "node is still up after {} s from sending shutdown request",
                 sleep.as_secs()
             ),
-            logs: self.logger().get_lines_from_log().collect(),
+            logs: self.logger().get_lines_as_string(),
         })
     }
 
@@ -494,7 +494,7 @@ impl NodeController {
             Err(Error::NodeFailedToShutdown {
                 alias: self.alias().to_string(),
                 message: result,
-                logs: self.logger().get_lines_from_log().collect(),
+                logs: self.logger().get_lines_as_string(),
             })
         }
     }

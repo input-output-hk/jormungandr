@@ -166,8 +166,20 @@ impl JormungandrLogger {
         self.collected.borrow()
     }
 
-    pub fn get_log_content(&self) -> Vec<String> {
-        self.entries().iter().map(LogEntry::to_string).collect()
+    pub fn get_log_content(&self) -> String {
+        self.entries()
+            .iter()
+            .map(LogEntry::to_string)
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    pub fn get_lines_as_string(&self) -> Vec<String> {
+        self.entries().iter().map(|x| x.to_string()).collect()
+    }
+
+    pub fn get_lines(&self) -> Vec<LogEntry> {
+        self.entries().clone()
     }
 
     pub fn get_lines_with_level(&self, level: Level) -> impl Iterator<Item = LogEntry> {
@@ -198,7 +210,7 @@ impl JormungandrLogger {
     pub fn contains_any_of(&self, messages: &[&str]) -> bool {
         self.entries()
             .iter()
-            .any(|line| messages.iter().any(|x| line.contains(x)))
+            .any(|line| messages.iter().any(|x| line.fields.msg.contains(x)))
     }
 
     pub fn get_created_blocks_hashes(&self) -> Vec<Hash> {
@@ -227,7 +239,7 @@ impl JormungandrLogger {
         })
     }
 
-    pub fn assert_no_errors(&mut self, message: &str) {
+    pub fn assert_no_errors(&self, message: &str) {
         let error_lines = self.get_lines_with_level(Level::ERROR).collect::<Vec<_>>();
 
         assert_eq!(

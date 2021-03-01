@@ -2,7 +2,6 @@ use super::{FromGenesis, Role};
 
 use jormungandr_testing_utils::testing::{JormungandrParams, TestConfig};
 use serde::Serialize;
-use std::fs::File;
 use std::iter::FromIterator;
 use std::path::Path;
 use std::process::Command;

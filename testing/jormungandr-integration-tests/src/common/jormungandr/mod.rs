@@ -69,6 +69,6 @@ impl FragmentNode for JormungandrProcess {
         println!("Fragment '{}' in block: {} ({})", fragment_id, block, date);
     }
     fn log_content(&self) -> Vec<String> {
-        self.logger.get_log_content()
+        self.logger.get_lines_as_string()
     }
 }

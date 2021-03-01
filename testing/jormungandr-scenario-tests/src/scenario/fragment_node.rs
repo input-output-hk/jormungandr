@@ -43,6 +43,6 @@ impl FragmentNode for NodeController {
         ));
     }
     fn log_content(&self) -> Vec<String> {
-        self.logger().get_lines_from_log().collect()
+        self.logger().get_lines_as_string()
     }
 }

@@ -3,7 +3,7 @@ use assert_fs::TempDir;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::interfaces::NodeState;
 use jormungandr_testing_utils::testing::{
-    benchmark_speed, SpeedBenchmarkFinish, SpeedBenchmarkRun,
+    benchmark_speed, node::LogLevel, SpeedBenchmarkFinish, SpeedBenchmarkRun,
 };
 
 use crate::mjolnir_app::bootstrap::ClientLoadConfig;
@@ -71,7 +71,12 @@ impl DurationBasedClientLoad {
 
             node.check_no_errors_in_log()?;
 
-            progress_bar.set_error_lines(node.logger.get_lines_with_error().collect());
+            progress_bar.set_error_lines(
+                node.logger
+                    .get_lines_with_level(LogLevel::ERROR)
+                    .map(|x| x.to_string())
+                    .collect(),
+            );
 
             if instant.elapsed().as_secs() > target {
                 return Ok(None);

@@ -1,6 +1,8 @@
 use crate::testing::{
     network_builder::NodeAlias,
-    node::{grpc::JormungandrClient, uri_from_socket_addr, JormungandrLogger, JormungandrRest},
+    node::{
+        grpc::JormungandrClient, uri_from_socket_addr, JormungandrLogger, JormungandrRest, LogLevel,
+    },
     FragmentNode, FragmentNodeError, MemPoolCheck, SyncNode,
 };
 use chain_core::property::Fragment as _;
@@ -9,9 +11,9 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog, NodeConfig},
 };
+use std::process::Child;
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
 
-#[derive(Clone)]
 pub struct RemoteJormungandr {
     rest: Option<JormungandrRest>,
     grpc: Option<JormungandrClient>,
@@ -86,7 +88,10 @@ impl SyncNode for RemoteJormungandr {
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
         match &self.logger {
-            Some(logger) => logger.get_lines_with_error_and_invalid().collect(),
+            Some(logger) => logger
+                .get_lines_with_level(LogLevel::ERROR)
+                .map(|x| x.to_string())
+                .collect(),
             None => vec!["log not available".to_string()],
         }
     }
@@ -141,7 +146,7 @@ impl FragmentNode for RemoteJormungandr {
     }
     fn log_content(&self) -> Vec<String> {
         match &self.logger {
-            Some(logger) => logger.get_lines_from_log().collect(),
+            Some(logger) => logger.get_lines_as_string(),
             None => vec!["log not available".to_string()],
         }
     }
@@ -176,11 +181,6 @@ impl RemoteJormungandrBuilder {
         let grpc_address = node_config.p2p.get_listen_address();
         self.with_grpc(grpc_address.to_string());
 
-        if let Some(log) = node_config.log {
-            if let Some(path) = log.file_path() {
-                self.with_logger(PathBuf::from(path));
-            }
-        }
         self
     }
 
@@ -194,8 +194,8 @@ impl RemoteJormungandrBuilder {
         self
     }
 
-    pub fn with_logger(&mut self, log_file: PathBuf) -> &mut Self {
-        self.logger = Some(JormungandrLogger::new(log_file));
+    pub fn with_logger(&mut self, mut process: Child) -> &mut Self {
+        self.logger = Some(JormungandrLogger::new(process.stdout.take().unwrap()));
         self
     }
 

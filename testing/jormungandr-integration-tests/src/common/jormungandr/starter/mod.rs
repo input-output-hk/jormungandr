@@ -4,31 +4,25 @@ pub use commands::{get_command, CommandBuilder};
 use super::process::{StartupVerificationMode, Status};
 use super::ConfigurationBuilder;
 use super::JormungandrError;
-use crate::common::{
-    configuration::get_jormungandr_app,
-    jcli::{JCli, JCliCommand},
-    jormungandr::process::JormungandrProcess,
-};
+use crate::common::{configuration::get_jormungandr_app, jormungandr::process::JormungandrProcess};
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::{fixture::FixtureError, TempDir};
 use jormungandr_lib::interfaces::NodeConfig;
 use jormungandr_testing_utils::{
     testing::{
-        network_builder::LeadershipMode,
-        node::{configuration::legacy, JormungandrLogger},
-        JormungandrParams, LegacyConfigConverter, LegacyConfigConverterError, SpeedBenchmarkDef,
-        SpeedBenchmarkRun, TestConfig,
+        network_builder::LeadershipMode, node::configuration::legacy, JormungandrParams,
+        LegacyConfigConverter, LegacyConfigConverterError, SpeedBenchmarkDef, SpeedBenchmarkRun,
+        TestConfig,
     },
     Version,
 };
-use jortestkit::file;
-use jortestkit::process::{self as process_utils, output_extensions::ProcessOutput, ProcessError};
+use jortestkit::process::{self as process_utils, ProcessError};
 use serde::Serialize;
 use std::fmt::Debug;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::{
-    process::{Child, Command},
+    process::Child,
     time::{Duration, Instant},
 };
 
@@ -326,10 +320,7 @@ where
                 });
             }
             process_utils::sleep(sleep_duration);
-            if process
-                .logger
-                .raw_log_contains_any_of(vec![expected_msg_in_logs].into_iter())
-            {
+            if process.logger.contains_any_of(&[expected_msg_in_logs]) {
                 return Ok(());
             }
         }

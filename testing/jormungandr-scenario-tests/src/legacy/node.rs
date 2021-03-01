@@ -332,7 +332,7 @@ impl LegacyNodeController {
                 return Err(Error::FragmentNotInMemPoolLogs {
                     alias: self.alias().to_string(),
                     fragment_id: *check.fragment_id(),
-                    logs: self.logger().get_lines_from_log().collect(),
+                    logs: self.logger().get_lines_as_string(),
                 });
             }
             std::thread::sleep(duration);
@@ -342,7 +342,7 @@ impl LegacyNodeController {
             fragment_id: *check.fragment_id(),
             duration: Duration::from_secs(duration.as_secs() * max_try),
             alias: self.alias().to_string(),
-            logs: self.logger().get_lines_from_log().collect(),
+            logs: self.logger().get_lines_as_string(),
         })
     }
 
@@ -438,7 +438,7 @@ impl LegacyNodeController {
         Err(Error::NodeFailedToBootstrap {
             alias: self.alias().to_string(),
             duration: Duration::from_secs(sleep.as_secs() * max_try),
-            logs: self.logger().get_lines_from_log().collect(),
+            logs: self.logger().get_lines_as_string(),
         })
     }
 
@@ -457,7 +457,7 @@ impl LegacyNodeController {
                 "node is still up after {} s from sending shutdown request",
                 sleep.as_secs()
             ),
-            logs: self.logger().get_lines_from_log().collect(),
+            logs: self.logger().get_lines_as_string(),
         })
     }
 
@@ -498,7 +498,7 @@ impl LegacyNodeController {
             Err(Error::NodeFailedToShutdown {
                 alias: self.alias().to_string(),
                 message: result,
-                logs: self.logger().get_lines_from_log().collect(),
+                logs: self.logger().get_lines_as_string(),
             })
         }
     }
