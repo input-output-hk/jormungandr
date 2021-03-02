@@ -10,7 +10,7 @@ pub mod explorer;
  Run some transaction for ~15 minutes or specified no of transactions (100)
 */
 #[cfg(feature = "sanity-non-functional")]
-pub mod sanity;
+pub mod transaction;
 /*
 Long running test for self node (48 h)
 */
@@ -35,7 +35,6 @@ pub mod fragment;
 #[cfg(feature = "sanity-non-functional")]
 pub mod bootstrap;
 
-#[cfg(feature = "sanity-non-functional")]
 pub mod voting;
 
 use crate::common::{
