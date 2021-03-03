@@ -137,7 +137,6 @@ impl LogOutputLayerSettings {
 impl LogSettings {
     pub fn init_log(self) -> Result<(Vec<WorkerGuard>, LogInfoMsg), Error> {
         use tracing_subscriber::prelude::*;
-        use tracing_subscriber::reload;
 
         let mut guards = Vec::new();
 
@@ -201,20 +200,13 @@ impl LogSettings {
 
                 match settings.format {
                     LogFormat::Default | LogFormat::Plain => {
-                        // create a reloadable layer, and return the handle
-                        // FIXME: use this handle to reload layer
-                        let (layer, _handle) = reload::Layer::new(
-                            tracing_subscriber::fmt::Layer::new().with_writer(non_blocking),
-                        );
+                        let layer = tracing_subscriber::fmt::Layer::new().with_writer(non_blocking);
                         (Some(layer), None)
                     }
                     LogFormat::Json => {
-                        // FIXME: use this handle to reload layer
-                        let (layer, _handle) = reload::Layer::new(
-                            tracing_subscriber::fmt::Layer::new()
-                                .json()
-                                .with_writer(non_blocking),
-                        );
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .json()
+                            .with_writer(non_blocking);
                         (None, Some(layer))
                     }
                 }
@@ -227,9 +219,7 @@ impl LogSettings {
         #[cfg(feature = "systemd")]
         let journald_layer = if let Some(settings) = layer_settings.journald {
             settings.format.require_default()?;
-            // FIXME: use this handle to reload layer
-            let (layer, _handle) =
-                reload::Layer::new(tracing_journald::layer().map_err(Error::Journald)?);
+            let layer = tracing_journald::layer().map_err(Error::Journald)?;
             Some(layer)
         } else {
             None
@@ -242,8 +232,6 @@ impl LogSettings {
                     .connect_tcp(backend)
                     .map_err(Error::Gelf)?;
                 tokio::spawn(task);
-                // FIXME: use this handle to reload layer
-                let (layer, _handle) = reload::Layer::new(layer);
                 Some(layer)
             } else {
                 None
