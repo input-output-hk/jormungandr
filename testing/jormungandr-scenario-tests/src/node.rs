@@ -799,6 +799,7 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
         }
 
         command.stderr(Stdio::piped());
+        command.stdout(Stdio::piped());
         command
     }
 }
