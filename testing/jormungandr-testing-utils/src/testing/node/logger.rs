@@ -2,15 +2,19 @@ use crate::testing::Timestamp;
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
-use serde::de::Error;
 use serde::{Deserialize, Serialize};
+
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
+use std::convert::AsRef;
 use std::fmt;
 use std::io::BufRead;
+use std::ops::Index;
+use std::ops::IndexMut;
 use std::process::ChildStdout;
 use std::sync::mpsc::{self, Receiver};
 use std::time::Instant;
+use strum::AsRefStr;
 
 // TODO: we use a RefCell because it would be very labor intensive to change
 // the rest of the testing framework to take a mutable reference to the logger
@@ -19,7 +23,7 @@ pub struct JormungandrLogger {
     rx: Receiver<(Instant, String)>,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, PartialOrd)]
+#[derive(AsRefStr, Serialize, Deserialize, Eq, PartialEq, Debug, Clone, PartialOrd)]
 pub enum Level {
     #[serde(alias = "TRCE")]
     TRACE,
@@ -48,8 +52,28 @@ pub struct LogEntry {
 }
 
 impl fmt::Display for LogEntry {
+    // Similar to tracing_subscriber format::Full (default)
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
+        fn flatten_fields(fields: &RawFields, filter: &str) -> String {
+            fields
+                .iter()
+                .filter(|(k, _)| k.as_str() != filter)
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<_>>()
+                .join(",")
+        }
+
+        write!(f, "{} {} ", self.ts, self.level.as_ref())?;
+        if let Some(spans) = &self.spans {
+            for span in spans {
+                let span_name = span.get("name").cloned().unwrap_or_default();
+                write!(f, "{}{{{}}}: ", span_name, flatten_fields(&span, "name"))?;
+            }
+        }
+        write!(f, " {}: ", self.target)?;
+        let fields = flatten_fields(&self.fields, LogEntry::MESSAGE);
+        write!(f, "{} {}", self.message(), fields)?;
+        Ok(())
     }
 }
 
@@ -304,7 +328,7 @@ impl JormungandrLogger {
                     .collect();
                 *$container.index_mut($field) = mapped;
             };
-        };
+        }
 
         let mut value: serde_json::Value = serde_json::from_str(&line).unwrap();
         stringify_map!(value, "fields");
