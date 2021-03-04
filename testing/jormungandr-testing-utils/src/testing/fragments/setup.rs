@@ -94,6 +94,7 @@ impl<'a, S: SyncNode + Send> FragmentSenderSetup<'a, S> {
     }
 }
 
+#[derive(Clone)]
 pub struct DummySyncNode;
 use crate::testing::fragments::Hash;
 
