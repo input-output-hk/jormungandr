@@ -205,7 +205,7 @@ fn show_logs_for(
             logger
                 .get_lines()
                 .into_iter()
-                .filter(|x| x.fields.msg.contains(contains.as_str()))
+                .filter(|x| x.message().contains(contains.as_str()))
                 .map(|x| x.to_string())
                 .collect()
         } else if let Some(tail) = tail {
