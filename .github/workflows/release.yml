@@ -219,7 +219,9 @@ jobs:
           mkdir .cargo
           cat > .cargo/config.toml <<EOF
           [target.${{ matrix.config.target }}]
-          rustflags = ["-C", "target-cpu=${{ matrix.target_cpu }}", "-C", "lto=thin", "-C", "embed-bitcode=yes"]
+          rustflags = ["-C", "target-cpu=${{ matrix.target_cpu }}"]
+          [profile.release]
+          lto = "thin"
           EOF
 
       - if: ${{ matrix.cross }}
