@@ -111,23 +111,53 @@ struct LogOutputLayerSettings {
 impl LogOutputLayerSettings {
     // Overwrites settings by LogOutput variant, wrapping
     // log settings entry into and Option
-    fn read_setting(&mut self, setting: LogSettingsEntry) {
+    fn read_setting(&mut self, setting: LogSettingsEntry, msgs: &mut Vec<String>) {
         match setting.output {
             LogOutput::Stdout => {
+                if let Some(previous) = &self.stdout {
+                    msgs.push(format!(
+                        "stdout output entry {:?} was overriden by {:?}",
+                        previous, setting
+                    ));
+                }
                 self.stdout = Some(setting);
             }
             LogOutput::Stderr => {
+                if let Some(previous) = &self.stderr {
+                    msgs.push(format!(
+                        "stderr output entry {:?} was overriden by {:?}",
+                        previous, setting
+                    ));
+                }
                 self.stderr = Some(setting);
             }
             LogOutput::File(_) => {
+                if let Some(previous) = &self.file {
+                    msgs.push(format!(
+                        "file output entry {:?} was overriden by {:?}",
+                        previous, setting
+                    ));
+                }
                 self.file = Some(setting);
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
+                if let Some(previous) = &self.journald {
+                    msgs.push(format!(
+                        "journald output entry {:?} was overriden by {:?}",
+                        previous, setting
+                    ));
+                }
                 self.journald = Some(setting);
             }
             #[cfg(feature = "gelf")]
             LogOutput::Gelf { .. } => {
+                if let Some(previous) = &self.gelf {
+                    msgs.push(format!(
+                        "gelf output entry {:?} was overriden by {:?}",
+                        previous, setting
+                    ));
+                }
                 self.gelf = Some(setting);
             }
         }
@@ -144,8 +174,9 @@ impl LogSettings {
 
         // Parse which settings are present for possible outputs
         let mut layer_settings = LogOutputLayerSettings::default();
+        let mut info_msgs: Vec<String> = Vec::new();
         for config in self.0.into_iter() {
-            layer_settings.read_setting(config);
+            layer_settings.read_setting(config, &mut info_msgs);
         }
         let (std_out_layer, std_out_layer_json) = if let Some(settings) = layer_settings.stdout {
             let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
@@ -257,7 +288,16 @@ impl LogSettings {
         // panics if something goes wrong.
         registry.init();
 
-        Ok((guards, self.1))
+        let log_msgs = match (self.1, info_msgs.is_empty()) {
+            (None, true) => None,
+            (None, false) => Some(info_msgs),
+            (Some(msgs), true) => Some(msgs),
+            (Some(mut msgs), false) => {
+                msgs.extend_from_slice(&info_msgs);
+                Some(msgs)
+            }
+        };
+        Ok((guards, log_msgs))
     }
 }
 
