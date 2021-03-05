@@ -2,13 +2,11 @@ mod account_id;
 
 pub mod io;
 pub mod key_parser;
-// pub mod open_api_verifier;
 pub mod output_file;
 pub mod output_format;
 pub mod vote;
 
 pub use self::account_id::AccountId;
-// pub use self::open_api_verifier::OpenApiVerifier;
 pub use self::output_format::OutputFormat;
 
 use structopt::StructOpt;
