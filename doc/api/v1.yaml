@@ -46,23 +46,20 @@ paths:
           description: One of messages is malformed
 
   /api/v1/fragments/statuses:
-    post:
+    get:
       description: Get statuses of fragments
       operationId: FragmentStatuses
       tags:
         - fragment
-      requestBody:
-        description: List of fragment IDs
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                type: string
-                pattern: '[0-9a-f]+'
-            example: ["68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968"]
-          
+      parameters:
+        - in: query
+          name: fragment_ids
+          description: Comma-separated list of fragment IDs
+          schema:
+            type: string
+            pattern: '[0-9a-f]+(,[0-9a-f]+)+'
+          required: true
+          example: '68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968,b34bf76412138543d7b57ea23ff58b6b6c04a954c0badc3cadeafc564f1a771'
       responses:
         '200':
           description: Success. If a fragment is missing from in-memory fragment logs it will not show up in the result dictionary.
