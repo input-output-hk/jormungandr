@@ -63,7 +63,7 @@ impl RawSettings {
 
     pub fn log_settings(&self) -> LogSettings {
         let mut entries = Vec::new();
-        let mut log_info_msg: LogInfoMsg = None;
+        let mut info_msgs: Vec<String> = Vec::new();
 
         //  Read log settings from the config file path.
         if let Some(log) = self.config.as_ref().and_then(|cfg| cfg.log.as_ref()) {
@@ -94,7 +94,7 @@ impl RawSettings {
                 // log to info! that the output was overriden,
                 // we send this as a message because tracing Subscribers
                 // do not get initiated until after this code runs
-                log_info_msg = Some(format!(
+                info_msgs.push(format!(
                     "log settings overriden from command line: {:?} replaced with {:?}",
                     entries, command_line_entry
                 ));
@@ -114,6 +114,11 @@ impl RawSettings {
             });
         }
 
+        let log_info_msg: LogInfoMsg = if info_msgs.is_empty() {
+            None
+        } else {
+            Some(info_msgs)
+        };
         LogSettings(entries, log_info_msg)
     }
 

@@ -18,7 +18,7 @@ pub struct LogSettings(pub Vec<LogSettingsEntry>, pub LogInfoMsg);
 /// A wrapper to return an optional string message that we
 /// have to manually log with `info!`, we need this because
 /// some code executes before the logs are initialized.
-pub type LogInfoMsg = Option<String>;
+pub type LogInfoMsg = Option<Vec<String>>;
 
 #[derive(Clone, Debug)]
 pub struct LogSettingsEntry {
