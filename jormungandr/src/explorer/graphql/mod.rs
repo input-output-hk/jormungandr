@@ -681,7 +681,17 @@ impl Transaction {
             Ok(c.clone())
         } else {
             //TODO: maybe store transactions outside blocks? as Arc, as doing it this way is pretty wasty
-            let block = &self.get_blocks(context).await?[0];
+
+            let block = context
+                .db
+                .get_block(&self.block_hashes[0])
+                .await
+                .ok_or_else(|| {
+                    FieldError::from(ErrorKind::InternalError(
+                        "missing transaction's block body".to_owned(),
+                    ))
+                })?;
+
             Ok(block
                 .transactions
                 .get(&self.id)
