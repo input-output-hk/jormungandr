@@ -213,9 +213,15 @@ jobs:
             ~/.cargo/git/db
           key: cargo-deps-v1-${{ needs.cache_info.outputs.cargo-lock-hash }}
 
-      - name: Create .cargo/config.toml
+      - name: Set up features and cargo config
         shell: bash
         run: |
+          case '${{ matrix.config.os }}' in
+            ubuntu-latest)  features=systemd,gelf ;;
+            *)              features=gelf ;;
+          esac
+          echo "JORMUNGANDR_FEATURES=$features" >> $GITHUB_ENV
+
           mkdir .cargo
           cat > .cargo/config.toml <<EOF
           [target.${{ matrix.config.target }}]
@@ -244,6 +250,7 @@ jobs:
             --manifest-path jormungandr/Cargo.toml
             --bin jormungandr
             --no-default-features
+            --features ${{ env.JORMUNGANDR_FEATURES }}
             --verbose
             --locked
             --release
