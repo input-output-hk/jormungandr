@@ -356,7 +356,7 @@ impl Block {
             contents: Default::default(),
         };
 
-        block.get_explorer_block(db).await.map(|_| block)
+        block.fetch_explorer_block(db).await.map(|_| block)
     }
 
     fn from_valid_hash(hash: HeaderHash) -> Block {
@@ -373,7 +373,7 @@ impl Block {
         }
     }
 
-    async fn get_explorer_block(&self, db: &ExplorerDB) -> FieldResult<Arc<ExplorerBlock>> {
+    async fn fetch_explorer_block(&self, db: &ExplorerDB) -> FieldResult<Arc<ExplorerBlock>> {
         let mut contents = self.contents.lock().await;
         if let Some(block) = &*contents {
             return Ok(Arc::clone(&block));
@@ -419,7 +419,7 @@ impl Block {
 
     /// Date the Block was included in the blockchain
     pub async fn date(&self, context: &Context) -> FieldResult<BlockDate> {
-        self.get_explorer_block(&context.db)
+        self.fetch_explorer_block(&context.db)
             .await
             .map(|b| b.date().into())
     }
@@ -433,7 +433,7 @@ impl Block {
         after: Option<IndexCursor>,
         context: &Context,
     ) -> FieldResult<TransactionConnection> {
-        let explorer_block = self.get_explorer_block(&context.db).await?;
+        let explorer_block = self.fetch_explorer_block(&context.db).await?;
         let mut transactions: Vec<&ExplorerTransaction> =
             explorer_block.transactions.values().collect();
 
@@ -488,13 +488,13 @@ impl Block {
     }
 
     pub async fn chain_length(&self, context: &Context) -> FieldResult<ChainLength> {
-        self.get_explorer_block(&context.db)
+        self.fetch_explorer_block(&context.db)
             .await
             .map(|block| block.chain_length().into())
     }
 
     pub async fn leader(&self, context: &Context) -> FieldResult<Option<Leader>> {
-        self.get_explorer_block(&context.db)
+        self.fetch_explorer_block(&context.db)
             .await
             .map(|block| match block.producer() {
                 BlockProducer::StakePool(pool) => {
@@ -508,19 +508,19 @@ impl Block {
     }
 
     pub async fn previous_block(&self, context: &Context) -> FieldResult<Block> {
-        self.get_explorer_block(&context.db)
+        self.fetch_explorer_block(&context.db)
             .await
             .map(|b| Block::from_valid_hash(b.parent_hash))
     }
 
     pub async fn total_input(&self, context: &Context) -> FieldResult<Value> {
-        self.get_explorer_block(&context.db)
+        self.fetch_explorer_block(&context.db)
             .await
             .map(|block| Value(format!("{}", block.total_input)))
     }
 
     pub async fn total_output(&self, context: &Context) -> FieldResult<Value> {
-        self.get_explorer_block(&context.db)
+        self.fetch_explorer_block(&context.db)
             .await
             .map(|block| Value(format!("{}", block.total_output)))
     }
@@ -1521,10 +1521,10 @@ impl Query {
     }
 
     /// get all current tips, sorted (descending) by their length
-    async fn tips(&self, context: &Context) -> Vec<Branch> {
+    async fn branches(&self, context: &Context) -> Vec<Branch> {
         context
             .db
-            .get_tips()
+            .get_branches()
             .await
             .iter()
             .cloned()
@@ -1532,10 +1532,9 @@ impl Query {
             .collect()
     }
 
-    /// get the block that the ledger currently considers as the main branch's
-    /// tip
-    async fn main_tip(&self, context: &Context) -> Branch {
-        let (hash, state_ref) = context.db.get_main_tip().await;
+    /// get the ref that the ledger currently considers as the main branch's
+    async fn tip(&self, context: &Context) -> Branch {
+        let (hash, state_ref) = context.db.get_tip().await;
         Branch::from_id_and_state(hash, state_ref)
     }
 

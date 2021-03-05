@@ -525,12 +525,12 @@ impl ExplorerDB {
         self.multiverse.get_ref(hash).await
     }
 
-    pub(self) async fn get_main_tip(&self) -> (HeaderHash, multiverse::Ref) {
+    pub(self) async fn get_tip(&self) -> (HeaderHash, multiverse::Ref) {
         let hash = self.longest_chain_tip.get_block_id().await;
         (hash, self.multiverse.get_ref(&hash).await.unwrap())
     }
 
-    pub(self) async fn get_tips(&self) -> Vec<(HeaderHash, multiverse::Ref)> {
+    pub(self) async fn get_branches(&self) -> Vec<(HeaderHash, multiverse::Ref)> {
         self.multiverse.tips().await
     }
 

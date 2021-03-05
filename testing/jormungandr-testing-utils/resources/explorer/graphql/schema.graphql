@@ -206,13 +206,10 @@ type Query {
   transaction(id: String!): Transaction!
 
   """get all current tips, sorted (descending) by their length"""
-  tips: [Branch!]!
+  branches: [Branch!]!
 
-  """
-  get the block that the ledger currently considers as the main branch's
-  tip
-  """
-  mainTip: Branch!
+  """get the ref that the ledger currently considers as the main branch's"""
+  tip: Branch!
   branch(id: String!): Branch!
   epoch(id: EpochNumber!): Epoch!
   address(bech32: String!): Address!

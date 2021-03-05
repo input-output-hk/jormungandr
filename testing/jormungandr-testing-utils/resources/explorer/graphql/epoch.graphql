@@ -9,7 +9,7 @@ query Epoch($id: EpochNumber!, $blocks_limit: Int!) {
     }
     totalBlocks
   }
-  mainTip {
+  tip {
     blocksByEpoch(epoch: $id, first: $blocks_limit) {
       edges {
         node {

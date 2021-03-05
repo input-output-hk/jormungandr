@@ -177,7 +177,7 @@ pub fn test_vote_flow_bft() {
         .unwrap()
         .data
         .unwrap()
-        .main_tip
+        .tip
         .block
         .treasury
         .unwrap()
@@ -209,7 +209,7 @@ pub fn test_vote_flow_bft() {
         .unwrap()
         .data
         .unwrap()
-        .main_tip
+        .tip
         .block
         .treasury
         .unwrap()
@@ -318,7 +318,7 @@ pub fn test_vote_flow_praos() {
         .unwrap()
         .data
         .unwrap()
-        .main_tip
+        .tip
         .block
         .treasury
         .unwrap()
@@ -415,7 +415,7 @@ pub fn jcli_e2e_flow() {
         .unwrap()
         .data
         .unwrap()
-        .main_tip
+        .tip
         .block
         .treasury
         .unwrap()
@@ -521,7 +521,7 @@ pub fn jcli_e2e_flow() {
         .unwrap()
         .data
         .unwrap()
-        .main_tip
+        .tip
         .block
         .treasury
         .unwrap()

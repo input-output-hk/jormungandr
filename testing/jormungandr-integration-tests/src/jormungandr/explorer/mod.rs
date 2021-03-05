@@ -112,7 +112,7 @@ fn blocks(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
     let explorer_blocks = blocks
         .data
         .unwrap()
-        .main_tip
+        .tip
         .blocks
         .edges
         .iter()
@@ -135,7 +135,7 @@ fn blocks(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
 
 fn stake_pools(explorer: &Explorer, initial_stake_pools: &[StakePool]) {
     let stake_pools = explorer.stake_pools(1000).unwrap();
-    let explorer_stake_pools = stake_pools.data.unwrap().main_tip.all_stake_pools.edges;
+    let explorer_stake_pools = stake_pools.data.unwrap().tip.all_stake_pools.edges;
     // we are skipping first block because log doesn't contains genesis block
     assert_eq!(
         initial_stake_pools

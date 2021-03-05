@@ -193,7 +193,7 @@ impl Explorer {
     }
 
     pub fn current_time(&self) -> BlockDate {
-        let date = self.last_block().unwrap().data.unwrap().main_tip.block.date;
+        let date = self.last_block().unwrap().data.unwrap().tip.block.date;
 
         let block_date = LibBlockDate {
             epoch: date.epoch.id.parse().unwrap(),

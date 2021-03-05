@@ -8,7 +8,7 @@ pub fn wait_for_epoch(epoch_id: u64, mut explorer: Explorer) {
         .unwrap()
         .data
         .unwrap()
-        .main_tip
+        .tip
         .block
         .date
         .epoch
@@ -25,14 +25,7 @@ pub fn wait_for_date(target_block_date: BlockDate, mut explorer: Explorer) {
     explorer.enable_logs();
 
     loop {
-        let current_block_date = explorer
-            .last_block()
-            .unwrap()
-            .data
-            .unwrap()
-            .main_tip
-            .block
-            .date;
+        let current_block_date = explorer.last_block().unwrap().data.unwrap().tip.block.date;
 
         let epoch = current_block_date.epoch.id.parse::<u32>().unwrap();
         let slot_id = current_block_date.slot.parse::<u32>().unwrap();

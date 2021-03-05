@@ -1,5 +1,5 @@
 query AllVotePlans($first: Int!) {
-  mainTip {
+  tip {
     allVotePlans(first: $first) {
       edges {
         node {

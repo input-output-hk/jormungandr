@@ -5,7 +5,7 @@ query Address($bech32: String!){
             id
         }
     }
-    mainTip {
+    tip {
         transactionsByAddress(addressBech32: $bech32, last: 10) {
                 edges {
                 node {

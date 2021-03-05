@@ -1,5 +1,5 @@
 query AllStakePools($first: Int!){ 
-    mainTip {
+    tip {
         allStakePools(first: $first) {
             edges{
                 node {

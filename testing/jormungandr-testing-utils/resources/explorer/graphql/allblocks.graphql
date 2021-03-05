@@ -1,5 +1,5 @@
 query AllBlocks($last: Int!) {
-  mainTip {
+  tip {
     blocks(last: $last) {
       edges {
         node {

@@ -125,7 +125,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .unwrap()
         .data
         .unwrap()
-        .main_tip
+        .tip
         .block
         .treasury
         .unwrap()
@@ -277,7 +277,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .unwrap()
         .data
         .unwrap()
-        .main_tip
+        .tip
         .block
         .treasury
         .unwrap()
