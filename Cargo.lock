@@ -1801,7 +1801,6 @@ dependencies = [
  "hex",
  "jormungandr-lib",
  "mime",
- "openapiv3",
  "predicates",
  "rand 0.7.3",
  "rand_chacha 0.2.2",
@@ -2604,18 +2603,6 @@ name = "opaque-debug"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
-
-[[package]]
-name = "openapiv3"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2a8bc246418d720aed4b4361e1df544736d781fd0df3e4e4d1c552510c99633"
-dependencies = [
- "indexmap",
- "serde",
- "serde_json",
- "serde_yaml",
-]
 
 [[package]]
 name = "os_info"
