@@ -7,6 +7,7 @@ use crate::common::{
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
+use jormungandr_lib::interfaces::BlockContentMaxSize;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, FeesGoTo,
     Initial, InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
@@ -48,6 +49,7 @@ pub struct ConfigurationBuilder {
     committee_ids: Vec<CommitteeIdDef>,
     leader_key_pair: Option<KeyPair<Ed25519>>,
     discrimination: Discrimination,
+    block_content_max_size: BlockContentMaxSize,
 }
 
 impl Default for ConfigurationBuilder {
@@ -81,6 +83,7 @@ impl ConfigurationBuilder {
             treasury: None,
             total_reward_supply: None,
             discrimination: Discrimination::Test,
+            block_content_max_size: 4092.into(),
         }
     }
 
@@ -174,6 +177,14 @@ impl ConfigurationBuilder {
         active_slot_coeff: ActiveSlotCoefficient,
     ) -> &mut Self {
         self.consensus_genesis_praos_active_slot_coeff = active_slot_coeff;
+        self
+    }
+
+    pub fn with_block_content_max_size(
+        &mut self,
+        block_content_max_size: BlockContentMaxSize,
+    ) -> &mut Self {
+        self.block_content_max_size = block_content_max_size;
         self
     }
 
@@ -323,6 +334,7 @@ impl ConfigurationBuilder {
 
         let block0_config = Block0ConfigurationBuilder::new()
             .with_discrimination(self.discrimination)
+            .with_block_content_max_size(self.block_content_max_size)
             .with_initial(initial)
             .with_leaders(leaders_ids)
             .with_block0_consensus(self.block0_consensus)

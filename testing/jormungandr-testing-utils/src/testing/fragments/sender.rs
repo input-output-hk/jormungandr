@@ -392,6 +392,11 @@ impl<'a> FragmentSender<'a> {
                     println!("Ignoring error: {:?}", err);
                     return Ok(MemPoolCheck::new(fragment.id()));
                 }
+
+                if self.setup.stop_at_error() {
+                    return Err(err);
+                }
+
                 println!(
                     "Error while sending fragment {:?}. Retrying if possible...",
                     err
