@@ -319,6 +319,9 @@ jobs:
     # we need always() to force the check to run even if one of the needed jobs fails
     if: ${{ always() && needs.build_assets.outputs.status == 'failure' }}
     steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+
       - name: Remove release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
