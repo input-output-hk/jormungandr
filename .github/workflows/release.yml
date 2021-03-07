@@ -213,13 +213,21 @@ jobs:
             ~/.cargo/git/db
           key: cargo-deps-v1-${{ needs.cache_info.outputs.cargo-lock-hash }}
 
-      - name: Create .cargo/config.toml
+      - name: Set up features and cargo config
         shell: bash
         run: |
+          case '${{ matrix.config.os }}' in
+            ubuntu-latest)  features=systemd,gelf ;;
+            *)              features=gelf ;;
+          esac
+          echo "JORMUNGANDR_FEATURES=$features" >> $GITHUB_ENV
+
           mkdir .cargo
           cat > .cargo/config.toml <<EOF
           [target.${{ matrix.config.target }}]
-          rustflags = ["-C", "target-cpu=${{ matrix.target_cpu }}", "-C", "lto=thin", "-C", "embed-bitcode=yes"]
+          rustflags = ["-C", "target-cpu=${{ matrix.target_cpu }}"]
+          [profile.release]
+          lto = "thin"
           EOF
 
       - if: ${{ matrix.cross }}
@@ -242,6 +250,7 @@ jobs:
             --manifest-path jormungandr/Cargo.toml
             --bin jormungandr
             --no-default-features
+            --features ${{ env.JORMUNGANDR_FEATURES }}
             --verbose
             --locked
             --release
@@ -310,7 +319,10 @@ jobs:
     # we need always() to force the check to run even if one of the needed jobs fails
     if: ${{ always() && needs.build_assets.outputs.status == 'failure' }}
     steps:
+      - name: Check out the repository
+        uses: actions/checkout@v2
+
       - name: Remove release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release delete ${{ needs.create_release.outputs.version }}
+        run: hub release delete ${{ needs.create_release.outputs.version }}
