@@ -4,11 +4,13 @@ query Address($bech32: String!){
         delegation{
             id
         }
-        transactions(last: 10) {
-            edges {
+    }
+    tip {
+        transactionsByAddress(addressBech32: $bech32, last: 10) {
+                edges {
                 node {
                     id,
-                    block {
+                    blocks {
                         date{
                             epoch{
                                 id

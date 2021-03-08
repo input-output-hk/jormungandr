@@ -1,18 +1,18 @@
-query LastBlock{	
-    status { 
-        latestBlock {  
-            id,  
-            chainLength,  
-            date {  
-                epoch {  
-                    id  
-                },
-                slot  
-            },
-            treasury {
-                rewards,
-                treasury
-            } 
-        }  
+query LastBlock {
+  tip {
+    block {
+      id
+      chainLength
+      date {
+        epoch {
+          id
+        }
+        slot
+      }
+      treasury {
+        rewards
+        treasury
+      }
     }
+  }
 }

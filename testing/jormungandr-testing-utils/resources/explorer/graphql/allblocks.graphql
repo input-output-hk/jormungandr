@@ -1,34 +1,36 @@
-query AllBlocks($first: Int!, $last: Int!){ 
-    allBlocks(first: $first, last: $last) {
-        edges{
-            node {
-                id,
-                date {
-                    epoch {  
-                        id  
-                    },
-                    slot  
-                }
-                previousBlock {
-                    id
-                }
-                chainLength,                           
-                totalInput,
-                totalOutput,
-                treasury {
-                    rewards
-                    treasury
-                    treasuryTax {
-                        fixed,
-                        ratio {
-                            numerator,
-                            denominator
-                        }
-                        maxLimit
-                    }
-                }
+query AllBlocks($last: Int!) {
+  tip {
+    blocks(last: $last) {
+      edges {
+        node {
+          id
+          date {
+            epoch {
+              id
             }
+            slot
+          }
+          previousBlock {
+            id
+          }
+          chainLength
+          totalInput
+          totalOutput
+          treasury {
+            rewards
+            treasury
+            treasuryTax {
+              fixed
+              ratio {
+                numerator
+                denominator
+              }
+              maxLimit
+            }
+          }
         }
-        totalCount
+      }
+      totalCount
     }
+  }
 }
