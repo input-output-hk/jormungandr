@@ -688,7 +688,7 @@ impl Transaction {
                 .await
                 .ok_or_else(|| {
                     FieldError::from(ErrorKind::InternalError(
-                        "missing transaction's block body".to_owned(),
+                        "failed to fetch block containing the transaction".to_owned(),
                     ))
                 })?;
 
