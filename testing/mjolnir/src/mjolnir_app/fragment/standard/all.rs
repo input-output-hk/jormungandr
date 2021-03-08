@@ -87,7 +87,7 @@ impl AllFragments {
         let mut generator = FragmentGenerator::new(
             faucet,
             receiver,
-            remote_jormungandr.clone(),
+            remote_jormungandr,
             explorer.clone(),
             settings.slots_per_epoch,
             fragment_sender,
@@ -110,7 +110,9 @@ impl AllFragments {
             self.build_monitor(),
             30,
         );
-
+        let mut builder = RemoteJormungandrBuilder::new("node".to_string());
+        builder.with_rest(self.endpoint.parse().unwrap());
+        let remote_jormungandr = builder.build();
         let fragment_status_provider = FragmentStatusProvider::new(remote_jormungandr);
 
         let stats =

@@ -1,4 +1,5 @@
 use super::{FragmentSender, FragmentSenderError, MemPoolCheck};
+use crate::testing::SyncNode;
 use crate::{
     stake_pool::StakePool,
     testing::{node::Explorer, RemoteJormungandr, VotePlanBuilder},
@@ -15,7 +16,7 @@ use rand::RngCore;
 use rand_core::OsRng;
 use std::iter;
 
-pub struct FragmentGenerator<'a> {
+pub struct FragmentGenerator<'a, S: SyncNode + Send> {
     sender: Wallet,
     receiver: Wallet,
     active_stake_pools: Vec<StakePool>,
@@ -25,17 +26,17 @@ pub struct FragmentGenerator<'a> {
     rand: OsRng,
     explorer: Explorer,
     slots_per_epoch: u32,
-    fragment_sender: FragmentSender<'a>,
+    fragment_sender: FragmentSender<'a, S>,
 }
 
-impl<'a> FragmentGenerator<'a> {
+impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
     pub fn new(
         sender: Wallet,
         receiver: Wallet,
         node: RemoteJormungandr,
         explorer: Explorer,
         slots_per_epoch: u32,
-        fragment_sender: FragmentSender<'a>,
+        fragment_sender: FragmentSender<'a, S>,
     ) -> Self {
         Self {
             sender,
@@ -206,7 +207,7 @@ impl<'a> FragmentGenerator<'a> {
     }
 }
 
-impl<'a> RequestGenerator for FragmentGenerator<'a> {
+impl<'a, S: SyncNode + Send> RequestGenerator for FragmentGenerator<'a, S> {
     fn next(
         &mut self,
     ) -> Result<Vec<Option<jortestkit::load::Id>>, jortestkit::load::RequestFailure> {

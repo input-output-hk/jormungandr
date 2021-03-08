@@ -1,5 +1,5 @@
 use super::{do_for_all_alias, UserInteractionController};
-use jormungandr_testing_utils::testing::node::JormungandrLogger;
+use jormungandr_testing_utils::testing::node::{JormungandrLogger, LogLevel};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -193,27 +193,30 @@ fn show_logs_for(
     contains: &Option<String>,
     alias: &str,
     tail: Option<usize>,
-    logger: JormungandrLogger,
+    logger: &JormungandrLogger,
 ) {
     let logs: Vec<String> = {
         if only_errors {
-            logger.get_lines_with_error().collect()
+            logger
+                .get_lines_with_level(LogLevel::ERROR)
+                .map(|x| x.to_string())
+                .collect()
         } else if let Some(contains) = &contains {
             logger
-                .get_lines_from_log()
-                .filter(|x| x.contains(contains.as_str()))
+                .get_lines()
+                .into_iter()
+                .filter(|x| x.fields.msg.contains(contains.as_str()))
+                .map(|x| x.to_string())
                 .collect()
         } else if let Some(tail) = tail {
             logger
-                .get_lines_from_log()
-                .collect::<Vec<String>>()
-                .iter()
-                .cloned()
+                .get_lines_as_string()
+                .into_iter()
                 .rev()
                 .take(tail)
                 .collect()
         } else {
-            logger.get_lines_from_log().collect()
+            logger.get_lines_as_string()
         }
     };
 

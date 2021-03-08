@@ -1,5 +1,5 @@
 use super::JormungandrError;
-use crate::common::jcli::JCli;
+use crate::common::jcli::{JCli, JCliCommand};
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_time::TimeEra;
@@ -10,15 +10,28 @@ use jormungandr_lib::{
 use jormungandr_testing_utils::testing::{
     node::{
         uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
-        JormungandrStateVerifier,
+        JormungandrStateVerifier, LogLevel,
     },
     JormungandrParams, SyncNode, TestConfig,
 };
 use jormungandr_testing_utils::testing::{RemoteJormungandr, RemoteJormungandrBuilder};
+use jortestkit::prelude::ProcessOutput;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
+use std::process::Stdio;
 use std::str::FromStr;
+
+pub enum StartupVerificationMode {
+    Log,
+    Rest,
+}
+
+pub enum Status {
+    Running,
+    Starting,
+    Stopped(JormungandrError),
+}
 
 pub struct JormungandrProcess {
     pub child: Child,
@@ -34,23 +47,77 @@ pub struct JormungandrProcess {
 
 impl JormungandrProcess {
     pub(crate) fn from_config<Conf: TestConfig>(
-        child: Child,
+        mut child: Child,
         params: &JormungandrParams<Conf>,
         temp_dir: Option<TempDir>,
         alias: String,
     ) -> Self {
-        let log_file_path = params.log_file_path();
         let node_config = params.node_config();
+        let stdout = child.stdout.take().unwrap();
         JormungandrProcess {
             child,
             temp_dir,
             alias,
-            logger: JormungandrLogger::new(log_file_path),
+            logger: JormungandrLogger::new(stdout),
             p2p_public_address: node_config.p2p_public_address(),
             rest_socket_addr: node_config.rest_socket_addr(),
             genesis_block_hash: Hash::from_str(params.genesis_block_hash()).unwrap(),
             block0_configuration: params.block0_configuration().clone(),
             fees: params.fees(),
+        }
+    }
+
+    pub fn status(&self, strategy: &StartupVerificationMode) -> Status {
+        let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
+        if self.logger.contains_any_of(&port_occupied_msgs) {
+            return Status::Stopped(JormungandrError::PortAlreadyInUse);
+        }
+        if let Err(err) = self.check_no_errors_in_log() {
+            return Status::Stopped(err);
+        }
+
+        match strategy {
+            StartupVerificationMode::Log => {
+                let bootstrap_completed_msgs = [
+                    "listening and accepting gRPC connections",
+                    "genesis block fetched",
+                ];
+
+                if self.logger.contains_any_of(&bootstrap_completed_msgs) {
+                    Status::Running
+                } else {
+                    Status::Starting
+                }
+            }
+            StartupVerificationMode::Rest => {
+                let jcli: JCli = Default::default();
+
+                let output = JCliCommand::new(std::process::Command::new(jcli.path()))
+                    .rest()
+                    .v0()
+                    .node()
+                    .stats(&self.rest_uri())
+                    .build()
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .unwrap()
+                    .wait_with_output()
+                    .expect("failed to execute get_rest_stats command");
+
+                let output = output.try_as_single_node_yaml();
+
+                match output.ok().and_then(|x| x.get("uptime").cloned()) {
+                    Some(uptime)
+                        if uptime.parse::<i32>().unwrap_or_else(|_| {
+                            panic!("Cannot parse uptime {}", uptime.to_string())
+                        }) > 2 =>
+                    {
+                        Status::Running
+                    }
+                    _ => Status::Starting,
+                }
+            }
         }
     }
 
@@ -92,12 +159,14 @@ impl JormungandrProcess {
     }
 
     pub fn check_no_errors_in_log(&self) -> Result<(), JormungandrError> {
-        let error_lines = self.logger.get_lines_with_error().collect::<Vec<String>>();
+        let error_lines = self
+            .logger
+            .get_lines_with_level(LogLevel::ERROR)
+            .collect::<Vec<_>>();
 
         if !error_lines.is_empty() {
             return Err(JormungandrError::ErrorInLogs {
                 logs: self.logger.get_log_content(),
-                log_location: self.logger.log_file_path.clone(),
                 error_lines: format!("{:?}", error_lines),
             });
         }
@@ -150,9 +219,7 @@ impl JormungandrProcess {
 
     pub fn to_remote(&self) -> RemoteJormungandr {
         let mut builder = RemoteJormungandrBuilder::new(self.alias.clone());
-        builder
-            .with_rest(self.rest_socket_addr)
-            .with_logger(self.logger.log_file_path.clone());
+        builder.with_rest(self.rest_socket_addr);
         builder.build()
     }
 
@@ -172,12 +239,21 @@ impl JormungandrProcess {
 
 impl Drop for JormungandrProcess {
     fn drop(&mut self) {
+        let errors = self
+            .logger
+            .get_lines_with_level(LogLevel::ERROR)
+            .collect::<Vec<_>>();
+        if !errors.is_empty() {
+            println!("Error lines:");
+            for line in errors {
+                println!("{}", line);
+            }
+        }
         // There's no kill like overkill
         let _ = self.child.kill();
 
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
-        self.logger.print_error_and_invalid_logs();
     }
 }
 
@@ -209,10 +285,13 @@ impl SyncNode for JormungandrProcess {
     }
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
-        self.logger.get_lines_with_error_and_invalid().collect()
+        self.logger
+            .get_lines_with_level(LogLevel::ERROR)
+            .map(|x| x.to_string())
+            .collect()
     }
 
     fn is_running(&self) -> bool {
-        todo!()
+        matches!(self.status(&StartupVerificationMode::Log), Status::Running)
     }
 }

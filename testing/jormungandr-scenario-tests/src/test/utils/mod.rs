@@ -19,6 +19,7 @@ use std::{collections::HashMap, time::Duration};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 pub use jormungandr_testing_utils::testing::{
     assert, assert_equals,
+    node::LogLevel,
     sync::{
         measure_and_log_sync_time, measure_fragment_propagation_speed,
         measure_how_many_nodes_are_running,
@@ -30,9 +31,7 @@ pub fn wait(seconds: u64) {
     std::thread::sleep(Duration::from_secs(seconds));
 }
 
-pub fn measure_single_transaction_propagation_speed<
-    A: SyncNode + FragmentNode + Send + Sized + Sync,
->(
+pub fn measure_single_transaction_propagation_speed<A: SyncNode + FragmentNode + Send + Sized>(
     controller: &mut Controller,
     mut wallet1: &mut Wallet,
     wallet2: &Wallet,
@@ -91,7 +90,10 @@ impl SyncNode for NodeController {
     }
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
-        self.logger().get_lines_with_error_and_invalid().collect()
+        self.logger()
+            .get_lines_with_level(LogLevel::ERROR)
+            .map(|x| x.to_string())
+            .collect()
     }
 }
 
@@ -138,7 +140,7 @@ impl FragmentNode for LegacyNodeController {
         ));
     }
     fn log_content(&self) -> Vec<String> {
-        self.logger().get_lines_from_log().collect()
+        self.logger().get_lines_as_string()
     }
 }
 
@@ -168,7 +170,10 @@ impl SyncNode for LegacyNodeController {
     }
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
-        self.logger().get_lines_with_error_and_invalid().collect()
+        self.logger()
+            .get_lines_with_level(LogLevel::ERROR)
+            .map(|x| x.to_string())
+            .collect()
     }
 
     fn is_running(&self) -> bool {

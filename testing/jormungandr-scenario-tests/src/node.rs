@@ -150,7 +150,6 @@ pub struct ProgressBarController {
 }
 
 /// send query to a running node
-#[derive(Clone)]
 pub struct NodeController {
     alias: NodeAlias,
     rest_client: JormungandrRest,
@@ -159,6 +158,7 @@ pub struct NodeController {
     progress_bar: ProgressBarController,
     status: Arc<Mutex<Status>>,
     process_id: u32,
+    logger: JormungandrLogger,
 }
 
 /// Node is going to be used by the `Controller` to monitor the node process
@@ -435,7 +435,7 @@ impl NodeController {
         Err(Error::NodeFailedToBootstrap {
             alias: self.alias().to_string(),
             duration: Duration::from_secs(sleep.as_secs() * max_try),
-            logs: self.logger().get_lines_from_log().collect(),
+            logs: self.logger().get_lines_as_string(),
         })
     }
 
@@ -454,7 +454,7 @@ impl NodeController {
                 "node is still up after {} s from sending shutdown request",
                 sleep.as_secs()
             ),
-            logs: self.logger().get_lines_from_log().collect(),
+            logs: self.logger().get_lines_as_string(),
         })
     }
 
@@ -494,7 +494,7 @@ impl NodeController {
             Err(Error::NodeFailedToShutdown {
                 alias: self.alias().to_string(),
                 message: result,
-                logs: self.logger().get_lines_from_log().collect(),
+                logs: self.logger().get_lines_as_string(),
             })
         }
     }
@@ -503,16 +503,8 @@ impl NodeController {
         &self.progress_bar
     }
 
-    pub fn logger(&self) -> JormungandrLogger {
-        let log_file = self
-            .settings
-            .config
-            .log
-            .as_ref()
-            .unwrap()
-            .file_path()
-            .unwrap();
-        JormungandrLogger::new(log_file)
+    pub fn logger(&self) -> &JormungandrLogger {
+        &self.logger
     }
 
     pub fn log_content(&self) -> String {
@@ -525,18 +517,19 @@ impl Node {
         &self.alias
     }
 
-    pub fn controller(&self) -> NodeController {
+    pub fn controller(mut self) -> NodeController {
         let p2p_address = format!("{}", self.node_settings.config().p2p.get_listen_address());
         let rest_uri = uri_from_socket_addr(self.node_settings.config().rest.listen);
 
         NodeController {
             alias: self.alias().clone(),
+            logger: JormungandrLogger::new(self.process.stdout.take().unwrap()),
             grpc_client: JormungandrClient::from_address(&p2p_address)
                 .expect("cannot setup grpc client"),
             rest_client: JormungandrRest::new(rest_uri),
-            settings: self.node_settings.clone(),
-            status: self.status.clone(),
-            progress_bar: self.progress_bar.clone(),
+            settings: self.node_settings,
+            status: self.status,
+            progress_bar: self.progress_bar,
             process_id: self.process.id(),
         }
     }
@@ -806,6 +799,7 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
         }
 
         command.stderr(Stdio::piped());
+        command.stdout(Stdio::piped());
         command
     }
 }

@@ -61,7 +61,7 @@ fn print_error_for_failed_leaders<A: SyncNode + ?Sized>(leaders_ids: Vec<u32>, l
     }
 }
 
-pub fn measure_fragment_propagation_speed<A: FragmentNode + Sized + Send>(
+pub fn measure_fragment_propagation_speed<A: FragmentNode + Sized>(
     fragment_id: FragmentId,
     leaders: &[&A],
     sync_wait: Thresholds<Speed>,

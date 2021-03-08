@@ -4,7 +4,7 @@ use crate::mjolnir_app::MjolnirError;
 use assert_fs::TempDir;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::interfaces::NodeState;
-use jormungandr_testing_utils::testing::{benchmark_speed, SpeedBenchmarkFinish};
+use jormungandr_testing_utils::testing::{benchmark_speed, node::LogLevel, SpeedBenchmarkFinish};
 use std::{thread, time};
 pub struct IterationBasedClientLoad {
     config: ClientLoadConfig,
@@ -47,7 +47,12 @@ impl IterationBasedClientLoad {
                 progress_bar.set_progress(&format!("block: {}", last_loaded_block))
             }
             node.check_no_errors_in_log()?;
-            progress_bar.set_error_lines(node.logger.get_lines_with_error().collect());
+            progress_bar.set_error_lines(
+                node.logger
+                    .get_lines_with_level(LogLevel::ERROR)
+                    .map(|x| x.to_string())
+                    .collect(),
+            );
 
             let stats = node.rest().stats()?;
             if stats.state == NodeState::Running {

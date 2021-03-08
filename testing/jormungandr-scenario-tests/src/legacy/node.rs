@@ -34,13 +34,13 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 /// send query to a running node
-#[derive(Clone)]
 pub struct LegacyNodeController {
     alias: NodeAlias,
     grpc_client: JormungandrClient,
     settings: LegacySettings,
     progress_bar: ProgressBarController,
     status: Arc<Mutex<Status>>,
+    logger: JormungandrLogger,
 }
 
 pub struct LegacyNode {
@@ -332,7 +332,7 @@ impl LegacyNodeController {
                 return Err(Error::FragmentNotInMemPoolLogs {
                     alias: self.alias().to_string(),
                     fragment_id: *check.fragment_id(),
-                    logs: self.logger().get_lines_from_log().collect(),
+                    logs: self.logger().get_lines_as_string(),
                 });
             }
             std::thread::sleep(duration);
@@ -342,7 +342,7 @@ impl LegacyNodeController {
             fragment_id: *check.fragment_id(),
             duration: Duration::from_secs(duration.as_secs() * max_try),
             alias: self.alias().to_string(),
-            logs: self.logger().get_lines_from_log().collect(),
+            logs: self.logger().get_lines_as_string(),
         })
     }
 
@@ -438,7 +438,7 @@ impl LegacyNodeController {
         Err(Error::NodeFailedToBootstrap {
             alias: self.alias().to_string(),
             duration: Duration::from_secs(sleep.as_secs() * max_try),
-            logs: self.logger().get_lines_from_log().collect(),
+            logs: self.logger().get_lines_as_string(),
         })
     }
 
@@ -457,7 +457,7 @@ impl LegacyNodeController {
                 "node is still up after {} s from sending shutdown request",
                 sleep.as_secs()
             ),
-            logs: self.logger().get_lines_from_log().collect(),
+            logs: self.logger().get_lines_as_string(),
         })
     }
 
@@ -498,21 +498,13 @@ impl LegacyNodeController {
             Err(Error::NodeFailedToShutdown {
                 alias: self.alias().to_string(),
                 message: result,
-                logs: self.logger().get_lines_from_log().collect(),
+                logs: self.logger().get_lines_as_string(),
             })
         }
     }
 
-    pub fn logger(&self) -> JormungandrLogger {
-        let log_file = self
-            .settings
-            .config
-            .log
-            .as_ref()
-            .unwrap()
-            .file_path()
-            .unwrap();
-        JormungandrLogger::new(log_file)
+    pub fn logger(&self) -> &JormungandrLogger {
+        &self.logger
     }
 }
 
@@ -521,13 +513,14 @@ impl LegacyNode {
         &self.alias
     }
 
-    pub fn controller(&self) -> LegacyNodeController {
+    pub fn controller(mut self) -> LegacyNodeController {
         let p2p_address = format!("{}", self.node_settings.config().p2p.public_address);
 
         LegacyNodeController {
             alias: self.alias().clone(),
             grpc_client: JormungandrClient::from_address(&p2p_address)
                 .expect("cannot setup grpc client"),
+            logger: JormungandrLogger::new(self.process.stdout.take().unwrap()),
             settings: self.node_settings.clone(),
             status: self.status.clone(),
             progress_bar: self.progress_bar.clone(),

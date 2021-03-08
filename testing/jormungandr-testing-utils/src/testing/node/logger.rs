@@ -1,40 +1,39 @@
+use crate::testing::Timestamp;
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
-use jortestkit::file as file_utils;
-use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
-use thiserror::Error;
-
-use crate::testing::Timestamp;
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
 use serde::de::Error;
+use serde::{Deserialize, Serialize};
+use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
+use std::fmt;
+use std::io::BufRead;
+use std::process::ChildStdout;
+use std::sync::mpsc::{self, Receiver};
+use std::time::Instant;
 
-#[derive(Debug, Error)]
-pub enum LoggerError {
-    #[error("{log_file}")]
-    LogFileDoesNotExist { log_file: String },
-}
-
-#[derive(Debug, Clone)]
+// TODO: we use a RefCell because it would be very labor intensive to change
+// the rest of the testing framework to take a mutable reference to the logger
 pub struct JormungandrLogger {
-    pub log_file_path: PathBuf,
+    collected: RefCell<Vec<LogEntry>>,
+    rx: Receiver<(Instant, String)>,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, PartialOrd)]
 pub enum Level {
-    WARN,
-    INFO,
-    ERROR,
+    #[serde(alias = "TRCE")]
     TRACE,
+    #[serde(alias = "DEBG")]
     DEBUG,
+    INFO,
+    WARN,
+    #[serde(alias = "ERRO")]
+    ERROR,
 }
 
 const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfully stored";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Fields {
     #[serde(alias = "message", default = "String::new")]
     pub msg: String,
@@ -49,12 +48,18 @@ pub struct Fields {
 
 // TODO: convert strings to enums for level/task/
 // TODO: convert ts to DateTime
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LogEntry {
     pub level: Level,
     #[serde(alias = "timestamp")]
     pub ts: String,
     pub fields: Fields,
+}
+
+impl fmt::Display for LogEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(&self).unwrap())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -123,9 +128,32 @@ impl Into<Timestamp> for LogEntry {
 }
 
 impl JormungandrLogger {
-    pub fn new(path: impl Into<PathBuf>) -> Self {
+    pub fn new(source: ChildStdout) -> Self {
+        let (tx, rx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let lines = std::io::BufReader::new(source).lines();
+            for line in lines {
+                tx.send((Instant::now(), line.unwrap())).unwrap();
+            }
+        });
         JormungandrLogger {
-            log_file_path: path.into(),
+            rx,
+            collected: RefCell::new(Vec::new()),
+        }
+    }
+
+    fn collect_available_input(&self) {
+        let collected = &mut self.collected.borrow_mut();
+        let now = Instant::now();
+        while let Ok((time, line)) = self.rx.try_recv() {
+            // we are reading from logs produce from the node, if they are not valid there is something wrong
+            collected.push(Self::try_parse_line_as_entry(&line).unwrap());
+            // Stop reading if the are more recent messages available, otherwise
+            // we risk that a very active process could result in endless collection
+            // of its output
+            if time > now {
+                break;
+            }
         }
     }
 
@@ -133,65 +161,56 @@ impl JormungandrLogger {
         vec!["panicked"]
     }
 
+    fn entries(&self) -> Ref<Vec<LogEntry>> {
+        self.collect_available_input();
+        self.collected.borrow()
+    }
+
     pub fn get_log_content(&self) -> String {
-        file_utils::read_file(&self.log_file_path)
-    }
-
-    pub fn get_lines_with_error(&self) -> impl Iterator<Item = String> + '_ {
-        let lines = self.get_lines_from_log();
-        lines.filter(move |x| self.is_error_line(x))
-    }
-
-    pub fn get_lines_with_error_and_invalid(&self) -> impl Iterator<Item = String> + '_ {
-        let lines = self.get_lines_from_log();
-        lines.filter(move |x| self.is_error_line_or_invalid(x))
-    }
-
-    pub fn contains_error(&self) -> Result<bool, LoggerError> {
-        self.verify_file_exists()?;
-        let panic_in_logs_found = Self::get_error_indicators()
+        self.entries()
             .iter()
-            .any(|x| self.get_log_content().contains(x));
+            .map(LogEntry::to_string)
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
 
-        Ok(panic_in_logs_found || self.get_lines_with_error().count() > 0)
+    pub fn get_lines_as_string(&self) -> Vec<String> {
+        self.entries().iter().map(|x| x.to_string()).collect()
+    }
+
+    pub fn get_lines(&self) -> Vec<LogEntry> {
+        self.entries().clone()
+    }
+
+    pub fn get_lines_with_level(&self, level: Level) -> impl Iterator<Item = LogEntry> {
+        self.entries()
+            .clone()
+            .into_iter()
+            .filter(move |x| x.level == level)
+    }
+
+    pub fn contains_error(&self) -> bool {
+        self.entries().iter().any(|entry| {
+            entry.level == Level::ERROR
+                || Self::get_error_indicators()
+                    .iter()
+                    .any(|indicator| entry.fields.msg.contains(indicator))
+        })
     }
 
     pub fn last_validated_block_date(&self) -> Option<BlockDate> {
-        self.get_log_entries()
+        self.entries()
+            .iter()
             .filter(|x| x.fields.msg.contains("validated block"))
             .map(|x| x.block_date())
             .last()
             .unwrap_or(None)
     }
 
-    pub fn print_raw_log(&self) {
-        println!("{}", self.get_log_content());
-    }
-
-    pub fn raw_log_contains_any_of(&self, messages: &[&str]) -> Result<bool, LoggerError> {
-        for message in messages {
-            if self.get_log_content().contains(message) {
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    }
-
-    pub fn contains_message(&self, message: &str) -> Result<bool, LoggerError> {
-        self.verify_file_exists()?;
-        Ok(self
-            .get_log_entries()
-            .any(|x| x.fields.msg.contains(message)))
-    }
-
-    pub fn get_lines_with_warn(&self) -> impl Iterator<Item = String> + '_ {
-        let lines = self.get_lines_from_log();
-        lines.filter(move |x| self.is_warn_line(x))
-    }
-
-    pub fn get_lines_with_error_and_warn(&self) -> impl Iterator<Item = String> + '_ {
-        let lines = self.get_lines_from_log();
-        lines.filter(move |x| self.is_warn_line(x) || self.is_error_line(x))
+    pub fn contains_any_of(&self, messages: &[&str]) -> bool {
+        self.entries()
+            .iter()
+            .any(|line| messages.iter().any(|x| line.fields.msg.contains(x)))
     }
 
     pub fn get_created_blocks_hashes(&self) -> Vec<Hash> {
@@ -211,37 +230,28 @@ impl JormungandrLogger {
         self.filter_entries_with_block_creation().count()
     }
 
-    fn filter_entries_with_block_creation(&self) -> impl Iterator<Item = LogEntry> + '_ {
+    fn filter_entries_with_block_creation(&self) -> impl Iterator<Item = LogEntry> {
         let expected_task = Some("block".to_string());
-        self.get_log_entries().filter(move |x| {
+        self.entries().clone().into_iter().filter(move |x| {
             x.fields.msg == SUCCESFULLY_CREATED_BLOCK_MSG
                 && x.fields.task == expected_task
                 && x.fields.hash.is_some()
         })
     }
 
-    fn is_error_line(&self, line: &str) -> bool {
-        match self.try_parse_line_as_entry(line) {
-            Ok(entry) => entry.level == Level::ERROR,
-            Err(_) => false,
-        }
+    pub fn assert_no_errors(&self, message: &str) {
+        let error_lines = self.get_lines_with_level(Level::ERROR).collect::<Vec<_>>();
+
+        assert_eq!(
+            error_lines.len(),
+            0,
+            "{} there are some errors in log: {:?}",
+            message,
+            error_lines,
+        );
     }
 
-    fn is_warn_line(&self, line: &str) -> bool {
-        match self.try_parse_line_as_entry(&line) {
-            Ok(entry) => entry.level == Level::WARN,
-            Err(_) => false,
-        }
-    }
-
-    fn is_error_line_or_invalid(&self, line: &str) -> bool {
-        match self.try_parse_line_as_entry(&line) {
-            Ok(entry) => entry.level == Level::ERROR,
-            Err(_) => true,
-        }
-    }
-
-    fn try_parse_line_as_entry(&self, line: &str) -> Result<LogEntry, impl std::error::Error> {
+    fn try_parse_line_as_entry(line: &str) -> Result<LogEntry, serde_json::Error> {
         // try legacy log first
         let legacy_entry: Result<LogEntryLegacy, _> = serde_json::from_str(line);
         if let Ok(result) = legacy_entry {
@@ -277,80 +287,5 @@ impl JormungandrLogger {
             .ok_or_else(|| serde_json::error::Error::custom("Could not get mutable `fields`"))?) =
             serde_json::to_value(aggreagated)?;
         serde_json::from_value(jsonize_entry)
-    }
-
-    pub fn get_lines_from_log(&self) -> impl Iterator<Item = String> {
-        let file = File::open(self.log_file_path.clone())
-            .unwrap_or_else(|_| panic!("cannot find log file: {:?}", &self.log_file_path));
-        let reader = BufReader::new(file);
-        reader.lines().map(|line| line.unwrap())
-    }
-
-    pub fn get_log_entries(&self) -> impl Iterator<Item = LogEntry> + '_ {
-        self.get_lines_from_log()
-            .map(move |x| self.try_parse_line_as_entry(&x))
-            .filter_map(Result::ok)
-    }
-
-    fn verify_file_exists(&self) -> Result<(), LoggerError> {
-        if self.log_file_path.exists() {
-            Ok(())
-        } else {
-            Err(LoggerError::LogFileDoesNotExist {
-                log_file: self.log_file_path.to_str().unwrap().to_string(),
-            })
-        }
-    }
-
-    pub fn message_logged_multiple_times(
-        &self,
-        message: &str,
-        count: usize,
-    ) -> Result<bool, LoggerError> {
-        self.verify_file_exists()?;
-
-        Ok(self
-            .get_log_entries()
-            .filter(|x| x.fields.msg.contains(message))
-            .count()
-            == count)
-    }
-
-    pub fn print_error_and_invalid_logs(&self) {
-        let error_lines: Vec<_> = self
-            .get_lines_with_error_and_invalid()
-            .map(|x| self.remove_white_space(&x))
-            .collect();
-
-        if !error_lines.is_empty() {
-            println!("Error lines:");
-            for line in error_lines {
-                println!("{}", line);
-            }
-        }
-    }
-
-    fn remove_white_space(&self, input: &str) -> String {
-        input.split_whitespace().collect::<String>()
-    }
-
-    pub fn print_error_or_warn_lines(&self) {
-        let error_lines: Vec<_> = self.get_lines_with_error_and_warn().collect();
-        if !error_lines.is_empty() {
-            println!("Error/Warn lines: {:?}", error_lines);
-        }
-    }
-
-    pub fn assert_no_errors(&self, message: &str) {
-        let error_lines = self.get_lines_with_error().collect::<Vec<String>>();
-
-        assert_eq!(
-            error_lines.len(),
-            0,
-            "{} there are some errors in log ({:?}): {:?}",
-            message,
-            self.log_file_path,
-            error_lines,
-        );
     }
 }

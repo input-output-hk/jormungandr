@@ -1,6 +1,6 @@
 use jormungandr_testing_utils::testing::node::{
     grpc::server::{MethodType, MockBuilder, MockExitCode, ProtocolVersion},
-    Level,
+    LogLevel,
 };
 
 use super::setup;
@@ -58,11 +58,11 @@ pub async fn wrong_genesis_hash() {
 
     setup.server.shutdown();
     assert!(
-        setup.server.logger.get_log_entries().any(|x| {
+        setup.server.logger.get_lines().into_iter().any(|x| {
             x.fields.msg == "connection to peer failed"
                 && x.error_contains("Block0Mismatch")
                 && x.fields.peer_addr == Some(mock_address.clone())
-                && x.level == Level::INFO
+                && x.level == LogLevel::INFO
         }),
         "Log content: {}",
         setup.server.logger.get_log_content()
@@ -95,9 +95,7 @@ pub async fn handshake_ok() {
         "Handshake with mock never happened"
     );
 
-    assert!(!setup
-        .server
-        .logger
-        .get_log_entries()
-        .any(|x| { x.fields.peer_addr == Some(mock_address.clone()) && x.level == Level::WARN }));
+    assert!(!setup.server.logger.get_lines().into_iter().any(|x| {
+        x.fields.peer_addr == Some(mock_address.clone()) && x.level == LogLevel::WARN
+    }));
 }

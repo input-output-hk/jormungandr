@@ -1,6 +1,7 @@
 use crate::testing::FragmentSender;
 use crate::testing::FragmentSenderSetup;
 use crate::testing::RemoteJormungandr;
+use crate::testing::SyncNode;
 use crate::wallet::LinearFee;
 use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::FragmentId;
@@ -8,18 +9,17 @@ use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::load::{Id, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
 
-#[derive(Clone)]
-pub struct TransactionGenerator<'a> {
+pub struct TransactionGenerator<'a, S: SyncNode + Send> {
     wallets: Vec<Wallet>,
     jormungandr: RemoteJormungandr,
-    fragment_sender: FragmentSender<'a>,
+    fragment_sender: FragmentSender<'a, S>,
     rand: OsRng,
     split_marker: usize,
 }
 
-impl<'a> TransactionGenerator<'a> {
+impl<'a, S: SyncNode + Send> TransactionGenerator<'a, S> {
     pub fn new(
-        fragment_sender_setup: FragmentSenderSetup<'a>,
+        fragment_sender_setup: FragmentSenderSetup<'a, S>,
         jormungandr: RemoteJormungandr,
         block_hash: Hash,
         fees: LinearFee,
@@ -87,7 +87,7 @@ impl<'a> TransactionGenerator<'a> {
     }
 }
 
-impl RequestGenerator for TransactionGenerator<'_> {
+impl<S: SyncNode + Send> RequestGenerator for TransactionGenerator<'_, S> {
     fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
         self.send_transaction()
             .map(|fragment_id| vec![Some(fragment_id.to_string())])

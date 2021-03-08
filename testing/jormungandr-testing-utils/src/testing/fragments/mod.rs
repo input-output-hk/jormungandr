@@ -7,6 +7,7 @@ pub use self::{
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
     node::{FragmentNode, FragmentNodeError, MemPoolCheck},
     sender::{FragmentSender, FragmentSenderError},
+    setup::DummySyncNode,
     setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
     transaction::{transaction_to, transaction_to_many},
     verifier::{FragmentVerifier, FragmentVerifierError},

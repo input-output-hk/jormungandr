@@ -12,19 +12,16 @@ use jormungandr_testing_utils::testing::MemPoolCheck;
 pub use process::*;
 pub use starter::*;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use thiserror::Error;
 
 use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError};
 
 #[derive(Error, Debug)]
 pub enum JormungandrError {
-    #[error("error in logs. Error lines: {error_lines}, logs location: {log_location}, full content:{logs}")]
-    ErrorInLogs {
-        logs: String,
-        log_location: PathBuf,
-        error_lines: String,
-    },
+    #[error("error in logs. Error lines: {error_lines}, full content:{logs}")]
+    ErrorInLogs { logs: String, error_lines: String },
+    #[error("error(s) in log detected: port already in use")]
+    PortAlreadyInUse,
 }
 
 impl FragmentNode for JormungandrProcess {
@@ -72,6 +69,6 @@ impl FragmentNode for JormungandrProcess {
         println!("Fragment '{}' in block: {} ({})", fragment_id, block, date);
     }
     fn log_content(&self) -> Vec<String> {
-        self.logger.get_lines_from_log().collect()
+        self.logger.get_lines_as_string()
     }
 }
