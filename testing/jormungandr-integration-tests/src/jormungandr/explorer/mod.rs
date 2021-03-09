@@ -115,9 +115,10 @@ fn blocks(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
         .tip
         .blocks
         .edges
+        .unwrap()
         .iter()
         .skip(1)
-        .map(|x| Hash::from_str(&x.node.id).unwrap())
+        .map(|x| Hash::from_str(&x.as_ref().unwrap().node.id).unwrap())
         .collect::<Vec<Hash>>();
 
     let mut common_blocks = blocks_from_logs.clone();
@@ -135,7 +136,7 @@ fn blocks(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
 
 fn stake_pools(explorer: &Explorer, initial_stake_pools: &[StakePool]) {
     let stake_pools = explorer.stake_pools(1000).unwrap();
-    let explorer_stake_pools = stake_pools.data.unwrap().tip.all_stake_pools.edges;
+    let explorer_stake_pools = stake_pools.data.unwrap().tip.all_stake_pools.edges.unwrap();
     // we are skipping first block because log doesn't contains genesis block
     assert_eq!(
         initial_stake_pools
@@ -144,7 +145,7 @@ fn stake_pools(explorer: &Explorer, initial_stake_pools: &[StakePool]) {
             .collect::<Vec<String>>(),
         explorer_stake_pools
             .iter()
-            .map(|x| x.node.id.clone())
+            .map(|x| x.as_ref().unwrap().node.id.clone())
             .collect::<Vec<String>>(),
         "blocks are empty"
     );
@@ -176,5 +177,5 @@ fn block_at_chain_length(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
 fn epoch(explorer: &Explorer) {
     let epoch = explorer.epoch(1, 100).unwrap();
 
-    assert_eq!(epoch.data.unwrap().epoch.id, "1", "can't find epoch");
+    assert_eq!(epoch.data.unwrap().epoch.id, 1, "can't find epoch");
 }
