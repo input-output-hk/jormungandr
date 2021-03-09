@@ -13,7 +13,7 @@ edition = "2018"
 
 [dependencies]
 arc-swap = "^1.1.0"
-async-trait = "0.1.48"
+async-trait = "=0.1.42" # https://github.com/dtolnay/async-trait/issues/144
 juniper = "0.15.3"
 juniper_warp = "0.6.2"
 base64 = "0.13.0"
