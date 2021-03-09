@@ -10,7 +10,6 @@ use std::convert::AsRef;
 use std::fmt;
 use std::io::BufRead;
 use std::ops::Index;
-use std::ops::IndexMut;
 use std::process::ChildStdout;
 use std::sync::mpsc::{self, Receiver};
 use std::time::Instant;
@@ -300,6 +299,7 @@ impl JormungandrLogger {
     }
 
     fn try_parse_line_as_entry(line: &str) -> Result<LogEntry, serde_json::Error> {
+        use serde_json::Value;
         // try legacy log first
         let legacy_entry: Result<LogEntryLegacy, _> = serde_json::from_str(line);
         if let Ok(result) = legacy_entry {
@@ -308,37 +308,34 @@ impl JormungandrLogger {
 
         // Fields could be of various types, since we do not need to modify or
         // interact with them, it is easier to just map them to strings
-        macro_rules! stringify_map {
-            ($container:expr, $field:expr) => {
-                let mapped = $container
-                    .index($field)
-                    .as_object()
-                    .expect("not an object")
-                    .into_iter()
-                    .map(|(k, v)| {
-                        (
-                            k,
-                            if v.is_string() {
-                                v.to_owned()
-                            } else {
-                                serde_json::Value::String(v.to_string())
-                            },
-                        )
-                    })
-                    .collect();
-                *$container.index_mut($field) = mapped;
-            };
+        fn stringify_map<K: Index<Q, Output = Value>, Q>(container: &K, field: Q) -> Value {
+            container
+                .index(field)
+                .as_object()
+                .expect("not an object")
+                .into_iter()
+                .map(|(k, v)| {
+                    (
+                        k,
+                        if v.is_string() {
+                            v.to_owned()
+                        } else {
+                            serde_json::Value::String(v.to_string())
+                        },
+                    )
+                })
+                .collect()
         }
 
-        let mut value: serde_json::Value = serde_json::from_str(&line).unwrap();
-        stringify_map!(value, "fields");
+        let mut value: Value = serde_json::from_str(&line).unwrap();
+        value["fields"] = stringify_map(&value, "fields");
         if value.get("span").is_some() {
-            stringify_map!(value, "span");
+            value["span"] = stringify_map(&value, "span");
         }
         let spans = value.get_mut("spans").and_then(|x| x.as_array_mut());
         if let Some(spans) = spans {
             for i in 0..spans.len() {
-                stringify_map!(spans, i);
+                spans[i] = stringify_map(&*spans, i);
             }
         }
         serde_json::from_value(value)
