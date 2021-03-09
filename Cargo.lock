@@ -130,18 +130,18 @@ checksum = "a3548b8efc9f8e8a5a0a2808c5bd8451a9031b9e5b879a79590304ae928b0a70"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
 name = "async-trait"
-version = "0.1.42"
+version = "0.1.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d3a45e77e34375a7923b1e8febb049bb011f064714a8e17a1a616fef01da13d"
+checksum = "36ea56748e10732c49404c153638a15ec3d6211ec5ff35d9bb20e13b93576adf"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -372,7 +372,7 @@ dependencies = [
 [[package]]
 name = "cardano-legacy-address"
 version = "0.1.1"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "cbor_event",
  "chain-ser",
@@ -416,7 +416,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "chain-addr"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "bech32",
  "cfg-if 1.0.0",
@@ -429,7 +429,7 @@ dependencies = [
 [[package]]
 name = "chain-core"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "chain-ser",
 ]
@@ -437,7 +437,7 @@ dependencies = [
 [[package]]
 name = "chain-crypto"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "bech32",
  "cfg-if 1.0.0",
@@ -458,7 +458,7 @@ dependencies = [
 [[package]]
 name = "chain-impl-mockchain"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "cardano-legacy-address",
  "cfg-if 1.0.0",
@@ -488,7 +488,7 @@ dependencies = [
 [[package]]
 name = "chain-network"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "async-trait",
  "chain-crypto",
@@ -504,12 +504,12 @@ dependencies = [
 [[package]]
 name = "chain-ser"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 
 [[package]]
 name = "chain-storage"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "criterion",
  "data-pile",
@@ -522,7 +522,7 @@ dependencies = [
 [[package]]
 name = "chain-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "chain-core",
  "quickcheck",
@@ -532,17 +532,19 @@ dependencies = [
 [[package]]
 name = "chain-time"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "cfg-if 1.0.0",
  "chain-core",
  "chain-ser",
+ "quickcheck",
+ "quickcheck_macros",
 ]
 
 [[package]]
 name = "chain-vote"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "cryptoxide",
  "eccoxide",
@@ -631,6 +633,21 @@ dependencies = [
  "unicode-width",
  "winapi 0.3.9",
  "winapi-util",
+]
+
+[[package]]
+name = "console"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7cc80946b3480f421c2f17ed1cb841753a371c7c5104f51d507e13f532c856aa"
+dependencies = [
+ "encode_unicode",
+ "lazy_static",
+ "libc",
+ "regex",
+ "terminal_size",
+ "unicode-width",
+ "winapi 0.3.9",
 ]
 
 [[package]]
@@ -749,9 +766,9 @@ checksum = "46212f5d1792f89c3e866fb10636139464060110c568edd7f73ab5e9f736c26d"
 
 [[package]]
 name = "csv"
-version = "1.1.5"
+version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9d58633299b24b515ac72a3f869f8b91306a3cec616a602843a383acd6f9e97"
+checksum = "22813a6dc45b335f9bade10bf7271dc477e81113e89eb251a0bc2a8a81c536e1"
 dependencies = [
  "bstr",
  "csv-core",
@@ -798,7 +815,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b35d34eb004bf2d33c093f1c55ee77829e8654644288d3b6afd8c2d99d23729"
 dependencies = [
  "proc-macro2 1.0.24",
- "syn 1.0.59",
+ "syn 1.0.62",
  "synstructure",
 ]
 
@@ -835,7 +852,7 @@ checksum = "532b4c15dccee12c7044f1fcad956e98410860b22231e44a3b827464797ca7bf"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -988,7 +1005,7 @@ checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
  "synstructure",
 ]
 
@@ -1144,7 +1161,7 @@ checksum = "3422d14de7903a52e9dbc10ae05a7e14445ec61890100e098754e120b2bd7b1e"
 dependencies = [
  "derive_utils",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -1173,7 +1190,7 @@ dependencies = [
  "proc-macro-hack",
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -1201,7 +1218,7 @@ dependencies = [
  "futures-sink",
  "futures-task",
  "memchr",
- "pin-project-lite 0.2.5",
+ "pin-project-lite 0.2.6",
  "pin-utils",
  "proc-macro-hack",
  "proc-macro-nested",
@@ -1345,7 +1362,7 @@ dependencies = [
  "quote 1.0.9",
  "serde",
  "serde_json",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -1357,7 +1374,7 @@ dependencies = [
  "failure",
  "graphql_client_codegen",
  "proc-macro2 1.0.24",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -1671,16 +1688,16 @@ dependencies = [
 [[package]]
 name = "imhamt"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 dependencies = [
  "thiserror",
 ]
 
 [[package]]
 name = "indexmap"
-version = "1.6.1"
+version = "1.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fb1fa934250de4de8aef298d81c729a7d33d8c239daa3a7575e6b92bfc7313b"
+checksum = "824845a0bf897a9042383849b02c1bc219c2383772efcd5c6f9766fa4b81aef3"
 dependencies = [
  "autocfg",
  "hashbrown",
@@ -1693,7 +1710,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7baab56125e25686df467fe470785512329883aab42696d661247aca2a2896e4"
 dependencies = [
- "console 0.13.0",
+ "console 0.14.0",
  "lazy_static",
  "number_prefix",
  "regex",
@@ -1847,7 +1864,6 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "structopt",
- "syn 1.0.59",
  "thiserror",
  "tokio 1.2.0",
  "tokio-compat-02",
@@ -2127,9 +2143,9 @@ dependencies = [
 
 [[package]]
 name = "juniper"
-version = "0.15.2"
+version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d18bea4f6aa903e3176556c45e9d78fed966f8083b324fc35e383f8351a2869"
+checksum = "9ce9122e520b17ce7593f628d2b440318a5fd77b8923b1918e59ec28cf2c2815"
 dependencies = [
  "async-trait",
  "bson",
@@ -2148,21 +2164,21 @@ dependencies = [
 
 [[package]]
 name = "juniper_codegen"
-version = "0.15.2"
+version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad4272ac0ace346ffe07be22838607d60cea037334d9f16f5dfaac82da778f3a"
+checksum = "2aad9bb6febeb76eeb97aa39b1ec4e640ee0eb37db98379f89972b2d0da85d18"
 dependencies = [
  "proc-macro-error",
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
 name = "juniper_warp"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca4e8b0aad77fb5029e39ac765fe1fea4c78cca75e979781761338d1c081134e"
+checksum = "878cd0ef7435e9a06f8dc9aa8cf4815e6a143ab456ea5f969661046854226f43"
 dependencies = [
  "anyhow",
  "bytes 0.5.6",
@@ -2199,9 +2215,9 @@ checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
 name = "libc"
-version = "0.2.87"
+version = "0.2.88"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "265d751d31d6780a3f956bb5b8022feba2d94eeee5a84ba64f4212eedca42213"
+checksum = "03b07a082330a35e43f63177cc01689da34fbffa0105e1246cf0311472cac73a"
 
 [[package]]
 name = "linked-hash-map"
@@ -2479,7 +2495,7 @@ checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -2715,7 +2731,7 @@ checksum = "65ad2ae56b6abe3a1ee25f15ee605bacadb9a764edaba9c2bf4103800d4a1895"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -2726,7 +2742,7 @@ checksum = "758669ae3558c6f74bd2a18b41f7ac0b5a195aea6639d6a9b5e5d1ad5ba24c0b"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -2737,9 +2753,9 @@ checksum = "257b64915a082f7811703966789728173279bdebb956b143dbcd23f6f970a777"
 
 [[package]]
 name = "pin-project-lite"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cf491442e4b033ed1c722cb9f0df5fcfcf4de682466c46469c36bc47dc5548a"
+checksum = "dc0e1f259c92177c30a4c9d177246edd0a3568b25756a977d0632cf8fa37e905"
 
 [[package]]
 name = "pin-utils"
@@ -2872,7 +2888,7 @@ dependencies = [
  "proc-macro-error-attr",
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
  "version_check",
 ]
 
@@ -2955,7 +2971,7 @@ dependencies = [
  "itertools 0.9.0",
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -3010,7 +3026,7 @@ checksum = "608c156fd8e97febc07dc9c2e2c80bf74cfc6ef26893eae3daf8bc2bc94a4b7f"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -3226,7 +3242,7 @@ dependencies = [
  "mime",
  "mime_guess",
  "percent-encoding",
- "pin-project-lite 0.2.5",
+ "pin-project-lite 0.2.6",
  "rustls 0.18.1",
  "serde",
  "serde_json",
@@ -3262,7 +3278,7 @@ dependencies = [
  "log",
  "mime",
  "percent-encoding",
- "pin-project-lite 0.2.5",
+ "pin-project-lite 0.2.6",
  "rustls 0.19.0",
  "serde",
  "serde_json",
@@ -3442,7 +3458,7 @@ checksum = "f3fcab8778dc651bc65cfab2e4eb64996f3c912b74002fb379c94517e1f27c46"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -3641,7 +3657,7 @@ dependencies = [
 [[package]]
 name = "sparse-array"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 
 [[package]]
 name = "spin"
@@ -3682,7 +3698,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -3700,7 +3716,7 @@ dependencies = [
  "heck",
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -3732,9 +3748,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.59"
+version = "1.0.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07cb8b1b4ebf86a89ee88cbd201b022b94138c623644d035185c84d3f41b7e66"
+checksum = "123a78a3596b24fee53a6464ce52d8ecbf62241e6294c7e7fe12086cd161f512"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
@@ -3749,7 +3765,7 @@ checksum = "b834f2d66f734cb897113e34aaff2f1ab4719ca946f9a7358dba8f8064148701"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
  "unicode-xid 0.2.1",
 ]
 
@@ -3872,7 +3888,7 @@ checksum = "7765189610d8241a44529806d6fd1f2e0a08734313a35d5b3a556f92b381f3c0"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -3963,7 +3979,7 @@ dependencies = [
  "num_cpus",
  "once_cell",
  "parking_lot",
- "pin-project-lite 0.2.5",
+ "pin-project-lite 0.2.6",
  "signal-hook-registry",
  "tokio-macros 1.1.0",
  "winapi 0.3.9",
@@ -3988,7 +4004,7 @@ checksum = "e7d4237822b7be8fff0a7a27927462fad435dcb6650f95cea9e946bf6bdc7e07"
 dependencies = [
  "bytes 0.5.6",
  "once_cell",
- "pin-project-lite 0.2.5",
+ "pin-project-lite 0.2.6",
  "tokio 0.2.25",
  "tokio 1.2.0",
  "tokio-stream",
@@ -4013,7 +4029,7 @@ checksum = "e44da00bfc73a25f814cd8d7e57a68a5c31b74b3152a0a1d1f590c97ed06265a"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -4024,7 +4040,7 @@ checksum = "caf7b11a536f46a809a8a9f0bb4237020f70ecbf115b842360afb127ea2fda57"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -4057,7 +4073,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1981ad97df782ab506a1f43bf82c967326960d278acf3bf8279809648c3ff3ea"
 dependencies = [
  "futures-core",
- "pin-project-lite 0.2.5",
+ "pin-project-lite 0.2.6",
  "tokio 1.2.0",
 ]
 
@@ -4111,7 +4127,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "log",
- "pin-project-lite 0.2.5",
+ "pin-project-lite 0.2.6",
  "slab",
  "tokio 1.2.0",
 ]
@@ -4163,7 +4179,7 @@ dependencies = [
  "proc-macro2 1.0.24",
  "prost-build",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -4206,7 +4222,7 @@ checksum = "01ebdc2bb4498ab1ab5f5b73c5803825e60199229ccba0698170e3be0e7f959f"
 dependencies = [
  "cfg-if 1.0.0",
  "log",
- "pin-project-lite 0.2.5",
+ "pin-project-lite 0.2.6",
  "tracing-attributes",
  "tracing-core",
 ]
@@ -4230,7 +4246,7 @@ checksum = "a8a9bd1db7706f2373a190b0d067146caa39350c486f3d455b0e33b431f94c07"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
 ]
 
 [[package]]
@@ -4384,7 +4400,7 @@ dependencies = [
 [[package]]
 name = "typed-bytes"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4e0d3093cdba7a3f08d06832e23737bf88c94a4f"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#265e451589c7971a0901257caec6d993cd7b9d8e"
 
 [[package]]
 name = "typenum"
@@ -4685,7 +4701,7 @@ dependencies = [
  "log",
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
  "wasm-bindgen-shared",
 ]
 
@@ -4719,7 +4735,7 @@ checksum = "cc053ec74d454df287b9374ee8abb36ffd5acb95ba87da3ba5b7d3fe20eb401e"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
  "wasm-bindgen-backend",
  "wasm-bindgen-shared",
 ]
@@ -4887,7 +4903,7 @@ checksum = "c3f369ddb18862aba61aa49bf31e74d29f0f162dec753063200e1dc084345d16"
 dependencies = [
  "proc-macro2 1.0.24",
  "quote 1.0.9",
- "syn 1.0.59",
+ "syn 1.0.62",
  "synstructure",
 ]
 
