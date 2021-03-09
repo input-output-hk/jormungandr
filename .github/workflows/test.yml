@@ -60,12 +60,7 @@ jobs:
   update_deps:
     name: Update dependencies
     needs: cache_info
-    # Caches on Windows and Unix do not interop:
-    # https://github.com/actions/cache/issues/330#issuecomment-637701649
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: Cache cargo registry index
         uses: actions/cache@v2
@@ -144,6 +139,9 @@ jobs:
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
+          # Caches on Windows and Unix do not interop:
+          # https://github.com/actions/cache/issues/362
+          restore-keys: cargo-index-
 
       - name: Restore cargo dependencies
         uses: actions/cache@v2
