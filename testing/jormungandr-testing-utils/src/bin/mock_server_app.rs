@@ -3,7 +3,7 @@ use chain_impl_mockchain::key::Hash;
 use jormungandr_testing_utils::testing::node::grpc::server::{header, MockBuilder};
 use std::env;
 
-fn main() ->  {
+fn main() {
     let tip_parent =
         Hash::from_str("1c3ad65daec5ccb157b439ecd5e8d0574e389077cc672dd2a256ab1af8e6a463").unwrap();
 

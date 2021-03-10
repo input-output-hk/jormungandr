@@ -1,5 +1,4 @@
 use super::{MockExitCode, MockLogger, MockServerData, MockVerifier, ProtocolVersion};
-use assert_fs::TempDir;
 use chain_impl_mockchain::{block::Header, key::Hash};
 use std::sync::RwLock;
 use std::{
@@ -11,23 +10,18 @@ use std::{
 pub struct MockController {
     verifier: MockVerifier,
     stop_signal: tokio::sync::oneshot::Sender<()>,
-    // only need to keep this for the lifetime of the fixture
-    #[allow(dead_code)]
-    temp_dir: TempDir,
     data: Arc<RwLock<MockServerData>>,
     port: u16,
 }
 
 impl MockController {
     pub fn new(
-        temp_dir: TempDir,
         logger: MockLogger,
         stop_signal: tokio::sync::oneshot::Sender<()>,
         data: Arc<RwLock<MockServerData>>,
         port: u16,
     ) -> Self {
         Self {
-            temp_dir,
             verifier: MockVerifier::new(logger),
             stop_signal,
             data,
