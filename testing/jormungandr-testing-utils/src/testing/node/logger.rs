@@ -2,15 +2,18 @@ use crate::testing::Timestamp;
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
-use serde::de::Error;
 use serde::{Deserialize, Serialize};
+
 use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
+use std::convert::AsRef;
 use std::fmt;
 use std::io::BufRead;
+use std::ops::Index;
 use std::process::ChildStdout;
 use std::sync::mpsc::{self, Receiver};
 use std::time::Instant;
+use strum::AsRefStr;
 
 // TODO: we use a RefCell because it would be very labor intensive to change
 // the rest of the testing framework to take a mutable reference to the logger
@@ -19,7 +22,7 @@ pub struct JormungandrLogger {
     rx: Receiver<(Instant, String)>,
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug, Clone, PartialOrd)]
+#[derive(AsRefStr, Serialize, Deserialize, Eq, PartialEq, Debug, Clone, PartialOrd)]
 pub enum Level {
     #[serde(alias = "TRCE")]
     TRACE,
@@ -32,19 +35,7 @@ pub enum Level {
 }
 
 const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfully stored";
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Fields {
-    #[serde(alias = "message", default = "String::new")]
-    pub msg: String,
-    #[serde(alias = "kind")]
-    pub task: Option<String>,
-    pub hash: Option<String>,
-    pub reason: Option<String>,
-    pub error: Option<String>,
-    pub block_date: Option<String>,
-    pub peer_addr: Option<String>,
-}
+type RawFields = HashMap<String, String>;
 
 // TODO: convert strings to enums for level/task/
 // TODO: convert ts to DateTime
@@ -53,12 +44,35 @@ pub struct LogEntry {
     pub level: Level,
     #[serde(alias = "timestamp")]
     pub ts: String,
-    pub fields: Fields,
+    pub fields: RawFields,
+    pub target: String,
+    pub span: Option<RawFields>,
+    pub spans: Option<Vec<RawFields>>,
 }
 
 impl fmt::Display for LogEntry {
+    // Similar to tracing_subscriber format::Full (default)
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
+        fn flatten_fields(fields: &RawFields, filter: &str) -> String {
+            fields
+                .iter()
+                .filter(|(k, _)| k.as_str() != filter)
+                .map(|(k, v)| format!("{}={}", k, v))
+                .collect::<Vec<_>>()
+                .join(",")
+        }
+
+        write!(f, "{} {} ", self.ts, self.level.as_ref())?;
+        if let Some(spans) = &self.spans {
+            for span in spans {
+                let span_name = span.get("name").cloned().unwrap_or_default();
+                write!(f, "{}{{{}}}: ", span_name, flatten_fields(&span, "name"))?;
+            }
+        }
+        write!(f, " {}: ", self.target)?;
+        let fields = flatten_fields(&self.fields, LogEntry::MESSAGE);
+        write!(f, "{} {}", self.message(), fields)?;
+        Ok(())
     }
 }
 
@@ -77,32 +91,59 @@ pub struct LogEntryLegacy {
 
 impl From<LogEntryLegacy> for LogEntry {
     fn from(log_entry: LogEntryLegacy) -> Self {
+        macro_rules! insert_if_some {
+            ($container:expr, $value:expr) => {
+                if let Some(v) = $value {
+                    $container.insert(stringify!($value).to_string(), v);
+                }
+            };
+        }
+
+        let LogEntryLegacy {
+            msg,
+            task,
+            hash,
+            reason,
+            error,
+            block_date,
+            peer_addr,
+            level,
+            ts,
+        } = log_entry;
+        let mut fields = HashMap::new();
+
+        fields.insert(LogEntry::MESSAGE.to_string(), msg);
+        insert_if_some!(fields, task);
+        insert_if_some!(fields, hash);
+        insert_if_some!(fields, reason);
+        insert_if_some!(fields, error);
+        insert_if_some!(fields, block_date);
+        insert_if_some!(fields, peer_addr);
+
         Self {
-            level: log_entry.level,
-            ts: log_entry.ts,
-            fields: Fields {
-                msg: log_entry.msg,
-                task: log_entry.task,
-                hash: log_entry.hash,
-                reason: log_entry.reason,
-                error: log_entry.error,
-                block_date: log_entry.block_date,
-                peer_addr: log_entry.peer_addr,
-            },
+            level,
+            ts,
+            fields,
+            target: String::new(),
+            span: None,
+            spans: None,
         }
     }
 }
 
 impl LogEntry {
+    // this is the name of the field used by tracing to print messages
+    const MESSAGE: &'static str = "message";
+
     pub fn reason_contains(&self, reason_part: &str) -> bool {
-        match &self.fields.reason {
+        match &self.fields.get("reason") {
             Some(reason) => reason.contains(reason_part),
             None => false,
         }
     }
 
     pub fn error_contains(&self, error_part: &str) -> bool {
-        match &self.fields.error {
+        match &self.fields.get("error") {
             Some(error) => error.contains(error_part),
             None => false,
         }
@@ -110,7 +151,7 @@ impl LogEntry {
 
     pub fn block_date(&self) -> Option<BlockDate> {
         self.fields
-            .block_date
+            .get("block_date")
             .clone()
             .map(|block| block::BlockDate::from_str(&block).unwrap().into())
     }
@@ -118,6 +159,10 @@ impl LogEntry {
     pub fn is_later_than(&self, reference_time: &SystemTime) -> bool {
         let entry_system_time = SystemTime::from_str(&self.ts).unwrap();
         entry_system_time.duration_since(*reference_time).is_ok()
+    }
+
+    pub fn message(&self) -> String {
+        self.fields.get(Self::MESSAGE).cloned().unwrap_or_default()
     }
 }
 
@@ -146,8 +191,12 @@ impl JormungandrLogger {
         let collected = &mut self.collected.borrow_mut();
         let now = Instant::now();
         while let Ok((time, line)) = self.rx.try_recv() {
-            // we are reading from logs produce from the node, if they are not valid there is something wrong
-            collected.push(Self::try_parse_line_as_entry(&line).unwrap());
+            // we are reading from logs produced by the node, if they are not valid there is something wrong
+            let entry = Self::try_parse_line_as_entry(&line).unwrap();
+            // Filter out logs produced by other libraries
+            if entry.target.starts_with("jormungandr") {
+                collected.push(entry);
+            }
             // Stop reading if the are more recent messages available, otherwise
             // we risk that a very active process could result in endless collection
             // of its output
@@ -194,14 +243,14 @@ impl JormungandrLogger {
             entry.level == Level::ERROR
                 || Self::get_error_indicators()
                     .iter()
-                    .any(|indicator| entry.fields.msg.contains(indicator))
+                    .any(|indicator| entry.message().contains(indicator))
         })
     }
 
     pub fn last_validated_block_date(&self) -> Option<BlockDate> {
         self.entries()
             .iter()
-            .filter(|x| x.fields.msg.contains("validated block"))
+            .filter(|x| x.message().contains("validated block"))
             .map(|x| x.block_date())
             .last()
             .unwrap_or(None)
@@ -210,19 +259,19 @@ impl JormungandrLogger {
     pub fn contains_any_of(&self, messages: &[&str]) -> bool {
         self.entries()
             .iter()
-            .any(|line| messages.iter().any(|x| line.fields.msg.contains(x)))
+            .any(|line| messages.iter().any(|x| line.message().contains(x)))
     }
 
     pub fn get_created_blocks_hashes(&self) -> Vec<Hash> {
         self.filter_entries_with_block_creation()
-            .map(|item| Hash::from_str(&item.fields.hash.unwrap()).unwrap())
+            .map(|item| Hash::from_str(&item.span.unwrap().get("hash").unwrap()).unwrap())
             .collect()
     }
 
     pub fn get_created_blocks_hashes_after(&self, reference_time: SystemTime) -> Vec<Hash> {
         self.filter_entries_with_block_creation()
             .filter(|item| item.is_later_than(&reference_time))
-            .map(|item| Hash::from_str(&item.fields.hash.unwrap()).unwrap())
+            .map(|item| Hash::from_str(&item.span.unwrap().get("hash").unwrap()).unwrap())
             .collect()
     }
 
@@ -231,11 +280,9 @@ impl JormungandrLogger {
     }
 
     fn filter_entries_with_block_creation(&self) -> impl Iterator<Item = LogEntry> {
-        let expected_task = Some("block".to_string());
         self.entries().clone().into_iter().filter(move |x| {
-            x.fields.msg == SUCCESFULLY_CREATED_BLOCK_MSG
-                && x.fields.task == expected_task
-                && x.fields.hash.is_some()
+            x.message() == SUCCESFULLY_CREATED_BLOCK_MSG
+                && x.span.as_ref().and_then(|span| span.get("hash")).is_some()
         })
     }
 
@@ -252,40 +299,45 @@ impl JormungandrLogger {
     }
 
     fn try_parse_line_as_entry(line: &str) -> Result<LogEntry, serde_json::Error> {
+        use serde_json::Value;
         // try legacy log first
         let legacy_entry: Result<LogEntryLegacy, _> = serde_json::from_str(line);
         if let Ok(result) = legacy_entry {
             return Ok(result.into());
         }
-        // parse and aggregate spans fields
-        let mut jsonize_entry: serde_json::Value = serde_json::from_str(&line)?;
-        let mut aggreagated: HashMap<String, serde_json::Value> = HashMap::new();
-        if let Some(fields) = jsonize_entry.get("fields") {
-            // main span "fields" is ensured be an object, it is safe to unwrap here
-            for (k, v) in fields.as_object().unwrap().iter() {
-                aggreagated.insert(k.clone(), v.clone());
+
+        // Fields could be of various types, since we do not need to modify or
+        // interact with them, it is easier to just map them to strings
+        fn stringify_map<K: Index<Q, Output = Value>, Q>(container: &K, field: Q) -> Value {
+            container
+                .index(field)
+                .as_object()
+                .expect("not an object")
+                .into_iter()
+                .map(|(k, v)| {
+                    (
+                        k,
+                        if v.is_string() {
+                            v.to_owned()
+                        } else {
+                            serde_json::Value::String(v.to_string())
+                        },
+                    )
+                })
+                .collect()
+        }
+
+        let mut value: Value = serde_json::from_str(&line).unwrap();
+        value["fields"] = stringify_map(&value, "fields");
+        if value.get("span").is_some() {
+            value["span"] = stringify_map(&value, "span");
+        }
+        let spans = value.get_mut("spans").and_then(|x| x.as_array_mut());
+        if let Some(spans) = spans {
+            for i in 0..spans.len() {
+                spans[i] = stringify_map(&*spans, i);
             }
         }
-        if let Some(main_span) = jsonize_entry.get("span") {
-            // main span "span" is ensured be an object, it is safe to unwrap here
-            for (k, v) in main_span.as_object().unwrap().iter() {
-                aggreagated.insert(k.clone(), v.clone());
-            }
-        }
-        if let Some(spans) = jsonize_entry.get("spans") {
-            // spans is ensured to be an array, so it should be safe to unwrap here
-            for s in spans.as_array().unwrap() {
-                // same here, inner spans are represented as objects
-                let span_values = s.as_object().unwrap();
-                for (k, v) in span_values.iter() {
-                    aggreagated.insert(k.clone(), v.clone());
-                }
-            }
-        }
-        *(jsonize_entry
-            .get_mut("fields")
-            .ok_or_else(|| serde_json::error::Error::custom("Could not get mutable `fields`"))?) =
-            serde_json::to_value(aggreagated)?;
-        serde_json::from_value(jsonize_entry)
+        serde_json::from_value(value)
     }
 }

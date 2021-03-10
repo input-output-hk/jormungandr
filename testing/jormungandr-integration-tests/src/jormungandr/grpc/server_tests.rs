@@ -59,9 +59,9 @@ pub async fn wrong_genesis_hash() {
     setup.server.shutdown();
     assert!(
         setup.server.logger.get_lines().into_iter().any(|x| {
-            x.fields.msg == "connection to peer failed"
+            x.message() == "connection to peer failed"
                 && x.error_contains("Block0Mismatch")
-                && x.fields.peer_addr == Some(mock_address.clone())
+                && x.fields.get("peer_addr") == Some(&mock_address)
                 && x.level == LogLevel::INFO
         }),
         "Log content: {}",
@@ -96,6 +96,6 @@ pub async fn handshake_ok() {
     );
 
     assert!(!setup.server.logger.get_lines().into_iter().any(|x| {
-        x.fields.peer_addr == Some(mock_address.clone()) && x.level == LogLevel::WARN
+        x.fields.get("peer_addr") == Some(&mock_address) && x.level == LogLevel::WARN
     }));
 }

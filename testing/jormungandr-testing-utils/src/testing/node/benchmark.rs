@@ -27,14 +27,14 @@ pub fn speed_benchmark_from_log(
     let start_entry: Timestamp = log
         .get_lines()
         .into_iter()
-        .find(|x| x.fields.msg.contains(start_measurement))
+        .find(|x| x.message().contains(start_measurement))
         .expect("cannot find start mesurement entry in log")
         .into();
 
     let stop_entry: Timestamp = log
         .get_lines()
         .into_iter()
-        .find(|x| x.fields.msg.contains(stop_measurement))
+        .find(|x| x.message().contains(stop_measurement))
         .expect("cannot find stop mesurement entry in log")
         .into();
 

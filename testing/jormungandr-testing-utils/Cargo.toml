@@ -60,6 +60,7 @@ symmetric-cipher = { git = "https://github.com/input-output-hk/chain-wallet-libs
 qrcodegen = "1.6"
 quircs = "0.10.0"
 image = "0.23.12"
+strum = { version = "0.20", features = ["derive"] }
 
 
 [dependencies.reqwest]
