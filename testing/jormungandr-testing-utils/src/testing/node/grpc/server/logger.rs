@@ -1,11 +1,11 @@
-use jortestkit::file as file_utils;
+use crate::testing::node::JormungandrLogger;
 use serde::{Deserialize, Serialize};
-use std::io::BufRead;
-use std::{fmt, fs::File, io::BufReader, path::PathBuf};
-#[derive(Debug)]
-pub struct MockLogger {
-    pub log_file_path: PathBuf,
-}
+use std::fmt;
+
+use std::io::{Read, Result};
+use std::sync::mpsc::Receiver;
+
+pub struct MockLogger(JormungandrLogger);
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
 pub enum MethodType {
@@ -33,58 +33,33 @@ impl fmt::Display for MethodType {
     }
 }
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
-pub enum Level {
-    WARN,
-    INFO,
-    ERRO,
-}
+struct ChannelReader(Receiver<Vec<u8>>);
 
-#[derive(Serialize, Deserialize)]
-pub struct LogEntry {
-    pub msg: String,
-    pub level: Level,
-    pub ts: String,
-    pub method: MethodType,
+impl Read for ChannelReader {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        match self.0.recv() {
+            Ok(vec) => vec.as_slice().read(buf),
+            // It can only fail if the sending half is disconnected,
+            // implying that no further messages will ever be received.
+            Err(_) => Ok(0),
+        }
+    }
 }
 
 impl MockLogger {
-    pub fn new(log_file_path: impl Into<PathBuf>) -> Self {
-        Self {
-            log_file_path: log_file_path.into(),
-        }
+    pub fn new(rx: Receiver<Vec<u8>>) -> Self {
+        Self(JormungandrLogger::new(ChannelReader(rx)))
     }
 
     pub fn get_log_content(&self) -> String {
-        file_utils::read_file(&self.log_file_path)
-    }
-
-    fn parse_line_as_entry(&self, line: &str) -> LogEntry {
-        self.try_parse_line_as_entry(line).unwrap_or_else(|error| panic!(
-            "Cannot parse log line into json '{}': {}. Please ensure json logger is used for node. Full log content: {}",
-            &line,
-            error,
-            self.get_log_content()
-        ))
-    }
-
-    fn try_parse_line_as_entry(&self, line: &str) -> Result<LogEntry, impl std::error::Error> {
-        serde_json::from_str(&line)
-    }
-
-    pub fn get_log_entries(&self) -> impl Iterator<Item = LogEntry> + '_ {
-        self.get_lines_from_log()
-            .map(move |x| self.parse_line_as_entry(&x))
+        self.0.get_log_content()
     }
 
     pub fn executed_at_least_once(&self, method: MethodType) -> bool {
-        self.get_log_entries().any(|entry| entry.method == method)
-    }
-
-    fn get_lines_from_log(&self) -> impl Iterator<Item = String> {
-        let file = File::open(self.log_file_path.clone())
-            .unwrap_or_else(|_| panic!("cannot find log file: {:?}", &self.log_file_path));
-        let reader = BufReader::new(file);
-        reader.lines().map(|line| line.unwrap())
+        let expected = method.to_string();
+        self.0
+            .get_lines()
+            .iter()
+            .any(|entry| entry.fields.get("method") == Some(&expected))
     }
 }
