@@ -203,17 +203,16 @@ impl Services {
     {
         let handle = self.runtime.handle().clone();
         let now = Instant::now();
-        let tracing_span = span!(Level::TRACE, "service", kind = name);
+        let parent_span = span!(Level::TRACE, "service", kind = name);
         let future_service_info = TokioServiceInfo {
             name,
             up_time: now,
-            span: tracing_span,
+            span: parent_span.clone(),
             handle,
         };
-        let parent_span = future_service_info.span.clone();
         self.runtime
             .block_on(f(future_service_info).instrument(span!(
-                parent: parent_span,
+                parent: parent_span.clone(),
                 Level::TRACE,
                 "service",
                 kind = name
