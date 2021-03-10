@@ -6,7 +6,8 @@ use futures::FutureExt;
 use std::io::{Result, Write};
 use std::sync::mpsc::{sync_channel, SyncSender};
 use std::sync::Arc;
-use tokio::sync::{oneshot, RwLock};
+use std::sync::RwLock;
+use tokio::sync::oneshot;
 use tonic::transport::Server;
 
 use crate::testing::node::grpc::server::NodeServer;

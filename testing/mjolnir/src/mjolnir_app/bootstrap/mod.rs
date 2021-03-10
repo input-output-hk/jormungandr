@@ -69,10 +69,9 @@ impl ClientLoadCommand {
     }
 
     fn get_block0_hash(&self) -> Hash {
-        tokio::runtime::Runtime::new().unwrap().block_on(async {
-            let grpc_client = JormungandrClient::from_address(&self.address).unwrap();
-            return grpc_client.get_genesis_block_hash().await;
-        })
+        JormungandrClient::from_address(&self.address)
+            .unwrap()
+            .get_genesis_block_hash()
     }
 
     fn build_config(&self) -> ClientLoadConfig {

@@ -30,7 +30,6 @@ pub use jormungandr_testing_utils::testing::{
 };
 use jormungandr_testing_utils::{testing::node::Explorer, Version};
 
-use futures::executor::block_on;
 use indicatif::ProgressBar;
 use rand_core::RngCore;
 
@@ -256,7 +255,9 @@ impl NodeController {
     }
 
     pub fn blocks_to_tip(&self, from: HeaderId) -> Result<Vec<Block>> {
-        block_on(self.grpc_client.pull_blocks_to_tip(from)).map_err(Error::InvalidGrpcCall)
+        self.grpc_client
+            .pull_blocks_to_tip(from)
+            .map_err(Error::InvalidGrpcCall)
     }
 
     pub fn network_stats(&self) -> Result<Vec<PeerStats>> {
@@ -311,7 +312,7 @@ impl NodeController {
     }
 
     pub fn genesis_block_hash(&self) -> Result<HeaderId> {
-        Ok(block_on(self.grpc_client.get_genesis_block_hash()))
+        Ok(self.grpc_client.get_genesis_block_hash())
     }
 
     pub fn block(&self, header_hash: &HeaderId) -> Result<Block> {

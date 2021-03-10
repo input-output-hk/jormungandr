@@ -1,12 +1,12 @@
 use super::{MockExitCode, MockLogger, MockServerData, MockVerifier, ProtocolVersion};
 use assert_fs::TempDir;
 use chain_impl_mockchain::{block::Header, key::Hash};
+use std::sync::RwLock;
 use std::{
     sync::Arc,
     thread,
     time::{Duration, Instant},
 };
-use tokio::sync::RwLock;
 
 pub struct MockController {
     verifier: MockVerifier,
@@ -58,18 +58,18 @@ impl MockController {
         }
     }
 
-    pub async fn set_tip(&mut self, tip: Header) {
-        let mut data = self.data.write().await;
+    pub fn set_tip(&mut self, tip: Header) {
+        let mut data = self.data.write().unwrap();
         *data.tip_mut() = tip;
     }
 
-    pub async fn set_genesis(&mut self, tip: Hash) {
-        let mut data = self.data.write().await;
+    pub fn set_genesis(&mut self, tip: Hash) {
+        let mut data = self.data.write().unwrap();
         *data.genesis_hash_mut() = tip;
     }
 
-    pub async fn set_protocol(&mut self, protocol: ProtocolVersion) {
-        let mut data = self.data.write().await;
+    pub fn set_protocol(&mut self, protocol: ProtocolVersion) {
+        let mut data = self.data.write().unwrap();
         *data.protocol_mut() = protocol;
     }
 
