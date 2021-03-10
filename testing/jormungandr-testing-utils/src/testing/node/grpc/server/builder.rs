@@ -98,15 +98,26 @@ fn start_thread(data: Arc<RwLock<MockServerData>>, mock_port: u16) -> MockContro
     let (shutdown_signal, rx) = oneshot::channel::<()>();
     let data_clone = data.clone();
 
-    tokio::spawn(async move {
-        let addr = format!("127.0.0.1:{}", mock_port);
-        let mock = JormungandrServerImpl::new(data_clone, log_file.path(), mock_port);
-
-        Server::builder()
-            .add_service(NodeServer::new(mock))
-            .serve_with_shutdown(addr.parse().unwrap(), rx.map(drop))
-            .await
-            .unwrap();
+    std::thread::spawn(move || {
+        let subscriber = tracing_subscriber::fmt()
+            .json()
+            .with_writer(move || ChannelWriter(tx.clone()))
+            .finish();
+        tracing::subscriber::with_default(subscriber, || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(async move {
+                let addr = format!("127.0.0.1:{}", mock_port);
+                let mock = JormungandrServerImpl::new(data_clone, mock_port);
+                Server::builder()
+                    .add_service(NodeServer::new(mock))
+                    .serve_with_shutdown(addr.parse().unwrap(), rx.map(drop))
+                    .await
+                    .unwrap();
+            })
+        });
     });
 
     MockController::new(temp_dir, logger, shutdown_signal, data, mock_port)
