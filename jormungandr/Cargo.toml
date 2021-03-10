@@ -13,9 +13,9 @@ edition = "2018"
 
 [dependencies]
 arc-swap = "^1.1.0"
-juniper = "0.15.2"
-syn = "=1.0.59" # Remove this when juniper is updated, or better, gone forever
-juniper_warp = "0.6.1"
+async-trait = "=0.1.42" # https://github.com/dtolnay/async-trait/issues/144
+juniper = "0.15.3"
+juniper_warp = "0.6.2"
 base64 = "0.13.0"
 bincode = "1.2.1"
 bytes = "1.0"
@@ -59,7 +59,6 @@ tokio = { version = "^1.0", features = ["rt-multi-thread", "time", "sync", "rt",
 tokio-stream = "0.1.2"
 tokio-util = { version = "0.6.0", features = ["time"] }
 tonic = "0.4"
-async-trait = "0.1"
 lru = "^0.6.1"
 warp = { version = "0.2", features = ["tls"] }
 pin-project = "1.0"
