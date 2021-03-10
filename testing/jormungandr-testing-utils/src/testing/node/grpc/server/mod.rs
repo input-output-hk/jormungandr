@@ -76,7 +76,7 @@ impl Node for JormungandrServerImpl {
         &self,
         request: Request<HandshakeRequest>,
     ) -> Result<Response<HandshakeResponse>, Status> {
-        info!(method = %MethodType::Handshake, "Handshake method recieved",);
+        info!(method = %MethodType::Handshake, "Handshake method received",);
 
         let request = request.into_inner();
         let client_nonce = &request.nonce;
@@ -102,7 +102,7 @@ impl Node for JormungandrServerImpl {
         let request = request.into_inner();
         info!(
             method = %MethodType::ClientAuth,
-            "ClientAuth request recieved",
+            "ClientAuth request received",
         );
         let data = self.data.read().await;
         if !data.validate_peer_node_id(&request.node_id, &request.signature) {
@@ -116,7 +116,7 @@ impl Node for JormungandrServerImpl {
         &self,
         _request: tonic::Request<TipRequest>,
     ) -> Result<tonic::Response<TipResponse>, tonic::Status> {
-        info!(method = %MethodType::Tip, "Tip request recieved");
+        info!(method = %MethodType::Tip, "Tip request received");
         let tip_response = TipResponse {
             block_header: self.data.read().await.tip().to_raw().to_vec(),
         };
@@ -127,7 +127,7 @@ impl Node for JormungandrServerImpl {
         &self,
         _request: tonic::Request<PeersRequest>,
     ) -> Result<tonic::Response<PeersResponse>, tonic::Status> {
-        info!(method = %MethodType::GetPeers, "Get peers request recieved");
+        info!(method = %MethodType::GetPeers, "Get peers request received");
         Ok(Response::new(PeersResponse::default()))
     }
     async fn get_blocks(
@@ -136,7 +136,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::GetBlocksStream>, tonic::Status> {
         info!(
             method = %MethodType::GetBlocks,
-            "Get blocks request recieved"
+            "Get blocks request received"
         );
         let (_tx, rx) = mpsc::channel(1);
         Ok(Response::new(ReceiverStream::new(rx)))
@@ -147,7 +147,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::GetHeadersStream>, tonic::Status> {
         info!(
             method = %MethodType::GetHeaders,
-            "Get headers request recieved",
+            "Get headers request received",
         );
         let (_tx, rx) = mpsc::channel(1);
         Ok(Response::new(ReceiverStream::new(rx)))
@@ -158,7 +158,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::GetFragmentsStream>, tonic::Status> {
         info!(
             method = %MethodType::GetFragments,
-            "Get fragments request recieved",
+            "Get fragments request received",
         );
         let (_tx, rx) = mpsc::channel(1);
         Ok(Response::new(ReceiverStream::new(rx)))
@@ -169,7 +169,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::PullHeadersStream>, tonic::Status> {
         info!(
             method = %MethodType::PullHeaders,
-            "Pull Headers request recieved",
+            "Pull Headers request received",
         );
         let (_tx, rx) = mpsc::channel(1);
         Ok(Response::new(ReceiverStream::new(rx)))
@@ -180,7 +180,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::PullBlocksStream>, tonic::Status> {
         info!(
             method = %MethodType::PullBlocks,
-            "PullBlocks request recieved",
+            "PullBlocks request received",
         );
         let (_tx, rx) = mpsc::channel(1);
         Ok(Response::new(ReceiverStream::new(rx)))
@@ -191,7 +191,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::PullBlocksToTipStream>, tonic::Status> {
         info!(
             method = %MethodType::PullBlocksToTip,
-            "PullBlocksToTip request recieved",
+            "PullBlocksToTip request received",
         );
         let (_tx, rx) = mpsc::channel(1);
         Ok(Response::new(ReceiverStream::new(rx)))
@@ -202,7 +202,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<PushHeadersResponse>, tonic::Status> {
         info!(
             method = %MethodType::PushHeaders,
-            "Push headers method recieved",
+            "Push headers method received",
         );
         Ok(Response::new(PushHeadersResponse::default()))
     }
@@ -212,7 +212,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<UploadBlocksResponse>, tonic::Status> {
         info!(
             method = %MethodType::UploadBlocks,
-            "Upload blocks method recieved",
+            "Upload blocks method received",
         );
         Ok(Response::new(UploadBlocksResponse::default()))
     }
@@ -223,7 +223,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::BlockSubscriptionStream>, tonic::Status> {
         info!(
             method = %MethodType::BlockSubscription,
-            "Block subscription event recieved",
+            "Block subscription event received",
         );
         let (_tx, rx) = mpsc::channel(1);
         Ok(Response::new(ReceiverStream::new(rx)))
@@ -235,7 +235,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::FragmentSubscriptionStream>, tonic::Status> {
         info!(
             method = %MethodType::FragmentSubscription,
-            "Fragment subscription event recieved",
+            "Fragment subscription event received",
         );
         let (_tx, rx) = mpsc::channel(1);
         Ok(Response::new(ReceiverStream::new(rx)))
@@ -246,7 +246,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<Self::GossipSubscriptionStream>, tonic::Status> {
         info!(
             method = %MethodType::GossipSubscription,
-            "Gossip subscription event recieved",
+            "Gossip subscription event received",
         );
         let (_tx, rx) = mpsc::channel(1);
         Ok(Response::new(ReceiverStream::new(rx)))
