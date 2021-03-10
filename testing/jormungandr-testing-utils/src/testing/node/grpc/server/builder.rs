@@ -3,6 +3,8 @@ use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use chain_impl_mockchain::{block::Header, key::Hash, testing::TestGen};
 use futures::FutureExt;
+use std::io::{Result, Write};
+use std::sync::mpsc::{sync_channel, SyncSender};
 use std::sync::Arc;
 use tokio::sync::{oneshot, RwLock};
 use tonic::transport::Server;
@@ -68,6 +70,21 @@ impl MockBuilder {
     }
 }
 
+struct ChannelWriter(SyncSender<Vec<u8>>);
+
+impl Write for ChannelWriter {
+    fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        self.0
+            .try_send(buf.to_vec())
+            .expect("receiver hanged up or channel is full");
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> Result<()> {
+        Ok(())
+    }
+}
+
 fn start_thread(data: Arc<RwLock<MockServerData>>, mock_port: u16) -> MockController {
     let temp_dir = TempDir::new().unwrap();
     let log_file = temp_dir.child("mock.log");
@@ -76,19 +93,32 @@ fn start_thread(data: Arc<RwLock<MockServerData>>, mock_port: u16) -> MockContro
         log_file.path().to_string_lossy()
     );
 
-    let logger = MockLogger::new(log_file.path());
+    let (tx, rx) = sync_channel(100);
+    let logger = MockLogger::new(rx);
     let (shutdown_signal, rx) = oneshot::channel::<()>();
     let data_clone = data.clone();
 
-    tokio::spawn(async move {
-        let addr = format!("127.0.0.1:{}", mock_port);
-        let mock = JormungandrServerImpl::new(data_clone, log_file.path(), mock_port);
-
-        Server::builder()
-            .add_service(NodeServer::new(mock))
-            .serve_with_shutdown(addr.parse().unwrap(), rx.map(drop))
-            .await
-            .unwrap();
+    std::thread::spawn(move || {
+        let subscriber = tracing_subscriber::fmt()
+            .json()
+            .with_writer(move || ChannelWriter(tx.clone()))
+            .finish();
+        tracing::subscriber::with_default(subscriber, || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+            rt.block_on(async move {
+                let addr = format!("127.0.0.1:{}", mock_port);
+                let mock = JormungandrServerImpl::new(data_clone, mock_port);
+                Server::builder()
+                    .add_service(NodeServer::new(mock))
+                    .serve_with_shutdown(addr.parse().unwrap(), rx.map(drop))
+                    .await
+                    .unwrap();
+            })
+        });
     });
+
     MockController::new(temp_dir, logger, shutdown_signal, data, mock_port)
 }

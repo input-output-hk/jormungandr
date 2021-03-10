@@ -1,12 +1,13 @@
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::interfaces::TrustedPeer;
-use jormungandr_testing_utils::testing::node::grpc::JormungandrClient;
+use jormungandr_testing_utils::testing::{node::grpc::JormungandrClient, SyncNode};
 
 use crate::common::{
     configuration::JormungandrParams,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
 use assert_fs::TempDir;
+use futures::FutureExt;
 use std::time::Duration;
 const DEFAULT_SLOT_DURATION: u8 = 1;
 const LOCALHOST: &str = "127.0.0.1";
@@ -64,6 +65,8 @@ pub mod client {
 pub mod server {
     use super::*;
     use crate::common::configuration;
+    const SERVER_RETRY_WAIT: Duration = Duration::from_secs(1);
+    const TIMEOUT: Duration = Duration::from_secs(60);
 
     pub struct ServerBootstrap {
         pub server: JormungandrProcess,
@@ -98,6 +101,22 @@ pub mod server {
             config,
             mock_port,
             _dir: dir,
+        }
+    }
+
+    impl ServerBootstrap {
+        pub async fn wait_server_online(&self) {
+            futures::select! {
+                _ = async {
+                    while !self.server.is_running() {
+                        tokio::time::sleep(SERVER_RETRY_WAIT).await;
+                    }
+                }.fuse() => {},
+                _ = tokio::time::sleep(TIMEOUT).fuse() => {
+                    println!("{}", self.server.log_content());
+                    panic!("Timeout elapsed while waiting for server to go online");
+                },
+            }
         }
     }
 }

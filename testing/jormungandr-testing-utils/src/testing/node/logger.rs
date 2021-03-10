@@ -8,9 +8,8 @@ use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt;
-use std::io::BufRead;
+use std::io::{BufRead, Read};
 use std::ops::Index;
-use std::process::ChildStdout;
 use std::sync::mpsc::{self, Receiver};
 use std::time::Instant;
 use strum::AsRefStr;
@@ -173,7 +172,7 @@ impl Into<Timestamp> for LogEntry {
 }
 
 impl JormungandrLogger {
-    pub fn new(source: ChildStdout) -> Self {
+    pub fn new<R: Read + Send + 'static>(source: R) -> Self {
         let (tx, rx) = mpsc::channel();
         std::thread::spawn(move || {
             let lines = std::io::BufReader::new(source).lines();

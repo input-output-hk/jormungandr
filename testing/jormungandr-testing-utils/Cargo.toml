@@ -37,9 +37,6 @@ custom_debug = "0.5"
 thiserror = "1.0"
 poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "8305f1560392a9d26673ca996e7646c8834533ef" }
 sysinfo = { version = "0.15.3" }
-slog = { version = "^2.7.0", features = [ "max_level_trace", "release_max_level_trace" ] }
-slog-async = "2.5.0"
-slog-json = "2.3.0"
 os_info = { version = "3.0.1", default-features = false }
 zip = "0.5.6"
 flate2 = "1.0.18"
@@ -61,6 +58,9 @@ qrcodegen = "1.6"
 quircs = "0.10.0"
 image = "0.23.12"
 strum = { version = "0.20", features = ["derive"] }
+tracing-appender = "0.1"
+tracing-subscriber = "0.2"
+tracing = "0.1"
 
 
 [dependencies.reqwest]
