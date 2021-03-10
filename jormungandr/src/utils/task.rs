@@ -212,7 +212,7 @@ impl Services {
         };
         self.runtime
             .block_on(f(future_service_info).instrument(span!(
-                parent: parent_span.clone(),
+                parent: parent_span,
                 Level::TRACE,
                 "service",
                 kind = name
