@@ -11,9 +11,9 @@ use chain_impl_mockchain::{
     header::Header as LibHeader, key::Hash,
 };
 use futures::stream;
-use futures::FutureExt;
 use std::fmt;
 use std::time::Duration;
+use tokio::runtime::{Builder, Runtime};
 
 use chain_core::property::FromStr;
 use chain_core::property::Serialize;
@@ -37,6 +37,7 @@ pub struct JormungandrClient {
     host: String,
     port: u16,
     inner_client: NodeClient<Channel>,
+    rt: Runtime,
 }
 
 impl Clone for JormungandrClient {
@@ -73,15 +74,21 @@ impl JormungandrClient {
     }
 
     pub fn new(host: &str, port: u16) -> Self {
-        Self {
-            host: host.to_owned(),
-            port,
-            inner_client: NodeClient::new(
+        let rt = Builder::new_current_thread().enable_all().build().unwrap();
+        let inner_client = rt.block_on(async {
+            NodeClient::new(
                 tonic::transport::Endpoint::from_shared(format!("http://{}:{}", host, port))
                     .unwrap()
                     .connect_lazy()
                     .unwrap(),
-            ),
+            )
+        });
+
+        Self {
+            host: host.to_owned(),
+            port,
+            inner_client,
+            rt,
         }
     }
 
@@ -89,45 +96,52 @@ impl JormungandrClient {
         self.inner_client.clone()
     }
 
-    pub async fn wait_for_chain_length(&self, lenght: ChainLength, timeout: Duration) {
-        futures::select! {
-            _ = async {
-                while self.tip().await.chain_length() < lenght {
-                    tokio::time::sleep(CLIENT_RETRY_WAIT).await;
-                }
-            }.fuse() => {},
-            _ = tokio::time::sleep(timeout).fuse() => panic!("Timeout elapsed while waiting for chain to grow"),
+    pub fn wait_for_chain_length(&self, lenght: ChainLength, timeout: Duration) {
+        let started = std::time::Instant::now();
+        loop {
+            if self.tip().chain_length() >= lenght {
+                return;
+            }
+            if started.elapsed() > timeout {
+                panic!("Timeout elapsed while waiting for chain to grow")
+            }
+            std::thread::sleep(CLIENT_RETRY_WAIT);
         }
     }
 
-    pub async fn handshake(&self, nonce: &[u8]) -> HandshakeResponse {
+    pub fn handshake(&self, nonce: &[u8]) -> HandshakeResponse {
         let mut client = self.client();
         let request = tonic::Request::new(HandshakeRequest {
             nonce: nonce.to_vec(),
         });
 
-        client.handshake(request).await.unwrap().into_inner()
+        self.rt
+            .block_on(client.handshake(request))
+            .unwrap()
+            .into_inner()
     }
 
-    pub async fn tip(&self) -> LibHeader {
+    pub fn tip(&self) -> LibHeader {
         let mut client = self.client();
         let request = tonic::Request::new(TipRequest {});
-        let response = client.tip(request).await.unwrap().into_inner();
+        let response = self.rt.block_on(client.tip(request)).unwrap().into_inner();
         read_into(&response.block_header)
     }
 
-    pub async fn headers(&self, block_ids: &[Hash]) -> Result<Vec<LibHeader>, MockClientError> {
+    pub fn headers(&self, block_ids: &[Hash]) -> Result<Vec<LibHeader>, MockClientError> {
         let mut client = self.client();
 
         let request = tonic::Request::new(BlockIds {
             ids: self.hashes_to_bin_vec(block_ids),
         });
 
-        let response = client
-            .get_headers(request)
-            .await
-            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
-        self.headers_stream_to_vec(response.into_inner()).await
+        self.rt.block_on(async {
+            let response = client
+                .get_headers(request)
+                .await
+                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+            self.headers_stream_to_vec(response.into_inner()).await
+        })
     }
 
     fn hashes_to_bin_vec(&self, blocks_id: &[Hash]) -> Vec<Vec<u8>> {
@@ -141,53 +155,55 @@ impl JormungandrClient {
         block_id.as_ref().to_vec()
     }
 
-    pub async fn get_blocks(&self, blocks_id: &[Hash]) -> Result<Vec<LibBlock>, MockClientError> {
+    pub fn get_blocks(&self, blocks_id: &[Hash]) -> Result<Vec<LibBlock>, MockClientError> {
         let mut client = self.client();
 
         let request = tonic::Request::new(BlockIds {
             ids: self.hashes_to_bin_vec(blocks_id),
         });
 
-        let response = client
-            .get_blocks(request)
-            .await
-            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
-        self.block_stream_to_vec(response.into_inner()).await
+        self.rt.block_on(async {
+            let response = client
+                .get_blocks(request)
+                .await
+                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+            self.block_stream_to_vec(response.into_inner()).await
+        })
     }
 
-    pub async fn get_genesis_block_hash(&self) -> Hash {
-        Hash::from_str(&hex::encode(self.handshake(&[]).await.block0)).unwrap()
+    pub fn get_genesis_block_hash(&self) -> Hash {
+        Hash::from_str(&hex::encode(self.handshake(&[]).block0)).unwrap()
     }
 
-    pub async fn pull_blocks(
-        &self,
-        from: &[Hash],
-        to: Hash,
-    ) -> Result<Vec<LibBlock>, MockClientError> {
+    pub fn pull_blocks(&self, from: &[Hash], to: Hash) -> Result<Vec<LibBlock>, MockClientError> {
         let mut client = self.client();
 
         let request = tonic::Request::new(PullBlocksRequest {
             from: self.hashes_to_bin_vec(from),
             to: self.hash_to_bin(&to),
         });
-        let response = client
-            .pull_blocks(request)
-            .await
-            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
-        self.block_stream_to_vec(response.into_inner()).await
+        self.rt.block_on(async {
+            let response = client
+                .pull_blocks(request)
+                .await
+                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+            self.block_stream_to_vec(response.into_inner()).await
+        })
     }
 
-    pub async fn pull_blocks_to_tip(&self, from: Hash) -> Result<Vec<LibBlock>, MockClientError> {
+    pub fn pull_blocks_to_tip(&self, from: Hash) -> Result<Vec<LibBlock>, MockClientError> {
         let mut client = self.client();
 
         let request = tonic::Request::new(PullBlocksToTipRequest {
             from: self.hashes_to_bin_vec(&[from]),
         });
-        let response = client
-            .pull_blocks_to_tip(request)
-            .await
-            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
-        self.block_stream_to_vec(response.into_inner()).await
+        self.rt.block_on(async {
+            let response = client
+                .pull_blocks_to_tip(request)
+                .await
+                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+            self.block_stream_to_vec(response.into_inner()).await
+        })
     }
 
     async fn headers_stream_to_vec(
@@ -235,26 +251,24 @@ impl JormungandrClient {
         Ok(fragments)
     }
 
-    pub async fn pull_headers(
-        &self,
-        from: &[Hash],
-        to: Hash,
-    ) -> Result<Vec<LibHeader>, MockClientError> {
+    pub fn pull_headers(&self, from: &[Hash], to: Hash) -> Result<Vec<LibHeader>, MockClientError> {
         let mut client = self.client();
 
         let request = tonic::Request::new(PullHeadersRequest {
             from: self.hashes_to_bin_vec(from),
             to: self.hash_to_bin(&to),
         });
-        let response = client
-            .pull_headers(request)
-            .await
-            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
-        let stream = response.into_inner();
-        self.headers_stream_to_vec(stream).await
+        self.rt.block_on(async {
+            let response = client
+                .pull_headers(request)
+                .await
+                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+            let stream = response.into_inner();
+            self.headers_stream_to_vec(stream).await
+        })
     }
 
-    pub async fn upload_blocks(&self, lib_block: LibBlock) -> Result<(), MockClientError> {
+    pub fn upload_blocks(&self, lib_block: LibBlock) -> Result<(), MockClientError> {
         let mut client = self.client();
 
         let mut bytes = Vec::with_capacity(4096);
@@ -262,14 +276,13 @@ impl JormungandrClient {
         let block = Block { content: bytes };
 
         let request = tonic::Request::new(stream::iter(vec![block]));
-        client
-            .upload_blocks(request)
-            .await
+        self.rt
+            .block_on(client.upload_blocks(request))
             .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
         Ok(())
     }
 
-    pub async fn push_headers(&self, lib_header: LibHeader) -> Result<(), MockClientError> {
+    pub fn push_headers(&self, lib_header: LibHeader) -> Result<(), MockClientError> {
         let mut client = self.client();
 
         let header = Header {
@@ -277,23 +290,24 @@ impl JormungandrClient {
         };
 
         let request = tonic::Request::new(stream::iter(vec![header]));
-        client
-            .push_headers(request)
-            .await
+        self.rt
+            .block_on(client.push_headers(request))
             .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
         Ok(())
     }
 
-    pub async fn get_fragments(&self, ids: Vec<Hash>) -> Result<Vec<LibFragment>, MockClientError> {
+    pub fn get_fragments(&self, ids: Vec<Hash>) -> Result<Vec<LibFragment>, MockClientError> {
         let mut client = self.client();
         let request = tonic::Request::new(FragmentIds {
             ids: self.hashes_to_bin_vec(&ids),
         });
 
-        let response = client
-            .get_fragments(request)
-            .await
-            .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
-        self.fragment_stream_to_vec(response.into_inner()).await
+        self.rt.block_on(async {
+            let response = client
+                .get_fragments(request)
+                .await
+                .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
+            self.fragment_stream_to_vec(response.into_inner()).await
+        })
     }
 }
