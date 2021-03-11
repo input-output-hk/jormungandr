@@ -117,7 +117,10 @@ impl RawSettings {
         } else {
             Some(info_msgs)
         };
-        LogSettings(entries, log_info_msg)
+        LogSettings {
+            entries,
+            msgs: log_info_msg,
+        }
     }
 
     fn rest_config(&self) -> Option<Rest> {
