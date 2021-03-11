@@ -13,7 +13,10 @@ use tracing::subscriber::SetGlobalDefaultError;
 #[allow(unused_imports)]
 use tracing_subscriber::layer::SubscriberExt;
 
-pub struct LogSettings(pub Vec<LogSettingsEntry>, pub LogInfoMsg);
+pub struct LogSettings {
+    pub entries: Vec<LogSettingsEntry>,
+    pub msgs: LogInfoMsg,
+}
 
 /// A wrapper to return an optional string message that we
 /// have to manually log with `info!`, we need this because
@@ -175,7 +178,7 @@ impl LogSettings {
         // Parse which settings are present for possible outputs
         let mut layer_settings = LogOutputLayerSettings::default();
         let mut info_msgs: Vec<String> = Vec::new();
-        for config in self.0.into_iter() {
+        for config in self.entries.into_iter() {
             layer_settings.read_setting(config, &mut info_msgs);
         }
         let (std_out_layer, std_out_layer_json) = if let Some(settings) = layer_settings.stdout {
@@ -297,7 +300,7 @@ impl LogSettings {
         // panics if something goes wrong.
         registry.init();
 
-        let log_msgs = match (self.1, info_msgs.is_empty()) {
+        let log_msgs = match (self.msgs, info_msgs.is_empty()) {
             (None, true) => None,
             (None, false) => Some(info_msgs),
             (Some(msgs), true) => Some(msgs),
