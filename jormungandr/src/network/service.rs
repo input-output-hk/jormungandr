@@ -293,22 +293,19 @@ impl FragmentService for NodeService {
         let addr = subscriber.addr();
         let parent_span = self.subscription_span(subscriber, "fragments");
         let subscriber = Address::tcp(addr);
-        let span = span!(
-            parent: parent_span,
-            Level::TRACE,
-            "fragment_subscription",
-            direction = "in"
-        );
-        self.global_state.spawn(
-            subscription::process_fragments(
-                stream,
-                self.channels.transaction_box.clone(),
-                subscriber.clone(),
-                self.global_state.clone(),
-                span.clone(),
-            )
-            .instrument(span),
-        );
+        parent_span.in_scope(|| {
+            let span = span!(Level::TRACE, "fragment_subscription", direction = "in");
+            self.global_state.spawn(
+                subscription::process_fragments(
+                    stream,
+                    self.channels.transaction_box.clone(),
+                    subscriber.clone(),
+                    self.global_state.clone(),
+                    span.clone(),
+                )
+                .instrument(span),
+            );
+        });
 
         let outbound = self
             .global_state
@@ -331,22 +328,23 @@ impl GossipService for NodeService {
         let addr = subscriber.addr();
         let parent_span = self.subscription_span(subscriber, "gossip");
         let subscriber = Address::tcp(addr);
-        let span = span!(
-            parent: parent_span,
-            Level::TRACE,
-            "fragment_subscription",
-            direction = "in"
-        );
+        parent_span.in_scope(|| {
+            let span = span!(
+                Level::TRACE,
+                "fragment_subscription",
+                direction = "in"
+            );
 
-        self.global_state.spawn(
-            subscription::process_gossip(
-                stream,
-                subscriber.clone(),
-                self.global_state.clone(),
-                span.clone(),
-            )
-            .instrument(span),
-        );
+            self.global_state.spawn(
+                subscription::process_gossip(
+                    stream,
+                    subscriber.clone(),
+                    self.global_state.clone(),
+                    span.clone(),
+                )
+                .instrument(span),
+            );
+        });
 
         let outbound = self
             .global_state
