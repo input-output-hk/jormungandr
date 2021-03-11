@@ -210,13 +210,14 @@ impl Services {
             span: parent_span.clone(),
             handle,
         };
-        self.runtime
-            .block_on(f(future_service_info).instrument(span!(
-                parent: parent_span,
-                Level::TRACE,
-                "service",
-                kind = name
-            )))
+        parent_span.in_scope(|| {
+            self.runtime
+                .block_on(f(future_service_info).instrument(span!(
+                    Level::TRACE,
+                    "service",
+                    kind = name
+                )))
+        })
     }
 }
 
