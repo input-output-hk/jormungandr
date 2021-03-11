@@ -91,8 +91,7 @@ struct CommandArgs {
     report: bool,
 }
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let command_args = CommandArgs::from_args();
 
     std::env::set_var("RUST_BACKTRACE", "full");

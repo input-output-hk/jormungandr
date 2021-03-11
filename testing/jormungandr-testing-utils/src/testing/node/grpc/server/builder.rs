@@ -1,12 +1,11 @@
 use super::{JormungandrServerImpl, MockController, MockLogger, MockServerData, ProtocolVersion};
-use assert_fs::fixture::PathChild;
-use assert_fs::TempDir;
 use chain_impl_mockchain::{block::Header, key::Hash, testing::TestGen};
 use futures::FutureExt;
 use std::io::{Result, Write};
 use std::sync::mpsc::{sync_channel, SyncSender};
 use std::sync::Arc;
-use tokio::sync::{oneshot, RwLock};
+use std::sync::RwLock;
+use tokio::sync::oneshot;
 use tonic::transport::Server;
 
 use crate::testing::node::grpc::server::NodeServer;
@@ -86,13 +85,6 @@ impl Write for ChannelWriter {
 }
 
 fn start_thread(data: Arc<RwLock<MockServerData>>, mock_port: u16) -> MockController {
-    let temp_dir = TempDir::new().unwrap();
-    let log_file = temp_dir.child("mock.log");
-    println!(
-        "mock will put logs into {}",
-        log_file.path().to_string_lossy()
-    );
-
     let (tx, rx) = sync_channel(100);
     let logger = MockLogger::new(rx);
     let (shutdown_signal, rx) = oneshot::channel::<()>();
@@ -120,5 +112,5 @@ fn start_thread(data: Arc<RwLock<MockServerData>>, mock_port: u16) -> MockContro
         });
     });
 
-    MockController::new(temp_dir, logger, shutdown_signal, data, mock_port)
+    MockController::new(logger, shutdown_signal, data, mock_port)
 }

@@ -5,9 +5,9 @@ use jormungandr_testing_utils::testing::node::{
 };
 
 // L1005 Handshake version discrepancy
-#[tokio::test]
-pub async fn wrong_protocol() {
-    let setup = setup::server::default().await;
+#[test]
+pub fn wrong_protocol() {
+    let setup = setup::server::default();
 
     let block0 = setup.server.block0_configuration().to_block();
     let genesis_hash = setup.server.genesis_block_hash().into_hash();
@@ -19,7 +19,7 @@ pub async fn wrong_protocol() {
         .with_protocol_version(ProtocolVersion::Bft)
         .build();
 
-    setup.wait_server_online().await;
+    setup.wait_server_online();
 
     let mock_result = mock_controller.finish_and_verify_that(|mock_verifier| {
         mock_verifier.method_executed_at_least_once(MethodType::Handshake)
@@ -38,9 +38,9 @@ pub async fn wrong_protocol() {
 }
 
 // L1004 Handshake hash discrepancy
-#[tokio::test]
-pub async fn wrong_genesis_hash() {
-    let setup = setup::server::default().await;
+#[test]
+pub fn wrong_genesis_hash() {
+    let setup = setup::server::default();
 
     let block0 = setup.server.block0_configuration().to_block();
 
@@ -51,7 +51,7 @@ pub async fn wrong_genesis_hash() {
         .with_protocol_version(ProtocolVersion::GenesisPraos)
         .build();
 
-    setup.wait_server_online().await;
+    setup.wait_server_online();
 
     let mock_result = mock_controller.finish_and_verify_that(|mock_verifier| {
         mock_verifier.method_executed_at_least_once(MethodType::Handshake)
@@ -75,9 +75,9 @@ pub async fn wrong_genesis_hash() {
 }
 
 // L1002 Handshake compatible
-#[tokio::test]
-pub async fn handshake_ok() {
-    let setup = setup::server::default().await;
+#[test]
+pub fn handshake_ok() {
+    let setup = setup::server::default();
 
     let block0 = setup.server.block0_configuration().to_block();
     let genesis_hash = setup.server.genesis_block_hash().into_hash();
@@ -89,7 +89,7 @@ pub async fn handshake_ok() {
         .with_protocol_version(ProtocolVersion::GenesisPraos)
         .build();
 
-    setup.wait_server_online().await;
+    setup.wait_server_online();
 
     let mock_result = mock_controller.finish_and_verify_that(|mock_verifier| {
         mock_verifier.method_executed_at_least_once(MethodType::Handshake)

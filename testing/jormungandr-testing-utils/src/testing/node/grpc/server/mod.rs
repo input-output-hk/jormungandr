@@ -8,7 +8,8 @@ pub use super::proto::{
     },
 };
 
-use tokio::sync::{mpsc, RwLock};
+use std::sync::RwLock;
+use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
 
@@ -81,7 +82,7 @@ impl Node for JormungandrServerImpl {
         let request = request.into_inner();
         let client_nonce = &request.nonce;
 
-        let mut data = self.data.write().await;
+        let mut data = self.data.write().unwrap();
         let signature = data.node_signature(client_nonce);
         let nonce = data.generate_auth_nonce().to_vec();
 
@@ -104,7 +105,7 @@ impl Node for JormungandrServerImpl {
             method = %MethodType::ClientAuth,
             "ClientAuth request received",
         );
-        let data = self.data.read().await;
+        let data = self.data.read().unwrap();
         if !data.validate_peer_node_id(&request.node_id, &request.signature) {
             return Err(Status::invalid_argument("invalid node ID or signature"));
         }
@@ -118,7 +119,7 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<TipResponse>, tonic::Status> {
         info!(method = %MethodType::Tip, "Tip request received");
         let tip_response = TipResponse {
-            block_header: self.data.read().await.tip().to_raw().to_vec(),
+            block_header: self.data.read().unwrap().tip().to_raw().to_vec(),
         };
         Ok(Response::new(tip_response))
     }
