@@ -5,6 +5,7 @@ use crate::common::{
 };
 
 use jormungandr_lib::interfaces::{AccountState, InitialUTxO, SettingsDto, UTxOInfo};
+use jormungandr_testing_utils::testing::SyncNode;
 use jormungandr_testing_utils::wallet::Wallet;
 
 use assert_fs::prelude::*;
@@ -174,7 +175,10 @@ pub fn test_node_recovers_kill_signal() {
             |raw| raw.account_state(&account_receiver),
             Default::default(),
         )
-        .expect("timeout occured when pooling address endpoint");
+        .expect(&format!(
+            "timeout occured when pooling address endpoint. \nNode logs: {}",
+            jormungandr.log_content()
+        ));
 
     let snapshot_after = take_snapshot(&account_receiver, &jormungandr, new_utxo);
 
