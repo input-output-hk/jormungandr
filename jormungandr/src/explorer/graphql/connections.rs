@@ -1,4 +1,4 @@
-use async_graphql::*;
+use async_graphql::{FieldResult, OutputType, SimpleObject};
 use std::convert::TryFrom;
 
 #[derive(SimpleObject)]

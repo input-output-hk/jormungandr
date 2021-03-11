@@ -3,8 +3,10 @@ mod connections;
 mod error;
 mod scalars;
 
-use async_graphql::connection::*;
-use async_graphql::*;
+use async_graphql::connection::{query, Connection, Edge, EmptyFields};
+use async_graphql::{
+    Context, EmptyMutation, FieldError, FieldResult, Object, SimpleObject, Subscription,
+};
 
 use self::connections::{
     compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
@@ -700,7 +702,7 @@ impl BftLeader {
     }
 }
 
-#[derive(Union)]
+#[derive(async_graphql::Union)]
 pub enum Leader {
     StakePool(Pool),
     BftLeader(BftLeader),
@@ -1320,7 +1322,7 @@ impl VotePayloadPrivateStatus {
     }
 }
 
-#[derive(Clone, Union)]
+#[derive(Clone, async_graphql::Union)]
 pub enum VotePayloadStatus {
     Public(VotePayloadPublicStatus),
     Private(VotePayloadPrivateStatus),
@@ -1339,7 +1341,7 @@ pub struct TallyPrivateStatus {
     options: VoteOptionRange,
 }
 
-#[derive(Clone, Union)]
+#[derive(Clone, async_graphql::Union)]
 pub enum TallyStatus {
     Public(TallyPublicStatus),
     Private(TallyPrivateStatus),

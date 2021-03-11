@@ -1,6 +1,6 @@
 use super::error::ErrorKind;
 use crate::blockcfg;
-use async_graphql::*;
+use async_graphql::{Enum, InputValueError, InputValueResult, Scalar, ScalarType, SimpleObject};
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::vote;
 use std::convert::{TryFrom, TryInto};
