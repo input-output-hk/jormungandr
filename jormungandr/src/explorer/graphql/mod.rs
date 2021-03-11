@@ -1627,7 +1627,7 @@ pub struct Subscription;
 
 #[Subscription]
 impl Subscription {
-    async fn main_tip(&self, context: &Context<'_>) -> impl futures::Stream<Item = Branch> {
+    async fn tip(&self, context: &Context<'_>) -> impl futures::Stream<Item = Branch> {
         use futures::StreamExt;
         context
             .data_unchecked::<RestContext>()

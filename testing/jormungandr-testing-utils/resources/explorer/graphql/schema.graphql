@@ -216,7 +216,10 @@ type Query {
   """get all current tips, sorted (descending) by their length"""
   branches: [Branch!]!
 
-  """get the ref that the ledger currently considers as the main branch's"""
+  """
+  get the block that the ledger currently considers as the main branch's
+  tip
+  """
   tip: Branch!
   branch(id: String!): Branch!
   epoch(id: Int!): Epoch!
@@ -248,7 +251,7 @@ type StakeDistribution {
 }
 
 type Subscription {
-  mainTip: Branch!
+  tip: Branch!
 }
 
 type TallyPrivateStatus {
