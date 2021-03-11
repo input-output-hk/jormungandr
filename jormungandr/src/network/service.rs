@@ -329,11 +329,7 @@ impl GossipService for NodeService {
         let parent_span = self.subscription_span(subscriber, "gossip");
         let subscriber = Address::tcp(addr);
         parent_span.in_scope(|| {
-            let span = span!(
-                Level::TRACE,
-                "fragment_subscription",
-                direction = "in"
-            );
+            let span = span!(Level::TRACE, "fragment_subscription", direction = "in");
 
             self.global_state.spawn(
                 subscription::process_gossip(
