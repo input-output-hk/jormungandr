@@ -2009,6 +2009,7 @@ dependencies = [
  "jortestkit",
  "json",
  "lazy_static",
+ "netstat2",
  "os_info 3.0.1",
  "poldercast",
  "prost",
@@ -2443,6 +2444,20 @@ dependencies = [
  "cfg-if 0.1.10",
  "libc",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "netstat2"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0faa3f4ad230fd2bf2a5dad71476ecbaeaed904b3c7e7e5b1f266c415c03761f"
+dependencies = [
+ "bitflags",
+ "byteorder",
+ "libc",
+ "num-derive",
+ "num-traits",
+ "thiserror",
 ]
 
 [[package]]
