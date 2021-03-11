@@ -2,6 +2,7 @@ use super::{ExternalWalletTemplate, LegacyWalletTemplate, NodeAlias, WalletAlias
 use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::{fee::LinearFee, testing::scenario::template::VotePlanDef};
+use jormungandr_lib::interfaces::CommitteeIdDef;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
@@ -14,6 +15,7 @@ pub struct Blockchain {
     slot_duration: SlotDuration,
     leaders: Vec<NodeAlias>,
     committees: Vec<WalletAlias>,
+    external_committees: Vec<CommitteeIdDef>,
     vote_plans: Vec<VotePlanDef>,
     legacy_wallets: Vec<LegacyWalletTemplate>,
     external_wallets: Vec<ExternalWalletTemplate>,
@@ -37,6 +39,7 @@ impl Blockchain {
             leaders: Vec::new(),
             wallets: HashMap::new(),
             committees: Vec::new(),
+            external_committees: Vec::new(),
             vote_plans: Vec::new(),
             legacy_wallets: Vec::new(),
             external_wallets: Vec::new(),
@@ -51,6 +54,14 @@ impl Blockchain {
 
     pub fn committees(&self) -> Vec<WalletAlias> {
         self.committees.clone()
+    }
+
+    pub fn external_committees(&self) -> Vec<CommitteeIdDef> {
+        self.external_committees.clone()
+    }
+
+    pub fn set_external_committees(&mut self, external_committees: Vec<CommitteeIdDef>) {
+        self.external_committees = external_committees;
     }
 
     pub fn external_wallets(&self) -> Vec<ExternalWalletTemplate> {
@@ -93,7 +104,11 @@ impl Blockchain {
     }
 
     pub fn add_committee<S: Into<NodeAlias>>(&mut self, alias: S) {
-        self.committees.push(alias.into())
+        self.committees.push(alias.into());
+    }
+
+    pub fn add_external_committee(&mut self, committee: CommitteeIdDef) {
+        self.external_committees.push(committee);
     }
 
     pub fn add_legacy_wallet(&mut self, legacy_wallet: LegacyWalletTemplate) {

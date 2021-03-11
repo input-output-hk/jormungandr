@@ -214,6 +214,7 @@ impl Settings {
                     .unwrap_or_else(|| panic!("committee not defined {}", committee));
                 committees.push(CommitteeIdDef::from(wallet.committee_id()));
             }
+            committees.extend(&blockchain.external_committees());
             committees
         };
         blockchain_configuration.slots_per_epoch = *blockchain.slots_per_epoch();
