@@ -1252,8 +1252,8 @@ impl Epoch {
 
 #[Object]
 impl Epoch {
-    pub async fn id(&self) -> blockcfg::Epoch {
-        self.id
+    pub async fn id(&self) -> EpochNumber {
+        EpochNumber(self.id)
     }
 
     /// Not yet implemented

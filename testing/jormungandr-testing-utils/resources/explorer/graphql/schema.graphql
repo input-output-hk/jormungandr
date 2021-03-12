@@ -80,7 +80,7 @@ type EncryptedVoteTally {
 }
 
 type Epoch {
-  id: Int!
+  id: EpochNumber!
 
   """Not yet implemented"""
   stakeDistribution: StakeDistribution!

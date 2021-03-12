@@ -1,3 +1,4 @@
+pub type EpochNumber = String;
 pub type Slot = String;
 pub type ChainLength = String;
 pub type PoolId = String;
