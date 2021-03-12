@@ -64,14 +64,14 @@ type Branch {
   allStakePools(first: Int, last: Int, before: IndexCursor, after: IndexCursor): PoolConnection!
 
   """Get a paginated view of all the blocks in this epoch"""
-  blocksByEpoch(epoch: Int!, first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection
+  blocksByEpoch(epoch: EpochNumber!, first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection
 }
 
 union Certificate = StakeDelegation | OwnerStakeDelegation | PoolRegistration | PoolRetirement | PoolUpdate | VotePlan | VoteCast | VoteTally | EncryptedVoteTally
 
 """
 Custom scalar type that represents a block's position in the blockchain.
-It's a either 0 (the genesis block) or a positive number in string representation.
+It's either 0 (the genesis block) or a positive number
 """
 scalar ChainLength
 
@@ -88,6 +88,8 @@ type Epoch {
   lastBlock: Block
   totalBlocks: Int!
 }
+
+scalar EpochNumber
 
 scalar ExternalProposalId
 

@@ -6,20 +6,40 @@ use chain_impl_mockchain::vote;
 use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone)]
+pub struct EpochNumber(pub blockcfg::Epoch);
+
+#[Scalar]
+impl ScalarType for EpochNumber {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        match &value {
+            async_graphql::Value::Number(number) if number.is_i64() => {
+                Ok(EpochNumber(number.as_i64().unwrap().try_into()?))
+            }
+            _ => Err(InputValueError::expected_type(value)),
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::Number(self.0.into())
+    }
+}
+
+#[derive(Clone)]
 pub struct Slot(pub blockcfg::SlotId);
 
 #[Scalar]
 impl ScalarType for Slot {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        if let async_graphql::Value::String(value) = &value {
-            Ok(value.parse().map(Slot)?)
-        } else {
-            Err(InputValueError::expected_type(value))
+        match &value {
+            async_graphql::Value::Number(number) if number.is_i64() => {
+                Ok(Slot(number.as_i64().unwrap().try_into()?))
+            }
+            _ => Err(InputValueError::expected_type(value)),
         }
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        async_graphql::Value::String(self.0.to_string())
+        async_graphql::Value::Number(self.0.into())
     }
 }
 
@@ -28,21 +48,19 @@ pub struct ChainLength(pub blockcfg::ChainLength);
 
 #[Scalar]
 /// Custom scalar type that represents a block's position in the blockchain.
-/// It's a either 0 (the genesis block) or a positive number in string representation.
+/// It's either 0 (the genesis block) or a positive number
 impl ScalarType for ChainLength {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        if let async_graphql::Value::String(value) = &value {
-            Ok(value
-                .parse::<u32>()
-                .map(blockcfg::ChainLength::from)
-                .map(ChainLength)?)
-        } else {
-            Err(InputValueError::expected_type(value))
+        match &value {
+            async_graphql::Value::Number(number) if number.is_i64() => Ok(ChainLength(
+                blockcfg::ChainLength::from(u32::try_from(number.as_i64().unwrap())?),
+            )),
+            _ => Err(InputValueError::expected_type(value)),
         }
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        async_graphql::Value::String(self.0.to_string())
+        async_graphql::Value::Number(u32::from(self.0).into())
     }
 }
 

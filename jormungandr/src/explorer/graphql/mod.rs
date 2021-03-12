@@ -14,8 +14,8 @@ use self::connections::{
 };
 use self::error::ErrorKind;
 use self::scalars::{
-    BlockCount, ChainLength, ExternalProposalId, IndexCursor, NonZero, PayloadType, PoolCount,
-    PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange, VotePlanId,
+    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PayloadType,
+    PoolCount, PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange, VotePlanId,
     VotePlanStatusCount, Weight,
 };
 use super::indexing::{
@@ -373,13 +373,13 @@ impl Branch {
     pub async fn blocks_by_epoch(
         &self,
         context: &Context<'_>,
-        epoch: blockcfg::Epoch,
+        epoch: EpochNumber,
         first: Option<i32>,
         last: Option<i32>,
         before: Option<IndexCursor>,
         after: Option<IndexCursor>,
     ) -> FieldResult<Option<Connection<IndexCursor, Block, EmptyFields, EmptyFields>>> {
-        let epoch_data = match extract_context(&context).await.db.get_epoch(epoch).await {
+        let epoch_data = match extract_context(&context).await.db.get_epoch(epoch.0).await {
             Some(epoch_data) => epoch_data,
             None => return Ok(None),
         };
