@@ -18,7 +18,6 @@ pub mod load;
 use data::PoolId;
 use jortestkit::file;
 use serde::Serialize;
-use std::convert::TryInto;
 use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -197,7 +196,7 @@ impl Explorer {
         let date = self.last_block().unwrap().data.unwrap().tip.block.date;
 
         let block_date = LibBlockDate {
-            epoch: date.epoch.id.try_into().unwrap(),
+            epoch: date.epoch.id.parse().unwrap(),
             slot_id: date.slot.parse().unwrap(),
         };
         BlockDate::from(block_date)

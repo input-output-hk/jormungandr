@@ -12,6 +12,7 @@ pub struct EpochNumber(pub blockcfg::Epoch);
 impl ScalarType for EpochNumber {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         match &value {
+            async_graphql::Value::String(string) => Ok(EpochNumber(string.parse()?)),
             async_graphql::Value::Number(number) if number.is_i64() => {
                 Ok(EpochNumber(number.as_i64().unwrap().try_into()?))
             }
@@ -20,7 +21,7 @@ impl ScalarType for EpochNumber {
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        async_graphql::Value::Number(self.0.into())
+        async_graphql::Value::String(self.0.to_string())
     }
 }
 
@@ -31,6 +32,7 @@ pub struct Slot(pub blockcfg::SlotId);
 impl ScalarType for Slot {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         match &value {
+            async_graphql::Value::String(string) => Ok(Slot(string.parse()?)),
             async_graphql::Value::Number(number) if number.is_i64() => {
                 Ok(Slot(number.as_i64().unwrap().try_into()?))
             }
@@ -39,7 +41,7 @@ impl ScalarType for Slot {
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        async_graphql::Value::Number(self.0.into())
+        async_graphql::Value::String(self.0.to_string())
     }
 }
 
@@ -52,6 +54,10 @@ pub struct ChainLength(pub blockcfg::ChainLength);
 impl ScalarType for ChainLength {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         match &value {
+            async_graphql::Value::String(string) => Ok(ChainLength(blockcfg::ChainLength::from(
+                string.parse::<u32>()?,
+            ))),
+
             async_graphql::Value::Number(number) if number.is_i64() => Ok(ChainLength(
                 blockcfg::ChainLength::from(u32::try_from(number.as_i64().unwrap())?),
             )),
@@ -60,7 +66,7 @@ impl ScalarType for ChainLength {
     }
 
     fn to_value(&self) -> async_graphql::Value {
-        async_graphql::Value::Number(u32::from(self.0).into())
+        async_graphql::Value::String(u32::from(self.0).to_string())
     }
 }
 

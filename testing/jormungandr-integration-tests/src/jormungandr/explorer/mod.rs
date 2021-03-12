@@ -177,5 +177,5 @@ fn block_at_chain_length(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
 fn epoch(explorer: &Explorer) {
     let epoch = explorer.epoch(1, 100).unwrap();
 
-    assert_eq!(epoch.data.unwrap().epoch.id, 1, "can't find epoch");
+    assert_eq!(epoch.data.unwrap().epoch.id, "1", "can't find epoch");
 }
