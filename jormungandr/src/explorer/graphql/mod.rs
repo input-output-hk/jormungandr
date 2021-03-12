@@ -378,7 +378,9 @@ impl Branch {
         last: Option<i32>,
         before: Option<IndexCursor>,
         after: Option<IndexCursor>,
-    ) -> FieldResult<Option<Connection<IndexCursor, Block, EmptyFields, EmptyFields>>> {
+    ) -> FieldResult<
+        Option<Connection<IndexCursor, Block, ConnectionFields<BlockCount>, EmptyFields>>,
+    > {
         let epoch_data = match extract_context(&context).await.db.get_epoch(epoch.0).await {
             Some(epoch_data) => epoch_data,
             None => return Ok(None),
@@ -422,8 +424,13 @@ impl Branch {
                     };
 
                     let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
-                    let mut connection =
-                        Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+                    let mut connection = Connection::with_additional_fields(
+                        page_meta.has_previous_page,
+                        page_meta.has_next_page,
+                        ConnectionFields {
+                            total_count: page_meta.total_count,
+                        },
+                    );
 
                     let edges = match range {
                         PaginationInterval::Empty => {
