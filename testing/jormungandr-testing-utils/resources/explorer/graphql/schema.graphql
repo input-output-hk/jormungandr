@@ -20,7 +20,7 @@ type Block {
   date: BlockDate!
 
   """The transactions contained in the block"""
-  transactions(first: Int, last: Int, before: String, after: String): TransactionConnection!
+  transactions(first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
   chainLength: ChainLength!
   leader: Leader
   previousBlock: Block!
@@ -58,13 +58,13 @@ type BlockEdge {
 type Branch {
   id: String!
   block: Block!
-  blocks(first: Int, last: Int, before: String, after: String): BlockConnection!
-  transactionsByAddress(addressBech32: String!, first: Int, last: Int, before: String, after: String): TransactionConnection!
-  allVotePlans(first: Int, last: Int, before: String, after: String): VotePlanStatusConnection!
-  allStakePools(first: Int, last: Int, before: String, after: String): PoolConnection!
+  blocks(first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection!
+  transactionsByAddress(addressBech32: String!, first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
+  allVotePlans(first: Int, last: Int, before: IndexCursor, after: IndexCursor): VotePlanStatusConnection!
+  allStakePools(first: Int, last: Int, before: IndexCursor, after: IndexCursor): PoolConnection!
 
   """Get a paginated view of all the blocks in this epoch"""
-  blocksByEpoch(epoch: Int!, first: Int, last: Int, before: String, after: String): BlockConnection
+  blocksByEpoch(epoch: Int!, first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection
 }
 
 union Certificate = StakeDelegation | OwnerStakeDelegation | PoolRegistration | PoolRetirement | PoolUpdate | VotePlan | VoteCast | VoteTally | EncryptedVoteTally
@@ -102,6 +102,8 @@ type FeeSettings {
   certificateVoteCast: Value!
 }
 
+scalar IndexCursor
+
 union Leader = Pool | BftLeader
 
 scalar NonZero
@@ -132,7 +134,7 @@ enum PayloadType {
 
 type Pool {
   id: PoolId!
-  blocks(first: Int, last: Int, before: String, after: String): BlockConnection!
+  blocks(first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection!
   registration: PoolRegistration!
   retirement: PoolRetirement
 }
@@ -411,7 +413,7 @@ type VoteProposalStatus {
   proposalId: ExternalProposalId!
   options: VoteOptionRange!
   tally: TallyStatus
-  votes(first: Int, last: Int, before: String, after: String): VoteStatusConnection!
+  votes(first: Int, last: Int, before: IndexCursor, after: IndexCursor): VoteStatusConnection!
 }
 
 type VoteStatus {

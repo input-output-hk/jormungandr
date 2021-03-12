@@ -246,17 +246,17 @@ pub struct VoteOptionRange {
 // u32 should be enough to count blocks and transactions (the only two cases for now)
 
 #[derive(Clone)]
-pub struct IndexCursor(pub u64);
+pub struct IndexCursor(pub String);
 
 impl async_graphql::connection::CursorType for IndexCursor {
     type Error = std::num::ParseIntError;
 
     fn decode_cursor(s: &str) -> Result<Self, Self::Error> {
-        s.parse::<u64>().map(IndexCursor)
+        Ok(IndexCursor(s.into()))
     }
 
     fn encode_cursor(&self) -> String {
-        self.0.to_string()
+        self.0.clone()
     }
 }
 
@@ -264,7 +264,7 @@ impl async_graphql::connection::CursorType for IndexCursor {
 impl ScalarType for IndexCursor {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         if let async_graphql::Value::String(value) = &value {
-            Ok(value.parse().map(IndexCursor)?)
+            Ok(IndexCursor(value.clone()))
         } else {
             Err(InputValueError::expected_type(value))
         }
@@ -293,7 +293,23 @@ impl From<chain_time::TimeOffsetSeconds> for TimeOffsetSeconds {
 
 impl From<u32> for IndexCursor {
     fn from(number: u32) -> IndexCursor {
-        IndexCursor(number.into())
+        IndexCursor(number.to_string())
+    }
+}
+
+impl TryInto<u64> for IndexCursor {
+    type Error = super::ErrorKind;
+
+    fn try_into(self) -> Result<u64, Self::Error> {
+        self.0
+            .parse()
+            .map_err(|_| ErrorKind::InvalidCursor("IndexCursor is not a valid number".to_string()))
+    }
+}
+
+impl Into<String> for IndexCursor {
+    fn into(self) -> String {
+        self.0
     }
 }
 
@@ -325,36 +341,27 @@ impl From<vote::Options> for VoteOptionRange {
 impl TryFrom<IndexCursor> for u32 {
     type Error = ErrorKind;
     fn try_from(c: IndexCursor) -> Result<u32, Self::Error> {
-        c.0.try_into().map_err(|_| {
-            ErrorKind::InvalidCursor(
-                "block's pagination cursor is greater than maximum 2^32".to_owned(),
-            )
-        })
-    }
-}
-
-impl From<IndexCursor> for u64 {
-    fn from(number: IndexCursor) -> u64 {
-        number.0
+        c.0.parse()
+            .map_err(|_| ErrorKind::InvalidCursor("IndexCursor is not a valid number".to_owned()))
     }
 }
 
 impl From<u64> for IndexCursor {
     fn from(number: u64) -> IndexCursor {
-        IndexCursor(number)
+        IndexCursor(number.to_string())
     }
 }
 
 impl From<blockcfg::ChainLength> for IndexCursor {
     fn from(length: blockcfg::ChainLength) -> IndexCursor {
-        IndexCursor(u32::from(length).into())
+        IndexCursor(u32::from(length).to_string())
     }
 }
 
 impl TryFrom<IndexCursor> for blockcfg::ChainLength {
     type Error = ErrorKind;
     fn try_from(c: IndexCursor) -> Result<blockcfg::ChainLength, Self::Error> {
-        let inner: u32 = c.0.try_into().map_err(|_| {
+        let inner: u32 = c.0.parse().map_err(|_| {
             ErrorKind::InvalidCursor(
                 "block's pagination cursor is greater than maximum ChainLength".to_owned(),
             )

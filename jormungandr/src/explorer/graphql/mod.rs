@@ -72,16 +72,16 @@ impl Branch {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<String>,
-        after: Option<String>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
     ) -> FieldResult<Connection<IndexCursor, Block, ConnectionFields<BlockCount>, EmptyFields>>
     {
         let block0 = 0u32;
         let chain_length = self.state.state().blocks.size();
 
         query(
-            after,
-            before,
+            after.map(Into::into),
+            before.map(Into::into),
             first,
             last,
             |after, before, first, last| async move {
@@ -136,8 +136,8 @@ impl Branch {
         address_bech32: String,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<String>,
-        after: Option<String>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
     ) -> FieldResult<
         Connection<IndexCursor, Transaction, ConnectionFields<TransactionCount>, EmptyFields>,
     > {
@@ -155,8 +155,8 @@ impl Branch {
         let len = transactions.len();
 
         query(
-            after,
-            before,
+            after.map(Into::into),
+            before.map(Into::into),
             first,
             last,
             |after, before, first, last| async move {
@@ -172,8 +172,8 @@ impl Branch {
                 let pagination_arguments = ValidatedPaginationArguments {
                     first,
                     last,
-                    before: before.map(u64::from),
-                    after: after.map(u64::from),
+                    before: before.map(TryInto::try_into).transpose()?,
+                    after: after.map(TryInto::try_into).transpose()?,
                 };
 
                 let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
@@ -207,8 +207,8 @@ impl Branch {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<String>,
-        after: Option<String>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
     ) -> FieldResult<
         Connection<IndexCursor, VotePlanStatus, ConnectionFields<VotePlanStatusCount>, EmptyFields>,
     > {
@@ -217,8 +217,8 @@ impl Branch {
         vote_plans.sort_unstable_by_key(|(id, _data)| id.clone());
 
         query(
-            after,
-            before,
+            after.map(Into::into),
+            before.map(Into::into),
             first,
             last,
             |after, before, first, last| async move {
@@ -287,8 +287,8 @@ impl Branch {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<String>,
-        after: Option<String>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
     ) -> FieldResult<Connection<IndexCursor, Pool, ConnectionFields<PoolCount>, EmptyFields>> {
         let mut stake_pools = self.state.state().get_stake_pools();
 
@@ -300,8 +300,8 @@ impl Branch {
         stake_pools.sort_unstable_by_key(|(id, _data)| id.clone());
 
         query(
-            after,
-            before,
+            after.map(Into::into),
+            before.map(Into::into),
             first,
             last,
             |after, before, first, last| async move {
@@ -376,8 +376,8 @@ impl Branch {
         epoch: blockcfg::Epoch,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<String>,
-        after: Option<String>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
     ) -> FieldResult<Option<Connection<IndexCursor, Block, EmptyFields, EmptyFields>>> {
         let epoch_data = match extract_context(&context).await.db.get_epoch(epoch).await {
             Some(epoch_data) => epoch_data,
@@ -386,8 +386,8 @@ impl Branch {
 
         Some(
             query(
-                after,
-                before,
+                after.map(Into::into),
+                before.map(Into::into),
                 first,
                 last,
                 |after, before, first, last| async move {
@@ -539,8 +539,8 @@ impl Block {
         context: &Context<'_>,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<String>,
-        after: Option<String>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
     ) -> FieldResult<Connection<IndexCursor, Transaction, EmptyFields, EmptyFields>> {
         let explorer_block = self
             .fetch_explorer_block(&extract_context(&context).await.db)
@@ -556,8 +556,8 @@ impl Block {
             .sort_unstable_by_key(|tx| tx.offset_in_block);
 
         query(
-            after,
-            before,
+            after.map(Into::into),
+            before.map(Into::into),
             first,
             last,
             |after, before, first, last| async move {
@@ -1054,8 +1054,8 @@ impl Pool {
         context: &Context<'_>,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<String>,
-        after: Option<String>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
     ) -> FieldResult<Connection<IndexCursor, Block, ConnectionFields<BlockCount>>> {
         let blocks = match &self.blocks {
             Some(b) => b.clone(),
@@ -1070,8 +1070,8 @@ impl Pool {
         };
 
         query(
-            after,
-            before,
+            after.map(Into::into),
+            before.map(Into::into),
             first,
             last,
             |after, before, first, last| async move {
@@ -1476,12 +1476,12 @@ impl VoteProposalStatus {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<String>,
-        after: Option<String>,
+        before: Option<IndexCursor>,
+        after: Option<IndexCursor>,
     ) -> FieldResult<Connection<IndexCursor, VoteStatus, ConnectionFields<u64>, EmptyFields>> {
         query(
-            after,
-            before,
+            after.map(Into::into),
+            before.map(Into::into),
             first,
             last,
             |after, before, first, last| async move {
