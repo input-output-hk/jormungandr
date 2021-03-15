@@ -134,7 +134,7 @@ impl Explorer {
         limit: i64,
     ) -> Result<Response<epoch::ResponseData>, ExplorerError> {
         let query = Epoch::build_query(epoch::Variables {
-            id: epoch_number.into(),
+            id: epoch_number.to_string(),
             blocks_limit: limit,
         });
         self.print_request(&query);

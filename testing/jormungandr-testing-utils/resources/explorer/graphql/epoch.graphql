@@ -1,4 +1,4 @@
-query Epoch($id: Int!, $blocks_limit: Int!) {
+query Epoch($id: EpochNumber!, $blocks_limit: Int!) {
   epoch(id: $id) {
     id
     firstBlock {

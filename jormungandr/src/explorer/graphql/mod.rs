@@ -1605,8 +1605,8 @@ impl Query {
         Branch::try_from_id(id, &extract_context(context).await).await
     }
 
-    pub async fn epoch(&self, _context: &Context<'_>, id: blockcfg::Epoch) -> Epoch {
-        Epoch::from_epoch_number(id)
+    pub async fn epoch(&self, _context: &Context<'_>, id: EpochNumber) -> Epoch {
+        Epoch::from_epoch_number(id.0)
     }
 
     pub async fn address(&self, _context: &Context<'_>, bech32: String) -> FieldResult<Address> {

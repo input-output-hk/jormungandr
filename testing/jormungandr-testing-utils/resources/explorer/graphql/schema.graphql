@@ -226,7 +226,7 @@ type Query {
   """
   tip: Branch!
   branch(id: String!): Branch!
-  epoch(id: Int!): Epoch!
+  epoch(id: EpochNumber!): Epoch!
   address(bech32: String!): Address!
   stakePool(id: PoolId!): Pool!
   settings: Settings!
