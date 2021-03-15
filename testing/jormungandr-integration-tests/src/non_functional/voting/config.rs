@@ -57,7 +57,7 @@ impl VotingLoadTestConfig {
             slots_in_epoch: 60,
             voting_timing: vec![0, 2, 3],
             block_content_max_size: 102400,
-            proposals_count: 1,
+            proposals_count: 150,
             target_resources_usage: ResourcesUsage::new(10, 200_000, 5_000_000),
             tx_target_success_rate: 90,
         }
@@ -76,11 +76,11 @@ impl VotingLoadTestConfig {
             ),
             initial_fund_per_wallet: 10_000,
             wallets_count: 8_000,
-            slot_duration: 2,
+            slot_duration: 4,
             slots_in_epoch: 60,
-            voting_timing: vec![0, 10, 12],
+            voting_timing: vec![0, 200, 202],
             block_content_max_size: 102400,
-            proposals_count: 1,
+            proposals_count: 500,
             target_resources_usage: ResourcesUsage::new(10, 200_000, 5_000_000),
             tx_target_success_rate: 90,
         }
