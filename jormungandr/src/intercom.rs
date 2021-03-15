@@ -511,7 +511,7 @@ pub enum TransactionMsg {
         block_date: BlockDate,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
-        reply_handle: ReplyHandle<FragmentContents>,
+        reply_handle: ReplyHandle<(FragmentContents, Ledger)>,
     },
 }
 
@@ -568,7 +568,7 @@ impl Debug for ClientMsg {
 #[derive(Debug)]
 pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
-    LeadershipBlock(Block),
+    LeadershipBlock(Block, Ledger),
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header, Address),
     /// A stream of untrusted blocks has been received from the network task.
