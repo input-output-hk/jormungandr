@@ -107,8 +107,8 @@ fn check_explorer_and_rest_are_in_sync(
         .map_err(NodeStuckError::InternalExplorerError)?
         .data
         .unwrap()
-        .status
-        .latest_block;
+        .tip
+        .block;
 
     if block_tip == Hash::from_str(&block.id).unwrap() {
         Ok(())
