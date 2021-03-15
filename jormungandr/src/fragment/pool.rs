@@ -167,17 +167,6 @@ pub(super) mod internal {
             }
         }
 
-        /// Returns clone of fragment if it was registered
-        pub fn insert(&mut self, fragment: Fragment) -> Option<Fragment> {
-            let fragment_id = fragment.id();
-            if self.entries.contains(&fragment_id) {
-                None
-            } else {
-                self.entries.put(fragment_id, fragment.clone());
-                Some(fragment)
-            }
-        }
-
         /// Returns clones of registered fragments
         pub fn insert_all(
             &mut self,
@@ -186,7 +175,15 @@ pub(super) mod internal {
             let max_fragments = self.entries.cap() - self.entries.len();
             fragments
                 .into_iter()
-                .filter_map(|fragment| self.insert(fragment))
+                .filter(|fragment| {
+                    let fragment_id = fragment.id();
+                    if self.entries.contains(&fragment_id) {
+                        false
+                    } else {
+                        self.entries.put(fragment_id, fragment.clone());
+                        true
+                    }
+                })
                 .take(max_fragments)
                 .collect()
         }
