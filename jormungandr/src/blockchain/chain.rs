@@ -465,19 +465,22 @@ impl Blockchain {
         &self,
         post_checked_header: &PostCheckedHeader,
         block: &Block,
+        maybe_new_ledger: Option<Ledger>,
     ) -> Result<Ledger> {
         let header = &post_checked_header.header;
         let block_id = header.hash();
         let epoch_ledger_parameters = &post_checked_header.epoch_ledger_parameters;
-        let ledger = &post_checked_header.parent_ledger_state;
 
         debug_assert!(block.header.hash() == block_id);
 
         let metadata = header.to_content_eval_context();
 
-        let ledger = ledger
-            .apply_block(epoch_ledger_parameters, &block.contents, &metadata)
-            .chain_err(|| ErrorKind::CannotApplyBlock)?;
+        let ledger = maybe_new_ledger.map(Ok).unwrap_or_else(|| {
+            post_checked_header
+                .parent_ledger_state
+                .apply_block(epoch_ledger_parameters, &block.contents, &metadata)
+                .chain_err(|| ErrorKind::CannotApplyBlock)
+        })?;
 
         // Check if rewards for this block can be distributed
         if let Some(distribution) = post_checked_header
@@ -536,8 +539,10 @@ impl Blockchain {
         &self,
         post_checked_header: PostCheckedHeader,
         block: Block,
+        maybe_new_ledger: Option<Ledger>,
     ) -> Result<AppliedBlock> {
-        let new_ledger = self.apply_block_dry_run(&post_checked_header, &block)?;
+        let new_ledger =
+            self.apply_block_dry_run(&post_checked_header, &block, maybe_new_ledger)?;
 
         let res = self.storage.put_block(&block);
 
@@ -755,7 +760,8 @@ impl Blockchain {
                         }
                     };
 
-                    let new_ledger = self.apply_block_dry_run(&post_checked_header, &block)?;
+                    let new_ledger =
+                        self.apply_block_dry_run(&post_checked_header, &block, None)?;
                     let new_ref = self
                         .apply_block_finalize(post_checked_header, new_ledger)
                         .await;

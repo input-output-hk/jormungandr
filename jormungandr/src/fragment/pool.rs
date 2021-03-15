@@ -113,14 +113,13 @@ impl Pools {
         block_date: BlockDate,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
-    ) -> Contents {
+    ) -> (Contents, Ledger) {
         let Pools { logs, pools, .. } = self;
         let pool = &mut pools[pool_idx];
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
-                selection_alg.select(&ledger, &ledger_params, block_date, logs, pool);
-                selection_alg.finalize()
+                selection_alg.select(ledger, &ledger_params, block_date, logs, pool)
             }
         }
     }

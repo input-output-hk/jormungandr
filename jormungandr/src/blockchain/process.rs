@@ -19,6 +19,7 @@ use crate::{
     },
 };
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
+use chain_impl_mockchain::ledger::Ledger;
 use jormungandr_lib::interfaces::FragmentStatus;
 
 use futures::prelude::*;
@@ -96,7 +97,7 @@ impl Process {
         let stats_counter = self.stats_counter.clone();
 
         match input {
-            BlockMsg::LeadershipBlock(block) => {
+            BlockMsg::LeadershipBlock(block, ledger) => {
                 let span = span!(
                     parent: info.span(),
                     Level::TRACE,
@@ -118,6 +119,7 @@ impl Process {
                         network_msg_box,
                         explorer_msg_box,
                         block,
+                        ledger,
                         stats_counter,
                     )
                     .instrument(span.clone()),
@@ -403,9 +405,11 @@ async fn process_leadership_block(
     network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     block: Block,
+    ledger: Ledger,
     stats_counter: StatsCounter,
 ) -> Result<(), Error> {
-    let new_block_ref = process_leadership_block_inner(&mut blockchain, block.clone()).await?;
+    let new_block_ref =
+        process_leadership_block_inner(&mut blockchain, block.clone(), ledger).await?;
 
     let fragments = block.fragments().map(|f| f.id()).collect();
 
@@ -437,6 +441,7 @@ async fn process_leadership_block(
 async fn process_leadership_block_inner(
     blockchain: &mut Blockchain,
     block: Block,
+    ledger: Ledger,
 ) -> Result<Arc<Ref>, Error> {
     let header = block.header();
     let parent_hash = block.parent_id();
@@ -456,7 +461,7 @@ async fn process_leadership_block_inner(
 
     tracing::debug!("apply and store block");
     let applied = blockchain
-        .apply_and_store_block(post_checked, block)
+        .apply_and_store_block(post_checked, block, Some(ledger))
         .await
         .map_err(|err| Error::with_chain(err, "cannot process leadership block"))?;
     let new_ref = applied
@@ -660,7 +665,7 @@ async fn check_and_apply_block(
     };
     let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
     let applied_block = blockchain
-        .apply_and_store_block(post_checked, block)
+        .apply_and_store_block(post_checked, block, None)
         .await?;
     if let AppliedBlock::New(block_ref) = applied_block {
         let header = block_ref.header();

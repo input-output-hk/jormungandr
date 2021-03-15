@@ -22,14 +22,12 @@ pub enum SelectionOutput {
 pub trait FragmentSelectionAlgorithm {
     fn select(
         &mut self,
-        ledger: &Ledger,
+        ledger: Ledger,
         ledger_params: &LedgerParameters,
         block_date: BlockDate,
         logs: &mut Logs,
         pool: &mut Pool,
-    );
-
-    fn finalize(self) -> Contents;
+    ) -> (Contents, Ledger);
 }
 
 #[derive(Debug)]
@@ -37,17 +35,11 @@ pub enum FragmentSelectionAlgorithmParams {
     OldestFirst,
 }
 
-pub struct OldestFirst {
-    builder: ContentsBuilder,
-    current_total_size: u32,
-}
+pub struct OldestFirst;
 
 impl OldestFirst {
     pub fn new() -> Self {
-        OldestFirst {
-            builder: ContentsBuilder::new(),
-            current_total_size: 0,
-        }
+        OldestFirst
     }
 }
 
@@ -58,20 +50,16 @@ impl Default for OldestFirst {
 }
 
 impl FragmentSelectionAlgorithm for OldestFirst {
-    fn finalize(self) -> Contents {
-        self.builder.into()
-    }
-
     fn select(
         &mut self,
-        ledger: &Ledger,
+        mut ledger: Ledger,
         ledger_params: &LedgerParameters,
         block_date: BlockDate,
         logs: &mut Logs,
         pool: &mut Pool,
-    ) {
-        let mut ledger_simulation = ledger.clone();
-
+    ) -> (Contents, Ledger) {
+        let mut current_total_size = 0;
+        let mut contents_builder = ContentsBuilder::new();
         let mut return_to_pool = Vec::new();
 
         while let Some(fragment) = pool.remove_oldest() {
@@ -91,14 +79,14 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                 continue;
             }
 
-            let total_size = self.current_total_size + fragment_size;
+            let total_size = current_total_size + fragment_size;
 
             if total_size <= ledger_params.block_content_max_size {
                 tracing::debug!("applying fragment in simulation");
-                match ledger_simulation.apply_fragment(ledger_params, &fragment, block_date) {
+                match ledger.apply_fragment(ledger_params, &fragment, block_date) {
                     Ok(ledger_new) => {
-                        self.builder.push(fragment);
-                        ledger_simulation = ledger_new;
+                        contents_builder.push(fragment);
+                        ledger = ledger_new;
                         tracing::debug!("successfully applied and committed the fragment");
                     }
                     Err(error) => {
@@ -112,7 +100,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                     }
                 }
 
-                self.current_total_size = total_size;
+                current_total_size = total_size;
 
                 if total_size == ledger_params.block_content_max_size {
                     break;
@@ -125,5 +113,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         }
 
         pool.insert_all(return_to_pool);
+
+        (contents_builder.into(), ledger)
     }
 }
