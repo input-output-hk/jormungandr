@@ -284,21 +284,6 @@ impl async_graphql::connection::CursorType for IndexCursor {
     }
 }
 
-#[Scalar]
-impl ScalarType for IndexCursor {
-    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
-        if let async_graphql::Value::String(value) = &value {
-            Ok(IndexCursor(value.clone()))
-        } else {
-            Err(InputValueError::expected_type(value))
-        }
-    }
-
-    fn to_value(&self) -> async_graphql::Value {
-        async_graphql::Value::String(self.0.to_string())
-    }
-}
-
 /*------------------------------*/
 /*------- Conversions ---------*/
 /*----------------------------*/

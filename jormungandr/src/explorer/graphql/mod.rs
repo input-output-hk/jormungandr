@@ -72,16 +72,16 @@ impl Branch {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
+        before: Option<String>,
+        after: Option<String>,
     ) -> FieldResult<Connection<IndexCursor, Block, ConnectionFields<BlockCount>, EmptyFields>>
     {
         let block0 = 0u32;
         let chain_length = self.state.state().blocks.size();
 
         query(
-            after.map(Into::into),
-            before.map(Into::into),
+            after,
+            before,
             first,
             last,
             |after, before, first, last| async move {
@@ -136,8 +136,8 @@ impl Branch {
         address_bech32: String,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
+        before: Option<String>,
+        after: Option<String>,
     ) -> FieldResult<
         Connection<IndexCursor, Transaction, ConnectionFields<TransactionCount>, EmptyFields>,
     > {
@@ -155,8 +155,8 @@ impl Branch {
         let len = transactions.len();
 
         query(
-            after.map(Into::into),
-            before.map(Into::into),
+            after,
+            before,
             first,
             last,
             |after, before, first, last| async move {
@@ -207,8 +207,8 @@ impl Branch {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
+        before: Option<String>,
+        after: Option<String>,
     ) -> FieldResult<
         Connection<IndexCursor, VotePlanStatus, ConnectionFields<VotePlanStatusCount>, EmptyFields>,
     > {
@@ -217,8 +217,8 @@ impl Branch {
         vote_plans.sort_unstable_by_key(|(id, _data)| id.clone());
 
         query(
-            after.map(Into::into),
-            before.map(Into::into),
+            after,
+            before,
             first,
             last,
             |after, before, first, last| async move {
@@ -287,8 +287,8 @@ impl Branch {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
+        before: Option<String>,
+        after: Option<String>,
     ) -> FieldResult<Connection<IndexCursor, Pool, ConnectionFields<PoolCount>, EmptyFields>> {
         let mut stake_pools = self.state.state().get_stake_pools();
 
@@ -376,8 +376,8 @@ impl Branch {
         epoch: EpochNumber,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
+        before: Option<String>,
+        after: Option<String>,
     ) -> FieldResult<
         Option<Connection<IndexCursor, Block, ConnectionFields<BlockCount>, EmptyFields>>,
     > {
@@ -388,8 +388,8 @@ impl Branch {
 
         Some(
             query(
-                after.map(Into::into),
-                before.map(Into::into),
+                after,
+                before,
                 first,
                 last,
                 |after, before, first, last| async move {
@@ -546,8 +546,8 @@ impl Block {
         context: &Context<'_>,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
+        before: Option<String>,
+        after: Option<String>,
     ) -> FieldResult<Connection<IndexCursor, Transaction, EmptyFields, EmptyFields>> {
         let explorer_block = self
             .fetch_explorer_block(&extract_context(&context).await.db)
@@ -563,8 +563,8 @@ impl Block {
             .sort_unstable_by_key(|tx| tx.offset_in_block);
 
         query(
-            after.map(Into::into),
-            before.map(Into::into),
+            after,
+            before,
             first,
             last,
             |after, before, first, last| async move {
@@ -1061,8 +1061,8 @@ impl Pool {
         context: &Context<'_>,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
+        before: Option<String>,
+        after: Option<String>,
     ) -> FieldResult<Connection<IndexCursor, Block, ConnectionFields<BlockCount>>> {
         let blocks = match &self.blocks {
             Some(b) => b.clone(),
@@ -1077,8 +1077,8 @@ impl Pool {
         };
 
         query(
-            after.map(Into::into),
-            before.map(Into::into),
+            after,
+            before,
             first,
             last,
             |after, before, first, last| async move {
@@ -1483,12 +1483,12 @@ impl VoteProposalStatus {
         &self,
         first: Option<i32>,
         last: Option<i32>,
-        before: Option<IndexCursor>,
-        after: Option<IndexCursor>,
+        before: Option<String>,
+        after: Option<String>,
     ) -> FieldResult<Connection<IndexCursor, VoteStatus, ConnectionFields<u64>, EmptyFields>> {
         query(
-            after.map(Into::into),
-            before.map(Into::into),
+            after,
+            before,
             first,
             last,
             |after, before, first, last| async move {
