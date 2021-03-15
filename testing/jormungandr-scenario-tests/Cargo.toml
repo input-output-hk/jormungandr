@@ -13,11 +13,11 @@ custom_debug = "0.5"
 dialoguer = "0.7.1"
 error-chain = "0.12"
 assert_fs = "1.0"
-chain-core           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-crypto         = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-addr           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-core           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-crypto         = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps", features = [ "property-test-api" ] }
+chain-addr           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps", features = [ "property-test-api" ] }
+chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }

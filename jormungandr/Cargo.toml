@@ -20,16 +20,16 @@ base64 = "0.13.0"
 bincode = "1.2.1"
 bytes = "1.0"
 bech32 = "0.7"
-chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
 error-chain = "0.12"
 futures = "0.3.8"
 hex = "0.4"

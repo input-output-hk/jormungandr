@@ -8,14 +8,14 @@ description = "Data structures and formats used by Jormungandr node API and conf
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps"}
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
 rand = "0.7"
 rand_core = "0.5"
 rand_chacha = "0.2"
@@ -32,10 +32,10 @@ http = "0.2.2"
 [dev-dependencies]
 rand = "0.7"
 quickcheck = "0.9"
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-core    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps", features = [ "property-test-api" ] }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps", features = [ "property-test-api" ] }
+chain-core    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
 ed25519-bip32 = "0.3"
 serde_yaml = "0.8"
 serde_json = "1.0"

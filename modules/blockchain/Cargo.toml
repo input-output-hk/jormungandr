@@ -5,7 +5,7 @@ authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
 edition = "2018"
 
 [dependencies]
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps" }
+chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "apply-block-separate-steps"}
 thiserror = "1.0.21"
 lru       = "0.6.1"
