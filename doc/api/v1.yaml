@@ -14,7 +14,7 @@ tags:
   - name: fragment
 
 paths:
-  /api/v0/fragments:
+  /api/v1/fragments:
     post:
       description: Post a batch of signed transactions
       operationId: PostFragments
