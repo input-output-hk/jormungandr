@@ -313,7 +313,7 @@ async fn handle_block(blockchain: &Blockchain, block: Block) -> Result<Arc<Ref>,
                 "validated block"
             );
             let applied = blockchain
-                .apply_and_store_block(post_checked, block, None)
+                .apply_and_store_block(post_checked, block)
                 .await
                 .map_err(Error::ApplyBlockFailed)?;
             Ok(applied.cached_ref())

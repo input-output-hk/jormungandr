@@ -1,4 +1,4 @@
-use crate::blockchain::EpochLeadership;
+use crate::blockchain::{EpochLeadership, LeadershipBlock};
 use crate::{
     blockcfg::{
         Block, BlockDate, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput, Leadership,
@@ -72,6 +72,7 @@ pub struct Module {
     pool: MessageBox<TransactionMsg>,
     enclave: Enclave,
     block_message: MessageBox<BlockMsg>,
+    rewards_report_all: bool,
 }
 
 impl Module {
@@ -82,6 +83,7 @@ impl Module {
         pool: MessageBox<TransactionMsg>,
         enclave: Enclave,
         block_message: MessageBox<BlockMsg>,
+        rewards_report_all: bool,
     ) -> Result<Self, LeadershipError> {
         let tip_ref = tip.get_ref().await;
 
@@ -94,6 +96,7 @@ impl Module {
             pool,
             enclave,
             block_message,
+            rewards_report_all,
         })
     }
 
@@ -447,16 +450,13 @@ impl Module {
             return Ok(());
         };
 
-        let current_slot_position = self.current_slot_position().unwrap();
-        let EpochLeadership {
-            state: ledger,
-            ledger_parameters,
-            ..
-        } = new_epoch_leadership_from(
-            current_slot_position.epoch.0,
+        let leadership = new_epoch_leadership_from(
+            event.date.epoch,
             Arc::clone(&self.tip_ref),
-            false,
+            self.rewards_report_all,
         );
+        let ledger = leadership.state.clone();
+        let ledger_parameters = leadership.ledger_parameters.clone();
 
         let ledger = ledger.apply_block_step1(chain_length, event.date)?;
 
@@ -539,8 +539,13 @@ impl Module {
                     let parent = block.header.block_parent_hash();
                     let chain_length: u32 = block.header.chain_length().into();
                     let ledger = ledger.apply_block_step3(&block.header.to_content_eval_context());
+                    let leadership_block = LeadershipBlock {
+                        block,
+                        new_ledger: ledger,
+                        leadership,
+                    };
                     sender
-                        .send(BlockMsg::LeadershipBlock(block, ledger))
+                        .send(BlockMsg::LeadershipBlock(leadership_block))
                         .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
                         .await?;
                     event_logs

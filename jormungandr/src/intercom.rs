@@ -1,7 +1,7 @@
 use crate::blockcfg::{
     Block, BlockDate, Fragment, FragmentId, Header, HeaderHash, Ledger, LedgerParameters,
 };
-use crate::blockchain::{Checkpoints, StorageError};
+use crate::blockchain::{Checkpoints, LeadershipBlock, StorageError};
 use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 use crate::network::p2p::{comm::PeerInfo, Address};
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
@@ -565,10 +565,9 @@ impl Debug for ClientMsg {
 }
 
 /// General Block Message for the block task
-#[derive(Debug)]
 pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
-    LeadershipBlock(Block, Ledger),
+    LeadershipBlock(LeadershipBlock),
     /// A untrusted block Header has been received from the network task
     AnnouncedBlock(Header, Address),
     /// A stream of untrusted blocks has been received from the network task.

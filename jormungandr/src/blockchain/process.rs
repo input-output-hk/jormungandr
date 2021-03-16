@@ -1,6 +1,6 @@
 use super::{
     candidate,
-    chain::{self, AppliedBlock, CheckHeaderProof},
+    chain::{self, AppliedBlock, CheckHeaderProof, LeadershipBlock},
     chain_selection::{self, ComparisonResult},
     Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
@@ -19,7 +19,6 @@ use crate::{
     },
 };
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
-use chain_impl_mockchain::ledger::Ledger;
 use jormungandr_lib::interfaces::FragmentStatus;
 
 use futures::prelude::*;
@@ -97,14 +96,14 @@ impl Process {
         let stats_counter = self.stats_counter.clone();
 
         match input {
-            BlockMsg::LeadershipBlock(block, ledger) => {
+            BlockMsg::LeadershipBlock(leadership_block) => {
                 let span = span!(
                     parent: info.span(),
                     Level::TRACE,
                     "process_leadership_block",
-                    hash = %block.header.hash().to_string(),
-                    parent = %block.header.parent_id().to_string(),
-                    date = %block.header.block_date().to_string()
+                    hash = %leadership_block.block.header.hash().to_string(),
+                    parent = %leadership_block.block.header.parent_id().to_string(),
+                    date = %leadership_block.block.header.block_date().to_string()
                 );
                 let _enter = span.enter();
                 tracing::info!("receiving block from leadership service");
@@ -118,8 +117,7 @@ impl Process {
                         tx_msg_box,
                         network_msg_box,
                         explorer_msg_box,
-                        block,
-                        ledger,
+                        leadership_block,
                         stats_counter,
                     )
                     .instrument(span.clone()),
@@ -404,12 +402,11 @@ async fn process_leadership_block(
     mut tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-    block: Block,
-    ledger: Ledger,
+    leadership_block: LeadershipBlock,
     stats_counter: StatsCounter,
 ) -> Result<(), Error> {
-    let new_block_ref =
-        process_leadership_block_inner(&mut blockchain, block.clone(), ledger).await?;
+    let block = leadership_block.block.clone();
+    let new_block_ref = process_leadership_block_inner(&mut blockchain, leadership_block).await?;
 
     let fragments = block.fragments().map(|f| f.id()).collect();
 
@@ -440,28 +437,10 @@ async fn process_leadership_block(
 
 async fn process_leadership_block_inner(
     blockchain: &mut Blockchain,
-    block: Block,
-    ledger: Ledger,
+    leadership_block: LeadershipBlock,
 ) -> Result<Arc<Ref>, Error> {
-    let header = block.header();
-    let parent_hash = block.parent_id();
-    // This is a trusted block from the leadership task,
-    // so we can skip pre-validation.
-    let parent = blockchain.get_ref(parent_hash).await?;
-
-    let post_checked = if let Some(parent_ref) = parent {
-        tracing::debug!("processing block from leader event");
-        blockchain
-            .post_check_header(header, parent_ref, CheckHeaderProof::Enabled)
-            .await?
-    } else {
-        tracing::error!("block from leader event does not have parent block in storage");
-        return Err(ErrorKind::MissingParentBlock(parent_hash).into());
-    };
-
-    tracing::debug!("apply and store block");
     let applied = blockchain
-        .apply_and_store_block(post_checked, block, Some(ledger))
+        .apply_and_store_leadership_block(leadership_block)
         .await
         .map_err(|err| Error::with_chain(err, "cannot process leadership block"))?;
     let new_ref = applied
@@ -665,7 +644,7 @@ async fn check_and_apply_block(
     };
     let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
     let applied_block = blockchain
-        .apply_and_store_block(post_checked, block, None)
+        .apply_and_store_block(post_checked, block)
         .await?;
     if let AppliedBlock::New(block_ref) = applied_block {
         let header = block_ref.header();
