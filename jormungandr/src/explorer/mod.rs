@@ -5,8 +5,7 @@ mod multiverse;
 mod persistent_sequence;
 
 use self::error::{ExplorerError as Error, Result};
-pub use self::graphql::create_schema;
-use self::graphql::Context;
+use self::graphql::EContext;
 use self::indexing::{
     Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
     ExplorerVotePlan, ExplorerVoteProposal, ExplorerVoteTally, StakePool, StakePoolBlocks,
@@ -36,7 +35,7 @@ use std::sync::{
     atomic::{AtomicU32, Ordering},
     Arc,
 };
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{broadcast, Mutex, RwLock};
 
 #[derive(Clone)]
 pub struct Explorer {
@@ -60,6 +59,7 @@ pub struct ExplorerDB {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     stable_store: StableIndex,
+    tip_broadcast: tokio::sync::broadcast::Sender<(HeaderHash, multiverse::Ref)>,
 }
 
 #[derive(Clone)]
@@ -106,8 +106,8 @@ impl Explorer {
         Explorer { db }
     }
 
-    pub fn context(&self) -> Context {
-        Context {
+    pub fn context(&self) -> EContext {
+        EContext {
             db: self.db.clone(),
             settings: Settings {
                 // Hardcoded bech32 prefix
@@ -238,6 +238,8 @@ impl ExplorerDB {
             }
         };
 
+        let (tx, _) = broadcast::channel(10);
+
         let bootstraped_db = ExplorerDB {
             multiverse,
             longest_chain_tip: Tip::new(hash),
@@ -247,6 +249,7 @@ impl ExplorerDB {
             stable_store: StableIndex {
                 confirmed_block_chain_length: Arc::new(AtomicU32::default()),
             },
+            tip_broadcast: tx,
         };
 
         let db = stream
@@ -355,12 +358,14 @@ impl ExplorerDB {
         // the tip changes which means now a block is confirmed (at least after
         // the initial epoch_stability_depth blocks).
 
-        let block = if let Some(state_ref) = self.multiverse.get_ref(&hash).await {
-            let state = state_ref.state();
-            Arc::clone(state.blocks.lookup(&hash).unwrap())
+        let state_ref = if let Some(state_ref) = self.multiverse.get_ref(&hash).await {
+            state_ref
         } else {
             return false;
         };
+
+        let state = state_ref.state();
+        let block = Arc::clone(state.blocks.lookup(&hash).unwrap());
 
         if let Some(confirmed_block_chain_length) = block
             .chain_length()
@@ -386,6 +391,8 @@ impl ExplorerDB {
         let mut guard = self.longest_chain_tip.0.write().await;
 
         *guard = hash;
+
+        let _ = self.tip_broadcast.send((hash, state_ref));
 
         true
     }
@@ -536,6 +543,17 @@ impl ExplorerDB {
 
     fn blockchain(&self) -> &Blockchain {
         &self.blockchain
+    }
+
+    pub(self) fn tip_subscription(
+        &self,
+    ) -> impl Stream<
+        Item = std::result::Result<
+            (HeaderHash, multiverse::Ref),
+            tokio_stream::wrappers::errors::BroadcastStreamRecvError,
+        >,
+    > {
+        tokio_stream::wrappers::BroadcastStream::new(self.tip_broadcast.subscribe())
     }
 }
 

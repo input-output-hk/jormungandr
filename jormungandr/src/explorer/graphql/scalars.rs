@@ -1,72 +1,265 @@
 use super::error::ErrorKind;
 use crate::blockcfg;
+use async_graphql::{Enum, InputValueError, InputValueResult, Scalar, ScalarType, SimpleObject};
 use chain_crypto::bech32::Bech32;
-use chain_impl_mockchain::{value, vote};
-use juniper::{ParseScalarResult, ParseScalarValue};
+use chain_impl_mockchain::vote;
 use std::convert::{TryFrom, TryInto};
 
-#[derive(Clone, juniper::GraphQLScalarValue)]
-pub struct Slot(pub String);
+#[derive(Clone)]
+pub struct EpochNumber(pub blockcfg::Epoch);
 
-#[derive(juniper::GraphQLScalarValue)]
+#[Scalar]
+impl ScalarType for EpochNumber {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        match &value {
+            async_graphql::Value::String(string) => Ok(EpochNumber(string.parse()?)),
+            async_graphql::Value::Number(number) if number.is_i64() => {
+                Ok(EpochNumber(number.as_i64().unwrap().try_into()?))
+            }
+            _ => Err(InputValueError::expected_type(value)),
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+#[derive(Clone)]
+pub struct Slot(pub blockcfg::SlotId);
+
+#[Scalar]
+impl ScalarType for Slot {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        match &value {
+            async_graphql::Value::String(string) => Ok(Slot(string.parse()?)),
+            async_graphql::Value::Number(number) if number.is_i64() => {
+                Ok(Slot(number.as_i64().unwrap().try_into()?))
+            }
+            _ => Err(InputValueError::expected_type(value)),
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+#[derive(Clone)]
+pub struct ChainLength(pub blockcfg::ChainLength);
+
+#[Scalar]
 /// Custom scalar type that represents a block's position in the blockchain.
-/// It's a either 0 (the genesis block) or a positive number in string representation.
-pub struct ChainLength(pub String);
+/// It's either 0 (the genesis block) or a positive number
+impl ScalarType for ChainLength {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        match &value {
+            async_graphql::Value::String(string) => Ok(ChainLength(blockcfg::ChainLength::from(
+                string.parse::<u32>()?,
+            ))),
 
-#[derive(juniper::GraphQLScalarValue)]
-pub struct PoolId(pub String);
+            async_graphql::Value::Number(number) if number.is_i64() => Ok(ChainLength(
+                blockcfg::ChainLength::from(u32::try_from(number.as_i64().unwrap())?),
+            )),
+            _ => Err(InputValueError::expected_type(value)),
+        }
+    }
 
-#[derive(juniper::GraphQLScalarValue)]
-pub struct Value(pub String);
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(u32::from(self.0).to_string())
+    }
+}
 
-#[derive(juniper::GraphQLScalarValue)]
-pub struct EpochNumber(pub String);
+pub struct PoolId(pub chain_impl_mockchain::certificate::PoolId);
 
-#[derive(juniper::GraphQLScalarValue)]
-pub struct BlockCount(pub String);
+#[Scalar]
+impl ScalarType for PoolId {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(PoolId)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(juniper::GraphQLScalarValue)]
-pub struct TransactionCount(pub String);
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
 
-#[derive(juniper::GraphQLScalarValue)]
-pub struct PoolCount(pub String);
+pub struct Value(pub blockcfg::Value);
 
-#[derive(juniper::GraphQLScalarValue)]
+#[Scalar]
+impl ScalarType for Value {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse::<u64>().map(blockcfg::Value).map(Value)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+pub type BlockCount = u64;
+pub type TransactionCount = u64;
+pub type PoolCount = u64;
+pub type VotePlanStatusCount = u64;
+
 pub struct PublicKey(pub String);
 
-#[derive(juniper::GraphQLScalarValue)]
+#[Scalar]
+impl ScalarType for PublicKey {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(PublicKey)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct TimeOffsetSeconds(pub String);
 
-#[derive(juniper::GraphQLScalarValue)]
-pub struct NonZero(pub String);
+#[Scalar]
+impl ScalarType for TimeOffsetSeconds {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(TimeOffsetSeconds)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
 
-#[derive(Clone, juniper::GraphQLScalarValue)]
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+pub struct NonZero(pub std::num::NonZeroU64);
+
+#[Scalar]
+impl ScalarType for NonZero {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(NonZero)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+#[derive(Clone)]
 pub struct VotePlanId(pub String);
 
-#[derive(Clone, juniper::GraphQLScalarValue)]
+#[Scalar]
+impl ScalarType for VotePlanId {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(VotePlanId)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+#[derive(Clone)]
 pub struct ExternalProposalId(pub String);
 
-#[derive(Clone, juniper::GraphQLEnum)]
+#[Scalar]
+impl ScalarType for ExternalProposalId {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(ExternalProposalId)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Enum)]
 pub enum PayloadType {
     Public,
     Private,
 }
 
-#[derive(Clone, juniper::GraphQLScalarValue)]
+#[derive(Clone)]
 pub struct Weight(pub String);
 
-#[derive(juniper::GraphQLScalarValue)]
+#[Scalar]
+impl ScalarType for Weight {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(Weight)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct VotePlanCount(pub String);
 
-#[derive(juniper::GraphQLScalarValue)]
+#[Scalar]
+impl ScalarType for VotePlanCount {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(VotePlanCount)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 pub struct VoteStatusCount(pub String);
+
+#[Scalar]
+impl ScalarType for VoteStatusCount {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(VoteStatusCount)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
 
 /// Vote option range
 ///
 /// provide a range of available choices for a given proposal. Usual value would
 /// be `[0, 3[` (or `0..3` in rust's range syntax), meaning there are 3 options
 /// available: `0`, `1` and `2`
-#[derive(Clone, juniper::GraphQLObject)]
+#[derive(Clone, SimpleObject)]
 pub struct VoteOptionRange {
     /// the start of the vote option range, starting from 0 usually
     start: i32,
@@ -77,83 +270,23 @@ pub struct VoteOptionRange {
 // u32 should be enough to count blocks and transactions (the only two cases for now)
 
 #[derive(Clone)]
-pub struct IndexCursor(pub u64);
+pub struct IndexCursor(pub String);
 
-#[juniper::graphql_scalar(
-    description = "Non-opaque cursor that can be used for offset-based pagination"
-)]
-impl<S> GraphQLScalar for IndexCursor
-where
-    S: juniper::ScalarValue,
-{
-    fn resolve(&self) -> Value {
-        juniper::Value::scalar(self.0.to_string())
+impl async_graphql::connection::CursorType for IndexCursor {
+    type Error = std::num::ParseIntError;
+
+    fn decode_cursor(s: &str) -> Result<Self, Self::Error> {
+        Ok(IndexCursor(s.into()))
     }
 
-    fn from_input_value(v: &InputValue) -> Option<IndexCursor> {
-        v.as_string_value()
-            .and_then(|s| s.parse::<u64>().ok())
-            .map(IndexCursor)
-    }
-
-    fn from_str<'a>(value: ScalarToken<'a>) -> ParseScalarResult<'a, S> {
-        <String as ParseScalarValue<S>>::from_str(value)
+    fn encode_cursor(&self) -> String {
+        self.0.clone()
     }
 }
 
 /*------------------------------*/
 /*------- Conversions ---------*/
 /*----------------------------*/
-
-impl From<blockcfg::ChainLength> for ChainLength {
-    fn from(length: blockcfg::ChainLength) -> ChainLength {
-        ChainLength(u32::from(length).to_string())
-    }
-}
-
-impl TryFrom<ChainLength> for blockcfg::ChainLength {
-    type Error = std::num::ParseIntError;
-    fn try_from(length: ChainLength) -> Result<blockcfg::ChainLength, Self::Error> {
-        length.0.parse::<u32>().map(blockcfg::ChainLength::from)
-    }
-}
-
-impl From<&value::Value> for Value {
-    fn from(v: &value::Value) -> Value {
-        Value(format!("{}", v))
-    }
-}
-
-impl From<value::Value> for Value {
-    fn from(v: value::Value) -> Value {
-        (&v).into()
-    }
-}
-
-impl From<blockcfg::Epoch> for EpochNumber {
-    fn from(e: blockcfg::Epoch) -> EpochNumber {
-        EpochNumber(format!("{}", e))
-    }
-}
-
-impl TryFrom<EpochNumber> for blockcfg::Epoch {
-    type Error = std::num::ParseIntError;
-    fn try_from(e: EpochNumber) -> Result<blockcfg::Epoch, Self::Error> {
-        e.0.parse::<u32>()
-    }
-}
-
-impl From<u64> for BlockCount {
-    fn from(number: u64) -> BlockCount {
-        BlockCount(format!("{}", number))
-    }
-}
-
-impl From<u32> for BlockCount {
-    fn from(number: u32) -> BlockCount {
-        BlockCount(format!("{}", number))
-    }
-}
 
 impl From<&chain_crypto::PublicKey<chain_crypto::Ed25519>> for PublicKey {
     fn from(pk: &chain_crypto::PublicKey<chain_crypto::Ed25519>) -> PublicKey {
@@ -167,21 +300,25 @@ impl From<chain_time::TimeOffsetSeconds> for TimeOffsetSeconds {
     }
 }
 
-impl From<u64> for TransactionCount {
-    fn from(n: u64) -> TransactionCount {
-        TransactionCount(format!("{}", n))
-    }
-}
-
-impl From<u64> for PoolCount {
-    fn from(n: u64) -> PoolCount {
-        PoolCount(format!("{}", n))
-    }
-}
-
 impl From<u32> for IndexCursor {
     fn from(number: u32) -> IndexCursor {
-        IndexCursor(number.into())
+        IndexCursor(number.to_string())
+    }
+}
+
+impl TryInto<u64> for IndexCursor {
+    type Error = super::ErrorKind;
+
+    fn try_into(self) -> Result<u64, Self::Error> {
+        self.0
+            .parse()
+            .map_err(|_| ErrorKind::InvalidCursor("IndexCursor is not a valid number".to_string()))
+    }
+}
+
+impl Into<String> for IndexCursor {
+    fn into(self) -> String {
+        self.0
     }
 }
 
@@ -213,36 +350,27 @@ impl From<vote::Options> for VoteOptionRange {
 impl TryFrom<IndexCursor> for u32 {
     type Error = ErrorKind;
     fn try_from(c: IndexCursor) -> Result<u32, Self::Error> {
-        c.0.try_into().map_err(|_| {
-            ErrorKind::InvalidCursor(
-                "block's pagination cursor is greater than maximum 2^32".to_owned(),
-            )
-        })
-    }
-}
-
-impl From<IndexCursor> for u64 {
-    fn from(number: IndexCursor) -> u64 {
-        number.0
+        c.0.parse()
+            .map_err(|_| ErrorKind::InvalidCursor("IndexCursor is not a valid number".to_owned()))
     }
 }
 
 impl From<u64> for IndexCursor {
     fn from(number: u64) -> IndexCursor {
-        IndexCursor(number)
+        IndexCursor(number.to_string())
     }
 }
 
 impl From<blockcfg::ChainLength> for IndexCursor {
     fn from(length: blockcfg::ChainLength) -> IndexCursor {
-        IndexCursor(u32::from(length).into())
+        IndexCursor(u32::from(length).to_string())
     }
 }
 
 impl TryFrom<IndexCursor> for blockcfg::ChainLength {
     type Error = ErrorKind;
     fn try_from(c: IndexCursor) -> Result<blockcfg::ChainLength, Self::Error> {
-        let inner: u32 = c.0.try_into().map_err(|_| {
+        let inner: u32 = c.0.parse().map_err(|_| {
             ErrorKind::InvalidCursor(
                 "block's pagination cursor is greater than maximum ChainLength".to_owned(),
             )
@@ -278,5 +406,11 @@ impl From<u32> for VotePlanCount {
 impl From<u64> for VoteStatusCount {
     fn from(number: u64) -> VoteStatusCount {
         VoteStatusCount(format!("{}", number))
+    }
+}
+
+impl From<u64> for Value {
+    fn from(number: u64) -> Value {
+        Value(blockcfg::Value(number))
     }
 }

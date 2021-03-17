@@ -1,3 +1,6 @@
+"""Directs the executor to query only when the field exists."""
+directive @ifdef on FIELD
+
 type Address {
   """The base32 representation of an address"""
   id: String!
@@ -17,7 +20,7 @@ type Block {
   date: BlockDate!
 
   """The transactions contained in the block"""
-  transactions(first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
+  transactions(first: Int, last: Int, before: String, after: String): TransactionConnection!
   chainLength: ChainLength!
   leader: Leader
   previousBlock: Block!
@@ -29,16 +32,13 @@ type Block {
 }
 
 type BlockConnection {
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
-  edges: [BlockEdge!]!
 
-  """
-  A count of the total number of objects in this connection, ignoring pagination.
-  """
-  totalCount: BlockCount!
+  """A list of edges."""
+  edges: [BlockEdge]
+  totalCount: Int!
 }
-
-scalar BlockCount
 
 """Block's date, composed of an Epoch and a Slot"""
 type BlockDate {
@@ -46,27 +46,33 @@ type BlockDate {
   slot: Slot!
 }
 
+"""An edge in a connection."""
 type BlockEdge {
+  """The item at the end of the edge"""
   node: Block!
 
   """A cursor for use in pagination"""
-  cursor: IndexCursor!
+  cursor: String!
 }
 
 type Branch {
   id: String!
   block: Block!
-  blocks(first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection!
-  transactionsByAddress(addressBech32: String!, first: Int, last: Int, before: IndexCursor, after: IndexCursor): TransactionConnection!
-  allVotePlans(first: Int, last: Int, before: IndexCursor, after: IndexCursor): VotePlanConnection!
-  allStakePools(first: Int, last: Int, before: IndexCursor, after: IndexCursor): PoolConnection!
+  blocks(first: Int, last: Int, before: String, after: String): BlockConnection!
+  transactionsByAddress(addressBech32: String!, first: Int, last: Int, before: String, after: String): TransactionConnection!
+  allVotePlans(first: Int, last: Int, before: String, after: String): VotePlanStatusConnection!
+  allStakePools(first: Int, last: Int, before: String, after: String): PoolConnection!
 
   """Get a paginated view of all the blocks in this epoch"""
-  blocksByEpoch(epoch: EpochNumber!, first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection
+  blocksByEpoch(epoch: EpochNumber!, first: Int, last: Int, before: String, after: String): BlockConnection
 }
 
 union Certificate = StakeDelegation | OwnerStakeDelegation | PoolRegistration | PoolRetirement | PoolUpdate | VotePlan | VoteCast | VoteTally | EncryptedVoteTally
 
+"""
+Custom scalar type that represents a block's position in the blockchain.
+It's either 0 (the genesis block) or a positive number
+"""
 scalar ChainLength
 
 type EncryptedVoteTally {
@@ -80,7 +86,7 @@ type Epoch {
   stakeDistribution: StakeDistribution!
   firstBlock: Block
   lastBlock: Block
-  totalBlocks: BlockCount!
+  totalBlocks: Int!
 }
 
 scalar EpochNumber
@@ -98,9 +104,6 @@ type FeeSettings {
   certificateVoteCast: Value!
 }
 
-"""Non-opaque cursor that can be used for offset-based pagination"""
-scalar IndexCursor
-
 union Leader = Pool | BftLeader
 
 scalar NonZero
@@ -109,11 +112,19 @@ type OwnerStakeDelegation {
   pools: [Pool!]!
 }
 
+"""Information about pagination in a connection"""
 type PageInfo {
-  hasNextPage: Boolean!
+  """When paginating backwards, are there more items?"""
   hasPreviousPage: Boolean!
-  startCursor: IndexCursor
-  endCursor: IndexCursor
+
+  """When paginating forwards, are there more items?"""
+  hasNextPage: Boolean!
+
+  """When paginating backwards, the cursor to continue."""
+  startCursor: String
+
+  """When paginating forwards, the cursor to continue."""
+  endCursor: String
 }
 
 enum PayloadType {
@@ -123,28 +134,27 @@ enum PayloadType {
 
 type Pool {
   id: PoolId!
-  blocks(first: Int, last: Int, before: IndexCursor, after: IndexCursor): BlockConnection!
+  blocks(first: Int, last: Int, before: String, after: String): BlockConnection!
   registration: PoolRegistration!
   retirement: PoolRetirement
 }
 
 type PoolConnection {
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
-  edges: [PoolEdge!]!
 
-  """
-  A count of the total number of objects in this connection, ignoring pagination.
-  """
-  totalCount: PoolCount!
+  """A list of edges."""
+  edges: [PoolEdge]
+  totalCount: Int!
 }
 
-scalar PoolCount
-
+"""An edge in a connection."""
 type PoolEdge {
+  """The item at the end of the edge"""
   node: Pool!
 
   """A cursor for use in pagination"""
-  cursor: IndexCursor!
+  cursor: String!
 }
 
 scalar PoolId
@@ -208,7 +218,10 @@ type Query {
   """get all current tips, sorted (descending) by their length"""
   branches: [Branch!]!
 
-  """get the ref that the ledger currently considers as the main branch's"""
+  """
+  get the block that the ledger currently considers as the main branch's
+  tip
+  """
   tip: Branch!
   branch(id: String!): Branch!
   epoch(id: EpochNumber!): Epoch!
@@ -237,6 +250,10 @@ type StakeDelegation {
 
 type StakeDistribution {
   pools: [PoolStakeDistribution!]!
+}
+
+type Subscription {
+  tip: Branch!
 }
 
 type TallyPrivateStatus {
@@ -277,22 +294,20 @@ type Transaction {
 }
 
 type TransactionConnection {
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
-  edges: [TransactionEdge!]!
 
-  """
-  A count of the total number of objects in this connection, ignoring pagination.
-  """
-  totalCount: TransactionCount!
+  """A list of edges."""
+  edges: [TransactionEdge]
 }
 
-scalar TransactionCount
-
+"""An edge in a connection."""
 type TransactionEdge {
+  """The item at the end of the edge"""
   node: Transaction!
 
   """A cursor for use in pagination"""
-  cursor: IndexCursor!
+  cursor: String!
 }
 
 type TransactionInput {
@@ -365,23 +380,6 @@ type VotePlan {
   proposals: [Proposal!]!
 }
 
-type VotePlanConnection {
-  pageInfo: PageInfo!
-  edges: [VotePlanEdge!]!
-
-  """
-  A count of the total number of objects in this connection, ignoring pagination.
-  """
-  totalCount: VotePlanCount!
-}
-
-scalar VotePlanCount
-
-type VotePlanEdge {
-  node: VotePlanStatus!
-  cursor: IndexCursor!
-}
-
 scalar VotePlanId
 
 type VotePlanStatus {
@@ -393,11 +391,29 @@ type VotePlanStatus {
   proposals: [VoteProposalStatus!]!
 }
 
+type VotePlanStatusConnection {
+  """Information to aid in pagination."""
+  pageInfo: PageInfo!
+
+  """A list of edges."""
+  edges: [VotePlanStatusEdge]
+  totalCount: Int!
+}
+
+"""An edge in a connection."""
+type VotePlanStatusEdge {
+  """The item at the end of the edge"""
+  node: VotePlanStatus!
+
+  """A cursor for use in pagination"""
+  cursor: String!
+}
+
 type VoteProposalStatus {
   proposalId: ExternalProposalId!
   options: VoteOptionRange!
   tally: TallyStatus
-  votes(first: Int, last: Int, before: IndexCursor, after: IndexCursor): VoteStatusConnection!
+  votes(first: Int, last: Int, before: String, after: String): VoteStatusConnection!
 }
 
 type VoteStatus {
@@ -406,20 +422,21 @@ type VoteStatus {
 }
 
 type VoteStatusConnection {
+  """Information to aid in pagination."""
   pageInfo: PageInfo!
-  edges: [VoteStatusEdge!]!
 
-  """
-  A count of the total number of objects in this connection, ignoring pagination.
-  """
-  totalCount: VoteStatusCount!
+  """A list of edges."""
+  edges: [VoteStatusEdge]
+  totalCount: Int!
 }
 
-scalar VoteStatusCount
-
+"""An edge in a connection."""
 type VoteStatusEdge {
+  """The item at the end of the edge"""
   node: VoteStatus!
-  cursor: IndexCursor!
+
+  """A cursor for use in pagination"""
+  cursor: String!
 }
 
 type VoteTally {
