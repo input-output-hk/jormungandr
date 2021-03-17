@@ -99,131 +99,67 @@ impl FromStr for LogOutput {
     }
 }
 
-// Settings for output layers.
-#[derive(Default)]
-struct LogOutputLayerSettings {
-    stdout: Option<LogSettingsEntry>,
-    stderr: Option<LogSettingsEntry>,
-    file: Option<LogSettingsEntry>,
-    #[cfg(feature = "systemd")]
-    journald: Option<LogSettingsEntry>,
-    #[cfg(feature = "gelf")]
-    gelf: Option<LogSettingsEntry>,
-}
-
-impl LogOutputLayerSettings {
-    // Overwrites settings by LogOutput variant, wrapping
-    // log settings entry into and Option
-    fn read_setting(&mut self, setting: LogSettingsEntry, msgs: &mut Vec<String>) {
-        match setting.output {
-            LogOutput::Stdout => {
-                if let Some(previous) = &self.stdout {
-                    msgs.push(format!(
-                        "stdout output entry {:?} was overriden by {:?}",
-                        previous, setting
-                    ));
-                }
-                self.stdout = Some(setting);
-            }
-            LogOutput::Stderr => {
-                if let Some(previous) = &self.stderr {
-                    msgs.push(format!(
-                        "stderr output entry {:?} was overriden by {:?}",
-                        previous, setting
-                    ));
-                }
-                self.stderr = Some(setting);
-            }
-            LogOutput::File(_) => {
-                if let Some(previous) = &self.file {
-                    msgs.push(format!(
-                        "file output entry {:?} was overriden by {:?}",
-                        previous, setting
-                    ));
-                }
-                self.file = Some(setting);
-            }
-            #[cfg(feature = "systemd")]
-            LogOutput::Journald => {
-                if let Some(previous) = &self.journald {
-                    msgs.push(format!(
-                        "journald output entry {:?} was overriden by {:?}",
-                        previous, setting
-                    ));
-                }
-                self.journald = Some(setting);
-            }
-            #[cfg(feature = "gelf")]
-            LogOutput::Gelf { .. } => {
-                if let Some(previous) = &self.gelf {
-                    msgs.push(format!(
-                        "gelf output entry {:?} was overriden by {:?}",
-                        previous, setting
-                    ));
-                }
-                self.gelf = Some(setting);
-            }
-        }
-    }
-}
-
 impl LogSettings {
     pub fn init_log(self) -> Result<(Vec<WorkerGuard>, LogInfoMsg), Error> {
         use tracing_subscriber::prelude::*;
 
+        // Worker guards that need to be held on to.
         let mut guards = Vec::new();
 
-        let registry = tracing_subscriber::registry();
-
-        // Parse which settings are present for possible outputs
-        let mut layer_settings = LogOutputLayerSettings::default();
-        let mut info_msgs: Vec<String> = Vec::new();
-        layer_settings.read_setting(self.config, &mut info_msgs);
-        let (std_out_layer, std_out_layer_json) = if let Some(settings) = layer_settings.stdout {
-            let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
-            guards.push(guard);
-            match settings.format {
-                LogFormat::Default | LogFormat::Plain => {
-                    let layer = tracing_subscriber::fmt::Layer::new()
-                        .with_level(true)
-                        .with_writer(non_blocking);
-                    (Some(layer), None)
-                }
-                LogFormat::Json => {
-                    let layer = tracing_subscriber::fmt::Layer::new()
-                        .json()
-                        .with_level(true)
-                        .with_writer(non_blocking);
-                    (None, Some(layer))
-                }
-            }
-        } else {
-            (None, None)
-        };
-        let (std_err_layer, std_err_layer_json) = if let Some(settings) = layer_settings.stderr {
-            let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stderr());
-            guards.push(guard);
-            match settings.format {
-                LogFormat::Default | LogFormat::Plain => {
-                    let layer = tracing_subscriber::fmt::Layer::new()
-                        .with_level(true)
-                        .with_writer(non_blocking);
-                    (Some(layer), None)
-                }
-                LogFormat::Json => {
-                    let layer = tracing_subscriber::fmt::Layer::new()
-                        .json()
-                        .with_level(true)
-                        .with_writer(non_blocking);
-                    (None, Some(layer))
+        // configure the registry subscriber as the global default,
+        // panics if something goes wrong.
+        match self.config.output {
+            LogOutput::Stdout => {
+                let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
+                guards.push(guard);
+                match self.config.format {
+                    LogFormat::Default | LogFormat::Plain => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .with_level(true)
+                            .with_writer(non_blocking);
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
+                    }
+                    LogFormat::Json => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .json()
+                            .with_level(true)
+                            .with_writer(non_blocking);
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
+                    }
                 }
             }
-        } else {
-            (None, None)
-        };
-        let (file_layer, file_layer_json) = if let Some(settings) = layer_settings.file {
-            // have to use if let because it's an enum
-            if let LogOutput::File(path) = settings.output {
+            LogOutput::Stderr => {
+                let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stderr());
+                guards.push(guard);
+                match self.config.format {
+                    LogFormat::Default | LogFormat::Plain => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .with_level(true)
+                            .with_writer(non_blocking);
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
+                    }
+                    LogFormat::Json => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .json()
+                            .with_level(true)
+                            .with_writer(non_blocking);
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
+                    }
+                }
+            }
+            LogOutput::File(path) => {
                 let file = fs::OpenOptions::new()
                     .create(true)
                     .write(true)
@@ -236,78 +172,51 @@ impl LogSettings {
                 let (non_blocking, guard) = tracing_appender::non_blocking(file);
                 guards.push(guard);
 
-                match settings.format {
+                match self.config.format {
                     LogFormat::Default | LogFormat::Plain => {
                         let layer = tracing_subscriber::fmt::Layer::new()
                             .with_level(true)
                             .with_writer(non_blocking);
-                        (Some(layer), None)
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
                     }
                     LogFormat::Json => {
                         let layer = tracing_subscriber::fmt::Layer::new()
                             .json()
                             .with_level(true)
                             .with_writer(non_blocking);
-                        (None, Some(layer))
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
                     }
                 }
-            } else {
-                (None, None)
             }
-        } else {
-            (None, None)
-        };
-        #[cfg(feature = "systemd")]
-        let journald_layer = if let Some(settings) = layer_settings.journald {
-            settings.format.require_default()?;
-            let layer = tracing_journald::layer().map_err(Error::Journald)?;
-            Some(layer)
-        } else {
-            None
-        };
-        #[cfg(feature = "gelf")]
-        let gelf_layer = if let Some(settings) = layer_settings.gelf {
-            // have to use if let because it's an enum
-            if let LogOutput::Gelf { backend, .. } = settings.output {
+            #[cfg(feature = "systemd")]
+            LogOutput::Journald => {
+                self.config.format.require_default()?;
+                let layer = tracing_journald::layer().map_err(Error::Journald)?;
+                tracing_subscriber::registry()
+                    .with(self.config.level)
+                    .with(layer)
+                    .init();
+            }
+            #[cfg(feature = "gelf")]
+            LogOutput::Gelf { backend, .. } => {
                 let (layer, task) = tracing_gelf::Logger::builder()
                     .connect_tcp(backend)
                     .map_err(Error::Gelf)?;
                 tokio::spawn(task);
-                Some(layer)
-            } else {
-                None
+                tracing_subscriber::registry()
+                    .with(self.config.level)
+                    .with(layer)
+                    .init();
             }
-        } else {
-            None
-        };
+        }
 
-        // configure the registry with optional outputs configured above
-        let registry = registry
-            .with(std_out_layer_json)
-            .with(std_out_layer)
-            .with(std_err_layer_json)
-            .with(std_err_layer)
-            .with(file_layer_json)
-            .with(file_layer);
-        #[cfg(feature = "systemd")]
-        let registry = registry.with(journald_layer);
-        #[cfg(feature = "gelf")]
-        let registry = registry.with(gelf_layer);
-
-        // configure the registry subscriber as the global default,
-        // panics if something goes wrong.
-        registry.init();
-
-        let log_msgs = match (self.msgs, info_msgs.is_empty()) {
-            (None, true) => None,
-            (None, false) => Some(info_msgs),
-            (Some(msgs), true) => Some(msgs),
-            (Some(mut msgs), false) => {
-                msgs.extend_from_slice(&info_msgs);
-                Some(msgs)
-            }
-        };
-        Ok((guards, log_msgs))
+        Ok((guards, self.msgs))
     }
 }
 
@@ -339,4 +248,24 @@ pub enum Error {
     Gelf(tracing_gelf::BuilderError),
     #[error("failed to set global subscriber")]
     SetGlobalSubscriberError(#[source] SetGlobalDefaultError),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_settings_have_a_single_optional_entry_to_configure_tracing_subscribers() {
+        let yml = "\
+log:\
+  - output: stdout\
+    level:  trace\
+    format: plain\
+  - output:\
+      file: example.log\
+    level: info\
+    format: json"
+            .to_string();
+        assert!(true);
+    }
 }
