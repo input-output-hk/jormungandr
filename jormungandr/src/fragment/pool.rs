@@ -1,5 +1,5 @@
 use crate::{
-    blockcfg::{BlockDate, Ledger, LedgerParameters},
+    blockcfg::{ApplyBlockLedger, LedgerParameters},
     fragment::{
         selection::{FragmentSelectionAlgorithm, FragmentSelectionAlgorithmParams, OldestFirst},
         Fragment, FragmentId, Logs,
@@ -109,17 +109,16 @@ impl Pools {
     pub fn select(
         &mut self,
         pool_idx: usize,
-        ledger: Ledger,
-        block_date: BlockDate,
+        ledger: ApplyBlockLedger,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
-    ) -> (Contents, Ledger) {
+    ) -> (Contents, ApplyBlockLedger) {
         let Pools { logs, pools, .. } = self;
         let pool = &mut pools[pool_idx];
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
-                selection_alg.select(ledger, &ledger_params, block_date, logs, pool)
+                selection_alg.select(ledger, &ledger_params, logs, pool)
             }
         }
     }

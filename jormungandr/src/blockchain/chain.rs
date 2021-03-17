@@ -479,11 +479,15 @@ impl Blockchain {
 
         debug_assert!(block.header.hash() == block_id);
 
-        let metadata = header.to_content_eval_context();
+        let metadata = header.get_content_eval_context();
 
         let ledger = post_checked_header
             .parent_ledger_state
-            .apply_block(epoch_ledger_parameters, &block.contents, &metadata)
+            .apply_block(
+                (**epoch_ledger_parameters).clone(),
+                &block.contents,
+                &metadata,
+            )
             .chain_err(|| ErrorKind::CannotApplyBlock)?;
 
         Ok(ledger)

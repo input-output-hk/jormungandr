@@ -1,5 +1,5 @@
 use crate::blockcfg::{
-    Block, BlockDate, Fragment, FragmentId, Header, HeaderHash, Ledger, LedgerParameters,
+    ApplyBlockLedger, Block, Fragment, FragmentId, Header, HeaderHash, LedgerParameters,
 };
 use crate::blockchain::{Checkpoints, LeadershipBlock, StorageError};
 use crate::fragment::selection::FragmentSelectionAlgorithmParams;
@@ -507,11 +507,10 @@ pub enum TransactionMsg {
     ),
     SelectTransactions {
         pool_idx: usize,
-        ledger: Ledger,
-        block_date: BlockDate,
+        ledger: ApplyBlockLedger,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
-        reply_handle: ReplyHandle<(FragmentContents, Ledger)>,
+        reply_handle: ReplyHandle<(FragmentContents, ApplyBlockLedger)>,
     },
 }
 

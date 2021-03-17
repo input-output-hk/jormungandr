@@ -1,8 +1,8 @@
 use crate::blockchain::{EpochLeadership, LeadershipBlock};
 use crate::{
     blockcfg::{
-        Block, BlockDate, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput, Leadership,
-        Ledger, LedgerParameters,
+        ApplyBlockLedger, Block, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput,
+        Leadership, LedgerParameters,
     },
     blockchain::{new_epoch_leadership_from, Ref, Tip},
     intercom::{unary_reply, BlockMsg, Error as IntercomError, TransactionMsg},
@@ -458,10 +458,9 @@ impl Module {
         let ledger = leadership.state.clone();
         let ledger_parameters = leadership.ledger_parameters.clone();
 
-        let ledger = ledger.apply_block_step1(chain_length, event.date)?;
+        let ledger = ledger.begin_block((*ledger_parameters).clone(), chain_length, event.date)?;
 
-        let (contents, ledger) =
-            prepare_block(pool, event.id, event.date, ledger, ledger_parameters).await?;
+        let (contents, ledger) = prepare_block(pool, event.id, ledger, ledger_parameters).await?;
 
         let event_logs_error = event_logs.clone();
         let signing = {
@@ -538,7 +537,7 @@ impl Module {
                     let id = block.header.hash();
                     let parent = block.header.block_parent_hash();
                     let chain_length: u32 = block.header.chain_length().into();
-                    let ledger = ledger.apply_block_step3(&block.header.to_content_eval_context());
+                    let ledger = ledger.finish(&block.header.get_consensus_eval_context());
                     let leadership_block = LeadershipBlock {
                         block,
                         new_ledger: ledger,
@@ -660,10 +659,9 @@ impl Entry {
 async fn prepare_block(
     mut fragment_pool: MessageBox<TransactionMsg>,
     leader_id: EnclaveLeaderId,
-    block_date: BlockDate,
-    ledger: Ledger,
+    ledger: ApplyBlockLedger,
     epoch_parameters: Arc<LedgerParameters>,
-) -> Result<(Contents, Ledger), LeadershipError> {
+) -> Result<(Contents, ApplyBlockLedger), LeadershipError> {
     use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 
     let (reply_handle, reply_future) = unary_reply();
@@ -673,7 +671,6 @@ async fn prepare_block(
     let msg = TransactionMsg::SelectTransactions {
         pool_idx: pool_idx as usize,
         ledger,
-        block_date,
         ledger_params: epoch_parameters.as_ref().clone(),
         selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
         reply_handle,

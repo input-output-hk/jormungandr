@@ -1,7 +1,7 @@
 use super::logs::Logs;
 use super::pool::internal::Pool;
 use crate::{
-    blockcfg::{BlockDate, Contents, ContentsBuilder, Ledger, LedgerParameters},
+    blockcfg::{ApplyBlockLedger, Contents, ContentsBuilder, LedgerParameters},
     fragment::FragmentId,
 };
 use chain_core::property::Fragment as _;
@@ -22,12 +22,11 @@ pub enum SelectionOutput {
 pub trait FragmentSelectionAlgorithm {
     fn select(
         &mut self,
-        ledger: Ledger,
+        ledger: ApplyBlockLedger,
         ledger_params: &LedgerParameters,
-        block_date: BlockDate,
         logs: &mut Logs,
         pool: &mut Pool,
-    ) -> (Contents, Ledger);
+    ) -> (Contents, ApplyBlockLedger);
 }
 
 #[derive(Debug)]
@@ -52,12 +51,11 @@ impl Default for OldestFirst {
 impl FragmentSelectionAlgorithm for OldestFirst {
     fn select(
         &mut self,
-        mut ledger: Ledger,
+        mut ledger: ApplyBlockLedger,
         ledger_params: &LedgerParameters,
-        block_date: BlockDate,
         logs: &mut Logs,
         pool: &mut Pool,
-    ) -> (Contents, Ledger) {
+    ) -> (Contents, ApplyBlockLedger) {
         let mut current_total_size = 0;
         let mut contents_builder = ContentsBuilder::new();
         let mut return_to_pool = Vec::new();
@@ -83,7 +81,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
 
             if total_size <= ledger_params.block_content_max_size {
                 tracing::debug!("applying fragment in simulation");
-                match ledger.apply_fragment(ledger_params, &fragment, block_date) {
+                match ledger.apply_fragment(&fragment) {
                     Ok(ledger_new) => {
                         contents_builder.push(fragment);
                         ledger = ledger_new;
