@@ -14,7 +14,7 @@ use tracing::subscriber::SetGlobalDefaultError;
 use tracing_subscriber::layer::SubscriberExt;
 
 pub struct LogSettings {
-    pub entries: Vec<LogSettingsEntry>,
+    pub config: LogSettingsEntry,
     pub msgs: LogInfoMsg,
 }
 
@@ -23,7 +23,7 @@ pub struct LogSettings {
 /// some code executes before the logs are initialized.
 pub type LogInfoMsg = Option<Vec<String>>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LogSettingsEntry {
     pub level: LevelFilter,
     pub format: LogFormat,
@@ -178,9 +178,7 @@ impl LogSettings {
         // Parse which settings are present for possible outputs
         let mut layer_settings = LogOutputLayerSettings::default();
         let mut info_msgs: Vec<String> = Vec::new();
-        for config in self.entries.into_iter() {
-            layer_settings.read_setting(config, &mut info_msgs);
-        }
+        layer_settings.read_setting(self.config, &mut info_msgs);
         let (std_out_layer, std_out_layer_json) = if let Some(settings) = layer_settings.stdout {
             let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
             guards.push(guard);

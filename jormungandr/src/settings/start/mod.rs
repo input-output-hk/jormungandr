@@ -15,6 +15,11 @@ const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Default;
 const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
 const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min
 const DEFAULT_BLOCK_HARD_DEADLINE: u32 = 50;
+const DEFAULT_LOG_SETTINGS_ENTRY: LogSettingsEntry = LogSettingsEntry {
+    level: DEFAULT_FILTER_LEVEL,
+    format: DEFAULT_LOG_FORMAT,
+    output: DEFAULT_LOG_OUTPUT,
+};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -62,18 +67,23 @@ impl RawSettings {
     }
 
     pub fn log_settings(&self) -> LogSettings {
-        let mut entries = Vec::new();
+        // Start with default config
+        let mut log_config = DEFAULT_LOG_SETTINGS_ENTRY;
         let mut info_msgs: Vec<String> = Vec::new();
 
         //  Read log settings from the config file path.
         if let Some(log) = self.config.as_ref().and_then(|cfg| cfg.log.as_ref()) {
-            log.0.iter().for_each(|entry| {
-                entries.push(LogSettingsEntry {
-                    level: entry.level.clone().unwrap_or(DEFAULT_FILTER_LEVEL),
-                    format: entry.format.clone().unwrap_or(DEFAULT_LOG_FORMAT),
-                    output: entry.output.clone().unwrap_or(DEFAULT_LOG_OUTPUT),
-                })
-            });
+            if let Some(cfg) = log.0.last() {
+                if let Some(level) = cfg.level {
+                    log_config.level = level;
+                }
+                if let Some(format) = cfg.format {
+                    log_config.format = format;
+                }
+                if let Some(output) = &cfg.output {
+                    log_config.output = output.clone();
+                }
+            }
         }
 
         // If the command line specifies log arguments, check that the arg
@@ -89,29 +99,19 @@ impl RawSettings {
                 format: cmd_format.unwrap_or(DEFAULT_LOG_FORMAT),
                 output,
             };
-            // check if there are entries being overriden
-            if !entries.is_empty() {
+            // check if command_line_entry is different to the current log_config
+            if log_config != command_line_entry {
                 // log to info! that the output was overriden,
                 // we send this as a message because tracing Subscribers
                 // do not get initiated until after this code runs
                 info_msgs.push(format!(
                     "log settings overriden from command line: {:?} replaced with {:?}",
-                    entries, command_line_entry
+                    log_config, command_line_entry
                 ));
             }
-            // Replace any existing setting entries with the
+            // Replace any existing log_config
             // command line settings entry.
-            entries = vec![command_line_entry];
-        }
-
-        //  If no log settings are found, add LogSettingsEntry with default
-        //  values.
-        if entries.is_empty() {
-            entries.push(LogSettingsEntry {
-                level: DEFAULT_FILTER_LEVEL,
-                format: DEFAULT_LOG_FORMAT,
-                output: DEFAULT_LOG_OUTPUT,
-            });
+            log_config = command_line_entry;
         }
 
         let log_info_msg: LogInfoMsg = if info_msgs.is_empty() {
@@ -120,7 +120,7 @@ impl RawSettings {
             Some(info_msgs)
         };
         LogSettings {
-            entries,
+            config: log_config,
             msgs: log_info_msg,
         }
     }
