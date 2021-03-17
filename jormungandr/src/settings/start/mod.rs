@@ -86,32 +86,34 @@ impl RawSettings {
             }
         }
 
-        // If the command line specifies log arguments, check that the arg
-        // is Some(output), else, skip.
-        let cmd_output = self.command_line.log_output.clone();
-
-        if let Some(output) = cmd_output {
-            let cmd_level = self.command_line.log_level;
-            let cmd_format = self.command_line.log_format;
-
-            let command_line_entry = LogSettingsEntry {
-                level: cmd_level.unwrap_or(DEFAULT_FILTER_LEVEL),
-                format: cmd_format.unwrap_or(DEFAULT_LOG_FORMAT),
-                output,
-            };
-            // check if command_line_entry is different to the current log_config
-            if log_config != command_line_entry {
-                // log to info! that the output was overriden,
-                // we send this as a message because tracing Subscribers
-                // do not get initiated until after this code runs
+        // If the command line specifies log arguments, they override everything
+        // else.
+        if let Some(output) = &self.command_line.log_output {
+            if &log_config.output != output {
                 info_msgs.push(format!(
-                    "log settings overriden from command line: {:?} replaced with {:?}",
-                    log_config, command_line_entry
+                    "log output overriden from command line: {:?} replaced with {:?}",
+                    log_config.output, output
                 ));
             }
-            // Replace any existing log_config
-            // command line settings entry.
-            log_config = command_line_entry;
+            log_config.output = output.clone();
+        }
+        if let Some(level) = self.command_line.log_level {
+            if log_config.level != level {
+                info_msgs.push(format!(
+                    "log level overriden from command line: {:?} replaced with {:?}",
+                    log_config.level, level
+                ));
+            }
+            log_config.level = level;
+        }
+        if let Some(format) = self.command_line.log_format {
+            if log_config.format != format {
+                info_msgs.push(format!(
+                    "log format overriden from command line: {:?} replaced with {:?}",
+                    log_config.format, format
+                ));
+            }
+            log_config.format = format;
         }
 
         let log_info_msg: LogInfoMsg = if info_msgs.is_empty() {
