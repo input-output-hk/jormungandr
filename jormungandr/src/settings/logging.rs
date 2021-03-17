@@ -249,23 +249,3 @@ pub enum Error {
     #[error("failed to set global subscriber")]
     SetGlobalSubscriberError(#[source] SetGlobalDefaultError),
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn log_settings_have_a_single_optional_entry_to_configure_tracing_subscribers() {
-        let yml = "\
-log:\
-  - output: stdout\
-    level:  trace\
-    format: plain\
-  - output:\
-      file: example.log\
-    level: info\
-    format: json"
-            .to_string();
-        assert!(true);
-    }
-}
