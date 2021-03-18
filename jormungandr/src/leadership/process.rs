@@ -55,7 +55,7 @@ pub enum LeadershipError {
     CannotUpdateLogs,
 
     #[error("Error while performing a ledger operation")]
-    LedgerError(#[from] chain_impl_mockchain::ledger::Error),
+    LedgerError(#[from] Box<chain_impl_mockchain::ledger::Error>),
 }
 
 struct Entry {
@@ -458,7 +458,9 @@ impl Module {
         let ledger = leadership.state.clone();
         let ledger_parameters = leadership.ledger_parameters.clone();
 
-        let ledger = ledger.begin_block((*ledger_parameters).clone(), chain_length, event.date)?;
+        let ledger = ledger
+            .begin_block((*ledger_parameters).clone(), chain_length, event.date)
+            .map_err(Box::new)?;
 
         let (contents, ledger) = prepare_block(pool, event.id, ledger, ledger_parameters).await?;
 
