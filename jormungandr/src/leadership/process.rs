@@ -372,7 +372,6 @@ impl Module {
         entry: Entry,
         event_end: SystemTime,
     ) -> Result<Self, LeadershipError> {
-        let event_logs = entry.log.clone();
         let now = SystemTime::now();
 
         // we can safely unwrap here as we just proved that `now <= event_end`
@@ -393,31 +392,33 @@ impl Module {
             "action_run_entry_in_bound",
             event_remaining_time = %remaining_time.to_string()
         );
-        async move {
-            tracing::info!("Leader event started");
 
-        let res = tokio::time::timeout_at(
-            tokio::time::Instant::from_std(deadline),
-            self.action_run_entry_build_block(entry),
-        )
-        .await;
+        async {
+            let (abort_tx, abort_rx) = futures::channel::oneshot::channel();
+            let timeout_future = tokio::time::sleep_until(tokio::time::Instant::from_std(deadline));
+            let build_block_future = self.action_run_entry_build_block(entry, abort_rx);
 
-            match res {
-                Ok(future_res) => future_res,
-                Err(timeout_error) => {
-                    tracing::error!(reason = %timeout_error, "Eek... took too long to process the event...");
-                    event_logs
-                        .set_status(LeadershipLogStatus::Rejected {
-                            reason: "Failed to compute the schedule within time boundaries".to_owned(),
-                        })
-                        .await;
-                    Ok(())
+            match futures::future::select(Box::pin(build_block_future), Box::pin(timeout_future))
+                .await
+            {
+                futures::future::Either::Left((result, _)) => result,
+                futures::future::Either::Right((_, build_block_future)) => {
+                    abort_tx.send(()).unwrap();
+                    build_block_future.await
                 }
-            }.map(|()| self)
-        }.instrument(span).await
+            }
+        }
+        .instrument(span)
+        .await?;
+
+        Ok(self)
     }
 
-    async fn action_run_entry_build_block(&self, entry: Entry) -> Result<(), LeadershipError> {
+    async fn action_run_entry_build_block(
+        &self,
+        entry: Entry,
+        abort_future: futures::channel::oneshot::Receiver<()>,
+    ) -> Result<(), LeadershipError> {
         let event = entry.event;
         let event_logs = entry.log;
 
@@ -462,7 +463,8 @@ impl Module {
             .begin_block((*ledger_parameters).clone(), chain_length, event.date)
             .map_err(Box::new)?;
 
-        let (contents, ledger) = prepare_block(pool, event.id, ledger, ledger_parameters).await?;
+        let (contents, ledger) =
+            prepare_block(pool, event.id, ledger, ledger_parameters, abort_future).await?;
 
         let event_logs_error = event_logs.clone();
         let signing = {
@@ -663,6 +665,7 @@ async fn prepare_block(
     leader_id: EnclaveLeaderId,
     ledger: ApplyBlockLedger,
     epoch_parameters: Arc<LedgerParameters>,
+    abort_future: futures::channel::oneshot::Receiver<()>,
 ) -> Result<(Contents, ApplyBlockLedger), LeadershipError> {
     use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 
@@ -676,6 +679,7 @@ async fn prepare_block(
         ledger_params: epoch_parameters.as_ref().clone(),
         selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
         reply_handle,
+        abort_future,
     };
 
     if fragment_pool.try_send(msg).is_err() {

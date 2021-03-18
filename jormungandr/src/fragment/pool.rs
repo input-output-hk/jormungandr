@@ -106,19 +106,22 @@ impl Pools {
         self.logs.modify_all(fragment_ids, status);
     }
 
-    pub fn select(
+    pub async fn select(
         &mut self,
         pool_idx: usize,
         ledger: ApplyBlockLedger,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
+        abort_future: futures::channel::oneshot::Receiver<()>,
     ) -> (Contents, ApplyBlockLedger) {
         let Pools { logs, pools, .. } = self;
         let pool = &mut pools[pool_idx];
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
-                selection_alg.select(ledger, &ledger_params, logs, pool)
+                selection_alg
+                    .select(ledger, &ledger_params, logs, pool, abort_future)
+                    .await
             }
         }
     }
