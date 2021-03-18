@@ -5,6 +5,7 @@ mod certificate;
 mod debug;
 mod key;
 mod rest;
+mod rewards;
 mod transaction;
 mod vote;
 
@@ -55,6 +56,8 @@ pub enum JCliCommand {
     Utils(utils::Utils),
     /// Vote related operations
     Votes(vote::Vote),
+    /// Rewards related operations
+    Rewards(rewards::Rewards),
 }
 
 impl JCli {
@@ -87,6 +90,7 @@ impl JCliCommand {
             AutoCompletion(auto_completion) => auto_completion.exec::<Self>()?,
             Utils(utils) => utils.exec()?,
             Votes(vote) => vote.exec()?,
+            Rewards(rewards) => rewards.exec()?,
         };
         Ok(())
     }

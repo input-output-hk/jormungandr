@@ -115,14 +115,14 @@ pub struct Input {
 }
 
 impl Input {
-    fn open(&self) -> Result<impl BufRead, Error> {
+    pub fn open(&self) -> Result<impl BufRead, Error> {
         io::open_file_read(&self.input_file).map_err(|source| Error::InputInvalid {
             source,
             path: self.input_file.clone().unwrap_or_default(),
         })
     }
 
-    fn load_block(&self) -> Result<Block, Error> {
+    pub fn load_block(&self) -> Result<Block, Error> {
         let reader = self.open()?;
         Block::deserialize(reader).map_err(Error::BlockFileCorrupted)
     }
@@ -131,18 +131,18 @@ impl Input {
 #[derive(StructOpt)]
 pub struct Common {
     #[structopt(flatten)]
-    input: Input,
+    pub input: Input,
 
     /// the file path to the block to create
     ///
     /// If not available the command will expect to write the block to
     /// to the standard output
     #[structopt(long = "output", parse(from_os_str), name = "FILE_OUTPUT")]
-    output_file: Option<std::path::PathBuf>,
+    pub output_file: Option<std::path::PathBuf>,
 }
 
 impl Common {
-    fn open_output(&self) -> Result<impl Write, Error> {
+    pub fn open_output(&self) -> Result<impl Write, Error> {
         io::open_file_write(&self.output_file).map_err(|source| Error::OutputInvalid {
             source,
             path: self.output_file.clone().unwrap_or_default(),
