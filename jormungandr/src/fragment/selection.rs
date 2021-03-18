@@ -103,7 +103,18 @@ impl FragmentSelectionAlgorithm for OldestFirst {
             let result = tokio::select! {
                 join_result = fragment_future => join_result.unwrap(),
                 _ = abort_future.clone() => {
-                    return_to_pool.push(fragment);
+                    // When we have other fragments but cannot process this one in time, we just
+                    // leave it until the next call.
+                    if current_total_size > 0 {
+                        return_to_pool.push(fragment);
+                        break;
+                    }
+
+                    // if we cannot process a single fragment within the given time bounds it
+                    // should be rejected
+                    let reason = "cannot process a single fragment within the given time bounds";
+                    tracing::debug!("{}", reason);
+                    logs.modify(id, FragmentStatus::Rejected { reason: reason.to_string() });
                     break;
                 }
             };
