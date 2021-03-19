@@ -547,13 +547,8 @@ fn connect_and_propagate(
                     }
                 };
                 if !benign {
-                    future::join(
-                        state
-                            .topology
-                            .report_node(node.clone(), StrikeReason::CannotConnect),
-                        state.peers.remove_peer(node.clone()),
-                    )
-                    .await;
+                    state.topology.report_node(&node_id).await;
+                    state.peers.remove_peer(node_addr).await;
                 }
             }
             Ok(client) => {
@@ -562,6 +557,7 @@ fn connect_and_propagate(
                 state.peers.update_entry(node_addr).await;
 
                 state.inc_client_count();
+                state.topology().promote_node(&node_id).await;
                 tracing::debug!(client_count = state.client_count(), "connected to peer");
                 client.await;
                 state.dec_client_count();
