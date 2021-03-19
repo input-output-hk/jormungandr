@@ -201,7 +201,7 @@ impl SpawnParams {
         }
 
         if let Some(listen_address_option) = &self.listen_address {
-            node_config.p2p.listen_address = listen_address_option.clone();
+            node_config.p2p.listen_address = *listen_address_option;
         }
 
         if let Some(trusted_peers) = &self.trusted_peers {
