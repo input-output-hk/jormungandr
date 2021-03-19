@@ -41,6 +41,7 @@ console = "0.14"
 yaml-rust = "0.4.4"
 indicatif = "0.15"
 lazy_static = "1"
+multiaddr = { package = "parity-multiaddr", version = "0.11" }
 
 [dependencies.reqwest]
 version = "0.11"

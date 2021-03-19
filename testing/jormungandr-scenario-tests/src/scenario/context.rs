@@ -1,6 +1,7 @@
 use assert_fs::fixture::{ChildPath, PathChild};
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
+use multiaddr::Multiaddr;
 use rand_chacha::ChaChaRng;
 use rand_core::RngCore;
 use std::net::SocketAddr;
@@ -131,7 +132,7 @@ impl<RNG: RngCore> Context<RNG> {
             .fetch_add(1, atomic::Ordering::SeqCst)
     }
 
-    pub fn generate_new_grpc_public_address(&mut self) -> poldercast::Address {
+    pub fn generate_new_grpc_public_address(&mut self) -> Multiaddr {
         use std::net::{IpAddr, Ipv4Addr};
 
         let port_number = self.generate_new_unique_port();

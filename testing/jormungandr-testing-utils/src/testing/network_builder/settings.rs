@@ -10,7 +10,8 @@ use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
         ActiveSlotCoefficient, Bft, Block0Configuration, BlockchainConfiguration, CommitteeIdDef,
-        GenesisPraos, Initial, InitialUTxO, LegacyUTxO, NodeConfig, NodeSecret,
+        GenesisPraos, Initial, InitialUTxO, LegacyUTxO, NodeConfig, NodeId, NodeSecret,
+        TrustedPeer,
     },
 };
 use rand_core::{CryptoRng, RngCore};
@@ -314,19 +315,20 @@ impl Settings {
             }
         }
 
-        //generate public id for trusted peers
-        for alias in trusted_peers_aliases {
-            self.nodes.get_mut(&alias).unwrap().config.p2p.public_id =
-                Some(poldercast::Id::generate(rand::thread_rng()));
-        }
-
         let nodes = self.nodes.clone();
         for (_alias, node) in self.nodes.iter_mut() {
             let mut trusted_peers = Vec::new();
 
             for trusted_peer in node.node_topology.trusted_peers() {
                 let trusted_peer = nodes.get(trusted_peer).unwrap();
-                trusted_peers.push(trusted_peer.config.p2p.make_trusted_peer_setting());
+                let id = NodeId::from(
+                    <chain_crypto::SecretKey<chain_crypto::Ed25519>>::generate(rand::thread_rng())
+                        .to_public(),
+                );
+                trusted_peers.push(TrustedPeer {
+                    address: trusted_peer.config.p2p.public_address.clone(),
+                    id: Some(id),
+                })
             }
 
             node.config.skip_bootstrap = Some(trusted_peers.is_empty());

@@ -6,17 +6,17 @@ use super::proto::{
     TipRequest,
 };
 
+use chain_core::property::FromStr;
+use chain_core::property::Serialize;
 use chain_impl_mockchain::{
     block::Block as LibBlock, fragment::Fragment as LibFragment, header::ChainLength,
     header::Header as LibHeader, key::Hash,
 };
 use futures::stream;
 use std::fmt;
+use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::runtime::{Builder, Runtime};
-
-use chain_core::property::FromStr;
-use chain_core::property::Serialize;
 use tonic::transport::Channel;
 
 use thiserror::Error;
@@ -48,13 +48,19 @@ impl Clone for JormungandrClient {
 impl fmt::Debug for JormungandrClient {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("JormungandrClient")
-            .field("host", &self.host)
-            .field("port", &self.port)
+            .field("host", &self.addr)
             .finish()
     }
 }
 
 impl JormungandrClient {
+    pub fn from_address(address: &str) -> Result<Self, MockClientError> {
+        let addr = address
+            .parse()
+            .map_err(|_| MockClientError::InvalidAddressFormat(address.to_owned()))?;
+        Ok(Self::new(addr))
+    }
+
     pub fn new(addr: SocketAddr) -> Self {
         let rt = Builder::new_current_thread().enable_all().build().unwrap();
         let inner_client = rt.block_on(async {

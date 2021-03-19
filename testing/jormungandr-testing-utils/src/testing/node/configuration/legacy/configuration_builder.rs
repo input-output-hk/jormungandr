@@ -101,7 +101,6 @@ impl LegacyNodeConfigConverter {
                 allow_private_addresses: source.p2p.allow_private_addresses,
                 policy: source.p2p.policy.clone(),
                 layers: None,
-                public_id: None,
             },
             mempool: source.mempool.clone(),
             explorer: source.explorer.clone(),
@@ -124,7 +123,7 @@ impl LegacyNodeConfigConverter {
             .iter()
             .map(|peer| {
                 let id = {
-                    if let Some(id) = peer.id {
+                    if let Some(id) = &peer.id {
                         id.to_string()
                     } else {
                         Self::generate_legacy_poldercast_id(&mut rng)
@@ -156,7 +155,6 @@ impl LegacyNodeConfigConverter {
                 allow_private_addresses: source.p2p.allow_private_addresses,
                 policy: source.p2p.policy.clone(),
                 layers: None,
-                public_id: None,
             },
             mempool: source.mempool.clone(),
             explorer: source.explorer.clone(),
