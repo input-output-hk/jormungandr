@@ -102,7 +102,7 @@ pub struct P2p {
 
     /// Listen address as a multiaddr.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub listen_address: Option<Multiaddr>,
+    pub listen_address: Option<SocketAddr>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_connections: Option<u32>,
@@ -203,9 +203,7 @@ pub struct NodeConfig {
 
 impl P2p {
     pub fn get_listen_addr(&self) -> Option<SocketAddr> {
-        if let Some(multiaddr) = &self.listen_address {
-            return multiaddr_utils::to_tcp_socket_addr(multiaddr);
-        }
-        multiaddr_utils::to_tcp_socket_addr(&self.public_address)
+        self.listen_address
+            .or_else(|| multiaddr_utils::to_tcp_socket_addr(&self.public_address))
     }
 }

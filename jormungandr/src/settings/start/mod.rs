@@ -5,7 +5,10 @@ use self::config::{Config, Leadership};
 use self::network::{Protocol, TrustedPeer};
 use crate::settings::logging::{LogFormat, LogInfoMsg, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
+use chain_crypto::Ed25519;
+use jormungandr_lib::crypto::key::SigningKey;
 pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Tls};
+use jormungandr_lib::multiaddr;
 use std::{fs::File, path::PathBuf};
 use thiserror::Error;
 use tracing::level_filters::LevelFilter;
@@ -29,8 +32,10 @@ pub enum Error {
     Config(#[from] serde_yaml::Error),
     #[error("Cannot start the node without the information to retrieve the genesis block")]
     ExpectedBlock0Info,
-    #[error("In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920")]
-    ListenAddressNotValid,
+    #[error(transparent)]
+    InvalidMultiaddr(#[from] multiaddr::Error),
+    #[error("cannot deserialize node key from file")]
+    InvalidKey(#[from] chain_crypto::bech32::Error),
 }
 
 /// Overall Settings for node
@@ -255,7 +260,7 @@ fn generate_network(
                 Ok(peer) => {
                     tracing::info!(
                         config = %config_peer.address,
-                        resolved = %peer.address,
+                        resolved = %peer.addr,
                         "DNS resolved for trusted peer"
                     );
                     Some(peer)
@@ -272,44 +277,40 @@ fn generate_network(
             .collect()
     });
 
-    let mut profile = poldercast::NodeProfileBuilder::new();
+    // TODO: do we want to check that we end up with a valid address?
+    // Is it possible for a node to specify no public address?
+    let config_addr = p2p.public_address;
+    let public_address = command_arguments
+        .public_address
+        .clone()
+        .or(config_addr)
+        .and_then(|addr| multiaddr::to_tcp_socket_addr(&addr));
 
-    if let Some(address) = command_arguments.public_address.clone() {
-        profile.address(address);
-    } else if let Some(address) = p2p.public_address {
-        profile.address(address);
-    }
+    let node_key = match p2p.node_key_file {
+        Some(node_key_file) => {
+            <SigningKey<Ed25519>>::from_bech32_str(&std::fs::read_to_string(&node_key_file)?)?
+        }
+        None => SigningKey::generate(rand::thread_rng()),
+    };
 
-    let legacy_node_id = p2p
-        .public_id
-        .unwrap_or_else(|| poldercast::Id::generate(rand::thread_rng()));
-    profile.id(legacy_node_id);
-
-    for (topic, interest_level) in p2p
-        .topics_of_interest
-        .unwrap_or_else(config::default_interests)
-    {
-        let sub = poldercast::Subscription {
-            topic: topic.0,
-            interest: interest_level.0,
-        };
-        profile.add_subscription(sub);
-    }
-
-    let p2p_listen_address = p2p.listen_address.as_ref();
+    let p2p_listen_address = p2p.listen.as_ref();
     let listen_address = command_arguments
         .listen_address
         .as_ref()
         .or(p2p_listen_address)
-        .map(|v| v.to_socket_addr().ok_or(Error::ListenAddressNotValid))
-        .transpose()?;
+        .cloned();
 
     let mut network = network::Configuration {
-        profile: profile.build(),
         listen_address,
+        public_address,
         trusted_peers,
-        protocol: Protocol::Grpc,
+        node_key,
         policy: p2p.policy.clone(),
+        topics_of_interest: p2p
+            .topics_of_interest
+            .clone()
+            .unwrap_or_else(config::default_interests),
+        protocol: Protocol::Grpc,
         layers: p2p.layers.clone(),
         max_connections: p2p
             .max_connections
@@ -329,7 +330,6 @@ fn generate_network(
         http_fetch_block0_service,
         bootstrap_from_trusted_peers,
         skip_bootstrap,
-        legacy_node_id: Some(legacy_node_id),
     };
 
     if network.max_inbound_connections > network.max_connections {
