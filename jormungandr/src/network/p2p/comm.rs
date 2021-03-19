@@ -2,7 +2,11 @@ mod peer_map;
 
 use peer_map::{CommStatus, PeerMap};
 
-use crate::network::{client::ConnectHandle, p2p::Address, security_params::NONCE_LEN};
+use crate::network::{
+    client::ConnectHandle,
+    p2p::{self, Address},
+    security_params::NONCE_LEN,
+};
 use chain_network::data::block::{BlockEvent, ChainPullRequest};
 use chain_network::data::{BlockId, BlockIds, Fragment, Gossip, Header, NodeId};
 use futures::channel::mpsc;
@@ -162,7 +166,6 @@ impl<T> CommHandle<T> {
     /// the previous subscription is closed and its stream is terminated.
     pub fn subscribe(&mut self) -> OutboundSubscription<T> {
         use self::SubscriptionState::*;
-
         let (mut tx, rx) = mpsc::channel(BUFFER_LEN);
         if let Pending(item) = mem::replace(&mut self.state, NotSubscribed) {
             tx.try_send(item).unwrap();

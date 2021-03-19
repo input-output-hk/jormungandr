@@ -16,7 +16,8 @@ mod subscription;
 use self::convert::Encode;
 
 use futures::{future, prelude::*};
-use rand::{Rng, SeedableRng};
+use rand::Rng;
+use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaChaRng;
 use thiserror::Error;
 use tokio::time;
@@ -73,7 +74,7 @@ mod security_params {
 }
 
 use self::client::ConnectError;
-use self::p2p::{comm::Peers, P2pTopology};
+use self::p2p::{comm::Peers, NodeId, P2pTopology};
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
@@ -172,11 +173,7 @@ impl GlobalState {
 
         let keypair = NodeKeyPair::generate(&mut prng);
 
-        let topology = P2pTopology::new(
-            &config,
-            span!(parent: &span, Level::TRACE, "sub_task", kind = "poldercast"),
-            prng,
-        );
+        let topology = P2pTopology::new(&config);
 
         GlobalState {
             block0_hash,
@@ -194,7 +191,8 @@ impl GlobalState {
     }
 
     pub fn node_address(&self) -> SocketAddr {
-        self.config.profile.address()
+        // FIXME: can public address be undefined?
+        self.config.public_address.unwrap()
     }
 
     pub fn topology(&self) -> &P2pTopology {
@@ -466,24 +464,24 @@ async fn send_gossip(state: GlobalStateR, channels: Channels) {
     let topology = &state.topology;
     let span = span!(parent: &state.span, Level::TRACE, "sub_task", kind = "send_gossip");
     async {
-        let view = topology.view(poldercast::Selection::Any).await;
+        let view = topology.view(poldercast::layer::Selection::Any).await;
         let peers = view.peers;
         tracing::debug!("sending gossip to {} peers", peers.len());
-        for address in peers {
-            let state_prop = state.clone();
-            let state_err = state.clone();
-            let channels_err = channels.clone();
-            let gossips = topology.initiate_gossips(address.clone()).await;
-            let res = state_prop
+        for peer in peers {
+            let addr = peer.address();
+            let id = peer.id();
+            let gossips = topology.initiate_gossips(&id).await;
+            let res = state
+                .clone()
                 .peers
-                .propagate_gossip_to(address.clone(), Gossip::from(gossips))
+                .propagate_gossip_to(addr, Gossip::from(gossips))
                 .await;
             if let Err(gossip) = res {
                 let options = p2p::comm::ConnectOptions {
                     pending_gossip: Some(gossip),
                     ..Default::default()
                 };
-                connect_and_propagate(address, state_err, channels_err, options);
+                connect_and_propagate(addr, id, state.clone(), channels.clone(), options);
             }
         }
     }
@@ -492,40 +490,28 @@ async fn send_gossip(state: GlobalStateR, channels: Channels) {
 }
 
 fn connect_and_propagate(
-    node: p2p::Address,
+    node_addr: SocketAddr,
+    node_id: NodeId,
     state: GlobalStateR,
     channels: Channels,
     mut options: p2p::comm::ConnectOptions,
 ) {
     let _enter = state.span.enter();
-    let addr = match node.to_socket_addr() {
-        Some(addr) => addr,
-        None => {
-            tracing::debug!(
-                peer = %node,
-                "ignoring P2P node without an IP address"
-            );
-            return;
-        }
-    };
     options.evict_clients = state.num_clients_to_bump();
-    if Some(&node) == state.node_address() {
-        tracing::error!(peer = %node, "topology tells the node to connect to itself, ignoring");
+    if node_addr == state.node_address() {
+        tracing::error!(peer = %node_addr, "topology tells the node to connect to itself, ignoring");
         return;
     }
     drop(_enter);
-    let peer = Peer::new(addr);
-    let conn_span = span!(parent: &state.span, Level::TRACE, "peer", node = %node.to_string());
+    let peer = Peer::new(node_addr);
+    let conn_span = span!(parent: &state.span, Level::TRACE, "peer", node = %node_addr);
     let _enter = conn_span.enter();
     let conn_state = ConnectionState::new(state.clone(), &peer, conn_span.clone());
     tracing::info!("connecting to peer");
     let (handle, connecting) = client::connect(conn_state, channels);
     let spawn_state = state.clone();
     let cf = async move {
-        state
-            .peers
-            .add_connecting(node.clone(), handle, options)
-            .await;
+        state.peers.add_connecting(node_addr, handle, options).await;
         match connecting.await {
             Err(e) => {
                 let benign = match e {
@@ -572,7 +558,7 @@ fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {
     let mut peers = config
         .trusted_peers
         .iter()
-        .filter_map(|peer| peer.address.to_socket_addr())
+        .map(|peer| peer.addr)
         .collect::<Vec<_>>();
     let mut rng = rand::thread_rng();
     peers.shuffle(&mut rng);
@@ -628,7 +614,7 @@ async fn netboot_peers(config: &Configuration, parent_span: &Span) -> BootstrapP
     let trusted_peers = config
         .trusted_peers
         .iter()
-        .filter_map(|tp| tp.address.to_socket_addr().map(Peer::new))
+        .map(|tp| Peer::new(tp.addr))
         .collect::<Vec<_>>();
     if config.bootstrap_from_trusted_peers {
         let _: usize = peers.add_peers(&trusted_peers);
