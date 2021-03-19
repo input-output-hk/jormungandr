@@ -203,6 +203,11 @@ jobs:
           name: node-logs-from-failed-tests
           path: ${{ runner.temp }}/logs
 
+      - name: Download logs from failed tests
+        uses: actions/download-artifact@v2
+        with:
+          name: node-logs-from-failed-tests
+
   lints:
     name: Lints
     needs: [cache_info, update_deps]
