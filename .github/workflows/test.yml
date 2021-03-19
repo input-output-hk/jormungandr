@@ -183,7 +183,8 @@ jobs:
           command: build
           args: -p jormungandr-scenario-tests ${{ env.CARGO_FLAGS }}
 
-      - shell: bash
+      - name: Create artifact for failed logs
+        shell: bash
         run: mkdir ${{ runner.temp }}/logs
 
       - name: Run tests
