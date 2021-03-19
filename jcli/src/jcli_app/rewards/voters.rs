@@ -14,6 +14,7 @@ use std::ops::{Div, Mul};
 pub struct VotersRewards {
     #[structopt(flatten)]
     common: Common,
+    /// Reward (in ADA) to be distributed
     #[structopt(long = "total-rewards")]
     total_rewards: f64,
 }
