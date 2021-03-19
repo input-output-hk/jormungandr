@@ -260,7 +260,7 @@ impl Drop for JormungandrProcess {
             println!(
                 "persisting node temp_dir after panic: {:?}",
                 temp_dir.path()
-                );
+            );
             temp_dir.into_persistent();
         }
     }
