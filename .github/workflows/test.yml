@@ -183,6 +183,9 @@ jobs:
           command: build
           args: -p jormungandr-scenario-tests ${{ env.CARGO_FLAGS }}
 
+      - shell: bash
+        run: mkdir ${{ runner.temp }}/logs
+
       - name: Run tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 30
@@ -192,6 +195,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: ${{ runner.temp }}/logs
+
+      - name: Pack logs from failed tests
+        uses: actions/upload-artifact@v2
+        with:
+          name: node-logs-from-failed-tests
+          path: ${{ runner.temp }}/logs
 
   lints:
     name: Lints
