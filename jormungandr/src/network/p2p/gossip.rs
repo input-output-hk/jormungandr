@@ -3,29 +3,26 @@ use crate::network::convert::Encode;
 
 use chain_core::property;
 use chain_network::data as net_data;
-use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
+use thiserror::Error;
 
 use bincode::Options;
 pub use net_data::{Peer, Peers};
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
-pub struct Gossip(poldercast::NodeProfile);
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct Gossip(poldercast::Gossip);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Gossips(poldercast::Gossips);
+pub struct Gossips(Vec<poldercast::Gossip>);
 
 impl Gossip {
     #[inline]
-    pub fn address(&self) -> Option<&Address> {
+    pub fn address(&self) -> Address {
         self.0.address()
     }
 
     pub fn has_valid_address(&self) -> bool {
-        let addr = match self.address().and_then(|addr| addr.to_socket_addr()) {
-            None => return false,
-            Some(addr) => addr,
-        };
+        let addr = self.address();
 
         match addr.ip() {
             IpAddr::V4(ip) => {
@@ -63,10 +60,7 @@ impl Gossip {
             return false;
         }
 
-        let addr = match self.address().and_then(|addr| addr.to_socket_addr()) {
-            None => return false,
-            Some(addr) => addr,
-        };
+        let addr = self.address();
 
         fn is_ipv4_global(ip: Ipv4Addr) -> bool {
             if ip.is_private() {
@@ -101,14 +95,14 @@ impl Gossip {
     }
 }
 
-impl From<Gossip> for poldercast::NodeProfile {
+impl From<Gossip> for poldercast::Gossip {
     fn from(gossip: Gossip) -> Self {
         gossip.0
     }
 }
 
-impl From<poldercast::NodeProfile> for Gossip {
-    fn from(profile: poldercast::NodeProfile) -> Self {
+impl From<poldercast::Gossip> for Gossip {
+    fn from(profile: poldercast::Gossip) -> Self {
         Gossip(profile)
     }
 }
@@ -125,14 +119,14 @@ impl From<Gossips> for net_data::gossip::Gossip {
     }
 }
 
-impl From<poldercast::Gossips> for Gossips {
-    fn from(gossips: poldercast::Gossips) -> Gossips {
+impl From<Vec<poldercast::Gossip>> for Gossips {
+    fn from(gossips: Vec<poldercast::Gossip>) -> Gossips {
         Gossips(gossips)
     }
 }
 
-impl From<Gossips> for poldercast::Gossips {
-    fn from(gossips: Gossips) -> poldercast::Gossips {
+impl From<Gossips> for Vec<poldercast::Gossip> {
+    fn from(gossips: Gossips) -> Vec<poldercast::Gossip> {
         gossips.0
     }
 }
@@ -140,29 +134,46 @@ impl From<Gossips> for poldercast::Gossips {
 impl From<Vec<Gossip>> for Gossips {
     fn from(gossips: Vec<Gossip>) -> Self {
         let v: Vec<_> = gossips.into_iter().map(|gossip| gossip.0).collect();
-        Gossips(poldercast::Gossips::from(v))
+        Gossips(v)
     }
 }
 
+#[derive(Debug, Error)]
+pub enum GossipError {
+    #[error(transparent)]
+    IO(#[from] std::io::Error),
+    #[error(transparent)]
+    Bincode(#[from] bincode::Error),
+    #[error(transparent)]
+    InvalidGossip(#[from] poldercast::GossipError),
+}
+
 impl property::Serialize for Gossip {
-    type Error = bincode::Error;
+    type Error = GossipError;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         let config = bincode::options();
         config.with_limit(limits::MAX_GOSSIP_SIZE);
 
-        config.serialize_into(writer, &self.0)
+        Ok(config.serialize_into(writer, &self.0.as_ref())?)
     }
 }
 
 impl property::Deserialize for Gossip {
-    type Error = bincode::Error;
+    type Error = GossipError;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         let config = bincode::options();
         config.with_limit(limits::MAX_GOSSIP_SIZE);
 
-        config.deserialize_from(reader).map(Gossip)
+        Ok(config
+            .deserialize_from::<R, Vec<u8>>(reader)
+            .map_err(GossipError::from)
+            .and_then(|slice| {
+                Ok(Gossip(
+                    poldercast::GossipSlice::try_from_slice(&slice)?.to_owned(),
+                ))
+            })?)
     }
 }
 
