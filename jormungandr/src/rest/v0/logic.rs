@@ -5,11 +5,13 @@
 // - When the Ok type is Option<T> - None should be converted to 404
 // - All errors should be processed on the framework  integration side. Usually
 //   they are 400 or 500.
+use std::net::SocketAddr;
 
 use crate::{
     blockchain::StorageError,
     diagnostic::Diagnostic,
     intercom::{self, NetworkMsg, TransactionMsg},
+    network::p2p::NodeProfile,
     rest::Context,
     secure::NodeSecret,
 };
@@ -570,9 +572,7 @@ pub async fn get_diagnostic(context: &Context) -> Result<Diagnostic, Error> {
     Ok(diagnostic_data.clone())
 }
 
-pub async fn get_network_p2p_quarantined(
-    context: &Context,
-) -> Result<Vec<poldercast::Node>, Error> {
+pub async fn get_network_p2p_quarantined(context: &Context) -> Result<Vec<NodeProfile>, Error> {
     Ok(context
         .try_full()?
         .network_state
@@ -581,7 +581,7 @@ pub async fn get_network_p2p_quarantined(
         .await)
 }
 
-pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<poldercast::Node>, Error> {
+pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<NodeProfile>, Error> {
     Ok(context
         .try_full()?
         .network_state
@@ -590,7 +590,7 @@ pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<polderc
         .await)
 }
 
-pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<poldercast::Node>, Error> {
+pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<NodeProfile>, Error> {
     Ok(context
         .try_full()?
         .network_state
@@ -599,23 +599,26 @@ pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<polderca
         .await)
 }
 
-pub async fn get_network_p2p_view(context: &Context) -> Result<Vec<poldercast::Address>, Error> {
+pub async fn get_network_p2p_view(context: &Context) -> Result<Vec<SocketAddr>, Error> {
     Ok(context
         .try_full()?
         .network_state
         .topology()
-        .view(poldercast::Selection::Any)
+        .view(poldercast::layer::Selection::Any)
         .await
-        .peers)
+        .peers
+        .into_iter()
+        .map(|peer| peer.address())
+        .collect())
 }
 
 pub async fn get_network_p2p_view_topic(
     context: &Context,
     topic: &str,
-) -> Result<Vec<poldercast::Address>, Error> {
-    fn parse_topic(s: &str) -> Result<poldercast::Selection, Error> {
+) -> Result<Vec<SocketAddr>, Error> {
+    fn parse_topic(s: &str) -> Result<poldercast::layer::Selection, Error> {
         use crate::network::p2p::topic;
-        use poldercast::Selection;
+        use poldercast::layer::Selection;
         match s {
             "blocks" => Ok(Selection::Topic {
                 topic: topic::BLOCKS,
@@ -631,7 +634,7 @@ pub async fn get_network_p2p_view_topic(
     let topic = parse_topic(topic)?;
     let ctx = context.try_full()?;
     let view = ctx.network_state.topology().view(topic).await;
-    Ok(view.peers)
+    Ok(view.peers.into_iter().map(|peer| peer.address()).collect())
 }
 
 pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
