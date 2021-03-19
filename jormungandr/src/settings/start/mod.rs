@@ -74,6 +74,12 @@ impl RawSettings {
         //  Read log settings from the config file path.
         if let Some(log) = self.config.as_ref().and_then(|cfg| cfg.log.as_ref()) {
             if let Some(cfg) = log.0.first() {
+                if log.0.len() > 1 {
+                    info_msgs.push(format!(
+                        "only one entry for log settings allowed, ignoring these: {:?}",
+                        &log.0[1..],
+                    ));
+                }
                 if let Some(level) = cfg.level {
                     log_config.level = level;
                 }
