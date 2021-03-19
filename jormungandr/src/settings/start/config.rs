@@ -12,7 +12,7 @@ use tracing::level_filters::LevelFilter;
 
 use std::{collections::BTreeMap, fmt, path::PathBuf};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(default)]
@@ -59,7 +59,7 @@ pub struct ConfigLogSettingsEntry {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConfigLogSettings(pub Vec<ConfigLogSettingsEntry>);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct P2pConfig {
     /// The public address to which other peers may connect to
@@ -213,44 +213,6 @@ impl Default for Leadership {
     fn default() -> Self {
         Leadership {
             logs_capacity: 1_024,
-        }
-    }
-}
-
-impl std::str::FromStr for TrustedPeer {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut split = s.split('@');
-
-        let address = if let Some(address) = split.next() {
-            address.parse::<Multiaddr>().map_err(|e| e.to_string())?
-        } else {
-            return Err("Missing address component".to_owned());
-        };
-
-        let optional_id = if let Some(id) = split.next() {
-            let id = id.parse::<poldercast::Id>().map_err(|e| e.to_string())?;
-            Some(id)
-        } else {
-            None
-        };
-
-        Ok(TrustedPeer {
-            address,
-            id: optional_id,
-        })
-    }
-}
-
-impl Serialize for InterestLevel {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self.0 {
-            poldercast::InterestLevel::Low => serializer.serialize_str("low"),
-            poldercast::InterestLevel::Normal => serializer.serialize_str("normal"),
-            poldercast::InterestLevel::High => serializer.serialize_str("high"),
         }
     }
 }
