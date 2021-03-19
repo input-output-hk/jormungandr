@@ -126,11 +126,18 @@ impl P2pTopology {
         }
     }
 
-    pub async fn initiate_gossips(&self, recipient: &NodeId) -> Gossips {
+    // If the recipient is not specified gossip will only contain information
+    // about this node
+    pub async fn initiate_gossips(&self, recipient: Option<&NodeId>) -> Gossips {
         let mut inner = self.lock.write().await;
-        let mut gossips = inner.topology.gossips_for(recipient);
-        // If the recipient is not already in the topology poldercast
-        // will not return anything. Broadcast out profile anyway
+        let mut gossips = if let Some(recipient) = recipient {
+            inner.topology.gossips_for(recipient)
+        } else {
+            Vec::new()
+        };
+        // If the recipient is not already in the topology
+        // or was not specified poldercast will not return anything.
+        // Let's broadcast out profile anyway
         if gossips.is_empty() {
             gossips.push(inner.initial_self_profile.gossip().clone());
         }

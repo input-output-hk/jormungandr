@@ -424,7 +424,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                         options.pending_fragment = Some(fragment.encode());
                     }
                 };
-                connect_and_propagate(addr, id, state.clone(), channels.clone(), options);
+                connect_and_propagate(addr, Some(id), state.clone(), channels.clone(), options);
             }
         }
     }
@@ -437,23 +437,13 @@ async fn start_gossiping(state: GlobalStateR, channels: Channels) {
     let span = span!(parent: &state.span, Level::TRACE, "sub_task", kind = "start_gossip");
     async {
         tracing::debug!("connecting to {} peers", config.trusted_peers.len());
-        // FIXME: this is orrible, we should enforce trusted peers to have a id
-        // FIXME: update rand dependecies
-        use new_rand::rand_core::SeedableRng;
-        let fake_key = p2p::SecretKey::new(new_rand::ChaChaRng::from_seed([0u8; 32])).public_key();
         for peer in &config.trusted_peers {
-            let gossip = state.topology.initiate_gossips(&fake_key).await;
+            let gossip = state.topology.initiate_gossips(None).await;
             let options = p2p::comm::ConnectOptions {
                 pending_gossip: Some(Gossip::from(gossip)),
                 ..Default::default()
             };
-            connect_and_propagate(
-                peer.addr,
-                fake_key,
-                state.clone(),
-                channels.clone(),
-                options,
-            );
+            connect_and_propagate(peer.addr, None, state.clone(), channels.clone(), options);
         }
     }
     .instrument(span)
@@ -470,7 +460,7 @@ async fn send_gossip(state: GlobalStateR, channels: Channels) {
         for peer in peers {
             let addr = peer.address();
             let id = peer.id();
-            let gossips = topology.initiate_gossips(&id).await;
+            let gossips = topology.initiate_gossips(Some(&id)).await;
             let res = state
                 .clone()
                 .peers
@@ -481,7 +471,7 @@ async fn send_gossip(state: GlobalStateR, channels: Channels) {
                     pending_gossip: Some(gossip),
                     ..Default::default()
                 };
-                connect_and_propagate(addr, id, state.clone(), channels.clone(), options);
+                connect_and_propagate(addr, Some(id), state.clone(), channels.clone(), options);
             }
         }
     }
@@ -489,9 +479,11 @@ async fn send_gossip(state: GlobalStateR, channels: Channels) {
     .await
 }
 
+// node_id should be none only for trusted peer for which we do not know
+// the public key
 fn connect_and_propagate(
     node_addr: SocketAddr,
-    node_id: NodeId,
+    node_id: Option<NodeId>,
     state: GlobalStateR,
     channels: Channels,
     mut options: p2p::comm::ConnectOptions,
@@ -533,7 +525,9 @@ fn connect_and_propagate(
                     }
                 };
                 if !benign {
-                    state.topology.report_node(&node_id).await;
+                    if let Some(id) = node_id {
+                        state.topology.report_node(&id).await;
+                    }
                     state.peers.remove_peer(node_addr).await;
                 }
             }
@@ -543,7 +537,9 @@ fn connect_and_propagate(
                 state.peers.update_entry(node_addr).await;
 
                 state.inc_client_count();
-                state.topology().promote_node(&node_id).await;
+                if let Some(id) = node_id {
+                    state.topology().promote_node(&id).await;
+                }
                 tracing::debug!(client_count = state.client_count(), "connected to peer");
                 client.await;
                 state.dec_client_count();
