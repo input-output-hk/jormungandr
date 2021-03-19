@@ -334,7 +334,7 @@ impl GossipService for NodeService {
         let span = span!(
             parent: parent_span,
             Level::TRACE,
-            "fragment_subscription",
+            "gossip_subscription",
             direction = "in"
         );
 

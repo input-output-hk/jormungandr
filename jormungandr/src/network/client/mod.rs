@@ -88,7 +88,7 @@ impl Client {
             span!(
                 parent: &parent_span,
                 Level::TRACE,
-                "block_announcement_processor",
+                "fragment_processor",
                 stream = "fragments",
                 direction = "in"
             ),
@@ -99,7 +99,7 @@ impl Client {
             span!(
                 parent: &parent_span,
                 Level::TRACE,
-                "block_announcement_processor",
+                "gossip_processor",
                 stream = "gossip",
                 direction = "in"
             ),
