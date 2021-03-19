@@ -61,7 +61,7 @@ pub fn resolve_dns(addr: &Multiaddr) -> Result<Multiaddr, Error> {
 
     // Check if the multiaddr has only the expected two components
     // to avoid processing freak cases as valid.
-    if !components.next().is_none() {
+    if components.next().is_some() {
         return Err(Error::InvalidMultiaddr);
     }
 
