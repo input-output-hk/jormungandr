@@ -3,6 +3,7 @@ mod voters;
 use structopt::StructOpt;
 use thiserror::Error;
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("error while writing to csv")]
