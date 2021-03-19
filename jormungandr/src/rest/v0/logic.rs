@@ -216,7 +216,10 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
             block_fee_sum = (block_fee_sum + fee)?;
             Ok(())
         })?;
-    let nodes_count = full_context.network_state.topology().nodes_count().await;
+
+    let peer_available_cnt = get_network_p2p_view(&context).await?.len(); // FIXME
+    let peer_quarantined_cnt = get_network_p2p_quarantined(&context).await?.len(); // FIXME
+    let peer_total_cnt = peer_available_cnt + peer_quarantined_cnt;
     let tip_header = tip.header();
     let stats = &full_context.stats_counter;
     let node_stats = NodeStats {
@@ -230,11 +233,11 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
         last_block_time: SystemTime::from(tip.time()).into(),
         last_block_tx: block_tx_count,
         last_received_block_time: stats.slot_start_time().map(SystemTime::from),
-        peer_available_cnt: nodes_count.available_count,
+        peer_available_cnt,
         peer_connected_cnt: stats.peer_connected_cnt(),
-        peer_quarantined_cnt: nodes_count.quarantined_count,
-        peer_total_cnt: nodes_count.all_count,
-        peer_unreachable_cnt: nodes_count.not_reachable_count,
+        peer_quarantined_cnt,
+        peer_total_cnt,
+        peer_unreachable_cnt: 0, // FIXME
         tx_recv_cnt: stats.tx_recv_cnt(),
         uptime: stats.uptime_sec().into(),
     };
