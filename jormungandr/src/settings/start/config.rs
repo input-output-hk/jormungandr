@@ -160,11 +160,17 @@ pub struct Leadership {
     pub logs_capacity: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Topic(pub poldercast::Topic);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InterestLevel(pub poldercast::InterestLevel);
+
+impl InterestLevel {
+    pub const LOW: InterestLevel = InterestLevel(poldercast::InterestLevel::new(1));
+    pub const NORMAL: InterestLevel = InterestLevel(poldercast::InterestLevel::new(3));
+    pub const HIGH: InterestLevel = InterestLevel(poldercast::InterestLevel::new(5));
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -178,11 +184,11 @@ pub fn default_interests() -> BTreeMap<Topic, InterestLevel> {
     BTreeMap::from_iter(vec![
         (
             Topic(topic::MESSAGES),
-            InterestLevel(poldercast::InterestLevel::Low),
+            InterestLevel(poldercast::InterestLevel::new(1)),
         ),
         (
             Topic(topic::BLOCKS),
-            InterestLevel(poldercast::InterestLevel::Normal),
+            InterestLevel(poldercast::InterestLevel::new(3)),
         ),
     ])
 }
@@ -267,9 +273,9 @@ impl<'de> Deserialize<'de> for InterestLevel {
                 use serde::de::Unexpected;
 
                 match v {
-                    "low" => Ok(InterestLevel(poldercast::InterestLevel::Low)),
-                    "normal" => Ok(InterestLevel(poldercast::InterestLevel::Normal)),
-                    "high" => Ok(InterestLevel(poldercast::InterestLevel::High)),
+                    "low" => Ok(InterestLevel::LOW),
+                    "normal" => Ok(InterestLevel::NORMAL),
+                    "high" => Ok(InterestLevel::HIGH),
                     err => Err(E::invalid_value(Unexpected::Str(err), &self)),
                 }
             }
