@@ -1,5 +1,5 @@
 use crate::{
-    network::p2p::{layers::LayersConfig, topic, Address},
+    network::p2p::{layers::LayersConfig, topic, Address, PolicyConfig},
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
@@ -63,16 +63,13 @@ pub struct ConfigLogSettings(pub Vec<ConfigLogSettingsEntry>);
 #[serde(deny_unknown_fields)]
 pub struct P2pConfig {
     /// The public address to which other peers may connect to
-    pub public_address: Option<Address>,
+    pub public_address: Option<Multiaddr>,
 
-    // FIXME: the currently accepted format is a multiaddr for no good reason.
-    // Change to SocketAddr and rename the setting to `listen` for commonality
-    // with the rest setting.
     /// The socket address to listen on, if different from the public address.
     /// The format is "{ip_address}:{port}".
     /// The IP address can be specified as 0.0.0.0 or :: to listen on
     /// all network interfaces.
-    pub listen_address: Option<Address>,
+    pub listen: Option<Address>,
 
     /// File with the secret key used to advertise and authenticate the node
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -87,6 +84,8 @@ pub struct P2pConfig {
     /// When connecting to different nodes we will expose these too in order to
     /// help the different modules of the P2P topology engine to determine the
     /// best possible neighborhood.
+    // FIXME: Until we add a custom ring layer to poldercast this is rather useless
+    // keep this around for future decisions and compatibility
     pub topics_of_interest: Option<BTreeMap<Topic, InterestLevel>>,
 
     /// Limit on the number of simultaneous connections.
@@ -111,6 +110,7 @@ pub struct P2pConfig {
     pub policy: PolicyConfig,
 
     /// settings for the different custom layers
+    // TODO: actually implement those custom layers
     #[serde(default)]
     pub layers: LayersConfig,
 
@@ -197,8 +197,8 @@ impl Default for P2pConfig {
     fn default() -> Self {
         P2pConfig {
             public_address: None,
-            listen_address: None,
-            public_id: None,
+            listen: None,
+            node_key_file: None,
             trusted_peers: None,
             topics_of_interest: None,
             max_connections: None,

@@ -1,5 +1,5 @@
 use crate::settings::{start::config::TrustedPeer, LOG_FILTER_LEVEL_POSSIBLE_VALUES};
-use poldercast::Address;
+use multiaddr::Multiaddr;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -9,6 +9,10 @@ use crate::{
     blockcfg::HeaderHash,
     settings::logging::{LogFormat, LogOutput},
 };
+
+fn trusted_peer_from_json(json: &str) -> Result<TrustedPeer, serde_json::Error> {
+    serde_json::from_str(json)
+}
 
 #[derive(StructOpt, Debug)]
 pub struct StartArguments {
@@ -33,7 +37,7 @@ pub struct StartArguments {
     ///
     /// This is the trusted peer the node will connect to initially to download the initial
     /// block0 and fast fetch missing blocks since last start of the node.
-    #[structopt(long = "trusted-peer", parse(try_from_str))]
+    #[structopt(long = "trusted-peer", parse(try_from_str = trusted_peer_from_json))]
     pub trusted_peer: Vec<TrustedPeer>,
 
     /// set the genesis block hash (the hash of the block0) so we can retrieve the
@@ -49,13 +53,13 @@ pub struct StartArguments {
     /// The address to listen from and accept connection from. This is the
     /// public address that will be distributed to other peers of the network.
     #[structopt(long = "public-address")]
-    pub public_address: Option<Address>,
+    pub public_address: Option<Multiaddr>,
 
     /// Specifies the address the node will listen to to receive p2p connection.
     /// Can be left empty and the node will listen to whatever value was given
     /// to `public_address`.
     #[structopt(long = "listen-address")]
-    pub listen_address: Option<Address>,
+    pub listen_address: Option<SocketAddr>,
 }
 
 #[derive(StructOpt, Debug)]
