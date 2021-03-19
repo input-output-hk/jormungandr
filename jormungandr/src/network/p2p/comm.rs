@@ -535,6 +535,12 @@ impl Peers {
         .await
     }
 
+    pub async fn update_entry(&self, peer: Address) {
+        if let Some(ref mut peer) = self.inner().await.entry(peer) {
+            peer.update_comm_status();
+        }
+    }
+
     pub async fn remove_peer(&self, peer: Address) -> Option<PeerComms> {
         async move {
             let mut map = self.inner().await;

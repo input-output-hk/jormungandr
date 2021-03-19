@@ -557,6 +557,10 @@ fn connect_and_propagate(
                 }
             }
             Ok(client) => {
+                // This enforce processing any pending operation that could
+                // have been scheduled on this peer
+                state.peers.update_entry(node_addr).await;
+
                 state.inc_client_count();
                 tracing::debug!(client_count = state.client_count(), "connected to peer");
                 client.await;
