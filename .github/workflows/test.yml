@@ -196,6 +196,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: ${{ runner.temp }}/logs
+          TMP: ${{ runner.temp }}\logs
 
       - name: Pack logs from failed tests
         uses: actions/upload-artifact@v2
