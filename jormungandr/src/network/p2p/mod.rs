@@ -1,14 +1,32 @@
-use multiaddr::Multiaddr;
+use std::convert::TryInto;
 
 pub mod comm;
 mod gossip;
 pub mod layers;
+mod policy;
+
 mod topology;
 
 pub use self::gossip::{Gossip, Gossips, Peer, Peers};
-pub use self::topology::P2pTopology;
+pub use self::topology::{P2pTopology, Profile as NodeProfile};
+use chain_crypto::Ed25519;
+use jormungandr_lib::crypto::key::SigningKey;
+pub use poldercast::Profile;
+pub use policy::{PolicyConfig, Quarantine};
 
-pub type Address = Multiaddr;
+pub type Address = std::net::SocketAddr;
+pub type NodeId = keynesis::key::ed25519::PublicKey;
+pub type SecretKey = keynesis::key::ed25519::SecretKey;
+
+pub fn secret_key_into_keynesis(key: SigningKey<Ed25519>) -> SecretKey {
+    let key_bytes = key.into_secret_key().leak_secret();
+    key_bytes.as_ref().try_into().unwrap()
+}
+
+pub fn identifier_into_keynesis(id: jormungandr_lib::interfaces::NodeId) -> NodeId {
+    let id_bytes = id.into_public_key().inner();
+    id_bytes.as_ref().try_into().unwrap()
+}
 
 /**
 # topics definition for p2p interest subscriptions
@@ -16,8 +34,8 @@ pub type Address = Multiaddr;
 pub mod topic {
     use poldercast::Topic;
 
-    pub const MESSAGES: Topic = Topic::new(0u32);
-    pub const BLOCKS: Topic = Topic::new(1u32);
+    pub const MESSAGES: Topic = Topic::new([0; 32]);
+    pub const BLOCKS: Topic = Topic::new([1; 32]);
 }
 
 /**
