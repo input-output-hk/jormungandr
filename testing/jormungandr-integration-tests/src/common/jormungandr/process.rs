@@ -21,6 +21,7 @@ use std::path::Path;
 use std::process::Child;
 use std::process::Stdio;
 use std::str::FromStr;
+use std::thread::panicking;
 
 pub enum StartupVerificationMode {
     Log,
@@ -251,9 +252,19 @@ impl Drop for JormungandrProcess {
         }
         // There's no kill like overkill
         let _ = self.child.kill();
-
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
+
+        if panicking() {
+            if self.temp_dir.is_some() {
+                let temp_dir = self.steal_temp_dir().unwrap();
+                println!(
+                    "persisting node temp_dir after panic: {:?}",
+                    temp_dir.path()
+                );
+                temp_dir.into_persistent();
+            }
+        }
     }
 }
 
