@@ -3,6 +3,7 @@ use crate::jcli_app::block::Common;
 
 use structopt::StructOpt;
 
+use chain_addr::{Discrimination, Kind};
 use chain_impl_mockchain::vote::CommitteeId;
 use jormungandr_lib::interfaces::{Address, Block0Configuration, Initial};
 use std::collections::{HashMap, HashSet};
@@ -13,7 +14,7 @@ use std::ops::{Div, Mul};
 pub struct VotersRewards {
     #[structopt(flatten)]
     common: Common,
-    #[structopt(short = "tr")]
+    #[structopt(long = "total-rewards")]
     total_rewards: f64,
 }
 
@@ -97,8 +98,10 @@ impl VotersRewards {
             .iter()
             .cloned()
             .map(|id| {
-                let pk = CommitteeId::from(id).public_key();
-                chain_addr::Address::from_bytes(pk.as_ref()).unwrap().into()
+                let id = CommitteeId::from(id);
+                let pk = id.public_key();
+
+                chain_addr::Address(Discrimination::Production, Kind::Account(pk)).into()
             })
             .collect();
 
