@@ -1,10 +1,7 @@
 use super::{Client, ClientBuilder, InboundSubscriptions};
 use crate::blockcfg::HeaderHash;
 use crate::network::{
-    grpc,
-    p2p::{comm::PeerComms, Address},
-    security_params::NONCE_LEN,
-    Channels, ConnectionState,
+    grpc, p2p::comm::PeerComms, security_params::NONCE_LEN, Channels, ConnectionState,
 };
 use chain_core::mempack::{self, ReadBuf, Readable};
 use chain_network::data::{AuthenticatedNodeId, NodeId};
@@ -81,7 +78,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         .await
         .map_err(ConnectError::Subscription)?;
         let inbound = InboundSubscriptions {
-            peer_address: Address::tcp(peer.connection),
+            peer_address: peer.connection,
             block_events: block_sub,
             fragments: fragment_sub,
             gossip: gossip_sub,
