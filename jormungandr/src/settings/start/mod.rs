@@ -73,7 +73,7 @@ impl RawSettings {
 
         //  Read log settings from the config file path.
         if let Some(log) = self.config.as_ref().and_then(|cfg| cfg.log.as_ref()) {
-            if let Some(cfg) = log.0.last() {
+            if let Some(cfg) = log.0.first() {
                 if let Some(level) = cfg.level {
                     log_config.level = level;
                 }
