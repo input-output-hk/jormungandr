@@ -1,11 +1,15 @@
 mod voters;
 
-use jormungandr_lib::interfaces::Block0ConfigurationError;
-use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
 
-type Error = crate::jcli_app::block::Error;
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("error while writing to csv")]
+    Csv(#[from] csv::Error),
+    #[error(transparent)]
+    Other(#[from] crate::jcli_app::block::Error),
+}
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]

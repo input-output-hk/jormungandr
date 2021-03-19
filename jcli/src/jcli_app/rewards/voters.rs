@@ -1,26 +1,20 @@
 use super::Error;
-use crate::jcli_app::{
-    block::Common,
-    utils::io::{open_file_read, open_file_write},
-};
+use crate::jcli_app::block::Common;
 
 use structopt::StructOpt;
 
-use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::vote::CommitteeId;
-use jormungandr_lib::interfaces::{
-    Address, Block0Configuration, Block0ConfigurationError, Initial, Value,
-};
+use jormungandr_lib::interfaces::{Address, Block0Configuration, Initial};
 use std::collections::{HashMap, HashSet};
-use std::convert::Infallible;
-use std::ops::Div;
-use std::str::FromStr;
+use std::ops::{Div, Mul};
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct VotersRewards {
     #[structopt(flatten)]
     common: Common,
+    #[structopt(short = "tr")]
+    total_rewards: f64,
 }
 
 fn calculate_stake<'address>(
@@ -51,15 +45,20 @@ fn calculate_stake<'address>(
 
 fn calculate_reward<'address>(
     total_stake: u64,
+    total_rewards: f64,
     stake_per_voter: &HashMap<&'address Address, u64>,
-) -> HashMap<&'address Address, u64> {
+) -> HashMap<&'address Address, f64> {
     stake_per_voter
         .iter()
-        .map(|(k, v)| (*k, v.div(total_stake)))
+        .map(|(k, v)| (*k, (*v as f64).div(total_stake as f64).mul(total_rewards)))
         .collect()
 }
 
-fn write_rewards_results(common: Common, results: HashMap<&Address, u64>) -> Result<(), Error> {
+fn write_rewards_results(
+    common: Common,
+    stake_per_voter: &HashMap<&Address, u64>,
+    results: &HashMap<&Address, f64>,
+) -> Result<(), Error> {
     let writer = common.open_output()?;
     let header = [
         "Address",
@@ -67,16 +66,31 @@ fn write_rewards_results(common: Common, results: HashMap<&Address, u64>) -> Res
         "Reward for the voter (ADA)",
         "Reward for the voter (lovelace)",
     ];
-    let csv_writer = csv::Writer::from_writer(writer);
+    let mut csv_writer = csv::Writer::from_writer(writer);
+    csv_writer.write_record(&header).map_err(Error::Csv)?;
+
+    for (address, reward) in results.iter() {
+        let stake = stake_per_voter.get(*address).unwrap();
+        let record = [
+            address.to_string(),
+            stake.to_string(),
+            reward.to_string(),
+            (reward * 1000000f64).to_string(), // transform ADA to lovelace (*1000000)
+        ];
+        csv_writer.write_record(&record).map_err(Error::Csv)?;
+    }
     Ok(())
 }
 
 impl VotersRewards {
     pub fn exec(self) -> Result<(), Error> {
-        let VotersRewards { common } = self;
+        let VotersRewards {
+            common,
+            total_rewards,
+        } = self;
         let block = common.input.load_block()?;
         let block0 = Block0Configuration::from_block(&block)
-            .map_err(Error::BuildingGenesisFromBlock0Failed)?;
+            .map_err(crate::jcli_app::block::Error::BuildingGenesisFromBlock0Failed)?;
         let committee_keys: HashSet<Address> = block0
             .blockchain_configuration
             .committees
@@ -89,8 +103,8 @@ impl VotersRewards {
             .collect();
 
         let (total_stake, stake_per_voter) = calculate_stake(&committee_keys, &block0);
-        let rewards = calculate_reward(total_stake, &stake_per_voter);
-        write_rewards_results(common, rewards)?;
+        let rewards = calculate_reward(total_stake, total_rewards, &stake_per_voter);
+        write_rewards_results(common, &stake_per_voter, &rewards)?;
         Ok(())
     }
 }
