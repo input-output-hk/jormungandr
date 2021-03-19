@@ -420,39 +420,26 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
 
 async fn start_gossiping(state: GlobalStateR, channels: Channels) {
     let config = &state.config;
-    let topology = &state.topology;
     let span = span!(parent: &state.span, Level::TRACE, "sub_task", kind = "start_gossip");
-    // inject the trusted peers as initial gossips, this will make the node
-    // gossip with them at least at the beginning
     async {
-        for tp in config.trusted_peers.iter() {
-            topology
-                .accept_gossips(tp.address.clone(), {
-                    let mut builder = poldercast::NodeProfileBuilder::new();
-                    builder.address(tp.address.clone());
-                    if let Some(id) = tp.legacy_node_id {
-                        builder.id(id);
-                    }
-                    p2p::Gossips::from(vec![p2p::Gossip::from(builder.build())])
-                })
-                .await;
-        }
-        let view = topology.view(poldercast::Selection::Any).await;
-        let peers: Vec<p2p::Address> = view.peers;
-        tracing::debug!("sending gossip to {} peers", peers.len());
-        for address in peers {
-            let gossips = topology.initiate_gossips(address.clone()).await;
-            let propagate_res = state
-                .peers
-                .propagate_gossip_to(address.clone(), Gossip::from(gossips))
-                .await;
-            if let Err(gossip) = propagate_res {
-                let options = p2p::comm::ConnectOptions {
-                    pending_gossip: Some(gossip),
-                    ..Default::default()
-                };
-                connect_and_propagate(address, state.clone(), channels.clone(), options);
-            }
+        tracing::debug!("connecting to {} peers", config.trusted_peers.len());
+        // FIXME: this is orrible, we should enforce trusted peers to have a id
+        // FIXME: update rand dependecies
+        use new_rand::rand_core::SeedableRng;
+        let fake_key = p2p::SecretKey::new(new_rand::ChaChaRng::from_seed([0u8; 32])).public_key();
+        for peer in &config.trusted_peers {
+            let gossip = state.topology.initiate_gossips(&fake_key).await;
+            let options = p2p::comm::ConnectOptions {
+                pending_gossip: Some(Gossip::from(gossip)),
+                ..Default::default()
+            };
+            connect_and_propagate(
+                peer.addr,
+                fake_key,
+                state.clone(),
+                channels.clone(),
+                options,
+            );
         }
     }
     .instrument(span)
