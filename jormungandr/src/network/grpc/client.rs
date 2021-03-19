@@ -6,7 +6,7 @@ use crate::{
 };
 use chain_network::data as net_data;
 use chain_network::error as net_error;
-use chain_network::grpc::{client::Builder, legacy};
+use chain_network::grpc::client::Builder;
 use futures::prelude::*;
 use thiserror::Error;
 use tonic::transport;
@@ -36,12 +36,6 @@ pub type Client = chain_network::grpc::Client<tonic::transport::Channel>;
 
 pub async fn connect(peer: &Peer) -> Result<Client, ConnectError> {
     connect_internal(peer, Builder::new()).await
-}
-
-pub async fn connect_legacy(peer: &Peer, node_id: legacy::NodeId) -> Result<Client, ConnectError> {
-    let mut builder = Builder::new();
-    builder.legacy_node_id(node_id);
-    connect_internal(peer, builder).await
 }
 
 async fn connect_internal(peer: &Peer, builder: Builder) -> Result<Client, ConnectError> {
