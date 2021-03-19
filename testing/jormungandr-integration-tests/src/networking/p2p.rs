@@ -180,6 +180,9 @@ pub fn node_does_not_quarantine_whitelisted_node() {
         .spawn_custom(params(CLIENT).policy(policy))
         .unwrap();
 
+    // Give time to the client to accept incoming gossip from the server and
+    // add it to its topology
+    process_utils::sleep(5);
     server.shutdown();
 
     process_utils::sleep(10);
@@ -221,6 +224,9 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
         .spawn_custom(params(CLIENT).policy(policy))
         .unwrap();
 
+    // Give time to the client to accept incoming gossip from the server and
+    // add it to its topology
+    process_utils::sleep(5);
     server.shutdown();
 
     process_utils::sleep(10);

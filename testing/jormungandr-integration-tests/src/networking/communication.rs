@@ -56,6 +56,10 @@ pub fn two_nodes_communication() {
             &reciever,
         );
 
+    // Allow the nodes to exchange gossip info before sending
+    // the transaction, or it will have no one to send it to
+    std::thread::sleep(std::time::Duration::from_secs(5));
+
     jcli.fragment_sender(&trusted_jormungandr)
         .send(&transaction_message)
         .assert_in_block();
