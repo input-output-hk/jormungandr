@@ -9,7 +9,6 @@ use crate::network::{
 use chain_core::mempack::{self, ReadBuf, Readable};
 use chain_network::data::{AuthenticatedNodeId, NodeId};
 use chain_network::error::{self as net_error, HandshakeError};
-use chain_network::grpc::legacy;
 
 use futures::channel::oneshot;
 use futures::future::BoxFuture;
@@ -17,7 +16,6 @@ use futures::prelude::*;
 use futures::ready;
 use rand::Rng;
 
-use std::convert::TryInto;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tracing_futures::Instrument;
@@ -33,19 +31,11 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
     let (sender, receiver) = oneshot::channel();
     let peer = state.peer();
     let keypair = state.global.keypair.clone();
-    let legacy_node_id = state.global.config.legacy_node_id;
     let span = state.span().clone();
     let async_span = span.clone();
     let _enter = span.enter();
     let cf = async move {
-        let mut grpc_client = if let Some(node_id) = legacy_node_id {
-            let node_id: legacy::NodeId = node_id.as_ref().try_into().unwrap();
-            tracing::debug!(
-                "connecting with legacy node id {}",
-                hex::encode(node_id.as_bytes())
-            );
-            grpc::connect_legacy(&peer, node_id).await
-        } else {
+        let mut grpc_client = {
             tracing::debug!("connecting");
             grpc::connect(&peer).await
         }
