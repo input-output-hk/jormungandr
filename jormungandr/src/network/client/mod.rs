@@ -71,7 +71,7 @@ impl Client {
 
         let block_sink = BlockAnnouncementProcessor::new(
             builder.channels.block_box,
-            inbound.peer_address.clone(),
+            inbound.peer_address,
             global_state.clone(),
             span!(
                 parent: &parent_span,
@@ -83,7 +83,7 @@ impl Client {
         );
         let fragment_sink = FragmentProcessor::new(
             builder.channels.transaction_box,
-            inbound.peer_address.clone(),
+            inbound.peer_address,
             global_state.clone(),
             span!(
                 parent: &parent_span,
@@ -94,7 +94,7 @@ impl Client {
             ),
         );
         let gossip_sink = GossipProcessor::new(
-            inbound.peer_address.clone(),
+            inbound.peer_address,
             global_state.clone(),
             span!(
                 parent: &parent_span,
