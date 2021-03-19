@@ -103,10 +103,18 @@ impl Process {
                         ledger_params,
                         selection_alg,
                         reply_handle,
-                        abort_future,
+                        soft_deadline_future,
+                        hard_deadline_future,
                     } => {
                         let contents = pool
-                            .select(pool_idx, ledger, ledger_params, selection_alg, abort_future)
+                            .select(
+                                pool_idx,
+                                ledger,
+                                ledger_params,
+                                selection_alg,
+                                soft_deadline_future,
+                                hard_deadline_future,
+                            )
                             .await;
                         reply_handle.reply_ok(contents);
                     }

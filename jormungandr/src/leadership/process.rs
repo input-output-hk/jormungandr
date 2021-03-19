@@ -1,10 +1,9 @@
-use crate::blockchain::{EpochLeadership, LeadershipBlock};
 use crate::{
     blockcfg::{
         ApplyBlockLedger, Block, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput,
         Leadership, LedgerParameters,
     },
-    blockchain::{new_epoch_leadership_from, Ref, Tip},
+    blockchain::{new_epoch_leadership_from, EpochLeadership, LeadershipBlock, Ref, Tip},
     intercom::{unary_reply, BlockMsg, Error as IntercomError, TransactionMsg},
     leadership::{
         enclave::{Enclave, EnclaveError, LeaderEvent, Schedule},
@@ -73,6 +72,8 @@ pub struct Module {
     enclave: Enclave,
     block_message: MessageBox<BlockMsg>,
     rewards_report_all: bool,
+    // the maximum number of slots we can allow the leader event to run for
+    block_hard_deadline: u32,
 }
 
 impl Module {
@@ -84,6 +85,7 @@ impl Module {
         enclave: Enclave,
         block_message: MessageBox<BlockMsg>,
         rewards_report_all: bool,
+        block_hard_deadline: u32,
     ) -> Result<Self, LeadershipError> {
         let tip_ref = tip.get_ref().await;
 
@@ -97,6 +99,7 @@ impl Module {
             enclave,
             block_message,
             rewards_report_all,
+            block_hard_deadline,
         })
     }
 
@@ -202,14 +205,22 @@ impl Module {
     // if slot date is `E.X` (E = Epoch, X = current epoch slot offset)
     // the function will return the schedule time for `E.(X+1)`.
     fn event_following_slot_time(&self, event: &LeaderEvent) -> SystemTime {
+        self.event_nth_future_slot_time(event, 1)
+    }
+
+    // gives the slot time of the future slot that is n slots ahead
+    //
+    // if slot date is `E.X` (E = Epoch, X = current epoch slot offset)
+    // the function will return the schedule time for `E.(X+1)`.
+    fn event_nth_future_slot_time(&self, event: &LeaderEvent, n: u32) -> SystemTime {
         let leadership = self.tip_ref.epoch_leadership_schedule();
         let era = leadership.era();
 
         let epoch = Epoch(event.date.epoch);
-        let slot = EpochSlotOffset(event.date.slot_id + 1);
+        let slot = EpochSlotOffset(event.date.slot_id + n);
 
         if era.slots_per_epoch() <= slot.0 {
-            self.slot_time(Epoch(epoch.0 + 1), EpochSlotOffset(0))
+            self.slot_time(Epoch(epoch.0 + n), EpochSlotOffset(0))
         } else {
             self.slot_time(epoch, slot)
         }
@@ -317,6 +328,8 @@ impl Module {
         let now = SystemTime::now();
         let event_start = self.event_slot_time(&entry.event);
         let event_end = self.event_following_slot_time(&entry.event);
+        let event_end_hard =
+            self.event_nth_future_slot_time(&entry.event, self.block_hard_deadline);
 
         let span = span!(
             parent: self.service_info.span(),
@@ -353,13 +366,15 @@ impl Module {
 
                     // await the right_time before starting the action
                     tokio::time::sleep_until(tokio::time::Instant::from_std(right_time)).await;
-                    self.action_run_entry_in_bound(entry, event_end).await
+                    self.action_run_entry_in_bound(entry, event_end, event_end_hard)
+                        .await
                 } else {
                     // because we checked that the entry's slot was below the current
                     // time, if we cannot compute the _right_time_ it means the time
                     // is just starting now to be correct. So it's okay to start
                     // running it now still
-                    self.action_run_entry_in_bound(entry, event_end).await
+                    self.action_run_entry_in_bound(entry, event_end, event_end_hard)
+                        .await
                 }
             }
         }
@@ -371,7 +386,10 @@ impl Module {
         self,
         entry: Entry,
         event_end: SystemTime,
+        event_end_hard: SystemTime,
     ) -> Result<Self, LeadershipError> {
+        use futures::future::{select, Either};
+
         let now = SystemTime::now();
 
         // we can safely unwrap here as we just proved that `now <= event_end`
@@ -384,6 +402,12 @@ impl Module {
             .duration_since(now)
             .expect("event end in the future");
         let deadline = Instant::now() + remaining_time.into();
+
+        let remaining_time_hard = event_end_hard
+            .duration_since(now)
+            .expect("event end in the future");
+        let hard_deadline = Instant::now() + remaining_time_hard.into();
+
         // handle to the current span, created in `action_run_entry`
         let parent_span = Span::current();
         let span = tracing::span!(
@@ -394,17 +418,29 @@ impl Module {
         );
 
         async {
-            let (abort_tx, abort_rx) = futures::channel::oneshot::channel();
-            let timeout_future = tokio::time::sleep_until(tokio::time::Instant::from_std(deadline));
-            let build_block_future = self.action_run_entry_build_block(entry, abort_rx);
+            let (soft_deadline_tx, soft_deadline_rx) = futures::channel::oneshot::channel();
+            let soft_deadline_future =
+                tokio::time::sleep_until(tokio::time::Instant::from_std(deadline));
 
-            match futures::future::select(Box::pin(build_block_future), Box::pin(timeout_future))
-                .await
-            {
-                futures::future::Either::Left((result, _)) => result,
-                futures::future::Either::Right((_, build_block_future)) => {
-                    abort_tx.send(()).unwrap();
-                    build_block_future.await
+            let (hard_deadline_tx, hard_deadline_rx) = futures::channel::oneshot::channel();
+            let hard_deadline_future =
+                tokio::time::sleep_until(tokio::time::Instant::from_std(hard_deadline));
+
+            let build_block_future =
+                self.action_run_entry_build_block(entry, soft_deadline_rx, hard_deadline_rx);
+
+            match select(Box::pin(build_block_future), Box::pin(soft_deadline_future)).await {
+                Either::Left((result, _)) => result,
+                Either::Right((_, build_block_future)) => {
+                    soft_deadline_tx.send(()).unwrap();
+                    match select(Box::pin(build_block_future), Box::pin(hard_deadline_future)).await
+                    {
+                        Either::Left((result, _)) => result,
+                        Either::Right((_, build_block_future)) => {
+                            hard_deadline_tx.send(()).unwrap();
+                            build_block_future.await
+                        }
+                    }
                 }
             }
         }
@@ -417,7 +453,8 @@ impl Module {
     async fn action_run_entry_build_block(
         &self,
         entry: Entry,
-        abort_future: futures::channel::oneshot::Receiver<()>,
+        soft_deadline_future: futures::channel::oneshot::Receiver<()>,
+        hard_deadline_future: futures::channel::oneshot::Receiver<()>,
     ) -> Result<(), LeadershipError> {
         let event = entry.event;
         let event_logs = entry.log;
@@ -463,8 +500,15 @@ impl Module {
             .begin_block((*ledger_parameters).clone(), chain_length, event.date)
             .map_err(Box::new)?;
 
-        let (contents, ledger) =
-            prepare_block(pool, event.id, ledger, ledger_parameters, abort_future).await?;
+        let (contents, ledger) = prepare_block(
+            pool,
+            event.id,
+            ledger,
+            ledger_parameters,
+            soft_deadline_future,
+            hard_deadline_future,
+        )
+        .await?;
 
         let event_logs_error = event_logs.clone();
         let signing = {
@@ -665,7 +709,8 @@ async fn prepare_block(
     leader_id: EnclaveLeaderId,
     ledger: ApplyBlockLedger,
     epoch_parameters: Arc<LedgerParameters>,
-    abort_future: futures::channel::oneshot::Receiver<()>,
+    soft_deadline_future: futures::channel::oneshot::Receiver<()>,
+    hard_deadline_future: futures::channel::oneshot::Receiver<()>,
 ) -> Result<(Contents, ApplyBlockLedger), LeadershipError> {
     use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 
@@ -679,7 +724,8 @@ async fn prepare_block(
         ledger_params: epoch_parameters.as_ref().clone(),
         selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
         reply_handle,
-        abort_future,
+        soft_deadline_future,
+        hard_deadline_future,
     };
 
     if fragment_pool.try_send(msg).is_err() {

@@ -44,8 +44,11 @@ pub struct Config {
 
     #[serde(default)]
     pub bootstrap_from_trusted_peers: bool,
+
     #[serde(default)]
     pub skip_bootstrap: bool,
+
+    pub block_hard_deadline: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
