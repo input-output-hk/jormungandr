@@ -1,13 +1,13 @@
-use super::config;
-use crate::network::p2p::{layers::LayersConfig, Address};
-use jormungandr_lib::config::NodeId;
-use jormungandr_lib::multiaddr;
-use poldercast::Profile;
+use super::config::{self, InterestLevel, Topic};
+use crate::network::p2p::{
+    identifier_into_keynesis, layers::LayersConfig, Address, NodeId, PolicyConfig,
+};
 
-use std::convert::TryFrom;
+use chain_crypto::Ed25519;
+use jormungandr_lib::{crypto::key::SigningKey, multiaddr};
+use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::str;
-use std::sync::Arc;
 use std::time::Duration;
 
 /// Protocol to use for a connection.
@@ -61,7 +61,17 @@ pub struct Configuration {
     /// network interfaces.
     pub listen_address: Option<SocketAddr>,
 
-    pub profile: Arc<Profile>,
+    pub public_address: Option<Address>,
+
+    /// the topic subscriptions
+    ///
+    /// When connecting to different nodes we will expose these too in order to
+    /// help the different modules of the P2P topology engine to determine the
+    /// best possible neighborhood.
+    pub topics_of_interest: BTreeMap<Topic, InterestLevel>,
+
+    // Secret key used to authenticate gossips, the public part is used as an identifier of the node
+    pub node_key: SigningKey<Ed25519>,
 
     /// list of trusted addresses
     pub trusted_peers: Vec<TrustedPeer>,
@@ -77,6 +87,8 @@ pub struct Configuration {
 
     /// the default value for the timeout for inactive connection
     pub timeout: Duration,
+
+    pub policy: PolicyConfig,
 
     pub layers: LayersConfig,
 
@@ -104,6 +116,7 @@ pub struct Configuration {
 #[derive(Clone)]
 pub struct TrustedPeer {
     pub addr: SocketAddr,
+    // This will need to become compulsory if we want to check validity of keys/ids
     pub id: Option<NodeId>,
 }
 
@@ -117,14 +130,11 @@ pub enum PeerResolveError {
 
 impl TrustedPeer {
     pub fn resolve(peer: &config::TrustedPeer) -> Result<Self, PeerResolveError> {
-        let address = match multiaddr::resolve_dns(&peer.address)? {
-            Some(address) => multiaddr::to_tcp_socket_addr(&address).unwrap(),
-            None => multiaddr::to_tcp_socket_addr(&peer.address)
-                .ok_or_else(|| PeerResolveError::InvalidAddress)?,
-        };
+        let addr = multiaddr::to_tcp_socket_addr(&multiaddr::resolve_dns(&peer.address)?)
+            .ok_or(PeerResolveError::InvalidAddress)?;
         Ok(TrustedPeer {
-            address,
-            legacy_node_id: peer.id,
+            addr,
+            id: peer.id.clone().map(identifier_into_keynesis),
         })
     }
 }
@@ -162,19 +172,13 @@ impl Listen {
 }
 
 impl Configuration {
-    pub fn address(&self) -> Option<&Address> {
-        self.profile.address()
+    pub fn address(&self) -> Option<Address> {
+        self.public_address
     }
 
     /// Returns the listener configuration, if the options defining it
     /// were set.
     pub fn listen(&self) -> Option<Listen> {
-        self.listen_address
-            .or_else(|| {
-                self.profile
-                    .address()
-                    .and_then(|address| address.to_socket_addr())
-            })
-            .map(Listen::new)
+        self.listen_address.or(self.public_address).map(Listen::new)
     }
 }
