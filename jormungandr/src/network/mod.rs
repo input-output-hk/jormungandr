@@ -371,24 +371,40 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                 let header = header.encode();
                 let view = state
                     .topology
-                    .view(poldercast::Selection::Topic {
+                    .view(poldercast::layer::Selection::Topic {
                         topic: p2p::topic::BLOCKS,
                     })
                     .await;
-                prop_state.peers.propagate_block(view.peers, header).await
+                prop_state
+                    .peers
+                    .propagate_block(
+                        view.peers
+                            .into_iter()
+                            .map(|profile| (profile.address(), profile.id()))
+                            .collect(),
+                        header,
+                    )
+                    .await
             }
             PropagateMsg::Fragment(fragment) => {
                 tracing::debug!(hash = %fragment.hash(), "fragment to propagate");
                 let fragment = fragment.encode();
                 let view = state
                     .topology
-                    .view(poldercast::Selection::Topic {
+                    .view(poldercast::layer::Selection::Topic {
                         topic: p2p::topic::MESSAGES,
                     })
                     .await;
+
                 prop_state
                     .peers
-                    .propagate_fragment(view.peers, fragment)
+                    .propagate_fragment(
+                        view.peers
+                            .into_iter()
+                            .map(|profile| (profile.address(), profile.id()))
+                            .collect(),
+                        fragment,
+                    )
                     .await
             }
         };
@@ -400,7 +416,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                 "will try to connect to the peers not immediately reachable for propagation: {:?}",
                 unreached_nodes,
             );
-            for node in unreached_nodes {
+            for (addr, id) in unreached_nodes {
                 let mut options = p2p::comm::ConnectOptions::default();
                 match &msg {
                     PropagateMsg::Block(header) => {
@@ -410,7 +426,7 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                         options.pending_fragment = Some(fragment.encode());
                     }
                 };
-                connect_and_propagate(node, state.clone(), channels.clone(), options);
+                connect_and_propagate(addr, id, state.clone(), channels.clone(), options);
             }
         }
     }

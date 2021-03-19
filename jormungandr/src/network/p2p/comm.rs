@@ -609,7 +609,11 @@ impl Peers {
         .await
     }
 
-    async fn propagate_with<T, F>(&self, nodes: Vec<Address>, f: F) -> Result<(), Vec<Address>>
+    async fn propagate_with<T, F>(
+        &self,
+        nodes: Vec<(Address, p2p::NodeId)>,
+        f: F,
+    ) -> Result<(), Vec<(Address, p2p::NodeId)>>
     where
         for<'a> F: Fn(CommStatus<'a>) -> Result<(), PropagateError<T>>,
     {
@@ -617,8 +621,8 @@ impl Peers {
         let mut reached_node_ids = HashSet::new();
         let unreached_nodes = nodes
             .into_iter()
-            .filter(move |node| {
-                if let Some(mut entry) = map.entry(node.clone()) {
+            .filter(move |(node, _id)| {
+                if let Some(mut entry) = map.entry(*node) {
                     let comm_status = entry.update_comm_status();
                     let node_id = comm_status.node_id();
 
@@ -665,9 +669,9 @@ impl Peers {
 
     pub async fn propagate_block(
         &self,
-        nodes: Vec<Address>,
+        nodes: Vec<(Address, p2p::NodeId)>,
         header: Header,
-    ) -> Result<(), Vec<Address>> {
+    ) -> Result<(), Vec<(Address, p2p::NodeId)>> {
         async move {
             tracing::debug!("propagating block to {:?}", nodes);
             self.propagate_with(nodes, move |status| match status {
@@ -685,9 +689,9 @@ impl Peers {
 
     pub async fn propagate_fragment(
         &self,
-        nodes: Vec<Address>,
+        nodes: Vec<(Address, p2p::NodeId)>,
         fragment: Fragment,
-    ) -> Result<(), Vec<Address>> {
+    ) -> Result<(), Vec<(Address, p2p::NodeId)>> {
         async move {
             tracing::debug!("propagating fragment to {:?}", nodes);
             self.propagate_with(nodes, move |status| match status {
