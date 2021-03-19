@@ -191,6 +191,7 @@ jobs:
           args: --tests ${{ env.CARGO_FLAGS }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMPDIR: ${{ runner.temp }}/logs
 
   lints:
     name: Lints
