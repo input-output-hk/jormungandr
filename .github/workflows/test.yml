@@ -184,8 +184,8 @@ jobs:
           args: -p jormungandr-scenario-tests ${{ env.CARGO_FLAGS }}
 
       - name: Create artifact for failed logs
-        shell: bash
-        run: mkdir ${{ runner.temp }}/logs
+        run: mkdir logs
+        working-directory: ${{ runner.temp }}
 
       - name: Run tests
         uses: actions-rs/cargo@v1
