@@ -8,7 +8,7 @@ mod policy;
 mod topology;
 
 pub use self::gossip::{Gossip, Gossips, Peer, Peers};
-pub use self::topology::{P2pTopology, Profile as NodeProfile};
+pub use self::topology::{P2pTopology, ProfileInfo};
 use chain_crypto::Ed25519;
 use jormungandr_lib::crypto::key::SigningKey;
 pub use poldercast::Profile;

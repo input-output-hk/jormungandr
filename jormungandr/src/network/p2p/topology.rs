@@ -6,7 +6,7 @@ use crate::{
     settings::start::network::Configuration,
 };
 use jormungandr_lib::time::SystemTime;
-use poldercast::{Profile as PoldercastProfile, Subscription, Subscriptions, Topology};
+use poldercast::{Profile, Subscription, Subscriptions, Topology};
 use serde::Serializer;
 use tokio::sync::RwLock;
 use tracing::instrument;
@@ -24,7 +24,7 @@ where
 }
 
 #[derive(Eq, Clone, Serialize, Debug)]
-pub struct Profile {
+pub struct ProfileInfo {
     #[serde(serialize_with = "serialize_display")]
     pub id: NodeId,
     pub address: Address,
@@ -33,21 +33,21 @@ pub struct Profile {
     pub subscriptions: Vec<(String, String)>,
 }
 
-impl PartialEq for Profile {
+impl PartialEq for ProfileInfo {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id && self.address == other.address
     }
 }
 
-impl Hash for Profile {
+impl Hash for ProfileInfo {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
         self.address.hash(state);
     }
 }
 
-impl From<Arc<PoldercastProfile>> for Profile {
-    fn from(other: Arc<PoldercastProfile>) -> Self {
+impl From<Arc<Profile>> for ProfileInfo {
+    fn from(other: Arc<Profile>) -> Self {
         Self {
             id: other.id(),
             address: other.address(),
@@ -63,8 +63,8 @@ impl From<Arc<PoldercastProfile>> for Profile {
 }
 
 pub struct View {
-    pub self_node: Arc<PoldercastProfile>,
-    pub peers: Vec<Arc<PoldercastProfile>>,
+    pub self_node: Arc<Profile>,
+    pub peers: Vec<Arc<Profile>>,
 }
 
 struct Inner {
@@ -73,7 +73,7 @@ struct Inner {
     // this is needed to advertise ourself to trusted peers,
     // poldercast does not allow us to take this out from the
     // topology
-    initial_self_profile: Arc<PoldercastProfile>,
+    initial_self_profile: Arc<Profile>,
 }
 
 /// object holding the P2pTopology of the Node
@@ -95,7 +95,7 @@ impl P2pTopology {
         // FIXME: How should we handle cases where the is not listen set? Can a node just receive?
         let addr = config.public_address.unwrap();
         let key = super::secret_key_into_keynesis(config.node_key.clone());
-        let initial_self_profile = Arc::new(PoldercastProfile::from(poldercast::Gossip::new(
+        let initial_self_profile = Arc::new(Profile::from(poldercast::Gossip::new(
             addr,
             &key,
             subscriptions.as_slice(),
@@ -149,7 +149,7 @@ impl P2pTopology {
         let mut inner = self.lock.write().await;
         let gossips = <Vec<poldercast::Gossip>>::from(gossips);
         for gossip in gossips {
-            let peer = PoldercastProfile::from_gossip(gossip);
+            let peer = Profile::from_gossip(gossip);
             tracing::trace!(node = %peer.address(), "received peer from gossip");
             inner.topology.add_peer(peer);
         }
@@ -171,7 +171,7 @@ impl P2pTopology {
     // nodes due to transparent eviction from the underlying lru cache.
     // Until that is implemented this method may return nodes that have been
     // remove completely from the topology
-    pub async fn list_quarantined(&self) -> Vec<Profile> {
+    pub async fn list_quarantined(&self) -> Vec<ProfileInfo> {
         self.lock.read().await.quarantine.quarantined_nodes()
     }
 
@@ -179,7 +179,7 @@ impl P2pTopology {
     // in the topology, without that it would be very inefficient to track
     // nodes due to transparent eviction from the underlying lru cache.
     // Until that is implemented this method may not reflect all available peers
-    pub async fn list_available(&self) -> Vec<Profile> {
+    pub async fn list_available(&self) -> Vec<ProfileInfo> {
         self.view(poldercast::layer::Selection::Any)
             .await
             .peers
@@ -192,7 +192,7 @@ impl P2pTopology {
     // in the topology, without that it would be very inefficient to track
     // nodes due to transparent eviction from the underlying lru cache.
     // Until that is implemented this method may not reflect all available peers
-    pub async fn list_non_public(&self) -> Vec<Profile> {
+    pub async fn list_non_public(&self) -> Vec<ProfileInfo> {
         self.view(poldercast::layer::Selection::Any)
             .await
             .peers

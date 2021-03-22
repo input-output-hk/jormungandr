@@ -11,7 +11,7 @@ use crate::{
     blockchain::StorageError,
     diagnostic::Diagnostic,
     intercom::{self, NetworkMsg, TransactionMsg},
-    network::p2p::NodeProfile,
+    network::p2p::ProfileInfo,
     rest::Context,
     secure::NodeSecret,
 };
@@ -575,7 +575,7 @@ pub async fn get_diagnostic(context: &Context) -> Result<Diagnostic, Error> {
     Ok(diagnostic_data.clone())
 }
 
-pub async fn get_network_p2p_quarantined(context: &Context) -> Result<Vec<NodeProfile>, Error> {
+pub async fn get_network_p2p_quarantined(context: &Context) -> Result<Vec<ProfileInfo>, Error> {
     Ok(context
         .try_full()?
         .network_state
@@ -584,7 +584,7 @@ pub async fn get_network_p2p_quarantined(context: &Context) -> Result<Vec<NodePr
         .await)
 }
 
-pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<NodeProfile>, Error> {
+pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<ProfileInfo>, Error> {
     Ok(context
         .try_full()?
         .network_state
@@ -593,7 +593,7 @@ pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<NodePro
         .await)
 }
 
-pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<NodeProfile>, Error> {
+pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<ProfileInfo>, Error> {
     Ok(context
         .try_full()?
         .network_state
