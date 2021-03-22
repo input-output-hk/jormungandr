@@ -9,14 +9,16 @@ use jormungandr_lib::interfaces::{Address, Block0Configuration, Initial};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Div, Mul};
 
+const ADA_TO_LOVELACE_FACTOR: u64 = 1_000_000;
+
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct VotersRewards {
     #[structopt(flatten)]
     common: Common,
-    /// Reward (in ADA) to be distributed
+    /// Reward (in LOVELACE) to be distributed
     #[structopt(long = "total-rewards")]
-    total_rewards: f64,
+    total_rewards: u64,
 }
 
 fn calculate_stake<'address>(
@@ -47,19 +49,26 @@ fn calculate_stake<'address>(
 
 fn calculate_reward<'address>(
     total_stake: u64,
-    total_rewards: f64,
+    total_rewards: u64,
     stake_per_voter: &HashMap<&'address Address, u64>,
-) -> HashMap<&'address Address, f64> {
+) -> HashMap<&'address Address, u64> {
     stake_per_voter
         .iter()
-        .map(|(k, v)| (*k, (*v as f64).div(total_stake as f64).mul(total_rewards)))
+        .map(|(k, v)| {
+            (
+                *k,
+                (v * ADA_TO_LOVELACE_FACTOR)
+                    .div(total_stake)
+                    .mul(total_rewards),
+            )
+        })
         .collect()
 }
 
 fn write_rewards_results(
     common: Common,
     stake_per_voter: &HashMap<&Address, u64>,
-    results: &HashMap<&Address, f64>,
+    results: &HashMap<&Address, u64>,
 ) -> Result<(), Error> {
     let writer = common.open_output()?;
     let header = [
@@ -76,8 +85,8 @@ fn write_rewards_results(
         let record = [
             address.to_string(),
             stake.to_string(),
+            reward.div(ADA_TO_LOVELACE_FACTOR).to_string(), // transform lovelace to ADA (// 1000000)
             reward.to_string(),
-            (reward * 1000000f64).to_string(), // transform ADA to lovelace (*1000000)
         ];
         csv_writer.write_record(&record).map_err(Error::Csv)?;
     }
@@ -107,7 +116,11 @@ impl VotersRewards {
             .collect();
 
         let (total_stake, stake_per_voter) = calculate_stake(&committee_keys, &block0);
-        let rewards = calculate_reward(total_stake, total_rewards, &stake_per_voter);
+        let rewards = calculate_reward(
+            total_stake * ADA_TO_LOVELACE_FACTOR,
+            total_rewards,
+            &stake_per_voter,
+        );
         write_rewards_results(common, &stake_per_voter, &rewards)?;
         Ok(())
     }
