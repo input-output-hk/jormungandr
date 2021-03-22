@@ -1,4 +1,4 @@
-use crate::network::p2p::{Address, NodeProfile};
+use crate::network::p2p::{Address, ProfileInfo};
 use jormungandr_lib::time::Duration;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ const DEFAULT_MAX_NUM_QUARANTINE_RECORDS: usize = 24_000;
 pub struct Quarantine {
     quarantine_duration: StdDuration,
     quarantine_whitelist: HashSet<Address>,
-    quarantined_records: LruCache<NodeProfile, Instant>,
+    quarantined_records: LruCache<ProfileInfo, Instant>,
 }
 
 impl Quarantine {
@@ -41,7 +41,7 @@ impl Quarantine {
 
     // Returns whether the node was quarantined or not
     #[instrument(skip(self), level = "trace")]
-    pub fn quarantine_node(&mut self, mut node: NodeProfile) -> bool {
+    pub fn quarantine_node(&mut self, mut node: ProfileInfo) -> bool {
         if self.quarantine_whitelist.contains(&node.address) {
             tracing::debug!(
                 node = %node.address,
@@ -56,14 +56,14 @@ impl Quarantine {
         }
     }
 
-    pub fn quarantined_nodes(&self) -> Vec<NodeProfile> {
+    pub fn quarantined_nodes(&self) -> Vec<ProfileInfo> {
         self.quarantined_records
             .iter()
             .map(|(k, _)| k.clone())
             .collect()
     }
 
-    pub fn lift_from_quarantine(&mut self) -> Vec<NodeProfile> {
+    pub fn lift_from_quarantine(&mut self) -> Vec<ProfileInfo> {
         let mut res = Vec::new();
         // This is basically a FIFO queue, a lru cache is being used just to
         // avoid keeping another data structure to know if an address was already quarantined
