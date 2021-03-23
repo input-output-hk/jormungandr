@@ -183,7 +183,7 @@ jobs:
           command: build
           args: -p jormungandr-scenario-tests ${{ env.CARGO_FLAGS }}
 
-      - name: Create artifact for failed logs
+      - name: Create directory to store failed logs
         run: mkdir logs
         working-directory: ${{ runner.temp }}
 
@@ -201,7 +201,7 @@ jobs:
       - name: Pack logs from failed tests
         uses: actions/upload-artifact@v2
         with:
-          name: node-logs-from-failed-tests
+          name: ${{ matrix.os }}-${{ matrix.profile }}-node-logs-from-failed-tests
           path: ${{ runner.temp }}/logs
 
       - name: Download logs from failed tests
