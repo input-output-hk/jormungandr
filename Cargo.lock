@@ -2953,7 +2953,7 @@ checksum = "b18befed8bc2b61abc79a457295e7e838417326da1586050b919414073977f19"
 [[package]]
 name = "poldercast"
 version = "1.1.3"
-source = "git+https://github.com/Zeegomo/poldercast?branch=master#6494ac68c0b86b19466d0d4351db1d7da3845b2e"
+source = "git+https://github.com/Zeegomo/poldercast?branch=master#0298cba14af7bfeaf399c9b8c197a32cf3e24067"
 dependencies = [
  "hex",
  "keynesis",
