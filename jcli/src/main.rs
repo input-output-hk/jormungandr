@@ -1,5 +1,3 @@
-use jcli_lib;
-
 use std::error::Error;
 use structopt::StructOpt;
 
