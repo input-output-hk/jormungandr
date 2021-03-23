@@ -70,7 +70,6 @@ impl Quarantine {
         while let Some(record) = self.quarantined_records.peek_lru() {
             if record.1.elapsed() > self.quarantine_duration {
                 let node = self.quarantined_records.pop_lru().unwrap().0;
-                tracing::debug!(node = %node.address, "lifting node from quarantine");
                 res.push(node);
             }
         }
