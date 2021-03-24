@@ -180,15 +180,20 @@ impl property::Deserialize for Gossip {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chain_crypto::Ed25519;
+    use jormungandr_lib::crypto::key::SigningKey;
+    use std::convert::TryInto;
     use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 
     // Build a gossip with a random key, just for testing addresses
     fn build_gossip(addr: SocketAddr) -> Gossip {
         // FIXME: update rand dependecies
-        use new_rand::rand_core::SeedableRng;
+        let key_bytes = SigningKey::<Ed25519>::generate(rand::thread_rng())
+            .into_secret_key()
+            .leak_secret();
         Gossip::from(poldercast::Gossip::new(
             addr,
-            &keynesis::key::ed25519::SecretKey::new(new_rand::ChaChaRng::from_seed([0u8; 32])),
+            &key_bytes.as_ref().try_into().unwrap(),
             poldercast::Subscriptions::new().as_slice(),
         ))
     }
