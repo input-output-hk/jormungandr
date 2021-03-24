@@ -4,10 +4,12 @@ use crate::blockcfg::{
 use crate::blockchain::{Checkpoints, LeadershipBlock, StorageError};
 use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 use crate::network::p2p::{comm::PeerInfo, Address};
+use crate::topology::{Gossips, NodeId, Peer, PeerInfo as TopologyPeerInfo, View};
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
 use chain_network::error as net_error;
 use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
+use poldercast::layer::Selection;
 
 use futures::channel::{mpsc, oneshot};
 use futures::prelude::*;
@@ -580,10 +582,11 @@ pub enum BlockMsg {
 }
 
 /// Propagation requests for the network task.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum PropagateMsg {
     Block(Header),
     Fragment(Fragment),
+    Gossip(Peer, Gossips),
 }
 
 /// Messages to the network task.
@@ -598,6 +601,17 @@ pub enum NetworkMsg {
         to: HeaderHash,
     },
     PeerInfo(ReplyHandle<Vec<PeerInfo>>),
+}
+
+/// Messages to the topology task
+pub enum TopologyMsg {
+    AcceptGossip(Gossips),
+    DemotePeer(NodeId),
+    PromotePeer(NodeId),
+    View(Selection, ReplyHandle<View>),
+    ListAvailable(ReplyHandle<Vec<TopologyPeerInfo>>),
+    ListNonPublic(ReplyHandle<Vec<TopologyPeerInfo>>),
+    ListQuarantined(ReplyHandle<Vec<TopologyPeerInfo>>),
 }
 
 /// Messages to the explorer task
