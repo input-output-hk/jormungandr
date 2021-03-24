@@ -1,18 +1,13 @@
 mod peer_map;
-
-use peer_map::{CommStatus, PeerMap};
-
-use crate::network::{
-    client::ConnectHandle,
-    p2p::{self, Address},
-    security_params::NONCE_LEN,
-};
+use super::Address;
+use crate::network::{client::ConnectHandle, security_params::NONCE_LEN};
 use chain_network::data::block::{BlockEvent, ChainPullRequest};
 use chain_network::data::{BlockId, BlockIds, Fragment, Gossip, Header, NodeId};
 use futures::channel::mpsc;
 use futures::lock::{Mutex, MutexLockFuture};
 use futures::prelude::*;
 use futures::stream;
+use peer_map::{CommStatus, PeerMap};
 use rand::Rng;
 use tracing::Span;
 
@@ -618,11 +613,7 @@ impl Peers {
         .await
     }
 
-    async fn propagate_with<T, F>(
-        &self,
-        nodes: Vec<(Address, p2p::NodeId)>,
-        f: F,
-    ) -> Result<(), Vec<(Address, p2p::NodeId)>>
+    async fn propagate_with<T, F>(&self, nodes: Vec<Address>, f: F) -> Result<(), Vec<Address>>
     where
         for<'a> F: Fn(CommStatus<'a>) -> Result<(), PropagateError<T>>,
     {
@@ -630,7 +621,7 @@ impl Peers {
         let mut reached_node_ids = HashSet::new();
         let unreached_nodes = nodes
             .into_iter()
-            .filter(move |(node, _id)| {
+            .filter(move |node| {
                 if let Some(mut entry) = map.entry(*node) {
                     let comm_status = entry.update_comm_status();
                     let node_id = comm_status.node_id();
@@ -678,9 +669,9 @@ impl Peers {
 
     pub async fn propagate_block(
         &self,
-        nodes: Vec<(Address, p2p::NodeId)>,
+        nodes: Vec<Address>,
         header: Header,
-    ) -> Result<(), Vec<(Address, p2p::NodeId)>> {
+    ) -> Result<(), Vec<Address>> {
         async move {
             tracing::debug!("propagating block to {:?}", nodes);
             self.propagate_with(nodes, move |status| match status {
@@ -698,9 +689,9 @@ impl Peers {
 
     pub async fn propagate_fragment(
         &self,
-        nodes: Vec<(Address, p2p::NodeId)>,
+        nodes: Vec<Address>,
         fragment: Fragment,
-    ) -> Result<(), Vec<(Address, p2p::NodeId)>> {
+    ) -> Result<(), Vec<Address>> {
         async move {
             tracing::debug!("propagating fragment to {:?}", nodes);
             self.propagate_with(nodes, move |status| match status {
