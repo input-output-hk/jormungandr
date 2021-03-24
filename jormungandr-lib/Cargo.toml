@@ -22,7 +22,7 @@ rand_chacha = "0.2"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 thiserror = "1.0"
-poldercast = { git = "https://github.com/Zeegomo/poldercast", branch = "master" }
+poldercast = { git = "https://github.com/primetype/poldercast", branch = "master" }
 multiaddr = { package = "parity-multiaddr", version = "0.11", default-features = false }
 hex = "0.4"
 bech32 = "0.7"
