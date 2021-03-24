@@ -1,8 +1,8 @@
-use crate::blockchain::EpochLeadership;
+use crate::blockchain::{EpochLeadership, LeadershipBlock};
 use crate::{
     blockcfg::{
-        Block, BlockDate, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput, Leadership,
-        Ledger, LedgerParameters,
+        ApplyBlockLedger, Block, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput,
+        Leadership, LedgerParameters,
     },
     blockchain::{new_epoch_leadership_from, Ref, Tip},
     intercom::{unary_reply, BlockMsg, Error as IntercomError, TransactionMsg},
@@ -53,6 +53,9 @@ pub enum LeadershipError {
 
     #[error("Cannot update the leadership logs")]
     CannotUpdateLogs,
+
+    #[error("Error while performing a ledger operation")]
+    LedgerError(#[from] Box<chain_impl_mockchain::ledger::Error>),
 }
 
 struct Entry {
@@ -69,6 +72,7 @@ pub struct Module {
     pool: MessageBox<TransactionMsg>,
     enclave: Enclave,
     block_message: MessageBox<BlockMsg>,
+    rewards_report_all: bool,
 }
 
 impl Module {
@@ -79,6 +83,7 @@ impl Module {
         pool: MessageBox<TransactionMsg>,
         enclave: Enclave,
         block_message: MessageBox<BlockMsg>,
+        rewards_report_all: bool,
     ) -> Result<Self, LeadershipError> {
         let tip_ref = tip.get_ref().await;
 
@@ -91,6 +96,7 @@ impl Module {
             pool,
             enclave,
             block_message,
+            rewards_report_all,
         })
     }
 
@@ -419,15 +425,8 @@ impl Module {
         let mut sender = self.block_message.clone();
         let pool = self.pool.clone();
 
-        let (parent_id, chain_length, ledger, ledger_parameters) = if self.tip_ref.block_date()
-            < event.date
-        {
-            (
-                self.tip_ref.hash(),
-                self.tip_ref.chain_length().increase(),
-                self.tip_ref.ledger(),
-                Arc::clone(self.tip_ref.epoch_ledger_parameters()),
-            )
+        let (parent_id, chain_length) = if self.tip_ref.block_date() < event.date {
+            (self.tip_ref.hash(), self.tip_ref.chain_length().increase())
         } else {
             // it appears we are either competing against another stake pool for the same
             // slot or we are a bit behind schedule
@@ -451,7 +450,19 @@ impl Module {
             return Ok(());
         };
 
-        let contents = prepare_block(pool, event.id, event.date, ledger, ledger_parameters).await?;
+        let leadership = new_epoch_leadership_from(
+            event.date.epoch,
+            Arc::clone(&self.tip_ref),
+            self.rewards_report_all,
+        );
+        let ledger = leadership.state.clone();
+        let ledger_parameters = leadership.ledger_parameters.clone();
+
+        let ledger = ledger
+            .begin_block((*ledger_parameters).clone(), chain_length, event.date)
+            .map_err(Box::new)?;
+
+        let (contents, ledger) = prepare_block(pool, event.id, ledger, ledger_parameters).await?;
 
         let event_logs_error = event_logs.clone();
         let signing = {
@@ -528,8 +539,14 @@ impl Module {
                     let id = block.header.hash();
                     let parent = block.header.block_parent_hash();
                     let chain_length: u32 = block.header.chain_length().into();
+                    let ledger = ledger.finish(&block.header.get_consensus_eval_context());
+                    let leadership_block = LeadershipBlock {
+                        block,
+                        new_ledger: ledger,
+                        leadership,
+                    };
                     sender
-                        .send(BlockMsg::LeadershipBlock(block))
+                        .send(BlockMsg::LeadershipBlock(leadership_block))
                         .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
                         .await?;
                     event_logs
@@ -644,10 +661,9 @@ impl Entry {
 async fn prepare_block(
     mut fragment_pool: MessageBox<TransactionMsg>,
     leader_id: EnclaveLeaderId,
-    block_date: BlockDate,
-    ledger: Arc<Ledger>,
+    ledger: ApplyBlockLedger,
     epoch_parameters: Arc<LedgerParameters>,
-) -> Result<Contents, LeadershipError> {
+) -> Result<(Contents, ApplyBlockLedger), LeadershipError> {
     use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 
     let (reply_handle, reply_future) = unary_reply();
@@ -656,8 +672,7 @@ async fn prepare_block(
 
     let msg = TransactionMsg::SelectTransactions {
         pool_idx: pool_idx as usize,
-        ledger: ledger.as_ref().clone(),
-        block_date,
+        ledger,
         ledger_params: epoch_parameters.as_ref().clone(),
         selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
         reply_handle,

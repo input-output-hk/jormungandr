@@ -208,6 +208,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let blockchain_tip = blockchain_tip.clone();
         let enclave = leadership::Enclave::new(enclave.clone());
         let fragment_msgbox = fragment_msgbox.clone();
+        let rewards_report_all = bootstrapped_node.settings.rewards_report_all;
 
         services.spawn_try_future("leadership", move |info| {
             leadership::Module::new(
@@ -217,6 +218,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 fragment_msgbox,
                 enclave,
                 block_msgbox,
+                rewards_report_all,
             )
             .and_then(|module| module.run())
         });

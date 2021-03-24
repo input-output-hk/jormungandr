@@ -176,12 +176,15 @@ impl Reference {
         self.check_block_date(block)?;
 
         let transition_state = Self::chain_epoch_info(Arc::clone(&self), block)?;
-        let metadata = block.header.to_content_eval_context();
+        let metadata = block.header.get_content_eval_context();
 
         transition_state.epoch_info.check_header(&block.header)?;
 
         let ledger = transition_state.ledger().apply_block(
-            transition_state.epoch_info.epoch_ledger_parameters(),
+            transition_state
+                .epoch_info
+                .epoch_ledger_parameters()
+                .clone(),
             &block.contents,
             &metadata,
         )?;

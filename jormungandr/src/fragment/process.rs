@@ -100,13 +100,11 @@ impl Process {
                     TransactionMsg::SelectTransactions {
                         pool_idx,
                         ledger,
-                        block_date,
                         ledger_params,
                         selection_alg,
                         reply_handle,
                     } => {
-                        let contents =
-                            pool.select(pool_idx, ledger, block_date, ledger_params, selection_alg);
+                        let contents = pool.select(pool_idx, ledger, ledger_params, selection_alg);
                         reply_handle.reply_ok(contents);
                     }
                 }

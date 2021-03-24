@@ -28,7 +28,7 @@ pub use self::{
     branch::Branch,
     chain::{
         new_epoch_leadership_from, Blockchain, CheckHeaderProof, EpochLeadership, Error, ErrorKind,
-        PreCheckedHeader, MAIN_BRANCH_TAG,
+        LeadershipBlock, PreCheckedHeader, MAIN_BRANCH_TAG,
     },
     chain_selection::{compare_against, ComparisonResult},
     checkpoints::Checkpoints,
