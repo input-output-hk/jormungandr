@@ -1,7 +1,8 @@
 use crate::{
-    network::p2p::{layers::LayersConfig, topic, Address, PolicyConfig},
+    network::p2p::Address,
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
+    topology::{layers::LayersConfig, topic, QuarantineConfig},
 };
 pub use jormungandr_lib::interfaces::{Cors, Rest, Tls, TrustedPeer};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
@@ -107,7 +108,7 @@ pub struct P2pConfig {
 
     /// setting for the policy
     #[serde(default)]
-    pub policy: PolicyConfig,
+    pub policy: QuarantineConfig,
 
     /// settings for the different custom layers
     // TODO: actually implement those custom layers
@@ -205,7 +206,7 @@ impl Default for P2pConfig {
             max_inbound_connections: None,
             max_connections_threshold: None,
             allow_private_addresses: false,
-            policy: PolicyConfig::default(),
+            policy: QuarantineConfig::default(),
             layers: LayersConfig::default(),
             max_unreachable_nodes_to_connect_per_event: None,
             gossip_interval: None,

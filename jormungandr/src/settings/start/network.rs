@@ -1,7 +1,6 @@
 use super::config::{self, InterestLevel, Topic};
-use crate::network::p2p::{
-    identifier_into_keynesis, layers::LayersConfig, Address, NodeId, PolicyConfig,
-};
+use crate::network::p2p::Address;
+use crate::topology::{layers::LayersConfig, NodeId, QuarantineConfig};
 
 use chain_crypto::Ed25519;
 use jormungandr_lib::{crypto::key::SigningKey, multiaddr};
@@ -88,7 +87,7 @@ pub struct Configuration {
     /// the default value for the timeout for inactive connection
     pub timeout: Duration,
 
-    pub policy: PolicyConfig,
+    pub policy: QuarantineConfig,
 
     pub layers: LayersConfig,
 
@@ -134,7 +133,7 @@ impl TrustedPeer {
             .ok_or(PeerResolveError::InvalidAddress)?;
         Ok(TrustedPeer {
             addr,
-            id: peer.id.clone().map(identifier_into_keynesis),
+            id: peer.id.clone().map(Into::into),
         })
     }
 }
