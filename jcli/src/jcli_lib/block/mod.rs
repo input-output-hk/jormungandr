@@ -131,14 +131,14 @@ impl Input {
 #[derive(StructOpt)]
 pub struct Common {
     #[structopt(flatten)]
-    input: Input,
+    pub input: Input,
 
     /// the file path to the block to create
     ///
     /// If not available the command will expect to write the block to
     /// to the standard output
     #[structopt(long = "output", parse(from_os_str), name = "FILE_OUTPUT")]
-    output_file: Option<std::path::PathBuf>,
+    pub output_file: Option<std::path::PathBuf>,
 }
 
 impl Common {
