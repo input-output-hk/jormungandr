@@ -1,5 +1,5 @@
-use super::{limits, Address};
-use crate::network::convert::Encode;
+use super::limits;
+use crate::network::p2p::Address;
 
 use chain_core::property;
 use chain_network::data as net_data;
@@ -13,7 +13,7 @@ pub use net_data::{Peer, Peers};
 pub struct Gossip(poldercast::Gossip);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Gossips(Vec<poldercast::Gossip>);
+pub struct Gossips(pub Vec<Gossip>);
 
 impl Gossip {
     #[inline]
@@ -107,34 +107,21 @@ impl From<poldercast::Gossip> for Gossip {
     }
 }
 
-impl From<Gossips> for net_data::gossip::Gossip {
-    fn from(gossips: Gossips) -> Self {
-        let nodes = gossips
-            .0
-            .into_iter()
-            .map(|node| Gossip(node).encode())
-            .collect::<Vec<_>>()
-            .into();
-        net_data::gossip::Gossip { nodes }
-    }
-}
-
 impl From<Vec<poldercast::Gossip>> for Gossips {
     fn from(gossips: Vec<poldercast::Gossip>) -> Gossips {
-        Gossips(gossips)
+        Gossips(gossips.into_iter().map(Gossip::from).collect())
     }
 }
 
 impl From<Gossips> for Vec<poldercast::Gossip> {
     fn from(gossips: Gossips) -> Vec<poldercast::Gossip> {
-        gossips.0
+        gossips.0.into_iter().map(|gossip| gossip.0).collect()
     }
 }
 
 impl From<Vec<Gossip>> for Gossips {
     fn from(gossips: Vec<Gossip>) -> Self {
-        let v: Vec<_> = gossips.into_iter().map(|gossip| gossip.0).collect();
-        Gossips(v)
+        Gossips(gossips)
     }
 }
 

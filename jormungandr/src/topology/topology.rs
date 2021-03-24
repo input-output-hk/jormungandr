@@ -1,66 +1,26 @@
 //! module defining the p2p topology management objects
 //!
+use super::{topic, Gossip, Gossips, NodeId, Peer, PeerInfo, Quarantine};
 
-use crate::{
-    network::p2p::{Address, Gossip, Gossips, Quarantine},
-    settings::start::network::Configuration,
-};
-use jormungandr_lib::time::SystemTime;
+use crate::settings::start::network::Configuration;
+use chain_crypto::Ed25519;
+use jormungandr_lib::crypto::key::SigningKey;
 use poldercast::{Profile, Topology};
+use std::convert::TryInto;
 use tokio::sync::RwLock;
 use tracing::instrument;
-
-use super::{topic, NodeId};
-
-use std::hash::{Hash, Hasher};
-use std::net::{IpAddr, Ipv4Addr};
-use std::sync::Arc;
 
 lazy_static! {
     static ref LOCAL_ADDR: Address = Address::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0);
 }
 
-#[derive(Eq, Clone, Serialize, Debug)]
-pub struct ProfileInfo {
-    #[serde(with = "serde_with::rust::display_fromstr")]
-    pub id: NodeId,
-    pub address: Address,
-    pub last_update: SystemTime,
-    pub quarantined: Option<SystemTime>,
-    pub subscriptions: Vec<(String, String)>,
-}
-
-impl PartialEq for ProfileInfo {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.address == other.address
-    }
-}
-
-impl Hash for ProfileInfo {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-        self.address.hash(state);
-    }
-}
-
-impl From<&Arc<Profile>> for ProfileInfo {
-    fn from(other: &Arc<Profile>) -> Self {
-        Self {
-            id: other.id(),
-            address: other.address(),
-            last_update: other.last_update().to_system_time().into(),
-            quarantined: None,
-            subscriptions: other
-                .subscriptions()
-                .iter()
-                .map(|s| (s.topic().to_string(), format!("{:?}", s.interest_level())))
-                .collect(),
-        }
-    }
+pub fn secret_key_into_keynesis(key: SigningKey<Ed25519>) -> keynesis::key::ed25519::SecretKey {
+    let key_bytes = key.into_secret_key().leak_secret();
+    key_bytes.as_ref().try_into().unwrap()
 }
 
 pub struct View {
-    pub peers: Vec<Arc<Profile>>,
+    pub peers: Vec<Peer>,
 }
 
 struct Inner {
@@ -95,7 +55,15 @@ impl P2pTopology {
     /// to contact for event dissemination.
     pub async fn view(&self, selection: poldercast::layer::Selection) -> View {
         let mut inner = self.lock.write().await;
-        let peers = inner.topology.view(None, selection).into_iter().collect();
+        let peers = inner
+            .topology
+            .view(None, selection)
+            .into_iter()
+            .map(|profile| Peer {
+                addr: profile.address(),
+                id: Some(NodeId(profile.id())),
+            })
+            .collect();
         View { peers }
     }
 
@@ -104,7 +72,7 @@ impl P2pTopology {
     pub async fn initiate_gossips(&self, recipient: Option<&NodeId>) -> Gossips {
         let mut inner = self.lock.write().await;
         let mut gossips = if let Some(recipient) = recipient {
-            inner.topology.gossips_for(recipient)
+            inner.topology.gossips_for(recipient.as_ref())
         } else {
             Vec::new()
         };
@@ -135,10 +103,10 @@ impl P2pTopology {
             // in poldercast and then re-enters the topology in the 'pool'
             // pool, all while we hold the node in quarantine.
             // If that happens we should not promote it anymore.
-            let is_dirty = inner.topology.peers().dirty().contains(&node.id);
+            let is_dirty = inner.topology.peers().dirty().contains(node.id.as_ref());
             if is_dirty {
                 tracing::debug!(node = %node.address, "lifting node from quarantine");
-                inner.topology.promote_peer(&node.id);
+                inner.topology.promote_peer(&node.id.as_ref());
             } else {
                 tracing::debug!(node = %node.address, "node from quarantine have left the dirty pool. skipping it");
             }
@@ -147,11 +115,11 @@ impl P2pTopology {
 
     // This may return nodes that are still quarantined but have been
     // forgotten by the underlying poldercast implementation.
-    pub async fn list_quarantined(&self) -> Vec<ProfileInfo> {
+    pub async fn list_quarantined(&self) -> Vec<PeerInfo> {
         self.lock.read().await.quarantine.quarantined_nodes()
     }
 
-    pub async fn list_available(&self) -> Vec<ProfileInfo> {
+    pub async fn list_available(&self) -> Vec<PeerInfo> {
         let inner = self.lock.read().await;
         let profiles = inner.topology.peers();
         profiles
@@ -162,7 +130,7 @@ impl P2pTopology {
             .collect()
     }
 
-    pub async fn list_non_public(&self) -> Vec<ProfileInfo> {
+    pub async fn list_non_public(&self) -> Vec<PeerInfo> {
         let inner = self.lock.read().await;
         let profiles = inner.topology.peers();
         profiles
@@ -182,18 +150,18 @@ impl P2pTopology {
     /// register that we were able to establish an handshake with given peer
     pub async fn promote_node(&self, node: &NodeId) {
         let mut inner = self.lock.write().await;
-        inner.topology.promote_peer(node);
+        inner.topology.promote_peer(node.as_ref());
     }
 
     /// register a strike against the given peer
     pub async fn report_node(&self, node_id: &NodeId) {
         let mut inner = self.lock.write().await;
-        if let Some(node) = inner.topology.get(node_id).cloned() {
+        if let Some(node) = inner.topology.get(node_id.as_ref()).cloned() {
             if inner.quarantine.quarantine_node((&node).into()) {
-                inner.topology.remove_peer(node_id);
-                // Don't know what is the purpose of trusted peers in poldercast,
-                // this is a quick hack to treat those as standard ones
-                inner.topology.remove_peer(node_id);
+                inner.topology.remove_peer(node_id.as_ref());
+                // Trusted peers in poldercast requires to be demoted 2 times before
+                // moving to the dirty pool
+                inner.topology.remove_peer(node_id.as_ref());
             }
         }
     }

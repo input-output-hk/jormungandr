@@ -1,4 +1,5 @@
-use crate::network::p2p::{Address, ProfileInfo};
+use crate::network::p2p::Address;
+use crate::topology::PeerInfo;
 use jormungandr_lib::time::Duration;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
@@ -19,11 +20,11 @@ const DEFAULT_MAX_NUM_QUARANTINE_RECORDS: usize = 24_000;
 pub struct Quarantine {
     quarantine_duration: StdDuration,
     quarantine_whitelist: HashSet<Address>,
-    quarantined_records: LruCache<ProfileInfo, Instant>,
+    quarantined_records: LruCache<PeerInfo, Instant>,
 }
 
 impl Quarantine {
-    pub fn from_config(config: PolicyConfig) -> Self {
+    pub fn from_config(config: QuarantineConfig) -> Self {
         Self {
             quarantine_duration: StdDuration::from(config.quarantine_duration),
             quarantine_whitelist: config
@@ -41,7 +42,7 @@ impl Quarantine {
 
     // Returns whether the node was quarantined or not
     #[instrument(skip(self), level = "trace")]
-    pub fn quarantine_node(&mut self, mut node: ProfileInfo) -> bool {
+    pub fn quarantine_node(&mut self, mut node: PeerInfo) -> bool {
         if self.quarantine_whitelist.contains(&node.address) {
             tracing::debug!(
                 node = %node.address,
@@ -56,14 +57,14 @@ impl Quarantine {
         }
     }
 
-    pub fn quarantined_nodes(&self) -> Vec<ProfileInfo> {
+    pub fn quarantined_nodes(&self) -> Vec<PeerInfo> {
         self.quarantined_records
             .iter()
             .map(|(k, _)| k.clone())
             .collect()
     }
 
-    pub fn lift_from_quarantine(&mut self) -> Vec<ProfileInfo> {
+    pub fn lift_from_quarantine(&mut self) -> Vec<PeerInfo> {
         let mut res = Vec::new();
         // This is basically a FIFO queue, a lru cache is being used just to
         // avoid keeping another data structure to know if an address was already quarantined
@@ -92,7 +93,7 @@ impl Default for Quarantine {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
-pub struct PolicyConfig {
+pub struct QuarantineConfig {
     quarantine_duration: Duration,
     #[serde(default)]
     max_quarantine: Option<Duration>,
@@ -102,7 +103,7 @@ pub struct PolicyConfig {
     quarantine_whitelist: HashSet<multiaddr::Multiaddr>,
 }
 
-impl Default for PolicyConfig {
+impl Default for QuarantineConfig {
     fn default() -> Self {
         Self {
             quarantine_duration: Duration::from(DEFAULT_QUARANTINE_DURATION),
