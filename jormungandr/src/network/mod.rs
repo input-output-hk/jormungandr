@@ -19,7 +19,6 @@ use futures::{future, prelude::*};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use thiserror::Error;
-use tokio::time;
 use tokio_util::sync::CancellationToken;
 
 // Constants
@@ -73,16 +72,13 @@ mod security_params {
 }
 
 use self::client::ConnectError;
-use self::p2p::{comm::Peers, NodeId, P2pTopology};
+use self::p2p::comm::Peers;
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
-use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TransactionMsg};
+use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TopologyMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Peer, Protocol};
-use crate::utils::{
-    async_msg::{MessageBox, MessageQueue},
-    task::TokioServiceInfo,
-};
-use chain_network::data::gossip::Gossip;
+use crate::topology::NodeId;
+use crate::utils::async_msg::{MessageBox, MessageQueue};
 use chain_network::data::NodeKeyPair;
 use rand::seq::SliceRandom;
 use tonic::transport;
@@ -121,6 +117,14 @@ impl error::Error for ListenError {
     }
 }
 
+#[derive(Error, Debug)]
+enum PropagateError {
+    #[error("Error sending message to task due to {0}")]
+    InternalCommSend(#[from] futures::channel::mpsc::SendError),
+    #[error("Error receving message from task due to {0}")]
+    InternalCommRecv(#[from] crate::intercom::Error),
+}
+
 type Connection = SocketAddr;
 
 /// all the different channels the network may need to talk to
@@ -128,6 +132,7 @@ pub struct Channels {
     pub client_box: MessageBox<ClientMsg>,
     pub transaction_box: MessageBox<TransactionMsg>,
     pub block_box: MessageBox<BlockMsg>,
+    pub topology_box: MessageBox<TopologyMsg>,
 }
 
 impl Clone for Channels {
@@ -136,6 +141,7 @@ impl Clone for Channels {
             client_box: self.client_box.clone(),
             transaction_box: self.transaction_box.clone(),
             block_box: self.block_box.clone(),
+            topology_box: self.topology_box.clone(),
         }
     }
 }
@@ -145,7 +151,6 @@ pub struct GlobalState {
     block0_hash: HeaderHash,
     config: Configuration,
     stats_counter: StatsCounter,
-    topology: P2pTopology,
     peers: Peers,
     keypair: NodeKeyPair,
     span: Span,
@@ -172,13 +177,10 @@ impl GlobalState {
 
         let keypair = NodeKeyPair::generate(&mut prng);
 
-        let topology = P2pTopology::new(&config);
-
         GlobalState {
             block0_hash,
             config,
             stats_counter,
-            topology,
             peers,
             keypair,
             span,
@@ -191,10 +193,6 @@ impl GlobalState {
 
     pub fn node_address(&self) -> Option<SocketAddr> {
         self.config.public_address
-    }
-
-    pub fn topology(&self) -> &P2pTopology {
-        &self.topology
     }
 
     pub fn spawn<F>(&self, f: F)
@@ -267,7 +265,7 @@ pub struct TaskParams {
     pub channels: Channels,
 }
 
-pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
+pub async fn start(params: TaskParams) {
     // TODO: the node needs to be saved/loaded
     //
     // * the ID needs to be consistent between restart;
@@ -458,7 +456,7 @@ fn connect_and_propagate(
     node_addr: SocketAddr,
     node_id: Option<NodeId>,
     state: GlobalStateR,
-    channels: Channels,
+    mut channels: Channels,
     mut options: p2p::comm::ConnectOptions,
 ) {
     let _enter = state.span.enter();
@@ -475,7 +473,7 @@ fn connect_and_propagate(
     let _enter = conn_span.enter();
     let conn_state = ConnectionState::new(state.clone(), &peer, conn_span.clone());
     tracing::info!("connecting to peer");
-    let (handle, connecting) = client::connect(conn_state, channels);
+    let (handle, connecting) = client::connect(conn_state, channels.clone());
     let spawn_state = state.clone();
     let cf = async move {
         state.peers.add_connecting(node_addr, handle, options).await;
@@ -501,7 +499,13 @@ fn connect_and_propagate(
                 };
                 if !benign {
                     if let Some(id) = node_id {
-                        state.topology.report_node(&id).await;
+                        channels
+                            .topology_box
+                            .send(TopologyMsg::DemotePeer(id))
+                            .await
+                            .unwrap_or_else(|e| {
+                                tracing::error!("Error sending message to topology task: {}", e)
+                            });
                     }
                     state.peers.remove_peer(node_addr).await;
                 }
@@ -513,7 +517,13 @@ fn connect_and_propagate(
 
                 state.inc_client_count();
                 if let Some(id) = node_id {
-                    state.topology().promote_node(&id).await;
+                    channels
+                        .topology_box
+                        .send(TopologyMsg::PromotePeer(id))
+                        .await
+                        .unwrap_or_else(|e| {
+                            tracing::error!("Error sending message to topology task: {}", e)
+                        });
                 }
                 tracing::debug!(client_count = state.client_count(), "connected to peer");
                 client.await;
