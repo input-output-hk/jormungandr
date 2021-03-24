@@ -298,31 +298,8 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
         }
     };
 
-    service_info.spawn(
-        "gossip",
-        start_gossiping(global_state.clone(), channels.clone()),
-    );
-
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
-
-    let reset_state = global_state.clone();
-
-    if let Some(interval) = global_state.config.topology_force_reset_interval {
-        service_info.run_periodic("force reset topology", interval, move || {
-            let state = reset_state.clone();
-            async move { state.topology.force_reset_layers().await }
-        });
-    }
-
-    let gossip = async {
-        let mut gossip_interval = time::interval(global_state.config.gossip_interval);
-        loop {
-            gossip_interval.tick().await;
-            send_gossip(global_state.clone(), channels.clone()).await
-        }
-    };
-
-    future::join3(listener, handle_cmds, gossip).await;
+    future::join(listener, handle_cmds).await;
 }
 
 async fn handle_network_input(
@@ -333,7 +310,9 @@ async fn handle_network_input(
     while let Some(msg) = input.next().await {
         match msg {
             NetworkMsg::Propagate(msg) => {
-                handle_propagation_msg(msg, state.clone(), channels.clone()).await;
+                handle_propagation_msg(msg, state.clone(), channels.clone())
+                    .await
+                    .unwrap_or_else(|e| tracing::error!("Error while propagating message: {}", e));
             }
             NetworkMsg::GetBlocks(block_ids) => state.peers.fetch_blocks(block_ids.encode()).await,
             NetworkMsg::GetNextBlock(node_id, block_id) => {
@@ -360,61 +339,100 @@ async fn handle_network_input(
     }
 }
 
-async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels: Channels) {
+async fn handle_propagation_msg(
+    msg: PropagateMsg,
+    state: GlobalStateR,
+    channels: Channels,
+) -> Result<(), PropagateError> {
+    use crate::topology::Peer;
+    use poldercast::layer::Selection;
     async {
+        // propagate message to every peer and return the ones that we could not contact
+        // FIXME: this is a workaround because we need to know also the id of the nodes that failed to connect,
+        // it should not be less efficient, just less clean. Remove this once we decided what to do with peers
+        // and ids.
+        async fn propagate<F, Fut, E>(f: F, peers: Vec<Peer>) -> Vec<Peer>
+        where
+            F: Fn(Vec<SocketAddr>) -> Fut,
+            Fut: Future<Output = Result<(), E>>,
+        {
+            let mut res = Vec::new();
+            for peer in peers {
+                if f(vec![peer.addr]).await.is_err() {
+                    res.push(peer);
+                }
+            }
+            res
+        }
+
+        async fn get_view(
+            selection: Selection,
+            mut mbox: MessageBox<TopologyMsg>,
+        ) -> Result<Vec<Peer>, PropagateError> {
+            let (reply_handle, reply_future) = crate::intercom::unary_reply();
+            mbox.send(TopologyMsg::View(selection, reply_handle))
+                .await?;
+            Ok(reply_future.await.map(|view| view.peers)?)
+            //.map_err(|e| PropagateError::intercom("topology", Box::new(e)))
+        }
+
         let prop_state = state.clone();
-        let propagate_res = match &msg {
+        let unreached_nodes = match &msg {
             PropagateMsg::Block(header) => {
                 tracing::debug!(hash = %header.hash(), "block to propagate");
                 let header = header.encode();
-                let view = state
-                    .topology
-                    .view(poldercast::layer::Selection::Topic {
-                        topic: p2p::topic::BLOCKS,
-                    })
-                    .await;
-                prop_state
-                    .peers
-                    .propagate_block(
-                        view.peers
-                            .into_iter()
-                            .map(|profile| (profile.address(), profile.id()))
-                            .collect(),
-                        header,
-                    )
-                    .await
+                let view = get_view(
+                    Selection::Topic {
+                        topic: crate::topology::topic::BLOCKS,
+                    },
+                    channels.topology_box.clone(),
+                )
+                .await?;
+                propagate(
+                    |addr| prop_state.peers.propagate_block(addr, header.clone()),
+                    view,
+                )
+                .await
             }
             PropagateMsg::Fragment(fragment) => {
                 tracing::debug!(hash = %fragment.hash(), "fragment to propagate");
                 let fragment = fragment.encode();
-                let view = state
-                    .topology
-                    .view(poldercast::layer::Selection::Topic {
-                        topic: p2p::topic::MESSAGES,
-                    })
-                    .await;
+                let view = get_view(
+                    Selection::Topic {
+                        topic: crate::topology::topic::MESSAGES,
+                    },
+                    channels.topology_box.clone(),
+                )
+                .await?;
 
-                prop_state
+                propagate(
+                    |addr| prop_state.peers.propagate_fragment(addr, fragment.clone()),
+                    view,
+                )
+                .await
+            }
+            PropagateMsg::Gossip(peer, gossips) => {
+                tracing::debug!("gossip to propagate");
+                let gossip = gossips.encode();
+                match prop_state
                     .peers
-                    .propagate_fragment(
-                        view.peers
-                            .into_iter()
-                            .map(|profile| (profile.address(), profile.id()))
-                            .collect(),
-                        fragment,
-                    )
+                    .propagate_gossip_to(peer.addr, gossip)
                     .await
+                {
+                    Err(_) => vec![peer.clone()],
+                    Ok(_) => Vec::new(),
+                }
             }
         };
         // If any nodes selected for propagation are not in the
         // active subscriptions map, connect to them and deliver
         // the item.
-        if let Err(unreached_nodes) = propagate_res {
+        if !unreached_nodes.is_empty() {
             tracing::debug!(
                 "will try to connect to the peers not immediately reachable for propagation: {:?}",
                 unreached_nodes,
             );
-            for (addr, id) in unreached_nodes {
+            for Peer { addr, id } in unreached_nodes {
                 let mut options = p2p::comm::ConnectOptions::default();
                 match &msg {
                     PropagateMsg::Block(header) => {
@@ -423,63 +441,20 @@ async fn handle_propagation_msg(msg: PropagateMsg, state: GlobalStateR, channels
                     PropagateMsg::Fragment(fragment) => {
                         options.pending_fragment = Some(fragment.encode());
                     }
+                    PropagateMsg::Gossip(_, gossip) => {
+                        options.pending_gossip = Some(gossip.encode());
+                    }
                 };
-                connect_and_propagate(addr, Some(id), state.clone(), channels.clone(), options);
+                connect_and_propagate(addr, id, state.clone(), channels.clone(), options);
             }
         }
+        Ok(())
     }
     .instrument(state.span.clone())
     .await
 }
 
-async fn start_gossiping(state: GlobalStateR, channels: Channels) {
-    let config = &state.config;
-    let span = span!(parent: &state.span, Level::TRACE, "sub_task", kind = "start_gossip");
-    async {
-        tracing::debug!("connecting to {} peers", config.trusted_peers.len());
-        for peer in &config.trusted_peers {
-            let gossip = state.topology.initiate_gossips(None).await;
-            let options = p2p::comm::ConnectOptions {
-                pending_gossip: Some(Gossip::from(gossip)),
-                ..Default::default()
-            };
-            connect_and_propagate(peer.addr, None, state.clone(), channels.clone(), options);
-        }
-    }
-    .instrument(span)
-    .await
-}
-
-async fn send_gossip(state: GlobalStateR, channels: Channels) {
-    let topology = &state.topology;
-    let span = span!(parent: &state.span, Level::TRACE, "sub_task", kind = "send_gossip");
-    async {
-        let view = topology.view(poldercast::layer::Selection::Any).await;
-        let peers = view.peers;
-        tracing::debug!("sending gossip to {} peers", peers.len());
-        for peer in peers {
-            let addr = peer.address();
-            let id = peer.id();
-            let gossips = topology.initiate_gossips(Some(&id)).await;
-            let res = state
-                .clone()
-                .peers
-                .propagate_gossip_to(addr, Gossip::from(gossips))
-                .await;
-            if let Err(gossip) = res {
-                let options = p2p::comm::ConnectOptions {
-                    pending_gossip: Some(gossip),
-                    ..Default::default()
-                };
-                connect_and_propagate(addr, Some(id), state.clone(), channels.clone(), options);
-            }
-        }
-    }
-    .instrument(span)
-    .await
-}
-
-// node_id should be none only for trusted peer for which we do not know
+// node_id should be missing only for trusted peer for which we do not know
 // the public key
 fn connect_and_propagate(
     node_addr: SocketAddr,
