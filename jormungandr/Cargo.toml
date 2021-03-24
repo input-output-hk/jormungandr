@@ -39,7 +39,7 @@ jormungandr-lib = { path = "../jormungandr-lib" }
 keynesis = "1.1"
 lazy_static = "1.4"
 linked-hash-map = "0.5"
-poldercast = { git = "https://github.com/Zeegomo/poldercast", branch = "master" }
+poldercast = "1.2"
 multiaddr = { package = "parity-multiaddr", version = "0.11" }
 rand = "0.8"
 rand_chacha = "0.3"
