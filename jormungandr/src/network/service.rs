@@ -5,7 +5,7 @@ use super::{
     subscription, Channels, GlobalStateR,
 };
 use crate::blockcfg as app_data;
-use crate::intercom::{self, BlockMsg, ClientMsg};
+use crate::intercom::{self, BlockMsg, ClientMsg, TopologyMsg};
 use crate::utils::async_msg::MessageBox;
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
 use chain_network::data::p2p::{AuthenticatedNodeId, Peer, Peers};
@@ -330,8 +330,14 @@ impl GossipService for NodeService {
         );
 
         self.global_state.spawn(
-            subscription::process_gossip(stream, addr, self.global_state.clone(), span.clone())
-                .instrument(span),
+            subscription::process_gossip(
+                stream,
+                self.channels.topology_box.clone(),
+                addr,
+                self.global_state.clone(),
+                span.clone(),
+            )
+            .instrument(span),
         );
 
         let outbound = self.global_state.peers.subscribe_to_gossip(addr).await;
@@ -339,11 +345,17 @@ impl GossipService for NodeService {
     }
 
     async fn peers(&self, limit: u32) -> Result<Peers, Error> {
-        let topology = &self.global_state.topology;
-        let view = topology.view(poldercast::layer::Selection::Any).await;
+        let (reply_handle, reply_future) = intercom::unary_reply();
+        let mbox = self.channels.topology_box.clone();
+        send_message(
+            mbox,
+            TopologyMsg::View(poldercast::layer::Selection::Any, reply_handle),
+        )
+        .await?;
+        let view = reply_future.await?;
         let mut peers = Vec::new();
         for peer in view.peers.into_iter() {
-            peers.push(peer.address().into());
+            peers.push(peer.addr.into());
             if peers.len() >= limit as usize {
                 break;
             }

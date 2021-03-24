@@ -1,13 +1,9 @@
-use super::{
-    buffer_sizes,
-    convert::Decode,
-    p2p::{Address, Gossip},
-    GlobalStateR,
-};
+use super::{buffer_sizes, convert::Decode, p2p::Address, GlobalStateR};
 use crate::{
     blockcfg::Fragment,
-    intercom::{BlockMsg, TransactionMsg},
+    intercom::{BlockMsg, TopologyMsg, TransactionMsg},
     settings::start::network::Configuration,
+    topology::Gossip,
     utils::async_msg::{self, MessageBox},
 };
 use chain_network::data as net_data;
@@ -60,11 +56,16 @@ pub async fn process_block_announcements<S>(
         });
 }
 
-pub async fn process_gossip<S>(stream: S, node_id: Address, global_state: GlobalStateR, span: Span)
-where
+pub async fn process_gossip<S>(
+    stream: S,
+    mbox: MessageBox<TopologyMsg>,
+    node_id: Address,
+    global_state: GlobalStateR,
+    span: Span,
+) where
     S: TryStream<Ok = net_data::Gossip, Error = Error>,
 {
-    let processor = GossipProcessor::new(node_id, global_state, span);
+    let processor = GossipProcessor::new(mbox, node_id, global_state, span);
     stream
         .into_stream()
         .forward(processor)
@@ -192,6 +193,7 @@ impl FragmentProcessor {
 }
 
 pub struct GossipProcessor {
+    mbox: MessageBox<TopologyMsg>,
     node_id: Address,
     global_state: GlobalStateR,
     span: Span,
@@ -199,8 +201,14 @@ pub struct GossipProcessor {
 }
 
 impl GossipProcessor {
-    pub(super) fn new(node_id: Address, global_state: GlobalStateR, span: Span) -> Self {
+    pub(super) fn new(
+        mbox: MessageBox<TopologyMsg>,
+        node_id: Address,
+        global_state: GlobalStateR,
+        span: Span,
+    ) -> Self {
         GossipProcessor {
+            mbox,
             node_id,
             global_state,
             span,
@@ -398,7 +406,7 @@ impl Sink<net_data::Gossip> for GossipProcessor {
             tracing::debug!("nodes dropped from gossip: {:?}", filtered_out);
         }
         let state1 = self.global_state.clone();
-        let state2 = self.global_state.clone();
+        let mut mbox = self.mbox.clone();
         let node_id = self.node_id;
         let fut = future::join(
             async move {
@@ -408,7 +416,11 @@ impl Sink<net_data::Gossip> for GossipProcessor {
                 }
             },
             async move {
-                state2.topology.accept_gossips(nodes.into()).await;
+                mbox.send(TopologyMsg::AcceptGossip(nodes.into()))
+                    .await
+                    .unwrap_or_else(|err| {
+                        tracing::error!("cannot send gossips to topology: {}", err)
+                    });
             },
         )
         .instrument(span.clone())

@@ -94,6 +94,7 @@ impl Client {
             ),
         );
         let gossip_sink = GossipProcessor::new(
+            builder.channels.topology_box,
             inbound.peer_address,
             global_state.clone(),
             span!(

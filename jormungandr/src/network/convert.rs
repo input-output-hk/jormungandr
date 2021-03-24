@@ -1,6 +1,6 @@
-use super::p2p::Gossip;
 use crate::blockcfg::{Block, Fragment, Header, HeaderId};
 use crate::intercom;
+use crate::topology::{Gossip, Gossips};
 use chain_core::mempack::{ReadBuf, Readable};
 use chain_core::property::{Deserialize, Serialize};
 use chain_network::data as net_data;
@@ -144,5 +144,19 @@ impl Encode for Gossip {
     fn encode(&self) -> Self::NetworkData {
         let bytes = self.serialize_as_vec().unwrap();
         net_data::gossip::Node::from_bytes(bytes)
+    }
+}
+
+impl Encode for Gossips {
+    type NetworkData = net_data::gossip::Gossip;
+
+    fn encode(&self) -> Self::NetworkData {
+        let nodes = self
+            .0
+            .iter()
+            .map(|node| Gossip::encode(node))
+            .collect::<Vec<net_data::gossip::Node>>()
+            .into_boxed_slice();
+        net_data::gossip::Gossip { nodes }
     }
 }
