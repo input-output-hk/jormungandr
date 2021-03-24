@@ -146,7 +146,7 @@ mod test {
 
     impl Arbitrary for KESUpdateSpeed {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            use rand::Rng as _;
+            use rand07::Rng as _;
             let v = g.gen_range(
                 MINIMUM_KES_SPEED_UPDATE_IN_SECONDS,
                 MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS,

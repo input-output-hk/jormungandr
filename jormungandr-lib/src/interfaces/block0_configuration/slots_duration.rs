@@ -151,7 +151,7 @@ mod test {
 
     impl Arbitrary for SlotDuration {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            use rand::Rng as _;
+            use rand07::Rng as _;
             let v = g.gen_range(MINIMUM_SLOT_DURATION, MAXIMUM_SLOT_DURATION);
             SlotDuration(v)
         }

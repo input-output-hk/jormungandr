@@ -16,13 +16,13 @@ chain-time           = { git = "https://github.com/input-output-hk/chain-libs.gi
 chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-rand = "0.7"
-rand_core = "0.5"
-rand_chacha = "0.2"
+rand = "0.8"
+rand_core = "0.6"
+rand_chacha = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 thiserror = "1.0"
-poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "8305f1560392a9d26673ca996e7646c8834533ef" }
+poldercast = { git = "https://github.com/eugene-babichenko/poldercast.git", branch = "support-v0.13" }
 multiaddr = { package = "parity-multiaddr", version = "0.9" }
 hex = "0.4"
 bech32 = "0.7"
@@ -30,8 +30,9 @@ base64 = "0.13.0"
 http = "0.2.2"
 
 [dev-dependencies]
-rand = "0.7"
 quickcheck = "0.9"
+# FIXME required to work with quickcheck 0.9. Remove after migrating another crate or newer quickcheck
+rand07 = { package = "rand", version = "0.7" }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }

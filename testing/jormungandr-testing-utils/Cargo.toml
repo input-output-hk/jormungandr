@@ -28,14 +28,14 @@ cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.
 typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
-rand = "0.7"
-rand_core = "0.5"
-rand_chacha = "0.2"
+rand = "0.8"
+rand_core = "0.6"
+rand_chacha = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 custom_debug = "0.5"
 thiserror = "1.0"
-poldercast = { git = "https://github.com/primetype/poldercast.git", rev = "8305f1560392a9d26673ca996e7646c8834533ef" }
+poldercast = { git = "https://github.com/eugene-babichenko/poldercast.git", branch = "support-v0.13" }
 sysinfo = { version = "0.16.5" }
 os_info = { version = "3.0.1", default-features = false }
 zip = "0.5.6"

@@ -134,7 +134,7 @@ mod test {
 
     impl Arbitrary for NumberOfSlotsPerEpoch {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            use rand::Rng as _;
+            use rand07::Rng as _;
             let v = g.gen_range(
                 MINIMUM_NUMBER_OF_SLOTS_PER_EPOCH,
                 MAXIMUM_NUMBER_OF_SLOTS_PER_EPOCH,
