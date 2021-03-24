@@ -45,6 +45,7 @@ pub mod start_up;
 pub mod state;
 mod stats_counter;
 pub mod stuck_notifier;
+pub mod topology;
 pub mod utils;
 
 use stats_counter::StatsCounter;
@@ -76,6 +77,7 @@ const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 32;
 const EXPLORER_TASK_QUEUE_LEN: usize = 32;
 const CLIENT_TASK_QUEUE_LEN: usize = 32;
+const TOPOLOGY_TASK_QUEUE_LEN: usize = 32;
 const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
@@ -95,6 +97,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let (block_msgbox, block_queue) = async_msg::channel(BLOCK_TASK_QUEUE_LEN);
     let (fragment_msgbox, fragment_queue) = async_msg::channel(FRAGMENT_TASK_QUEUE_LEN);
     let (client_msgbox, client_queue) = async_msg::channel(CLIENT_TASK_QUEUE_LEN);
+    let (topology_msgbox, topology_queue) = async_msg::channel(TOPOLOGY_TASK_QUEUE_LEN);
     let blockchain_tip = bootstrapped_node.blockchain_tip;
     let blockchain = bootstrapped_node.blockchain;
     let leadership_logs =
@@ -174,16 +177,27 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             client_box: client_msgbox,
             transaction_box: fragment_msgbox,
             block_box: block_msgbox,
+            topology_box: topology_msgbox.clone(),
         };
 
-        services.spawn_future("network", move |info| {
+        services.spawn_future("network", move |_| {
             let params = network::TaskParams {
                 global_state,
                 input: network_queue,
                 channels,
             };
-            network::start(info, params)
+            network::start(params)
         });
+    }
+
+    {
+        let task_data = topology::TaskData {
+            config: bootstrapped_node.settings.network.clone(),
+            network_msgbox: network_msgbox.clone(),
+            topology_queue,
+        };
+
+        services.spawn_future("topology", move |info| topology::start(info, task_data));
     }
 
     let leader_secrets: Result<Vec<Leader>, start_up::Error> = bootstrapped_node
@@ -240,6 +254,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             stats_counter,
             network_task: network_msgbox,
             transaction_task: fragment_msgbox,
+            topology_task: topology_msgbox,
             leadership_logs,
             enclave,
             network_state,
