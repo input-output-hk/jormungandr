@@ -103,8 +103,11 @@ impl Process {
                         ledger_params,
                         selection_alg,
                         reply_handle,
+                        abort_future,
                     } => {
-                        let contents = pool.select(pool_idx, ledger, ledger_params, selection_alg);
+                        let contents = pool
+                            .select(pool_idx, ledger, ledger_params, selection_alg, abort_future)
+                            .await;
                         reply_handle.reply_ok(contents);
                     }
                 }
