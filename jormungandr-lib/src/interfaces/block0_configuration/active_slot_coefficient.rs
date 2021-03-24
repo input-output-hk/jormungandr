@@ -171,7 +171,7 @@ mod test {
 
     impl Arbitrary for ActiveSlotCoefficient {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            use rand::Rng as _;
+            use rand07::Rng as _;
             let v = g.gen_range(
                 MINIMUM_ACTIVE_SLOT_COEFFICIENT,
                 MAXIMUM_ACTIVE_SLOT_COEFFICIENT,
