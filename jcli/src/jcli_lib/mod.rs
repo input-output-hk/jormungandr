@@ -1,12 +1,12 @@
-mod address;
-mod auto_completion;
-mod block;
-mod certificate;
-mod debug;
-mod key;
-mod rest;
-mod transaction;
-mod vote;
+pub mod address;
+pub mod auto_completion;
+pub mod block;
+pub mod certificate;
+pub mod debug;
+pub mod key;
+pub mod rest;
+pub mod transaction;
+pub mod vote;
 
 pub mod utils;
 
