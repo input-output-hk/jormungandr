@@ -7,7 +7,6 @@ use chain_crypto::Ed25519;
 use jormungandr_lib::crypto::key::SigningKey;
 use poldercast::{Profile, Topology};
 use std::convert::TryInto;
-use tokio::sync::RwLock;
 use tracing::instrument;
 
 lazy_static! {
@@ -23,14 +22,10 @@ pub struct View {
     pub peers: Vec<Peer>,
 }
 
-struct Inner {
-    topology: Topology,
-    quarantine: Quarantine,
-}
-
 /// object holding the P2pTopology of the Node
 pub struct P2pTopology {
-    lock: RwLock<Inner>,
+    topology: Topology,
+    quarantine: Quarantine,
 }
 
 impl P2pTopology {
@@ -42,20 +37,16 @@ impl P2pTopology {
         let mut topology = Topology::new(addr, &key);
         topology.subscribe_topic(topic::MESSAGES);
         topology.subscribe_topic(topic::BLOCKS);
-        let inner = Inner {
+        P2pTopology {
             topology,
             quarantine,
-        };
-        P2pTopology {
-            lock: RwLock::new(inner),
         }
     }
 
     /// Returns a list of neighbors selected in this turn
     /// to contact for event dissemination.
-    pub async fn view(&self, selection: poldercast::layer::Selection) -> View {
-        let mut inner = self.lock.write().await;
-        let peers = inner
+    pub fn view(&mut self, selection: poldercast::layer::Selection) -> View {
+        let peers = self
             .topology
             .view(None, selection)
             .into_iter()
@@ -69,10 +60,9 @@ impl P2pTopology {
 
     // If the recipient is not specified gossip will only contain information
     // about this node
-    pub async fn initiate_gossips(&self, recipient: Option<&NodeId>) -> Gossips {
-        let mut inner = self.lock.write().await;
+    pub fn initiate_gossips(&mut self, recipient: Option<&NodeId>) -> Gossips {
         let mut gossips = if let Some(recipient) = recipient {
-            inner.topology.gossips_for(recipient.as_ref())
+            self.topology.gossips_for(recipient.as_ref())
         } else {
             Vec::new()
         };
@@ -80,33 +70,32 @@ impl P2pTopology {
         // or was not specified poldercast will not return anything.
         // Let's broadcast out profile anyway
         if gossips.is_empty() {
-            gossips.push(inner.topology.self_profile().gossip().clone());
+            gossips.push(self.topology.self_profile().gossip().clone());
         }
         gossips.retain(|g| g.address() != *LOCAL_ADDR);
         Gossips::from(gossips)
     }
 
     #[instrument(skip(self, gossips), level = "debug")]
-    pub async fn accept_gossips(&self, gossips: Gossips) {
-        let mut inner = self.lock.write().await;
+    pub fn accept_gossips(&mut self, gossips: Gossips) {
         let gossips = <Vec<poldercast::Gossip>>::from(gossips);
         for gossip in gossips {
             let peer = Profile::from_gossip(gossip);
             tracing::trace!(node = %peer.address(), "received peer from gossip");
-            inner.topology.add_peer(peer);
+            self.topology.add_peer(peer);
         }
 
         // nodes lifted from quarantine will be considered again in the next update
-        let lifted = inner.quarantine.lift_from_quarantine();
+        let lifted = self.quarantine.lift_from_quarantine();
         for node in lifted {
             // It may happen that a node is evicted from the dirty pool
             // in poldercast and then re-enters the topology in the 'pool'
             // pool, all while we hold the node in quarantine.
             // If that happens we should not promote it anymore.
-            let is_dirty = inner.topology.peers().dirty().contains(node.id.as_ref());
+            let is_dirty = self.topology.peers().dirty().contains(node.id.as_ref());
             if is_dirty {
                 tracing::debug!(node = %node.address, "lifting node from quarantine");
-                inner.topology.promote_peer(&node.id.as_ref());
+                self.topology.promote_peer(&node.id.as_ref());
             } else {
                 tracing::debug!(node = %node.address, "node from quarantine have left the dirty pool. skipping it");
             }
@@ -115,13 +104,12 @@ impl P2pTopology {
 
     // This may return nodes that are still quarantined but have been
     // forgotten by the underlying poldercast implementation.
-    pub async fn list_quarantined(&self) -> Vec<PeerInfo> {
-        self.lock.read().await.quarantine.quarantined_nodes()
+    pub fn list_quarantined(&self) -> Vec<PeerInfo> {
+        self.quarantine.quarantined_nodes()
     }
 
-    pub async fn list_available(&self) -> Vec<PeerInfo> {
-        let inner = self.lock.read().await;
-        let profiles = inner.topology.peers();
+    pub fn list_available(&self) -> Vec<PeerInfo> {
+        let profiles = self.topology.peers();
         profiles
             .pool()
             .iter()
@@ -130,9 +118,8 @@ impl P2pTopology {
             .collect()
     }
 
-    pub async fn list_non_public(&self) -> Vec<PeerInfo> {
-        let inner = self.lock.read().await;
-        let profiles = inner.topology.peers();
+    pub fn list_non_public(&self) -> Vec<PeerInfo> {
+        let profiles = self.topology.peers();
         profiles
             .pool()
             .iter()
@@ -148,20 +135,18 @@ impl P2pTopology {
     }
 
     /// register that we were able to establish an handshake with given peer
-    pub async fn promote_node(&self, node: &NodeId) {
-        let mut inner = self.lock.write().await;
-        inner.topology.promote_peer(node.as_ref());
+    pub fn promote_node(&mut self, node: &NodeId) {
+        self.topology.promote_peer(node.as_ref());
     }
 
     /// register a strike against the given peer
-    pub async fn report_node(&self, node_id: &NodeId) {
-        let mut inner = self.lock.write().await;
-        if let Some(node) = inner.topology.get(node_id.as_ref()).cloned() {
-            if inner.quarantine.quarantine_node((&node).into()) {
-                inner.topology.remove_peer(node_id.as_ref());
+    pub fn report_node(&mut self, node_id: &NodeId) {
+        if let Some(node) = self.topology.get(node_id.as_ref()).cloned() {
+            if self.quarantine.quarantine_node((&node).into()) {
+                self.topology.remove_peer(node_id.as_ref());
                 // Trusted peers in poldercast requires to be demoted 2 times before
                 // moving to the dirty pool
-                inner.topology.remove_peer(node_id.as_ref());
+                self.topology.remove_peer(node_id.as_ref());
             }
         }
     }

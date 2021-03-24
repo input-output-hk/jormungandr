@@ -41,7 +41,7 @@ pub async fn start(info: TokioServiceInfo, task_data: TaskData) {
         config,
     } = task_data;
 
-    let topology = P2pTopology::new(&config);
+    let mut topology = P2pTopology::new(&config);
 
     let public_input = topology_queue.map(Message::Public);
     let (internal_msgbox, internal_queue) = async_msg::channel(INTERNAL_QUEUE_LEN);
@@ -59,13 +59,14 @@ pub async fn start(info: TokioServiceInfo, task_data: TaskData) {
     // Send gossips for trusted peers at the beginning, without inserting them first in
     // the topology
     for peer in config.trusted_peers {
+        let gossips = topology.initiate_gossips(None);
         network_msgbox
             .send(NetworkMsg::Propagate(PropagateMsg::Gossip(
                 Peer {
                     addr: peer.addr,
                     id: peer.id,
                 },
-                topology.initiate_gossips(None).await,
+                gossips,
             )))
             .await
             .unwrap_or_else(|e| tracing::error!("Error sending gossips to network task: {}", e));
@@ -87,31 +88,29 @@ impl<T: Stream<Item = Message> + Unpin> Process<T> {
         use Message::{Private, Public};
         while let Some(input) = self.input.next().await {
             match input {
-                Public(TopologyMsg::AcceptGossip(gossip)) => {
-                    self.topology.accept_gossips(gossip).await
-                }
-                Public(TopologyMsg::DemotePeer(id)) => self.topology.report_node(&id).await,
-                Public(TopologyMsg::PromotePeer(id)) => self.topology.promote_node(&id).await,
+                Public(TopologyMsg::AcceptGossip(gossip)) => self.topology.accept_gossips(gossip),
+                Public(TopologyMsg::DemotePeer(id)) => self.topology.report_node(&id),
+                Public(TopologyMsg::PromotePeer(id)) => self.topology.promote_node(&id),
                 Public(TopologyMsg::View(selection, handle)) => {
-                    handle.reply_ok(self.topology.view(selection).await)
+                    handle.reply_ok(self.topology.view(selection))
                 }
                 Public(TopologyMsg::ListAvailable(handle)) => {
-                    handle.reply_ok(self.topology.list_available().await)
+                    handle.reply_ok(self.topology.list_available())
                 }
                 Public(TopologyMsg::ListNonPublic(handle)) => {
-                    handle.reply_ok(self.topology.list_non_public().await)
+                    handle.reply_ok(self.topology.list_non_public())
                 }
                 Public(TopologyMsg::ListQuarantined(handle)) => {
-                    handle.reply_ok(self.topology.list_quarantined().await)
+                    handle.reply_ok(self.topology.list_quarantined())
                 }
-                Private(PrivateMsg::ResetTopology) => self.topology.force_reset_layers().await,
+                Private(PrivateMsg::ResetTopology) => self.topology.force_reset_layers(),
                 Private(PrivateMsg::GetGossips(handle)) => {
-                    let view = self.topology.view(poldercast::layer::Selection::Any).await;
+                    let view = self.topology.view(poldercast::layer::Selection::Any);
                     let mut res = Vec::new();
                     for peer in view.peers {
                         // Peers returned bu the topology will always have a NodeId
                         let id = peer.id.clone().unwrap();
-                        res.push((peer, self.topology.initiate_gossips(Some(&id)).await));
+                        res.push((peer, self.topology.initiate_gossips(Some(&id))));
                     }
                     handle.reply_ok(res);
                 }
