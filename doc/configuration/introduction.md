@@ -107,6 +107,11 @@ REST endpoints `/api/v0/rewards/history/1` or `/api/v0/rewards/epoch/10`.
 
 **this is not a recommended settings as it may take memory and may trigger some latency**.
 
+### Handling of time-consuming transactions
+
+By default we allow a single transaction to delay a block by 50 slots. This can
+be changed by adjusting the `block_hard_deadline` setting.
+
 #### The following is deprecated and will be removed
 
 If you want to record the reward distributions in a directory it is possible to set

@@ -511,7 +511,8 @@ pub enum TransactionMsg {
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
         reply_handle: ReplyHandle<(FragmentContents, ApplyBlockLedger)>,
-        abort_future: futures::channel::oneshot::Receiver<()>,
+        soft_deadline_future: futures::channel::oneshot::Receiver<()>,
+        hard_deadline_future: futures::channel::oneshot::Receiver<()>,
     },
 }
 

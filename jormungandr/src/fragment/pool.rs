@@ -112,7 +112,8 @@ impl Pools {
         ledger: ApplyBlockLedger,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
-        abort_future: futures::channel::oneshot::Receiver<()>,
+        soft_deadline_future: futures::channel::oneshot::Receiver<()>,
+        hard_deadline_future: futures::channel::oneshot::Receiver<()>,
     ) -> (Contents, ApplyBlockLedger) {
         let Pools { logs, pools, .. } = self;
         let pool = &mut pools[pool_idx];
@@ -120,7 +121,14 @@ impl Pools {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
                 selection_alg
-                    .select(ledger, &ledger_params, logs, pool, abort_future)
+                    .select(
+                        ledger,
+                        &ledger_params,
+                        logs,
+                        pool,
+                        soft_deadline_future,
+                        hard_deadline_future,
+                    )
                     .await
             }
         }

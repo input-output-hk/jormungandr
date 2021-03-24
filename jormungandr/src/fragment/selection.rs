@@ -29,7 +29,8 @@ pub trait FragmentSelectionAlgorithm {
         ledger_params: &LedgerParameters,
         logs: &mut Logs,
         pool: &mut Pool,
-        abort_future: futures::channel::oneshot::Receiver<()>,
+        soft_deadline_future: futures::channel::oneshot::Receiver<()>,
+        hard_deadline_future: futures::channel::oneshot::Receiver<()>,
     ) -> (Contents, ApplyBlockLedger);
 }
 
@@ -60,13 +61,17 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         ledger_params: &LedgerParameters,
         logs: &mut Logs,
         pool: &mut Pool,
-        abort_future: futures::channel::oneshot::Receiver<()>,
+        soft_deadline_future: futures::channel::oneshot::Receiver<()>,
+        hard_deadline_future: futures::channel::oneshot::Receiver<()>,
     ) -> (Contents, ApplyBlockLedger) {
+        use futures::future::{select, Either};
+
         let mut current_total_size = 0;
         let mut contents_builder = ContentsBuilder::new();
         let mut return_to_pool = Vec::new();
 
-        let abort_future = abort_future.shared();
+        let soft_deadline_future = soft_deadline_future.shared();
+        let hard_deadline_future = hard_deadline_future.shared();
 
         while let Some(fragment) = pool.remove_oldest() {
             let id = fragment.id();
@@ -100,22 +105,36 @@ impl FragmentSelectionAlgorithm for OldestFirst {
             let fragment_future =
                 tokio::task::spawn_blocking(move || ledger1.apply_fragment(&fragment1));
 
-            let result = tokio::select! {
-                join_result = fragment_future => join_result.unwrap(),
-                _ = abort_future.clone() => {
-                    // When we have other fragments but cannot process this one in time, we just
-                    // leave it until the next call.
+            let result = match select(fragment_future, soft_deadline_future.clone()).await {
+                Either::Left((join_result, _)) => join_result.unwrap(),
+                Either::Right((_, fragment_future)) => {
                     if current_total_size > 0 {
+                        tracing::debug!(
+                            "aborting processing of the current fragment to satisfy the soft deadline"
+                        );
                         return_to_pool.push(fragment);
                         break;
                     }
 
-                    // if we cannot process a single fragment within the given time bounds it
-                    // should be rejected
-                    let reason = "cannot process a single fragment within the given time bounds";
-                    tracing::debug!("{}", reason);
-                    logs.modify(id, FragmentStatus::Rejected { reason: reason.to_string() });
-                    break;
+                    tracing::debug!(
+                        "only one fragment in progress: continuing until meeting the hard deadline"
+                    );
+
+                    match select(fragment_future, hard_deadline_future.clone()).await {
+                        Either::Left((join_result, _)) => join_result.unwrap(),
+                        Either::Right(_) => {
+                            let reason =
+                                "cannot process a single fragment within the given time bounds (hard deadline)";
+                            tracing::debug!("{}", reason);
+                            logs.modify(
+                                id,
+                                FragmentStatus::Rejected {
+                                    reason: reason.to_string(),
+                                },
+                            );
+                            break;
+                        }
+                    }
                 }
             };
 
@@ -141,8 +160,6 @@ impl FragmentSelectionAlgorithm for OldestFirst {
             if total_size == ledger_params.block_content_max_size {
                 break;
             }
-
-            drop(_enter);
         }
 
         pool.insert_all(return_to_pool);

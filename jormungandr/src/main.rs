@@ -209,6 +209,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let enclave = leadership::Enclave::new(enclave.clone());
         let fragment_msgbox = fragment_msgbox.clone();
         let rewards_report_all = bootstrapped_node.settings.rewards_report_all;
+        let block_hard_deadline = bootstrapped_node.settings.block_hard_deadline;
 
         services.spawn_try_future("leadership", move |info| {
             leadership::Module::new(
@@ -219,6 +220,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 enclave,
                 block_msgbox,
                 rewards_report_all,
+                block_hard_deadline,
             )
             .and_then(|module| module.run())
         });

@@ -14,6 +14,7 @@ const DEFAULT_FILTER_LEVEL: LevelFilter = LevelFilter::TRACE;
 const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Default;
 const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
 const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min
+const DEFAULT_BLOCK_HARD_DEADLINE: u32 = 50;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -39,6 +40,7 @@ pub struct Settings {
     pub leadership: Leadership,
     pub explorer: bool,
     pub no_blockchain_updates_warning_interval: std::time::Duration,
+    pub block_hard_deadline: u32,
 }
 
 pub struct RawSettings {
@@ -205,6 +207,10 @@ impl RawSettings {
                 .unwrap_or_else(|| {
                     std::time::Duration::from_secs(DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL)
                 }),
+            block_hard_deadline: config
+                .as_ref()
+                .and_then(|config| config.block_hard_deadline)
+                .unwrap_or(DEFAULT_BLOCK_HARD_DEADLINE),
         })
     }
 }
