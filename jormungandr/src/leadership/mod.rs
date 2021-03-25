@@ -63,4 +63,4 @@ mod process;
 
 pub use self::enclave::{Enclave, EnclaveError, LeaderEvent};
 pub use self::logs::{LeadershipLogHandle, Logs};
-pub use self::process::Module;
+pub use self::process::{Module, ModuleConfig};
