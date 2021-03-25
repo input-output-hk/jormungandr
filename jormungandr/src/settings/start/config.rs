@@ -2,16 +2,16 @@ use crate::{
     network::p2p::Address,
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
-    topology::{layers::LayersConfig, topic, QuarantineConfig},
+    topology::QuarantineConfig,
 };
-pub use jormungandr_lib::interfaces::{Cors, Rest, Tls, TrustedPeer};
+pub use jormungandr_lib::interfaces::{Cors, LayersConfig, Rest, Tls, TrustedPeer};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
 use multiaddr::Multiaddr;
-use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 use tracing::level_filters::LevelFilter;
 
-use std::{collections::BTreeMap, fmt, path::PathBuf};
+use std::path::PathBuf;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -80,15 +80,6 @@ pub struct P2pConfig {
     /// the p2p discovery from.
     pub trusted_peers: Option<Vec<TrustedPeer>>,
 
-    /// the topic subscriptions
-    ///
-    /// When connecting to different nodes we will expose these too in order to
-    /// help the different modules of the P2P topology engine to determine the
-    /// best possible neighborhood.
-    // FIXME: Until we add a custom ring layer to poldercast this is rather useless
-    // keep this around for future decisions and compatibility
-    pub topics_of_interest: Option<BTreeMap<Topic, InterestLevel>>,
-
     /// Limit on the number of simultaneous connections.
     /// If not specified, an internal default limit is used.
     pub max_connections: Option<usize>,
@@ -111,7 +102,6 @@ pub struct P2pConfig {
     pub policy: QuarantineConfig,
 
     /// settings for the different custom layers
-    // TODO: actually implement those custom layers
     #[serde(default)]
     pub layers: LayersConfig,
 
@@ -154,37 +144,10 @@ pub struct Leadership {
     pub logs_capacity: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Topic(pub poldercast::Topic);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InterestLevel(pub poldercast::InterestLevel);
-
-impl InterestLevel {
-    pub const LOW: InterestLevel = InterestLevel(poldercast::InterestLevel::new(1));
-    pub const NORMAL: InterestLevel = InterestLevel(poldercast::InterestLevel::new(3));
-    pub const HIGH: InterestLevel = InterestLevel(poldercast::InterestLevel::new(5));
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Explorer {
     pub enabled: bool,
-}
-
-pub fn default_interests() -> BTreeMap<Topic, InterestLevel> {
-    use std::iter::FromIterator as _;
-
-    BTreeMap::from_iter(vec![
-        (
-            Topic(topic::MESSAGES),
-            InterestLevel(poldercast::InterestLevel::new(1)),
-        ),
-        (
-            Topic(topic::BLOCKS),
-            InterestLevel(poldercast::InterestLevel::new(3)),
-        ),
-    ])
 }
 
 impl Default for P2pConfig {
@@ -194,7 +157,6 @@ impl Default for P2pConfig {
             listen: None,
             node_key_file: None,
             trusted_peers: None,
-            topics_of_interest: None,
             max_connections: None,
             max_inbound_connections: None,
             max_connections_threshold: None,
@@ -213,67 +175,6 @@ impl Default for Leadership {
         Leadership {
             logs_capacity: 1_024,
         }
-    }
-}
-
-impl<'de> Deserialize<'de> for Topic {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct TopicVisitor;
-        impl<'de> Visitor<'de> for TopicVisitor {
-            type Value = Topic;
-
-            fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                write!(fmt, "Topic: messages or blocks")
-            }
-
-            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                use serde::de::Unexpected;
-
-                match v {
-                    "messages" => Ok(Topic(topic::MESSAGES)),
-                    "blocks" => Ok(Topic(topic::BLOCKS)),
-                    err => Err(E::invalid_value(Unexpected::Str(err), &self)),
-                }
-            }
-        }
-        deserializer.deserialize_str(TopicVisitor)
-    }
-}
-
-impl<'de> Deserialize<'de> for InterestLevel {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct InterestLevelVisitor;
-        impl<'de> Visitor<'de> for InterestLevelVisitor {
-            type Value = InterestLevel;
-
-            fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                write!(fmt, "Interest Level: low, normal or high")
-            }
-
-            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                use serde::de::Unexpected;
-
-                match v {
-                    "low" => Ok(InterestLevel::LOW),
-                    "normal" => Ok(InterestLevel::NORMAL),
-                    "high" => Ok(InterestLevel::HIGH),
-                    err => Err(E::invalid_value(Unexpected::Str(err), &self)),
-                }
-            }
-        }
-        deserializer.deserialize_str(InterestLevelVisitor)
     }
 }
 
