@@ -97,7 +97,11 @@ impl LegacyNodeConfigConverter {
                 listen_address: None,
                 max_inbound_connections: None,
                 max_connections: None,
-                topics_of_interest: source.p2p.topics_of_interest.clone(),
+                topics_of_interest: source
+                    .p2p
+                    .layers
+                    .as_ref()
+                    .and_then(|c| c.topics_of_interest.clone()),
                 allow_private_addresses: source.p2p.allow_private_addresses,
                 policy: source.p2p.policy.clone(),
                 layers: None,
@@ -152,7 +156,11 @@ impl LegacyNodeConfigConverter {
                 listen_address: None,
                 max_inbound_connections: None,
                 max_connections: None,
-                topics_of_interest: source.p2p.topics_of_interest.clone(),
+                topics_of_interest: source
+                    .p2p
+                    .layers
+                    .as_ref()
+                    .and_then(|c| c.topics_of_interest.clone()),
                 allow_private_addresses: source.p2p.allow_private_addresses,
                 policy: source.p2p.policy.clone(),
                 layers: None,
