@@ -1,6 +1,8 @@
 use jormungandr_lib::interfaces::{
     Explorer, LayersConfig, Mempool, NodeConfig, Policy, TopicsOfInterest, TrustedPeer,
 };
+use multiaddr::Multiaddr;
+use std::net::SocketAddr;
 
 use super::{LeadershipMode, PersistenceMode};
 use crate::testing::node::Version;
@@ -13,7 +15,7 @@ pub struct SpawnParams {
     pub mempool: Option<Mempool>,
     pub policy: Option<Policy>,
     pub jormungandr: Option<PathBuf>,
-    pub listen_address: Option<Option<poldercast::Address>>,
+    pub listen_address: Option<Option<SocketAddr>>,
     pub trusted_peers: Option<Vec<TrustedPeer>>,
     pub preferred_layer: Option<LayersConfig>,
     pub leadership_mode: LeadershipMode,
@@ -21,7 +23,7 @@ pub struct SpawnParams {
     pub max_connections: Option<u32>,
     pub max_inbound_connections: Option<u32>,
     pub alias: String,
-    pub public_address: Option<poldercast::Address>,
+    pub public_address: Option<Multiaddr>,
     pub version: Option<Version>,
     pub bootstrap_from_peers: Option<bool>,
     pub skip_bootstrap: Option<bool>,
@@ -58,7 +60,7 @@ impl SpawnParams {
         self.listen_address(None)
     }
 
-    pub fn listen_address(&mut self, address: Option<poldercast::Address>) -> &mut Self {
+    pub fn listen_address(&mut self, address: Option<SocketAddr>) -> &mut Self {
         self.listen_address = Some(address);
         self
     }
@@ -80,7 +82,7 @@ impl SpawnParams {
         self
     }
 
-    pub fn public_address(&mut self, public_address: poldercast::Address) -> &mut Self {
+    pub fn public_address(&mut self, public_address: Multiaddr) -> &mut Self {
         self.public_address = Some(public_address);
         self
     }

@@ -1,5 +1,6 @@
 use super::JormungandrError;
 use crate::common::jcli::{JCli, JCliCommand};
+use ::multiaddr::Multiaddr;
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_time::TimeEra;
@@ -16,6 +17,7 @@ use jormungandr_testing_utils::testing::{
 };
 use jormungandr_testing_utils::testing::{RemoteJormungandr, RemoteJormungandrBuilder};
 use jortestkit::prelude::ProcessOutput;
+
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
@@ -38,7 +40,7 @@ pub struct JormungandrProcess {
     pub logger: JormungandrLogger,
     temp_dir: Option<TempDir>,
     alias: String,
-    p2p_public_address: poldercast::Address,
+    p2p_public_address: Multiaddr,
     rest_socket_addr: SocketAddr,
     genesis_block_hash: Hash,
     block0_configuration: Block0Configuration,
@@ -106,7 +108,6 @@ impl JormungandrProcess {
                     .expect("failed to execute get_rest_stats command");
 
                 let output = output.try_as_single_node_yaml();
-
                 match output.ok().and_then(|x| x.get("uptime").cloned()) {
                     Some(uptime)
                         if uptime.parse::<i32>().unwrap_or_else(|_| {
@@ -138,8 +139,8 @@ impl JormungandrProcess {
         jcli.rest().v0().shutdown(self.rest_uri());
     }
 
-    pub fn address(&self) -> poldercast::Address {
-        self.p2p_public_address.clone()
+    pub fn address(&self) -> SocketAddr {
+        jormungandr_lib::multiaddr::to_tcp_socket_addr(&self.p2p_public_address).unwrap()
     }
 
     pub fn correct_state_verifier(&self) -> JormungandrStateVerifier {

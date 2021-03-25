@@ -1,13 +1,13 @@
 #![allow(dead_code)]
 
-use std::path::PathBuf;
-
 use jormungandr_lib::{
     interfaces::{
         Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls, TopicsOfInterest, TrustedPeer,
     },
     time::Duration,
 };
+use multiaddr::Multiaddr;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct NodeConfigBuilder {
@@ -31,7 +31,7 @@ impl NodeConfigBuilder {
     pub fn new() -> NodeConfigBuilder {
         let rest_port = super::get_available_port();
         let public_address_port = super::get_available_port();
-        let grpc_public_address: poldercast::Address = format!(
+        let grpc_public_address: Multiaddr = format!(
             "/ip4/{}/tcp/{}",
             DEFAULT_HOST,
             public_address_port.to_string()
@@ -50,6 +50,7 @@ impl NodeConfigBuilder {
                 cors: None,
             },
             p2p: P2p {
+                node_key_file: None,
                 trusted_peers: vec![],
                 public_address: grpc_public_address,
                 listen_address: None,
@@ -65,7 +66,6 @@ impl NodeConfigBuilder {
                     quarantine_whitelist: None,
                 }),
                 layers: None,
-                public_id: None,
             },
             mempool: Some(Mempool::default()),
             explorer: Explorer { enabled: false },

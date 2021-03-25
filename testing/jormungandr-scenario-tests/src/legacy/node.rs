@@ -12,7 +12,8 @@ use chain_impl_mockchain::{
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{EnclaveLeaderId, FragmentLog, FragmentStatus, Info, PeerRecord, PeerStats},
+    interfaces::{EnclaveLeaderId, FragmentLog, FragmentStatus, PeerRecord, PeerStats},
+    multiaddr,
 };
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
@@ -27,6 +28,7 @@ use yaml_rust::{Yaml, YamlLoader};
 
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::process::Child;
 use std::sync::{Arc, Mutex};
@@ -77,8 +79,8 @@ impl LegacyNodeController {
         format!("{}/{}", self.base_url(), path)
     }
 
-    pub fn address(&self) -> poldercast::Address {
-        self.settings.config.p2p.public_address.clone()
+    pub fn address(&self) -> SocketAddr {
+        multiaddr::to_tcp_socket_addr(&self.settings.config.p2p.public_address).unwrap()
     }
 
     pub fn progress_bar(&self) -> &ProgressBarController {
@@ -220,13 +222,13 @@ impl LegacyNodeController {
         Ok(network_stats)
     }
 
-    pub fn p2p_view(&self) -> Result<Vec<Info>> {
+    pub fn p2p_view(&self) -> Result<Vec<SocketAddr>> {
         let response_text = self.get("network/p2p/view")?.text()?;
 
         self.progress_bar
             .log_info(format!("network/view: {}", response_text));
 
-        let network_stats: Vec<Info> = if response_text.is_empty() {
+        let network_stats = if response_text.is_empty() {
             Vec::new()
         } else {
             serde_json::from_str(&response_text).map_err(Error::InvalidNetworkStats)?
@@ -466,11 +468,7 @@ impl LegacyNodeController {
     fn ports_are_opened(&self) -> bool {
         self.port_opened(self.settings.config.rest.listen.port())
             && self.port_opened(
-                self.settings
-                    .config
-                    .p2p
-                    .public_address
-                    .to_socket_addr()
+                multiaddr::to_tcp_socket_addr(&self.settings.config.p2p.public_address)
                     .unwrap()
                     .port(),
             )
