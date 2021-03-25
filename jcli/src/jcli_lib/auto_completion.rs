@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use structopt::{clap::Shell, StructOpt};
 use thiserror::Error;
 
@@ -20,7 +20,7 @@ impl AutoCompletion {
     }
 }
 
-fn validate_output(output: &PathBuf) -> Result<(), Error> {
+fn validate_output(output: &Path) -> Result<(), Error> {
     if !output.exists() {
         return Err(Error::OutputNotExist);
     }

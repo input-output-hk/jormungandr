@@ -753,14 +753,14 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
         })
     }
 
-    fn apply_persistence_setting(&mut self, dir: &PathBuf) {
+    fn apply_persistence_setting(&mut self, dir: &Path) {
         if self.peristence_mode == PersistenceMode::Persistent {
             let path_to_storage = dir.join(NODE_STORAGE);
             self.node_settings.config.storage = Some(path_to_storage);
         }
     }
 
-    fn set_log_level(&mut self, log_file: &PathBuf) {
+    fn set_log_level(&mut self, log_file: &Path) {
         let format = "plain";
         let level = self.context.log_level();
         self.node_settings.config.log = Some(Log(vec![
