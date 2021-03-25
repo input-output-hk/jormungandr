@@ -350,7 +350,7 @@ impl Prepare for P2p {
             topics_of_interest: Some(TopicsOfInterest::prepare(context)),
             policy: Some(Policy::prepare(context)),
             layers: None,
-            public_id: None,
+            node_key_file: None,
         }
     }
 }

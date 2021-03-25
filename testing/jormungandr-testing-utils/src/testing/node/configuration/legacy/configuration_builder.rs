@@ -124,7 +124,7 @@ impl LegacyNodeConfigConverter {
             .iter()
             .map(|peer| {
                 let id = {
-                    if let Some(id) = peer.id {
+                    if let Some(id) = &peer.id {
                         id.to_string()
                     } else {
                         Self::generate_legacy_poldercast_id(&mut rng)

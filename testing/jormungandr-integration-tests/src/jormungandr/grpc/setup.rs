@@ -7,24 +7,23 @@ use crate::common::{
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
 use assert_fs::TempDir;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 const DEFAULT_SLOT_DURATION: u8 = 1;
-const LOCALHOST: &str = "127.0.0.1";
+const LOCALHOST: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 pub struct Config {
-    host: String,
-    port: u16,
+    addr: SocketAddr,
 }
 
 impl Config {
     pub fn attach_to_local_node(port: u16) -> Self {
         Self {
-            host: String::from(LOCALHOST),
-            port,
+            addr: SocketAddr::new(LOCALHOST, port),
         }
     }
 
     pub fn client(&self) -> JormungandrClient {
-        JormungandrClient::new(&self.host, self.port)
+        JormungandrClient::new(self.addr.clone())
     }
 }
 

@@ -2,23 +2,24 @@
 use jormungandr_lib::interfaces::{
     Explorer, LayersConfig, LogEntry, LogOutput, Mempool, Policy, Rest, TopicsOfInterest,
 };
-
+use multiaddr::Multiaddr;
 use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct P2p {
     /// The public address to which other peers may connect to
-    pub public_address: poldercast::Address,
+    pub public_address: Multiaddr,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub public_id: Option<poldercast::Id>,
+    pub public_id: Option<String>,
 
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
     pub trusted_peers: Vec<TrustedPeer>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub listen_address: Option<poldercast::Address>,
+    pub listen_address: Option<SocketAddr>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_connections: Option<u32>,
@@ -40,7 +41,7 @@ pub struct P2p {
 pub struct TrustedPeer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    pub address: poldercast::Address,
+    pub address: Multiaddr,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

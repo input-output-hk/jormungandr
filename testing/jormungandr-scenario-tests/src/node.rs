@@ -17,6 +17,7 @@ use jormungandr_lib::{
         EnclaveLeaderId, FragmentLog, LeadershipLog, Log, LogEntry, LogOutput, NodeState,
         NodeStatsDto, PeerRecord, PeerStats, VotePlanStatus,
     },
+    multiaddr,
 };
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
@@ -32,6 +33,7 @@ use jormungandr_testing_utils::{testing::node::Explorer, Version};
 
 use indicatif::ProgressBar;
 use rand_core::RngCore;
+use std::net::SocketAddr;
 
 use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader};
@@ -198,8 +200,8 @@ impl NodeController {
         format!("{}/{}", self.base_url(), path)
     }
 
-    pub fn address(&self) -> poldercast::Address {
-        self.settings.config.p2p.public_address.clone()
+    pub fn address(&self) -> SocketAddr {
+        multiaddr::to_tcp_socket_addr(&self.settings.config.p2p.public_address).unwrap()
     }
 
     pub fn explorer(&self) -> Explorer {
@@ -511,7 +513,10 @@ impl Node {
     }
 
     pub fn controller(mut self) -> NodeController {
-        let p2p_address = format!("{}", self.node_settings.config().p2p.get_listen_address());
+        let p2p_address = format!(
+            "{}",
+            self.node_settings.config().p2p.get_listen_addr().unwrap()
+        );
         let rest_uri = uri_from_socket_addr(self.node_settings.config().rest.listen);
 
         NodeController {
