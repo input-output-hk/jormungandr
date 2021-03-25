@@ -1,10 +1,8 @@
-mod jcli_app;
-
 use std::error::Error;
 use structopt::StructOpt;
 
 fn main() {
-    jcli_app::JCli::from_args()
+    jcli_lib::JCli::from_args()
         .exec()
         .unwrap_or_else(report_error)
 }
