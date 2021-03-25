@@ -127,7 +127,7 @@ impl TryFrom<Vec<MemberVotePlanShares>> for VotePlanDecryptShares {
 impl TryFrom<VotePlanDecryptShares> for Vec<Vec<chain_vote::TallyDecryptShare>> {
     type Error = SharesError;
     fn try_from(vote_plan: VotePlanDecryptShares) -> Result<Self, Self::Error> {
-        Ok(vote_plan
+        vote_plan
             .0
             .into_iter()
             .map(|v| {
@@ -135,7 +135,7 @@ impl TryFrom<VotePlanDecryptShares> for Vec<Vec<chain_vote::TallyDecryptShare>> 
                     .map(chain_vote::TallyDecryptShare::try_from)
                     .collect::<Result<Vec<_>, Self::Error>>()
             })
-            .collect::<Result<Vec<_>, Self::Error>>()?)
+            .collect::<Result<Vec<_>, Self::Error>>()
     }
 }
 
