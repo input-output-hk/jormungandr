@@ -56,6 +56,7 @@ impl PeerData {
 }
 
 impl<'a> CommStatus<'a> {
+    #[allow(dead_code)]
     pub fn node_id(&self) -> Option<NodeId> {
         match self {
             CommStatus::Established(comms) => comms.node_id(),

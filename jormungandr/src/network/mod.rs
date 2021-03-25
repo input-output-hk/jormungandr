@@ -352,7 +352,7 @@ async fn handle_propagation_msg(
         ) -> Result<Vec<Peer>, PropagateError>
         where
             T: Clone,
-            F: Fn(Vec<SocketAddr>, T) -> Fut,
+            F: Fn(SocketAddr, T) -> Fut,
             Fut: Future<Output = Result<(), E>>,
         {
             let (reply_handle, reply_future) = crate::intercom::unary_reply();
@@ -360,11 +360,11 @@ async fn handle_propagation_msg(
             let peers = reply_future.await.map(|view| view.peers)?;
 
             // FIXME: this is a workaround because we need to know also the id of the nodes that failed to connect,
-            // it should not be a lot less efficient, just less clean. Remove this once we decided what to do with peers
+            // it should not be less efficient, just less clean. Remove this once we decided what to do with peers
             // and ids.
             let mut res = Vec::new();
             for peer in peers {
-                if f(vec![peer.addr], arg.clone()).await.is_err() {
+                if f(peer.addr, arg.clone()).await.is_err() {
                     res.push(peer);
                 }
             }
