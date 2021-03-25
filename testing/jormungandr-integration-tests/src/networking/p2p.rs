@@ -5,8 +5,7 @@ use crate::common::{
 
 use jormungandr_lib::{
     interfaces::{
-        Explorer, LayersConfig, PeerRecord, Policy, PreferredListConfig, TopicsOfInterest,
-        TrustedPeer,
+        Explorer, PeerRecord, Policy, PreferredListConfig, TopicsOfInterest, TrustedPeer,
     },
     time::Duration,
 };
@@ -306,11 +305,9 @@ pub fn node_put_itself_in_preffered_layers() {
         id: None,
     };
 
-    let layer = LayersConfig {
-        preferred_list: PreferredListConfig {
-            view_max: Default::default(),
-            peers: vec![peer],
-        },
+    let layer = PreferredListConfig {
+        view_max: Default::default(),
+        peers: vec![peer],
     };
 
     assert!(network_controller
