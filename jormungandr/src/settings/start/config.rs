@@ -1,10 +1,9 @@
-#![allow(deprecated)]
 use crate::{
-    network::p2p::{layers::LayersConfig, topic, Address, PolicyConfig},
+    network::p2p::{layers::LayersConfig, topic, Address},
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
 };
-pub use jormungandr_lib::interfaces::{Cors, Rest, Tls};
+pub use jormungandr_lib::interfaces::{Cors, Rest, Tls, TrustedPeer};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
 use multiaddr::Multiaddr;
@@ -66,18 +65,18 @@ pub struct P2pConfig {
     /// The public address to which other peers may connect to
     pub public_address: Option<Address>,
 
+    // FIXME: the currently accepted format is a multiaddr for no good reason.
+    // Change to SocketAddr and rename the setting to `listen` for commonality
+    // with the rest setting.
     /// The socket address to listen on, if different from the public address.
     /// The format is "{ip_address}:{port}".
     /// The IP address can be specified as 0.0.0.0 or :: to listen on
     /// all network interfaces.
     pub listen_address: Option<Address>,
 
-    /// keep the public id there and present, but yet make it optional as it is
-    /// no longer needed.
-    ///
-    /// TODO: To remove once we can afford a breaking change in the config
-    #[serde(default)]
-    pub public_id: Option<poldercast::Id>,
+    /// File with the secret key used to advertise and authenticate the node
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub node_key_file: Option<PathBuf>,
 
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
@@ -150,21 +149,6 @@ pub struct P2pConfig {
     /// gossip with the trusted peers if any are defined.
     #[serde(default)]
     pub max_bootstrap_attempts: Option<usize>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct TrustedPeer {
-    // We cannot use Address here because it can only be constructed for
-    // /ip4 or /ip6, but we accept dns addresses as well.
-    pub address: Multiaddr,
-
-    // KEEP the ID optional, this is no longer needed but removing this will
-    // allow to keep some back compatibility.
-    //
-    // TODO: to remove once we can afford having a config breaking change
-    #[serde(skip, default)]
-    pub id: Option<poldercast::Id>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

@@ -86,12 +86,14 @@ Use the CA certificate with `jcli`.
     from. This is the public address that will be distributed to other peers
     of the network that may find interest into participating to the blockchain
     dissemination with the node.  Currently only TCP is supported.
-- `public_id`: (optional) This is a static identifier, 24 bytes encoded in hexadecimal. They are used
-  to bootstrap the connection to the node if the node introduce itself as a trusted peer.
-  **Most of the user don't need to set this value** and in fact we are working toward potentially
-  removing the need for this value.
-- `listen_address`: (optional) [multiaddr][multiaddr] specifies the address the node
-    will listen to to receive p2p connection. Can be left empty and the node will listen
+- `node_key_file`: (optional) Path to a file containing a bech32-encoded ed25519 secret key.
+  The keys are used to advertize the node in network gossip and to authenticate
+  a connection to the node if the node is used as a trusted peer.
+  **Most of the users don't need to set this value** as the key will be randomly
+  generated if the option is not present.
+- `listen`: (optional) socket address (IP address and port separated by a comma),
+    specifies the interface address and port the node
+    will listen at to receive p2p connection. Can be left empty and the node will listen
     to whatever value was given to `public_address`.
 - `topics_of_interest`: (optional) the different topics we are interested to hear about:
   - `messages`: notify other peers this node is interested about Transactions
@@ -174,8 +176,6 @@ p2p:
           id: 019abc...
         - ...
 ```
-
-
 
 ### Setting the `public_id`
 

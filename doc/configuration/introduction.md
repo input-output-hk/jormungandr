@@ -32,7 +32,7 @@ bootstrap_from_trusted_peers: false
 
 p2p:
   public_address: "/ip4/X.X.X.X/tcp/Y" # This should match your public IP address (X) and port number (Y)
-  #listen_address: /ip4/0.0.0.0/tcp/Z
+  #listen: 0.0.0.0:Y
   topics_of_interest:
     blocks: normal # Default is normal - set to high for stakepool
     messages: low  # Default is low    - set to high for stakepool

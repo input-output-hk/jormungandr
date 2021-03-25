@@ -1,11 +1,14 @@
-#![allow(deprecated)]
 use super::config;
-use crate::network::p2p::{layers::LayersConfig, Address, PolicyConfig};
-use jormungandr_lib::multiaddr::{self, multiaddr_resolve_dns};
-use poldercast::NodeProfile;
+use crate::network::p2p::{layers::LayersConfig, Address};
+use jormungandr_lib::config::NodeId;
+use jormungandr_lib::multiaddr;
+use poldercast::Profile;
 
 use std::convert::TryFrom;
-use std::{net::SocketAddr, str, time::Duration};
+use std::net::SocketAddr;
+use std::str;
+use std::sync::Arc;
+use std::time::Duration;
 
 /// Protocol to use for a connection.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -58,7 +61,7 @@ pub struct Configuration {
     /// network interfaces.
     pub listen_address: Option<SocketAddr>,
 
-    pub profile: NodeProfile,
+    pub profile: Arc<Profile>,
 
     /// list of trusted addresses
     pub trusted_peers: Vec<TrustedPeer>,
@@ -74,8 +77,6 @@ pub struct Configuration {
 
     /// the default value for the timeout for inactive connection
     pub timeout: Duration,
-
-    pub policy: PolicyConfig,
 
     pub layers: LayersConfig,
 
@@ -97,30 +98,29 @@ pub struct Configuration {
     pub skip_bootstrap: bool,
 
     pub http_fetch_block0_service: Vec<String>,
-
-    /// A pre-0.9 node ID to put in "node-id-bin" metadata when subscribing
-    pub legacy_node_id: Option<poldercast::Id>,
 }
 
+/// Trusted peer with DNS address resolved.
 #[derive(Clone)]
 pub struct TrustedPeer {
-    pub address: poldercast::Address,
-    pub legacy_node_id: Option<poldercast::Id>,
+    pub addr: SocketAddr,
+    pub id: Option<NodeId>,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum PeerResolveError {
     #[error("DNS address resolution failed")]
     Resolve(#[from] multiaddr::Error),
-    #[error(transparent)]
-    Address(#[from] poldercast::AddressTryFromError),
+    #[error("Address shall consist of a host address and a TCP component")]
+    InvalidAddress,
 }
 
 impl TrustedPeer {
     pub fn resolve(peer: &config::TrustedPeer) -> Result<Self, PeerResolveError> {
-        let address = match multiaddr_resolve_dns(&peer.address)? {
-            Some(address) => poldercast::Address::try_from(address).unwrap(),
-            None => poldercast::Address::try_from(peer.address.clone())?,
+        let address = match multiaddr::resolve_dns(&peer.address)? {
+            Some(address) => multiaddr::to_tcp_socket_addr(&address).unwrap(),
+            None => multiaddr::to_tcp_socket_addr(&peer.address)
+                .ok_or_else(|| PeerResolveError::InvalidAddress)?,
         };
         Ok(TrustedPeer {
             address,

@@ -461,15 +461,7 @@ impl NodeController {
 
     fn ports_are_opened(&self) -> bool {
         self.port_opened(self.settings.config.rest.listen.port())
-            && self.port_opened(
-                self.settings
-                    .config
-                    .p2p
-                    .get_listen_address()
-                    .to_socket_addr()
-                    .unwrap()
-                    .port(),
-            )
+            && self.port_opened(self.settings.config.p2p.get_listen_addr().unwrap().port())
     }
 
     fn port_opened(&self, port: u16) -> bool {
