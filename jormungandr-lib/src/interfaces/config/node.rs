@@ -1,8 +1,9 @@
-#![allow(deprecated)]
-use crate::{
-    interfaces::{Log, Mempool},
-    time::Duration,
-};
+use crate::crypto::key::Identifier;
+use crate::interfaces::config::{Log, Mempool};
+use crate::multiaddr as multiaddr_utils;
+use crate::time::Duration;
+use chain_crypto::Ed25519;
+use multiaddr::Multiaddr;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
 use std::{fmt, net::SocketAddr, path::PathBuf, str::FromStr};
 const DEFAULT_PREFERRED_VIEW_MAX: usize = 20;
@@ -89,14 +90,19 @@ impl AsRef<str> for CorsOrigin {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct P2p {
     /// The public address to which other peers may connect to
-    pub public_address: poldercast::Address,
+    pub public_address: Multiaddr,
+
+    /// File with the secret key used to advertise and authenticate the node
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub public_id: Option<poldercast::Id>,
+    pub node_key_file: Option<PathBuf>,
+
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
     pub trusted_peers: Vec<TrustedPeer>,
+
+    /// Listen address as a multiaddr.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub listen_address: Option<poldercast::Address>,
+    pub listen_address: Option<Multiaddr>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_connections: Option<u32>,
@@ -125,7 +131,7 @@ pub struct Policy {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub quarantine_duration: Option<Duration>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub quarantine_whitelist: Option<Vec<poldercast::Address>>,
+    pub quarantine_whitelist: Option<Vec<Multiaddr>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -162,18 +168,24 @@ pub struct PreferredListConfig {
     pub view_max: PreferredViewMax,
 
     #[serde(default)]
-    // peers: HashSet<Address>,
     pub peers: Vec<TrustedPeer>,
 }
 
-/// TODO: this structure is needed only temporarily, once we have
-///       have poldercast `0.13.x` we only need the address
+/// Identifier of a peer node.
+pub type NodeId = Identifier<Ed25519>;
+
+/// Configuration item for a trusted peer.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TrustedPeer {
-    pub address: poldercast::Address,
+    /// The peer's routable host address and TCP port as a multiaddr.
+    /// The supported address components are `/ip4`, `/ip6`,
+    /// `/dns`, `/dns4`, `/dns6`.
+    /// The port component must be `/tcp`.
+    pub address: Multiaddr,
+    /// Node identifier as a bech32-encoded ed25519 public key.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<poldercast::Id>,
+    pub id: Option<NodeId>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -190,17 +202,10 @@ pub struct NodeConfig {
 }
 
 impl P2p {
-    pub fn make_trusted_peer_setting(&self) -> TrustedPeer {
-        TrustedPeer {
-            address: self.get_listen_address(),
-            id: self.public_id,
+    pub fn get_listen_addr(&self) -> Option<SocketAddr> {
+        if let Some(multiaddr) = &self.listen_address {
+            return multiaddr_utils::to_tcp_socket_addr(multiaddr);
         }
-    }
-
-    pub fn get_listen_address(&self) -> poldercast::Address {
-        if let Some(listen_address) = self.listen_address.clone() {
-            return listen_address;
-        }
-        self.public_address.clone()
+        multiaddr_utils::to_tcp_socket_addr(&self.public_address)
     }
 }

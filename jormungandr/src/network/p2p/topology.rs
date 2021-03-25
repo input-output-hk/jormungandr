@@ -2,20 +2,20 @@
 //!
 
 use crate::{
-    network::p2p::{layers::PreferredListLayer, Address, Gossips, Policy, PolicyConfig},
+    network::p2p::{layers::PreferredListLayer, Address, Gossips},
     settings::start::network::Configuration,
 };
-use poldercast::{
-    custom_layers,
-    poldercast::{Cyclon, Rings, Vicinity},
-    NodeProfile, PolicyReport, StrikeReason, Topology,
-};
+use chain_crypto::{Ed25519, SecretKey};
+use poldercast::Topology;
 use rand_chacha::ChaChaRng;
 use tokio::sync::RwLock;
 use tracing::{span, Level, Span};
 
+use std::net::SocketAddr;
+use std::sync::Arc;
+
 pub struct View {
-    pub self_node: NodeProfile,
+    pub self_node: Arc<Profile>,
     pub peers: Vec<Address>,
 }
 
@@ -26,25 +26,27 @@ pub struct P2pTopology {
 
 /// Builder object used to initialize the `P2pTopology`
 struct Builder {
-    topology: Topology,
+    public_addr: SocketAddr,
+    key: SecretKey<Ed25519>,
     span: Span,
 }
 
+type PcSecretKey = keynesis::key::ed25519::SecretKey;
+
+fn secret_key_into_keynesis(key: SecretKey<25519>) -> PcSecretKey {
+    let key_bytes = key.leak_secret().as_ref();
+    key_bytes.try_into().unwrap()
+}
+
 impl Builder {
-    /// Create a new topology for the given node profile
-    fn new(node: poldercast::NodeProfile, span: Span) -> Self {
+    /// Create a new topology for the given public address of the local node
+    /// and a secret key used for identification.
+    fn new(public_addr: SocketAddr, key: SecretKey<Ed25519>, span: Span) -> Self {
         Builder {
-            topology: Topology::new(node),
+            public_addr,
+            key,
             span,
         }
-    }
-
-    fn set_policy(mut self, policy: PolicyConfig) -> Self {
-        self.topology.set_policy(Policy::new(
-            policy,
-            span!(parent: &self.span, Level::TRACE, "sub_task", kind = "policy"),
-        ));
-        self
     }
 
     /// set all the default poldercast modules (Rings, Vicinity and Cyclon)
@@ -73,8 +75,10 @@ impl Builder {
     }
 
     fn build(self) -> P2pTopology {
+        let key = secret_key_into_keynesis(self.key);
+        let topology = Topology::new(self.public_addr, &key);
         P2pTopology {
-            lock: RwLock::new(self.topology),
+            lock: RwLock::new(topology),
         }
     }
 }

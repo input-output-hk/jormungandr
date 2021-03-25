@@ -1,8 +1,10 @@
 pub use jormungandr_lib::interfaces::{PreferredListConfig, TrustedPeer};
-use poldercast::{Address, GossipsBuilder, Layer, NodeProfile, Nodes, ViewBuilder};
+use poldercast::layer::Layer;
 use rand::seq::IteratorRandom;
 use rand_chacha::ChaChaRng;
 use std::collections::HashSet;
+
+struct Address;
 
 pub struct PreferredListLayer {
     /// the max number of entries to add in the list of the view

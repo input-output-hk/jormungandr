@@ -16,7 +16,6 @@ mod subscription;
 use self::convert::Encode;
 
 use futures::{future, prelude::*};
-use poldercast::Address;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use thiserror::Error;
@@ -85,7 +84,6 @@ use crate::utils::{
 };
 use chain_network::data::gossip::Gossip;
 use chain_network::data::NodeKeyPair;
-use poldercast::StrikeReason;
 use rand::seq::SliceRandom;
 use tonic::transport;
 use tracing::{span, Level, Span};
@@ -195,7 +193,7 @@ impl GlobalState {
         &self.span
     }
 
-    pub fn node_address(&self) -> Option<&Address> {
+    pub fn node_address(&self) -> SocketAddr {
         self.config.profile.address()
     }
 
