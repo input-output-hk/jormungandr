@@ -9,9 +9,9 @@ use futures::prelude::*;
 use futures::stream;
 use peer_map::{CommStatus, PeerMap};
 use rand::Rng;
+use std::fmt::Debug;
 use tracing::Span;
 
-use std::collections::HashSet;
 use std::fmt;
 use std::mem;
 use std::net::SocketAddr;
@@ -613,68 +613,36 @@ impl Peers {
         .await
     }
 
-    async fn propagate_with<T, F>(&self, nodes: Vec<Address>, f: F) -> Result<(), Vec<Address>>
+    async fn propagate_with<T, F>(&self, node: Address, f: F) -> Result<(), Address>
     where
         for<'a> F: Fn(CommStatus<'a>) -> Result<(), PropagateError<T>>,
     {
         let mut map = self.inner().await;
-        let mut reached_node_ids = HashSet::new();
-        let unreached_nodes = nodes
-            .into_iter()
-            .filter(move |node| {
-                if let Some(mut entry) = map.entry(*node) {
-                    let comm_status = entry.update_comm_status();
-                    let node_id = comm_status.node_id();
+        if let Some(mut entry) = map.entry(node) {
+            let comm_status = entry.update_comm_status();
 
-                    // Avoid propagating more than once to the same node
-                    if let Some(id) = &node_id {
-                        if reached_node_ids.contains(id) {
-                            tracing::debug!(
-                                peer = %node,
-                                node_id = ?id,
-                                "node ID has been reached via another peer connection, omitting"
-                            );
-                            return false;
-                        }
-                    }
-
-                    match f(comm_status) {
-                        Ok(()) => {
-                            if let Some(id) = node_id {
-                                reached_node_ids.insert(id);
-                            }
-                            false
-                        }
-                        Err(e) => {
-                            tracing::debug!(
-                                peer = %node,
-                                reason = %e.kind(),
-                                "propagation to peer failed, unsubscribing peer"
-                            );
-                            entry.remove();
-                            true
-                        }
-                    }
-                } else {
-                    true
+            match f(comm_status) {
+                Ok(()) => {
+                    return Ok(());
                 }
-            })
-            .collect::<Vec<_>>();
-        if unreached_nodes.is_empty() {
-            Ok(())
-        } else {
-            Err(unreached_nodes)
+                Err(e) => {
+                    tracing::debug!(
+                        peer = %node,
+                        reason = %e.kind(),
+                        "propagation to peer failed, unsubscribing peer"
+                    );
+                    entry.remove();
+                }
+            }
         }
+
+        Err(node)
     }
 
-    pub async fn propagate_block(
-        &self,
-        nodes: Vec<Address>,
-        header: Header,
-    ) -> Result<(), Vec<Address>> {
+    pub async fn propagate_block(&self, node: Address, header: Header) -> Result<(), Address> {
         async move {
-            tracing::debug!("propagating block to {:?}", nodes);
-            self.propagate_with(nodes, move |status| match status {
+            tracing::debug!("propagating block to {:?}", node);
+            self.propagate_with(node, move |status| match status {
                 CommStatus::Established(comms) => comms.try_send_block_announcement(header.clone()),
                 CommStatus::Connecting(comms) => {
                     comms.set_pending_block_announcement(header.clone());
@@ -689,12 +657,12 @@ impl Peers {
 
     pub async fn propagate_fragment(
         &self,
-        nodes: Vec<Address>,
+        node: Address,
         fragment: Fragment,
-    ) -> Result<(), Vec<Address>> {
+    ) -> Result<(), Address> {
         async move {
-            tracing::debug!("propagating fragment to {:?}", nodes);
-            self.propagate_with(nodes, move |status| match status {
+            tracing::debug!("propagating fragment to {:?}", node);
+            self.propagate_with(node, move |status| match status {
                 CommStatus::Established(comms) => comms.try_send_fragment(fragment.clone()),
                 CommStatus::Connecting(comms) => {
                     comms.set_pending_fragment(fragment.clone());
