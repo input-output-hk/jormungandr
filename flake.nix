@@ -95,11 +95,11 @@
 
       packages = { jormungandr, jcli, jormungandr-entrypoint }@pkgs: pkgs;
 
-      devShell = { mkShell, rustc, cargo, pkg-config, openssl, protobuf }:
+      devShell = { mkShell, rustc, cargo, pkg-config, openssl, protobuf, rustfmt }:
         mkShell {
           PROTOC = "${protobuf}/bin/protoc";
           PROTOC_INCLUDE = "${protobuf}/include";
-          buildInputs = [ rustc cargo pkg-config openssl protobuf ];
+          buildInputs = [ rustc cargo pkg-config openssl protobuf rustfmt ];
         };
 
       hydraJobs = { jormungandr, jcli, jormungandr-entrypoint }@pkgs: pkgs;
