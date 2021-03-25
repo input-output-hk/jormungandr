@@ -1,5 +1,5 @@
 use self::{
-    client::GraphQLClient,
+    client::GraphQlClient,
     data::{
         address, all_blocks, all_stake_pools, all_vote_plans, blocks_by_chain_length, epoch,
         last_block, settings, stake_pool, transaction_by_id, Address, AllBlocks, AllStakePools,
@@ -13,6 +13,9 @@ use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::BlockDate;
 use std::str::FromStr;
 mod client;
+// Macro here expand to something containing PUBLIC/PRIVATE fields that
+// do not respect the naming convention
+#[allow(clippy::upper_case_acronyms)]
 mod data;
 pub mod load;
 use data::PoolId;
@@ -25,7 +28,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum ExplorerError {
     #[error("graph client error")]
-    ClientError(#[from] client::GraphQLClientError),
+    ClientError(#[from] client::GraphQlClientError),
     #[error("json serializiation error")]
     SerializationError(#[from] serde_json::Error),
     #[error("request error")]
@@ -34,7 +37,7 @@ pub enum ExplorerError {
 
 #[derive(Clone)]
 pub struct Explorer {
-    client: GraphQLClient,
+    client: GraphQlClient,
     print_log: bool,
 }
 
@@ -43,7 +46,7 @@ impl Explorer {
         let print_log = true;
 
         Explorer {
-            client: GraphQLClient::new(address),
+            client: GraphQlClient::new(address),
             print_log,
         }
     }

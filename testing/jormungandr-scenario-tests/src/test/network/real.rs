@@ -2,7 +2,7 @@ use crate::{
     node::{LeadershipMode, PersistenceMode},
     scenario::{
         repository::ScenarioResult, ActiveSlotCoefficient, ConsensusVersion, ControllerBuilder,
-        KESUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration, Value,
+        KesUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration, Value,
     },
     test::{
         utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
@@ -53,7 +53,7 @@ fn prepare_real_scenario(
         consensus,
         NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
         SlotDuration::new(1).expect("valid slot duration in seconds"),
-        KESUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
+        KesUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
         ActiveSlotCoefficient::new(Milli::from_millis(700))
             .expect("active slot coefficient in millis"),
     );

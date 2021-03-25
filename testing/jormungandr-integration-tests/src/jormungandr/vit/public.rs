@@ -20,7 +20,7 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     crypto::key::KeyPair,
     interfaces::{
-        ActiveSlotCoefficient, CommitteeIdDef, FeesGoTo, KESUpdateSpeed, Tally, VotePlanStatus,
+        ActiveSlotCoefficient, CommitteeIdDef, FeesGoTo, KesUpdateSpeed, Tally, VotePlanStatus,
     },
 };
 use jormungandr_testing_utils::testing::VotePlanExtension;
@@ -371,7 +371,7 @@ pub fn jcli_e2e_flow() {
             clarice.to_initial_fund(1_000_000),
         ])
         .with_block0_consensus(ConsensusType::Bft)
-        .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
+        .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
         .with_fees_go_to(FeesGoTo::Rewards)
         .with_treasury(Value::zero().into())
         .with_total_rewards_supply(Value::zero().into())

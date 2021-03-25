@@ -274,7 +274,7 @@ pub enum CertificateToBech32Error {
 #[derive(Debug, Error)]
 pub enum CertificateFromBech32Error {
     #[error("Invalid prefix, expected {expected} but read {actual}")]
-    InvalidHRP { expected: String, actual: String },
+    InvalidHrp { expected: String, actual: String },
     #[error("invalid base32")]
     InvalidBase32(#[from] bech32::Error),
     #[error("Invalid certificate")]
@@ -299,7 +299,7 @@ impl Certificate {
     pub fn from_bech32(bech32: &str) -> Result<Self, CertificateFromBech32Error> {
         let (hrp, data) = bech32::decode(bech32)?;
         if hrp != CERTIFICATE_HRP {
-            return Err(CertificateFromBech32Error::InvalidHRP {
+            return Err(CertificateFromBech32Error::InvalidHrp {
                 expected: CERTIFICATE_HRP.to_owned(),
                 actual: hrp,
             });
@@ -320,7 +320,7 @@ impl SignedCertificate {
     pub fn from_bech32(bech32: &str) -> Result<Self, CertificateFromBech32Error> {
         let (hrp, data) = bech32::decode(bech32)?;
         if hrp != SIGNED_CERTIFICATE_HRP {
-            return Err(CertificateFromBech32Error::InvalidHRP {
+            return Err(CertificateFromBech32Error::InvalidHrp {
                 expected: SIGNED_CERTIFICATE_HRP.to_owned(),
                 actual: hrp,
             });

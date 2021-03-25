@@ -49,7 +49,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum WalletError {
     #[error("couldn't create file")]
-    IOError(#[from] std::io::Error),
+    IoError(#[from] std::io::Error),
     #[error("cannot add input to the transaction")]
     CannotAddInput,
     #[error("cannot make witness for the transaction")]

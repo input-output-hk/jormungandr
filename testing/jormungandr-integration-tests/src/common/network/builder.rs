@@ -3,7 +3,7 @@ use chain_addr::Discrimination;
 use chain_impl_mockchain::value::Value;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, KESUpdateSpeed, NodeSecret, NumberOfSlotsPerEpoch, SlotDuration,
+    ActiveSlotCoefficient, KesUpdateSpeed, NodeSecret, NumberOfSlotsPerEpoch, SlotDuration,
 };
 use jormungandr_testing_utils::testing::{
     network_builder::{
@@ -95,7 +95,7 @@ pub fn builder() -> NetworkBuilder {
             ConsensusVersion::GenesisPraos,
             NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
             SlotDuration::new(2).expect("valid slot duration in seconds"),
-            KESUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
+            KesUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
             ActiveSlotCoefficient::new(Milli::from_millis(999))
                 .expect("active slot coefficient in millis"),
         )),

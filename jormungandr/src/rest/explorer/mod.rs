@@ -6,12 +6,12 @@ use warp::{http::Response as HttpResponse, http::StatusCode, Filter, Rejection, 
 
 #[allow(dead_code)]
 #[derive(Debug, Error)]
-pub enum ExplorerGraphQLError {
+pub enum ExplorerGraphQlError {
     #[error(transparent)]
     Context(#[from] context::Error),
 }
 
-impl Reject for ExplorerGraphQLError {}
+impl Reject for ExplorerGraphQlError {}
 
 pub fn filter(
     context: ContextLock,
@@ -26,7 +26,7 @@ pub fn filter(
             ctx.read()
                 .await
                 .try_full()
-                .map_err(ExplorerGraphQLError::Context)
+                .map_err(ExplorerGraphQlError::Context)
                 .map_err(warp::reject::custom)
                 .map(|_| ())
         });
@@ -74,7 +74,7 @@ pub async fn handler(
 
 /// Convert rejections to actual HTTP errors
 async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(err) = err.find::<ExplorerGraphQLError>() {
+    if let Some(err) = err.find::<ExplorerGraphQlError>() {
         let (body, code) = (
             display_internal_server_error(err),
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -93,12 +93,12 @@ pub(crate) struct EContext {
 impl EContext {
     pub(crate) async fn get(
         &self,
-    ) -> Result<crate::explorer::graphql::EContext, ExplorerGraphQLError> {
+    ) -> Result<crate::explorer::graphql::EContext, ExplorerGraphQlError> {
         self.context
             .read()
             .await
             .try_full()
-            .map_err(ExplorerGraphQLError::Context)
+            .map_err(ExplorerGraphQlError::Context)
             .map(|ctx| ctx.explorer.clone().unwrap().context())
     }
 }

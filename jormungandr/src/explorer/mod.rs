@@ -39,14 +39,14 @@ use tokio::sync::{broadcast, Mutex, RwLock};
 
 #[derive(Clone)]
 pub struct Explorer {
-    pub db: ExplorerDB,
+    pub db: ExplorerDb,
 }
 
 #[derive(Clone)]
 struct Tip(Arc<RwLock<HeaderHash>>);
 
 #[derive(Clone)]
-pub struct ExplorerDB {
+pub struct ExplorerDb {
     /// Structure that keeps all the known states to allow easy branch management
     /// each new block is indexed by getting its previous `State` from the multiverse
     /// and inserted a new updated one.
@@ -102,7 +102,7 @@ pub struct Settings {
 }
 
 impl Explorer {
-    pub fn new(db: ExplorerDB) -> Explorer {
+    pub fn new(db: ExplorerDb) -> Explorer {
         Explorer { db }
     }
 
@@ -173,7 +173,7 @@ impl Explorer {
     }
 }
 
-impl ExplorerDB {
+impl ExplorerDb {
     /// Apply all the blocks in the [block0, MAIN_BRANCH_TAG], also extract the static
     /// Blockchain settings from the Block0 (Discrimination)
     /// This function is only called once on the node's bootstrap phase
@@ -240,7 +240,7 @@ impl ExplorerDB {
 
         let (tx, _) = broadcast::channel(10);
 
-        let bootstraped_db = ExplorerDB {
+        let bootstraped_db = ExplorerDb {
             multiverse,
             longest_chain_tip: Tip::new(hash),
             blockchain_config,

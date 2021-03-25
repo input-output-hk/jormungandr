@@ -4,21 +4,21 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 #[derive(Clone)]
-pub struct GraphQLClient {
+pub struct GraphQlClient {
     base_url: String,
     print_out: bool,
 }
 
 #[derive(Error, Debug)]
-pub enum GraphQLClientError {
+pub enum GraphQlClientError {
     #[error("request error")]
     ReqwestError(#[from] reqwest::Error),
 }
 
-impl GraphQLClient {
-    pub fn new<S: Into<String>>(base_address: S) -> GraphQLClient {
+impl GraphQlClient {
+    pub fn new<S: Into<String>>(base_address: S) -> GraphQlClient {
         let base_url = format!("http://{}/explorer/graphql", base_address.into());
-        GraphQLClient {
+        GraphQlClient {
             base_url,
             print_out: true,
         }
@@ -39,7 +39,7 @@ impl GraphQLClient {
     pub fn run<T: Serialize>(
         &self,
         query: QueryBody<T>,
-    ) -> Result<reqwest::blocking::Response, GraphQLClientError> {
+    ) -> Result<reqwest::blocking::Response, GraphQlClientError> {
         if self.print_out {
             println!(
                 "running query: {:#?}, against: {}",

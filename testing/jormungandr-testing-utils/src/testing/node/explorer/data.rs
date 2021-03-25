@@ -81,6 +81,7 @@ pub struct Settings;
 pub struct TransactionById;
 
 #[derive(GraphQLQuery)]
+#[allow(clippy::upper_case_acronyms)]
 #[graphql(
     query_path = "resources/explorer/graphql/voteplans.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",

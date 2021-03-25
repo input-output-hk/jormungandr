@@ -66,7 +66,7 @@ pub struct BootstrappedNode {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
-    explorer_db: Option<explorer::ExplorerDB>,
+    explorer_db: Option<explorer::ExplorerDb>,
     rest_context: Option<rest::ContextLock>,
     services: Services,
     _logger_guards: Vec<WorkerGuard>,
@@ -367,7 +367,7 @@ struct BootstrapData {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
-    explorer_db: Option<explorer::ExplorerDB>,
+    explorer_db: Option<explorer::ExplorerDb>,
     rest_context: Option<rest::ContextLock>,
     settings: Settings,
 }
@@ -449,7 +449,7 @@ async fn bootstrap_internal(
 
     let explorer_db = if settings.explorer {
         futures::select! {
-            explorer_result = explorer::ExplorerDB::bootstrap(block0_explorer, &blockchain, blockchain_tip.clone()).fuse() => {
+            explorer_result = explorer::ExplorerDb::bootstrap(block0_explorer, &blockchain, blockchain_tip.clone()).fuse() => {
                 Some(explorer_result?)
             },
             _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),

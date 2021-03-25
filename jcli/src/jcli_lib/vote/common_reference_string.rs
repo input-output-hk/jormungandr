@@ -20,7 +20,7 @@ pub struct Generate {
 
 #[derive(StructOpt, Debug)]
 #[structopt(rename_all = "kebab-case")]
-pub enum CRS {
+pub enum Crs {
     /// generate the common reference string
     Generate(Generate),
 }
@@ -42,10 +42,10 @@ impl Generate {
     }
 }
 
-impl CRS {
+impl Crs {
     pub fn exec(self) -> Result<(), super::Error> {
         match self {
-            CRS::Generate(args) => args.exec(),
+            Crs::Generate(args) => args.exec(),
         }
     }
 }
