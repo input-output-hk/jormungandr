@@ -432,9 +432,9 @@ impl Wallet {
     }
 }
 
-impl Into<WalletLib> for Wallet {
-    fn into(self) -> WalletLib {
-        let address_data = match self {
+impl From<Wallet> for WalletLib {
+    fn from(wallet: Wallet) -> WalletLib {
+        let address_data = match wallet {
             Wallet::Account(account) => AddressData::new(
                 account.signing_key().as_ref().clone(),
                 Some(account.internal_counter()),

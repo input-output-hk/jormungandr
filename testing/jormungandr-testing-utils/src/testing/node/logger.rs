@@ -167,9 +167,9 @@ impl LogEntry {
     }
 }
 
-impl Into<Timestamp> for LogEntry {
-    fn into(self) -> Timestamp {
-        self.ts.parse().unwrap()
+impl From<LogEntry> for Timestamp {
+    fn from(log_entry: LogEntry) -> Timestamp {
+        log_entry.ts.parse().unwrap()
     }
 }
 

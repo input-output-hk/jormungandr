@@ -102,17 +102,17 @@ impl Wallet {
     }
 }
 
-impl Into<Inner> for Wallet {
-    fn into(self) -> Inner {
-        self.inner
+impl From<Wallet> for Inner {
+    fn from(wallet: Wallet) -> Inner {
+        wallet.inner
     }
 }
 
 pub type WalletLib = chain_impl_mockchain::testing::data::Wallet;
 
-impl Into<WalletLib> for Wallet {
-    fn into(self) -> WalletLib {
-        let inner: Inner = self.into();
+impl From<Wallet> for WalletLib {
+    fn from(wallet: Wallet) -> WalletLib {
+        let inner: Inner = wallet.into();
         inner.into()
     }
 }

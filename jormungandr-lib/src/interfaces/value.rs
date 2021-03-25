@@ -75,9 +75,9 @@ impl From<u64> for Value {
     }
 }
 
-impl Into<u64> for Value {
-    fn into(self) -> u64 {
-        (self.0).0
+impl From<Value> for u64 {
+    fn from(value: Value) -> u64 {
+        (value.0).0
     }
 }
 

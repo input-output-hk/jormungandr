@@ -521,9 +521,9 @@ pub mod serde_base64_bytes {
     }
 }
 
-impl Into<chain_vote::EncryptedTally> for EncryptedTally {
-    fn into(self) -> chain_vote::EncryptedTally {
-        chain_vote::EncryptedTally::from_bytes(&self.0).unwrap()
+impl From<EncryptedTally> for chain_vote::EncryptedTally {
+    fn from(encrypted_tally: EncryptedTally) -> chain_vote::EncryptedTally {
+        chain_vote::EncryptedTally::from_bytes(&encrypted_tally.0).unwrap()
     }
 }
 
@@ -604,13 +604,13 @@ impl From<chain_vote::Tally> for TallyResult {
     }
 }
 
-impl Into<vote::TallyResult> for TallyResult {
-    fn into(self) -> vote::TallyResult {
+impl From<TallyResult> for vote::TallyResult {
+    fn from(tally_result: TallyResult) -> vote::TallyResult {
         let mut result = vote::TallyResult::new(
-            Options::new_length(self.options.end - self.options.start).unwrap(),
+            Options::new_length(tally_result.options.end - tally_result.options.start).unwrap(),
         );
 
-        for (idx, value) in self.results().iter().enumerate() {
+        for (idx, value) in tally_result.results().iter().enumerate() {
             let weight: Weight = (*value).into();
             result.add_vote(Choice::new(idx as u8), weight).unwrap()
         }
@@ -642,9 +642,9 @@ impl From<vote::Tally> for Tally {
     }
 }
 
-impl Into<vote::Tally> for Tally {
-    fn into(self) -> vote::Tally {
-        match self {
+impl From<Tally> for vote::Tally {
+    fn from(tally: Tally) -> vote::Tally {
+        match tally {
             Tally::Public { result } => vote::Tally::Public {
                 result: result.into(),
             },
@@ -678,13 +678,16 @@ impl From<vote::VoteProposalStatus> for VoteProposalStatus {
     }
 }
 
-impl Into<vote::VoteProposalStatus> for VoteProposalStatus {
-    fn into(self) -> vote::VoteProposalStatus {
+impl From<VoteProposalStatus> for vote::VoteProposalStatus {
+    fn from(vote_proposal_status: VoteProposalStatus) -> vote::VoteProposalStatus {
         vote::VoteProposalStatus {
-            index: self.index,
-            proposal_id: self.proposal_id.into(),
-            options: Options::new_length(self.options.end - self.options.start).unwrap(),
-            tally: self.tally.map(|t| t.into()),
+            index: vote_proposal_status.index,
+            proposal_id: vote_proposal_status.proposal_id.into(),
+            options: Options::new_length(
+                vote_proposal_status.options.end - vote_proposal_status.options.start,
+            )
+            .unwrap(),
+            tally: vote_proposal_status.tally.map(|t| t.into()),
             votes: Default::default(),
         }
     }
@@ -704,16 +707,20 @@ impl From<vote::VotePlanStatus> for VotePlanStatus {
     }
 }
 
-impl Into<vote::VotePlanStatus> for VotePlanStatus {
-    fn into(self) -> vote::VotePlanStatus {
+impl From<VotePlanStatus> for vote::VotePlanStatus {
+    fn from(vote_plan_status: VotePlanStatus) -> vote::VotePlanStatus {
         vote::VotePlanStatus {
-            id: self.id.into(),
-            vote_start: self.vote_start,
-            vote_end: self.vote_end,
-            committee_end: self.committee_end,
-            payload: self.payload,
-            committee_public_keys: self.committee_member_keys,
-            proposals: self.proposals.into_iter().map(|p| p.into()).collect(),
+            id: vote_plan_status.id.into(),
+            vote_start: vote_plan_status.vote_start,
+            vote_end: vote_plan_status.vote_end,
+            committee_end: vote_plan_status.committee_end,
+            payload: vote_plan_status.payload,
+            committee_public_keys: vote_plan_status.committee_member_keys,
+            proposals: vote_plan_status
+                .proposals
+                .into_iter()
+                .map(|p| p.into())
+                .collect(),
         }
     }
 }

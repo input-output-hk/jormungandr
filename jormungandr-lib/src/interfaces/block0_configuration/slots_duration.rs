@@ -68,9 +68,9 @@ impl From<SlotDuration> for ConfigParam {
     }
 }
 
-impl Into<u8> for SlotDuration {
-    fn into(self) -> u8 {
-        self.0
+impl From<SlotDuration> for u8 {
+    fn from(slots_duration: SlotDuration) -> u8 {
+        slots_duration.0
     }
 }
 

@@ -135,9 +135,9 @@ impl fmt::Display for EnclaveLeaderId {
     }
 }
 
-impl Into<u32> for EnclaveLeaderId {
-    fn into(self) -> u32 {
-        self.0
+impl From<EnclaveLeaderId> for u32 {
+    fn from(enclave_leader_id: EnclaveLeaderId) -> u32 {
+        enclave_leader_id.0
     }
 }
 
