@@ -76,30 +76,32 @@ pub struct Module {
     block_hard_deadline: u32,
 }
 
+pub struct ModuleConfig {
+    pub service_info: TokioServiceInfo,
+    pub logs: Logs,
+    pub tip: Tip,
+    pub pool: MessageBox<TransactionMsg>,
+    pub enclave: Enclave,
+    pub block_message: MessageBox<BlockMsg>,
+    pub rewards_report_all: bool,
+    pub block_hard_deadline: u32,
+}
+
 impl Module {
-    pub async fn new(
-        service_info: TokioServiceInfo,
-        logs: Logs,
-        tip: Tip,
-        pool: MessageBox<TransactionMsg>,
-        enclave: Enclave,
-        block_message: MessageBox<BlockMsg>,
-        rewards_report_all: bool,
-        block_hard_deadline: u32,
-    ) -> Result<Self, LeadershipError> {
-        let tip_ref = tip.get_ref().await;
+    pub async fn new(config: ModuleConfig) -> Result<Self, LeadershipError> {
+        let tip_ref = config.tip.get_ref().await;
 
         Ok(Self {
             schedule: None,
-            service_info,
-            logs,
+            service_info: config.service_info,
+            logs: config.logs,
             tip_ref,
-            tip,
-            pool,
-            enclave,
-            block_message,
-            rewards_report_all,
-            block_hard_deadline,
+            tip: config.tip,
+            pool: config.pool,
+            enclave: config.enclave,
+            block_message: config.block_message,
+            rewards_report_all: config.rewards_report_all,
+            block_hard_deadline: config.block_hard_deadline,
         })
     }
 

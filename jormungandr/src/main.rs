@@ -230,25 +230,25 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let enclave = block_on(Enclave::from_vec(leader_secrets));
 
     {
-        let leadership_logs = leadership_logs.clone();
-        let block_msgbox = block_msgbox;
-        let blockchain_tip = blockchain_tip.clone();
+        let logs = leadership_logs.clone();
+        let block_message = block_msgbox;
+        let tip = blockchain_tip.clone();
         let enclave = leadership::Enclave::new(enclave.clone());
-        let fragment_msgbox = fragment_msgbox.clone();
+        let pool = fragment_msgbox.clone();
         let rewards_report_all = bootstrapped_node.settings.rewards_report_all;
         let block_hard_deadline = bootstrapped_node.settings.block_hard_deadline;
 
-        services.spawn_try_future("leadership", move |info| {
-            leadership::Module::new(
-                info,
-                leadership_logs,
-                blockchain_tip,
-                fragment_msgbox,
+        services.spawn_try_future("leadership", move |service_info| {
+            leadership::Module::new(leadership::ModuleConfig {
+                service_info,
+                logs,
+                tip,
+                pool,
                 enclave,
-                block_msgbox,
+                block_message,
                 rewards_report_all,
                 block_hard_deadline,
-            )
+            })
             .and_then(|module| module.run())
         });
     }
