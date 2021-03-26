@@ -63,11 +63,11 @@ impl SyncWaitParams {
     }
 }
 
-impl Into<Thresholds<Speed>> for SyncWaitParams {
-    fn into(self) -> Thresholds<Speed> {
+impl From<SyncWaitParams> for Thresholds<Speed> {
+    fn from(params: SyncWaitParams) -> Thresholds<Speed> {
         let grace_coeff = 2;
 
-        match self {
+        match params {
             SyncWaitParams::WithDisruption {
                 no_of_nodes,
                 restart_coeff,

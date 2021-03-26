@@ -23,7 +23,7 @@ pub enum Error {
     #[error("Error in the overall configuration of the node")]
     ConfigurationError(#[from] settings::Error),
     #[error("I/O Error with {reason}")]
-    IO {
+    Io {
         #[source]
         source: io::Error,
         reason: ErrorKind,
@@ -79,7 +79,7 @@ impl Error {
             Error::Interrupted => 0,
             Error::LoggingInitializationError { .. } => 1,
             Error::ConfigurationError { .. } => 2,
-            Error::IO { .. } => 3,
+            Error::Io { .. } => 3,
             Error::ParseError { .. } => 4,
             Error::StorageError { .. } => 5,
             Error::Blockchain { .. } => 6,

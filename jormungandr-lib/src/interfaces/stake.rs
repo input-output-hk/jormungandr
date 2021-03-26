@@ -62,9 +62,9 @@ impl From<u64> for Stake {
     }
 }
 
-impl Into<u64> for Stake {
-    fn into(self) -> u64 {
-        (self.0).0
+impl From<Stake> for u64 {
+    fn from(stake: Stake) -> u64 {
+        (stake.0).0
     }
 }
 

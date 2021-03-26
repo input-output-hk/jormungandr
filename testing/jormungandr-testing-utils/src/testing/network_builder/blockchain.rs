@@ -3,7 +3,7 @@ use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::{fee::LinearFee, testing::scenario::template::VotePlanDef};
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, KESUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
+    ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
 use std::collections::HashMap;
 
@@ -18,7 +18,7 @@ pub struct Blockchain {
     legacy_wallets: Vec<LegacyWalletTemplate>,
     external_wallets: Vec<ExternalWalletTemplate>,
     wallets: HashMap<WalletAlias, WalletTemplate>,
-    kes_update_speed: KESUpdateSpeed,
+    kes_update_speed: KesUpdateSpeed,
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
     linear_fee: LinearFee,
     discrimination: Discrimination,
@@ -29,7 +29,7 @@ impl Blockchain {
         consensus: ConsensusVersion,
         slots_per_epoch: NumberOfSlotsPerEpoch,
         slot_duration: SlotDuration,
-        kes_update_speed: KESUpdateSpeed,
+        kes_update_speed: KesUpdateSpeed,
         consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
     ) -> Self {
         Blockchain {
@@ -124,7 +124,7 @@ impl Blockchain {
         &self.slot_duration
     }
 
-    pub fn kes_update_speed(&self) -> &KESUpdateSpeed {
+    pub fn kes_update_speed(&self) -> &KesUpdateSpeed {
         &self.kes_update_speed
     }
 

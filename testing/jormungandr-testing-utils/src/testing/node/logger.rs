@@ -21,6 +21,8 @@ pub struct JormungandrLogger {
     rx: Receiver<(Instant, String)>,
 }
 
+// The name is used to serialize/deserialize
+#[allow(clippy::upper_case_acronyms)]
 #[derive(AsRefStr, Serialize, Deserialize, Eq, PartialEq, Debug, Clone, PartialOrd)]
 pub enum Level {
     #[serde(alias = "TRCE")]
@@ -165,9 +167,9 @@ impl LogEntry {
     }
 }
 
-impl Into<Timestamp> for LogEntry {
-    fn into(self) -> Timestamp {
-        self.ts.parse().unwrap()
+impl From<LogEntry> for Timestamp {
+    fn from(log_entry: LogEntry) -> Timestamp {
+        log_entry.ts.parse().unwrap()
     }
 }
 

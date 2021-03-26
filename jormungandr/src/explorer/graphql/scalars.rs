@@ -316,9 +316,9 @@ impl TryInto<u64> for IndexCursor {
     }
 }
 
-impl Into<String> for IndexCursor {
-    fn into(self) -> String {
-        self.0
+impl From<IndexCursor> for String {
+    fn from(index_cursor: IndexCursor) -> String {
+        index_cursor.0
     }
 }
 

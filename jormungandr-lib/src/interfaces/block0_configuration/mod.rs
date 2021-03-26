@@ -20,7 +20,7 @@ pub use self::initial_config::BlockchainConfiguration;
 pub use self::initial_fragment::{
     try_initials_vec_from_messages, Initial, InitialUTxO, LegacyUTxO,
 };
-pub use self::kes_update_speed::KESUpdateSpeed;
+pub use self::kes_update_speed::KesUpdateSpeed;
 pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
 pub use self::reward_constraint::{PoolParticipationCapping, RewardConstraints};
@@ -126,7 +126,7 @@ pub fn block0_configuration_documented_example() -> String {
         default_slots_per_epoch = NumberOfSlotsPerEpoch::default(),
         default_slot_duration = SlotDuration::default(),
         default_consensus_genesis_praos_active_slot_coeff = ActiveSlotCoefficient::default(),
-        default_kes_update_speed = KESUpdateSpeed::default(),
+        default_kes_update_speed = KesUpdateSpeed::default(),
         default_block_content_max_size = BlockContentMaxSize::default(),
         default_epoch_stability_depth = EpochStabilityDepth::default(),
         leader_1 = leader_1_pk,

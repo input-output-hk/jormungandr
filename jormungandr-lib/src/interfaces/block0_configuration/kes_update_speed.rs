@@ -9,94 +9,94 @@ use std::{convert::TryFrom, fmt, str::FromStr as _};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-pub struct KESUpdateSpeed(pub(crate) u32);
+pub struct KesUpdateSpeed(pub(crate) u32);
 
-impl KESUpdateSpeed {
+impl KesUpdateSpeed {
     /// minimal value for the KES Update Speed
     ///
     /// ```
-    /// # use jormungandr_lib::interfaces::KESUpdateSpeed;
+    /// # use jormungandr_lib::interfaces::KesUpdateSpeed;
     ///
-    /// assert_eq!(KESUpdateSpeed::MINIMUM, KESUpdateSpeed::new(60).unwrap())
+    /// assert_eq!(KesUpdateSpeed::MINIMUM, KesUpdateSpeed::new(60).unwrap())
     /// ```
-    pub const MINIMUM: Self = KESUpdateSpeed(MINIMUM_KES_SPEED_UPDATE_IN_SECONDS);
+    pub const MINIMUM: Self = KesUpdateSpeed(MINIMUM_KES_SPEED_UPDATE_IN_SECONDS);
 
     /// maximum value for the KES Update Speed
     ///
     /// ```
-    /// # use jormungandr_lib::interfaces::KESUpdateSpeed;
+    /// # use jormungandr_lib::interfaces::KesUpdateSpeed;
     ///
-    /// assert_eq!(KESUpdateSpeed::MAXIMUM, KESUpdateSpeed::new(365 * 24 * 3600).unwrap())
+    /// assert_eq!(KesUpdateSpeed::MAXIMUM, KesUpdateSpeed::new(365 * 24 * 3600).unwrap())
     /// ```
-    pub const MAXIMUM: Self = KESUpdateSpeed(MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS);
+    pub const MAXIMUM: Self = KesUpdateSpeed(MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS);
 
-    /// create a new KESUpdateSpeed value
+    /// create a new KesUpdateSpeed value
     ///
     /// returns `None` if the value is not within the boundaries of
-    /// `KESUpdateSpeed::MINIMUM` and `KESUpdateSpeed::MAXIMUM`.
+    /// `KesUpdateSpeed::MINIMUM` and `KesUpdateSpeed::MAXIMUM`.
     pub fn new(v: u32) -> Option<Self> {
         if v < MINIMUM_KES_SPEED_UPDATE_IN_SECONDS || MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS < v {
             None
         } else {
-            Some(KESUpdateSpeed(v))
+            Some(KesUpdateSpeed(v))
         }
     }
 }
 
 #[derive(Debug, Error)]
-pub enum TryFromKESUpdateSpeedError {
+pub enum TryFromKesUpdateSpeedError {
     #[error("Incompatible Config param, expected KES Update Speed")]
     Incompatible,
     #[error("Invalid KES Update speed {speed}")]
     Invalid { speed: u32 },
 }
 
-impl TryFrom<ConfigParam> for KESUpdateSpeed {
-    type Error = TryFromKESUpdateSpeedError;
+impl TryFrom<ConfigParam> for KesUpdateSpeed {
+    type Error = TryFromKesUpdateSpeedError;
     fn try_from(config_param: ConfigParam) -> Result<Self, Self::Error> {
         match config_param {
             ConfigParam::KESUpdateSpeed(speed) => {
-                KESUpdateSpeed::new(speed).ok_or(TryFromKESUpdateSpeedError::Invalid { speed })
+                KesUpdateSpeed::new(speed).ok_or(TryFromKesUpdateSpeedError::Invalid { speed })
             }
-            _ => Err(TryFromKESUpdateSpeedError::Incompatible),
+            _ => Err(TryFromKesUpdateSpeedError::Incompatible),
         }
     }
 }
 
-impl From<KESUpdateSpeed> for ConfigParam {
-    fn from(kes_update_speed: KESUpdateSpeed) -> Self {
+impl From<KesUpdateSpeed> for ConfigParam {
+    fn from(kes_update_speed: KesUpdateSpeed) -> Self {
         ConfigParam::KESUpdateSpeed(kes_update_speed.0)
     }
 }
 
-impl fmt::Display for KESUpdateSpeed {
+impl fmt::Display for KesUpdateSpeed {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Duration::new(self.0 as u64, 0).fmt(f)
     }
 }
 
-impl Default for KESUpdateSpeed {
+impl Default for KesUpdateSpeed {
     fn default() -> Self {
-        KESUpdateSpeed::new(DEFAULT_KES_SPEED_UPDATE)
+        KesUpdateSpeed::new(DEFAULT_KES_SPEED_UPDATE)
             .expect("Default should be a valid value at all time")
     }
 }
 
-impl<'de> Deserialize<'de> for KESUpdateSpeed {
+impl<'de> Deserialize<'de> for KesUpdateSpeed {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         use serde::de::{self, Visitor};
-        struct KESUpdateSpeedVisitor;
-        impl<'de> Visitor<'de> for KESUpdateSpeedVisitor {
-            type Value = KESUpdateSpeed;
+        struct KesUpdateSpeedVisitor;
+        impl<'de> Visitor<'de> for KesUpdateSpeedVisitor {
+            type Value = KesUpdateSpeed;
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 write!(
                     formatter,
                     "number of seconds between 2 KES updates (valid values are between {} ({}) and {} ({}))",
-                    MINIMUM_KES_SPEED_UPDATE_IN_SECONDS, KESUpdateSpeed::MINIMUM,
-                    MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS, KESUpdateSpeed::MAXIMUM,
+                    MINIMUM_KES_SPEED_UPDATE_IN_SECONDS, KesUpdateSpeed::MINIMUM,
+                    MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS, KesUpdateSpeed::MAXIMUM,
                 )
             }
 
@@ -108,16 +108,16 @@ impl<'de> Deserialize<'de> for KESUpdateSpeed {
                     Err(E::custom(format!(
                         "cannot have less than {} ({}) between two KES Update",
                         MINIMUM_KES_SPEED_UPDATE_IN_SECONDS,
-                        KESUpdateSpeed::MINIMUM
+                        KesUpdateSpeed::MINIMUM
                     )))
                 } else if v > (MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS as u64) {
                     Err(E::custom(format!(
                         "cannot have more than {} ({}) between two KES Update",
                         MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS,
-                        KESUpdateSpeed::MAXIMUM
+                        KesUpdateSpeed::MAXIMUM
                     )))
                 } else {
-                    Ok(KESUpdateSpeed(v as u32))
+                    Ok(KesUpdateSpeed(v as u32))
                 }
             }
 
@@ -135,7 +135,7 @@ impl<'de> Deserialize<'de> for KESUpdateSpeed {
                 self.visit_u64(seconds)
             }
         }
-        deserializer.deserialize_any(KESUpdateSpeedVisitor)
+        deserializer.deserialize_any(KesUpdateSpeedVisitor)
     }
 }
 
@@ -144,14 +144,14 @@ mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
 
-    impl Arbitrary for KESUpdateSpeed {
+    impl Arbitrary for KesUpdateSpeed {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             use rand07::Rng as _;
             let v = g.gen_range(
                 MINIMUM_KES_SPEED_UPDATE_IN_SECONDS,
                 MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS,
             );
-            KESUpdateSpeed(v)
+            KesUpdateSpeed(v)
         }
     }
 
@@ -160,7 +160,7 @@ mod test {
     fn deserialize_from_invalid_type() {
         const EXAMPLE: &str = "---\ntrue";
 
-        let _: KESUpdateSpeed = serde_yaml::from_str(EXAMPLE).unwrap();
+        let _: KesUpdateSpeed = serde_yaml::from_str(EXAMPLE).unwrap();
     }
 
     #[test]
@@ -169,7 +169,7 @@ mod test {
         const VALUE: u32 = MINIMUM_KES_SPEED_UPDATE_IN_SECONDS - 1;
         let example = format!("---\n{}", VALUE);
 
-        let _: KESUpdateSpeed = serde_yaml::from_str(&example).unwrap();
+        let _: KesUpdateSpeed = serde_yaml::from_str(&example).unwrap();
     }
 
     #[test]
@@ -178,7 +178,7 @@ mod test {
         const VALUE: u32 = MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS + 1;
         let example = format!("---\n{}", VALUE);
 
-        let _: KESUpdateSpeed = serde_yaml::from_str(&example).unwrap();
+        let _: KesUpdateSpeed = serde_yaml::from_str(&example).unwrap();
     }
 
     #[test]
@@ -186,7 +186,7 @@ mod test {
         const VALUE: u32 = 92827;
         let example = format!("---\n{}", VALUE);
 
-        let decoded: KESUpdateSpeed = serde_yaml::from_str(&example).unwrap();
+        let decoded: KesUpdateSpeed = serde_yaml::from_str(&example).unwrap();
 
         assert_eq!(decoded.0, VALUE)
     }
@@ -196,22 +196,22 @@ mod test {
         const VALUE: u32 = 2 * 24 * 3600 + 6 * 3600 + 15 * 60 + 34;
         const DURATION_STR: &str = "---\n2days 6h 15m 34s";
 
-        let decoded: KESUpdateSpeed = serde_yaml::from_str(&DURATION_STR).unwrap();
+        let decoded: KesUpdateSpeed = serde_yaml::from_str(&DURATION_STR).unwrap();
 
         assert_eq!(decoded.0, VALUE)
     }
 
     quickcheck! {
-        fn serde_encode_decode(kes_update_speed: KESUpdateSpeed) -> bool {
+        fn serde_encode_decode(kes_update_speed: KesUpdateSpeed) -> bool {
             let s = serde_yaml::to_string(&kes_update_speed).unwrap();
-            let kes_update_speed_dec: KESUpdateSpeed = serde_yaml::from_str(&s).unwrap();
+            let kes_update_speed_dec: KesUpdateSpeed = serde_yaml::from_str(&s).unwrap();
 
             kes_update_speed == kes_update_speed_dec
         }
 
-        fn convert_from_to_config_param(kes_update_speed: KESUpdateSpeed) -> bool {
+        fn convert_from_to_config_param(kes_update_speed: KesUpdateSpeed) -> bool {
             let cp = ConfigParam::from(kes_update_speed);
-            let kes_update_speed_dec = KESUpdateSpeed::try_from(cp).unwrap();
+            let kes_update_speed_dec = KesUpdateSpeed::try_from(cp).unwrap();
 
             kes_update_speed == kes_update_speed_dec
         }

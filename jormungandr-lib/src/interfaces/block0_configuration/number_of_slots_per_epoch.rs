@@ -80,9 +80,9 @@ impl Default for NumberOfSlotsPerEpoch {
     }
 }
 
-impl Into<u32> for NumberOfSlotsPerEpoch {
-    fn into(self) -> u32 {
-        self.0
+impl From<NumberOfSlotsPerEpoch> for u32 {
+    fn from(number_of_slots_per_epoch: NumberOfSlotsPerEpoch) -> u32 {
+        number_of_slots_per_epoch.0
     }
 }
 

@@ -22,7 +22,7 @@ impl Diagnostic {
         {
             Ok(Self {
                 open_files_limit: Some(getrlimit(RlimitResource::NoFile)?),
-                cpu_usage_limit: Some(getrlimit(RlimitResource::CPU)?),
+                cpu_usage_limit: Some(getrlimit(RlimitResource::Cpu)?),
             })
         }
         #[cfg(any(not(unix), target_os = "android"))]
@@ -57,7 +57,7 @@ impl Display for Diagnostic {
 #[cfg(unix)]
 enum RlimitResource {
     NoFile,
-    CPU,
+    Cpu,
 }
 
 #[cfg(all(unix, not(target_os = "android")))]
@@ -71,7 +71,7 @@ fn getrlimit(resource: RlimitResource) -> Result<u64, DiagnosticError> {
 
     let resource = match resource {
         RlimitResource::NoFile => libc::RLIMIT_NOFILE,
-        RlimitResource::CPU => libc::RLIMIT_CPU,
+        RlimitResource::Cpu => libc::RLIMIT_CPU,
     };
 
     let retcode = unsafe { libc::getrlimit(resource, &mut limits as *mut rlimit) };

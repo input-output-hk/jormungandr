@@ -16,7 +16,7 @@ pub fn prepare_storage(setting: &Settings) -> Result<Storage, Error> {
     let storage_span = span.clone();
     let _enter = span.enter();
     if let Some(dir) = &setting.storage {
-        std::fs::create_dir_all(dir).map_err(|err| Error::IO {
+        std::fs::create_dir_all(dir).map_err(|err| Error::Io {
             source: err,
             reason: ErrorKind::BlockStorage,
         })?;
@@ -95,7 +95,7 @@ pub async fn prepare_block_0(settings: &Settings, storage: &Storage) -> Result<B
     match &settings.block_0 {
         Block0Info::Path(path, opt_block0_id) => {
             tracing::debug!("parsing block0 from file path `{:?}'", path);
-            let f = std::fs::File::open(path).map_err(|err| Error::IO {
+            let f = std::fs::File::open(path).map_err(|err| Error::Io {
                 source: err,
                 reason: ErrorKind::Block0,
             })?;

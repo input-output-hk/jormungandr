@@ -25,7 +25,7 @@ pub enum ControllerError {
     #[error("wallet not found {0}")]
     WalletNotFound(String),
     #[error("io error")]
-    IOError(#[from] std::io::Error),
+    IoError(#[from] std::io::Error),
     #[error("fixture filesystem error")]
     FsFixture(#[from] FixtureError),
     #[error("serialization error")]

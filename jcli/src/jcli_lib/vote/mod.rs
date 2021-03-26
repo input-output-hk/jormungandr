@@ -65,7 +65,7 @@ pub enum Vote {
     /// Build an encryption key from committee member keys
     EncryptingKey(encrypting_vote_key::EncryptingVoteKey),
     /// Create a common reference string
-    CRS(common_reference_string::CRS),
+    Crs(common_reference_string::Crs),
     /// Perform decryption of private voting tally
     Tally(tally::Tally),
 }
@@ -75,7 +75,7 @@ impl Vote {
         match self {
             Vote::Committee(cmd) => cmd.exec(),
             Vote::EncryptingKey(cmd) => cmd.exec(),
-            Vote::CRS(cmd) => cmd.exec(),
+            Vote::Crs(cmd) => cmd.exec(),
             Vote::Tally(cmd) => cmd.exec(),
         }
     }

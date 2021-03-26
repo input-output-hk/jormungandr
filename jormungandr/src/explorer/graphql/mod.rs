@@ -24,7 +24,7 @@ use super::indexing::{
 use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use crate::explorer::indexing::ExplorerVote;
-use crate::explorer::{ExplorerDB, Settings as ChainSettings};
+use crate::explorer::{ExplorerDb, Settings as ChainSettings};
 use cardano_legacy_address::Addr as OldAddress;
 use certificates::*;
 use chain_impl_mockchain::certificate;
@@ -467,7 +467,7 @@ pub struct Block {
 }
 
 impl Block {
-    async fn from_string_hash(hash: String, db: &ExplorerDB) -> FieldResult<Block> {
+    async fn from_string_hash(hash: String, db: &ExplorerDb) -> FieldResult<Block> {
         let hash = HeaderHash::from_str(&hash)?;
         let block = Block {
             hash,
@@ -491,7 +491,7 @@ impl Block {
         }
     }
 
-    async fn fetch_explorer_block(&self, db: &ExplorerDB) -> FieldResult<Arc<ExplorerBlock>> {
+    async fn fetch_explorer_block(&self, db: &ExplorerDb) -> FieldResult<Arc<ExplorerBlock>> {
         let mut contents = self.contents.lock().await;
         if let Some(block) = &*contents {
             return Ok(Arc::clone(&block));
@@ -505,7 +505,7 @@ impl Block {
         }
     }
 
-    async fn get_branches(&self, db: &ExplorerDB) -> FieldResult<Vec<Branch>> {
+    async fn get_branches(&self, db: &ExplorerDb) -> FieldResult<Vec<Branch>> {
         let (block, mut branches) =
             db.get_block_with_branches(&self.hash)
                 .await
@@ -1014,7 +1014,7 @@ pub struct Pool {
 }
 
 impl Pool {
-    async fn from_string_id(id: &str, db: &ExplorerDB) -> FieldResult<Pool> {
+    async fn from_string_id(id: &str, db: &ExplorerDb) -> FieldResult<Pool> {
         let id = certificate::PoolId::from_str(&id)?;
         let blocks = db
             .get_stake_pool_blocks(&id)
@@ -1252,7 +1252,7 @@ impl Epoch {
         Epoch { id }
     }
 
-    async fn get_epoch_data(&self, db: &ExplorerDB) -> Option<EpochData> {
+    async fn get_epoch_data(&self, db: &ExplorerDb) -> Option<EpochData> {
         db.get_epoch(self.id).await
     }
 }
@@ -1655,7 +1655,7 @@ impl Subscription {
 pub type Schema = async_graphql::Schema<Query, EmptyMutation, Subscription>;
 
 pub struct EContext {
-    pub db: ExplorerDB,
+    pub db: ExplorerDb,
     pub settings: ChainSettings,
 }
 

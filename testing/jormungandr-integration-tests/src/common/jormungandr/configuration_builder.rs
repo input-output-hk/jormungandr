@@ -9,7 +9,7 @@ use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, FeesGoTo,
-    Initial, InitialUTxO, KESUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
+    Initial, InitialUTxO, KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
     NodeSecret, NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
     Value,
 };
@@ -34,7 +34,7 @@ pub struct ConfigurationBuilder {
     slots_per_epoch: NumberOfSlotsPerEpoch,
     slot_duration: SlotDuration,
     epoch_stability_depth: EpochStabilityDepth,
-    kes_update_speed: KESUpdateSpeed,
+    kes_update_speed: KesUpdateSpeed,
     linear_fees: LinearFee,
     consensus_leader_ids: Vec<ConsensusLeaderId>,
     secrets: Vec<NodeSecret>,
@@ -70,7 +70,7 @@ impl ConfigurationBuilder {
             epoch_stability_depth: 2600u32.into(),
             linear_fees: LinearFee::new(0, 0, 0),
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,
-            kes_update_speed: KESUpdateSpeed::new(12 * 3600).unwrap(),
+            kes_update_speed: KesUpdateSpeed::new(12 * 3600).unwrap(),
             node_config_builder: NodeConfigBuilder::new(),
             block_content_max_size: 4096,
             rewards_history: false,
@@ -104,7 +104,7 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_kes_update_speed(&mut self, kes_update_speed: KESUpdateSpeed) -> &mut Self {
+    pub fn with_kes_update_speed(&mut self, kes_update_speed: KesUpdateSpeed) -> &mut Self {
         self.kes_update_speed = kes_update_speed;
         self
     }

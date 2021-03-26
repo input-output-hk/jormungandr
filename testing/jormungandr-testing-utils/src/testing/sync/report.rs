@@ -4,11 +4,11 @@ pub enum MeasurementReportInterval {
     Long,
 }
 
-impl Into<u32> for MeasurementReportInterval {
-    fn into(self) -> u32 {
-        match self {
-            Self::Standard => 20,
-            Self::Long => 100,
+impl From<MeasurementReportInterval> for u32 {
+    fn from(interval: MeasurementReportInterval) -> u32 {
+        match interval {
+            MeasurementReportInterval::Standard => 20,
+            MeasurementReportInterval::Long => 100,
         }
     }
 }

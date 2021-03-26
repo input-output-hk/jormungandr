@@ -7,7 +7,7 @@ use jormungandr_lib::{
     interfaces::{
         ActiveSlotCoefficient, Block0Configuration, BlockContentMaxSize, BlockchainConfiguration,
         CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, FeesGoTo, Initial, InitialUTxO,
-        KESUpdateSpeed, NumberOfSlotsPerEpoch, Ratio, RewardConstraints, RewardParams,
+        KesUpdateSpeed, NumberOfSlotsPerEpoch, Ratio, RewardConstraints, RewardParams,
         SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
@@ -50,7 +50,7 @@ impl Block0ConfigurationBuilder {
                 consensus_leader_ids: vec![],
                 consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,
                 linear_fees: LinearFee::new(0, 0, 0),
-                kes_update_speed: KESUpdateSpeed::new(12 * 3600).unwrap(),
+                kes_update_speed: KesUpdateSpeed::new(12 * 3600).unwrap(),
                 treasury: Some(1_000_000.into()),
                 treasury_parameters: Some(TaxType {
                     fixed: 10.into(),
@@ -82,7 +82,7 @@ impl Block0ConfigurationBuilder {
         self.blockchain_configuration.block0_consensus = block0_consensus;
         self
     }
-    pub fn with_kes_update_speed(&mut self, kes_update_speed: KESUpdateSpeed) -> &mut Self {
+    pub fn with_kes_update_speed(&mut self, kes_update_speed: KesUpdateSpeed) -> &mut Self {
         self.blockchain_configuration.kes_update_speed = kes_update_speed;
         self
     }

@@ -204,10 +204,10 @@ impl<'a, S: SyncNode + Send> FragmentSenderSetupBuilder<'a, S> {
     }
 }
 
-impl<'a, S: SyncNode + Send> Into<FragmentSenderSetup<'a, S>>
-    for FragmentSenderSetupBuilder<'a, S>
+impl<'a, S: SyncNode + Send> From<FragmentSenderSetupBuilder<'a, S>>
+    for FragmentSenderSetup<'a, S>
 {
-    fn into(self) -> FragmentSenderSetup<'a, S> {
-        self.setup
+    fn from(builder: FragmentSenderSetupBuilder<'a, S>) -> FragmentSenderSetup<'a, S> {
+        builder.setup
     }
 }

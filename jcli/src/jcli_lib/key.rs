@@ -191,7 +191,7 @@ arg_enum! {
         Ed25519Bip32,
         Ed25519Extended,
         SumEd25519_12,
-        Curve25519_2HashDH,
+        Curve25519_2HashDh,
     }
 }
 
@@ -216,7 +216,7 @@ impl Generate {
             GenPrivKeyType::Ed25519Bip32 => gen_priv_key::<Ed25519Bip32>(self.seed)?,
             GenPrivKeyType::Ed25519Extended => gen_priv_key::<Ed25519Extended>(self.seed)?,
             GenPrivKeyType::SumEd25519_12 => gen_priv_key::<SumEd25519_12>(self.seed)?,
-            GenPrivKeyType::Curve25519_2HashDH => gen_priv_key::<Curve25519_2HashDH>(self.seed)?,
+            GenPrivKeyType::Curve25519_2HashDh => gen_priv_key::<Curve25519_2HashDH>(self.seed)?,
         };
         let mut output = self.output_file.open()?;
         writeln!(output, "{}", priv_key_bech32)?;
@@ -273,7 +273,7 @@ impl FromBytes {
             GenPrivKeyType::Ed25519Bip32 => bytes_to_priv_key::<Ed25519Bip32>(&bytes)?,
             GenPrivKeyType::Ed25519Extended => bytes_to_priv_key::<Ed25519Extended>(&bytes)?,
             GenPrivKeyType::SumEd25519_12 => bytes_to_priv_key::<SumEd25519_12>(&bytes)?,
-            GenPrivKeyType::Curve25519_2HashDH => bytes_to_priv_key::<Curve25519_2HashDH>(&bytes)?,
+            GenPrivKeyType::Curve25519_2HashDh => bytes_to_priv_key::<Curve25519_2HashDH>(&bytes)?,
         };
         let mut output = self.output_file.open()?;
         writeln!(output, "{}", priv_key_bech32)?;

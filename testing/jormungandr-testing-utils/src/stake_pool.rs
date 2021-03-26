@@ -70,8 +70,8 @@ impl StakePool {
     }
 }
 
-impl Into<StakePoolLib> for StakePool {
-    fn into(self) -> StakePoolLib {
-        self.inner
+impl From<StakePool> for StakePoolLib {
+    fn from(stake_pool: StakePool) -> StakePoolLib {
+        stake_pool.inner
     }
 }

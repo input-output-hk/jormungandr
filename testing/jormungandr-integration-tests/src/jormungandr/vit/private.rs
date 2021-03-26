@@ -15,7 +15,7 @@ use chain_impl_mockchain::{
     ledger::governance::TreasuryGovernanceAction, value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
-use jormungandr_lib::interfaces::KESUpdateSpeed;
+use jormungandr_lib::interfaces::KesUpdateSpeed;
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::{VotePlanBuilder, VotePlanExtension};
 use jormungandr_testing_utils::wallet::Wallet;
@@ -90,7 +90,7 @@ pub fn jcli_e2e_flow_private_vote() {
             clarice.to_initial_fund(wallet_initial_funds),
         ])
         .with_block0_consensus(ConsensusType::Bft)
-        .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
+        .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
         .with_treasury(1000.into())
         .with_discrimination(Discrimination::Production)
         .with_committees(&[&alice])

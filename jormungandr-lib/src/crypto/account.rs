@@ -67,7 +67,7 @@ pub enum SigningKeyParseError {
     #[error("Invalid secret key: {0}")]
     InvalidSecretKey(#[from] chain_crypto::bech32::Error),
     #[error("Unexpected key '{hrp}'. Expected either ed25519 or ed25519extended")]
-    UnexpectedHRP { hrp: String },
+    UnexpectedHrp { hrp: String },
 }
 
 impl Identifier {
@@ -159,7 +159,7 @@ impl SigningKey {
             Ed25519Extended::SECRET_BECH32_HRP => SigningKey(EitherEd25519SecretKey::Extended(
                 SecretKey::try_from_bech32_str(s)?,
             )),
-            _ => return Err(SigningKeyParseError::UnexpectedHRP { hrp }),
+            _ => return Err(SigningKeyParseError::UnexpectedHrp { hrp }),
         };
 
         Ok(key)

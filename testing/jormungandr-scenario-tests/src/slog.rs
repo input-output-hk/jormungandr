@@ -15,7 +15,7 @@ error_chain! {
     }
 
     errors {
-        InvalidJSON {
+        InvalidJson {
             description("Invalid log format, expected JSON object"),
             display("Invalid log format, expected JSON object"),
         }

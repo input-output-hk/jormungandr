@@ -1,7 +1,7 @@
 use crate::{
     interfaces::{
         ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
-        EpochStabilityDepth, FeesGoTo, KESUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch,
+        EpochStabilityDepth, FeesGoTo, KesUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch,
         PoolParticipationCapping, RewardConstraints, RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
@@ -79,7 +79,7 @@ pub struct BlockchainConfiguration {
     /// cannot reuse a key that was valid at a given state when
     /// to create a fork.
     #[serde(default)]
-    pub kes_update_speed: KESUpdateSpeed,
+    pub kes_update_speed: KesUpdateSpeed,
 
     /// the active slot coefficient to determine the minimal stake
     /// in order to participate to the consensus.
@@ -161,7 +161,7 @@ pub enum FromConfigParamsError {
         #[from] super::active_slot_coefficient::TryFromActiveSlotCoefficientError,
     ),
     #[error("Invalid KES Update speed value")]
-    KESUpdateSpeed(#[from] super::kes_update_speed::TryFromKESUpdateSpeedError),
+    KesUpdateSpeed(#[from] super::kes_update_speed::TryFromKesUpdateSpeedError),
     #[error("Invalid FeesGoTo setting")]
     FeesGoTo(#[from] super::fees_go_to::TryFromFeesGoToError),
 }
@@ -187,7 +187,7 @@ impl BlockchainConfiguration {
             consensus_leader_ids: Vec::default(),
             slots_per_epoch: NumberOfSlotsPerEpoch::default(),
             slot_duration: SlotDuration::default(),
-            kes_update_speed: KESUpdateSpeed::default(),
+            kes_update_speed: KesUpdateSpeed::default(),
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
             block_content_max_size: BlockContentMaxSize::default(),
             epoch_stability_depth: EpochStabilityDepth::default(),
@@ -255,7 +255,7 @@ impl BlockchainConfiguration {
                 }
                 ConfigParam::LinearFee(param) => linear_fees.replace(param).map(|_| "linear_fees"),
                 cp @ ConfigParam::KESUpdateSpeed(_) => kes_update_speed
-                    .replace(KESUpdateSpeed::try_from(cp)?)
+                    .replace(KesUpdateSpeed::try_from(cp)?)
                     .map(|_| "kes_update_speed"),
                 cp @ ConfigParam::FeesInTreasury(_) => fees_go_to
                     .replace(FeesGoTo::try_from(cp)?)
@@ -513,7 +513,7 @@ mod test {
                     .collect(),
                 slots_per_epoch: NumberOfSlotsPerEpoch::arbitrary(g),
                 slot_duration: SlotDuration::arbitrary(g),
-                kes_update_speed: KESUpdateSpeed::arbitrary(g),
+                kes_update_speed: KesUpdateSpeed::arbitrary(g),
                 consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::arbitrary(g),
                 block_content_max_size: Arbitrary::arbitrary(g),
                 epoch_stability_depth: Arbitrary::arbitrary(g),
