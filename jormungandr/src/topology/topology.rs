@@ -78,14 +78,8 @@ impl P2pTopology {
 
     #[instrument(skip(self, gossips), level = "debug")]
     pub fn accept_gossips(&mut self, gossips: Gossips) {
-        let gossips = <Vec<poldercast::Gossip>>::from(gossips);
-        for gossip in gossips {
-            let peer = Profile::from_gossip(gossip);
-            tracing::trace!(node = %peer.address(), "received peer from gossip");
-            self.topology.add_peer(peer);
-        }
-
-        // nodes lifted from quarantine will be considered again in the next update
+        // Even if lifted from quarantine, peers will be re-added to the topology
+        // only after we receive a gossip about them.
         let lifted = self.quarantine.lift_from_quarantine();
         for node in lifted {
             // It may happen that a node is evicted from the dirty pool
@@ -99,6 +93,13 @@ impl P2pTopology {
             } else {
                 tracing::debug!(node = %node.address, "node from quarantine have left the dirty pool. skipping it");
             }
+        }
+
+        let gossips = <Vec<poldercast::Gossip>>::from(gossips);
+        for gossip in gossips {
+            let peer = Profile::from_gossip(gossip);
+            tracing::trace!(node = %peer.address(), "received peer from gossip");
+            self.topology.add_peer(peer);
         }
     }
 
