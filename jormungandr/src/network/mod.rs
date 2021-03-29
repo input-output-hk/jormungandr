@@ -77,7 +77,7 @@ use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TopologyMsg, TransactionMsg};
 use crate::settings::start::network::{Configuration, Peer, Protocol};
-use crate::topology::NodeId;
+use crate::topology::{self, NodeId};
 use crate::utils::async_msg::{MessageBox, MessageQueue};
 use chain_network::data::NodeKeyPair;
 use rand::seq::SliceRandom;
@@ -335,48 +335,48 @@ async fn handle_network_input(
     }
 }
 
+// propagate message to every peer and return the ones that we could not contact
+async fn propagate_message<F, Fut, E, T>(
+    f: F,
+    sel: poldercast::layer::Selection,
+    arg: T,
+    mbox: &mut MessageBox<TopologyMsg>,
+) -> Result<Vec<topology::Peer>, PropagateError>
+where
+    T: Clone,
+    F: Fn(SocketAddr, T) -> Fut,
+    Fut: Future<Output = Result<(), E>>,
+{
+    let (reply_handle, reply_future) = crate::intercom::unary_reply();
+    mbox.send(TopologyMsg::View(sel, reply_handle)).await?;
+    let peers = reply_future.await.map(|view| view.peers)?;
+
+    // FIXME: this is a workaround because we need to know also the id of the nodes that failed to connect,
+    // it should not be less efficient, just less clean. Remove this once we decided what to do with peers
+    // and ids.
+    let mut res = Vec::new();
+    for peer in peers {
+        if f(peer.addr, arg.clone()).await.is_err() {
+            res.push(peer);
+        }
+    }
+    Ok(res)
+}
+
 async fn handle_propagation_msg(
     msg: PropagateMsg,
     state: GlobalStateR,
     mut channels: Channels,
 ) -> Result<(), PropagateError> {
-    use crate::topology::Peer;
     use poldercast::layer::Selection;
+    use topology::Peer;
     async {
-        // propagate message to every peer and return the ones that we could not contact
-        async fn propagate<F, Fut, E, T>(
-            f: F,
-            sel: Selection,
-            arg: T,
-            mbox: &mut MessageBox<TopologyMsg>,
-        ) -> Result<Vec<Peer>, PropagateError>
-        where
-            T: Clone,
-            F: Fn(SocketAddr, T) -> Fut,
-            Fut: Future<Output = Result<(), E>>,
-        {
-            let (reply_handle, reply_future) = crate::intercom::unary_reply();
-            mbox.send(TopologyMsg::View(sel, reply_handle)).await?;
-            let peers = reply_future.await.map(|view| view.peers)?;
-
-            // FIXME: this is a workaround because we need to know also the id of the nodes that failed to connect,
-            // it should not be less efficient, just less clean. Remove this once we decided what to do with peers
-            // and ids.
-            let mut res = Vec::new();
-            for peer in peers {
-                if f(peer.addr, arg.clone()).await.is_err() {
-                    res.push(peer);
-                }
-            }
-            Ok(res)
-        }
-
         let prop_state = state.clone();
         let unreached_nodes = match &msg {
             PropagateMsg::Block(header) => {
                 tracing::debug!(hash = %header.hash(), "block to propagate");
                 let header = header.encode();
-                propagate(
+                propagate_message(
                     |addr, header| prop_state.peers.propagate_block(addr, header),
                     Selection::Topic {
                         topic: crate::topology::topic::BLOCKS,
@@ -389,7 +389,7 @@ async fn handle_propagation_msg(
             PropagateMsg::Fragment(fragment) => {
                 tracing::debug!(hash = %fragment.hash(), "fragment to propagate");
                 let fragment = fragment.encode();
-                propagate(
+                propagate_message(
                     |addr, fragment| prop_state.peers.propagate_fragment(addr, fragment),
                     Selection::Topic {
                         topic: crate::topology::topic::MESSAGES,
