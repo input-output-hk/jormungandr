@@ -141,7 +141,7 @@ impl From<Vec<Gossip>> for Gossips {
 #[derive(Debug, Error)]
 pub enum GossipError {
     #[error(transparent)]
-    IO(#[from] std::io::Error),
+    Io(#[from] std::io::Error),
     #[error(transparent)]
     Bincode(#[from] bincode::Error),
     #[error(transparent)]
@@ -166,14 +166,14 @@ impl property::Deserialize for Gossip {
         let config = bincode::options();
         config.with_limit(limits::MAX_GOSSIP_SIZE);
 
-        Ok(config
+        config
             .deserialize_from::<R, Vec<u8>>(reader)
             .map_err(GossipError::from)
             .and_then(|slice| {
                 Ok(Gossip(
                     poldercast::GossipSlice::try_from_slice(&slice)?.to_owned(),
                 ))
-            })?)
+            })
     }
 }
 
