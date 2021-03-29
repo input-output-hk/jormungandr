@@ -255,8 +255,7 @@ impl Drop for JormungandrProcess {
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
 
-        if self.temp_dir.is_some() {
-            let temp_dir = self.steal_temp_dir().unwrap();
+        if let Some(temp_dir) = self.steal_temp_dir() {
             if panicking() {
                 println!(
                     "persisting node temp_dir after panic: {:?}",
