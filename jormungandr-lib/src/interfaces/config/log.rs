@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Log(pub Vec<LogEntry>);
+pub struct Log(pub LogEntry);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogEntry {
@@ -21,9 +21,9 @@ pub enum LogOutput {
 
 impl Log {
     pub fn file_path(&self) -> Option<&Path> {
-        self.0.iter().find_map(|log_entry| match &log_entry.output {
+        match &self.0.output {
             LogOutput::File(path) => Some(path.as_path()),
             _ => None,
-        })
+        }
     }
 }
