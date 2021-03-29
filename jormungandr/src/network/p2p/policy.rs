@@ -68,10 +68,12 @@ impl Quarantine {
         // This is basically a FIFO queue, a lru cache is being used just to
         // avoid keeping another data structure to know if an address was already quarantined
         while let Some(record) = self.quarantined_records.peek_lru() {
-            if record.1.elapsed() > self.quarantine_duration {
-                let node = self.quarantined_records.pop_lru().unwrap().0;
-                res.push(node);
+            if record.1.elapsed() < self.quarantine_duration {
+                break;
             }
+
+            let node = self.quarantined_records.pop_lru().unwrap().0;
+            res.push(node);
         }
 
         res
