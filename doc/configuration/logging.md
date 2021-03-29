@@ -24,15 +24,18 @@ The following options are available in the `log` section:
 
 ## Example
 
-Multiple logging backends are supported.
+A single configurable backend is supported.
 
 ```yaml
 log:
   - output: stdout
     level:  trace
     format: plain
+```
+
+```yaml
   - output:
-      file: example.log
+    file: example.log
     level: info
     format: json
 ```
