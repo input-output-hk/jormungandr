@@ -58,9 +58,9 @@ impl From<jormungandr_lib::interfaces::NodeId> for NodeId {
     }
 }
 
-impl Into<jormungandr_lib::interfaces::NodeId> for NodeId {
-    fn into(self) -> jormungandr_lib::interfaces::NodeId {
-        jormungandr_lib::interfaces::NodeId::from_hex(&self.0.to_string()).unwrap()
+impl From<NodeId> for jormungandr_lib::interfaces::NodeId {
+    fn from(node_id: NodeId) -> jormungandr_lib::interfaces::NodeId {
+        jormungandr_lib::interfaces::NodeId::from_hex(&node_id.0.to_string()).unwrap()
     }
 }
 
