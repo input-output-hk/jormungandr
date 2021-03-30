@@ -2,6 +2,11 @@ use crate::common::{
     jormungandr::JormungandrProcess,
     network::{self, wallet},
 };
+use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
+use jormungandr_lib::interfaces::{
+    ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
+};
+use jormungandr_testing_utils::testing::network_builder::Blockchain;
 use std::{cmp::PartialOrd, fmt::Display};
 
 use chain_impl_mockchain::block::BlockDate;
@@ -12,9 +17,26 @@ const PASSIVE: &str = "PASSIVE";
 const LEADER_CLIENT: &str = "LEADER_CLIENT";
 const LEADER: &str = "LEADER";
 
+// build a blockchain with a longer slot duration than default
+// to avoid spurious failures as described in
+// https://github.com/input-output-hk/jormungandr/issues/3183.
+// It is a macro because the builder is returned by reference.
+macro_rules! build_network {
+    () => {
+        network::builder().blockchain_config(Blockchain::new(
+            ConsensusVersion::GenesisPraos,
+            NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
+            SlotDuration::new(5).expect("valid slot duration in seconds"),
+            KesUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
+            ActiveSlotCoefficient::new(Milli::from_millis(999))
+                .expect("active slot coefficient in millis"),
+        ))
+    };
+}
+
 #[test]
 pub fn passive_node_last_block_info() {
-    let mut network_controller = network::builder()
+    let mut network_controller = build_network!()
         .single_trust_direction(PASSIVE, LEADER)
         .initials(vec![
             wallet("alice").with(1_000_000).delegated_to(LEADER),
@@ -43,7 +65,7 @@ pub fn passive_node_last_block_info() {
     );
 
     fragment_sender
-        .send_transactions_round_trip(10, &mut alice, &mut bob, &leader, 100.into())
+        .send_transactions_round_trip(5, &mut alice, &mut bob, &leader, 100.into())
         .expect("fragment send error");
 
     assert_last_stats_are_updated(stats_before, &passive);
@@ -51,7 +73,7 @@ pub fn passive_node_last_block_info() {
 
 #[test]
 pub fn leader_node_last_block_info() {
-    let mut network_controller = network::builder()
+    let mut network_controller = build_network!()
         .single_trust_direction(LEADER_CLIENT, LEADER)
         .initials(vec![
             wallet("alice").with(1_000_000).delegated_to(LEADER),
@@ -80,7 +102,7 @@ pub fn leader_node_last_block_info() {
     );
 
     fragment_sender
-        .send_transactions_round_trip(10, &mut alice, &mut bob, &leader, 100.into())
+        .send_transactions_round_trip(5, &mut alice, &mut bob, &leader, 100.into())
         .expect("fragment send error");
 
     assert_last_stats_are_updated(stats_before, &leader_client);
