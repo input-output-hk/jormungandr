@@ -202,6 +202,25 @@ impl RawRest {
         self.post("message", body)
     }
 
+    pub fn fragments_logs(&self) -> Result<Response, reqwest::Error> {
+        let builder = reqwest::blocking::Client::builder();
+        let client = builder.build()?;
+
+        client
+            .get(&self.path_http_or_https("fragments/logs", ApiVersion::V1))
+            .send()
+    }
+
+    pub fn fragments_statuses<'a>(&self,ids: impl IntoIterator<Item = &'a str>) -> Result<Response, reqwest::Error> {
+        let builder = reqwest::blocking::Client::builder();
+        let client = builder.build()?;
+
+        client
+            .get(&self.path_http_or_https("fragments/logs", ApiVersion::V1))
+            .query(&[("fragment_ids", format!("[{}]",ids.collect().join(",")))])
+            .send()
+    }
+
     pub fn send_fragment_batch(
         &self,
         fragments: Vec<Fragment>,

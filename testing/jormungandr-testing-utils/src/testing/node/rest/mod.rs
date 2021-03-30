@@ -194,6 +194,14 @@ impl JormungandrRest {
         Ok(())
     }
 
+    pub fn fragments_logs(&self) -> Result<Vec<FragmentLog>, RestError> {
+        self.inner.fragments_logs(bytes).map_err(Into::into)
+    }
+
+    pub fn fragments_statuses<'a>(&self,ids: impl IntoIterator<Item = &'a str>) -> Result<Vec<>, reqwest::Error> {
+        self.inner.fragments_statuses(ids).map_err(Into::into)
+    }
+
     pub fn send_fragment_batch(
         &self,
         fragments: Vec<Fragment>,
