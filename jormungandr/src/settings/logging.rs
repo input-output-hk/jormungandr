@@ -1,6 +1,6 @@
 use std::fmt::{self, Display};
 use std::fs;
-use std::io::{self};
+use std::io;
 #[cfg(feature = "gelf")]
 use std::net::SocketAddr;
 use std::path::PathBuf;
