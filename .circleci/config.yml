@@ -3,7 +3,7 @@ version: 2.1
 executors:
   rust-stable:
     docker:
-      - image: inputoutput/rust:stable
+      - image: cimg/rust:1.51.0
     working_directory: /home/circleci/build
 
 jobs:
@@ -12,8 +12,6 @@ jobs:
     steps:
       - checkout
       - run: git --version
-      - run: git submodule sync
-      - run: git submodule update --init --depth=1
       - run:
           name: Get top commit hash of cargo registry index
           command: |
@@ -22,30 +20,30 @@ jobs:
       - restore_cache:
           name: Restore cargo registry index from cache
           keys:
-            - cargo-index-v1-{{ checksum ".circleci/crates.io-index.head" }}
-            - cargo-index-v1-
+            - cargo-index-v2-{{ checksum ".circleci/crates.io-index.head" }}
+            - cargo-index-v2-
       - restore_cache:
           name: Restore dependency crates from cache
           keys:
-            - cargo-deps-v2-{{ checksum "Cargo.lock" }}
+            - cargo-deps-v3-{{ checksum "Cargo.lock" }}
       - run:
           name: Fetch dependencies and update cargo registry index
           command: |
             cargo fetch
-            git -C /usr/local/cargo/registry/index/github.com-1ecc6299db9ec823 \
+            git -C /home/circleci/.cargo/registry/index/github.com-1ecc6299db9ec823 \
                 show-ref -s refs/remotes/origin/master |
               tee .circleci/crates.io-index.head
       - save_cache:
           name: Save cargo registry index into cache
-          key: cargo-index-v1-{{ checksum ".circleci/crates.io-index.head" }}
+          key: cargo-index-v2-{{ checksum ".circleci/crates.io-index.head" }}
           paths:
-            - /usr/local/cargo/registry/index
+            - /home/circleci/.cargo/registry/index
       - save_cache:
           name: Save dependency crates into cache
-          key: cargo-deps-v2-{{ checksum "Cargo.lock" }}
+          key: cargo-deps-v3-{{ checksum "Cargo.lock" }}
           paths:
-            - /usr/local/cargo/registry/cache
-            - /usr/local/cargo/git/db
+            /home/circleci/.cargo/registry/cache
+            /home/circleci/.cargo/git/db
       - persist_to_workspace:
           root: .
           paths:
@@ -71,18 +69,16 @@ commands:
         default: --verbose
     steps:
       - checkout
-      - run: git submodule sync
-      - run: git submodule update --init --depth=1
       - attach_workspace:
           at: .
       - restore_cache:
           name: Restore cargo registry index from cache
           keys:
-            - cargo-index-v1-{{ checksum ".circleci/crates.io-index.head" }}
+            - cargo-index-v2-{{ checksum ".circleci/crates.io-index.head" }}
       - restore_cache:
           name: Restore dependency crates from cache
           keys:
-            - cargo-deps-v2-{{ checksum "Cargo.lock" }}
+            - cargo-deps-v3-{{ checksum "Cargo.lock" }}
       - run:
           name: Print version information
           command: rustc --version; cargo --version
