@@ -4,9 +4,9 @@ on:
     branches:
       - master
     paths:
-      - book.toml
-      - doc/**
-      - !doc/api/**.yaml
+      - 'book.toml'
+      - 'doc/**'
+      - '!doc/api/**.yaml'
 
 jobs:
   build-and-deploy:
