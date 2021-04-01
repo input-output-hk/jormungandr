@@ -40,6 +40,11 @@ impl NetworkBuilder {
         self
     }
 
+    pub fn blockchain_config(&mut self, config: Blockchain) -> &mut Self {
+        self.blockchain = Some(config);
+        self
+    }
+
     pub fn custom_config(&mut self, spawn_params: Vec<&mut SpawnParams>) -> &mut Self {
         self.configs = spawn_params.iter().map(|x| (**x).clone()).collect();
         self
