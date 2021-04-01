@@ -7,6 +7,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use jormungandr_lib::interfaces::FragmentStatus;
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
 use reqwest::blocking::Response;
 use std::collections::HashMap;
@@ -129,6 +130,30 @@ impl BackwardCompatibleRest {
 
     pub fn settings(&self) -> Result<String, reqwest::Error> {
         self.raw().settings()?.text()
+    }
+
+    pub fn fragments_statuses(
+        &self,
+        ids: Vec<String>,
+    ) -> Result<HashMap<String, FragmentStatus>, RestError> {
+        let logs = self.raw().fragments_statuses(ids)?.text()?;
+        serde_json::from_str(&logs).map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn fragments_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
+        let logs = self.raw().fragments_logs()?.text()?;
+        let logs: Vec<FragmentLog> = if logs.is_empty() {
+            Vec::new()
+        } else {
+            serde_json::from_str(&logs).map_err(RestError::CannotDeserialize)?
+        };
+
+        let logs = logs
+            .into_iter()
+            .map(|log| (log.fragment_id().clone().into_hash(), log))
+            .collect();
+
+        Ok(logs)
     }
 
     pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
