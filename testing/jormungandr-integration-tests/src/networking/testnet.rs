@@ -323,6 +323,7 @@ fn e2e_stake_pool(testnet_config: TestnetConfig) {
     let block0_hash = testnet_config.block0_hash();
 
     let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
         .config(testnet_config.make_leader_config(&temp_dir))
         .timeout(Duration::from_secs(8000))
         .passive()

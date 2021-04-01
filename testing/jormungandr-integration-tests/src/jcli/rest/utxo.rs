@@ -30,7 +30,11 @@ pub fn test_correct_utxos_are_read_from_node() {
         .with_funds(funds)
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let rest_addr = jormungandr.rest_uri();
 
     let sender_block0_utxo = config.block0_utxo_for_address(&sender_utxo_address);

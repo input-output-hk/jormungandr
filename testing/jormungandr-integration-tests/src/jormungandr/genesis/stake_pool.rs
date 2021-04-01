@@ -72,7 +72,11 @@ pub fn create_delegate_retire_stake_pool() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
 
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,

@@ -21,6 +21,7 @@ pub fn test_rest_tls_config() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
         .config(config)
         .verify_by(StartupVerificationMode::Log)
         .start()

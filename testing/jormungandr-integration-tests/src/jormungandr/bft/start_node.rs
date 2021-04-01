@@ -47,6 +47,7 @@ pub fn test_jormungandr_passive_node_without_trusted_peers_fails_to_start() {
         .build(&temp_dir);
 
     Starter::new()
+        .temp_dir(temp_dir)
         .config(config)
         .passive()
         .start_fail("no trusted peers specified")
@@ -58,7 +59,11 @@ pub fn test_jormungandr_without_initial_funds_starts_sucessfully() {
     let mut config = ConfigurationBuilder::new().build(&temp_dir);
     let block0_configuration = config.block0_configuration_mut();
     block0_configuration.initial.clear();
-    let _jormungandr = Starter::new().config(config).start().unwrap();
+    let _jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config)
+        .start()
+        .unwrap();
 }
 
 #[test]
@@ -67,7 +72,11 @@ pub fn test_jormungandr_with_no_trusted_peers_starts_succesfully() {
     let config = ConfigurationBuilder::new()
         .with_trusted_peers(vec![])
         .build(&temp_dir);
-    let _jormungandr = Starter::new().config(config).start().unwrap();
+    let _jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config)
+        .start()
+        .unwrap();
 }
 
 #[test]
@@ -81,6 +90,7 @@ pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
         }]))
         .build(&temp_dir);
     Starter::new()
+        .temp_dir(temp_dir)
         .config(config)
         .start_fail(r"Error in the overall configuration of the node");
 }
@@ -89,5 +99,9 @@ pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
 pub fn test_jormungandr_without_logger_starts_successfully() {
     let temp_dir = TempDir::new().unwrap();
     let config = ConfigurationBuilder::new().without_log().build(&temp_dir);
-    let _jormungandr = Starter::new().config(config).start().unwrap();
+    let _jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config)
+        .start()
+        .unwrap();
 }
