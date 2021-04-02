@@ -183,10 +183,6 @@ jobs:
           command: build
           args: -p jormungandr-scenario-tests ${{ env.CARGO_FLAGS }}
 
-      - name: Create directory to store failed logs
-        run: mkdir logs
-        working-directory: ${{ runner.temp }}
-
       - name: Run tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 30
@@ -195,6 +191,8 @@ jobs:
           args: --tests ${{ env.CARGO_FLAGS }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMPDIR: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
 
       - name: Pack logs from failed tests
         if: ${{ failure() }}
