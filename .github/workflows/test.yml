@@ -195,14 +195,13 @@ jobs:
           args: --tests ${{ env.CARGO_FLAGS }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TMPDIR: ${{ runner.temp }}/logs
-          TMP: ${{ runner.temp }}\logs
 
       - name: Pack logs from failed tests
+        if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.os }}-${{ matrix.profile }}-node-logs-from-failed-tests
-          path: ${{ runner.temp }}/logs
+          path: ${{ runner.temp }}/jormungandr-*
 
   lints:
     name: Lints
