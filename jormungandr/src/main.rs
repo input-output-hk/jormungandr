@@ -75,7 +75,7 @@ pub struct BootstrappedNode {
 
 const BLOCK_TASK_QUEUE_LEN: usize = 32;
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
-const NETWORK_TASK_QUEUE_LEN: usize = 32;
+const NETWORK_TASK_QUEUE_LEN: usize = 64;
 const EXPLORER_TASK_QUEUE_LEN: usize = 32;
 const CLIENT_TASK_QUEUE_LEN: usize = 32;
 const TOPOLOGY_TASK_QUEUE_LEN: usize = 32;
