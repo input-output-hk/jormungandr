@@ -1973,7 +1973,6 @@ dependencies = [
  "http",
  "humantime",
  "parity-multiaddr",
- "poldercast",
  "quickcheck",
  "rand 0.7.3",
  "rand 0.8.3",
