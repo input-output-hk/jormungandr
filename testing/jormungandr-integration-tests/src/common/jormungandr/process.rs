@@ -1,6 +1,6 @@
 use super::JormungandrError;
 use crate::common::jcli::{JCli, JCliCommand};
-use assert_fs::{fixture::PathChild, TempDir};
+use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_time::TimeEra;
 use jormungandr_lib::{
@@ -240,21 +240,32 @@ impl JormungandrProcess {
 
 impl Drop for JormungandrProcess {
     fn drop(&mut self) {
+        use rand::Rng;
         // There's no kill like overkill
         let _ = self.child.kill();
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
         if panicking() {
-            let temp_dir = self.temp_dir.take().unwrap_or_else(|| {
-                println!("No directory passed to the process, creating a new one");
-                TempDir::new().unwrap()
-            });
+            let dir_name = rand::thread_rng()
+                .sample_iter(&rand::distributions::Alphanumeric)
+                .take(8)
+                .map(char::from)
+                .collect::<String>();
+            let logs_dir = std::env::temp_dir().join(format!("jormungandr-{}", dir_name));
+            std::fs::create_dir(&logs_dir).unwrap();
+
             println!(
                 "persisting node temp_dir after panic: {}",
-                temp_dir.path().display()
+                logs_dir.display()
             );
-            std::fs::write(temp_dir.child("node.log").path(), self.log_content()).unwrap();
-            temp_dir.into_persistent();
+            if let Some(dir) = self.temp_dir.take() {
+                for file in std::fs::read_dir(dir.path()).unwrap() {
+                    let file = file.unwrap();
+                    std::fs::copy(file.path(), logs_dir.join(file.file_name())).unwrap();
+                }
+            }
+
+            std::fs::write(logs_dir.join("node.log"), self.log_content()).unwrap();
         }
     }
 }
