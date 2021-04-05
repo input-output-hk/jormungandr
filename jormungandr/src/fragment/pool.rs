@@ -162,30 +162,39 @@ fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
 }
 
 pub(super) mod internal {
-    use std::{collections::HashMap, ptr};
-
     use super::*;
 
-    struct QueueEntry<K, V> {
+    use std::{
+        collections::HashMap,
+        hash::{Hash, Hasher},
+        ptr,
+    };
+
+    /// Doubly-linked queue with the possibility to remove elements from the middle of the list by
+    /// their keys.
+    struct IndexedDeqeue<K, V> {
+        head: *mut IndexedDequeueEntry<K, V>,
+        tail: *mut IndexedDequeueEntry<K, V>,
+
+        index: HashMap<IndexedDequeueKeyRef<K>, Box<IndexedDequeueEntry<K, V>>>,
+    }
+
+    struct IndexedDequeueEntry<K, V> {
         key: K,
         value: V,
 
-        prev: *mut QueueEntry<K, V>,
-        next: *mut QueueEntry<K, V>,
+        prev: *mut IndexedDequeueEntry<K, V>,
+        next: *mut IndexedDequeueEntry<K, V>,
     }
 
-    struct QueueKeyRef<K>(*const K);
+    /// A wrapper around the pointer to the key of the queue element. This wrapper forwards the
+    /// implementations of `Eq` and `Hash` to `K`. This is required becuase by default the
+    /// implementations of `Eq` and `Hash` from the pointer itself will be used.
+    struct IndexedDequeueKeyRef<K>(*const K);
 
-    struct Queue<K, V> {
-        head: *mut QueueEntry<K, V>,
-        tail: *mut QueueEntry<K, V>,
-
-        index: HashMap<QueueKeyRef<K>, Box<QueueEntry<K, V>>>,
-    }
-
-    impl<K, V> Queue<K, V>
+    impl<K, V> IndexedDeqeue<K, V>
     where
-        K: Eq + std::hash::Hash,
+        K: Eq + Hash,
     {
         fn new() -> Self {
             Self {
@@ -197,7 +206,7 @@ pub(super) mod internal {
         }
 
         fn push_front(&mut self, key: K, value: V) {
-            let mut entry = Box::new(QueueEntry {
+            let mut entry = Box::new(IndexedDequeueEntry {
                 key,
                 value,
                 prev: ptr::null_mut(),
@@ -205,16 +214,17 @@ pub(super) mod internal {
             });
             if let Some(head) = unsafe { self.head.as_mut() } {
                 head.prev = &mut *entry;
-            }
-            if self.tail.is_null() {
+            } else {
                 self.tail = &mut *entry;
             }
             self.head = &mut *entry;
-            self.index.insert(QueueKeyRef(&entry.key), entry);
+            self.index
+                .insert(IndexedDequeueKeyRef(&entry.key), entry)
+                .map(|_| panic!("inserted an already existing key"));
         }
 
         fn push_back(&mut self, key: K, value: V) {
-            let mut entry = Box::new(QueueEntry {
+            let mut entry = Box::new(IndexedDequeueEntry {
                 key,
                 value,
                 prev: self.tail,
@@ -222,29 +232,18 @@ pub(super) mod internal {
             });
             if let Some(tail) = unsafe { self.tail.as_mut() } {
                 tail.next = &mut *entry;
-            }
-            if self.head.is_null() {
+            } else {
                 self.head = &mut *entry;
             }
             self.tail = &mut *entry;
-            self.index.insert(QueueKeyRef(&entry.key), entry);
-        }
-
-        fn pop_front(&mut self) -> Option<(K, V)> {
-            let head = unsafe { self.head.as_mut() }?;
-            let entry = self.index.remove(&QueueKeyRef(&head.key)).unwrap();
-            self.head = head.next;
-            if let Some(next) = unsafe { head.next.as_mut() } {
-                next.prev = ptr::null_mut();
-            } else {
-                self.tail = ptr::null_mut();
-            }
-            Some((entry.key, entry.value))
+            self.index
+                .insert(IndexedDequeueKeyRef(&entry.key), entry)
+                .map(|_| panic!("inserted an already existing key"));
         }
 
         fn pop_back(&mut self) -> Option<(K, V)> {
             let tail = unsafe { self.tail.as_mut() }?;
-            let entry = self.index.remove(&QueueKeyRef(&tail.key)).unwrap();
+            let entry = self.index.remove(&IndexedDequeueKeyRef(&tail.key)).unwrap();
             self.tail = tail.prev;
             if let Some(prev) = unsafe { tail.prev.as_mut() } {
                 prev.next = ptr::null_mut();
@@ -255,7 +254,7 @@ pub(super) mod internal {
         }
 
         fn remove(&mut self, key: &K) -> Option<V> {
-            let entry = self.index.remove(&QueueKeyRef(key))?;
+            let entry = self.index.remove(&IndexedDequeueKeyRef(key))?;
             if let Some(prev) = unsafe { entry.prev.as_mut() } {
                 prev.next = entry.next;
             } else {
@@ -274,35 +273,35 @@ pub(super) mod internal {
         }
 
         fn contains(&self, key: &K) -> bool {
-            self.index.contains_key(&QueueKeyRef(key))
+            self.index.contains_key(&IndexedDequeueKeyRef(key))
         }
     }
 
-    unsafe impl<K, V> Send for Queue<K, V> {}
+    unsafe impl<K, V> Send for IndexedDeqeue<K, V> {}
 
-    impl<K: PartialEq> PartialEq for QueueKeyRef<K> {
-        fn eq(&self, other: &QueueKeyRef<K>) -> bool {
+    impl<K: PartialEq> PartialEq for IndexedDequeueKeyRef<K> {
+        fn eq(&self, other: &IndexedDequeueKeyRef<K>) -> bool {
             unsafe { (*self.0).eq(&*other.0) }
         }
     }
 
-    impl<K: PartialEq> Eq for QueueKeyRef<K> {}
+    impl<K: PartialEq> Eq for IndexedDequeueKeyRef<K> {}
 
-    impl<K: std::hash::Hash> std::hash::Hash for QueueKeyRef<K> {
-        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    impl<K: Hash> Hash for IndexedDequeueKeyRef<K> {
+        fn hash<H: Hasher>(&self, state: &mut H) {
             unsafe { (*self.0).hash(state) }
         }
     }
 
     pub struct Pool {
-        entries: Queue<FragmentId, Fragment>,
+        entries: IndexedDeqeue<FragmentId, Fragment>,
         max_entries: usize,
     }
 
     impl Pool {
         pub fn new(max_entries: usize) -> Self {
             Pool {
-                entries: Queue::new(),
+                entries: IndexedDeqeue::new(),
                 max_entries,
             }
         }
@@ -336,6 +335,12 @@ pub(super) mod internal {
 
         pub fn remove_oldest(&mut self) -> Option<Fragment> {
             self.entries.pop_back().map(|(_, value)| value)
+        }
+
+        pub fn return_to_pool(&mut self, fragments: impl IntoIterator<Item = Fragment>) {
+            for fragment in fragments.into_iter() {
+                self.entries.push_back(fragment.id(), fragment);
+            }
         }
     }
 
