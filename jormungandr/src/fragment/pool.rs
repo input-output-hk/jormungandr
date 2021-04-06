@@ -218,9 +218,13 @@ pub(super) mod internal {
                 self.tail = &mut *entry;
             }
             self.head = &mut *entry;
-            self.index
+            if self
+                .index
                 .insert(IndexedDequeueKeyRef(&entry.key), entry)
-                .map(|_| panic!("inserted an already existing key"));
+                .is_some()
+            {
+                panic!("inserted an already existing key");
+            }
         }
 
         fn push_back(&mut self, key: K, value: V) {
@@ -236,9 +240,13 @@ pub(super) mod internal {
                 self.head = &mut *entry;
             }
             self.tail = &mut *entry;
-            self.index
+            if self
+                .index
                 .insert(IndexedDequeueKeyRef(&entry.key), entry)
-                .map(|_| panic!("inserted an already existing key"));
+                .is_some()
+            {
+                panic!("inserted an already existing key");
+            }
         }
 
         fn pop_back(&mut self) -> Option<(K, V)> {
