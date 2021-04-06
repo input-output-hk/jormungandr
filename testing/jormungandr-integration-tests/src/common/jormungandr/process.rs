@@ -251,8 +251,12 @@ impl Drop for JormungandrProcess {
                 .take(8)
                 .map(char::from)
                 .collect::<String>();
-            let logs_dir = std::env::temp_dir().join(format!("jormungandr-{}", dir_name));
-            std::fs::create_dir(&logs_dir).unwrap();
+
+            let logs_dir = std::env::temp_dir()
+                .join("jormungandr-logs")
+                .join(format!("jormungandr-{}", dir_name));
+
+            std::fs::create_dir_all(&logs_dir).unwrap();
 
             println!(
                 "persisting node temp_dir after panic: {}",
