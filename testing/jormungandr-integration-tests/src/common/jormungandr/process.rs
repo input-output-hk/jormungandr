@@ -256,20 +256,38 @@ impl Drop for JormungandrProcess {
                 .join("jormungandr-logs")
                 .join(format!("jormungandr-{}", dir_name));
 
-            std::fs::create_dir_all(&logs_dir).unwrap();
-
             println!(
                 "persisting node temp_dir after panic: {}",
                 logs_dir.display()
             );
+
+            // This code will not panic, as it will pollute the backtrace
+            // by doing so when the process is already panicking
+            std::fs::create_dir_all(&logs_dir)
+                .unwrap_or_else(|e| eprintln!("Could not create logs dir: {}", e));
+
             if let Some(dir) = self.temp_dir.take() {
-                for file in std::fs::read_dir(dir.path()).unwrap() {
-                    let file = file.unwrap();
-                    std::fs::copy(file.path(), logs_dir.join(file.file_name())).unwrap();
+                match std::fs::read_dir(dir.path()) {
+                    Ok(old_dir) => {
+                        for file in old_dir {
+                            match file {
+                                Ok(file) => {
+                                    std::fs::copy(file.path(), logs_dir.join(file.file_name()))
+                                        .map(|_| ())
+                                        .unwrap_or_else(|e| {
+                                            eprint!("Could not copy file to dir: {}", e)
+                                        });
+                                }
+                                Err(e) => eprint!("Could not read from process temp_dir: {}", e),
+                            }
+                        }
+                    }
+                    Err(e) => eprint!("Could not read from process temp_dir: {}", e),
                 }
             }
 
-            std::fs::write(logs_dir.join("node.log"), self.log_content()).unwrap();
+            std::fs::write(logs_dir.join("node.log"), self.log_content())
+                .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
         }
     }
 }
