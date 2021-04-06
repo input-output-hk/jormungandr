@@ -305,12 +305,12 @@ impl ConfigurationBuilder {
                     LogEntry {
                         level: "trace".to_string(),
                         format: "json".to_string(),
-                        output: LogOutput::Stdout,
+                        output: LogOutput::File(path.clone()),
                     },
                     LogEntry {
                         level: "trace".to_string(),
                         format: "json".to_string(),
-                        output: LogOutput::File(path.clone()),
+                        output: LogOutput::Stdout,
                     },
                 ]));
                 path
