@@ -121,10 +121,11 @@ commands:
       - run:
           name: Compress Artifacts
           command: tar -cvzf logs.tar /tmp/logs/
-
+          when: on_fail
       - store_artifacts: 
           path: /tmp/logs.tar
           destination: failed_logs
+          when: on_fail
 
 workflows:
   version: 2
