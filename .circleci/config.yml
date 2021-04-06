@@ -118,6 +118,13 @@ commands:
             cargo test --workspace --doc \
               << parameters.mode >> << parameters.cargo_behavior >> \
               -- --test-threads=1
+      - run:
+          name: Compress Artifacts
+          command: tar -cvzf logs.tar /tmp/logs/
+
+      - store_artifacts: 
+          path: /tmp/logs.tar
+          destination: failed_logs
 
 workflows:
   version: 2
