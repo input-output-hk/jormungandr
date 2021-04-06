@@ -335,7 +335,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         Ok(())
     }
 
-    fn verify<A: FragmentNode + SyncNode + Sized + Send>(
+    pub fn verify<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         check: &MemPoolCheck,
         node: &A,

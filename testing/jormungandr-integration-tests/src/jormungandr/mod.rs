@@ -5,6 +5,7 @@ pub mod genesis;
 pub mod grpc;
 pub mod legacy;
 pub mod recovery;
+pub mod rest;
 pub mod tls;
 pub mod transactions;
 pub mod vit;

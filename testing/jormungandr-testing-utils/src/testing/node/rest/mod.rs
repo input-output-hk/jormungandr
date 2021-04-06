@@ -8,6 +8,7 @@ pub use settings::RestSettings;
 
 use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use jormungandr_lib::interfaces::FragmentStatus;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
@@ -192,6 +193,17 @@ impl JormungandrRest {
     pub fn send_raw_fragment(&self, bytes: Vec<u8>) -> Result<(), RestError> {
         self.inner.send_raw_fragment(bytes)?;
         Ok(())
+    }
+
+    pub fn fragments_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
+        self.inner.fragments_logs()
+    }
+
+    pub fn fragments_statuses(
+        &self,
+        ids: Vec<String>,
+    ) -> Result<HashMap<String, FragmentStatus>, RestError> {
+        self.inner.fragments_statuses(ids).map_err(Into::into)
     }
 
     pub fn send_fragment_batch(
