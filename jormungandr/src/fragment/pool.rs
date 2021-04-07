@@ -285,7 +285,7 @@ pub(super) mod internal {
         }
     }
 
-    unsafe impl<K, V> Send for IndexedDeqeue<K, V> {}
+    unsafe impl<K: Send, V: Send> Send for IndexedDeqeue<K, V> {}
 
     impl<K: PartialEq> PartialEq for IndexedDequeueKeyRef<K> {
         fn eq(&self, other: &IndexedDequeueKeyRef<K>) -> bool {
