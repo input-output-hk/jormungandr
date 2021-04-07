@@ -55,8 +55,9 @@ impl TallyCommand {
         }
         self
     }
-
+    
     pub fn build(self) -> Command {
+        println!("{:?}", self.command);
         self.command
     }
 }
