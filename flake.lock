@@ -30,11 +30,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1613148821,
-        "narHash": "sha256-DfzLE4HNVuLnKYJfe4FDuNTZEGbiGBv6sbNQmwFWN5g=",
+        "lastModified": 1614256663,
+        "narHash": "sha256-cFew8eXUJfmlaLh4f3Z+TxAAo2Syh2xWB/3Xa/Ebd70=",
         "owner": "input-output-hk",
         "repo": "rust.nix",
-        "rev": "14f7bccda47d9c7ea9cbd647a75e3446085f458f",
+        "rev": "e2d4e8e5225739c4607614f98f60d2667c794558",
         "type": "github"
       },
       "original": {

@@ -28,6 +28,7 @@ hex = "0.4"
 bech32 = "0.7"
 base64 = "0.13.0"
 http = "0.2.2"
+eccoxide = { git = "https://github.com/eugene-babichenko/eccoxide.git", branch = "fast-u64-scalar-mul", features = ["fast-u64-scalar-mul"], optional = true }
 
 [dev-dependencies]
 quickcheck = "0.9"
