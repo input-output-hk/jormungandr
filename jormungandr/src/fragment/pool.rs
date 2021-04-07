@@ -251,13 +251,13 @@ pub(super) mod internal {
 
         fn pop_back(&mut self) -> Option<(K, V)> {
             let tail = unsafe { self.tail.as_mut() }?;
-            let entry = self.index.remove(&IndexedDequeueKeyRef(&tail.key)).unwrap();
             self.tail = tail.prev;
             if let Some(prev) = unsafe { tail.prev.as_mut() } {
                 prev.next = ptr::null_mut();
             } else {
                 self.head = ptr::null_mut();
             }
+            let entry = self.index.remove(&IndexedDequeueKeyRef(&tail.key)).unwrap();
             Some((entry.key, entry.value))
         }
 
