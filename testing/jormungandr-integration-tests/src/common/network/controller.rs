@@ -133,7 +133,7 @@ impl Controller {
         config.log = Some(Log(LogEntry {
             format: "json".into(),
             level: "debug".into(),
-            output: LogOutput::File(log_file_path.clone()),
+            output: LogOutput::Stdout,
         }));
 
         if let PersistenceMode::Persistent = spawn_params.get_persistence_mode() {

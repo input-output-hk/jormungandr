@@ -304,7 +304,7 @@ impl ConfigurationBuilder {
                 node_config.log = Some(Log(LogEntry {
                     level: "trace".to_string(),
                     format: "json".to_string(),
-                    output: LogOutput::File(path.clone()),
+                    output: LogOutput::Stdout,
                 }));
                 path
             }

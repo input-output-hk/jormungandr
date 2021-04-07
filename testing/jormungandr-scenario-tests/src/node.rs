@@ -760,13 +760,13 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
         }
     }
 
-    fn set_log_level(&mut self, log_file: &Path) {
+    fn set_log_level(&mut self, _log_file: &Path) {
         let format = "plain";
         let level = self.context.log_level();
         self.node_settings.config.log = Some(Log(LogEntry {
             format: format.to_string(),
             level,
-            output: LogOutput::File(log_file.to_path_buf()),
+            output: LogOutput::Stdout,
         }));
     }
 
