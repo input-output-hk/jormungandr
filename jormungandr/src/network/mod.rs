@@ -190,9 +190,8 @@ impl GlobalState {
         &self.span
     }
 
-    pub fn node_address(&self) -> SocketAddr {
-        // FIXME: can public address be undefined?
-        self.config.public_address.unwrap()
+    pub fn node_address(&self) -> Option<SocketAddr> {
+        self.config.public_address
     }
 
     pub fn topology(&self) -> &P2pTopology {
@@ -490,9 +489,11 @@ fn connect_and_propagate(
 ) {
     let _enter = state.span.enter();
     options.evict_clients = state.num_clients_to_bump();
-    if node_addr == state.node_address() {
-        tracing::error!(peer = %node_addr, "topology tells the node to connect to itself, ignoring");
-        return;
+    if let Some(self_addr) = state.node_address() {
+        if node_addr == self_addr {
+            tracing::error!(peer = %node_addr, "topology tells the node to connect to itself, ignoring");
+            return;
+        }
     }
     drop(_enter);
     let peer = Peer::new(node_addr);

@@ -345,7 +345,9 @@ impl GossipService for NodeService {
         }
         if peers.is_empty() {
             // No peers yet, put self as the peer to bootstrap from
-            peers.push(self.global_state.config.public_address.unwrap().into());
+            if let Some(addr) = self.global_state.config.public_address {
+                peers.push(addr.into());
+            }
         }
         Ok(peers.into_boxed_slice())
     }
