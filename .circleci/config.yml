@@ -120,7 +120,7 @@ commands:
               -- --test-threads=1
       - run:
           name: Compress Artifacts
-          command: tar -cvzf /tmp/jormungandr-logs.tar /tmp/jormungandr-logs/
+          command: tar -cvzf /tmp/jormungandr-logs.tar /tmp/jormungandr_*
           when: on_fail
       - store_artifacts: 
           path: /tmp/jormungandr-logs.tar

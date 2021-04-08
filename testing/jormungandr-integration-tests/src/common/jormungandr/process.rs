@@ -3,6 +3,7 @@ use crate::common::jcli::{JCli, JCliCommand};
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_time::TimeEra;
+use fs_extra::dir::{move_dir, CopyOptions};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Block0Configuration, TrustedPeer},
@@ -240,50 +241,32 @@ impl JormungandrProcess {
 
 impl Drop for JormungandrProcess {
     fn drop(&mut self) {
-        use rand::Rng;
         // There's no kill like overkill
         let _ = self.child.kill();
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
         if panicking() {
-            let dir_name = rand::thread_rng()
-                .sample_iter(&rand::distributions::Alphanumeric)
-                .take(8)
-                .map(char::from)
-                .collect::<String>();
-
-            let logs_dir = std::env::temp_dir()
-                .join("jormungandr-logs")
-                .join(format!("jormungandr-{}", dir_name));
+            let logs_dir = match tempfile::Builder::new().prefix("jormungandr_").tempdir() {
+                Ok(dir) => dir.into_path(),
+                Err(e) => {
+                    eprintln!("Could not create logs dir: {}", e);
+                    return;
+                }
+            };
 
             println!(
                 "persisting node temp_dir after panic: {}",
                 logs_dir.display()
             );
 
-            // This code will not panic, as it will pollute the backtrace
-            // by doing so when the process is already panicking
-            std::fs::create_dir_all(&logs_dir)
-                .unwrap_or_else(|e| eprintln!("Could not create logs dir: {}", e));
-
             if let Some(dir) = self.temp_dir.take() {
-                match std::fs::read_dir(dir.path()) {
-                    Ok(old_dir) => {
-                        for file in old_dir {
-                            match file {
-                                Ok(file) => {
-                                    std::fs::copy(file.path(), logs_dir.join(file.file_name()))
-                                        .map(|_| ())
-                                        .unwrap_or_else(|e| {
-                                            eprint!("Could not copy file to dir: {}", e)
-                                        });
-                                }
-                                Err(e) => eprint!("Could not read from process temp_dir: {}", e),
-                            }
-                        }
-                    }
-                    Err(e) => eprint!("Could not read from process temp_dir: {}", e),
-                }
+                let options = CopyOptions {
+                    content_only: true,
+                    ..Default::default()
+                };
+                move_dir(dir.path(), &logs_dir, &options)
+                    .map(|_| ())
+                    .unwrap_or_else(|e| eprintln!("Could not move files to new dir: {}", e));
             }
 
             std::fs::write(logs_dir.join("node.log"), self.log_content())

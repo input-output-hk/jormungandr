@@ -191,6 +191,7 @@ jobs:
           args: --tests ${{ env.CARGO_FLAGS }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TMPDIR and TMP are used respectively on unix and windows
           TMPDIR: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
 

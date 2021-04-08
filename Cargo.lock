@@ -2092,6 +2092,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "structopt",
+ "tempfile",
  "thiserror",
  "tokio 1.3.0",
  "tonic",
