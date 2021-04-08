@@ -13,7 +13,12 @@ use tracing::instrument;
 use super::{topic, NodeId};
 
 use std::hash::{Hash, Hasher};
+use std::net::{IpAddr, Ipv4Addr};
 use std::sync::Arc;
+
+lazy_static! {
+    static ref LOCAL_ADDR: Address = Address::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0);
+}
 
 #[derive(Eq, Clone, Serialize, Debug)]
 pub struct ProfileInfo {
@@ -70,8 +75,7 @@ pub struct P2pTopology {
 
 impl P2pTopology {
     pub fn new(config: &Configuration) -> Self {
-        // FIXME: How should we handle cases where the is not listen set? Can a node just receive?
-        let addr = config.public_address.unwrap();
+        let addr = config.public_address.or(Some(*LOCAL_ADDR)).unwrap();
         let key = super::secret_key_into_keynesis(config.node_key.clone());
 
         let quarantine = Quarantine::from_config(config.policy.clone());
@@ -110,6 +114,7 @@ impl P2pTopology {
         if gossips.is_empty() {
             gossips.push(inner.topology.self_profile().gossip().clone());
         }
+        gossips.retain(|g| g.address() != *LOCAL_ADDR);
         Gossips::from(gossips)
     }
 
