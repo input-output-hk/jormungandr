@@ -7,7 +7,6 @@ use crate::{
 };
 use jormungandr_lib::time::SystemTime;
 use poldercast::{Profile, Topology};
-use serde::Serializer;
 use tokio::sync::RwLock;
 use tracing::instrument;
 
@@ -16,16 +15,9 @@ use super::{topic, NodeId};
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-fn serialize_display<T: std::fmt::Display, S>(item: &T, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    serializer.serialize_str(&item.to_string())
-}
-
 #[derive(Eq, Clone, Serialize, Debug)]
 pub struct ProfileInfo {
-    #[serde(serialize_with = "serialize_display")]
+    #[serde(with = "serde_with::rust::display_fromstr")]
     pub id: NodeId,
     pub address: Address,
     pub last_update: SystemTime,
