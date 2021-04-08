@@ -22,7 +22,7 @@ rand_chacha = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 humantime = "2.0"
 thiserror = "1.0"
-poldercast = "0.14"
+poldercast = "1.2"
 multiaddr = { package = "parity-multiaddr", version = "0.9" }
 hex = "0.4"
 bech32 = "0.7"
