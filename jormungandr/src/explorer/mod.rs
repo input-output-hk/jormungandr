@@ -32,7 +32,6 @@ use chain_impl_mockchain::fee::LinearFee;
 use futures::prelude::*;
 use multiverse::Multiverse;
 use stable_storage::StableIndexShared;
-use std::collections::VecDeque;
 use std::convert::Infallible;
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex, RwLock};
@@ -85,6 +84,7 @@ pub(self) struct State {
     stake_pool_data: StakePool,
     stake_pool_blocks: StakePoolBlocks,
     vote_plans: VotePlans,
+    chain_length: ChainLength,
 }
 
 #[derive(Clone)]
@@ -220,6 +220,7 @@ impl ExplorerDb {
             stake_pool_data,
             stake_pool_blocks,
             vote_plans,
+            chain_length: block0.chain_length(),
         };
 
         let block0_id = block0.id();
@@ -306,6 +307,7 @@ impl ExplorerDb {
             .get_ref(&previous_block)
             .await
             .ok_or_else(|| Error::AncestorNotFound(block.id()))?;
+
         let State {
             transactions,
             blocks,
@@ -315,6 +317,7 @@ impl ExplorerDb {
             stake_pool_data,
             stake_pool_blocks,
             vote_plans,
+            ..
         } = previous_state.state().clone();
 
         let explorer_block = ExplorerBlock::resolve_from(
@@ -337,19 +340,35 @@ impl ExplorerDb {
         let mut chain_lengths = apply_block_to_chain_lengths(chain_lengths, &explorer_block)?;
         let mut epochs = apply_block_to_epochs(epochs, &explorer_block);
 
-        let process_state =
-            |blocks_to_invert: Option<VecDeque<Arc<ExplorerBlock>>>| -> Result<State> {
-                for block_to_invert in blocks_to_invert.iter().flatten() {
-                    blocks = unapply_block_to_blocks(blocks, block_to_invert.as_ref())?;
-                    addresses = unapply_block_to_addresses(addresses, block_to_invert.as_ref());
-                    transactions =
-                        unapply_block_to_transactions(transactions, block_to_invert.as_ref())?;
-                    chain_lengths =
-                        unapply_block_to_chain_lengths(chain_lengths, block_to_invert.as_ref())?;
-                    epochs = unapply_block_to_epochs(epochs, block_to_invert.as_ref());
-                }
+        if let Some(confirmed_block_chain_length) = block
+            .chain_length()
+            .nth_ancestor(self.blockchain_config.epoch_stability_depth)
+        {
+            let block_to_undo = Arc::clone(
+                chain_lengths
+                    .lookup(&confirmed_block_chain_length)
+                    .and_then(|hash| blocks.lookup(&hash))
+                    .unwrap(),
+            );
 
-                Ok(State {
+            blocks = unapply_block_to_blocks(blocks, block_to_undo.as_ref())?;
+            addresses = unapply_block_to_addresses(addresses, block_to_undo.as_ref());
+            transactions = unapply_block_to_transactions(transactions, block_to_undo.as_ref())?;
+            chain_lengths = unapply_block_to_chain_lengths(chain_lengths, block_to_undo.as_ref())?;
+            epochs = unapply_block_to_epochs(epochs, block_to_undo.as_ref());
+
+            // IN THEORY we need to be sure here that the block that we undid is
+            // indexed in the stable index. Otherwise, a query may miss
+            // something if it comes in the middle and uses the last state
+            // IN PRACTICE it's really unlikely with the current implementation
+        };
+
+        let state_ref = multiverse
+            .insert(
+                chain_length,
+                block.parent_id(),
+                block_id,
+                State {
                     transactions,
                     blocks,
                     addresses,
@@ -362,18 +381,16 @@ impl ExplorerDb {
                         &self.blockchain_tip,
                         &explorer_block,
                     ),
-                })
-            };
-
-        let state_ref = multiverse
-            .insert(chain_length, block.parent_id(), block_id, process_state)
+                    chain_length,
+                },
+            )
             .await;
 
-        state_ref
+        Ok(state_ref)
     }
 
     pub async fn get_block(&self, block_id: &HeaderHash) -> Option<Arc<ExplorerBlock>> {
-        for (_, _hash, state_ref) in self.multiverse.tips().await.iter() {
+        for (_hash, state_ref) in self.multiverse.tips().await.iter() {
             if let Some(b) = state_ref.state().blocks.lookup(&block_id) {
                 return Some(Arc::clone(b));
             }
@@ -417,8 +434,6 @@ impl ExplorerDb {
                 .await
                 .apply_block((*stable_block).clone())?;
 
-            self.multiverse.confirm_block(stable_block).await;
-
             // TODO: actually, maybe running gc with every tip change is not ideal?
             // maybe it's better to run it every X time or after N blocks
             self.multiverse
@@ -444,7 +459,7 @@ impl ExplorerDb {
         let mut block = None;
         let mut tips = Vec::new();
 
-        for (last_block, hash, state_ref) in self.multiverse.tips().await.drain(..) {
+        for (hash, state_ref) in self.multiverse.tips().await.drain(..) {
             if let Some(b) = state_ref.state().blocks.lookup(&block_id) {
                 block = block.or_else(|| Some(Arc::clone(b)));
                 tips.push((
@@ -452,7 +467,6 @@ impl ExplorerDb {
                     BranchQuery {
                         state_ref,
                         stable_storage: self.stable_storage.clone(),
-                        last_block,
                     },
                 ));
             }
@@ -470,13 +484,12 @@ impl ExplorerDb {
                         .tips()
                         .await
                         .drain(..)
-                        .map(|(last_block, hash, state_ref)| {
+                        .map(|(hash, state_ref)| {
                             (
                                 hash,
                                 BranchQuery {
                                     state_ref,
                                     stable_storage: self.stable_storage.clone(),
-                                    last_block,
                                 },
                             )
                         })
@@ -490,7 +503,7 @@ impl ExplorerDb {
 
     pub async fn get_epoch(&self, epoch: Epoch) -> Option<EpochData> {
         let tips = self.multiverse.tips().await;
-        let (_, _, state_ref) = &tips[0];
+        let (_, state_ref) = &tips[0];
 
         let from_multiverse = state_ref
             .state()
@@ -510,13 +523,17 @@ impl ExplorerDb {
     }
 
     pub async fn is_block_confirmed(&self, block_id: &HeaderHash) -> bool {
-        self.stable_storage.read().await.get_block(block_id).is_some()
+        self.stable_storage
+            .read()
+            .await
+            .get_block(block_id)
+            .is_some()
     }
 
     pub async fn find_blocks_by_chain_length(&self, chain_length: ChainLength) -> Vec<HeaderHash> {
         let mut hashes = Vec::new();
 
-        for (_, _hash, state_ref) in self.multiverse.tips().await.iter() {
+        for (_hash, state_ref) in self.multiverse.tips().await.iter() {
             if let Some(hash) = state_ref.state().chain_lengths.lookup(&chain_length) {
                 hashes.push(**hash);
             }
@@ -543,7 +560,7 @@ impl ExplorerDb {
             .tips()
             .await
             .iter()
-            .filter_map(|(_, _tip_hash, state_ref)| {
+            .filter_map(|(_tip_hash, state_ref)| {
                 state_ref
                     .state()
                     .transactions
@@ -585,7 +602,7 @@ impl ExplorerDb {
             .tips()
             .await
             .iter()
-            .filter_map(|(_, _hash, state_ref)| state_ref.state().stake_pool_blocks.lookup(&pool))
+            .filter_map(|(_hash, state_ref)| state_ref.state().stake_pool_blocks.lookup(&pool))
             .max_by_key(|seq| seq.len())
             .map(Arc::clone)
     }
@@ -593,7 +610,7 @@ impl ExplorerDb {
     pub async fn get_stake_pool_data(&self, pool: &PoolId) -> Option<Arc<StakePoolData>> {
         let pool = pool.clone();
 
-        for (_, _hash, state_ref) in self.multiverse.tips().await.iter() {
+        for (_hash, state_ref) in self.multiverse.tips().await.iter() {
             if let Some(b) = state_ref.state().stake_pool_data.lookup(&pool) {
                 return Some(Arc::clone(b));
             }
@@ -606,7 +623,7 @@ impl ExplorerDb {
         &self,
         vote_plan_id: &VotePlanId,
     ) -> Option<Arc<ExplorerVotePlan>> {
-        for (_, _hash, state_ref) in self.multiverse.tips().await.iter() {
+        for (_hash, state_ref) in self.multiverse.tips().await.iter() {
             if let Some(b) = state_ref.state().vote_plans.lookup(&vote_plan_id) {
                 return Some(Arc::clone(b));
             }
@@ -617,25 +634,21 @@ impl ExplorerDb {
 
     pub(self) async fn get_branch(&self, hash: &HeaderHash) -> Option<BranchQuery> {
         let state_ref = self.multiverse.get_ref(hash).await?;
-        let last_block = state_ref.state().blocks.lookup(hash).unwrap().chain_length;
 
         Some(BranchQuery {
             state_ref,
             stable_storage: self.stable_storage.clone(),
-            last_block,
         })
     }
 
     pub(self) async fn get_tip(&self) -> (HeaderHash, BranchQuery) {
         let hash = self.longest_chain_tip.get_block_id().await;
         let state_ref = self.multiverse.get_ref(&hash).await.unwrap();
-        let last_block = state_ref.state().blocks.lookup(&hash).unwrap().chain_length;
         (
             hash,
             BranchQuery {
                 state_ref: state_ref,
                 stable_storage: self.stable_storage.clone(),
-                last_block,
             },
         )
     }
@@ -645,13 +658,12 @@ impl ExplorerDb {
             .tips()
             .await
             .iter()
-            .map(|(last_block, hash, state_ref)| {
+            .map(|(hash, state_ref)| {
                 (
                     *hash,
                     BranchQuery {
                         state_ref: state_ref.clone(),
                         stable_storage: self.stable_storage.clone(),
-                        last_block: *last_block,
                     },
                 )
             })
@@ -674,13 +686,11 @@ impl ExplorerDb {
         tokio_stream::wrappers::BroadcastStream::new(self.tip_broadcast.subscribe()).map(
             move |item| {
                 item.map(|(hash, state_ref)| {
-                    let last_block = state_ref.state().blocks.lookup(&hash).unwrap().chain_length;
                     (
                         hash,
                         BranchQuery {
                             state_ref,
                             stable_storage: stable_store.clone(),
-                            last_block,
                         },
                     )
                 })
@@ -1117,9 +1127,6 @@ impl Tip {
 pub struct BranchQuery {
     state_ref: multiverse::Ref,
     stable_storage: StableIndexShared,
-    // TODO: this could be embedded/cached in the state, it's a
-    // performance/memory tradeoff, analyze later
-    last_block: ChainLength,
 }
 
 impl BranchQuery {
@@ -1138,7 +1145,7 @@ impl BranchQuery {
     }
 
     pub fn last_block(&self) -> ChainLength {
-        self.last_block
+        self.state_ref.state().chain_length
     }
 
     pub fn get_vote_plans(&self) -> Vec<(VotePlanId, Arc<ExplorerVotePlan>)> {
