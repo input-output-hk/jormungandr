@@ -33,7 +33,7 @@ imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "
 error-chain = "0.12"
 futures = "0.3.8"
 hex = "0.4"
-http = "0.2.2"
+http = "0.2.4"
 humantime = "2.0"
 jormungandr-lib = { path = "../jormungandr-lib" }
 lazy_static = "1.4"
