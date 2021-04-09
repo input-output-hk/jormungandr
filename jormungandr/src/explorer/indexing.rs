@@ -18,7 +18,6 @@ use chain_impl_mockchain::vote::{
 };
 use futures::stream::{self, StreamExt};
 use std::{convert::TryInto, sync::Arc};
-use tracing::trace;
 
 pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, Arc<V>>;
 
@@ -426,8 +425,6 @@ impl ExplorerTransaction {
                     (InputEnum::UtxoInput(utxo_pointer), _witness) => {
                         let tx = utxo_pointer.transaction_id;
                         let index = utxo_pointer.output_index;
-
-                        trace!("found utxo inupt, processing, {}", &tx);
 
                         let output = match context
                             .prev_transactions
