@@ -1,11 +1,12 @@
 use crate::common::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
-use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
+use chain_impl_mockchain::{block::ChainLength, fragment::Fragment};
+use chain_impl_mockchain::{fragment::FragmentId, transaction::UtxoPointer};
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
-use jormungandr_testing_utils::stake_pool::StakePool;
 use jormungandr_testing_utils::testing::node::Explorer;
+use jormungandr_testing_utils::{stake_pool::StakePool, testing::node::time};
 use jortestkit::process::Wait;
 use std::str::FromStr;
 use std::time::Duration;
@@ -93,6 +94,104 @@ pub fn explorer_sanity_test() {
     epoch(&explorer);
 }
 
+#[test]
+pub fn old_blocks_are_in_explorer() {
+    let jcli: JCli = Default::default();
+    let mut faucet = startup::create_new_account_address();
+    let receiver = startup::create_new_account_address();
+    let mut utxo_receiver = startup::create_new_utxo_address();
+
+    let epoch_stability_depth = 3;
+    let mut config = ConfigurationBuilder::new();
+    config
+        .with_epoch_stability_depth(epoch_stability_depth)
+        .with_explorer();
+
+    let (jormungandr, initial_stake_pools) =
+        startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
+
+    let transaction = faucet
+        .transaction_to(
+            &jormungandr.genesis_block_hash(),
+            &jormungandr.fees(),
+            utxo_receiver.address(),
+            1_000.into(),
+        )
+        .unwrap();
+
+    let output_value = match transaction {
+        Fragment::Transaction(ref tx) => {
+            let output = tx.as_slice().outputs().iter().next().unwrap();
+
+            output.value
+        }
+        _ => todo!(),
+    };
+
+    let encoded_transaction = transaction.encode();
+
+    let wait = Wait::new(Duration::from_secs(3), 20);
+    let fragment_id = jcli
+        .fragment_sender(&jormungandr)
+        .send(&encoded_transaction)
+        .assert_in_block_with_wait(&wait);
+
+    println!("explorer: utxo transaction {}", fragment_id);
+
+    let mut explorer = jormungandr.explorer();
+
+    let last_block = explorer.last_block().unwrap().data.unwrap().tip.block;
+    let current_tip_chain_length: u32 = last_block.chain_length.parse().unwrap();
+    let current_block_id = last_block.id;
+
+    time::wait_n_blocks(
+        ChainLength::from(current_tip_chain_length),
+        epoch_stability_depth + 5,
+        &mut explorer,
+    );
+
+    utxo_receiver.add_utxo(UtxoPointer {
+        transaction_id: transaction.hash(),
+        output_index: 0,
+        value: output_value,
+    });
+
+    let utxo_tx = utxo_receiver
+        .transaction_to(
+            &jormungandr.genesis_block_hash(),
+            &jormungandr.fees(),
+            utxo_receiver.address(),
+            1000.into(),
+        )
+        .unwrap()
+        .encode();
+
+    let _fragment_id = jcli
+        .fragment_sender(&jormungandr)
+        .send(&utxo_tx)
+        .assert_in_block_with_wait(&wait);
+
+    let block = explorer
+        .blocks_at_chain_length(current_tip_chain_length)
+        .unwrap();
+
+    let data = block.data.unwrap();
+    assert_eq!(data.blocks_by_chain_length.len(), 1, "block not found");
+
+    assert_eq!(
+        current_block_id, data.blocks_by_chain_length[0].id,
+        "unexpected block id was found"
+    );
+
+    println!("{}", jormungandr.logger.get_log_content());
+
+    transaction_by_id(&explorer, fragment_id.into());
+    blocks(&explorer, jormungandr.logger.get_created_blocks_hashes());
+    stake_pools(&explorer, &initial_stake_pools);
+    stake_pool(&explorer, &initial_stake_pools);
+    blocks_in_epoch(&explorer, jormungandr.logger.get_created_blocks_hashes());
+}
+
 fn transaction_by_id(explorer: &Explorer, fragment_id: FragmentId) {
     let explorer_transaction = explorer
         .transaction(fragment_id.into())
@@ -178,4 +277,32 @@ fn epoch(explorer: &Explorer) {
     let epoch = explorer.epoch(1, 100).unwrap();
 
     assert_eq!(epoch.data.unwrap().epoch.id, "1", "can't find epoch");
+}
+
+fn blocks_in_epoch(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
+    let epoch = explorer.epoch(0, 100).unwrap();
+    let explorer_blocks = epoch
+        .data
+        .unwrap()
+        .tip
+        .blocks_by_epoch
+        .unwrap()
+        .edges
+        .unwrap()
+        .iter()
+        .skip(1)
+        .map(|x| Hash::from_str(&x.as_ref().unwrap().node.id).unwrap())
+        .collect::<Vec<Hash>>();
+
+    let mut common_blocks = blocks_from_logs.clone();
+    common_blocks.retain(|x| !explorer_blocks.contains(x));
+
+    // we can have at least one non duplicated block
+    // due to explorer delay to logs content
+    assert!(
+        common_blocks.len() <= 1,
+        "blocks differents: Explorer {:?} vs Logs {:?}",
+        explorer_blocks,
+        blocks_from_logs
+    );
 }

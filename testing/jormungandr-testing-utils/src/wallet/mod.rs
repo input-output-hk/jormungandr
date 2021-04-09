@@ -19,14 +19,14 @@ use chain_impl_mockchain::{
     testing::data::{AddressData, AddressDataValue, Wallet as WalletLib},
     transaction::{
         InputOutputBuilder, Payload, PayloadSlice, TransactionBindingAuthDataPhantom,
-        TransactionSignDataHash, Witness,
+        TransactionSignDataHash, UtxoPointer, Witness,
     },
     value::Value as ValueLib,
     vote::{Choice, CommitteeId},
 };
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
-    interfaces::{Address, CommitteeIdDef, Initial, InitialUTxO, Value},
+    interfaces::{Address, CommitteeIdDef, Initial, InitialUTxO, UTxOInfo, Value},
 };
 
 use chain_addr::Discrimination;
@@ -233,7 +233,7 @@ impl Wallet {
     pub fn add_input_with_value(&self, value: Value) -> Input {
         match self {
             Wallet::Account(account) => account.add_input_with_value(value),
-            Wallet::UTxO(_utxo) => unimplemented!(),
+            Wallet::UTxO(utxo) => utxo.add_input_with_value(value),
             Wallet::Delegation(_delegation) => unimplemented!(),
         }
     }
@@ -429,6 +429,21 @@ impl Wallet {
         CommitteeIdDef::from(CommitteeId::from(
             self.address().1.public_key().unwrap().clone(),
         ))
+    }
+
+    pub fn add_utxo(&mut self, utxo_pointer: UtxoPointer) {
+        match self {
+            Wallet::UTxO(utxo) => {
+                let info = UTxOInfo::new(
+                    utxo_pointer.transaction_id.into(),
+                    utxo_pointer.output_index,
+                    utxo.address(),
+                    utxo_pointer.value.into(),
+                );
+                utxo.add_utxo(info);
+            }
+            _ => todo!("can not add utxo to non-utxo wallet"),
+        }
     }
 }
 
