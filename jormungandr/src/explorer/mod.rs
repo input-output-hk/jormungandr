@@ -294,7 +294,7 @@ impl ExplorerDb {
             id=%block.id(),
             chain_length=%block.chain_length(),
             parent=%block.header.block_parent_hash(),
-            "applying block to explorer's in-memory storage",
+            "applying block to in-memory storage",
         );
 
         let previous_block = block.header.block_parent_hash();
@@ -344,6 +344,11 @@ impl ExplorerDb {
             .chain_length()
             .nth_ancestor(self.blockchain_config.epoch_stability_depth)
         {
+            debug!(
+                "undoing block with chain_length {}",
+                confirmed_block_chain_length
+            );
+
             let block_to_undo = Arc::clone(
                 chain_lengths
                     .lookup(&confirmed_block_chain_length)
@@ -351,16 +356,19 @@ impl ExplorerDb {
                     .unwrap(),
             );
 
+            // ignore the error because right now it can only fail if the
+            // block is already there
+            let _ = self
+                .stable_storage
+                .write()
+                .await
+                .apply_block((*block_to_undo).clone())?;
+
             blocks = unapply_block_to_blocks(blocks, block_to_undo.as_ref())?;
             addresses = unapply_block_to_addresses(addresses, block_to_undo.as_ref());
             transactions = unapply_block_to_transactions(transactions, block_to_undo.as_ref())?;
             chain_lengths = unapply_block_to_chain_lengths(chain_lengths, block_to_undo.as_ref())?;
             epochs = unapply_block_to_epochs(epochs, block_to_undo.as_ref());
-
-            // IN THEORY we need to be sure here that the block that we undid is
-            // indexed in the stable index. Otherwise, a query may miss
-            // something if it comes in the middle and uses the last state
-            // IN PRACTICE it's really unlikely with the current implementation
         };
 
         let state_ref = multiverse
@@ -412,38 +420,15 @@ impl ExplorerDb {
             return Ok(false);
         };
 
-        let block = {
-            let state = state_ref.state();
-            Arc::clone(state.blocks.lookup(&hash).unwrap())
-        };
-
-        if let Some(confirmed_block_chain_length) = block
-            .chain_length()
-            .nth_ancestor(self.blockchain_config.epoch_stability_depth)
-        {
-            let hash = state_ref
-                .state()
-                .chain_lengths
-                .lookup(&confirmed_block_chain_length)
-                .unwrap();
-
-            let stable_block = Arc::clone(state_ref.state().blocks.lookup(&hash).unwrap());
-
-            self.stable_storage
-                .write()
-                .await
-                .apply_block((*stable_block).clone())?;
-
-            // TODO: actually, maybe running gc with every tip change is not ideal?
-            // maybe it's better to run it every X time or after N blocks
-            self.multiverse
-                .gc(self.blockchain_config.epoch_stability_depth)
-                .await;
-        }
+        // TODO: actually, maybe running gc with every tip change is not ideal?
+        // maybe it's better to run it every X time or after N blocks
+        self.multiverse
+            .gc(self.blockchain_config.epoch_stability_depth)
+            .await;
 
         let mut guard = self.longest_chain_tip.0.write().await;
 
-        debug!("setting explorer tip to: {}", hash);
+        debug!("setting tip to: {}", hash);
 
         *guard = hash;
 
