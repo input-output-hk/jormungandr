@@ -162,7 +162,8 @@ impl FragmentSelectionAlgorithm for OldestFirst {
             }
         }
 
-        pool.insert_all(return_to_pool);
+        return_to_pool.reverse();
+        pool.return_to_pool(return_to_pool);
 
         (contents_builder.into(), ledger)
     }
