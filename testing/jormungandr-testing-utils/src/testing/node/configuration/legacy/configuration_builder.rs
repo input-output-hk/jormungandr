@@ -85,7 +85,7 @@ impl LegacyNodeConfigConverter {
 
         NodeConfig {
             storage: source.storage.clone(),
-            log: source.log.clone(),
+            log: source.log.clone().map(Into::into),
             rest: Rest {
                 listen: source.rest.listen,
                 cors: None,
@@ -140,7 +140,7 @@ impl LegacyNodeConfigConverter {
 
         NodeConfig {
             storage: source.storage.clone(),
-            log: source.log.clone(),
+            log: source.log.clone().map(Into::into),
             rest: Rest {
                 listen: source.rest.listen,
                 cors: None,

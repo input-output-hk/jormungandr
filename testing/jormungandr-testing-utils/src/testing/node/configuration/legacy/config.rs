@@ -1,6 +1,6 @@
 #![allow(deprecated)]
 use jormungandr_lib::interfaces::{
-    Explorer, LayersConfig, Log, Mempool, Policy, Rest, TopicsOfInterest,
+    Explorer, LayersConfig, LogEntry, LogOutput, Mempool, Policy, Rest, TopicsOfInterest,
 };
 
 use serde::{Deserialize, Serialize};
@@ -41,6 +41,24 @@ pub struct TrustedPeer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub address: poldercast::Address,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Log(pub Vec<LogEntry>);
+
+impl From<jormungandr_lib::interfaces::Log> for Log {
+    fn from(log: jormungandr_lib::interfaces::Log) -> Self {
+        Self(vec![log.0])
+    }
+}
+
+impl Log {
+    pub fn file_path(&self) -> Option<&std::path::Path> {
+        self.0.iter().find_map(|log_entry| match &log_entry.output {
+            LogOutput::File(path) => Some(path.as_path()),
+            _ => None,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
