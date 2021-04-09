@@ -35,7 +35,11 @@ pub mod topic {
     use poldercast::Topic;
 
     pub const MESSAGES: Topic = Topic::new([0; 32]);
-    pub const BLOCKS: Topic = Topic::new([1; 32]);
+    pub const BLOCKS: Topic = {
+        let mut array = [0; 32];
+        array[31] = 1;
+        Topic::new(array)
+    };
 }
 
 /**
