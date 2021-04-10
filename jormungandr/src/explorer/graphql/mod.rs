@@ -22,6 +22,7 @@ use super::indexing::{
     BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, StakePoolData,
 };
 use super::persistent_sequence::PersistentSequence;
+use super::BranchQuery;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use crate::explorer::indexing::ExplorerVote;
 use crate::explorer::{ExplorerDb, Settings as ChainSettings};
@@ -37,7 +38,7 @@ use std::sync::Arc;
 pub(crate) type RestContext = crate::rest::explorer::EContext;
 
 pub struct Branch {
-    state: super::multiverse::Ref,
+    state: BranchQuery,
     id: HeaderHash,
 }
 
@@ -51,7 +52,7 @@ impl Branch {
             .ok_or_else(|| ErrorKind::NotFound("branch not found".to_string()).into())
     }
 
-    fn from_id_and_state(id: HeaderHash, state: super::multiverse::Ref) -> Branch {
+    fn from_id_and_state(id: HeaderHash, state: BranchQuery) -> Branch {
         Branch { state, id }
     }
 }
@@ -63,9 +64,7 @@ impl Branch {
     }
 
     pub async fn block(&self) -> Block {
-        Block::from_contents(Arc::clone(
-            self.state.state().blocks.lookup(&self.id).unwrap(),
-        ))
+        Block::from_contents(Arc::clone(&self.state.get_block(&self.id).await.unwrap()))
     }
 
     pub async fn blocks(
@@ -77,7 +76,7 @@ impl Branch {
     ) -> FieldResult<Connection<IndexCursor, Block, ConnectionFields<BlockCount>, EmptyFields>>
     {
         let block0 = 0u32;
-        let chain_length = self.state.state().blocks.size();
+        let chain_length = self.state.last_block();
 
         query(
             after,
@@ -87,9 +86,7 @@ impl Branch {
             |after, before, first, last| async move {
                 let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
                     lower_bound: block0,
-                    // this try_from cannot fail, as there can't be more than 2^32
-                    // blocks (because ChainLength is u32)
-                    upper_bound: u32::try_from(chain_length).unwrap(),
+                    upper_bound: u32::from(chain_length),
                 });
 
                 let pagination_arguments = ValidatedPaginationArguments {
@@ -114,7 +111,7 @@ impl Branch {
                     PaginationInterval::Inclusive(range) => {
                         let a = range.lower_bound.into();
                         let b = range.upper_bound.checked_add(1).unwrap().into();
-                        self.state.state().get_block_hash_range(a, b)
+                        self.state.get_block_hash_range(a, b).await
                     }
                 };
 
@@ -148,7 +145,6 @@ impl Branch {
 
         let transactions = self
             .state
-            .state()
             .transactions_by_address(&address)
             .unwrap_or_else(PersistentSequence::<FragmentId>::new);
 
@@ -212,7 +208,7 @@ impl Branch {
     ) -> FieldResult<
         Connection<IndexCursor, VotePlanStatus, ConnectionFields<VotePlanStatusCount>, EmptyFields>,
     > {
-        let mut vote_plans = self.state.state().get_vote_plans();
+        let mut vote_plans = self.state.get_vote_plans();
 
         vote_plans.sort_unstable_by_key(|(id, _data)| id.clone());
 
@@ -290,7 +286,7 @@ impl Branch {
         before: Option<String>,
         after: Option<String>,
     ) -> FieldResult<Connection<IndexCursor, Pool, ConnectionFields<PoolCount>, EmptyFields>> {
-        let mut stake_pools = self.state.state().get_stake_pools();
+        let mut stake_pools = self.state.get_stake_pools();
 
         // Although it's probably not a big performance concern
         // There are a few alternatives to not have to sort this
@@ -395,17 +391,15 @@ impl Branch {
                 |after, before, first, last| async move {
                     let epoch_lower_bound = self
                         .state
-                        .state()
-                        .blocks
-                        .lookup(&epoch_data.first_block)
+                        .get_block(&epoch_data.first_block)
+                        .await
                         .map(|block| u32::from(block.chain_length))
                         .expect("Epoch lower bound");
 
                     let epoch_upper_bound = self
                         .state
-                        .state()
-                        .blocks
-                        .lookup(&epoch_data.last_block)
+                        .get_block(&epoch_data.last_block)
+                        .await
                         .map(|block| u32::from(block.chain_length))
                         .expect("Epoch upper bound");
 
@@ -438,11 +432,11 @@ impl Branch {
                         }
                         PaginationInterval::Inclusive(range) => self
                             .state
-                            .state()
                             .get_block_hash_range(
                                 (range.lower_bound + epoch_lower_bound).into(),
                                 (range.upper_bound + epoch_lower_bound + 1u32).into(),
                             )
+                            .await
                             .iter()
                             .map(|(hash, index)| (*hash, u32::from(*index) - epoch_lower_bound))
                             .collect::<Vec<_>>(),
@@ -1634,7 +1628,7 @@ pub struct Subscription;
 
 #[Subscription]
 impl Subscription {
-    async fn tip(&self, context: &Context<'_>) -> impl futures::Stream<Item = Branch> {
+    async fn tip(&self, context: &Context<'_>) -> impl futures::Stream<Item = Branch> + '_ {
         use futures::StreamExt;
         context
             .data_unchecked::<RestContext>()
@@ -1647,7 +1641,7 @@ impl Subscription {
             // fine to ignore the error
             .filter_map(|tip| async move {
                 tip.ok()
-                    .map(|(hash, state)| Branch::from_id_and_state(hash, state))
+                    .map(|(hash, state)| Branch::from_id_and_state(hash.clone(), state.clone()))
             })
     }
 }

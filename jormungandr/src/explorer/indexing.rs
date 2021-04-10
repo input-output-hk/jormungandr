@@ -1,4 +1,4 @@
-use super::persistent_sequence::PersistentSequence;
+use super::{persistent_sequence::PersistentSequence, stable_storage::StableIndexShared};
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 
@@ -6,7 +6,6 @@ use crate::blockcfg::{Block, BlockDate, ChainLength, Epoch, Fragment, FragmentId
 use cardano_legacy_address::Addr as OldAddress;
 use chain_addr::{Address, Discrimination};
 use chain_core::property::Block as _;
-use chain_core::property::Fragment as _;
 use chain_impl_mockchain::block::Proof;
 use chain_impl_mockchain::certificate::{
     Certificate, ExternalProposalId, PoolId, PoolRegistration, PoolRetirement, VotePlanId,
@@ -17,7 +16,9 @@ use chain_impl_mockchain::value::Value;
 use chain_impl_mockchain::vote::{
     Choice, EncryptedVote, Options, PayloadType, ProofOfCorrectVote, Weight,
 };
+use futures::stream::{self, StreamExt};
 use std::{convert::TryInto, sync::Arc};
+use tracing::trace;
 
 pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, Arc<V>>;
 
@@ -140,6 +141,7 @@ pub struct ExplorerBlockBuildingContext<'a> {
     pub discrimination: Discrimination,
     pub prev_transactions: &'a Transactions,
     pub prev_blocks: &'a Blocks,
+    pub stable_storage: StableIndexShared,
 }
 
 impl ExplorerBlock {
@@ -148,117 +150,146 @@ impl ExplorerBlock {
     /// and mapping the account inputs to addresses with the given discrimination
     /// This function relies on the given block to be validated previously, and will panic
     /// otherwise
-    pub fn resolve_from(block: &Block, context: ExplorerBlockBuildingContext) -> ExplorerBlock {
+    pub async fn resolve_from(
+        block: &Block,
+        context: ExplorerBlockBuildingContext<'_>,
+    ) -> ExplorerBlock {
         let fragments = block.contents.iter();
         let id = block.id();
         let chain_length = block.chain_length();
-
-        let transactions: HashMap<FragmentId, ExplorerTransaction> = fragments.enumerate().fold(
-            HashMap::<FragmentId, ExplorerTransaction>::new(),
-            |mut current_block_txs, (offset, fragment)| {
-                let fragment_id = fragment.id();
+        let transactions: HashMap<FragmentId, ExplorerTransaction> = {
+            let mut current_block_txs = HashMap::new();
+            for (offset, fragment) in fragments.enumerate() {
+                let fragment_id = fragment.hash();
                 let offset: u32 = offset.try_into().unwrap();
                 let metx = match fragment {
                     Fragment::Transaction(tx) => {
                         let tx = tx.as_slice();
-                        Some(ExplorerTransaction::from(
-                            &context,
-                            &fragment_id,
-                            &tx,
-                            None,
-                            offset,
-                            &current_block_txs,
-                        ))
+                        Some(
+                            ExplorerTransaction::from(
+                                &context,
+                                fragment_id,
+                                &tx,
+                                None,
+                                offset.clone(),
+                                &current_block_txs,
+                            )
+                            .await,
+                        )
                     }
                     Fragment::OwnerStakeDelegation(tx) => {
                         let tx = tx.as_slice();
-                        Some(ExplorerTransaction::from(
-                            &context,
-                            &fragment_id,
-                            &tx,
-                            Some(Certificate::OwnerStakeDelegation(
-                                tx.payload().into_payload(),
-                            )),
-                            offset,
-                            &current_block_txs,
-                        ))
+                        Some(
+                            ExplorerTransaction::from(
+                                &context,
+                                fragment_id,
+                                &tx,
+                                Some(Certificate::OwnerStakeDelegation(
+                                    tx.payload().into_payload(),
+                                )),
+                                offset.clone(),
+                                &current_block_txs,
+                            )
+                            .await,
+                        )
                     }
                     Fragment::StakeDelegation(tx) => {
                         let tx = tx.as_slice();
-                        Some(ExplorerTransaction::from(
-                            &context,
-                            &fragment_id,
-                            &tx,
-                            Some(Certificate::StakeDelegation(tx.payload().into_payload())),
-                            offset,
-                            &current_block_txs,
-                        ))
+                        Some(
+                            ExplorerTransaction::from(
+                                &context,
+                                fragment_id,
+                                &tx,
+                                Some(Certificate::StakeDelegation(tx.payload().into_payload())),
+                                offset.clone(),
+                                &current_block_txs,
+                            )
+                            .await,
+                        )
                     }
                     Fragment::PoolRegistration(tx) => {
                         let tx = tx.as_slice();
-                        Some(ExplorerTransaction::from(
-                            &context,
-                            &fragment_id,
-                            &tx,
-                            Some(Certificate::PoolRegistration(tx.payload().into_payload())),
-                            offset,
-                            &current_block_txs,
-                        ))
+                        Some(
+                            ExplorerTransaction::from(
+                                &context,
+                                fragment_id.clone(),
+                                &tx,
+                                Some(Certificate::PoolRegistration(tx.payload().into_payload())),
+                                offset.clone(),
+                                &current_block_txs,
+                            )
+                            .await,
+                        )
                     }
                     Fragment::PoolRetirement(tx) => {
                         let tx = tx.as_slice();
-                        Some(ExplorerTransaction::from(
-                            &context,
-                            &fragment_id,
-                            &tx,
-                            Some(Certificate::PoolRetirement(tx.payload().into_payload())),
-                            offset,
-                            &current_block_txs,
-                        ))
+                        Some(
+                            ExplorerTransaction::from(
+                                &context,
+                                fragment_id.clone(),
+                                &tx,
+                                Some(Certificate::PoolRetirement(tx.payload().into_payload())),
+                                offset.clone(),
+                                &current_block_txs,
+                            )
+                            .await,
+                        )
                     }
                     Fragment::PoolUpdate(tx) => {
                         let tx = tx.as_slice();
-                        Some(ExplorerTransaction::from(
-                            &context,
-                            &fragment_id,
-                            &tx,
-                            Some(Certificate::PoolUpdate(tx.payload().into_payload())),
-                            offset,
-                            &current_block_txs,
-                        ))
+                        Some(
+                            ExplorerTransaction::from(
+                                &context,
+                                fragment_id.clone(),
+                                &tx,
+                                Some(Certificate::PoolUpdate(tx.payload().into_payload())),
+                                offset.clone(),
+                                &current_block_txs,
+                            )
+                            .await,
+                        )
                     }
                     Fragment::VotePlan(tx) => {
                         let tx = tx.as_slice();
-                        Some(ExplorerTransaction::from(
-                            &context,
-                            &fragment_id,
-                            &tx,
-                            Some(Certificate::VotePlan(tx.payload().into_payload())),
-                            offset,
-                            &current_block_txs,
-                        ))
+                        Some(
+                            ExplorerTransaction::from(
+                                &context,
+                                fragment_id.clone(),
+                                &tx,
+                                Some(Certificate::VotePlan(tx.payload().into_payload())),
+                                offset.clone(),
+                                &current_block_txs,
+                            )
+                            .await,
+                        )
                     }
                     Fragment::VoteCast(tx) => {
                         let tx = tx.as_slice();
-                        Some(ExplorerTransaction::from(
-                            &context,
-                            &fragment_id,
-                            &tx,
-                            Some(Certificate::VoteCast(tx.payload().into_payload())),
-                            offset,
-                            &current_block_txs,
-                        ))
+                        Some(
+                            ExplorerTransaction::from(
+                                &context,
+                                fragment_id.clone(),
+                                &tx,
+                                Some(Certificate::VoteCast(tx.payload().into_payload())),
+                                offset.clone(),
+                                &current_block_txs,
+                            )
+                            .await,
+                        )
                     }
                     Fragment::VoteTally(tx) => {
                         let tx = tx.as_slice();
-                        Some(ExplorerTransaction::from(
-                            &context,
-                            &fragment_id,
-                            &tx,
-                            Some(Certificate::VoteTally(tx.payload().into_payload())),
-                            offset,
-                            &current_block_txs,
-                        ))
+                        Some(
+                            ExplorerTransaction::from(
+                                &context,
+                                fragment_id.clone(),
+                                &tx,
+                                Some(Certificate::VoteTally(tx.payload().into_payload())),
+                                offset.clone(),
+                                &current_block_txs,
+                            )
+                            .await,
+                        )
                     }
                     Fragment::OldUtxoDeclaration(decl) => {
                         let outputs = decl
@@ -283,9 +314,10 @@ impl ExplorerBlock {
                 if let Some(etx) = metx {
                     current_block_txs.insert(fragment_id, etx);
                 }
-                current_block_txs
-            },
-        );
+            }
+
+            current_block_txs
+        };
 
         let producer = match block.header.proof() {
             Proof::GenesisPraos(_proof) => {
@@ -350,9 +382,9 @@ impl ExplorerTransaction {
 
     // TODO: The signature of this got too long, using a builder may be a good idea
     // It's called only from one place, though, so it is not that bothersome
-    pub fn from<'transaction, 'context, T>(
-        context: &'context ExplorerBlockBuildingContext<'context>,
-        id: &FragmentId,
+    pub async fn from<'transaction, T>(
+        context: &ExplorerBlockBuildingContext<'transaction>,
+        id: FragmentId,
         tx: &TransactionSlice<'transaction, T>,
         certificate: Option<Certificate>,
         offset_in_block: u32,
@@ -369,61 +401,78 @@ impl ExplorerTransaction {
             })
             .collect();
 
-        let new_inputs = inputs
-            .map(|i| i.to_enum())
-            .zip(witnesses)
-            .filter_map(|input_with_witness| match input_with_witness {
-                (InputEnum::AccountInput(id, value), Witness::Account(_)) => {
-                    let kind = chain_addr::Kind::Account(
-                        id.to_single_account()
-                            .expect("the input to be validated")
-                            .into(),
-                    );
-                    let address = ExplorerAddress::New(Address(context.discrimination, kind));
-                    Some(ExplorerInput { address, value })
-                }
-                (InputEnum::AccountInput(id, value), Witness::Multisig(_)) => {
-                    let kind = chain_addr::Kind::Multisig(
-                        id.to_multi_account()
-                            .as_ref()
-                            .try_into()
-                            .expect("multisig identifier size doesn't match address kind"),
-                    );
-                    let address = ExplorerAddress::New(Address(context.discrimination, kind));
-                    Some(ExplorerInput { address, value })
-                }
-                (InputEnum::UtxoInput(utxo_pointer), _witness) => {
-                    let tx = utxo_pointer.transaction_id;
-                    let index = utxo_pointer.output_index;
+        let new_inputs = stream::iter(inputs.map(|i| i.to_enum()).zip(witnesses))
+            .filter_map(|input_with_witness| async {
+                match input_with_witness {
+                    (InputEnum::AccountInput(id, value), Witness::Account(_)) => {
+                        let kind = chain_addr::Kind::Account(
+                            id.to_single_account()
+                                .expect("the input to be validated")
+                                .into(),
+                        );
+                        let address = ExplorerAddress::New(Address(context.discrimination, kind));
+                        Some(ExplorerInput { address, value })
+                    }
+                    (InputEnum::AccountInput(id, value), Witness::Multisig(_)) => {
+                        let kind = chain_addr::Kind::Multisig(
+                            id.to_multi_account()
+                                .as_ref()
+                                .try_into()
+                                .expect("multisig identifier size doesn't match address kind"),
+                        );
+                        let address = ExplorerAddress::New(Address(context.discrimination, kind));
+                        Some(ExplorerInput { address, value })
+                    }
+                    (InputEnum::UtxoInput(utxo_pointer), _witness) => {
+                        let tx = utxo_pointer.transaction_id;
+                        let index = utxo_pointer.output_index;
 
-                    let output = context
-                        .prev_transactions
-                        .lookup(&tx)
-                        .and_then(|block_id| {
-                            context
-                                .prev_blocks
-                                .lookup(&block_id)
-                                .map(|block| &block.transactions[&tx].outputs[index as usize])
-                        })
-                        .or_else(|| {
-                            transactions_in_current_block
-                                .get(&tx)
-                                .map(|fragment| &fragment.outputs[index as usize])
-                        })
+                        trace!("found utxo inupt, processing, {}", &tx);
+
+                        let output = match context
+                            .prev_transactions
+                            .lookup(&tx)
+                            .and_then(|block_id| {
+                                context
+                                    .prev_blocks
+                                    .lookup(&block_id)
+                                    .map(|block| &block.transactions[&tx].outputs[index as usize])
+                            })
+                            .or_else(|| {
+                                transactions_in_current_block
+                                    .get(&tx)
+                                    .map(|fragment| &fragment.outputs[index as usize])
+                            }) {
+                            Some(x) => Some(x.clone()),
+                            None => {
+                                // TODO: maybe this function should return an error
+                                // if any of this things panics, the error is
+                                // most likely a programmer error, at least now
+                                // that the stable storage is in memory, but in
+                                // the future this could be caused by a compromised database
+                                let storage = context.stable_storage.read().await;
+                                let block_id = storage.transaction_to_block(&tx).unwrap();
+                                let block = storage.get_block(block_id).unwrap();
+                                let tx = block.transactions.get(&tx).unwrap();
+
+                                Some(tx.outputs[index as usize].clone())
+                            }
+                        }
                         .expect("transaction not found for utxo input");
 
-                    Some(ExplorerInput {
-                        address: output.address.clone(),
-                        value: output.value,
-                    })
+                        Some(ExplorerInput {
+                            address: output.address.clone(),
+                            value: output.value,
+                        })
+                    }
+                    _ => None,
                 }
-                _ => None,
             })
             .collect();
 
         ExplorerTransaction {
-            id: *id,
-            inputs: new_inputs,
+            id,
+            inputs: new_inputs.await,
             outputs: new_outputs,
             certificate,
             offset_in_block,
