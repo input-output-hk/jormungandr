@@ -1,14 +1,21 @@
+use crate::common::startup::create_new_key_pair;
 use crate::common::{
-    jormungandr::process::JormungandrProcess,
+    jormungandr::{process::JormungandrProcess, ConfigurationBuilder, Starter},
     network::{self, params, wallet},
+    startup,
 };
-
+use assert_fs::fixture::{PathChild, PathCreateDir};
+use assert_fs::TempDir;
+use chain_crypto::Ed25519;
+use chain_impl_mockchain::chaintypes::ConsensusType;
 use jormungandr_lib::{
     interfaces::{
-        Explorer, LayersConfig, PeerRecord, Policy, PreferredListConfig, TopicsOfInterest,
+        Explorer, InitialUTxO, LayersConfig, PeerRecord, Policy, PreferredListConfig,
+        TopicsOfInterest,
     },
     time::Duration,
 };
+use jormungandr_testing_utils::testing::SecretModelFactory;
 use jortestkit::process as process_utils;
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
@@ -373,4 +380,53 @@ pub fn topic_of_interest_influences_node_sync_ability() {
         fast_client_block_recv_cnt > slow_client_block_recv_cnt,
         "node with high block topic of interest should have more recieved blocks"
     );
+}
+
+#[test]
+pub fn duplicated_bft_secret() {
+    let temp_dir = TempDir::new().unwrap();
+
+    let sender = startup::create_new_utxo_address();
+
+    let duplicated_leader_key = create_new_key_pair::<Ed25519>();
+
+    let leader_1_dir = temp_dir.child("leader_1");
+    leader_1_dir.create_dir_all().unwrap();
+    let leader_1_config = ConfigurationBuilder::new()
+        .with_funds(vec![InitialUTxO {
+            address: sender.address(),
+            value: 100.into(),
+        }])
+        .with_block0_consensus(ConsensusType::Bft)
+        .with_leader_key_pair(duplicated_leader_key.clone())
+        .with_secrets(vec![SecretModelFactory::bft(
+            duplicated_leader_key.signing_key(),
+        )])
+        .build(&leader_1_dir);
+
+    let leader_1_jormungandr = Starter::new()
+        .config(leader_1_config.clone())
+        .start()
+        .unwrap();
+
+    let leader_2_dir = temp_dir.child("leader_2");
+    leader_2_dir.create_dir_all().unwrap();
+    let leader_2_config = ConfigurationBuilder::new()
+        .with_trusted_peers(vec![leader_1_jormungandr.to_trusted_peer()])
+        .with_secrets(vec![SecretModelFactory::bft(
+            duplicated_leader_key.signing_key(),
+        )])
+        .with_block_hash(leader_1_config.genesis_block_hash())
+        .build(&leader_2_dir);
+
+    let leader_2_jormungandr = Starter::new()
+        .config(leader_2_config.clone())
+        .from_genesis_hash()
+        .start()
+        .unwrap();
+
+    std::thread::sleep(std::time::Duration::from_secs(5 * 60));
+
+    leader_1_jormungandr.assert_no_errors_in_log();
+    leader_2_jormungandr.assert_no_errors_in_log()
 }
