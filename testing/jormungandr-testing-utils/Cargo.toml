@@ -11,7 +11,7 @@ tonic = "0.4"
 prost = "0.7"
 tokio = { version = "1.4", features = ["macros","rt","rt-multi-thread"] }
 tokio-stream = "0.1"
-futures = "0.3.8"
+futures = "0.3.14"
 base64 = "0.13"
 bech32 = "0.7"
 bytesize = "1.0.1"
