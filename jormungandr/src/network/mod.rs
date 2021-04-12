@@ -16,8 +16,7 @@ mod subscription;
 use self::convert::Encode;
 
 use futures::{future, prelude::*};
-use rand::Rng;
-use rand_chacha::rand_core::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use thiserror::Error;
 use tokio::time;
