@@ -42,7 +42,6 @@ p2p:
   max_unreachable_nodes_to_connect_per_event: 20
   gossip_interval: 10s
   max_bootstrap_attempts: # Default is not set
-  topology_force_reset_interval: # Default is not set
   trusted_peers:
     - address: "/ip4/13.230.137.72/tcp/3000"
       id: e4fda5a674f0838b64cacf6d22bbae38594d7903aba2226f

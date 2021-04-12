@@ -303,15 +303,6 @@ pub async fn start(service_info: TokioServiceInfo, params: TaskParams) {
 
     let handle_cmds = handle_network_input(input, global_state.clone(), channels.clone());
 
-    let reset_state = global_state.clone();
-
-    if let Some(interval) = global_state.config.topology_force_reset_interval {
-        service_info.run_periodic("force reset topology", interval, move || {
-            let state = reset_state.clone();
-            async move { state.topology.force_reset_layers().await }
-        });
-    }
-
     let gossip = async {
         let mut gossip_interval = time::interval(global_state.config.gossip_interval);
         loop {
