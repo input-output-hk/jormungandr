@@ -2,6 +2,7 @@
 //! selecting the subset to which we propagate info
 //!
 use crate::network::p2p::Address;
+use jormungandr_lib::interfaces::Subscription;
 use jormungandr_lib::time::SystemTime;
 use poldercast::Profile;
 use serde::Serialize;
@@ -100,7 +101,7 @@ pub struct PeerInfo {
     pub address: Address,
     pub last_update: SystemTime,
     pub quarantined: Option<SystemTime>,
-    pub subscriptions: Vec<(String, String)>,
+    pub subscriptions: Vec<Subscription>,
 }
 
 impl PartialEq for PeerInfo {
@@ -126,7 +127,10 @@ impl From<&Arc<Profile>> for PeerInfo {
             subscriptions: other
                 .subscriptions()
                 .iter()
-                .map(|s| (s.topic().to_string(), format!("{:?}", s.interest_level())))
+                .map(|s| Subscription {
+                    topic: s.topic().to_string(),
+                    interest: format!("{:?}", s.interest_level()).parse::<u32>().unwrap(),
+                })
                 .collect(),
         }
     }
