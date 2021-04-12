@@ -15,6 +15,11 @@ const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Default;
 const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
 const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min
 const DEFAULT_BLOCK_HARD_DEADLINE: u32 = 50;
+const DEFAULT_LOG_SETTINGS_ENTRY: LogSettingsEntry = LogSettingsEntry {
+    level: DEFAULT_FILTER_LEVEL,
+    format: DEFAULT_LOG_FORMAT,
+    output: DEFAULT_LOG_OUTPUT,
+};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -62,59 +67,62 @@ impl RawSettings {
     }
 
     pub fn log_settings(&self) -> LogSettings {
-        let mut entries = Vec::new();
-        let mut log_info_msg: LogInfoMsg = None;
+        // Start with default config
+        let mut log_config = DEFAULT_LOG_SETTINGS_ENTRY;
+        let mut info_msgs: Vec<String> = Vec::new();
 
         //  Read log settings from the config file path.
-        if let Some(log) = self.config.as_ref().and_then(|cfg| cfg.log.as_ref()) {
-            log.0.iter().for_each(|entry| {
-                entries.push(LogSettingsEntry {
-                    level: entry.level.clone().unwrap_or(DEFAULT_FILTER_LEVEL),
-                    format: entry.format.clone().unwrap_or(DEFAULT_LOG_FORMAT),
-                    output: entry.output.clone().unwrap_or(DEFAULT_LOG_OUTPUT),
-                })
-            });
+        if let Some(cfg) = self.config.as_ref().and_then(|cfg| cfg.log.as_ref()) {
+            if let Some(level) = cfg.level {
+                log_config.level = level;
+            }
+            if let Some(format) = cfg.format {
+                log_config.format = format;
+            }
+            if let Some(output) = &cfg.output {
+                log_config.output = output.clone();
+            }
         }
 
-        // If the command line specifies log arguments, check that the arg
-        // is Some(output), else, skip.
-        let cmd_output = self.command_line.log_output.clone();
-
-        if let Some(output) = cmd_output {
-            let cmd_level = self.command_line.log_level;
-            let cmd_format = self.command_line.log_format;
-
-            let command_line_entry = LogSettingsEntry {
-                level: cmd_level.unwrap_or(DEFAULT_FILTER_LEVEL),
-                format: cmd_format.unwrap_or(DEFAULT_LOG_FORMAT),
-                output,
-            };
-            // check if there are entries being overriden
-            if !entries.is_empty() {
-                // log to info! that the output was overriden,
-                // we send this as a message because tracing Subscribers
-                // do not get initiated until after this code runs
-                log_info_msg = Some(format!(
-                    "log settings overriden from command line: {:?} replaced with {:?}",
-                    entries, command_line_entry
+        // If the command line specifies log arguments, they override everything
+        // else.
+        if let Some(output) = &self.command_line.log_output {
+            if &log_config.output != output {
+                info_msgs.push(format!(
+                    "log output overriden from command line: {:?} replaced with {:?}",
+                    log_config.output, output
                 ));
             }
-            // Replace any existing setting entries with the
-            // command line settings entry.
-            entries = vec![command_line_entry];
+            log_config.output = output.clone();
+        }
+        if let Some(level) = self.command_line.log_level {
+            if log_config.level != level {
+                info_msgs.push(format!(
+                    "log level overriden from command line: {:?} replaced with {:?}",
+                    log_config.level, level
+                ));
+            }
+            log_config.level = level;
+        }
+        if let Some(format) = self.command_line.log_format {
+            if log_config.format != format {
+                info_msgs.push(format!(
+                    "log format overriden from command line: {:?} replaced with {:?}",
+                    log_config.format, format
+                ));
+            }
+            log_config.format = format;
         }
 
-        //  If no log settings are found, add LogSettingsEntry with default
-        //  values.
-        if entries.is_empty() {
-            entries.push(LogSettingsEntry {
-                level: DEFAULT_FILTER_LEVEL,
-                format: DEFAULT_LOG_FORMAT,
-                output: DEFAULT_LOG_OUTPUT,
-            });
+        let log_info_msg: LogInfoMsg = if info_msgs.is_empty() {
+            None
+        } else {
+            Some(info_msgs)
+        };
+        LogSettings {
+            config: log_config,
+            msgs: log_info_msg,
         }
-
-        LogSettings(entries, log_info_msg)
     }
 
     fn rest_config(&self) -> Option<Rest> {

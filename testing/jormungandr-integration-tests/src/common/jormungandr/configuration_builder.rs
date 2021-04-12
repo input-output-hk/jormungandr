@@ -212,11 +212,11 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_log_path(&mut self, path: PathBuf) -> &mut Self {
-        self.with_log(Log(vec![LogEntry {
+        self.with_log(Log(LogEntry {
             format: "json".to_string(),
             level: "debug".to_string(),
             output: LogOutput::File(path),
-        }]))
+        }))
     }
 
     pub fn without_log(&mut self) -> &mut Self {
@@ -301,18 +301,11 @@ impl ConfigurationBuilder {
             (None, false) => default_log_file(),
             (None, true) => {
                 let path = default_log_file();
-                node_config.log = Some(Log(vec![
-                    LogEntry {
-                        level: "trace".to_string(),
-                        format: "json".to_string(),
-                        output: LogOutput::Stdout,
-                    },
-                    LogEntry {
-                        level: "trace".to_string(),
-                        format: "json".to_string(),
-                        output: LogOutput::File(path.clone()),
-                    },
-                ]));
+                node_config.log = Some(Log(LogEntry {
+                    level: "trace".to_string(),
+                    format: "json".to_string(),
+                    output: LogOutput::Stdout,
+                }));
                 path
             }
         };

@@ -53,15 +53,12 @@ pub struct Config {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct ConfigLogSettingsEntry {
+pub struct ConfigLogSettings {
     #[serde(with = "filter_level_opt_serde")]
     pub level: Option<LevelFilter>,
     pub format: Option<LogFormat>,
     pub output: Option<LogOutput>,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ConfigLogSettings(pub Vec<ConfigLogSettingsEntry>);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

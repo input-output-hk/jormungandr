@@ -74,11 +74,11 @@ pub fn test_jormungandr_with_no_trusted_peers_starts_succesfully() {
 pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
     let temp_dir = TempDir::new().unwrap();
     let config = ConfigurationBuilder::new()
-        .with_log(Log(vec![LogEntry {
+        .with_log(Log(LogEntry {
             format: "xml".to_string(),
             level: "info".to_string(),
             output: LogOutput::Stderr,
-        }]))
+        }))
         .build(&temp_dir);
     Starter::new()
         .config(config)

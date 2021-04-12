@@ -10,10 +10,6 @@ The following options are available in the `log` section:
 - `output`: Log output destination (multiple destinations are supported). Possible values are:
   - `stdout`: standard output
   - `stderr`: standard error
-  - `syslog`: syslog (only available on Unix systems)
-  - `syslogudp`: remote syslog  (only available on Unix systems)
-    - `host`: address and port of a syslog server
-    - `hostname`: hostname to attach to syslog messages
   - `journald`: journald service (only available on Linux with systemd,
     (if jormungandr is built with the `systemd` feature)
   - `gelf`: Configuration fields for GELF (Graylog) network logging protocol
@@ -24,15 +20,18 @@ The following options are available in the `log` section:
 
 ## Example
 
-Multiple logging backends are supported.
+A single configurable backend is supported.
 
 ```yaml
 log:
   - output: stdout
     level:  trace
     format: plain
+```
+
+```yaml
   - output:
-      file: example.log
+    file: example.log
     level: info
     format: json
 ```

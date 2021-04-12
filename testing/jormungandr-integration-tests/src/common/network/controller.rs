@@ -130,18 +130,11 @@ impl Controller {
         }
 
         let log_file_path = dir.child("node.log").path().to_path_buf();
-        config.log = Some(Log(vec![
-            LogEntry {
-                format: "json".into(),
-                level: "debug".into(),
-                output: LogOutput::Stdout,
-            },
-            LogEntry {
-                format: "json".into(),
-                level: "debug".into(),
-                output: LogOutput::File(log_file_path.clone()),
-            },
-        ]));
+        config.log = Some(Log(LogEntry {
+            format: "json".into(),
+            level: "debug".into(),
+            output: LogOutput::Stdout,
+        }));
 
         if let PersistenceMode::Persistent = spawn_params.get_persistence_mode() {
             let path_to_storage = dir.child("storage").path().into();

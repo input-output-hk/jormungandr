@@ -1,29 +1,29 @@
 use std::fmt::{self, Display};
 use std::fs;
-use std::io::{self, Write};
+use std::io;
 #[cfg(feature = "gelf")]
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use tracing::{level_filters::LevelFilter, Event, Id, Metadata, Subscriber};
+use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
 
-use tracing::span::{Attributes, Record};
 use tracing::subscriber::SetGlobalDefaultError;
-use tracing_subscriber::fmt::SubscriberBuilder;
 #[allow(unused_imports)]
 use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::layer::{Layer, Layered};
 
-pub struct LogSettings(pub Vec<LogSettingsEntry>, pub LogInfoMsg);
+pub struct LogSettings {
+    pub config: LogSettingsEntry,
+    pub msgs: LogInfoMsg,
+}
 
 /// A wrapper to return an optional string message that we
 /// have to manually log with `info!`, we need this because
 /// some code executes before the logs are initialized.
-pub type LogInfoMsg = Option<String>;
+pub type LogInfoMsg = Option<Vec<String>>;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct LogSettingsEntry {
     pub level: LevelFilter,
     pub format: LogFormat,
@@ -99,112 +99,66 @@ impl FromStr for LogOutput {
     }
 }
 
-struct BoxedSubscriber(Box<dyn Subscriber + Send + Sync>);
-
-impl Subscriber for BoxedSubscriber {
-    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
-        self.0.enabled(metadata)
-    }
-
-    fn new_span(&self, span: &Attributes<'_>) -> Id {
-        self.0.new_span(span)
-    }
-
-    fn record(&self, span: &Id, values: &Record<'_>) {
-        self.0.record(span, values)
-    }
-
-    fn record_follows_from(&self, span: &Id, follows: &Id) {
-        self.0.record_follows_from(span, follows)
-    }
-
-    fn event(&self, event: &Event<'_>) {
-        self.0.event(event)
-    }
-
-    fn enter(&self, span: &Id) {
-        self.0.enter(span)
-    }
-
-    fn exit(&self, span: &Id) {
-        self.0.exit(span)
-    }
-}
-
-impl Layer<BoxedSubscriber> for BoxedSubscriber {}
-
 impl LogSettings {
     pub fn init_log(self) -> Result<(Vec<WorkerGuard>, LogInfoMsg), Error> {
         use tracing_subscriber::prelude::*;
+
+        // Worker guards that need to be held on to.
         let mut guards = Vec::new();
-        let mut layers: Vec<Layered<_, BoxedSubscriber>> = Vec::new();
-        for config in self.0.into_iter() {
-            let (subscriber, guard) = config.to_subscriber()?;
-            let subscriber = BoxedSubscriber(subscriber);
 
-            let layer: Layered<_, _, BoxedSubscriber> =
-                tracing_subscriber::layer::Identity::new().with_subscriber(subscriber);
-
-            layers.push(layer);
-            if let Some(guard) = guard {
+        // configure the registry subscriber as the global default,
+        // panics if something goes wrong.
+        match self.config.output {
+            LogOutput::Stdout => {
+                let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
                 guards.push(guard);
+                match self.config.format {
+                    LogFormat::Default | LogFormat::Plain => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .with_level(true)
+                            .with_writer(non_blocking);
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
+                    }
+                    LogFormat::Json => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .json()
+                            .with_level(true)
+                            .with_writer(non_blocking);
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
+                    }
+                }
             }
-        }
-
-        let mut layer_iter = layers.into_iter();
-        if let Some(layer) = layer_iter.next() {
-            let mut init_layer: BoxedSubscriber = BoxedSubscriber(Box::new(layer));
-            for layer in layer_iter {
-                init_layer = BoxedSubscriber(Box::new(init_layer.with(layer)));
+            LogOutput::Stderr => {
+                let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stderr());
+                guards.push(guard);
+                match self.config.format {
+                    LogFormat::Default | LogFormat::Plain => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .with_level(true)
+                            .with_writer(non_blocking);
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
+                    }
+                    LogFormat::Json => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .json()
+                            .with_level(true)
+                            .with_writer(non_blocking);
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
+                    }
+                }
             }
-            tracing::subscriber::set_global_default(init_layer)
-                .map_err(Error::SetGlobalSubscriberError)?;
-        }
-
-        Ok((guards, self.1))
-    }
-}
-
-impl LogSettingsEntry {
-    fn to_subscriber(
-        &self,
-    ) -> Result<(Box<dyn Subscriber + Send + Sync>, Option<WorkerGuard>), Error> {
-        let Self {
-            output,
-            level,
-            format,
-        } = self;
-
-        let builder = SubscriberBuilder::default();
-
-        fn build_writer_subscriber(
-            builder: SubscriberBuilder,
-            writer: impl Write + Send + Sync + 'static,
-            level: LevelFilter,
-            format: LogFormat,
-        ) -> (Box<dyn Subscriber + Send + Sync>, Option<WorkerGuard>) {
-            let (subscriber, guard) = tracing_appender::non_blocking(writer);
-            let builder = builder.with_writer(subscriber).with_max_level(level);
-            let subscriber: Box<dyn Subscriber + Send + Sync> = match format {
-                LogFormat::Default | LogFormat::Plain => Box::new(builder.finish()),
-                LogFormat::Json => Box::new(builder.json().finish()),
-            };
-            (subscriber, Some(guard))
-        }
-
-        match output {
-            LogOutput::Stdout => Ok(build_writer_subscriber(
-                builder,
-                std::io::stdout(),
-                *level,
-                *format,
-            )),
-            LogOutput::Stderr => Ok(build_writer_subscriber(
-                builder,
-                std::io::stderr(),
-                *level,
-                *format,
-            )),
             LogOutput::File(path) => {
                 let file = fs::OpenOptions::new()
                     .create(true)
@@ -215,30 +169,54 @@ impl LogSettingsEntry {
                         path: path.clone(),
                         cause,
                     })?;
-                Ok(build_writer_subscriber(builder, file, *level, *format))
+                let (non_blocking, guard) = tracing_appender::non_blocking(file);
+                guards.push(guard);
+
+                match self.config.format {
+                    LogFormat::Default | LogFormat::Plain => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .with_level(true)
+                            .with_writer(non_blocking);
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
+                    }
+                    LogFormat::Json => {
+                        let layer = tracing_subscriber::fmt::Layer::new()
+                            .json()
+                            .with_level(true)
+                            .with_writer(non_blocking);
+                        tracing_subscriber::registry()
+                            .with(self.config.level)
+                            .with(layer)
+                            .init();
+                    }
+                }
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
-                format.require_default()?;
+                self.config.format.require_default()?;
                 let layer = tracing_journald::layer().map_err(Error::Journald)?;
-                let subscriber = builder.with_max_level(*level).finish().with(layer);
-                Ok((Box::new(subscriber), None))
+                tracing_subscriber::registry()
+                    .with(self.config.level)
+                    .with(layer)
+                    .init();
             }
             #[cfg(feature = "gelf")]
-            LogOutput::Gelf {
-                backend: address,
-                log_id: _graylog_source,
-            } => {
-                format.require_default()?;
-                // TODO: maybe handle this tasks outside somehow.
+            LogOutput::Gelf { backend, .. } => {
                 let (layer, task) = tracing_gelf::Logger::builder()
-                    .connect_tcp(address.clone())
+                    .connect_tcp(backend)
                     .map_err(Error::Gelf)?;
                 tokio::spawn(task);
-                let subscriber = builder.with_max_level(*level).finish().with(layer);
-                Ok((Box::new(subscriber), None))
+                tracing_subscriber::registry()
+                    .with(self.config.level)
+                    .with(layer)
+                    .init();
             }
         }
+
+        Ok((guards, self.msgs))
     }
 }
 

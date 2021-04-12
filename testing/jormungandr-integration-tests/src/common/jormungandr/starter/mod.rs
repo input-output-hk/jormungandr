@@ -293,6 +293,7 @@ impl<'a> ConfiguredStarter<'a, legacy::NodeConfig> {
         temp_dir: Option<TempDir>,
     ) -> Result<Self, StartupError> {
         let params = LegacyConfigConverter::new(version).convert(params)?;
+        params.write_node_config();
         Ok(ConfiguredStarter {
             starter,
             temp_dir,
