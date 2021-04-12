@@ -7,10 +7,11 @@ use chain_crypto::Ed25519;
 use jormungandr_lib::crypto::key::SigningKey;
 use poldercast::{Profile, Topology};
 use std::convert::TryInto;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tracing::instrument;
 
 lazy_static! {
-    static ref LOCAL_ADDR: Address = Address::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0);
+    static ref LOCAL_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 0);
 }
 
 pub fn secret_key_into_keynesis(key: SigningKey<Ed25519>) -> keynesis::key::ed25519::SecretKey {
@@ -31,7 +32,7 @@ pub struct P2pTopology {
 impl P2pTopology {
     pub fn new(config: &Configuration) -> Self {
         let addr = config.public_address.or(Some(*LOCAL_ADDR)).unwrap();
-        let key = super::secret_key_into_keynesis(config.node_key.clone());
+        let key = secret_key_into_keynesis(config.node_key.clone());
 
         let quarantine = Quarantine::from_config(config.policy.clone());
         let mut topology = Topology::new(addr, &key);

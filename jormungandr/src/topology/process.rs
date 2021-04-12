@@ -31,7 +31,6 @@ enum Message {
 // and is not available to other tasks
 enum PrivateMsg {
     GetGossips(ReplyHandle<Vec<(Peer, Gossips)>>),
-    ResetTopology,
 }
 
 pub async fn start(info: TokioServiceInfo, task_data: TaskData) {
@@ -48,13 +47,6 @@ pub async fn start(info: TokioServiceInfo, task_data: TaskData) {
     let input = public_input.merge(internal_queue.map(Message::Private));
 
     let internal_msgbox_1 = internal_msgbox.clone();
-    let internal_msgbox_2 = internal_msgbox.clone();
-
-    if let Some(interval) = config.topology_force_reset_interval {
-        info.run_periodic_fallible("topology layers force reset", interval, move || {
-            reset_layers(internal_msgbox_1.clone())
-        });
-    }
 
     // Send gossips for trusted peers at the beginning, without inserting them first in
     // the topology
@@ -75,7 +67,7 @@ pub async fn start(info: TokioServiceInfo, task_data: TaskData) {
     info.run_periodic_fallible(
         "send gossips to network task to propagate",
         config.gossip_interval,
-        move || handle_gossip(internal_msgbox_2.clone(), network_msgbox.clone()),
+        move || handle_gossip(internal_msgbox_1.clone(), network_msgbox.clone()),
     );
 
     let mut process = Process { input, topology };
@@ -103,7 +95,6 @@ impl<T: Stream<Item = Message> + Unpin> Process<T> {
                 Public(TopologyMsg::ListQuarantined(handle)) => {
                     handle.reply_ok(self.topology.list_quarantined())
                 }
-                Private(PrivateMsg::ResetTopology) => self.topology.force_reset_layers(),
                 Private(PrivateMsg::GetGossips(handle)) => {
                     let view = self.topology.view(poldercast::layer::Selection::Any);
                     let mut res = Vec::new();
@@ -117,12 +108,6 @@ impl<T: Stream<Item = Message> + Unpin> Process<T> {
             }
         }
     }
-}
-
-async fn reset_layers(
-    mut mbox: MessageBox<PrivateMsg>,
-) -> Result<(), futures::channel::mpsc::SendError> {
-    mbox.send(PrivateMsg::ResetTopology).await
 }
 
 async fn handle_gossip(
