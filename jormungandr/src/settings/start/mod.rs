@@ -325,7 +325,6 @@ fn generate_network(
             .gossip_interval
             .map(|d| d.into())
             .unwrap_or_else(|| std::time::Duration::from_secs(10)),
-        topology_force_reset_interval: p2p.topology_force_reset_interval.map(|d| d.into()),
         max_bootstrap_attempts: p2p.max_bootstrap_attempts,
         http_fetch_block0_service,
         bootstrap_from_trusted_peers,

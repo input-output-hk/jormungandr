@@ -145,11 +145,6 @@ impl P2pTopology {
         }
     }
 
-    #[instrument(skip(self), level = "debug")]
-    pub async fn force_reset_layers(&self) {
-        tracing::warn!("resetting layers is not supported in this poldercast version");
-    }
-
     // This may return nodes that are still quarantined but have been
     // forgotten by the underlying poldercast implementation.
     pub async fn list_quarantined(&self) -> Vec<ProfileInfo> {

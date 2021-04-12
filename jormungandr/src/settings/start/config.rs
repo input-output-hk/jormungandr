@@ -132,13 +132,6 @@ pub struct P2pConfig {
     #[serde(default)]
     pub gossip_interval: Option<Duration>,
 
-    /// If this value is set, it will trigger a force reset of the topology
-    /// layers. The default is to not do force the reset. It is recommended
-    /// to let the protocol handle it.
-    ///
-    #[serde(default)]
-    pub topology_force_reset_interval: Option<Duration>,
-
     /// The number of times to retry bootstrapping from trusted peers. The default
     /// value of None will result in the bootstrap process retrying indefinitely. A
     /// value of zero will skip bootstrap all together -- even if trusted peers are
@@ -209,7 +202,6 @@ impl Default for P2pConfig {
             layers: LayersConfig::default(),
             max_unreachable_nodes_to_connect_per_event: None,
             gossip_interval: None,
-            topology_force_reset_interval: None,
             max_bootstrap_attempts: None,
         }
     }
