@@ -1,7 +1,7 @@
 mod stake_pool_id;
 mod vote_plan_id;
 
-use crate::jcli_lib::certificate::Error;
+use crate::certificate::Error;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

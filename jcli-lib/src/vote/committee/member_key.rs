@@ -1,4 +1,4 @@
-use crate::jcli_lib::vote::{Error, OutputFile, Seed};
+use crate::vote::{Error, OutputFile, Seed};
 use bech32::{FromBase32, ToBase32};
 use chain_vote::gargamel::PublicKey;
 use chain_vote::{MemberCommunicationPublicKey, MemberState};
@@ -97,7 +97,7 @@ impl Generate {
             output,
             "{}",
             bech32::encode(
-                crate::jcli_lib::vote::bech32_constants::MEMBER_SK_HRP,
+                crate::vote::bech32_constants::MEMBER_SK_HRP,
                 key.to_bytes().to_base32()
             )
             .map_err(Error::Bech32)?
@@ -108,10 +108,10 @@ impl Generate {
 
 impl ToPublic {
     fn exec(self) -> Result<(), Error> {
-        let line = crate::jcli_lib::utils::io::read_line(&self.input_key)?;
+        let line = crate::utils::io::read_line(&self.input_key)?;
         let (hrp, key) = bech32::decode(&line).map_err(Error::Bech32)?;
 
-        if hrp != crate::jcli_lib::vote::bech32_constants::MEMBER_SK_HRP {
+        if hrp != crate::vote::bech32_constants::MEMBER_SK_HRP {
             return Err(Error::InvalidSecretKey);
         }
 
@@ -124,7 +124,7 @@ impl ToPublic {
 
         let mut output = self.output_file.open()?;
         let key = bech32::encode(
-            crate::jcli_lib::vote::bech32_constants::MEMBER_PK_HRP,
+            crate::vote::bech32_constants::MEMBER_PK_HRP,
             pk.to_bytes().to_base32(),
         )
         .map_err(Error::Bech32)?;
@@ -146,7 +146,7 @@ impl MemberKey {
 fn parse_member_communication_key(key: &str) -> Result<MemberCommunicationPublicKey, Error> {
     let (hrp, raw_key) = bech32::decode(key).map_err(Error::Bech32)?;
 
-    if hrp != crate::jcli_lib::vote::bech32_constants::COMMUNICATION_PK_HRP {
+    if hrp != crate::vote::bech32_constants::COMMUNICATION_PK_HRP {
         return Err(Error::InvalidPublicKey);
     }
 

@@ -1,4 +1,4 @@
-use crate::jcli_lib::{
+use crate::{
     certificate::{weighted_pool_ids::WeightedPoolIds, write_cert, Error},
     utils::key_parser::parse_pub_key,
 };

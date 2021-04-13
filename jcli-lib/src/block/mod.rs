@@ -1,4 +1,4 @@
-use crate::jcli_lib::utils::io;
+use crate::utils::io;
 use chain_core::property::{Block as _, Deserialize, Serialize};
 use chain_impl_mockchain::{
     block::Block,

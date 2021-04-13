@@ -4,7 +4,7 @@ mod history;
 use self::epoch::Epoch;
 use self::history::History;
 
-use crate::jcli_lib::rest::Error;
+use crate::rest::Error;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

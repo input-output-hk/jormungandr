@@ -1,5 +1,5 @@
-use crate::jcli_lib::certificate::committee_encrypted_vote_tally_sign;
-use crate::jcli_lib::{
+use crate::certificate::committee_encrypted_vote_tally_sign;
+use crate::{
     certificate::{
         committee_vote_plan_sign, committee_vote_tally_sign, pool_owner_sign,
         stake_delegation_account_binding_sign,

@@ -1,4 +1,4 @@
-use crate::jcli_lib::transaction::{common, Error};
+use crate::transaction::{common, Error};
 use chain_impl_mockchain::transaction::Output;
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;

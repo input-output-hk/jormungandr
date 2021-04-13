@@ -15,7 +15,7 @@ pub(crate) use self::sign::{
     pool_owner_sign, stake_delegation_account_binding_sign,
 };
 
-use crate::jcli_lib::utils::{
+use crate::utils::{
     io, key_parser,
     vote::{SharesError, VotePlanError},
 };

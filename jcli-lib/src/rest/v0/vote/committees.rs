@@ -1,5 +1,5 @@
-use crate::jcli_lib::rest::{Error, RestArgs};
-use crate::jcli_lib::utils::OutputFormat;
+use crate::rest::{Error, RestArgs};
+use crate::utils::OutputFormat;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

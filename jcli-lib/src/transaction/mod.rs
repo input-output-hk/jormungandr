@@ -13,7 +13,7 @@ mod seal;
 mod staging;
 
 use self::staging::StagingKind;
-use crate::jcli_lib::{
+use crate::{
     certificate,
     utils::{key_parser, output_format},
 };

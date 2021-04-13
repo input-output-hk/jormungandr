@@ -1,5 +1,5 @@
-use crate::jcli_lib::utils::io;
-use crate::jcli_lib::utils::output_file::{self, OutputFile};
+use crate::utils::io;
+use crate::utils::output_file::{self, OutputFile};
 use bech32::{self, u5, FromBase32, ToBase32};
 use chain_crypto::{
     bech32::Bech32 as _, AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519,

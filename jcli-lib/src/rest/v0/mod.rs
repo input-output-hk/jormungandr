@@ -15,7 +15,7 @@ mod tip;
 mod utxo;
 mod vote;
 
-use crate::jcli_lib::rest::Error;
+use crate::rest::Error;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

@@ -1,4 +1,4 @@
-use crate::jcli_lib::transaction::{common, Error};
+use crate::transaction::{common, Error};
 use chain_addr::{Address, Kind};
 use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
 use jormungandr_lib::interfaces;

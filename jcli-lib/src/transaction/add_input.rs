@@ -1,4 +1,4 @@
-use crate::jcli_lib::transaction::{common, Error};
+use crate::transaction::{common, Error};
 use chain_impl_mockchain::{fragment::FragmentId, transaction::TransactionIndex};
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
@@ -40,7 +40,7 @@ impl AddInput {
 mod tests {
     use self::common::CommonTransaction;
     use super::*;
-    use crate::jcli_lib::transaction::staging::Staging;
+    use crate::transaction::staging::Staging;
     use chain_impl_mockchain::{key::Hash, value::Value};
 
     use assert_fs::NamedTempFile;

@@ -1,7 +1,7 @@
 mod config;
 mod v0;
 
-use crate::jcli_lib::utils::{io::ReadYamlError, output_format};
+use crate::utils::{io::ReadYamlError, output_format};
 use config::RestArgs;
 use hex::FromHexError;
 use structopt::StructOpt;

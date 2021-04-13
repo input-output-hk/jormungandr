@@ -1,4 +1,4 @@
-use crate::jcli_lib::{debug::Error, utils::io};
+use crate::{debug::Error, utils::io};
 use chain_core::property::Deserialize as _;
 use chain_impl_mockchain::fragment::Fragment as MockFragment;
 use std::io::{BufRead, BufReader};

@@ -1,4 +1,4 @@
-use crate::jcli_lib::{
+use crate::{
     rest::{Error, RestArgs},
     utils::{io, OutputFormat},
 };

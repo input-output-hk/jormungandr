@@ -1,4 +1,4 @@
-use crate::jcli_lib::certificate::{write_cert, Error};
+use crate::certificate::{write_cert, Error};
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::certificate::{Certificate, VotePlanId};
 use std::path::PathBuf;

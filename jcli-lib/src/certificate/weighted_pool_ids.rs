@@ -1,4 +1,4 @@
-use crate::jcli_lib::certificate::Error;
+use crate::certificate::Error;
 use chain_crypto::Blake2b256;
 use chain_impl_mockchain::{
     account::{DelegationRatio, DelegationType},

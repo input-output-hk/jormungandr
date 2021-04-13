@@ -3,7 +3,7 @@ mod committees;
 mod plans;
 
 use self::active::Active;
-use crate::jcli_lib::rest::Error;
+use crate::rest::Error;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

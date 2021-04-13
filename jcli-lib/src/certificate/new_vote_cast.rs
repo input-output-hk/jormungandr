@@ -1,5 +1,5 @@
-use crate::jcli_lib::certificate::{write_cert, Error};
-use crate::jcli_lib::utils;
+use crate::certificate::{write_cert, Error};
+use crate::utils;
 use bech32::FromBase32;
 use chain_impl_mockchain::{
     certificate::{Certificate, VoteCast, VotePlanId},
@@ -79,10 +79,9 @@ impl PrivateVoteCast {
         let mut rng = rand_chacha::ChaChaRng::from_entropy();
         let key_line = utils::io::read_line(&self.encrypting_key_path)?;
         let (hrp, data) = bech32::decode(&key_line).map_err(Error::InvalidBech32)?;
-        if hrp != crate::jcli_lib::vote::bech32_constants::ENCRYPTING_VOTE_PK_HRP {
+        if hrp != crate::vote::bech32_constants::ENCRYPTING_VOTE_PK_HRP {
             return Err(Error::InvalidBech32Key {
-                expected: crate::jcli_lib::vote::bech32_constants::ENCRYPTING_VOTE_PK_HRP
-                    .to_string(),
+                expected: crate::vote::bech32_constants::ENCRYPTING_VOTE_PK_HRP.to_string(),
                 actual: hrp,
             });
         }

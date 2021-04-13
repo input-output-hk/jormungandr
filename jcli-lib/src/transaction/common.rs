@@ -1,4 +1,4 @@
-use crate::jcli_lib::transaction::{staging::Staging, Error};
+use crate::transaction::{staging::Staging, Error};
 use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
 use std::{num::NonZeroU64, path::PathBuf};
 use structopt::StructOpt;

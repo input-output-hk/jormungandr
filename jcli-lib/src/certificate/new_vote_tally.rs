@@ -1,5 +1,5 @@
-use crate::jcli_lib::certificate::{write_cert, Error};
-use crate::jcli_lib::utils::vote;
+use crate::certificate::{write_cert, Error};
+use crate::utils::vote;
 use chain_impl_mockchain::certificate::{
     Certificate, DecryptedPrivateTally, DecryptedPrivateTallyProposal, VotePlanId, VoteTally,
 };

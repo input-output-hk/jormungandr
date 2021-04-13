@@ -1,4 +1,4 @@
-use crate::jcli_lib::certificate::{read_cert_or_signed_cert, write_output, Error};
+use crate::certificate::{read_cert_or_signed_cert, write_output, Error};
 use chain_impl_mockchain::certificate::Certificate;
 use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::path::PathBuf;

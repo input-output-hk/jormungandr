@@ -1,4 +1,4 @@
-use crate::jcli_lib::{
+use crate::{
     certificate::read_input,
     transaction::{common, Error},
 };

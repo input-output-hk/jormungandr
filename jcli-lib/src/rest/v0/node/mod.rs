@@ -1,7 +1,7 @@
 mod stats;
 
 use self::stats::Stats;
-use crate::jcli_lib::rest::Error;
+use crate::rest::Error;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

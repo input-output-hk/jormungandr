@@ -1,4 +1,4 @@
-use crate::jcli_lib::{
+use crate::{
     certificate::{read_cert, read_input, write_signed_cert, Error},
     utils::key_parser::{self, parse_ed25519_secret_key},
 };

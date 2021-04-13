@@ -1,4 +1,4 @@
-use crate::jcli_lib::utils::io;
+use crate::utils::io;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{serde_base64_bytes, VotePlanStatus};
 use serde::{Deserialize, Serialize};

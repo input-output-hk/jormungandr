@@ -1,6 +1,6 @@
 use super::Error;
-use crate::jcli_lib::utils::vote;
-use crate::jcli_lib::utils::OutputFormat;
+use crate::utils::vote;
+use crate::utils::OutputFormat;
 use chain_vote::EncryptedTally;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{PrivateTallyState, Tally};

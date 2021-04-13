@@ -1,4 +1,4 @@
-use crate::jcli_lib::{
+use crate::{
     transaction::Error,
     utils::{io, key_parser::read_ed25519_secret_key_from_file},
 };

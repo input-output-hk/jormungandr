@@ -1,4 +1,4 @@
-use crate::jcli_lib::vote::{Error, OutputFile};
+use crate::vote::{Error, OutputFile};
 use bech32::{FromBase32, ToBase32};
 use std::io::Write as _;
 use structopt::StructOpt;
@@ -29,7 +29,7 @@ impl EncryptingVoteKey {
             output,
             "{}",
             bech32::encode(
-                crate::jcli_lib::vote::bech32_constants::ENCRYPTING_VOTE_PK_HRP,
+                crate::vote::bech32_constants::ENCRYPTING_VOTE_PK_HRP,
                 election_public_key.to_bytes().to_base32()
             )
             .map_err(Error::Bech32)?
@@ -42,7 +42,7 @@ fn parse_member_key(key: &str) -> Result<chain_vote::committee::MemberPublicKey,
     bech32::decode(key)
         .map_err(Error::from)
         .and_then(|(hrp, raw_key)| {
-            if hrp != crate::jcli_lib::vote::bech32_constants::MEMBER_PK_HRP {
+            if hrp != crate::vote::bech32_constants::MEMBER_PK_HRP {
                 return Err(Error::InvalidPublicKey);
             }
             chain_vote::gargamel::PublicKey::from_bytes(

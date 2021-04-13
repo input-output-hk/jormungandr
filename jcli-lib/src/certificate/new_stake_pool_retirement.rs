@@ -1,4 +1,4 @@
-use crate::jcli_lib::certificate::{write_cert, Error};
+use crate::certificate::{write_cert, Error};
 use chain_crypto::Blake2b256;
 use chain_impl_mockchain::certificate::{Certificate, PoolRetirement};
 use chain_time::DurationSeconds;

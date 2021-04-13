@@ -1,6 +1,6 @@
 use super::Error;
-use crate::jcli_lib::utils::io;
-use crate::jcli_lib::utils::vote::{self, MemberVotePlanShares, VotePlanDecryptShares};
+use crate::utils::io;
+use crate::utils::vote::{self, MemberVotePlanShares, VotePlanDecryptShares};
 use bech32::FromBase32;
 use chain_vote::{EncryptedTally, OpeningVoteKey};
 use jormungandr_lib::crypto::hash::Hash;
@@ -47,7 +47,7 @@ fn read_decryption_key<P: AsRef<Path>>(path: &Option<P>) -> Result<OpeningVoteKe
     bech32::decode(&data)
         .map_err(Error::from)
         .and_then(|(hrp, raw_key)| {
-            if hrp != crate::jcli_lib::vote::bech32_constants::MEMBER_SK_HRP {
+            if hrp != crate::vote::bech32_constants::MEMBER_SK_HRP {
                 return Err(Error::InvalidSecretKey);
             }
             OpeningVoteKey::from_bytes(

@@ -1,4 +1,4 @@
-use crate::jcli_lib::{
+use crate::{
     certificate::{write_cert, Error},
     utils::io,
 };

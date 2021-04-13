@@ -1,5 +1,5 @@
-use crate::jcli_lib::utils::output_file::{self, OutputFile};
-use crate::jcli_lib::utils::vote::{SharesError, VotePlanError};
+use crate::utils::output_file::{self, OutputFile};
+use crate::utils::vote::{SharesError, VotePlanError};
 
 pub mod bech32_constants;
 mod committee;
@@ -48,7 +48,7 @@ pub enum Error {
     #[error(transparent)]
     TallyError(#[from] chain_vote::TallyError),
     #[error(transparent)]
-    FormatError(#[from] crate::jcli_lib::utils::output_format::Error),
+    FormatError(#[from] crate::utils::output_format::Error),
     #[error(transparent)]
     JsonError(#[from] serde_json::Error),
     #[error(transparent)]
