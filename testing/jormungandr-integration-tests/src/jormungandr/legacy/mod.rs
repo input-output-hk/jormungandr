@@ -41,6 +41,7 @@ pub fn test_legacy_node_all_fragments() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
         .jormungandr_app(jormungandr)
         .legacy(legacy_release.version())
         .config(config)

@@ -191,6 +191,17 @@ jobs:
           args: --tests ${{ env.CARGO_FLAGS }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TMPDIR and TMP are used respectively on unix and windows
+          TMPDIR: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+
+      - name: Pack logs from failed tests
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
+          path: ${{ runner.temp }}/jormungandr-logs/
+          retention-days: 30
 
   lints:
     name: Lints

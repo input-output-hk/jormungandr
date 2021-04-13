@@ -34,7 +34,11 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
         }])
         .build(&temp_dir);
 
-    let _jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let _jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
 
@@ -74,7 +78,11 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
 
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = jcli.genesis().hash(config.genesis_block_path());
@@ -123,7 +131,11 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
 
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
@@ -158,7 +170,11 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let rest_addr = jormungandr.rest_uri();
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
@@ -209,7 +225,11 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
 
@@ -267,7 +287,11 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli
@@ -300,7 +324,11 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli
@@ -333,7 +361,11 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
 
@@ -366,7 +398,11 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli
@@ -399,7 +435,11 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli
         .transaction_builder(block0_hash)
@@ -431,7 +471,11 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli
         .transaction_builder(block0_hash)
@@ -462,7 +506,11 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = jcli
@@ -493,7 +541,11 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let block0_hash = jcli.genesis().hash(&config.genesis_block_path());
     let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = jcli
@@ -519,7 +571,11 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
             value: 100.into(),
         }])
         .build(&temp_dir);
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let block0_hash = jcli.genesis().hash(&config.genesis_block_path());
     let transaction_message = jcli.transaction_builder(block0_hash).build_transaction(
         &FAKE_INPUT_TRANSACTION_ID,
@@ -548,7 +604,11 @@ pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node()
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
     let block = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli.transaction_builder(block).build_transaction_from_utxo(
@@ -578,7 +638,11 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
         }])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
 
@@ -607,7 +671,11 @@ pub fn test_transaction_with_non_zero_linear_fees() {
         .with_linear_fees(fee.clone())
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
     let utxo = config.block0_utxo_for_address(&sender);
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let mut tx = jcli.transaction_builder(block0_hash);

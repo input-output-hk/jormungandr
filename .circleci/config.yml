@@ -114,6 +114,14 @@ commands:
             cargo test --workspace --doc \
               << parameters.mode >> << parameters.cargo_behavior >> \
               -- --test-threads=1
+      - run:
+          name: Compress Artifacts
+          command: tar -cvzf /tmp/jormungandr-logs.tar /tmp/jormungandr_*
+          when: on_fail
+      - store_artifacts: 
+          path: /tmp/jormungandr-logs.tar
+          destination: failed_logs
+          when: on_fail
 
 workflows:
   version: 2

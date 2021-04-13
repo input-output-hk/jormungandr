@@ -108,6 +108,7 @@ pub fn test_node_recovers_from_node_restart() {
     std::thread::sleep(std::time::Duration::from_secs(2));
 
     let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
         .config(config)
         .role(Role::Leader)
         .start()
@@ -163,6 +164,7 @@ pub fn test_node_recovers_kill_signal() {
     jormungandr.stop();
 
     let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
         .config(config)
         .role(Role::Leader)
         .start()

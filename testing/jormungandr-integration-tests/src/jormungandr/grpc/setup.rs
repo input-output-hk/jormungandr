@@ -34,7 +34,6 @@ pub mod client {
         pub client: JormungandrClient,
         pub server: JormungandrProcess,
         pub config: JormungandrParams,
-        _dir: TempDir, // deleted on drop
     }
 
     pub fn default() -> ClientBootstrap {
@@ -48,14 +47,17 @@ pub mod client {
     pub fn bootstrap(config: ConfigurationBuilder) -> ClientBootstrap {
         let dir = TempDir::new().unwrap();
         let config = config.build(&dir);
-        let server = Starter::new().config(config.clone()).start_async().unwrap();
+        let server = Starter::new()
+            .temp_dir(dir)
+            .config(config.clone())
+            .start_async()
+            .unwrap();
         std::thread::sleep(Duration::from_secs(4));
         let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
         ClientBootstrap {
             client,
             server,
             config,
-            _dir: dir,
         }
     }
 }
@@ -70,7 +72,6 @@ pub mod server {
         pub server: JormungandrProcess,
         pub config: JormungandrParams,
         pub mock_port: u16,
-        _dir: TempDir, // deleted on drop
     }
 
     pub fn default() -> ServerBootstrap {
@@ -92,12 +93,15 @@ pub mod server {
             id: None,
         };
         let config = config.with_trusted_peers(vec![trusted_peer]).build(&dir);
-        let server = Starter::new().config(config.clone()).start_async().unwrap();
+        let server = Starter::new()
+            .temp_dir(dir)
+            .config(config.clone())
+            .start_async()
+            .unwrap();
         ServerBootstrap {
             server,
             config,
             mock_port,
-            _dir: dir,
         }
     }
 

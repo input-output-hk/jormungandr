@@ -78,7 +78,11 @@ pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
         .with_treasury(1_000.into())
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
 
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -210,7 +214,11 @@ pub fn adversary_public_vote_load_scenario(
         .with_treasury(1_000.into())
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
 
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),

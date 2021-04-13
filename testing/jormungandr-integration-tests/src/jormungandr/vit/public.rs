@@ -65,7 +65,11 @@ pub fn test_get_committee_id() {
         .with_committee_ids(expected_committee_ids.clone())
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
 
     expected_committee_ids.insert(
         0,
@@ -99,7 +103,11 @@ pub fn test_get_initial_vote_plan() {
         .with_certs(vec![vote_plan_cert])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
 
     let vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
     assert!(vote_plans.len() == 1);
@@ -156,7 +164,11 @@ pub fn test_vote_flow_bft() {
         .with_treasury(1_000.into())
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config.clone())
+        .start()
+        .unwrap();
 
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -386,10 +398,14 @@ pub fn jcli_e2e_flow() {
         .with_slots_per_epoch(10)
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config).start().unwrap();
-
     let alice_sk = temp_dir.child("alice_sk");
     alice.save_to_path(alice_sk.path()).unwrap();
+
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config)
+        .start()
+        .unwrap();
 
     let vote_plan_cert = jcli.certificate().new_vote_plan(vote_plan_json.path());
 
