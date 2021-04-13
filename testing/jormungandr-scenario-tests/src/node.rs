@@ -761,7 +761,7 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
     }
 
     fn set_log_level(&mut self, _log_file: &Path) {
-        let format = "plain";
+        let format = "json";
         let level = self.context.log_level();
         self.node_settings.config.log = Some(Log(LogEntry {
             format: format.to_string(),
