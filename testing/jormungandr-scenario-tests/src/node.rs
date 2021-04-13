@@ -682,6 +682,15 @@ pub struct SpawnBuilder<'a, R: RngCore, N> {
 
 impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
     pub fn new(context: &'a Context<R>, node_settings: &'a mut NodeSetting) -> Self {
+        // Ensure that logs are set in JSON format and output to stdout
+        // when spawning a new Node.
+        let format = "json";
+        let level = context.log_level();
+        node_settings.config.log = Some(Log(LogEntry {
+            format: format.to_string(),
+            level,
+            output: LogOutput::Stdout,
+        }));
         Self {
             jormungandr: PathBuf::new(),
             context,
@@ -759,16 +768,6 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
         }
     }
 
-    fn set_log_level(&mut self) {
-        let format = "json";
-        let level = self.context.log_level();
-        self.node_settings.config.log = Some(Log(LogEntry {
-            format: format.to_string(),
-            level,
-            output: LogOutput::Stdout,
-        }));
-    }
-
     pub fn command<P: AsRef<Path>, Q: AsRef<Path>>(
         &self,
         config_file: P,
@@ -805,7 +804,6 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, Node> {
         let config_file = dir.join(NODE_CONFIG);
         let config_secret = dir.join(NODE_SECRET);
 
-        self.set_log_level();
         self.apply_persistence_setting(&dir);
         self.write_config_file(&config_file)?;
         self.write_secret_file(&config_secret)?;
@@ -843,7 +841,6 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, LegacyNode> {
         let config_file = dir.join(NODE_CONFIG);
         let config_secret = dir.join(NODE_SECRET);
 
-        self.set_log_level();
         self.apply_persistence_setting(&dir);
         self.write_config_file(&config_file)?;
         self.write_secret_file(&config_secret)?;
