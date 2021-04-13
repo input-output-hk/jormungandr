@@ -179,7 +179,6 @@ pub struct Node {
 const NODE_CONFIG: &str = "node_config.yaml";
 const NODE_SECRET: &str = "node_secret.yaml";
 const NODE_STORAGE: &str = "storage.db";
-const NODE_LOG: &str = "node.log";
 
 impl NodeController {
     pub fn alias(&self) -> &NodeAlias {
@@ -805,7 +804,6 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, Node> {
 
         let config_file = dir.join(NODE_CONFIG);
         let config_secret = dir.join(NODE_SECRET);
-        let log_file = dir.join(NODE_LOG);
 
         self.set_log_level();
         self.apply_persistence_setting(&dir);
@@ -844,7 +842,6 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, LegacyNode> {
 
         let config_file = dir.join(NODE_CONFIG);
         let config_secret = dir.join(NODE_SECRET);
-        let log_file = dir.join(NODE_LOG);
 
         self.set_log_level();
         self.apply_persistence_setting(&dir);
