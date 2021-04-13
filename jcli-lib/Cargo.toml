@@ -1,0 +1,14 @@
+[package]
+name = "jcli-lib"
+version = "0.11.1"
+authors = [ "dev@iohk.io" ]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/input-output-hk/jormungandr"
+homepage = "https://github.com/input-output-hk/jormungandr#README.md"
+documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
+description = """
+Midgard Serpent
+"""
+edition = "2018"
+
+[dependencies]

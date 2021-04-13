@@ -1946,6 +1946,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "jcli-lib"
+version = "0.11.1"
+
+[[package]]
 name = "jormungandr"
 version = "0.11.1"
 dependencies = [
