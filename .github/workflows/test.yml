@@ -200,7 +200,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
-          path: ${{ runner.temp }}/jormungandr-logs/
+          path: ${{ runner.temp }}/jormungandr_*
           retention-days: 30
 
   lints:
