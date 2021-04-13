@@ -760,7 +760,7 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
         }
     }
 
-    fn set_log_level(&mut self, _log_file: &Path) {
+    fn set_log_level(&mut self) {
         let format = "json";
         let level = self.context.log_level();
         self.node_settings.config.log = Some(Log(LogEntry {
@@ -807,7 +807,7 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, Node> {
         let config_secret = dir.join(NODE_SECRET);
         let log_file = dir.join(NODE_LOG);
 
-        self.set_log_level(&log_file);
+        self.set_log_level();
         self.apply_persistence_setting(&dir);
         self.write_config_file(&config_file)?;
         self.write_secret_file(&config_secret)?;
@@ -846,7 +846,7 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, LegacyNode> {
         let config_secret = dir.join(NODE_SECRET);
         let log_file = dir.join(NODE_LOG);
 
-        self.set_log_level(&log_file);
+        self.set_log_level();
         self.apply_persistence_setting(&dir);
         self.write_config_file(&config_file)?;
         self.write_secret_file(&config_secret)?;
