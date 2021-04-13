@@ -198,7 +198,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             topology_queue,
         };
 
-        services.spawn_future("topology", move |info| topology::start(info, task_data));
+        services.spawn_future("topology", move |_| topology::start(task_data));
     }
 
     let bft_leaders = block_on(async {
