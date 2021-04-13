@@ -12,7 +12,7 @@ use self::connections::{
     compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
     ValidatedPaginationArguments,
 };
-use self::error::ErrorKind;
+use self::error::ApiError;
 use self::scalars::{
     BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PayloadType,
     PoolCount, PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange, VotePlanId,
@@ -48,7 +48,7 @@ impl Branch {
             .get_branch(&id)
             .await
             .map(|state| Branch { state, id })
-            .ok_or_else(|| ErrorKind::NotFound("branch not found".to_string()).into())
+            .ok_or_else(|| ApiError::NotFound("branch not found".to_string()).into())
     }
 
     fn from_id_and_state(id: HeaderHash, state: super::multiverse::Ref) -> Branch {
@@ -144,7 +144,7 @@ impl Branch {
         let address = chain_addr::AddressReadable::from_string_anyprefix(&address_bech32)
             .map(|adr| ExplorerAddress::New(adr.to_address()))
             .or_else(|_| OldAddress::from_str(&address_bech32).map(ExplorerAddress::Old))
-            .map_err(|_| ErrorKind::InvalidAddress(address_bech32.to_string()))?;
+            .map_err(|_| ApiError::InvalidAddress(address_bech32.to_string()))?;
 
         let transactions = self
             .state
@@ -497,7 +497,7 @@ impl Block {
             return Ok(Arc::clone(&block));
         } else {
             let block = db.get_block(&self.hash).await.ok_or_else(|| {
-                ErrorKind::InternalError("Couldn't find block's contents in explorer".to_owned())
+                ApiError::InternalError("Couldn't find block's contents in explorer".to_owned())
             })?;
 
             *contents = Some(Arc::clone(&block));
@@ -510,9 +510,7 @@ impl Block {
             db.get_block_with_branches(&self.hash)
                 .await
                 .ok_or_else(|| {
-                    ErrorKind::InternalError(
-                        "Couldn't find block's contents in explorer".to_owned(),
-                    )
+                    ApiError::InternalError("Couldn't find block's contents in explorer".to_owned())
                 })?;
 
         let mut contents = self.contents.lock().await;
@@ -753,7 +751,7 @@ impl Transaction {
             .await;
 
         if block_hashes.is_empty() {
-            return Err(ErrorKind::NotFound(format!("transaction not found: {}", &id,)).into());
+            return Err(ApiError::NotFound(format!("transaction not found: {}", &id,)).into());
         } else {
             Ok(Transaction {
                 id,
@@ -791,7 +789,7 @@ impl Transaction {
         };
 
         if block_ids.is_empty() {
-            return Err(FieldError::from(ErrorKind::InternalError(
+            return Err(FieldError::from(ApiError::InternalError(
                 "Transaction is not present in any block".to_owned(),
             )));
         }
@@ -805,7 +803,7 @@ impl Transaction {
                 .get_block(&block_id)
                 .await
                 .ok_or_else(|| {
-                    FieldError::from(ErrorKind::InternalError(
+                    FieldError::from(ApiError::InternalError(
                         "transaction is in explorer but couldn't find its block".to_owned(),
                     ))
                 })?;
@@ -831,7 +829,7 @@ impl Transaction {
                 .get_block(&self.block_hashes[0])
                 .await
                 .ok_or_else(|| {
-                    FieldError::from(ErrorKind::InternalError(
+                    FieldError::from(ApiError::InternalError(
                         "failed to fetch block containing the transaction".to_owned(),
                     ))
                 })?;
@@ -840,7 +838,7 @@ impl Transaction {
                 .transactions
                 .get(&self.id)
                 .ok_or_else(|| {
-                    ErrorKind::InternalError(
+                    ApiError::InternalError(
                         "transaction was not found in respective block".to_owned(),
                     )
                 })?
@@ -922,7 +920,7 @@ impl Address {
         let addr = chain_addr::AddressReadable::from_string_anyprefix(bech32)
             .map(|adr| ExplorerAddress::New(adr.to_address()))
             .or_else(|_| OldAddress::from_str(bech32).map(ExplorerAddress::Old))
-            .map_err(|_| ErrorKind::InvalidAddress(bech32.to_string()))?;
+            .map_err(|_| ApiError::InvalidAddress(bech32.to_string()))?;
 
         Ok(Address { id: addr })
     }
@@ -952,7 +950,7 @@ impl Address {
     }
 
     async fn delegation(&self, _context: &Context<'_>) -> FieldResult<Pool> {
-        Err(ErrorKind::Unimplemented.into())
+        Err(ApiError::Unimplemented.into())
     }
 }
 
@@ -1019,12 +1017,12 @@ impl Pool {
         let blocks = db
             .get_stake_pool_blocks(&id)
             .await
-            .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+            .ok_or_else(|| ApiError::NotFound("Stake pool not found".to_owned()))?;
 
         let data = db
             .get_stake_pool_data(&id)
             .await
-            .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()))?;
+            .ok_or_else(|| ApiError::NotFound("Stake pool not found".to_owned()))?;
 
         Ok(Pool {
             id,
@@ -1072,7 +1070,7 @@ impl Pool {
                 .get_stake_pool_blocks(&self.id)
                 .await
                 .ok_or_else(|| {
-                    ErrorKind::InternalError("Stake pool in block is not indexed".to_owned())
+                    ApiError::InternalError("Stake pool in block is not indexed".to_owned())
                 })?,
         };
 
@@ -1141,7 +1139,7 @@ impl Pool {
                 .get_stake_pool_data(&self.id)
                 .await
                 .map(|data| PoolRegistration::from(data.registration.clone()))
-                .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()).into()),
+                .ok_or_else(|| ApiError::NotFound("Stake pool not found".to_owned()).into()),
         }
     }
 
@@ -1153,7 +1151,7 @@ impl Pool {
                 .db
                 .get_stake_pool_data(&self.id)
                 .await
-                .ok_or_else(|| ErrorKind::NotFound("Stake pool not found".to_owned()).into())
+                .ok_or_else(|| ApiError::NotFound("Stake pool not found".to_owned()).into())
                 .map(|data| {
                     data.retirement
                         .as_ref()
@@ -1265,7 +1263,7 @@ impl Epoch {
 
     /// Not yet implemented
     pub async fn stake_distribution(&self) -> FieldResult<StakeDistribution> {
-        Err(ErrorKind::Unimplemented.into())
+        Err(ApiError::Unimplemented.into())
     }
 
     pub async fn first_block(&self, context: &Context<'_>) -> Option<Block> {
@@ -1370,7 +1368,7 @@ impl VotePlanStatus {
         context: &Context<'_>,
     ) -> FieldResult<Self> {
         let vote_plan_id = chain_impl_mockchain::certificate::VotePlanId::from_str(&vote_plan_id.0)
-            .map_err(|err| -> FieldError { ErrorKind::InvalidAddress(err.to_string()).into() })?;
+            .map_err(|err| -> FieldError { ApiError::InvalidAddress(err.to_string()).into() })?;
         if let Some(vote_plan) = extract_context(&context)
             .await
             .db
@@ -1380,7 +1378,7 @@ impl VotePlanStatus {
             return Ok(Self::vote_plan_from_data(vote_plan));
         }
 
-        Err(ErrorKind::NotFound(format!(
+        Err(ApiError::NotFound(format!(
             "Vote plan with id {} not found",
             vote_plan_id.to_string()
         ))

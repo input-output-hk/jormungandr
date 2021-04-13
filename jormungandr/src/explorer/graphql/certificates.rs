@@ -1,4 +1,4 @@
-use super::error::ErrorKind;
+use super::error::ApiError;
 use async_graphql::{Context, FieldResult, Object, Union};
 use chain_impl_mockchain::certificate;
 use std::convert::TryFrom;
@@ -58,7 +58,7 @@ impl StakeDelegation {
             .to_single_account()
             .ok_or_else(||
                 // TODO: Multisig address?
-                ErrorKind::Unimplemented.into())
+                ApiError::Unimplemented.into())
             .map(|single| {
                 chain_addr::Address(discrimination, chain_addr::Kind::Account(single.into()))
             })
@@ -254,7 +254,7 @@ impl EncryptedVoteTally {
 /*----------------------------*/
 
 impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
-    type Error = super::error::Error;
+    type Error = super::error::ApiError;
     fn try_from(
         original: chain_impl_mockchain::certificate::Certificate,
     ) -> Result<Certificate, Self::Error> {

@@ -1,4 +1,4 @@
-use super::error::ErrorKind;
+use super::error::ApiError;
 use crate::blockcfg;
 use async_graphql::{Enum, InputValueError, InputValueResult, Scalar, ScalarType, SimpleObject};
 use chain_crypto::bech32::Bech32;
@@ -307,12 +307,12 @@ impl From<u32> for IndexCursor {
 }
 
 impl TryInto<u64> for IndexCursor {
-    type Error = super::ErrorKind;
+    type Error = ApiError;
 
     fn try_into(self) -> Result<u64, Self::Error> {
         self.0
             .parse()
-            .map_err(|_| ErrorKind::InvalidCursor("IndexCursor is not a valid number".to_string()))
+            .map_err(|_| ApiError::InvalidCursor("IndexCursor is not a valid number".to_string()))
     }
 }
 
@@ -348,10 +348,10 @@ impl From<vote::Options> for VoteOptionRange {
 }
 
 impl TryFrom<IndexCursor> for u32 {
-    type Error = ErrorKind;
+    type Error = ApiError;
     fn try_from(c: IndexCursor) -> Result<u32, Self::Error> {
         c.0.parse()
-            .map_err(|_| ErrorKind::InvalidCursor("IndexCursor is not a valid number".to_owned()))
+            .map_err(|_| ApiError::InvalidCursor("IndexCursor is not a valid number".to_owned()))
     }
 }
 
@@ -368,10 +368,10 @@ impl From<blockcfg::ChainLength> for IndexCursor {
 }
 
 impl TryFrom<IndexCursor> for blockcfg::ChainLength {
-    type Error = ErrorKind;
+    type Error = ApiError;
     fn try_from(c: IndexCursor) -> Result<blockcfg::ChainLength, Self::Error> {
         let inner: u32 = c.0.parse().map_err(|_| {
-            ErrorKind::InvalidCursor(
+            ApiError::InvalidCursor(
                 "block's pagination cursor is greater than maximum ChainLength".to_owned(),
             )
         })?;
