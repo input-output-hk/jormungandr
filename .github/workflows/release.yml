@@ -30,7 +30,7 @@ jobs:
 
       - id: release_info
         name: Get release information
-        run: python3 ci/release-info.py "$GITHUB_EVENT_NAME"
+        run: python3 ./ci/release-info-v2.py "$GITHUB_EVENT_NAME"
 
       - if: ${{ steps.release_info.outputs.release_type == 'nightly' }}
         name: Delete existing nightly releases
