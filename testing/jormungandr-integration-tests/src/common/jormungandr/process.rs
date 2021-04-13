@@ -1,4 +1,4 @@
-use super::JormungandrError;
+use super::{starter::StartupError, JormungandrError};
 use crate::common::jcli::{JCli, JCliCommand};
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
@@ -23,6 +23,7 @@ use std::process::Child;
 use std::process::Stdio;
 use std::str::FromStr;
 use std::thread::panicking;
+use std::time::{Duration, Instant};
 
 pub enum StartupVerificationMode {
     Log,
@@ -69,7 +70,36 @@ impl JormungandrProcess {
         }
     }
 
-    pub fn status(&self, strategy: &StartupVerificationMode) -> Status {
+    pub fn wait_for_bootstrap(
+        &self,
+        verification_mode: &StartupVerificationMode,
+        timeout: Duration,
+    ) -> Result<(), StartupError> {
+        let start = Instant::now();
+        loop {
+            if start.elapsed() > timeout {
+                return Err(StartupError::Timeout {
+                    timeout: timeout.as_secs(),
+                    log_content: self.logger.get_log_content(),
+                });
+            }
+            match self.status(&verification_mode) {
+                Status::Running => {
+                    println!("jormungandr is up");
+                    return Ok(());
+                }
+                Status::Stopped(err) => {
+                    println!("attempt stopped due to error signal recieved");
+                    println!("Raw log:\n {}", self.logger.get_log_content());
+                    return Err(StartupError::JormungandrError(err));
+                }
+                Status::Starting => {}
+            }
+            std::thread::sleep(Duration::from_secs(2));
+        }
+    }
+
+    fn status(&self, strategy: &StartupVerificationMode) -> Status {
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         if self.logger.contains_any_of(&port_occupied_msgs) {
             return Status::Stopped(JormungandrError::PortAlreadyInUse);

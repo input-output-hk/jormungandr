@@ -1,6 +1,10 @@
-use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
+use crate::common::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, StartupVerificationMode},
+    startup,
+};
 use jormungandr_lib::interfaces::LeadershipLogStatus;
-use jortestkit::process::sleep;
+use std::time::Duration;
 
 #[test]
 pub fn test_leadership_logs_parent_hash_is_correct() {
@@ -9,7 +13,9 @@ pub fn test_leadership_logs_parent_hash_is_correct() {
     let (jormungandr, _) =
         startup::start_stake_pool(&[faucet], &[], &mut ConfigurationBuilder::new()).unwrap();
 
-    sleep(5);
+    jormungandr
+        .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(10))
+        .unwrap();
 
     let leadership_logs = jcli.rest().v0().leadership_log(jormungandr.rest_uri());
 

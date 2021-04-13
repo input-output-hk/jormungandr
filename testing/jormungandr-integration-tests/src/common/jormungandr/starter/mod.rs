@@ -1,7 +1,7 @@
 mod commands;
 pub use commands::{get_command, CommandBuilder};
 
-use super::process::{StartupVerificationMode, Status};
+use super::process::StartupVerificationMode;
 use super::ConfigurationBuilder;
 use super::JormungandrError;
 use crate::common::{configuration::get_jormungandr_app, jormungandr::process::JormungandrProcess};
@@ -384,7 +384,11 @@ where
                 self.temp_dir.take(),
                 self.starter.alias.clone(),
             );
-            match (self.verify_is_up(&mut jormungandr), self.starter.on_fail) {
+            match (
+                jormungandr
+                    .wait_for_bootstrap(&self.starter.verification_mode, self.starter.timeout),
+                self.starter.on_fail,
+            ) {
                 (Ok(()), _) => {
                     return Ok(jormungandr);
                 }
@@ -423,31 +427,6 @@ where
             }
 
             self.temp_dir = jormungandr.steal_temp_dir();
-        }
-    }
-
-    fn verify_is_up(&self, process: &mut JormungandrProcess) -> Result<(), StartupError> {
-        let start = Instant::now();
-        loop {
-            if start.elapsed() > self.starter.timeout {
-                return Err(StartupError::Timeout {
-                    timeout: self.starter.timeout.as_secs(),
-                    log_content: process.logger.get_log_content(),
-                });
-            }
-            match process.status(&self.starter.verification_mode) {
-                Status::Running => {
-                    println!("jormungandr is up");
-                    return Ok(());
-                }
-                Status::Stopped(err) => {
-                    println!("attempt stopped due to error signal recieved");
-                    println!("Raw log:\n {}", process.logger.get_log_content());
-                    return Err(StartupError::JormungandrError(err));
-                }
-                Status::Starting => {}
-            }
-            process_utils::sleep(self.starter.sleep);
         }
     }
 }
