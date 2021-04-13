@@ -1928,6 +1928,7 @@ dependencies = [
  "ed25519-bip32",
  "gtmpl",
  "hex",
+ "jcli-lib",
  "jormungandr-lib",
  "mime",
  "predicates",

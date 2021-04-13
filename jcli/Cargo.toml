@@ -31,6 +31,7 @@ chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = ["p256k1"] }
+jcli-lib = { path = "../jcli-lib" }
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.6.0"
 valico = "3.5.0"
@@ -54,10 +55,6 @@ predicates = "1.0"
 
 [build-dependencies]
 versionisator = "1.0.2"
-
-[lib]
-name = "jcli_lib"
-path = "src/lib.rs"
 
 [[bin]]
 name = "jcli"
