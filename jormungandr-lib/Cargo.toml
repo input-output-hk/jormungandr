@@ -41,4 +41,4 @@ chain-core    = { git = "https://github.com/input-output-hk/chain-libs.git", bra
 ed25519-bip32 = "0.3"
 serde_yaml = "0.8"
 serde_json = "1.0"
-bincode = "1.2"
+bincode = "1.3"
