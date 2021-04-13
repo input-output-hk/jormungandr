@@ -2,7 +2,8 @@
 
 use jormungandr_lib::{
     interfaces::{
-        Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls, TopicsOfInterest, TrustedPeer,
+        Explorer, LayersConfig, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls, TopicsOfInterest,
+        TrustedPeer,
     },
     time::Duration,
 };
@@ -56,16 +57,18 @@ impl NodeConfigBuilder {
                 listen_address: None,
                 max_inbound_connections: None,
                 max_connections: None,
-                topics_of_interest: Some(TopicsOfInterest {
-                    messages: String::from("high"),
-                    blocks: String::from("high"),
-                }),
                 allow_private_addresses: true,
                 policy: Some(Policy {
                     quarantine_duration: Some(Duration::new(1, 0)),
                     quarantine_whitelist: None,
                 }),
-                layers: None,
+                layers: Some(LayersConfig {
+                    preferred_list: Default::default(),
+                    topics_of_interest: Some(TopicsOfInterest {
+                        messages: String::from("high"),
+                        blocks: String::from("high"),
+                    }),
+                }),
             },
             mempool: Some(Mempool::default()),
             explorer: Explorer { enabled: false },

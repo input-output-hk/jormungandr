@@ -1,11 +1,19 @@
 //! module defining the p2p topology management objects
 //!
-use super::{topic, Gossip, Gossips, NodeId, Peer, PeerInfo, Quarantine};
+use super::{
+    layers::{self, LayersConfig},
+    topic, Gossip, Gossips, NodeId, Peer, PeerInfo, Quarantine,
+};
 
 use crate::settings::start::network::Configuration;
 use chain_crypto::Ed25519;
 use jormungandr_lib::crypto::key::SigningKey;
-use poldercast::{Profile, Topology};
+use poldercast::{
+    layer::{self as poldercast_layer, Layer, LayerBuilder},
+    Profile, Topology,
+};
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaChaRng;
 use std::convert::TryInto;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tracing::instrument;
@@ -29,13 +37,72 @@ pub struct P2pTopology {
     quarantine: Quarantine,
 }
 
+struct CustomLayerBuilder {
+    config: LayersConfig,
+}
+
+impl CustomLayerBuilder {
+    // Default values from poldercast
+    const RINGS_VIEW_SIZE: u8 = 4;
+    const VICINITY_VIEW_SIZE: usize = 20;
+    const CYCLON_VIEW_SIZE: usize = 20;
+    const GOSSIP_SIZE: u8 = 10;
+}
+
+impl From<LayersConfig> for CustomLayerBuilder {
+    fn from(config: LayersConfig) -> Self {
+        Self { config }
+    }
+}
+
+impl CustomLayerBuilder {
+    fn build_layers(&self, rings: u8, vicinity: usize, cyclon: usize) -> Vec<Box<dyn Layer>> {
+        let mut layers: Vec<Box<dyn Layer>> = Vec::with_capacity(4);
+
+        layers.push(Box::new(layers::Rings::new(
+            self.config.rings.clone(),
+            poldercast_layer::Rings::new(rings),
+        )));
+        layers.push(Box::new(poldercast_layer::Vicinity::new(vicinity)));
+        layers.push(Box::new(poldercast_layer::Cyclon::new(cyclon)));
+
+        let mut seed = [0; 32];
+        rand::thread_rng().fill(&mut seed);
+        layers.push(Box::new(layers::PreferredListLayer::new(
+            &self.config.preferred_list,
+            ChaChaRng::from_seed(seed),
+        )));
+
+        layers
+    }
+}
+
+impl LayerBuilder for CustomLayerBuilder {
+    fn build_for_view(&self) -> Vec<Box<dyn Layer>> {
+        self.build_layers(
+            Self::RINGS_VIEW_SIZE,
+            Self::VICINITY_VIEW_SIZE,
+            Self::CYCLON_VIEW_SIZE,
+        )
+    }
+
+    fn build_for_gossip(&self) -> Vec<Box<dyn Layer>> {
+        self.build_layers(
+            Self::GOSSIP_SIZE,
+            Self::GOSSIP_SIZE.into(),
+            Self::GOSSIP_SIZE.into(),
+        )
+    }
+}
+
 impl P2pTopology {
     pub fn new(config: &Configuration) -> Self {
         let addr = config.public_address.or(Some(*LOCAL_ADDR)).unwrap();
         let key = secret_key_into_keynesis(config.node_key.clone());
 
         let quarantine = Quarantine::from_config(config.policy.clone());
-        let mut topology = Topology::new(addr, &key);
+        let custom_builder = CustomLayerBuilder::from(config.layers.clone());
+        let mut topology = Topology::new_with(addr, &key, custom_builder);
         topology.subscribe_topic(topic::MESSAGES);
         topology.subscribe_topic(topic::BLOCKS);
         P2pTopology {

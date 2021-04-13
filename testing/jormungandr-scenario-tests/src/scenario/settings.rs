@@ -11,7 +11,10 @@ use chain_impl_mockchain::{
 use jormungandr_lib::crypto::account::Identifier;
 use jormungandr_lib::interfaces::try_initials_vec_from_messages;
 use jormungandr_lib::{
-    interfaces::{Explorer, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest, TopicsOfInterest},
+    interfaces::{
+        Explorer, LayersConfig, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
+        TopicsOfInterest,
+    },
     time::Duration,
 };
 use jormungandr_testing_utils::testing::network_builder::Random;
@@ -347,9 +350,11 @@ impl Prepare for P2p {
             listen_address: None,
             max_connections: None,
             max_inbound_connections: None,
-            topics_of_interest: Some(TopicsOfInterest::prepare(context)),
             policy: Some(Policy::prepare(context)),
-            layers: None,
+            layers: Some(LayersConfig {
+                preferred_list: None,
+                topics_of_interest: Some(TopicsOfInterest::prepare(context)),
+            }),
             node_key_file: None,
         }
     }

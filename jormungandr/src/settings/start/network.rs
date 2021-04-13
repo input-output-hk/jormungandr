@@ -1,10 +1,9 @@
-use super::config::{self, InterestLevel, Topic};
+use super::config;
 use crate::network::p2p::Address;
 use crate::topology::{layers::LayersConfig, NodeId, QuarantineConfig};
 
 use chain_crypto::Ed25519;
 use jormungandr_lib::{crypto::key::SigningKey, multiaddr};
-use std::collections::BTreeMap;
 use std::net::SocketAddr;
 use std::str;
 use std::time::Duration;
@@ -62,13 +61,6 @@ pub struct Configuration {
 
     pub public_address: Option<Address>,
 
-    /// the topic subscriptions
-    ///
-    /// When connecting to different nodes we will expose these too in order to
-    /// help the different modules of the P2P topology engine to determine the
-    /// best possible neighborhood.
-    pub topics_of_interest: BTreeMap<Topic, InterestLevel>,
-
     // Secret key used to authenticate gossips, the public part is used as an identifier of the node
     pub node_key: SigningKey<Ed25519>,
 
@@ -110,7 +102,7 @@ pub struct Configuration {
 }
 
 /// Trusted peer with DNS address resolved.
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct TrustedPeer {
     pub addr: SocketAddr,
     // This will need to become compulsory if we want to check validity of keys/ids

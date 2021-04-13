@@ -5,10 +5,12 @@ use self::config::{Config, Leadership};
 use self::network::{Protocol, TrustedPeer};
 use crate::settings::logging::{LogFormat, LogInfoMsg, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
+use crate::topology::layers::{self, LayersConfig, PreferredListConfig, RingsConfig};
 use chain_crypto::Ed25519;
 use jormungandr_lib::crypto::key::SigningKey;
 pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Tls};
 use jormungandr_lib::multiaddr;
+use std::convert::TryFrom;
 use std::{fs::File, path::PathBuf};
 use thiserror::Error;
 use tracing::level_filters::LevelFilter;
@@ -36,6 +38,8 @@ pub enum Error {
     InvalidMultiaddr(#[from] multiaddr::Error),
     #[error("cannot deserialize node key from file")]
     InvalidKey(#[from] chain_crypto::bech32::Error),
+    #[error(transparent)]
+    InvalidLayersConfig(#[from] layers::ParseError),
 }
 
 /// Overall Settings for node
@@ -228,6 +232,30 @@ impl RawSettings {
     }
 }
 
+fn resolve_trusted_peers(peers: &[jormungandr_lib::interfaces::TrustedPeer]) -> Vec<TrustedPeer> {
+    peers
+        .iter()
+        .filter_map(|config_peer| match TrustedPeer::resolve(config_peer) {
+            Ok(peer) => {
+                tracing::info!(
+                    config = %config_peer.address,
+                    resolved = %peer.addr,
+                    "DNS resolved for trusted peer"
+                );
+                Some(peer)
+            }
+            Err(e) => {
+                tracing::warn!(
+                    config = %config_peer.address,
+                    reason = %e,
+                    "failed to resolve trusted peer address"
+                );
+                None
+            }
+        })
+        .collect()
+}
+
 #[allow(deprecated)]
 fn generate_network(
     command_arguments: &StartArguments,
@@ -253,29 +281,23 @@ fn generate_network(
         p2p.trusted_peers = Some(command_arguments.trusted_peer.clone())
     }
 
-    let trusted_peers = p2p.trusted_peers.as_ref().map_or_else(Vec::new, |peers| {
-        peers
-            .iter()
-            .filter_map(|config_peer| match TrustedPeer::resolve(config_peer) {
-                Ok(peer) => {
-                    tracing::info!(
-                        config = %config_peer.address,
-                        resolved = %peer.addr,
-                        "DNS resolved for trusted peer"
-                    );
-                    Some(peer)
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        config = %config_peer.address,
-                        reason = %e,
-                        "failed to resolve trusted peer address"
-                    );
-                    None
-                }
-            })
-            .collect()
-    });
+    let trusted_peers = p2p
+        .trusted_peers
+        .as_ref()
+        .map_or_else(Vec::new, |peers| resolve_trusted_peers(peers));
+
+    // Layers config
+    let preferred_list_config = p2p.layers.preferred_list.unwrap_or_default();
+    let preferred_list = PreferredListConfig {
+        view_max: preferred_list_config.view_max.into(),
+        peers: resolve_trusted_peers(&preferred_list_config.peers),
+    };
+    let rings = p2p
+        .layers
+        .topics_of_interest
+        .map(RingsConfig::try_from)
+        .transpose()?
+        .unwrap_or_default();
 
     // TODO: do we want to check that we end up with a valid address?
     // Is it possible for a node to specify no public address?
@@ -306,12 +328,11 @@ fn generate_network(
         trusted_peers,
         node_key,
         policy: p2p.policy.clone(),
-        topics_of_interest: p2p
-            .topics_of_interest
-            .clone()
-            .unwrap_or_else(config::default_interests),
         protocol: Protocol::Grpc,
-        layers: p2p.layers.clone(),
+        layers: LayersConfig {
+            preferred_list,
+            rings,
+        },
         max_connections: p2p
             .max_connections
             .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),

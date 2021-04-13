@@ -112,8 +112,6 @@ pub struct P2p {
 
     pub allow_private_addresses: bool,
 
-    pub topics_of_interest: Option<TopicsOfInterest>,
-
     pub policy: Option<Policy>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -142,8 +140,10 @@ pub struct Explorer {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LayersConfig {
-    #[serde(default)]
-    pub preferred_list: PreferredListConfig,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preferred_list: Option<PreferredListConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub topics_of_interest: Option<TopicsOfInterest>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
