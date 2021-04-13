@@ -1948,6 +1948,38 @@ dependencies = [
 [[package]]
 name = "jcli-lib"
 version = "0.11.1"
+dependencies = [
+ "assert_fs",
+ "base64 0.13.0",
+ "bech32",
+ "bincode",
+ "bytes 1.0.1",
+ "chain-addr",
+ "chain-core",
+ "chain-crypto",
+ "chain-impl-mockchain",
+ "chain-time",
+ "chain-vote",
+ "clap",
+ "ed25519-bip32",
+ "gtmpl",
+ "hex",
+ "jormungandr-lib",
+ "mime",
+ "predicates",
+ "rand 0.8.3",
+ "rand_chacha 0.3.0",
+ "rayon",
+ "reqwest",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "serde_yaml",
+ "structopt",
+ "thiserror",
+ "valico",
+ "versionisator",
+]
 
 [[package]]
 name = "jormungandr"
