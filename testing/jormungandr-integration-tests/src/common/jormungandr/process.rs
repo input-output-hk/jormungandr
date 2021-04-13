@@ -19,10 +19,10 @@ use jormungandr_testing_utils::testing::{
 use jormungandr_testing_utils::testing::{RemoteJormungandr, RemoteJormungandrBuilder};
 use jortestkit::prelude::ProcessOutput;
 
+use std::io::Read;
 use std::net::SocketAddr;
 use std::path::Path;
-use std::process::Child;
-use std::process::Stdio;
+use std::process::{Child, Stdio};
 use std::str::FromStr;
 use std::thread::panicking;
 use std::time::{Duration, Instant};
@@ -268,6 +268,32 @@ impl JormungandrProcess {
             }
         }
     }
+
+    fn persist_logs_to_disk(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let logs_dir = tempfile::Builder::new()
+            .prefix("jormungandr_")
+            .tempdir()?
+            .into_path();
+        println!(
+            "persisting node temp_dir after panic: {}",
+            logs_dir.display()
+        );
+        if let Some(dir) = self.temp_dir.take() {
+            let options = CopyOptions {
+                content_only: true,
+                ..Default::default()
+            };
+            move_dir(dir.path(), &logs_dir, &options)?;
+        }
+        std::fs::write(logs_dir.join("node.log"), self.log_content())?;
+        if let Some(mut stderr) = self.child.stderr.take() {
+            let mut buf = String::new();
+            stderr.read_to_string(&mut buf)?;
+            std::fs::write(logs_dir.join("stderr.log"), buf)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl Drop for JormungandrProcess {
@@ -277,31 +303,8 @@ impl Drop for JormungandrProcess {
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
         if panicking() {
-            let logs_dir = match tempfile::Builder::new().prefix("jormungandr_").tempdir() {
-                Ok(dir) => dir.into_path(),
-                Err(e) => {
-                    eprintln!("Could not create logs dir: {}", e);
-                    return;
-                }
-            };
-
-            println!(
-                "persisting node temp_dir after panic: {}",
-                logs_dir.display()
-            );
-
-            if let Some(dir) = self.temp_dir.take() {
-                let options = CopyOptions {
-                    content_only: true,
-                    ..Default::default()
-                };
-                move_dir(dir.path(), &logs_dir, &options)
-                    .map(|_| ())
-                    .unwrap_or_else(|e| eprintln!("Could not move files to new dir: {}", e));
-            }
-
-            std::fs::write(logs_dir.join("node.log"), self.log_content())
-                .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
+            self.persist_logs_to_disk()
+                .unwrap_or_else(|e| eprintln!("Could not persist logs to disk: {}", e));
         }
     }
 }
