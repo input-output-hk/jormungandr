@@ -11,29 +11,36 @@ pub mod vote;
 pub mod utils;
 
 use std::error::Error;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
 /// Jormungandr CLI toolkit
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct JCli {
     /// display full version details (software version, source version, targets and compiler used)
-    #[structopt(long = "full-version")]
+    #[cfg_attr(feature = "structopt", structopt(long = "full-version"))]
     full_version: bool,
 
     /// display the sources version, allowing to check the source's hash used to compile this executable.
     /// this option is useful for scripting retrieving the logs of the version of this application.
-    #[structopt(long = "source-version")]
+    #[cfg_attr(feature = "structopt", structopt(long = "source-version"))]
     source_version: bool,
 
-    #[structopt(subcommand)]
+    #[cfg_attr(feature = "structopt", structopt(subcommand))]
     command: Option<JCliCommand>,
 }
 
 #[allow(clippy::large_enum_variant)]
 /// Jormungandr CLI toolkit
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum JCliCommand {
     /// Key Generation
     Key(key::Key),
@@ -49,7 +56,9 @@ pub enum JCliCommand {
     Debug(debug::Debug),
     /// Certificate generation tool
     Certificate(certificate::Certificate),
-    /// Auto completion
+    #[cfg(feature = "structopt")]
+    /// Auto completion. This variant is only present if the `structopt`
+    /// feature is enabled.
     AutoCompletion(auto_completion::AutoCompletion),
     /// Utilities that perform specialized tasks
     Utils(utils::Utils),
@@ -84,6 +93,7 @@ impl JCliCommand {
             Transaction(transaction) => transaction.exec()?,
             Debug(debug) => debug.exec()?,
             Certificate(certificate) => certificate.exec()?,
+            #[cfg(feature = "structopt")]
             AutoCompletion(auto_completion) => auto_completion.exec::<Self>()?,
             Utils(utils) => utils.exec()?,
             Votes(vote) => vote.exec()?,
