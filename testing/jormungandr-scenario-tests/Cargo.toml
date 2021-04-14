@@ -21,7 +21,7 @@ chain-time           = { git = "https://github.com/input-output-hk/chain-libs.gi
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
-tokio = { version = "1.4", features = ["macros","rt","rt-multi-thread"] }
+tokio = { version = "1.5", features = ["macros","rt","rt-multi-thread"] }
 poldercast = "1.2"
 rand = "0.8"
 rand_core = "0.6"
