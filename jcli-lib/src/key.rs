@@ -14,6 +14,7 @@ use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
 };
+#[cfg(feature = "structopt")]
 use structopt::{clap::arg_enum, StructOpt};
 use thiserror::Error;
 
@@ -58,8 +59,12 @@ pub enum Error {
     },
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "genesis", rename_all = "kebab-case")]
+#[derive(Debug)]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(name = "genesis", rename_all = "kebab-case")
+)]
 pub enum Key {
     /// generate a private key
     Generate(Generate),
@@ -77,115 +82,126 @@ pub enum Key {
     Derive(Derive),
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct FromBytes {
     /// Type of a private key
     ///
     /// supported values are: ed25519, ed25519bip32, ed25519extended, curve25519_2hashdh or sumed25519_12
-    #[structopt(long = "type")]
+    #[cfg_attr(feature = "structopt", structopt(long = "type"))]
     key_type: GenPrivKeyType,
 
     /// retrieve the private key from the given bytes
-    #[structopt(name = "INPUT_BYTES")]
+    #[cfg_attr(feature = "structopt", structopt(name = "INPUT_BYTES"))]
     input_bytes: Option<PathBuf>,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     output_file: OutputFile,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct ToBytes {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     output_file: OutputFile,
 
     /// path to the private key to serialize in bytes
     /// Or read from the standard input
-    #[structopt(name = "INPUT_FILE")]
+    #[cfg_attr(feature = "structopt", structopt(name = "INPUT_FILE"))]
     input_key: Option<PathBuf>,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct Generate {
     /// Type of a private key
     ///
     /// supported values are: ed25519, ed25519bip32, ed25519extended, curve25519_2hashdh or sumed25519_12
-    #[structopt(long = "type")]
+    #[cfg_attr(feature = "structopt", structopt(long = "type"))]
     key_type: GenPrivKeyType,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     output_file: OutputFile,
 
     /// optional seed to generate the key, for the same entropy the same key
     /// will be generated (32 bytes in hexadecimal). This seed will be fed to
     /// ChaChaRNG and allow pseudo random key generation. Do not use if you
     /// are not sure.
-    #[structopt(long = "seed", short = "s", name = "SEED", parse(try_from_str))]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "seed", short = "s", name = "SEED", parse(try_from_str))
+    )]
     seed: Option<Seed>,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct ToPublic {
     /// the source private key to extract the public key from
     ///
     /// if no value passed, the private key will be read from the
     /// standard input
-    #[structopt(long = "input")]
+    #[cfg_attr(feature = "structopt", structopt(long = "input"))]
     input_key: Option<PathBuf>,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     output_file: OutputFile,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct Sign {
     /// path to file with bech32-encoded secret key
     ///
     /// supported key formats are: ed25519, ed25519bip32, ed25519extended and sumed25519_12
-    #[structopt(long = "secret-key")]
+    #[cfg_attr(feature = "structopt", structopt(long = "secret-key"))]
     secret_key: PathBuf,
 
     /// path to file to write signature into, if no value is passed, standard output will be used
-    #[structopt(long = "output", short = "o")]
+    #[cfg_attr(feature = "structopt", structopt(long = "output", short = "o"))]
     output: Option<PathBuf>,
 
     /// path to file with data to sign, if no value is passed, standard input will be used
     data: Option<PathBuf>,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct Verify {
     /// path to file with bech32-encoded public key
     ///
     /// supported key formats are: ed25519, ed25519bip32 and sumed25519_12
-    #[structopt(long = "public-key")]
+    #[cfg_attr(feature = "structopt", structopt(long = "public-key"))]
     public_key: PathBuf,
 
     /// path to file with signature
-    #[structopt(long = "signature")]
+    #[cfg_attr(feature = "structopt", structopt(long = "signature"))]
     signature: PathBuf,
 
     /// path to file with signed data, if no value is passed, standard input will be used
     data: Option<PathBuf>,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct Derive {
     /// the ed25519bip32 parent key to derive a child key from
     ///
     /// if no value passed, the parent key will be read from the
     /// standard input
-    #[structopt(long = "input")]
+    #[cfg_attr(feature = "structopt", structopt(long = "input"))]
     parent_key: Option<PathBuf>,
 
     /// the index of child key
     index: u32,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     child_key: OutputFile,
 }
 
+#[cfg(feature = "structopt")]
 arg_enum! {
-    #[derive(StructOpt, Debug)]
+    #[derive(Debug, StructOpt)]
     pub enum GenPrivKeyType {
         Ed25519,
         Ed25519Bip32,
@@ -193,6 +209,16 @@ arg_enum! {
         SumEd25519_12,
         Curve25519_2HashDh,
     }
+}
+
+#[cfg(not(feature = "structopt"))]
+#[derive(Debug)]
+pub enum GenPrivKeyType {
+    Ed25519,
+    Ed25519Bip32,
+    Ed25519Extended,
+    SumEd25519_12,
+    Curve25519_2HashDh,
 }
 
 impl Key {
