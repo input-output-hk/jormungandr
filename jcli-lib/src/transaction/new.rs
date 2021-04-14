@@ -1,11 +1,15 @@
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
 use crate::transaction::{common, staging::Staging, Error};
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct New {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pub common: common::CommonTransaction,
 }
 

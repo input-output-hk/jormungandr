@@ -10,13 +10,17 @@ use chain_impl_mockchain::{
     transaction::{TransactionSignDataHash, Witness},
 };
 use std::{io::Write, path::PathBuf};
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct MkWitness {
     /// the Transaction ID of the witness to sign
-    #[structopt(name = "TRANSACTION_ID")]
+    #[cfg_attr(feature = "structopt", structopt(name = "TRANSACTION_ID"))]
     pub sign_data_hash: TransactionSignDataHash,
 
     /// the file path to the file to write the witness in.
@@ -24,16 +28,19 @@ pub struct MkWitness {
     pub output: Option<PathBuf>,
 
     /// the type of witness to build: account, UTxO or Legacy UtxO
-    #[structopt(long = "type", parse(try_from_str))]
+    #[cfg_attr(feature = "structopt", structopt(long = "type", parse(try_from_str)))]
     pub witness_type: WitnessType,
 
     /// the hash of the block0, the first block of the blockchain
-    #[structopt(long = "genesis-block-hash", parse(try_from_str))]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "genesis-block-hash", parse(try_from_str))
+    )]
     pub genesis_block_hash: HeaderId,
 
     /// value is mandatory is `--type=account' It is the counter for
     /// every time the account is being utilized.
-    #[structopt(long = "account-spending-counter")]
+    #[cfg_attr(feature = "structopt", structopt(long = "account-spending-counter"))]
     pub account_spending_counter: Option<u32>,
 
     /// the file path to the file to read the signing key from.

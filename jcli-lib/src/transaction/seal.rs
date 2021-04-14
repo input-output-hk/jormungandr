@@ -1,10 +1,14 @@
 use crate::transaction::{common, Error};
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct Seal {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pub common: common::CommonTransaction,
 }
 

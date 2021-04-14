@@ -3,15 +3,19 @@ use crate::{
     transaction::{common, Error},
 };
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct Auth {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pub common: common::CommonTransaction,
     /// path to the file with the signing key
-    #[structopt(short = "k", long = "key")]
+    #[cfg_attr(feature = "structopt", structopt(short = "k", long = "key"))]
     pub signing_keys: Vec<PathBuf>,
 }
 

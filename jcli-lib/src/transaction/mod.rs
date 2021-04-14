@@ -20,12 +20,16 @@ use crate::{
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 use thiserror::Error;
 
 #[allow(clippy::large_enum_variant)]
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Transaction {
     /// create a new staging transaction. The transaction is initially
     /// empty.

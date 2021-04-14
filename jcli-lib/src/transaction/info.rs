@@ -7,26 +7,33 @@ use chain_impl_mockchain::transaction::{Balance, UnspecifiedAccountIdentifier};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::TransactionInputType};
 use serde_json::json;
 use std::{io::Write, path::PathBuf};
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct Info {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     common: common::CommonTransaction,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     fee: common::CommonFees,
 
     /// write the info in the given file or print it to the standard output
-    #[structopt(long = "output")]
+    #[cfg_attr(feature = "structopt", structopt(long = "output"))]
     output: Option<PathBuf>,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     output_format: OutputFormat,
 
     /// set the address prefix to use when displaying the addresses
-    #[structopt(long = "prefix", default_value = "ca")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "prefix", default_value = "ca")
+    )]
     address_prefix: String,
 }
 

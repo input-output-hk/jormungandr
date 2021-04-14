@@ -6,12 +6,16 @@ use bech32::{self, FromBase32 as _};
 use chain_core::mempack::{ReadBuf, Readable as _};
 use chain_impl_mockchain::transaction::Witness;
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct AddWitness {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pub common: common::CommonTransaction,
 
     pub witness: PathBuf,

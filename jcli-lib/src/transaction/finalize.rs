@@ -1,15 +1,19 @@
 use crate::transaction::{common, Error};
 use chain_impl_mockchain::transaction::OutputPolicy;
 use jormungandr_lib::interfaces;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct Finalize {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pub common: common::CommonTransaction,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pub fee: common::CommonFees,
 
     /// Set the change in the given address

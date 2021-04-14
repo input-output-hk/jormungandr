@@ -1,20 +1,24 @@
 use crate::transaction::{common, Error};
 use chain_impl_mockchain::transaction::Output;
 use jormungandr_lib::interfaces;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct AddOutput {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pub common: common::CommonTransaction,
 
     /// the UTxO address or account address to credit funds to
-    #[structopt(name = "ADDRESS")]
+    #[cfg_attr(feature = "structopt", structopt(name = "ADDRESS"))]
     pub address: interfaces::Address,
 
     /// the value
-    #[structopt(name = "VALUE")]
+    #[cfg_attr(feature = "structopt", structopt(name = "VALUE"))]
     pub value: interfaces::Value,
 }
 

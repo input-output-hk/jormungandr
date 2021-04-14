@@ -1,24 +1,28 @@
 use crate::transaction::{common, Error};
 use chain_impl_mockchain::{fragment::FragmentId, transaction::TransactionIndex};
 use jormungandr_lib::interfaces;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct AddInput {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pub common: common::CommonTransaction,
 
     /// the Transaction ID which contains the credited funds to utilise.
-    #[structopt(name = "TRANSACTION_ID")]
+    #[cfg_attr(feature = "structopt", structopt(name = "TRANSACTION_ID"))]
     pub transaction_id: FragmentId,
 
     /// the output index where the credited funds to utilise are.
-    #[structopt(name = "INDEX")]
+    #[cfg_attr(feature = "structopt", structopt(name = "INDEX"))]
     pub index: TransactionIndex,
 
     /// the value
-    #[structopt(name = "VALUE")]
+    #[cfg_attr(feature = "structopt", structopt(name = "VALUE"))]
     pub value: interfaces::Value,
 }
 

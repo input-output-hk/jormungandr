@@ -2,20 +2,24 @@ use crate::transaction::{common, Error};
 use chain_addr::{Address, Kind};
 use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
 use jormungandr_lib::interfaces;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct AddAccount {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pub common: common::CommonTransaction,
 
     /// the account to debit the funds from
-    #[structopt(name = "ACCOUNT")]
+    #[cfg_attr(feature = "structopt", structopt(name = "ACCOUNT"))]
     pub account: interfaces::Address,
 
     /// the value
-    #[structopt(name = "VALUE")]
+    #[cfg_attr(feature = "structopt", structopt(name = "VALUE"))]
     pub value: interfaces::Value,
 }
 
