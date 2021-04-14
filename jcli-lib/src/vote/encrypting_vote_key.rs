@@ -1,21 +1,25 @@
 use crate::vote::{Error, OutputFile};
 use bech32::{FromBase32, ToBase32};
 use std::io::Write as _;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct EncryptingVoteKey {
     /// Keys of all committee members
-    #[structopt(
+    #[cfg_attr(feature = "structopt", structopt(
         parse(try_from_str = parse_member_key),
         required = true,
         short = "k",
         long = "keys"
-    )]
+    ))]
     member_keys: Vec<chain_vote::committee::MemberPublicKey>,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     output_file: OutputFile,
 }
 

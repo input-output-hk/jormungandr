@@ -3,23 +3,32 @@ use rand::rngs::OsRng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use std::io::Write;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct Generate {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     output_file: OutputFile,
 
     /// optional seed to generate the key, for the same entropy the same key
     /// will be generated (32 bytes in hexadecimal). This seed will be fed to
     /// ChaChaRNG and allow pseudo random key generation. Do not use if you
     /// are not sure.
-    #[structopt(long = "seed", short = "s", name = "SEED", parse(try_from_str))]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "seed", short = "s", name = "SEED", parse(try_from_str))
+    )]
     seed: Option<Seed>,
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(rename_all = "kebab-case")]
+#[derive(Debug)]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Crs {
     /// generate the common reference string
     Generate(Generate),

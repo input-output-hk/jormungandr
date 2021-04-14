@@ -2,10 +2,14 @@ mod communication_key;
 mod member_key;
 
 use super::Error;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Committee {
     /// commands for managing committee member communication keys
     CommunicationKey(communication_key::CommunicationKey),

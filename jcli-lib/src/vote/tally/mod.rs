@@ -2,10 +2,14 @@ mod decrypt_shares;
 mod decryption_tally;
 
 use super::Error;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Tally {
     /// Create a decryption share for private voting tally.
     ///

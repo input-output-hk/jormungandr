@@ -8,25 +8,29 @@ use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
 use std::convert::TryFrom;
 use std::path::Path;
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
 /// Create decryption shares for all proposals in a vote plan.
 ///
 /// The decryption share data will be printed in hexadecimal encoding
 /// on standard output.
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct TallyGenerateVotePlanDecryptionShares {
     /// The path to json-encoded vote plan to decrypt. If this parameter is not
     /// specified, the vote plan will be read from standard input.
-    #[structopt(long)]
+    #[cfg_attr(feature = "structopt", structopt(long))]
     vote_plan: Option<PathBuf>,
     /// The id of the vote plan to decrypt.
     /// Can be left unspecified if there is only one vote plan in the input
-    #[structopt(long)]
+    #[cfg_attr(feature = "structopt", structopt(long))]
     vote_plan_id: Option<Hash>,
     /// The path to hex-encoded decryption key.
-    #[structopt(long)]
+    #[cfg_attr(feature = "structopt", structopt(long))]
     key: PathBuf,
 }
 
@@ -35,8 +39,11 @@ pub struct TallyGenerateVotePlanDecryptionShares {
 ///
 /// The data will be printed in hexadecimal encoding
 /// on standard output.
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct MergeShares {
     /// The path to the shares to merge
     shares: Vec<PathBuf>,

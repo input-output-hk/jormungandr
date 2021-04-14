@@ -5,35 +5,45 @@ use rand::rngs::OsRng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use std::{io::Write, path::PathBuf};
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct Generate {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     output_file: OutputFile,
 
     /// optional seed to generate the key, for the same entropy the same key
     /// will be generated (32 bytes in hexadecimal). This seed will be fed to
     /// ChaChaRNG and allow pseudo random key generation. Do not use if you
     /// are not sure.
-    #[structopt(long = "seed", short = "s", name = "SEED", parse(try_from_str))]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "seed", short = "s", name = "SEED", parse(try_from_str))
+    )]
     seed: Option<Seed>,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct ToPublic {
     /// The file with the private key to extract the public key from.
     /// If no value passed, the private key will be read from the
     /// standard input.
-    #[structopt(long = "input")]
+    #[cfg_attr(feature = "structopt", structopt(long = "input"))]
     input_key: Option<PathBuf>,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     output_file: OutputFile,
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(rename_all = "kebab-case")]
+#[derive(Debug)]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum CommunicationKey {
     /// generate a private key
     Generate(Generate),

@@ -7,6 +7,7 @@ mod common_reference_string;
 mod encrypting_vote_key;
 mod tally;
 
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -57,8 +58,11 @@ pub enum Error {
     SharesError(#[from] SharesError),
 }
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Vote {
     /// Create committee member keys
     Committee(committee::Committee),
