@@ -1,15 +1,19 @@
 use gtmpl::Value as GtmplValue;
 use serde_json::{Map as JsonMap, Number as JsonNumber, Value as JsonValue};
 use std::fmt::{self, Display, Formatter};
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 use thiserror::Error;
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct OutputFormat {
     /// Format of output data. Possible values: json, yaml.
     /// Any other value is treated as a custom format using values from output data structure.
     /// Syntax is Go text template: https://golang.org/pkg/text/template/.
-    #[structopt(long = "output-format", default_value = "yaml", parse(from_str))]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "output-format", default_value = "yaml", parse(from_str))
+    )]
     format: FormatVariant,
 }
 

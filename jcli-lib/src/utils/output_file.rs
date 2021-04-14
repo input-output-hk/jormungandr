@@ -1,5 +1,6 @@
 use crate::utils::io;
 
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
 use std::io::Write;
@@ -15,10 +16,11 @@ pub enum Error {
     },
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct OutputFile {
     /// output the key to the given file or to stdout if not provided
-    #[structopt(name = "OUTPUT_FILE")]
+    #[cfg_attr(feature = "structopt", structopt(name = "OUTPUT_FILE"))]
     output: Option<PathBuf>,
 }
 
