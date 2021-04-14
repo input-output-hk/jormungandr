@@ -2,16 +2,26 @@ use crate::certificate::{read_cert_or_signed_cert, write_output, Error};
 use chain_impl_mockchain::certificate::Certificate;
 use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct GetVotePlanId {
     /// file to read the certificate from (defaults to stdin)
-    #[structopt(long, parse(from_os_str), value_name = "PATH")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long, parse(from_os_str), value_name = "PATH")
+    )]
     pub input: Option<PathBuf>,
     /// file to write the output to (defaults to stdout)
-    #[structopt(long, parse(from_os_str), value_name = "PATH")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long, parse(from_os_str), value_name = "PATH")
+    )]
     pub output: Option<PathBuf>,
 }
 

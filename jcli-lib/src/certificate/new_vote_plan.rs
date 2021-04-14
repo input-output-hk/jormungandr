@@ -9,20 +9,24 @@ use chain_impl_mockchain::{
 use jormungandr_lib::interfaces::VotePlanDef;
 use serde::Deserialize;
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
 /// create a vote plan certificate
 ///
 /// the vote plan configuration data needs to be provided
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct VotePlanRegistration {
     /// the file containing the vote plan configuration (YAML). If no file
     /// provided, it will be read from the standard input
     pub input: Option<PathBuf>,
 
     /// write the output to the given file or print it to the standard output if not defined
-    #[structopt(long = "output")]
+    #[cfg_attr(feature = "structopt", structopt(long = "output"))]
     pub output: Option<PathBuf>,
 }
 

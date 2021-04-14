@@ -5,13 +5,17 @@ use chain_impl_mockchain::{
     accounting::account::DELEGATION_RATIO_MAX_DECLS,
 };
 use std::{convert::TryFrom, error::Error as StdError, str::FromStr};
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct WeightedPoolIds {
     /// hex-encoded stake pool IDs and their numeric weights in format "pool_id:weight".
     /// If weight is not provided, it defaults to 1.
-    #[structopt(name = "STAKE_POOL_IDS", required = true)]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(name = "STAKE_POOL_IDS", required = true)
+    )]
     pool_ids: Vec<WeightedPoolId>,
 }
 

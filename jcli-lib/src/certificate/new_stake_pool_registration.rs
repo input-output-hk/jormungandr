@@ -14,6 +14,7 @@ use std::{
     num::{NonZeroU64, NonZeroU8},
     path::PathBuf,
 };
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
 /// create the stake pool registration certificate.
@@ -31,20 +32,27 @@ use structopt::StructOpt;
 ///
 /// Delegators will then receive a share of the remaining rewards: `Y - T`.
 ///
-#[derive(Debug, StructOpt)]
+#[derive(Debug)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct StakePoolRegistration {
     /// management threshold
     ///
     /// This is the number of owners keys that are required to update the stake
     /// pools parameter (the tax, update the keys, the threshold itsef...).
-    #[structopt(long = "management-threshold", name = "THRESHOLD")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "management-threshold", name = "THRESHOLD")
+    )]
     pub management_threshold: NonZeroU8,
 
     /// start validity
     ///
     /// This state when the stake pool registration becomes effective in seconds since
     /// the block0 start time.
-    #[structopt(long = "start-validity", name = "SECONDS-SINCE-START")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "start-validity", name = "SECONDS-SINCE-START")
+    )]
     pub start_validity: u64,
 
     /// public key of the owner(s)
@@ -54,67 +62,79 @@ pub struct StakePoolRegistration {
     ///
     /// Owner will receive a share of the fixed and ratio tax too. unless a reward
     /// account is specified for the stake pool.
-    #[structopt(
+    #[cfg_attr(feature = "structopt", structopt(
         long = "owner",
         name = "OWNER_KEY",
         parse(try_from_str = parse_pub_key),
         required = true
-    )]
+    ))]
     pub owners: Vec<PublicKey<Ed25519>>,
 
     /// public key of the operators(s)
     ///
     /// Owners can allow an operator to update some or all of the stake pool parameters.
     /// Different operators can have different permissions.
-    #[structopt(
+    #[cfg_attr(feature = "structopt", structopt(
         long = "operator",
         name = "OPERATOR_KEY",
         parse(try_from_str = parse_pub_key)
-    )]
+    ))]
     pub operators: Vec<PublicKey<Ed25519>>,
 
     /// Public key of the block signing key
-    #[structopt(
+    #[cfg_attr(feature = "structopt", structopt(
         long = "kes-key",
         name = "KES_KEY",
         parse(try_from_str = parse_pub_key)
-    )]
+    ))]
     pub kes_key: PublicKey<SumEd25519_12>,
 
     /// public key of the VRF key
-    #[structopt(
+    #[cfg_attr(feature = "structopt", structopt(
         long = "vrf-key",
         name = "VRF_KEY",
         parse(try_from_str = parse_pub_key)
-    )]
+    ))]
     pub vrf_key: PublicKey<Curve25519_2HashDH>,
 
     /// set the fixed value tax the stake pool will reserve from the reward
     ///
     /// For example, a stake pool may set this value to cover their fixed operation
     /// costs.
-    #[structopt(long = "tax-fixed", name = "TAX_VALUE", default_value = "0")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "tax-fixed", name = "TAX_VALUE", default_value = "0")
+    )]
     pub tax_fixed: Value,
 
     /// The percentage take of the stake pool.
     ///
     /// Once the `tax-fixed` has been take, this is the percentage the stake pool will
     /// take for themselves.
-    #[structopt(long = "tax-ratio", name = "TAX_RATIO", default_value = "0/1")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "tax-ratio", name = "TAX_RATIO", default_value = "0/1")
+    )]
     pub tax_ratio: Ratio,
 
     /// The maximum tax value the stake pool will take.
     ///
     /// This will set the maximum the stake pool value will reserve for themselves from
     /// the `--tax-ratio` (excluding `--tax-fixed`).
-    #[structopt(long = "tax-limit", name = "TAX_LIMIT")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "tax-limit", name = "TAX_LIMIT")
+    )]
     pub tax_limit: Option<NonZeroU64>,
 
     /// the account to reward the stake pool tax too
     ///
     /// If this value is set, instead of distributing the rewards to the owners
     /// the rewards will be distributed to this account.
-    #[structopt(long = "reward-account", name = "REWARD_ACCOUNT")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "reward-account", name = "REWARD_ACCOUNT")
+    )]
     pub reward_account: Option<AccountIdentifier>,
 
     /// print the output signed certificate in the given file, if no file given

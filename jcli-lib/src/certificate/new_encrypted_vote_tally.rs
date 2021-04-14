@@ -2,22 +2,26 @@ use crate::certificate::{write_cert, Error};
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::certificate::{Certificate, VotePlanId};
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
 /// create an encrypted vote tally certificate
 ///
 /// voteplan id needs to be provided
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct EncryptedVoteTally {
     /// vote plan id
     ///
     /// the vote plan identifier on the blockchain
-    #[structopt(long = "vote-plan-id")]
+    #[cfg_attr(feature = "structopt", structopt(long = "vote-plan-id"))]
     pub id: VotePlanId,
 
     /// write the output to the given file or print it to the standard output if not defined
-    #[structopt(long = "output")]
+    #[cfg_attr(feature = "structopt", structopt(long = "output"))]
     pub output: Option<PathBuf>,
 }
 

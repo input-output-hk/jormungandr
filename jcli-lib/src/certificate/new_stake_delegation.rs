@@ -9,19 +9,20 @@ use chain_impl_mockchain::{
 };
 use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::{convert::TryInto, path::PathBuf};
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct StakeDelegation {
     /// the public key used in the stake key registration
-    #[structopt(name = "STAKE_KEY", parse(try_from_str = parse_pub_key))]
+    #[cfg_attr(feature = "structopt", structopt(name = "STAKE_KEY", parse(try_from_str = parse_pub_key)))]
     stake_id: PublicKey<Ed25519>,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pool_ids: WeightedPoolIds,
 
     /// write the output to the given file or print it to the standard output if not defined
-    #[structopt(short = "o", long = "output")]
+    #[cfg_attr(feature = "structopt", structopt(short = "o", long = "output"))]
     output: Option<PathBuf>,
 }
 

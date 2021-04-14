@@ -3,23 +3,27 @@ use chain_crypto::Blake2b256;
 use chain_impl_mockchain::certificate::{Certificate, PoolRetirement};
 use chain_time::DurationSeconds;
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
 /// retire the given stake pool ID From the blockchain
 ///
 /// by doing so all remaining stake delegated to this stake pool will
 /// become pending and will need to be re-delegated.
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct StakePoolRetirement {
     /// set the 32bytes (in hexadecimal) of the Stake Pool identifier
-    #[structopt(long = "pool-id", name = "POOL_ID")]
+    #[cfg_attr(feature = "structopt", structopt(long = "pool-id", name = "POOL_ID"))]
     pool_id: Blake2b256,
 
     /// start retirement
     ///
     /// This state when the stake pool retirement becomes effective in seconds since
     /// the block0 start time.
-    #[structopt(long = "retirement-time", name = "SECONDS-SINCE-START")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "retirement-time", name = "SECONDS-SINCE-START")
+    )]
     pub retirement_time: u64,
 
     /// print the output signed certificate in the given file, if no file given

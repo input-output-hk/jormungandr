@@ -7,50 +7,60 @@ use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
 use std::convert::TryInto;
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
 /// create a vote tally certificate
 ///
 /// voteplan id needs to be provided
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum VoteTallyRegistration {
     Public(PublicTally),
     Private(PrivateTally),
 }
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct PublicTally {
     /// vote plan id
     ///
     /// the vote plan identifier on the blockchain
-    #[structopt(long = "vote-plan-id")]
+    #[cfg_attr(feature = "structopt", structopt(long = "vote-plan-id"))]
     pub id: VotePlanId,
 
     /// write the output to the given file or print it to the standard output if not defined
-    #[structopt(long = "output")]
+    #[cfg_attr(feature = "structopt", structopt(long = "output"))]
     pub output: Option<PathBuf>,
 }
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct PrivateTally {
     /// path to the json file containing the tally shares
-    #[structopt(long)]
+    #[cfg_attr(feature = "structopt", structopt(long))]
     pub shares: PathBuf,
 
     /// path to the json file containing the vote plan result
-    #[structopt(long)]
+    #[cfg_attr(feature = "structopt", structopt(long))]
     pub vote_plan: PathBuf,
 
     /// The id of the vote plan to include in the certificate.
     /// Can be left unspecified if there is only one vote plan in the input
-    #[structopt(long)]
+    #[cfg_attr(feature = "structopt", structopt(long))]
     pub vote_plan_id: Option<Hash>,
 
     /// write the output to the given file or print it to the standard output if not defined
-    #[structopt(long)]
+    #[cfg_attr(feature = "structopt", structopt(long))]
     pub output: Option<PathBuf>,
 }
 
