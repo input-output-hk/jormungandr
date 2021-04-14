@@ -1,11 +1,15 @@
 use crate::utils::key_parser::parse_pub_key;
 use chain_addr::{AddressReadable, Discrimination, Kind};
 use chain_crypto::{bech32::Bech32 as _, AsymmetricPublicKey, Ed25519, PublicKey};
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 use thiserror::Error;
 
-#[derive(StructOpt)]
-#[structopt(name = "address", rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(name = "address", rename_all = "kebab-case")
+)]
 pub enum Address {
     /// Display the content and info of a bech32 formatted address.
     Info(InfoArgs),
@@ -18,48 +22,51 @@ pub enum Address {
     Account(AccountArgs),
 }
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct InfoArgs {
     /// An address, in bech32 format, to display the content
     /// and info that can be extracted from.
-    #[structopt(name = "ADDRESS")]
+    #[cfg_attr(feature = "structopt", structopt(name = "ADDRESS"))]
     address: AddressReadable,
 }
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct DiscriminationData {
     /// Set the discrimination type to testing (default is production).
-    #[structopt(long = "testing")]
+    #[cfg_attr(feature = "structopt", structopt(long = "testing"))]
     testing: bool,
 
     /// Set the prefix to use to describe the address. This is only available
     /// on the human readable representation of the address and will not be
     /// used or checked by the node.
-    #[structopt(long = "prefix", default_value = "ca")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "prefix", default_value = "ca")
+    )]
     prefix: String,
 }
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct SingleArgs {
     /// A public key in bech32 encoding with the key type prefix.
-    #[structopt(name = "PUBLIC_KEY", parse(try_from_str = parse_pub_key))]
+    #[cfg_attr(feature = "structopt", structopt(name = "PUBLIC_KEY", parse(try_from_str = parse_pub_key)))]
     key: PublicKey<Ed25519>,
 
     /// A public key in bech32 encoding with the key type prefix.
-    #[structopt(name = "DELEGATION_KEY", parse(try_from_str = parse_pub_key))]
+    #[cfg_attr(feature = "structopt", structopt(name = "DELEGATION_KEY", parse(try_from_str = parse_pub_key)))]
     delegation: Option<PublicKey<Ed25519>>,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     discrimination_data: DiscriminationData,
 }
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct AccountArgs {
     /// A public key in bech32 encoding with the key type prefix.
-    #[structopt(name = "PUBLIC_KEY", parse(try_from_str = parse_pub_key))]
+    #[cfg_attr(feature = "structopt", structopt(name = "PUBLIC_KEY", parse(try_from_str = parse_pub_key)))]
     key: PublicKey<Ed25519>,
 
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     discrimination_data: DiscriminationData,
 }
 
