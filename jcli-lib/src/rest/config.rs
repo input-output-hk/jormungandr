@@ -4,22 +4,29 @@ use reqwest::{
     Url,
 };
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 use thiserror::Error;
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct RestArgs {
     /// node API address. Must always have `http://` or `https://` prefix.
     /// E.g. `-h http://127.0.0.1`, `--host https://node.com:8443/cardano/api`
-    #[structopt(short, long, env = "JORMUNGANDR_RESTAPI_URL")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(short, long, env = "JORMUNGANDR_RESTAPI_URL")
+    )]
     host: Url,
     /// print additional debug information to stderr.
     /// The output format is intentionally undocumented and unstable
-    #[structopt(long)]
+    #[cfg_attr(feature = "structopt", structopt(long))]
     debug: bool,
     /// An optional TLS root certificate to be used in a case when the
     /// certificate CA is not present within the webpki certificate bundle.
-    #[structopt(long, name = "PATH", env = "JORMUNGANDR_TLS_CERT_PATH")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long, name = "PATH", env = "JORMUNGANDR_TLS_CERT_PATH")
+    )]
     tls_cert_path: Option<PathBuf>,
 }
 

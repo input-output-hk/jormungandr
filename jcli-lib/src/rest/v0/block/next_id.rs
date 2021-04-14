@@ -1,16 +1,20 @@
 use crate::rest::{Error, RestArgs};
 use chain_crypto::Blake2b256;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum NextId {
     /// Get block descendant ID
     Get {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
         /// Maximum number of IDs, must be between 1 and 100, default 1
-        #[structopt(short, long)]
+        #[cfg_attr(feature = "structopt", structopt(short, long))]
         count: Option<usize>,
     },
 }

@@ -1,9 +1,13 @@
 use crate::rest::{Error, RestArgs};
 use crate::utils::OutputFormat;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct Utxo {
     /// hex-encoded ID of the transaction fragment
     fragment_id: String,
@@ -11,19 +15,22 @@ pub struct Utxo {
     /// index of the transaction output
     output_index: u8,
 
-    #[structopt(subcommand)]
+    #[cfg_attr(feature = "structopt", structopt(subcommand))]
     subcommand: Subcommand,
 }
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 enum Subcommand {
     /// Get UTxO details
     Get {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         output_format: OutputFormat,
 
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
     },
 }

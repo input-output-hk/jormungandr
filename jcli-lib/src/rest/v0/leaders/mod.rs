@@ -1,31 +1,35 @@
 use crate::rest::{Error, RestArgs};
 use crate::utils::{io, OutputFormat};
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Leaders {
     /// Get list of leader IDs
     Get {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         output_format: OutputFormat,
     },
     /// Register new leader and get its ID
     Post {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
         /// File containing YAML with leader secret.
         /// It must have the same format as secret YAML passed to Jormungandr as --secret.
         /// If not provided, YAML will be read from stdin.
-        #[structopt(short, long)]
+        #[cfg_attr(feature = "structopt", structopt(short, long))]
         file: Option<PathBuf>,
     },
     /// Delete leader
     Delete {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
         /// ID of deleted leader
         id: u32,
@@ -35,14 +39,17 @@ pub enum Leaders {
     Logs(GetLogs),
 }
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum GetLogs {
     /// Get leadership log
     Get {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         output_format: OutputFormat,
     },
 }

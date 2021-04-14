@@ -16,10 +16,14 @@ mod utxo;
 mod vote;
 
 use crate::rest::Error;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum V0 {
     /// Account operations
     Account(account::Account),

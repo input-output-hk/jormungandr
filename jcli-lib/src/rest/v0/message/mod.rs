@@ -5,18 +5,22 @@ use crate::{
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::fragment::Fragment;
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Message {
     /// Post message. Prints id for posted message
     Post {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
         /// File containing hex-encoded message.
         /// If not provided, message will be read from stdin.
-        #[structopt(short, long)]
+        #[cfg_attr(feature = "structopt", structopt(short, long))]
         file: Option<PathBuf>,
     },
 
@@ -24,9 +28,9 @@ pub enum Message {
     /// on pending transaction, rejected transaction and or when a transaction
     /// has been added in a block
     Logs {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         output_format: OutputFormat,
     },
 }

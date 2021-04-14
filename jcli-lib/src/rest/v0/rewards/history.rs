@@ -1,12 +1,16 @@
 use crate::rest::{Error, RestArgs};
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum History {
     /// Get rewards for one or more epochs
     Get {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
         /// Number of epochs
         length: usize,

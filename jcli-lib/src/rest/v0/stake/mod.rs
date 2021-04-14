@@ -1,15 +1,19 @@
 use crate::rest::{Error, RestArgs};
 use crate::utils::OutputFormat;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Stake {
     /// Get stake distribution
     Get {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         output_format: OutputFormat,
         /// Epoch to get the stake distribution from
         epoch: Option<u32>,

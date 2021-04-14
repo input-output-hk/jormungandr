@@ -1,16 +1,20 @@
 use crate::rest::Error;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
 mod next_id;
 mod subcommand;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct Block {
     /// ID of the block
     block_id: String,
 
-    #[structopt(subcommand)]
+    #[cfg_attr(feature = "structopt", structopt(subcommand))]
     subcommand: subcommand::Subcommand,
 }
 

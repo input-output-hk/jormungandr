@@ -1,18 +1,22 @@
 use crate::rest::{Error, RestArgs};
 use crate::utils::{AccountId, OutputFormat};
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Account {
     /// Get account state
     Get {
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         args: RestArgs,
-        #[structopt(flatten)]
+        #[cfg_attr(feature = "structopt", structopt(flatten))]
         output_format: OutputFormat,
         /// An Account ID either in the form of an address of kind account, or an account public key
-        #[structopt(parse(try_from_str = AccountId::try_from_str))]
+        #[cfg_attr(feature = "structopt", structopt(parse(try_from_str = AccountId::try_from_str)))]
         account_id: AccountId,
     },
 }

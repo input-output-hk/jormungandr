@@ -5,10 +5,14 @@ use self::epoch::Epoch;
 use self::history::History;
 
 use crate::rest::Error;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(name = "rewards", rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(name = "rewards", rename_all = "kebab-case")
+)]
 pub enum Rewards {
     /// Rewards distribution history one or more epochs starting from the last one
     History(History),

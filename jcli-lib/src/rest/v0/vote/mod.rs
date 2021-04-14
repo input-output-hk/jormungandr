@@ -4,10 +4,14 @@ mod plans;
 
 use self::active::Active;
 use crate::rest::Error;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(name = "active", rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(name = "active", rename_all = "kebab-case")
+)]
 pub enum Vote {
     /// Active vote related operations
     Active(Active),

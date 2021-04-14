@@ -1,9 +1,13 @@
 use super::{committees::Committees, plans::Plans};
 use crate::rest::Error;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Active {
     /// Committee members
     Committees(Committees),

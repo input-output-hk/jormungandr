@@ -4,12 +4,16 @@ mod v0;
 use crate::utils::{io::ReadYamlError, output_format};
 use config::RestArgs;
 use hex::FromHexError;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 use thiserror::Error;
 
 /// Send request to node REST API
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Rest {
     /// API version 0
     V0(v0::V0),
