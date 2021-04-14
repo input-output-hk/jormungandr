@@ -11,6 +11,7 @@ use std::{
     io::{BufRead, Write},
     path::PathBuf,
 };
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -85,8 +86,11 @@ fn print_hash(input: Input) -> Result<(), Error> {
 }
 
 /// create block 0 of the blockchain (i.e. the genesis block)
-#[derive(StructOpt)]
-#[structopt(name = "genesis", rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(name = "genesis", rename_all = "kebab-case")
+)]
 pub enum Genesis {
     /// Create a default Genesis file with appropriate documentation
     /// to help creating the YAML file
@@ -104,13 +108,16 @@ pub enum Genesis {
     Hash(Input),
 }
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct Input {
     /// the file path to the genesis file defining the block 0
     ///
     /// If not available the command will expect to read the configuration from
     /// the standard input.
-    #[structopt(long = "input", parse(from_os_str), name = "FILE_INPUT")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "input", parse(from_os_str), name = "FILE_INPUT")
+    )]
     input_file: Option<std::path::PathBuf>,
 }
 
@@ -128,16 +135,19 @@ impl Input {
     }
 }
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct Common {
-    #[structopt(flatten)]
+    #[cfg_attr(feature = "structopt", structopt(flatten))]
     pub input: Input,
 
     /// the file path to the block to create
     ///
     /// If not available the command will expect to write the block to
     /// to the standard output
-    #[structopt(long = "output", parse(from_os_str), name = "FILE_OUTPUT")]
+    #[cfg_attr(
+        feature = "structopt",
+        structopt(long = "output", parse(from_os_str), name = "FILE_OUTPUT")
+    )]
     pub output_file: Option<std::path::PathBuf>,
 }
 
