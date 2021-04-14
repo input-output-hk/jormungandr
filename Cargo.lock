@@ -1778,7 +1778,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7baab56125e25686df467fe470785512329883aab42696d661247aca2a2896e4"
 dependencies = [
- "console 0.14.1",
+ "console 0.13.0",
  "lazy_static",
  "number_prefix",
  "regex",
@@ -2130,7 +2130,7 @@ dependencies = [
 [[package]]
 name = "jortestkit"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#79033558ac7eae01cbb1311cc1a1d00ec100c36a"
+source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#919e6e99ef064b9e810887bf72d961281ae2dd49"
 dependencies = [
  "assert_fs",
  "base64 0.12.3",
