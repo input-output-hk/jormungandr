@@ -1,10 +1,16 @@
+//! Generated auto-completions for supported shells supported by `structopt` via `clap`.
 use std::path::{Path, PathBuf};
+#[cfg(feature = "structopt")]
 use structopt::{clap::Shell, StructOpt};
 use thiserror::Error;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub struct AutoCompletion {
+    #[cfg(feature = "structopt")]
     /// set the type shell for the auto completion output (bash, zsh...)
     shell: Shell,
 
@@ -12,6 +18,7 @@ pub struct AutoCompletion {
     output: PathBuf,
 }
 
+#[cfg(feature = "structopt")]
 impl AutoCompletion {
     pub fn exec<S: StructOpt>(self) -> Result<(), Error> {
         validate_output(&self.output)?;
