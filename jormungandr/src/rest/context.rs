@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     blockchain::{Blockchain, Tip},
     diagnostic::Diagnostic,
-    intercom::{NetworkMsg, TransactionMsg},
+    intercom::{NetworkMsg, TopologyMsg, TransactionMsg},
     leadership::Logs as LeadershipLogs,
     network::GlobalStateR as NetworkStateR,
     rest::ServerStopper,
@@ -140,6 +140,7 @@ impl Context {
 pub struct FullContext {
     pub stats_counter: StatsCounter,
     pub network_task: MessageBox<NetworkMsg>,
+    pub topology_task: MessageBox<TopologyMsg>,
     pub transaction_task: MessageBox<TransactionMsg>,
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,

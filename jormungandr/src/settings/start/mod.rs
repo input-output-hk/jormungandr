@@ -5,7 +5,12 @@ use self::config::{Config, Leadership};
 use self::network::{Protocol, TrustedPeer};
 use crate::settings::logging::{LogFormat, LogInfoMsg, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
+use crate::topology::layers::{self, LayersConfig, PreferredListConfig, RingsConfig};
+use chain_crypto::Ed25519;
+use jormungandr_lib::crypto::key::SigningKey;
 pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Tls};
+use jormungandr_lib::multiaddr;
+use std::convert::TryFrom;
 use std::{fs::File, path::PathBuf};
 use thiserror::Error;
 use tracing::level_filters::LevelFilter;
@@ -29,8 +34,12 @@ pub enum Error {
     Config(#[from] serde_yaml::Error),
     #[error("Cannot start the node without the information to retrieve the genesis block")]
     ExpectedBlock0Info,
-    #[error("In the node configuration file, the `p2p.listen_address` value is not a valid address. Use format `/ip4/x.x.x.x/tcp/4920")]
-    ListenAddressNotValid,
+    #[error(transparent)]
+    InvalidMultiaddr(#[from] multiaddr::Error),
+    #[error("cannot deserialize node key from file")]
+    InvalidKey(#[from] chain_crypto::bech32::Error),
+    #[error(transparent)]
+    InvalidLayersConfig(#[from] layers::ParseError),
 }
 
 /// Overall Settings for node
@@ -223,6 +232,30 @@ impl RawSettings {
     }
 }
 
+fn resolve_trusted_peers(peers: &[jormungandr_lib::interfaces::TrustedPeer]) -> Vec<TrustedPeer> {
+    peers
+        .iter()
+        .filter_map(|config_peer| match TrustedPeer::resolve(config_peer) {
+            Ok(peer) => {
+                tracing::info!(
+                    config = %config_peer.address,
+                    resolved = %peer.addr,
+                    "DNS resolved for trusted peer"
+                );
+                Some(peer)
+            }
+            Err(e) => {
+                tracing::warn!(
+                    config = %config_peer.address,
+                    reason = %e,
+                    "failed to resolve trusted peer address"
+                );
+                None
+            }
+        })
+        .collect()
+}
+
 #[allow(deprecated)]
 fn generate_network(
     command_arguments: &StartArguments,
@@ -248,69 +281,58 @@ fn generate_network(
         p2p.trusted_peers = Some(command_arguments.trusted_peer.clone())
     }
 
-    let trusted_peers = p2p.trusted_peers.as_ref().map_or_else(Vec::new, |peers| {
-        peers
-            .iter()
-            .filter_map(|config_peer| match TrustedPeer::resolve(config_peer) {
-                Ok(peer) => {
-                    tracing::info!(
-                        config = %config_peer.address,
-                        resolved = %peer.address,
-                        "DNS resolved for trusted peer"
-                    );
-                    Some(peer)
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        config = %config_peer.address,
-                        reason = %e,
-                        "failed to resolve trusted peer address"
-                    );
-                    None
-                }
-            })
-            .collect()
-    });
+    let trusted_peers = p2p
+        .trusted_peers
+        .as_ref()
+        .map_or_else(Vec::new, |peers| resolve_trusted_peers(peers));
 
-    let mut profile = poldercast::NodeProfileBuilder::new();
-
-    if let Some(address) = command_arguments.public_address.clone() {
-        profile.address(address);
-    } else if let Some(address) = p2p.public_address {
-        profile.address(address);
-    }
-
-    let legacy_node_id = p2p
-        .public_id
-        .unwrap_or_else(|| poldercast::Id::generate(rand::thread_rng()));
-    profile.id(legacy_node_id);
-
-    for (topic, interest_level) in p2p
+    // Layers config
+    let preferred_list_config = p2p.layers.preferred_list.unwrap_or_default();
+    let preferred_list = PreferredListConfig {
+        view_max: preferred_list_config.view_max.into(),
+        peers: resolve_trusted_peers(&preferred_list_config.peers),
+    };
+    let rings = p2p
+        .layers
         .topics_of_interest
-        .unwrap_or_else(config::default_interests)
-    {
-        let sub = poldercast::Subscription {
-            topic: topic.0,
-            interest: interest_level.0,
-        };
-        profile.add_subscription(sub);
-    }
+        .map(RingsConfig::try_from)
+        .transpose()?
+        .unwrap_or_default();
 
-    let p2p_listen_address = p2p.listen_address.as_ref();
+    // TODO: do we want to check that we end up with a valid address?
+    // Is it possible for a node to specify no public address?
+    let config_addr = p2p.public_address;
+    let public_address = command_arguments
+        .public_address
+        .clone()
+        .or(config_addr)
+        .and_then(|addr| multiaddr::to_tcp_socket_addr(&addr));
+
+    let node_key = match p2p.node_key_file {
+        Some(node_key_file) => {
+            <SigningKey<Ed25519>>::from_bech32_str(&std::fs::read_to_string(&node_key_file)?)?
+        }
+        None => SigningKey::generate(rand::thread_rng()),
+    };
+
+    let p2p_listen_address = p2p.listen.as_ref();
     let listen_address = command_arguments
         .listen_address
         .as_ref()
         .or(p2p_listen_address)
-        .map(|v| v.to_socket_addr().ok_or(Error::ListenAddressNotValid))
-        .transpose()?;
+        .cloned();
 
     let mut network = network::Configuration {
-        profile: profile.build(),
         listen_address,
+        public_address,
         trusted_peers,
-        protocol: Protocol::Grpc,
+        node_key,
         policy: p2p.policy.clone(),
-        layers: p2p.layers.clone(),
+        protocol: Protocol::Grpc,
+        layers: LayersConfig {
+            preferred_list,
+            rings,
+        },
         max_connections: p2p
             .max_connections
             .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),
@@ -324,12 +346,10 @@ fn generate_network(
             .gossip_interval
             .map(|d| d.into())
             .unwrap_or_else(|| std::time::Duration::from_secs(10)),
-        topology_force_reset_interval: p2p.topology_force_reset_interval.map(|d| d.into()),
         max_bootstrap_attempts: p2p.max_bootstrap_attempts,
         http_fetch_block0_service,
         bootstrap_from_trusted_peers,
         skip_bootstrap,
-        legacy_node_id: Some(legacy_node_id),
     };
 
     if network.max_inbound_connections > network.max_connections {

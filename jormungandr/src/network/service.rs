@@ -2,11 +2,10 @@ use super::{
     buffer_sizes,
     convert::{self, Decode, Encode, ResponseStream},
     p2p::comm::{BlockEventSubscription, FragmentSubscription, GossipSubscription},
-    p2p::Address,
     subscription, Channels, GlobalStateR,
 };
 use crate::blockcfg as app_data;
-use crate::intercom::{self, BlockMsg, ClientMsg};
+use crate::intercom::{self, BlockMsg, ClientMsg, TopologyMsg};
 use crate::utils::async_msg::MessageBox;
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
 use chain_network::data::p2p::{AuthenticatedNodeId, Peer, Peers};
@@ -61,7 +60,7 @@ impl Node for NodeService {
         let block0_id = BlockId::try_from(self.global_state.block0_hash.as_bytes()).unwrap();
         let keypair = &self.global_state.keypair;
         let auth = keypair.sign(nonce);
-        let addr = Address::tcp(peer.addr());
+        let addr = peer.addr();
         let nonce = self.global_state.peers.generate_auth_nonce(addr).await;
 
         Ok(HandshakeResponse {
@@ -73,8 +72,8 @@ impl Node for NodeService {
 
     /// Handles client ID authentication.
     async fn client_auth(&self, peer: Peer, auth: AuthenticatedNodeId) -> Result<(), Error> {
-        let addr = Address::tcp(peer.addr());
-        let nonce = self.global_state.peers.get_auth_nonce(addr.clone()).await;
+        let addr = peer.addr();
+        let nonce = self.global_state.peers.get_auth_nonce(addr).await;
         let nonce = nonce.ok_or_else(|| {
             Error::new(
                 ErrorCode::FailedPrecondition,
@@ -254,13 +253,12 @@ impl BlockService for NodeService {
     ) -> Result<Self::SubscriptionStream, Error> {
         let addr = subscriber.addr();
         let span = self.subscription_span(subscriber, "block_events");
-        let subscriber = Address::tcp(addr);
 
         self.global_state.spawn(
             subscription::process_block_announcements(
                 stream,
                 self.channels.block_box.clone(),
-                subscriber.clone(),
+                addr,
                 self.global_state.clone(),
                 span.clone(),
             )
@@ -270,7 +268,7 @@ impl BlockService for NodeService {
         let outbound = self
             .global_state
             .peers
-            .subscribe_to_block_events(subscriber)
+            .subscribe_to_block_events(addr)
             .await;
         Ok(serve_subscription(outbound))
     }
@@ -292,14 +290,13 @@ impl FragmentService for NodeService {
     ) -> Result<Self::SubscriptionStream, Error> {
         let addr = subscriber.addr();
         let parent_span = self.subscription_span(subscriber, "fragments");
-        let subscriber = Address::tcp(addr);
         parent_span.in_scope(|| {
             let span = span!(Level::TRACE, "fragment_subscription", direction = "in");
             self.global_state.spawn(
                 subscription::process_fragments(
                     stream,
                     self.channels.transaction_box.clone(),
-                    subscriber.clone(),
+                    addr,
                     self.global_state.clone(),
                     span.clone(),
                 )
@@ -307,11 +304,7 @@ impl FragmentService for NodeService {
             );
         });
 
-        let outbound = self
-            .global_state
-            .peers
-            .subscribe_to_fragments(subscriber)
-            .await;
+        let outbound = self.global_state.peers.subscribe_to_fragments(addr).await;
         Ok(serve_subscription(outbound))
     }
 }
@@ -327,14 +320,14 @@ impl GossipService for NodeService {
     ) -> Result<Self::SubscriptionStream, Error> {
         let addr = subscriber.addr();
         let parent_span = self.subscription_span(subscriber, "gossip");
-        let subscriber = Address::tcp(addr);
         parent_span.in_scope(|| {
-            let span = span!(Level::TRACE, "fragment_subscription", direction = "in");
+            let span = span!(Level::TRACE, "gossip_subscription", direction = "in");
 
             self.global_state.spawn(
                 subscription::process_gossip(
                     stream,
-                    subscriber.clone(),
+                    self.channels.topology_box.clone(),
+                    addr,
                     self.global_state.clone(),
                     span.clone(),
                 )
@@ -342,29 +335,29 @@ impl GossipService for NodeService {
             );
         });
 
-        let outbound = self
-            .global_state
-            .peers
-            .subscribe_to_gossip(subscriber)
-            .await;
+        let outbound = self.global_state.peers.subscribe_to_gossip(addr).await;
         Ok(serve_subscription(outbound))
     }
 
     async fn peers(&self, limit: u32) -> Result<Peers, Error> {
-        let topology = &self.global_state.topology;
-        let view = topology.view(poldercast::Selection::Any).await;
+        let (reply_handle, reply_future) = intercom::unary_reply();
+        let mbox = self.channels.topology_box.clone();
+        send_message(
+            mbox,
+            TopologyMsg::View(poldercast::layer::Selection::Any, reply_handle),
+        )
+        .await?;
+        let view = reply_future.await?;
         let mut peers = Vec::new();
-        for n in view.peers.into_iter() {
-            if let Some(addr) = n.to_socket_addr() {
-                peers.push(addr.into());
-                if peers.len() >= limit as usize {
-                    break;
-                }
+        for peer in view.peers.into_iter() {
+            peers.push(peer.addr.into());
+            if peers.len() >= limit as usize {
+                break;
             }
         }
         if peers.is_empty() {
             // No peers yet, put self as the peer to bootstrap from
-            if let Some(addr) = view.self_node.address().and_then(|x| x.to_socket_addr()) {
+            if let Some(addr) = self.global_state.config.public_address {
                 peers.push(addr.into());
             }
         }

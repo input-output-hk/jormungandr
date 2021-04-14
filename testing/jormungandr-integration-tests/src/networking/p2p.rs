@@ -5,7 +5,7 @@ use crate::common::{
 
 use jormungandr_lib::{
     interfaces::{
-        Explorer, LayersConfig, PeerRecord, Policy, PreferredListConfig, TopicsOfInterest,
+        Explorer, PeerRecord, Policy, PreferredListConfig, TopicsOfInterest, TrustedPeer,
     },
     time::Duration,
 };
@@ -47,9 +47,8 @@ pub fn assert_record_is_present(
     for peer in peers {
         assert!(
             peer_list.iter().any(|x| {
-                let info = &x.profile.info;
-                println!("{} == {}", info.address, peer.address().to_string());
-                info.address == peer.address().to_string()
+                println!("{} == {}", x.address, peer.address().to_string());
+                x.address == peer.address().to_string()
             }),
             "{}: Peer {} is not present in {} list",
             info,
@@ -66,10 +65,9 @@ pub fn assert_record_is_not_present(
 ) {
     for peer in peers {
         assert!(
-            !peer_list.iter().any(|x| {
-                let info = &x.profile.info;
-                info.address == peer.address().to_string()
-            }),
+            !peer_list
+                .iter()
+                .any(|x| { x.address == peer.address().to_string() }),
             "Peer {} is present in {} list, while should not",
             peer.alias(),
             list_name
@@ -181,6 +179,9 @@ pub fn node_does_not_quarantine_whitelisted_node() {
         .spawn_custom(params(CLIENT).policy(policy))
         .unwrap();
 
+    // Give time to the client to accept incoming gossip from the server and
+    // add it to its topology
+    process_utils::sleep(5);
     server.shutdown();
 
     process_utils::sleep(10);
@@ -222,6 +223,9 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
         .spawn_custom(params(CLIENT).policy(policy))
         .unwrap();
 
+    // Give time to the client to accept incoming gossip from the server and
+    // add it to its topology
+    process_utils::sleep(5);
     server.shutdown();
 
     process_utils::sleep(10);
@@ -265,15 +269,16 @@ pub fn node_trust_itself() {
 
     let _server = network_controller.spawn_and_wait(SERVER);
 
-    let self_trusted_peer = network_controller
-        .node_config(CLIENT)
-        .unwrap()
-        .p2p
-        .make_trusted_peer_setting();
+    let config = network_controller.node_config(CLIENT).unwrap().p2p.clone();
+
+    let peer = TrustedPeer {
+        address: config.public_address,
+        id: None,
+    };
 
     assert!(network_controller
         .expect_spawn_failed(
-            params(CLIENT).trusted_peers(vec![self_trusted_peer]),
+            params(CLIENT).trusted_peers(vec![peer]),
             "unable to reach peer for initial bootstrap"
         )
         .is_ok());
@@ -293,17 +298,16 @@ pub fn node_put_itself_in_preffered_layers() {
 
     let _server = network_controller.spawn_and_wait(SERVER);
 
-    let self_trusted_peer = network_controller
-        .node_config(CLIENT)
-        .unwrap()
-        .p2p
-        .make_trusted_peer_setting();
+    let config = network_controller.node_config(CLIENT).unwrap().p2p.clone();
 
-    let layer = LayersConfig {
-        preferred_list: PreferredListConfig {
-            view_max: Default::default(),
-            peers: vec![self_trusted_peer],
-        },
+    let peer = TrustedPeer {
+        address: config.public_address,
+        id: None,
+    };
+
+    let layer = PreferredListConfig {
+        view_max: Default::default(),
+        peers: vec![peer],
     };
 
     assert!(network_controller

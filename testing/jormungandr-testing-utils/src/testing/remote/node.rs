@@ -178,7 +178,7 @@ impl RemoteJormungandrBuilder {
         let rest_address = node_config.rest.listen;
         self.with_rest(rest_address);
 
-        let grpc_address = node_config.p2p.get_listen_address();
+        let grpc_address = node_config.p2p.get_listen_addr().unwrap();
         self.with_grpc(grpc_address.to_string());
 
         self

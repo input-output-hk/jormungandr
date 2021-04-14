@@ -44,9 +44,7 @@ pub use self::leadership_log::{
 };
 pub use self::linear_fee::LinearFeeDef;
 pub use self::old_address::OldAddress;
-pub use self::peer_stats::{
-    Info, Logs, PeerRecord, PeerStats, Profile, Record, Strike, Subscription, When,
-};
+pub use self::peer_stats::{PeerRecord, PeerStats, Subscription};
 pub use self::ratio::{ParseRatioError, Ratio};
 pub use self::reward_parameters::RewardParams;
 pub use self::rewards_info::EpochRewardsInfo;

@@ -5,13 +5,16 @@
 // - When the Ok type is Option<T> - None should be converted to 404
 // - All errors should be processed on the framework  integration side. Usually
 //   they are 400 or 500.
+use std::net::SocketAddr;
 
 use crate::{
     blockchain::StorageError,
     diagnostic::Diagnostic,
-    intercom::{self, NetworkMsg, TransactionMsg},
+    intercom::{self, NetworkMsg, TopologyMsg, TransactionMsg},
     rest::Context,
     secure::NodeSecret,
+    topology::PeerInfo,
+    utils::async_msg::MessageBox,
 };
 use chain_core::property::{
     Block as _, Deserialize, Fragment as fragment_property, FromStr, Serialize,
@@ -214,7 +217,10 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
             block_fee_sum = (block_fee_sum + fee)?;
             Ok(())
         })?;
-    let nodes_count = full_context.network_state.topology().nodes_count().await;
+
+    let peer_available_cnt = get_network_p2p_view(&context).await?.len();
+    let peer_quarantined_cnt = get_network_p2p_quarantined(&context).await?.len();
+    let peer_total_cnt = peer_available_cnt + peer_quarantined_cnt;
     let tip_header = tip.header();
     let stats = &full_context.stats_counter;
     let node_stats = NodeStats {
@@ -228,11 +234,11 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
         last_block_time: SystemTime::from(tip.time()).into(),
         last_block_tx: block_tx_count,
         last_received_block_time: stats.slot_start_time().map(SystemTime::from),
-        peer_available_cnt: nodes_count.available_count,
+        peer_available_cnt,
         peer_connected_cnt: stats.peer_connected_cnt(),
-        peer_quarantined_cnt: nodes_count.quarantined_count,
-        peer_total_cnt: nodes_count.all_count,
-        peer_unreachable_cnt: nodes_count.not_reachable_count,
+        peer_quarantined_cnt,
+        peer_total_cnt,
+        peer_unreachable_cnt: 0, // FIXME
         tx_recv_cnt: stats.tx_recv_cnt(),
         uptime: stats.uptime_sec().into(),
     };
@@ -570,52 +576,74 @@ pub async fn get_diagnostic(context: &Context) -> Result<Diagnostic, Error> {
     Ok(diagnostic_data.clone())
 }
 
-pub async fn get_network_p2p_quarantined(
-    context: &Context,
-) -> Result<Vec<poldercast::Node>, Error> {
-    Ok(context
-        .try_full()?
-        .network_state
-        .topology()
-        .list_quarantined()
-        .await)
-}
-
-pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<poldercast::Node>, Error> {
-    Ok(context
-        .try_full()?
-        .network_state
-        .topology()
-        .list_non_public()
-        .await)
-}
-
-pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<poldercast::Node>, Error> {
-    Ok(context
-        .try_full()?
-        .network_state
-        .topology()
-        .list_available()
-        .await)
-}
-
-pub async fn get_network_p2p_view(context: &Context) -> Result<Vec<poldercast::Address>, Error> {
-    Ok(context
-        .try_full()?
-        .network_state
-        .topology()
-        .view(poldercast::Selection::Any)
+pub async fn get_network_p2p_quarantined(context: &Context) -> Result<Vec<PeerInfo>, Error> {
+    let (reply_handle, reply_future) = intercom::unary_reply();
+    let mut mbox = context.try_full()?.topology_task.clone();
+    mbox.send(TopologyMsg::ListQuarantined(reply_handle))
         .await
-        .peers)
+        .map_err(|e| {
+            tracing::debug!(reason = %e, "error getting non public peers");
+            Error::MsgSendError(e)
+        })?;
+    reply_future.await.map_err(Into::into)
+}
+
+pub async fn get_network_p2p_non_public(context: &Context) -> Result<Vec<PeerInfo>, Error> {
+    let (reply_handle, reply_future) = intercom::unary_reply();
+    let mut mbox = context.try_full()?.topology_task.clone();
+    mbox.send(TopologyMsg::ListNonPublic(reply_handle))
+        .await
+        .map_err(|e| {
+            tracing::debug!(reason = %e, "error getting non public peers");
+            Error::MsgSendError(e)
+        })?;
+    reply_future.await.map_err(Into::into)
+}
+
+pub async fn get_network_p2p_available(context: &Context) -> Result<Vec<PeerInfo>, Error> {
+    let (reply_handle, reply_future) = intercom::unary_reply();
+    let mut mbox = context.try_full()?.topology_task.clone();
+    mbox.send(TopologyMsg::ListAvailable(reply_handle))
+        .await
+        .map_err(|e| {
+            tracing::debug!(reason = %e, "error getting available peers");
+            Error::MsgSendError(e)
+        })?;
+    reply_future.await.map_err(Into::into)
+}
+
+async fn get_topology_view(
+    mut mbox: MessageBox<TopologyMsg>,
+    selection: poldercast::layer::Selection,
+) -> Result<Vec<SocketAddr>, Error> {
+    let (reply_handle, reply_future) = intercom::unary_reply();
+    mbox.send(TopologyMsg::View(selection, reply_handle))
+        .await
+        .map_err(|e| {
+            tracing::debug!(reason = %e, "error getting topology view");
+            Error::MsgSendError(e)
+        })?;
+    reply_future
+        .await
+        .map(|view| view.peers.into_iter().map(|peer| peer.addr).collect())
+        .map_err(Into::into)
+}
+
+pub async fn get_network_p2p_view(context: &Context) -> Result<Vec<SocketAddr>, Error> {
+    get_topology_view(
+        context.try_full()?.topology_task.clone(),
+        poldercast::layer::Selection::Any,
+    )
+    .await
 }
 
 pub async fn get_network_p2p_view_topic(
     context: &Context,
     topic: &str,
-) -> Result<Vec<poldercast::Address>, Error> {
-    fn parse_topic(s: &str) -> Result<poldercast::Selection, Error> {
-        use crate::network::p2p::topic;
-        use poldercast::Selection;
+) -> Result<Vec<SocketAddr>, Error> {
+    fn parse_topic(s: &str) -> Result<poldercast::layer::Selection, Error> {
+        use crate::topology::topic;
+        use poldercast::layer::Selection;
         match s {
             "blocks" => Ok(Selection::Topic {
                 topic: topic::BLOCKS,
@@ -628,10 +656,8 @@ pub async fn get_network_p2p_view_topic(
         }
     }
 
-    let topic = parse_topic(topic)?;
-    let ctx = context.try_full()?;
-    let view = ctx.network_state.topology().view(topic).await;
-    Ok(view.peers)
+    let selection = parse_topic(topic)?;
+    get_topology_view(context.try_full()?.topology_task.clone(), selection).await
 }
 
 pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {

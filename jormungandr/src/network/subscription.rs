@@ -1,13 +1,9 @@
-use super::{
-    buffer_sizes,
-    convert::Decode,
-    p2p::{Address, Gossip},
-    GlobalStateR,
-};
+use super::{buffer_sizes, convert::Decode, p2p::Address, GlobalStateR};
 use crate::{
     blockcfg::Fragment,
-    intercom::{BlockMsg, TransactionMsg},
+    intercom::{BlockMsg, TopologyMsg, TransactionMsg},
     settings::start::network::Configuration,
+    topology::Gossip,
     utils::async_msg::{self, MessageBox},
 };
 use chain_network::data as net_data;
@@ -60,11 +56,16 @@ pub async fn process_block_announcements<S>(
         });
 }
 
-pub async fn process_gossip<S>(stream: S, node_id: Address, global_state: GlobalStateR, span: Span)
-where
+pub async fn process_gossip<S>(
+    stream: S,
+    mbox: MessageBox<TopologyMsg>,
+    node_id: Address,
+    global_state: GlobalStateR,
+    span: Span,
+) where
     S: TryStream<Ok = net_data::Gossip, Error = Error>,
 {
-    let processor = GossipProcessor::new(node_id, global_state, span);
+    let processor = GossipProcessor::new(mbox, node_id, global_state, span);
     stream
         .into_stream()
         .forward(processor)
@@ -127,7 +128,7 @@ impl BlockAnnouncementProcessor {
 
     fn refresh_stat(&mut self) {
         let state = self.global_state.clone();
-        let node_id = self.node_id.clone();
+        let node_id = self.node_id;
         let fut = async move {
             let refreshed = state.peers.refresh_peer_on_block(node_id).await;
             if !refreshed {
@@ -177,7 +178,7 @@ impl FragmentProcessor {
     fn refresh_stat(&mut self) {
         let refresh_span = self.span.clone();
         let state = self.global_state.clone();
-        let node_id = self.node_id.clone();
+        let node_id = self.node_id;
         let fut = async move {
             let refreshed = state.peers.refresh_peer_on_fragment(node_id).await;
             if !refreshed {
@@ -192,6 +193,7 @@ impl FragmentProcessor {
 }
 
 pub struct GossipProcessor {
+    mbox: MessageBox<TopologyMsg>,
     node_id: Address,
     global_state: GlobalStateR,
     span: Span,
@@ -199,8 +201,14 @@ pub struct GossipProcessor {
 }
 
 impl GossipProcessor {
-    pub(super) fn new(node_id: Address, global_state: GlobalStateR, span: Span) -> Self {
+    pub(super) fn new(
+        mbox: MessageBox<TopologyMsg>,
+        node_id: Address,
+        global_state: GlobalStateR,
+        span: Span,
+    ) -> Self {
         GossipProcessor {
+            mbox,
             node_id,
             global_state,
             span,
@@ -230,7 +238,7 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
             );
             e
         })?;
-        let node_id = self.node_id.clone();
+        let node_id = self.node_id;
         self.mbox
             .start_send(BlockMsg::AnnouncedBlock(header, node_id))
             .map_err(handle_mbox_error)?;
@@ -391,25 +399,28 @@ impl Sink<net_data::Gossip> for GossipProcessor {
             e
         })?;
         tracing::debug!("received gossip on {} nodes", nodes.len());
-        let (nodes, filtered_out): (Vec<_>, Vec<_>) = nodes.into_iter().partition(|node| {
-            filter_gossip_node(node, &self.global_state.config) || node.address().is_none()
-        });
+        let (nodes, filtered_out): (Vec<_>, Vec<_>) = nodes
+            .into_iter()
+            .partition(|node| filter_gossip_node(node, &self.global_state.config));
         if !filtered_out.is_empty() {
             tracing::debug!("nodes dropped from gossip: {:?}", filtered_out);
         }
-        let node_id1 = self.node_id.clone();
-        let node_id2 = self.node_id.clone();
         let state1 = self.global_state.clone();
-        let state2 = self.global_state.clone();
+        let mut mbox = self.mbox.clone();
+        let node_id = self.node_id;
         let fut = future::join(
             async move {
-                let refreshed = state1.peers.refresh_peer_on_gossip(node_id1).await;
+                let refreshed = state1.peers.refresh_peer_on_gossip(node_id).await;
                 if !refreshed {
                     tracing::debug!("received gossip from node that is not in the peer map",);
                 }
             },
             async move {
-                state2.topology.accept_gossips(node_id2, nodes.into()).await;
+                mbox.send(TopologyMsg::AcceptGossip(nodes.into()))
+                    .await
+                    .unwrap_or_else(|err| {
+                        tracing::error!("cannot send gossips to topology: {}", err)
+                    });
             },
         )
         .instrument(span.clone())

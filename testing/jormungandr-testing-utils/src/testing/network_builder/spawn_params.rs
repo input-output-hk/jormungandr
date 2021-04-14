@@ -1,6 +1,9 @@
 use jormungandr_lib::interfaces::{
-    Explorer, LayersConfig, Mempool, NodeConfig, Policy, TopicsOfInterest, TrustedPeer,
+    Explorer, LayersConfig, Mempool, NodeConfig, Policy, PreferredListConfig, TopicsOfInterest,
+    TrustedPeer,
 };
+use multiaddr::Multiaddr;
+use std::net::SocketAddr;
 
 use super::{LeadershipMode, PersistenceMode};
 use crate::testing::node::Version;
@@ -13,15 +16,15 @@ pub struct SpawnParams {
     pub mempool: Option<Mempool>,
     pub policy: Option<Policy>,
     pub jormungandr: Option<PathBuf>,
-    pub listen_address: Option<Option<poldercast::Address>>,
+    pub listen_address: Option<Option<SocketAddr>>,
     pub trusted_peers: Option<Vec<TrustedPeer>>,
-    pub preferred_layer: Option<LayersConfig>,
+    pub preferred_layer: Option<PreferredListConfig>,
     pub leadership_mode: LeadershipMode,
     pub persistence_mode: PersistenceMode,
     pub max_connections: Option<u32>,
     pub max_inbound_connections: Option<u32>,
     pub alias: String,
-    pub public_address: Option<poldercast::Address>,
+    pub public_address: Option<Multiaddr>,
     pub version: Option<Version>,
     pub bootstrap_from_peers: Option<bool>,
     pub skip_bootstrap: Option<bool>,
@@ -58,7 +61,7 @@ impl SpawnParams {
         self.listen_address(None)
     }
 
-    pub fn listen_address(&mut self, address: Option<poldercast::Address>) -> &mut Self {
+    pub fn listen_address(&mut self, address: Option<SocketAddr>) -> &mut Self {
         self.listen_address = Some(address);
         self
     }
@@ -80,7 +83,7 @@ impl SpawnParams {
         self
     }
 
-    pub fn public_address(&mut self, public_address: poldercast::Address) -> &mut Self {
+    pub fn public_address(&mut self, public_address: Multiaddr) -> &mut Self {
         self.public_address = Some(public_address);
         self
     }
@@ -125,7 +128,7 @@ impl SpawnParams {
         self
     }
 
-    pub fn preferred_layer(&mut self, preferred_layer: LayersConfig) -> &mut Self {
+    pub fn preferred_layer(&mut self, preferred_layer: PreferredListConfig) -> &mut Self {
         self.preferred_layer = Some(preferred_layer);
         self
     }
@@ -171,7 +174,14 @@ impl SpawnParams {
 
     pub fn override_settings(&self, node_config: &mut NodeConfig) {
         if let Some(topics_of_interest) = &self.topics_of_interest {
-            node_config.p2p.topics_of_interest = Some(topics_of_interest.clone());
+            if let Some(ref mut config) = node_config.p2p.layers {
+                config.topics_of_interest = Some(topics_of_interest.clone());
+            } else {
+                node_config.p2p.layers = Some(LayersConfig {
+                    preferred_list: None,
+                    topics_of_interest: Some(topics_of_interest.clone()),
+                });
+            }
         }
 
         if let Some(explorer) = &self.explorer {
@@ -199,7 +209,7 @@ impl SpawnParams {
         }
 
         if let Some(listen_address_option) = &self.listen_address {
-            node_config.p2p.listen_address = listen_address_option.clone();
+            node_config.p2p.listen_address = *listen_address_option;
         }
 
         if let Some(trusted_peers) = &self.trusted_peers {
@@ -207,7 +217,14 @@ impl SpawnParams {
         }
 
         if let Some(preferred_layer) = &self.preferred_layer {
-            node_config.p2p.layers = Some(preferred_layer.clone());
+            if let Some(ref mut config) = node_config.p2p.layers {
+                config.preferred_list = Some(preferred_layer.clone());
+            } else {
+                node_config.p2p.layers = Some(LayersConfig {
+                    preferred_list: Some(preferred_layer.clone()),
+                    topics_of_interest: None,
+                });
+            }
         }
 
         if let Some(bootstrap_from_peers) = &self.bootstrap_from_peers {

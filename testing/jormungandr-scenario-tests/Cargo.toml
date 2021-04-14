@@ -21,8 +21,8 @@ chain-time           = { git = "https://github.com/input-output-hk/chain-libs.gi
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
-poldercast = "0.14"
 tokio = { version = "1.4", features = ["macros","rt","rt-multi-thread"] }
+poldercast = "1.2"
 rand = "0.8"
 rand_core = "0.6"
 rand_chacha = "0.3"
@@ -42,6 +42,7 @@ console = "0.14"
 yaml-rust = "0.4.4"
 indicatif = "0.15"
 lazy_static = "1"
+multiaddr = { package = "parity-multiaddr", version = "0.11" }
 
 [dependencies.reqwest]
 version = "0.11"

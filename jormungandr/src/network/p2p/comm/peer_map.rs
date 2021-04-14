@@ -56,6 +56,7 @@ impl PeerData {
 }
 
 impl<'a> CommStatus<'a> {
+    #[allow(dead_code)]
     pub fn node_id(&self) -> Option<NodeId> {
         match self {
             CommStatus::Established(comms) => comms.node_id(),
@@ -133,7 +134,7 @@ impl PeerMap {
         let mut iter = self.map.iter_mut();
         while let Some((id, data)) = iter.next_back() {
             match data.update_comm_status() {
-                CommStatus::Established(comms) => return Some((id.clone(), comms)),
+                CommStatus::Established(comms) => return Some((*id, comms)),
                 CommStatus::Connecting(_) => {}
             }
         }
@@ -144,7 +145,7 @@ impl PeerMap {
         self.map
             .iter()
             .map(|(addr, data)| PeerInfo {
-                addr: addr.to_socket_addr(),
+                addr: Some(*addr),
                 stats: data.stats.clone(),
             })
             .collect()

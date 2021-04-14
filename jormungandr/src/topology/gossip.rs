@@ -1,31 +1,28 @@
-use super::{limits, Address};
-use crate::network::convert::Encode;
+use super::limits;
+use crate::network::p2p::Address;
 
 use chain_core::property;
 use chain_network::data as net_data;
-use serde::{Deserialize, Serialize};
 use std::net::{IpAddr, Ipv4Addr};
+use thiserror::Error;
 
 use bincode::Options;
 pub use net_data::{Peer, Peers};
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, PartialEq, Eq)]
-pub struct Gossip(poldercast::NodeProfile);
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub struct Gossip(poldercast::Gossip);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Gossips(poldercast::Gossips);
+pub struct Gossips(pub Vec<Gossip>);
 
 impl Gossip {
     #[inline]
-    pub fn address(&self) -> Option<&Address> {
+    pub fn address(&self) -> Address {
         self.0.address()
     }
 
     pub fn has_valid_address(&self) -> bool {
-        let addr = match self.address().and_then(|addr| addr.to_socket_addr()) {
-            None => return false,
-            Some(addr) => addr,
-        };
+        let addr = self.address();
 
         match addr.ip() {
             IpAddr::V4(ip) => {
@@ -63,10 +60,7 @@ impl Gossip {
             return false;
         }
 
-        let addr = match self.address().and_then(|addr| addr.to_socket_addr()) {
-            None => return false,
-            Some(addr) => addr,
-        };
+        let addr = self.address();
 
         fn is_ipv4_global(ip: Ipv4Addr) -> bool {
             if ip.is_private() {
@@ -101,147 +95,142 @@ impl Gossip {
     }
 }
 
-impl From<Gossip> for poldercast::NodeProfile {
+impl From<Gossip> for poldercast::Gossip {
     fn from(gossip: Gossip) -> Self {
         gossip.0
     }
 }
 
-impl From<poldercast::NodeProfile> for Gossip {
-    fn from(profile: poldercast::NodeProfile) -> Self {
+impl From<poldercast::Gossip> for Gossip {
+    fn from(profile: poldercast::Gossip) -> Self {
         Gossip(profile)
     }
 }
 
-impl From<Gossips> for net_data::gossip::Gossip {
-    fn from(gossips: Gossips) -> Self {
-        let nodes = gossips
-            .0
-            .into_iter()
-            .map(|node| Gossip(node).encode())
-            .collect::<Vec<_>>()
-            .into();
-        net_data::gossip::Gossip { nodes }
+impl From<Vec<poldercast::Gossip>> for Gossips {
+    fn from(gossips: Vec<poldercast::Gossip>) -> Gossips {
+        Gossips(gossips.into_iter().map(Gossip::from).collect())
     }
 }
 
-impl From<poldercast::Gossips> for Gossips {
-    fn from(gossips: poldercast::Gossips) -> Gossips {
-        Gossips(gossips)
-    }
-}
-
-impl From<Gossips> for poldercast::Gossips {
-    fn from(gossips: Gossips) -> poldercast::Gossips {
-        gossips.0
+impl From<Gossips> for Vec<poldercast::Gossip> {
+    fn from(gossips: Gossips) -> Vec<poldercast::Gossip> {
+        gossips.0.into_iter().map(|gossip| gossip.0).collect()
     }
 }
 
 impl From<Vec<Gossip>> for Gossips {
     fn from(gossips: Vec<Gossip>) -> Self {
-        let v: Vec<_> = gossips.into_iter().map(|gossip| gossip.0).collect();
-        Gossips(poldercast::Gossips::from(v))
+        Gossips(gossips)
     }
 }
 
+#[derive(Debug, Error)]
+pub enum GossipError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Bincode(#[from] bincode::Error),
+    #[error(transparent)]
+    InvalidGossip(#[from] poldercast::GossipError),
+}
+
 impl property::Serialize for Gossip {
-    type Error = bincode::Error;
+    type Error = GossipError;
 
     fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
         let config = bincode::options();
         config.with_limit(limits::MAX_GOSSIP_SIZE);
 
-        config.serialize_into(writer, &self.0)
+        Ok(config.serialize_into(writer, &self.0.as_ref())?)
     }
 }
 
 impl property::Deserialize for Gossip {
-    type Error = bincode::Error;
+    type Error = GossipError;
 
     fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
         let config = bincode::options();
         config.with_limit(limits::MAX_GOSSIP_SIZE);
 
-        config.deserialize_from(reader).map(Gossip)
+        config
+            .deserialize_from::<R, Vec<u8>>(reader)
+            .map_err(GossipError::from)
+            .and_then(|slice| {
+                Ok(Gossip(
+                    poldercast::GossipSlice::try_from_slice(&slice)?.to_owned(),
+                ))
+            })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use poldercast::{Address, NodeProfileBuilder};
+    use rand::SeedableRng;
     use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+
+    // Build a gossip with a random key, just for testing addresses
+    fn build_gossip(addr: SocketAddr) -> Gossip {
+        Gossip::from(poldercast::Gossip::new(
+            addr,
+            &keynesis::key::ed25519::SecretKey::new(rand_chacha::ChaChaRng::from_seed([0u8; 32])),
+            poldercast::Subscriptions::new().as_slice(),
+        ))
+    }
 
     #[test]
     fn gossip_global_ipv4_private() {
-        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
         let ip = Ipv4Addr::new(10, 0, 0, 1);
         let addr = SocketAddr::V4(SocketAddrV4::new(ip, 1234));
-        builder.address(Address::tcp(addr));
-        let node: Gossip = Gossip::from(builder.build());
-        assert!(!node.is_global());
+        assert!(!build_gossip(addr).is_global());
     }
 
     #[test]
     fn gossip_global_ipv6_private() {
-        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
         let ip = Ipv4Addr::new(0, 0, 0, 0);
         let ipv6 = ip.to_ipv6_compatible();
         let addr = SocketAddr::V6(SocketAddrV6::new(ipv6, 1234, 0, 0));
-        builder.address(Address::tcp(addr));
-        let node: Gossip = Gossip::from(builder.build());
-        assert!(!node.is_global());
+        assert!(!build_gossip(addr).is_global());
     }
 
     #[test]
     fn gossip_global_ipv4_loopback() {
-        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
         let ip = Ipv4Addr::new(127, 255, 255, 255);
         // Address should not be private but be loopback
         assert!(!ip.is_private());
         let addr = SocketAddr::V4(SocketAddrV4::new(ip, 1234));
-        builder.address(Address::tcp(addr));
-        let node: Gossip = Gossip::from(builder.build());
-        assert!(!node.is_global());
+        assert!(!build_gossip(addr).is_global());
     }
 
     #[test]
     fn gossip_global_ipv6_loopback() {
-        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
         let ip = Ipv4Addr::new(127, 255, 255, 255);
         // Address should not be private but be loopback
         assert!(!ip.is_private());
         let ipv6 = ip.to_ipv6_compatible();
         let addr = SocketAddr::V6(SocketAddrV6::new(ipv6, 1234, 0, 0));
-        builder.address(Address::tcp(addr));
-        let node: Gossip = Gossip::from(builder.build());
-        assert!(!node.is_global());
+        assert!(!build_gossip(addr).is_global());
     }
 
     #[test]
     fn gossip_global_ipv4_link_local() {
-        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
         let ip = Ipv4Addr::new(169, 254, 10, 65);
         // Address should not be private nor loopback
         assert!(!ip.is_private());
         assert!(!ip.is_loopback());
         let addr = SocketAddr::V4(SocketAddrV4::new(ip, 1234));
-        builder.address(Address::tcp(addr));
-        let node: Gossip = Gossip::from(builder.build());
-        assert!(!node.is_global());
+        assert!(!build_gossip(addr).is_global());
     }
 
     #[test]
     fn gossip_global_ipv6_link_local() {
-        let mut builder: NodeProfileBuilder = NodeProfileBuilder::new();
         let ip = Ipv4Addr::new(169, 254, 10, 65);
         // Address should not be private not loopback
         assert!(!ip.is_private());
         assert!(!ip.is_loopback());
         let ipv6 = ip.to_ipv6_compatible();
         let addr = SocketAddr::V6(SocketAddrV6::new(ipv6, 1234, 0, 0));
-        builder.address(Address::tcp(addr));
-        let node: Gossip = Gossip::from(builder.build());
-        assert!(!node.is_global());
+        assert!(!build_gossip(addr).is_global());
     }
 }

@@ -132,17 +132,7 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
     }
 
     pub fn get_p2p_listen_port(&self) -> u16 {
-        let address = self.node_config.p2p_listen_address().to_string();
-        let tokens: Vec<&str> = address.split('/').collect();
-        assert_eq!(
-            tokens.get(3),
-            Some(&"tcp"),
-            "expected a tcp part in p2p.public_address"
-        );
-        let port_str = tokens
-            .get(4)
-            .expect("cannot extract port from p2p.public_address");
-        port_str.parse().unwrap()
+        self.node_config.p2p_listen_address().port()
     }
 
     pub fn block0_utxo(&self) -> Vec<UTxOInfo> {

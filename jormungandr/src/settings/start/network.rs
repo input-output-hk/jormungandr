@@ -1,11 +1,12 @@
-#![allow(deprecated)]
 use super::config;
-use crate::network::p2p::{layers::LayersConfig, Address, PolicyConfig};
-use jormungandr_lib::multiaddr::{self, multiaddr_resolve_dns};
-use poldercast::NodeProfile;
+use crate::network::p2p::Address;
+use crate::topology::{layers::LayersConfig, NodeId, QuarantineConfig};
 
-use std::convert::TryFrom;
-use std::{net::SocketAddr, str, time::Duration};
+use chain_crypto::Ed25519;
+use jormungandr_lib::{crypto::key::SigningKey, multiaddr};
+use std::net::SocketAddr;
+use std::str;
+use std::time::Duration;
 
 /// Protocol to use for a connection.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -58,7 +59,10 @@ pub struct Configuration {
     /// network interfaces.
     pub listen_address: Option<SocketAddr>,
 
-    pub profile: NodeProfile,
+    pub public_address: Option<Address>,
+
+    // Secret key used to authenticate gossips, the public part is used as an identifier of the node
+    pub node_key: SigningKey<Ed25519>,
 
     /// list of trusted addresses
     pub trusted_peers: Vec<TrustedPeer>,
@@ -75,7 +79,7 @@ pub struct Configuration {
     /// the default value for the timeout for inactive connection
     pub timeout: Duration,
 
-    pub policy: PolicyConfig,
+    pub policy: QuarantineConfig,
 
     pub layers: LayersConfig,
 
@@ -86,8 +90,6 @@ pub struct Configuration {
 
     pub gossip_interval: Duration,
 
-    pub topology_force_reset_interval: Option<Duration>,
-
     pub max_bootstrap_attempts: Option<usize>,
 
     /// Whether to limit bootstrap to trusted peers (which increase their load / reduce their connectivities)
@@ -97,34 +99,31 @@ pub struct Configuration {
     pub skip_bootstrap: bool,
 
     pub http_fetch_block0_service: Vec<String>,
-
-    /// A pre-0.9 node ID to put in "node-id-bin" metadata when subscribing
-    pub legacy_node_id: Option<poldercast::Id>,
 }
 
-#[derive(Clone)]
+/// Trusted peer with DNS address resolved.
+#[derive(Clone, Hash)]
 pub struct TrustedPeer {
-    pub address: poldercast::Address,
-    pub legacy_node_id: Option<poldercast::Id>,
+    pub addr: SocketAddr,
+    // This will need to become compulsory if we want to check validity of keys/ids
+    pub id: Option<NodeId>,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum PeerResolveError {
     #[error("DNS address resolution failed")]
     Resolve(#[from] multiaddr::Error),
-    #[error(transparent)]
-    Address(#[from] poldercast::AddressTryFromError),
+    #[error("Address shall consist of a host address and a TCP component")]
+    InvalidAddress,
 }
 
 impl TrustedPeer {
     pub fn resolve(peer: &config::TrustedPeer) -> Result<Self, PeerResolveError> {
-        let address = match multiaddr_resolve_dns(&peer.address)? {
-            Some(address) => poldercast::Address::try_from(address).unwrap(),
-            None => poldercast::Address::try_from(peer.address.clone())?,
-        };
+        let addr = multiaddr::to_tcp_socket_addr(&multiaddr::resolve_dns(&peer.address)?)
+            .ok_or(PeerResolveError::InvalidAddress)?;
         Ok(TrustedPeer {
-            address,
-            legacy_node_id: peer.id,
+            addr,
+            id: peer.id.clone().map(Into::into),
         })
     }
 }
@@ -162,19 +161,13 @@ impl Listen {
 }
 
 impl Configuration {
-    pub fn address(&self) -> Option<&Address> {
-        self.profile.address()
+    pub fn address(&self) -> Option<Address> {
+        self.public_address
     }
 
     /// Returns the listener configuration, if the options defining it
     /// were set.
     pub fn listen(&self) -> Option<Listen> {
-        self.listen_address
-            .or_else(|| {
-                self.profile
-                    .address()
-                    .and_then(|address| address.to_socket_addr())
-            })
-            .map(Listen::new)
+        self.listen_address.or(self.public_address).map(Listen::new)
     }
 }

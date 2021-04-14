@@ -32,7 +32,7 @@ bootstrap_from_trusted_peers: false
 
 p2p:
   public_address: "/ip4/X.X.X.X/tcp/Y" # This should match your public IP address (X) and port number (Y)
-  #listen_address: /ip4/0.0.0.0/tcp/Z
+  #listen: 0.0.0.0:Y
   topics_of_interest:
     blocks: normal # Default is normal - set to high for stakepool
     messages: low  # Default is low    - set to high for stakepool
@@ -42,7 +42,6 @@ p2p:
   max_unreachable_nodes_to_connect_per_event: 20
   gossip_interval: 10s
   max_bootstrap_attempts: # Default is not set
-  topology_force_reset_interval: # Default is not set
   trusted_peers:
     - address: "/ip4/13.230.137.72/tcp/3000"
       id: e4fda5a674f0838b64cacf6d22bbae38594d7903aba2226f

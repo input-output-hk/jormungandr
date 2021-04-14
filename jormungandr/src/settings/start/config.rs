@@ -1,19 +1,19 @@
-#![allow(deprecated)]
 use crate::{
-    network::p2p::{layers::LayersConfig, topic, Address, PolicyConfig},
+    network::p2p::Address,
     settings::logging::{LogFormat, LogOutput},
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
+    topology::QuarantineConfig,
 };
-pub use jormungandr_lib::interfaces::{Cors, Rest, Tls};
+pub use jormungandr_lib::interfaces::{Cors, LayersConfig, Rest, Tls, TrustedPeer};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
 use multiaddr::Multiaddr;
-use serde::{de::Error as _, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 use tracing::level_filters::LevelFilter;
 
-use std::{collections::BTreeMap, fmt, path::PathBuf};
+use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(default)]
@@ -60,35 +60,25 @@ pub struct ConfigLogSettings {
     pub output: Option<LogOutput>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct P2pConfig {
     /// The public address to which other peers may connect to
-    pub public_address: Option<Address>,
+    pub public_address: Option<Multiaddr>,
 
     /// The socket address to listen on, if different from the public address.
     /// The format is "{ip_address}:{port}".
     /// The IP address can be specified as 0.0.0.0 or :: to listen on
     /// all network interfaces.
-    pub listen_address: Option<Address>,
+    pub listen: Option<Address>,
 
-    /// keep the public id there and present, but yet make it optional as it is
-    /// no longer needed.
-    ///
-    /// TODO: To remove once we can afford a breaking change in the config
-    #[serde(default)]
-    pub public_id: Option<poldercast::Id>,
+    /// File with the secret key used to advertise and authenticate the node
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub node_key_file: Option<PathBuf>,
 
     /// the rendezvous points for the peer to connect to in order to initiate
     /// the p2p discovery from.
     pub trusted_peers: Option<Vec<TrustedPeer>>,
-
-    /// the topic subscriptions
-    ///
-    /// When connecting to different nodes we will expose these too in order to
-    /// help the different modules of the P2P topology engine to determine the
-    /// best possible neighborhood.
-    pub topics_of_interest: Option<BTreeMap<Topic, InterestLevel>>,
 
     /// Limit on the number of simultaneous connections.
     /// If not specified, an internal default limit is used.
@@ -109,7 +99,7 @@ pub struct P2pConfig {
 
     /// setting for the policy
     #[serde(default)]
-    pub policy: PolicyConfig,
+    pub policy: QuarantineConfig,
 
     /// settings for the different custom layers
     #[serde(default)]
@@ -133,13 +123,6 @@ pub struct P2pConfig {
     #[serde(default)]
     pub gossip_interval: Option<Duration>,
 
-    /// If this value is set, it will trigger a force reset of the topology
-    /// layers. The default is to not do force the reset. It is recommended
-    /// to let the protocol handle it.
-    ///
-    #[serde(default)]
-    pub topology_force_reset_interval: Option<Duration>,
-
     /// The number of times to retry bootstrapping from trusted peers. The default
     /// value of None will result in the bootstrap process retrying indefinitely. A
     /// value of zero will skip bootstrap all together -- even if trusted peers are
@@ -152,21 +135,6 @@ pub struct P2pConfig {
     pub max_bootstrap_attempts: Option<usize>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct TrustedPeer {
-    // We cannot use Address here because it can only be constructed for
-    // /ip4 or /ip6, but we accept dns addresses as well.
-    pub address: Multiaddr,
-
-    // KEEP the ID optional, this is no longer needed but removing this will
-    // allow to keep some back compatibility.
-    //
-    // TODO: to remove once we can afford having a config breaking change
-    #[serde(skip, default)]
-    pub id: Option<poldercast::Id>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Leadership {
@@ -176,50 +144,27 @@ pub struct Leadership {
     pub logs_capacity: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-pub struct Topic(pub poldercast::Topic);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct InterestLevel(pub poldercast::InterestLevel);
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Explorer {
     pub enabled: bool,
 }
 
-pub fn default_interests() -> BTreeMap<Topic, InterestLevel> {
-    use std::iter::FromIterator as _;
-
-    BTreeMap::from_iter(vec![
-        (
-            Topic(topic::MESSAGES),
-            InterestLevel(poldercast::InterestLevel::Low),
-        ),
-        (
-            Topic(topic::BLOCKS),
-            InterestLevel(poldercast::InterestLevel::Normal),
-        ),
-    ])
-}
-
 impl Default for P2pConfig {
     fn default() -> Self {
         P2pConfig {
             public_address: None,
-            listen_address: None,
-            public_id: None,
+            listen: None,
+            node_key_file: None,
             trusted_peers: None,
-            topics_of_interest: None,
             max_connections: None,
             max_inbound_connections: None,
             max_connections_threshold: None,
             allow_private_addresses: false,
-            policy: PolicyConfig::default(),
+            policy: QuarantineConfig::default(),
             layers: LayersConfig::default(),
             max_unreachable_nodes_to_connect_per_event: None,
             gossip_interval: None,
-            topology_force_reset_interval: None,
             max_bootstrap_attempts: None,
         }
     }
@@ -230,105 +175,6 @@ impl Default for Leadership {
         Leadership {
             logs_capacity: 1_024,
         }
-    }
-}
-
-impl std::str::FromStr for TrustedPeer {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut split = s.split('@');
-
-        let address = if let Some(address) = split.next() {
-            address.parse::<Multiaddr>().map_err(|e| e.to_string())?
-        } else {
-            return Err("Missing address component".to_owned());
-        };
-
-        let optional_id = if let Some(id) = split.next() {
-            let id = id.parse::<poldercast::Id>().map_err(|e| e.to_string())?;
-            Some(id)
-        } else {
-            None
-        };
-
-        Ok(TrustedPeer {
-            address,
-            id: optional_id,
-        })
-    }
-}
-
-impl Serialize for InterestLevel {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self.0 {
-            poldercast::InterestLevel::Low => serializer.serialize_str("low"),
-            poldercast::InterestLevel::Normal => serializer.serialize_str("normal"),
-            poldercast::InterestLevel::High => serializer.serialize_str("high"),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for Topic {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct TopicVisitor;
-        impl<'de> Visitor<'de> for TopicVisitor {
-            type Value = Topic;
-
-            fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                write!(fmt, "Topic: messages or blocks")
-            }
-
-            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                use serde::de::Unexpected;
-
-                match v {
-                    "messages" => Ok(Topic(topic::MESSAGES)),
-                    "blocks" => Ok(Topic(topic::BLOCKS)),
-                    err => Err(E::invalid_value(Unexpected::Str(err), &self)),
-                }
-            }
-        }
-        deserializer.deserialize_str(TopicVisitor)
-    }
-}
-
-impl<'de> Deserialize<'de> for InterestLevel {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct InterestLevelVisitor;
-        impl<'de> Visitor<'de> for InterestLevelVisitor {
-            type Value = InterestLevel;
-
-            fn expecting(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                write!(fmt, "Interest Level: low, normal or high")
-            }
-
-            fn visit_str<E>(self, v: &str) -> std::result::Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                use serde::de::Unexpected;
-
-                match v {
-                    "low" => Ok(InterestLevel(poldercast::InterestLevel::Low)),
-                    "normal" => Ok(InterestLevel(poldercast::InterestLevel::Normal)),
-                    "high" => Ok(InterestLevel(poldercast::InterestLevel::High)),
-                    err => Err(E::invalid_value(Unexpected::Str(err), &self)),
-                }
-            }
-        }
-        deserializer.deserialize_str(InterestLevelVisitor)
     }
 }
 
