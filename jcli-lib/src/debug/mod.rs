@@ -2,11 +2,15 @@ mod block;
 mod message;
 use hex::FromHexError;
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 use thiserror::Error;
 
-#[derive(StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[cfg_attr(
+    feature = "structopt",
+    derive(StructOpt),
+    structopt(rename_all = "kebab-case")
+)]
 pub enum Debug {
     /// Decode hex-encoded message and display its content
     Message(message::Message),

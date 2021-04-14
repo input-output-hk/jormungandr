@@ -3,12 +3,13 @@ use chain_core::property::Deserialize as _;
 use chain_impl_mockchain::fragment::Fragment as MockFragment;
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
+#[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-#[derive(StructOpt)]
+#[cfg_attr(feature = "structopt", derive(StructOpt))]
 pub struct Message {
     /// file containing hex-encoded message. If not provided, it will be read from stdin.
-    #[structopt(short, long)]
+    #[cfg_attr(feature = "structopt", structopt(short, long))]
     input: Option<PathBuf>,
 }
 
