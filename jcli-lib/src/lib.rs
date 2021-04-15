@@ -1,4 +1,6 @@
 pub mod address;
+#[cfg(feature = "structopt")]
+// This module doesn't make sense without `structopt`.
 pub mod auto_completion;
 pub mod block;
 pub mod certificate;
