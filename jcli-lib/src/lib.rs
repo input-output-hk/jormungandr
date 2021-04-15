@@ -16,7 +16,7 @@ use std::error::Error;
 #[cfg(feature = "structopt")]
 use structopt::StructOpt;
 
-/// Jormungandr CLI toolkit
+/// Jormungandr Command-Line Interface (CLI)
 #[cfg_attr(
     feature = "structopt",
     derive(StructOpt),
@@ -37,7 +37,7 @@ pub struct JCli {
 }
 
 #[allow(clippy::large_enum_variant)]
-/// Jormungandr CLI toolkit
+/// Jormungandr CLI sub-commands
 #[cfg_attr(
     feature = "structopt",
     derive(StructOpt),

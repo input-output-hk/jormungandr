@@ -1,3 +1,4 @@
+//! REST API request tooling.
 mod config;
 mod v0;
 

@@ -1,3 +1,4 @@
+//! Certificate generation tool.
 mod new_encrypted_vote_tally;
 mod new_owner_stake_delegation;
 mod new_stake_delegation;

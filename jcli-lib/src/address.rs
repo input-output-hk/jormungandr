@@ -1,3 +1,4 @@
+//! Bech32 segregated witness address tooling and helper.
 use crate::utils::key_parser::parse_pub_key;
 use chain_addr::{AddressReadable, Discrimination, Kind};
 use chain_crypto::{bech32::Bech32 as _, AsymmetricPublicKey, Ed25519, PublicKey};
