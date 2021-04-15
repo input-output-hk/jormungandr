@@ -1,28 +1,17 @@
-error_chain! {
-    errors {
-        InternalError(msg: String) {
-            description("an error that shouldn't happen"),
-            display("{}", msg)
-        }
-        NotFound(msg: String) {
-            description("resource not found"),
-            display("{}", msg)
-        }
-        Unimplemented {
-            description("feature not implemented yet"),
-            display("unimplemented")
-        }
-        ArgumentError(msg: String) {
-            description("invalid argument in query"),
-            display("invalid argument: {}", msg)
-        }
-        InvalidCursor(msg: String) {
-            description("invalid cursor in pagination query"),
-            display("invalid cursor in pagination query: {}", msg)
-        }
-        InvalidAddress(address: String) {
-            description("failed to parse address"),
-            display("invalid address: {}", address)
-        }
-    }
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum ApiError {
+    #[error("internal error (this shouldn't happen) {0}")]
+    InternalError(String),
+    #[error("resource not found {0}")]
+    NotFound(String),
+    #[error("feature not implemented yet")]
+    Unimplemented,
+    #[error("invalid argument {0}")]
+    ArgumentError(String),
+    #[error("invalud pagination cursor {0}")]
+    InvalidCursor(String),
+    #[error("invalid address {0}")]
+    InvalidAddress(String),
 }
