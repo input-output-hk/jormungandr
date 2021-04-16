@@ -324,8 +324,8 @@ dependencies = [
 name = "blockchain"
 version = "0.1.0"
 dependencies = [
- "chain-impl-mockchain",
- "chain-time",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
  "lru",
  "thiserror",
 ]
@@ -437,7 +437,18 @@ version = "0.1.1"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
 dependencies = [
  "cbor_event",
- "chain-ser",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "cryptoxide",
+ "ed25519-bip32",
+]
+
+[[package]]
+name = "cardano-legacy-address"
+version = "0.1.1"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
+dependencies = [
+ "cbor_event",
+ "chain-ser 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "cryptoxide",
  "ed25519-bip32",
 ]
@@ -482,8 +493,20 @@ source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3
 dependencies = [
  "bech32",
  "cfg-if 1.0.0",
- "chain-core",
- "chain-crypto",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "cryptoxide",
+]
+
+[[package]]
+name = "chain-addr"
+version = "0.1.0"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
+dependencies = [
+ "bech32",
+ "cfg-if 1.0.0",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-crypto 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "cryptoxide",
  "quickcheck",
 ]
@@ -493,7 +516,15 @@ name = "chain-core"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
 dependencies = [
- "chain-ser",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+]
+
+[[package]]
+name = "chain-core"
+version = "0.1.0"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
+dependencies = [
+ "chain-ser 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
 ]
 
 [[package]]
@@ -510,11 +541,30 @@ dependencies = [
  "ed25519-dalek",
  "generic-array 0.14.4",
  "hex",
+ "rand_core 0.6.2",
+ "sha2",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+]
+
+[[package]]
+name = "chain-crypto"
+version = "0.1.0"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
+dependencies = [
+ "bech32",
+ "cfg-if 1.0.0",
+ "cryptoxide",
+ "curve25519-dalek-ng",
+ "digest 0.9.0",
+ "ed25519-bip32",
+ "ed25519-dalek",
+ "generic-array 0.14.4",
+ "hex",
  "quickcheck",
  "rand 0.8.3",
  "rand_core 0.6.2",
  "sha2",
- "typed-bytes",
+ "typed-bytes 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
 ]
 
 [[package]]
@@ -522,38 +572,62 @@ name = "chain-impl-mockchain"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
 dependencies = [
- "cardano-legacy-address",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-libs.git)",
  "cfg-if 1.0.0",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-ser",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "hex",
+ "imhamt 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "rand_core 0.6.2",
+ "rayon",
+ "sparse-array 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "strum 0.19.5",
+ "strum_macros 0.19.4",
+ "thiserror",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+]
+
+[[package]]
+name = "chain-impl-mockchain"
+version = "0.1.0"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
+dependencies = [
+ "cardano-legacy-address 0.1.1 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "cfg-if 1.0.0",
+ "chain-addr 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-crypto 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-ser 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "chain-test-utils",
- "chain-time",
- "chain-vote",
+ "chain-time 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-vote 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "ed25519-bip32",
  "hex",
- "imhamt",
+ "imhamt 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "lazy_static",
  "quickcheck",
  "quickcheck_macros",
  "rand_chacha 0.3.0",
  "rand_core 0.6.2",
  "rayon",
- "sparse-array",
+ "sparse-array 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "strum 0.19.5",
  "strum_macros 0.19.4",
  "thiserror",
- "typed-bytes",
+ "typed-bytes 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
 ]
 
 [[package]]
 name = "chain-network"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
 dependencies = [
  "async-trait",
- "chain-crypto",
+ "chain-crypto 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "futures 0.3.14",
  "pin-project",
  "prost",
@@ -569,9 +643,14 @@ version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
 
 [[package]]
+name = "chain-ser"
+version = "0.1.0"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
+
+[[package]]
 name = "chain-storage"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
 dependencies = [
  "criterion",
  "data-pile",
@@ -584,9 +663,9 @@ dependencies = [
 [[package]]
 name = "chain-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
 dependencies = [
- "chain-core",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "quickcheck",
  "quickcheck_macros",
 ]
@@ -597,8 +676,18 @@ version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
 dependencies = [
  "cfg-if 1.0.0",
- "chain-core",
- "chain-ser",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git)",
+]
+
+[[package]]
+name = "chain-time"
+version = "0.1.0"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
+dependencies = [
+ "cfg-if 1.0.0",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-ser 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "quickcheck",
  "quickcheck_macros",
 ]
@@ -607,6 +696,18 @@ dependencies = [
 name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
+dependencies = [
+ "cryptoxide",
+ "eccoxide",
+ "rand_core 0.6.2",
+ "rayon",
+ "thiserror",
+]
+
+[[package]]
+name = "chain-vote"
+version = "0.1.0"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
 dependencies = [
  "cryptoxide",
  "eccoxide",
@@ -1763,6 +1864,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "imhamt"
+version = "0.1.0"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1850,12 +1959,12 @@ dependencies = [
  "bech32",
  "bincode",
  "bytes 1.0.1",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
- "chain-vote",
+ "chain-addr 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-crypto 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-time 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-vote 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "clap",
  "ed25519-bip32",
  "gtmpl",
@@ -1889,21 +1998,21 @@ dependencies = [
  "bech32",
  "bincode",
  "bytes 1.0.1",
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-addr 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-crypto 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "chain-network",
  "chain-storage",
- "chain-time",
- "chain-vote",
+ "chain-time 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-vote 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "error-chain",
  "futures 0.3.14",
  "hex",
  "http",
  "humantime",
- "imhamt",
+ "imhamt 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "jormungandr-lib",
  "keynesis",
  "lazy_static",
@@ -1951,12 +2060,12 @@ dependencies = [
  "assert_fs",
  "base64 0.13.0",
  "bech32",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
- "chain-vote",
+ "chain-addr 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-crypto 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-time 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-vote 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "fs_extra",
  "futures 0.3.14",
  "hex",
@@ -1995,13 +2104,13 @@ dependencies = [
  "base64 0.13.0",
  "bech32",
  "bincode",
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
- "chain-vote",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-addr 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-crypto 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-time 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-vote 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "chrono",
  "eccoxide",
  "ed25519-bip32",
@@ -2018,7 +2127,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "thiserror",
- "typed-bytes",
+ "typed-bytes 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
 ]
 
 [[package]]
@@ -2026,11 +2135,11 @@ name = "jormungandr-scenario-tests"
 version = "0.11.1"
 dependencies = [
  "assert_fs",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
+ "chain-addr 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-crypto 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-time 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "chrono",
  "console 0.14.1",
  "custom_debug",
@@ -2070,15 +2179,16 @@ dependencies = [
  "assert_fs",
  "base64 0.13.0",
  "bech32",
+ "bincode",
  "bytesize",
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-addr 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-crypto 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "chain-storage",
- "chain-time",
- "chain-vote",
+ "chain-time 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-vote 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "chrono",
  "custom_debug",
  "flate2",
@@ -2091,6 +2201,7 @@ dependencies = [
  "jormungandr-lib",
  "jortestkit",
  "json",
+ "keynesis",
  "lazy_static",
  "netstat2",
  "os_info 3.0.2",
@@ -2122,7 +2233,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
- "typed-bytes",
+ "typed-bytes 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "url",
  "zip",
 ]
@@ -2382,13 +2493,13 @@ name = "mjolnir"
 version = "0.1.0"
 dependencies = [
  "assert_fs",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
+ "chain-addr 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-core 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-crypto 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "chain-storage",
- "chain-time",
- "chain-vote",
+ "chain-time 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
+ "chain-vote 0.1.0 (git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update)",
  "indicatif",
  "jormungandr-integration-tests",
  "jormungandr-lib",
@@ -3640,6 +3751,11 @@ version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
 
 [[package]]
+name = "sparse-array"
+version = "0.1.0"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
+
+[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4354,6 +4470,11 @@ dependencies = [
 name = "typed-bytes"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#f3f7088782ea501d332db021d9f07e4cd5dd1a85"
+
+[[package]]
+name = "typed-bytes"
+version = "0.1.0"
+source = "git+https://github.com/Zeegomo/chain-libs.git?branch=peers-update#1639764205e88eb61647eaf6a8631057c7a11186"
 
 [[package]]
 name = "typenum"
