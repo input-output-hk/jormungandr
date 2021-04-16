@@ -126,14 +126,8 @@ impl P2pTopology {
         View { peers }
     }
 
-    // If the recipient is not specified gossip will only contain information
-    // about this node
-    pub fn initiate_gossips(&mut self, recipient: Option<&NodeId>) -> Gossips {
-        let mut gossips = if let Some(recipient) = recipient {
-            self.topology.gossips_for(recipient.as_ref())
-        } else {
-            Vec::new()
-        };
+    pub fn initiate_gossips(&mut self, recipient: &NodeId) -> Gossips {
+        let mut gossips = self.topology.gossips_for(recipient.as_ref());
         // If the recipient is not already in the topology
         // or was not specified poldercast will not return anything.
         // Let's broadcast out profile anyway

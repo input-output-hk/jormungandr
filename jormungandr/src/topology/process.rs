@@ -80,8 +80,7 @@ impl Process {
                         let view = self.topology.view(poldercast::layer::Selection::Any);
                         for peer in view.peers {
                             // Peers returned by the topology will always have a NodeId
-                            let id = peer.id.clone().unwrap();
-                            let gossip = self.topology.initiate_gossips(Some(&id));
+                            let gossip = self.topology.initiate_gossips(&peer.id());
 
                             self.network_msgbox
                                 // do not block the current thread to avoid deadlocks

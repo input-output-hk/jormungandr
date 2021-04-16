@@ -356,7 +356,7 @@ where
     // and ids.
     let mut res = Vec::new();
     for peer in peers {
-        if f(peer.addr, arg.clone()).await.is_err() {
+        if f(peer.address(), arg.clone()).await.is_err() {
             res.push(peer);
         }
     }
@@ -369,7 +369,6 @@ async fn handle_propagation_msg(
     mut channels: Channels,
 ) -> Result<(), PropagateError> {
     use poldercast::layer::Selection;
-    use topology::Peer;
     async {
         let prop_state = state.clone();
         let unreached_nodes = match &msg {
@@ -404,7 +403,7 @@ async fn handle_propagation_msg(
                 let gossip = gossips.encode();
                 match prop_state
                     .peers
-                    .propagate_gossip_to(peer.addr, gossip)
+                    .propagate_gossip_to(peer.address(), gossip)
                     .await
                 {
                     Err(_) => vec![peer.clone()],
@@ -420,7 +419,7 @@ async fn handle_propagation_msg(
                 "will try to connect to the peers not immediately reachable for propagation: {:?}",
                 unreached_nodes,
             );
-            for Peer { addr, id } in unreached_nodes {
+            for peer in unreached_nodes {
                 let mut options = p2p::comm::ConnectOptions::default();
                 match &msg {
                     PropagateMsg::Block(header) => {
@@ -433,6 +432,7 @@ async fn handle_propagation_msg(
                         options.pending_gossip = Some(gossip.encode());
                     }
                 };
+                let (addr, id) = (peer.address(), peer.id());
                 connect_and_propagate(addr, id, state.clone(), channels.clone(), options);
             }
         }
@@ -446,7 +446,7 @@ async fn handle_propagation_msg(
 // the public key
 fn connect_and_propagate(
     node_addr: SocketAddr,
-    node_id: Option<NodeId>,
+    node_id: NodeId,
     state: GlobalStateR,
     mut channels: Channels,
     mut options: p2p::comm::ConnectOptions,
@@ -490,15 +490,13 @@ fn connect_and_propagate(
                     }
                 };
                 if !benign {
-                    if let Some(id) = node_id {
-                        channels
-                            .topology_box
-                            .send(TopologyMsg::DemotePeer(id))
-                            .await
-                            .unwrap_or_else(|e| {
-                                tracing::error!("Error sending message to topology task: {}", e)
-                            });
-                    }
+                    channels
+                        .topology_box
+                        .send(TopologyMsg::DemotePeer(node_id))
+                        .await
+                        .unwrap_or_else(|e| {
+                            tracing::error!("Error sending message to topology task: {}", e)
+                        });
                     state.peers.remove_peer(node_addr).await;
                 }
             }
@@ -508,15 +506,14 @@ fn connect_and_propagate(
                 state.peers.update_entry(node_addr).await;
 
                 state.inc_client_count();
-                if let Some(id) = node_id {
-                    channels
-                        .topology_box
-                        .send(TopologyMsg::PromotePeer(id))
-                        .await
-                        .unwrap_or_else(|e| {
-                            tracing::error!("Error sending message to topology task: {}", e)
-                        });
-                }
+
+                channels
+                    .topology_box
+                    .send(TopologyMsg::PromotePeer(node_id))
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::error!("Error sending message to topology task: {}", e)
+                    });
                 tracing::debug!(client_count = state.client_count(), "connected to peer");
                 client.await;
                 state.dec_client_count();

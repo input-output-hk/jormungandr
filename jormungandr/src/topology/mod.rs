@@ -86,13 +86,17 @@ impl Serialize for NodeId {
 
 /// This represents a peer and its public key used for
 /// identification in the topology.
-#[derive(Debug, Clone)]
-pub struct Peer {
-    pub addr: Address,
-    // This will be missing only for trusted peers before we connect
-    // to them if no if is specified if the config file.
-    // We might enforce this field to be present in the future.
-    pub id: Option<NodeId>,
+#[derive(Debug, Hash, Clone, PartialEq, Eq)]
+pub struct Peer(Gossip);
+
+impl Peer {
+    pub fn address(&self) -> Address {
+        self.0.address()
+    }
+
+    pub fn id(&self) -> NodeId {
+        self.0.id()
+    }
 }
 
 #[derive(Eq, Clone, Serialize, Debug)]
@@ -133,5 +137,23 @@ impl From<&Arc<Profile>> for PeerInfo {
                 })
                 .collect(),
         }
+    }
+}
+
+impl From<Gossip> for Peer {
+    fn from(gossip: Gossip) -> Self {
+        Self(gossip)
+    }
+}
+
+impl From<poldercast::Gossip> for Peer {
+    fn from(gossip: poldercast::Gossip) -> Self {
+        Self(Gossip::from(gossip))
+    }
+}
+
+impl From<Peer> for Gossip {
+    fn from(peer: Peer) -> Self {
+        peer.0
     }
 }
