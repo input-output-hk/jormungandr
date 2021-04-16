@@ -1,4 +1,4 @@
-use super::{P2pTopology, Peer};
+use super::{Gossip, Gossips, P2pTopology, Peer};
 use crate::intercom::{NetworkMsg, PropagateMsg, TopologyMsg};
 use crate::settings::start::network::Configuration;
 use crate::utils::async_msg::{MessageBox, MessageQueue};
@@ -16,6 +16,7 @@ struct Process {
 pub struct TaskData {
     pub network_msgbox: MessageBox<NetworkMsg>,
     pub topology_queue: MessageQueue<TopologyMsg>,
+    pub initial_peers: Vec<Peer>,
     pub config: Configuration,
 }
 
@@ -23,6 +24,7 @@ pub async fn start(task_data: TaskData) {
     let TaskData {
         mut network_msgbox,
         topology_queue,
+        initial_peers,
         config,
     } = task_data;
 
@@ -30,19 +32,22 @@ pub async fn start(task_data: TaskData) {
 
     // Send gossips for trusted peers at the beginning, without inserting them first in
     // the topology
-    for peer in config.trusted_peers {
-        let gossips = topology.initiate_gossips(None);
+    for peer in &initial_peers {
+        let gossips = topology.initiate_gossips(&peer.id());
         network_msgbox
             .send(NetworkMsg::Propagate(PropagateMsg::Gossip(
-                Peer {
-                    addr: peer.addr,
-                    id: peer.id,
-                },
+                peer.clone(),
                 gossips,
             )))
             .await
             .unwrap_or_else(|e| tracing::error!("Error sending gossips to network task: {}", e));
     }
+    topology.accept_gossips(Gossips::from(
+        initial_peers
+            .into_iter()
+            .map(Gossip::from)
+            .collect::<Vec<_>>(),
+    ));
 
     let mut process = Process {
         input: topology_queue,

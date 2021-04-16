@@ -70,6 +70,7 @@ pub struct BootstrappedNode {
     explorer_db: Option<explorer::ExplorerDb>,
     rest_context: Option<rest::ContextLock>,
     services: Services,
+    initial_peers: Vec<topology::Peer>,
     _logger_guards: Vec<WorkerGuard>,
 }
 
@@ -195,6 +196,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let task_data = topology::TaskData {
             config: bootstrapped_node.settings.network.clone(),
             network_msgbox: network_msgbox.clone(),
+            initial_peers: bootstrapped_node.initial_peers,
             topology_queue,
         };
 
@@ -355,6 +357,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         explorer_db,
         rest_context,
         settings,
+        initial_peers,
     } = services.block_on_task("bootstrap", |info| {
         bootstrap_internal(
             rest_context,
@@ -374,6 +377,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         explorer_db,
         rest_context,
         services,
+        initial_peers,
         _logger_guards,
     })
 }
@@ -385,6 +389,7 @@ struct BootstrapData {
     explorer_db: Option<explorer::ExplorerDb>,
     rest_context: Option<rest::ContextLock>,
     settings: Settings,
+    initial_peers: Vec<topology::Peer>,
 }
 
 async fn bootstrap_internal(
@@ -425,7 +430,7 @@ async fn bootstrap_internal(
 
     let mut bootstrap_attempt: usize = 0;
 
-    loop {
+    let network_res = loop {
         bootstrap_attempt += 1;
 
         // If we have exceeded the maximum number of bootstrap attempts, then we break out of the
@@ -433,21 +438,21 @@ async fn bootstrap_internal(
         if let Some(max_bootstrap_attempt) = settings.network.max_bootstrap_attempts {
             if bootstrap_attempt > max_bootstrap_attempt {
                 tracing::warn!("maximum allowable bootstrap attempts exceeded, continuing...");
-                break; // maximum bootstrap attempts exceeded, exit loop
+                break None; // maximum bootstrap attempts exceeded, exit loop
             };
         }
 
-        // Will return true if we successfully bootstrap or there are no trusted peers defined.
-        if network::bootstrap(
+        // Will return true if we successfully bootstrap or skip_bootstrap is set.
+        let res = network::bootstrap(
             &settings.network,
             blockchain.clone(),
             blockchain_tip.clone(),
             cancellation_token.clone(),
             &span,
         )
-        .await?
-        {
-            break; // bootstrap succeeded, exit loop
+        .await?;
+        if res.bootstrapped {
+            break Some(res); // bootstrap succeeded, exit loop
         }
 
         tracing::info!(
@@ -460,7 +465,7 @@ async fn bootstrap_internal(
             _ = tokio::time::sleep(BOOTSTRAP_RETRY_WAIT).fuse() => {},
             _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),
         }
-    }
+    };
 
     let explorer_db = if settings.explorer {
         futures::select! {
@@ -485,6 +490,9 @@ async fn bootstrap_internal(
         explorer_db,
         rest_context,
         settings,
+        initial_peers: network_res
+            .map(|res| res.initial_peers)
+            .unwrap_or_else(Vec::new),
     })
 }
 
