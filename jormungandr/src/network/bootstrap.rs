@@ -1,7 +1,9 @@
 use super::grpc;
 use crate::blockcfg::{Block, HeaderDesc, HeaderHash};
 use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
+use crate::network::convert::Decode;
 use crate::settings::start::network::Peer;
+use crate::topology;
 use chain_core::property::{Deserialize, HasHeader};
 use chain_network::data as net_data;
 use chain_network::error::Error as NetworkError;
@@ -26,6 +28,8 @@ pub enum Error {
     PullStreamFailed(#[source] NetworkError),
     #[error("could not get the blockchain tip from a peer")]
     TipFailed(#[source] NetworkError),
+    #[error("decoding of a peer failed")]
+    PeerDecodingFailed(#[source] NetworkError),
     #[error("decoding of a block failed")]
     BlockDecodingFailed(#[source] <Block as Deserialize>::Error),
     #[error("block header check failed")]
@@ -52,17 +56,23 @@ pub enum Error {
 
 const MAX_BOOTSTRAP_PEERS: u32 = 32;
 
-pub async fn peers_from_trusted_peer(peer: &Peer) -> Result<Vec<Peer>, Error> {
+pub async fn peers_from_trusted_peer(peer: &Peer) -> Result<Vec<topology::Peer>, Error> {
     tracing::info!("getting peers from bootstrap peer {}", peer.connection);
 
     let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
-    let peers = client
+    let gossip = client
         .peers(MAX_BOOTSTRAP_PEERS)
         .await
         .map_err(Error::PeersNotAvailable)?;
+    let peers = gossip
+        .nodes
+        .decode()
+        .map_err(Error::PeerDecodingFailed)?
+        .into_iter()
+        .map(topology::Peer::from)
+        .collect::<Vec<_>>();
 
     tracing::info!("peer {} : peers known : {}", peer.connection, peers.len());
-    let peers = peers.iter().map(|peer| Peer::new(peer.addr())).collect();
     Ok(peers)
 }
 
@@ -72,7 +82,6 @@ pub async fn bootstrap_from_peer(
     tip: Tip,
     cancellation_token: CancellationToken,
 ) -> Result<(), Error> {
-    use crate::network::convert::Decode;
     use chain_network::data::BlockId;
     use std::convert::TryFrom;
 
