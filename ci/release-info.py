@@ -5,25 +5,47 @@ import sys
 from datetime import date
 from subprocess import Popen, PIPE
 
+def check_version(crate):
+    # Checks package version for matching with the current tag reference
+    if ref is not None and ref != 'refs/tags/v' + str(crate[0]):
+        return 0
+    else:
+        return 1
 
-def read_version(manifest_path, ref=None):
-    """
-    Reads the package version from the manifest file,
-    and optionally validates it against the given tag reference.
-    """
-    p = Popen(
-        ['cargo', 'read-manifest', '--manifest-path', manifest_path],
+def print_error(crate, match):
+    # Print errors for packages which versions didn't match tag reference
+    if not match:
+        print(
+            '::error file={path}::version {version} does not match release tag {tag}'
+            .format(tag = ref, version = str(crate[0]), path = str(crate[1]))
+        )
+
+def bundle_version(crates):
+    # Reads package versions from workspace manifest file
+    channel = Popen(
+        ['cargo', 'metadata', '--format-version=1', '--no-deps'],
         stdout=PIPE
     )
-    d = json.load(p.stdout)
-    version = d['version']
-    if ref is not None and ref != 'refs/tags/v' + version:
-        print(
-            '::error file={path}::version {0} does not match release tag {1}'
-            .format(version, ref, path=manifest_path)
-        )
+
+    # parse json data
+    data = json.load(channel.stdout).get('packages')
+
+    # read, map and assign workspace crates versions to bundle package versions
+    for package, _ in enumerate(data):
+        if data[package]['name'] in crates:
+            crates[data[package]['name']].append(data[package]['version'])
+            crates[data[package]['name']].append(data[package]['manifest_path'])
+
+    # Checks package versions of the crates bundle for consistency with the given tag reference
+    consistency = list(map(check_version, list(crates.values())))
+
+    # Print errors for packages which versions didn't match tag reference
+    if not all(consistency):
+        list(map(print_error, list(crates.values()), consistency))
         sys.exit(1)
-    return version
+    elif all(consistency):
+        version = list(crates.values())[0][0]
+        return version
 
 
 event_name = sys.argv[1]
@@ -46,10 +68,20 @@ elif event_name == 'schedule':
 else:
     raise ValueError('unexpected event name ' + event_name)
 
-version = read_version('jormungandr/Cargo.toml', ref)
+
+# Cargo workspace crates/packages for versioning bundle
+crates = {
+    'jormungandr':[],
+    'jormungandr-lib':[],
+    'jcli':[],
+    'jormungandr-testing-utils':[],
+    'jormungandr-integration-tests':[],
+    'jormungandr-scenario-tests':[]
+}
+
+version = bundle_version(crates)
 release_flags = ''
 if release_type == 'tagged':
-    read_version('jcli/Cargo.toml', ref)
     tag = 'v' + version
 elif release_type == 'nightly':
     version = re.sub(
@@ -62,3 +94,4 @@ elif release_type == 'nightly':
 
 for name in 'version', 'date', 'tag', 'release_type', 'release_flags':
     print('::set-output name={0}::{1}'.format(name, globals()[name]))
+
