@@ -85,9 +85,10 @@ use tonic::transport;
 use tracing::{span, Level, Span};
 use tracing_futures::Instrument;
 
-use std::collections::BTreeMap;
+use std::collections::HashSet;
 use std::error;
 use std::fmt;
+use std::iter::FromIterator;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -536,92 +537,64 @@ fn trusted_peers_shuffled(config: &Configuration) -> Vec<SocketAddr> {
 }
 
 #[derive(Clone)]
-pub struct BootstrapPeers(BTreeMap<String, Peer>);
-
-impl Default for BootstrapPeers {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl BootstrapPeers {
-    pub fn new() -> Self {
-        BootstrapPeers(BTreeMap::new())
-    }
-
-    pub fn add_peer(&mut self, peer: Peer) -> usize {
-        self.0
-            .insert(peer.address().to_string(), peer)
-            .map(|_| 0)
-            .unwrap_or(1)
-    }
-
-    pub fn add_peers(&mut self, peers: &[Peer]) -> usize {
-        let mut count = 0;
-        for p in peers {
-            count += self.add_peer(p.clone());
-        }
-        count
-    }
-
-    pub fn count(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn randomly(&self) -> Vec<&Peer> {
-        let mut peers = self.0.iter().map(|(_, peer)| peer).collect::<Vec<_>>();
-        let mut rng = rand::thread_rng();
-        peers.shuffle(&mut rng);
-        peers
-    }
+pub struct BootstrapPeers {
+    // Peers we will try to bootstrap from
+    pub bootstrap_peers: Vec<topology::Peer>,
+    // Peers we collected while getting bootstrap_peers, which we will not
+    // use to bootstrap but rather inject in the topology at startup
+    pub topology_peers: Vec<topology::Peer>,
 }
 
 /// Try to get sufficient peers to do a netboot from
 async fn netboot_peers(config: &Configuration, parent_span: &Span) -> BootstrapPeers {
-    let mut peers = BootstrapPeers::new();
-
-    // extract the trusted peers from the config
-    let trusted_peers = config
+    let trusted_peers_addrs = config
         .trusted_peers
         .iter()
-        .map(|tp| Peer::new(tp.addr))
+        .map(|peer| peer.addr)
         .collect::<Vec<_>>();
-    if config.bootstrap_from_trusted_peers {
-        let _: usize = peers.add_peers(&trusted_peers);
-    } else {
-        let mut rng = rand::rngs::OsRng;
-        let mut trusted_peers = trusted_peers;
-        trusted_peers.shuffle(&mut rng);
-        for tpeer in trusted_peers {
-            let span = span!(
-                parent: parent_span,
-                Level::TRACE,
-                "netboot_peers",
-                peer_addr = %tpeer.address().to_string()
-            );
-            peers = async move {
-                let received_peers = bootstrap::peers_from_trusted_peer(&tpeer)
-                    .await
-                    .unwrap_or_else(|e| {
-                        tracing::warn!(
-                            reason = %e,
-                            "failed to retrieve the list of bootstrap peers from trusted peer"
-                        );
-                        vec![tpeer]
-                    });
-                let added = peers.add_peers(&received_peers);
-                tracing::info!("adding {} peers from peer", added);
-                peers
-            }
-            .instrument(span)
-            .await;
-
-            if peers.count() > 32 {
-                break;
-            }
+    let mut peers = HashSet::new();
+    for tpeer in &trusted_peers_addrs {
+        let span = span!(
+            parent: parent_span,
+            Level::TRACE,
+            "netboot_peers",
+            peer_addr = %tpeer.to_string()
+        );
+        let received_peers = async move {
+            let res = bootstrap::peers_from_trusted_peer(&Peer::new(*tpeer))
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::warn!(
+                        reason = %e,
+                        "failed to retrieve the list of bootstrap peers from trusted peer"
+                    );
+                    Vec::new()
+                });
+            tracing::info!("adding {} peers from peer", res.len());
+            res
         }
+        .instrument(span)
+        .await;
+        peers.extend(received_peers);
     }
-    peers
+
+    let (bootstrap_peers, topology_peers) = if config.bootstrap_from_trusted_peers {
+        peers
+            .into_iter()
+            .partition(|peer| trusted_peers_addrs.contains(&peer.address()))
+    } else {
+        (Vec::from_iter(peers), Vec::new())
+    };
+
+    BootstrapPeers {
+        bootstrap_peers,
+        topology_peers,
+    }
+}
+
+pub struct NetworkBootstrapResult {
+    pub initial_peers: Vec<topology::Peer>,
+    pub bootstrapped: bool,
 }
 
 pub async fn bootstrap(
@@ -630,7 +603,7 @@ pub async fn bootstrap(
     branch: Tip,
     cancellation_token: CancellationToken,
     span: &Span,
-) -> Result<bool, bootstrap::Error> {
+) -> Result<NetworkBootstrapResult, bootstrap::Error> {
     use futures::future::{select, Either, FutureExt};
 
     if config.protocol != Protocol::Grpc {
@@ -638,7 +611,10 @@ pub async fn bootstrap(
     }
 
     if config.skip_bootstrap {
-        return Ok(true);
+        return Ok(NetworkBootstrapResult {
+            initial_peers: Vec::new(),
+            bootstrapped: true,
+        });
     }
 
     if config.trusted_peers.is_empty() {
@@ -657,11 +633,18 @@ pub async fn bootstrap(
         Either::Right(((), _)) => return Err(bootstrap::Error::Interrupted),
     };
 
-    for peer in netboot_peers.randomly() {
+    let BootstrapPeers {
+        mut bootstrap_peers,
+        topology_peers,
+    } = netboot_peers;
+    let mut rng = rand::thread_rng();
+    bootstrap_peers.shuffle(&mut rng);
+
+    for peer in &bootstrap_peers {
         let span =
             span!(parent: span, Level::TRACE, "bootstrap", peer_addr = %peer.address().to_string());
         let res = bootstrap::bootstrap_from_peer(
-            peer,
+            &Peer::new(peer.address()),
             blockchain.clone(),
             branch.clone(),
             cancellation_token.clone(),
@@ -709,7 +692,13 @@ pub async fn bootstrap(
         .await
         .map_err(bootstrap::Error::GcFailed)?;
 
-    Ok(bootstrapped)
+    Ok(NetworkBootstrapResult {
+        initial_peers: bootstrap_peers
+            .into_iter()
+            .chain(topology_peers.into_iter())
+            .collect(),
+        bootstrapped,
+    })
 }
 
 /// Queries the trusted peers for a block identified with the hash.
