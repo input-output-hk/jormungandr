@@ -275,13 +275,12 @@ pub fn node_trust_itself() {
         address: config.public_address,
         id: None,
     };
-
-    assert!(network_controller
+    network_controller
         .expect_spawn_failed(
             params(CLIENT).trusted_peers(vec![peer]),
-            "unable to reach peer for initial bootstrap"
+            "failed to retrieve the list of bootstrap peers from trusted peer",
         )
-        .is_ok());
+        .unwrap();
 }
 
 #[test]
