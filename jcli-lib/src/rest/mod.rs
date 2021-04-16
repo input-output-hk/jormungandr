@@ -1,6 +1,6 @@
 //! REST API request tooling.
 mod config;
-mod v0;
+pub mod v0;
 
 use crate::utils::{io::ReadYamlError, output_format};
 use config::RestArgs;
