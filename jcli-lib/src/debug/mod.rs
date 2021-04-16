@@ -1,3 +1,4 @@
+//! Debug tools for inspecting hex-encoded messages and blocks.
 mod block;
 mod message;
 use hex::FromHexError;
@@ -11,6 +12,7 @@ use thiserror::Error;
     derive(StructOpt),
     structopt(rename_all = "kebab-case")
 )]
+/// Type for inspecting hex-encoded messages and blocks.
 pub enum Debug {
     /// Decode hex-encoded message and display its content
     Message(message::Message),
@@ -19,6 +21,7 @@ pub enum Debug {
 }
 
 #[derive(Debug, Error)]
+/// Error types when inspecting hex-encoded messages and blocks.
 pub enum Error {
     #[error("I/O Error")]
     Io(#[from] std::io::Error),

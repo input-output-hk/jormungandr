@@ -1,3 +1,4 @@
+//! Decode hex-encoded message and display its contents.
 use crate::{debug::Error, utils::io};
 use chain_core::property::Deserialize as _;
 use chain_impl_mockchain::block::Block as BlockMock;

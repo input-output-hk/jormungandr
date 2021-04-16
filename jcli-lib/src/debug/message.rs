@@ -1,3 +1,4 @@
+//! Inspect hex-encoded fragment messages.
 use crate::{debug::Error, utils::io};
 use chain_core::property::Deserialize as _;
 use chain_impl_mockchain::fragment::Fragment as MockFragment;

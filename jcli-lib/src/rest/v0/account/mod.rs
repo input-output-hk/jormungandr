@@ -1,3 +1,4 @@
+//! Account operations
 use crate::rest::{Error, RestArgs};
 use crate::utils::{AccountId, OutputFormat};
 #[cfg(feature = "structopt")]

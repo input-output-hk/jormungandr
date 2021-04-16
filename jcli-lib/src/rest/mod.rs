@@ -9,18 +9,19 @@ use hex::FromHexError;
 use structopt::StructOpt;
 use thiserror::Error;
 
-/// Send request to node REST API
 #[cfg_attr(
     feature = "structopt",
     derive(StructOpt),
     structopt(rename_all = "kebab-case")
 )]
+/// Send request to node REST API
 pub enum Rest {
     /// API version 0
     V0(v0::V0),
 }
 
 #[derive(Debug, Error)]
+/// Error types for REST API calls.
 pub enum Error {
     #[error("input is not a valid fragment")]
     InputFragmentMalformed(#[source] std::io::Error),

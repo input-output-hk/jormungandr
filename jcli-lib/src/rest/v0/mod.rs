@@ -1,3 +1,4 @@
+//! REST API Version 0.
 mod account;
 mod block;
 mod diagnostic;
@@ -24,6 +25,7 @@ use structopt::StructOpt;
     derive(StructOpt),
     structopt(rename_all = "kebab-case")
 )]
+/// Endpoints for the REST API Version 0.
 pub enum V0 {
     /// Account operations
     Account(account::Account),

@@ -1,3 +1,4 @@
+//! Helper utilities.
 mod account_id;
 
 pub mod io;

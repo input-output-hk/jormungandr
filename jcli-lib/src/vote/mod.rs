@@ -1,3 +1,4 @@
+//! Voting operations.
 use crate::utils::output_file::{self, OutputFile};
 use crate::utils::vote::{SharesError, VotePlanError};
 

@@ -1,3 +1,4 @@
+//! Key generation tools.
 use crate::utils::io;
 use crate::utils::output_file::{self, OutputFile};
 use bech32::{self, u5, FromBase32, ToBase32};

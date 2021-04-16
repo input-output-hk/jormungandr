@@ -1,3 +1,4 @@
+//! Transaction tools for building and viewing offline.
 mod add_account;
 mod add_certificate;
 mod add_input;
