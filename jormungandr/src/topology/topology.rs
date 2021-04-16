@@ -29,6 +29,7 @@ pub fn secret_key_into_keynesis(key: SigningKey<Ed25519>) -> keynesis::key::ed25
 
 pub struct View {
     pub peers: Vec<Peer>,
+    pub self_node: Peer,
 }
 
 /// object holding the P2pTopology of the Node
@@ -118,12 +119,12 @@ impl P2pTopology {
             .topology
             .view(None, selection)
             .into_iter()
-            .map(|profile| Peer {
-                addr: profile.address(),
-                id: Some(NodeId(profile.id())),
-            })
+            .map(|profile| Peer::from(profile.gossip().clone()))
             .collect();
-        View { peers }
+        View {
+            peers,
+            self_node: self.topology.self_profile().gossip().clone().into(),
+        }
     }
 
     pub fn initiate_gossips(&mut self, recipient: &NodeId) -> Gossips {
