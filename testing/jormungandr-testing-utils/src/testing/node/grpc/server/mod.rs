@@ -52,10 +52,10 @@ pub struct JormungandrServerImpl {
 }
 
 impl JormungandrServerImpl {
-    pub fn new(data: Arc<RwLock<MockServerData>>, port: u16) -> Self {
+    pub fn new(data: Arc<RwLock<MockServerData>>) -> Self {
         info!(
             method = %MethodType::Init.to_string(),
-            "mock node started on port {}", port
+            "mock node started on {}", data.read().unwrap().profile().address()
         );
         JormungandrServerImpl { data }
     }
@@ -129,7 +129,17 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<PeersRequest>,
     ) -> Result<tonic::Response<PeersResponse>, tonic::Status> {
         info!(method = %MethodType::GetPeers, "Get peers request received");
-        Ok(Response::new(PeersResponse::default()))
+        use bincode::Options;
+        let data = self.data.read().unwrap();
+        let mut self_gossip = Vec::new();
+        let config = bincode::options();
+        config.with_limit(512);
+        config
+            .serialize_into(&mut self_gossip, data.profile().gossip().as_ref())
+            .unwrap();
+        Ok(Response::new(PeersResponse {
+            peers: vec![self_gossip],
+        }))
     }
     async fn get_blocks(
         &self,
