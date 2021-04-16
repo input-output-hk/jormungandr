@@ -5,20 +5,20 @@ import sys
 from datetime import date
 from subprocess import Popen, PIPE
 
-def check_version(ver):
+def check_version(crate):
     # Checks package version for matching with the current tag reference
-    # print(ver[0])
-    if ref is not None and ref != 'refs/tags/v' + str(ver[0]):
+    # print(crate[0])
+    if ref is not None and ref != 'refs/tags/v' + str(crate[0]):
         return 0
     else:
         return 1
 
-def print_error(crate, ver, v):
-    # print(crate, ver[0], v)
-    if not v:
+def print_error(crate, match):
+    # print(crate[0], crate[1], match)
+    if not match:
         print(
-            '::error file={path}::version {0} does not match release tag {1}'
-            .format(str(ver[0]), ref, path = str(crate) + '/Cargo.toml')
+            '::error file={path}::version {version} does not match release tag {tag}'
+            .format(tag = ref, version = str(crate[0]), path = str(crate[1]))
         )
 
 def bundle_version(crates):
@@ -32,10 +32,11 @@ def bundle_version(crates):
     data = json.load(channel.stdout).get('packages')
 
     # read, map and assign workspace crates versions to bundle package versions
-    for package_id, _ in enumerate(data):
-        if data[package_id]['name'] in crates:
-            crates[data[package_id]['name']].append(data[package_id]['version'])
-    #       print(package_id, data[package_id]['name'], data[package_id]['version'], crates)
+    for package, _ in enumerate(data):
+        if data[package]['name'] in crates:
+            crates[data[package]['name']].append(data[package]['version'])
+            crates[data[package]['name']].append(data[package]['manifest_path'])
+    #       print(package, data[package]['name'], data[package]['version'], crates)
 
     # Checks package versions of the crates bundle for consistency with the given tag reference
     consistency = list(map(check_version, list(crates.values())))
@@ -43,7 +44,7 @@ def bundle_version(crates):
 
     # print errors for packages which versions didn't match tag reference
     if not all(consistency):
-        list(map(print_error, list(crates.keys()), list(crates.values()), consistency))
+        list(map(print_error, list(crates.values()), consistency))
         sys.exit(1)
     elif all(consistency):
         version = list(crates.values())[0][0]

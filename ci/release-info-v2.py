@@ -24,12 +24,12 @@ def check_version(ver):
     else:
         return 1
 
-def print_error(crate, ver, v):
-    # print(crate, ver, v)
-    if not v:
+def print_error(crate, ver, match):
+    # print(crate, ver, match)
+    if not match:
         print(
-            '::error file={path}::version {0} does not match release tag {1}'
-            .format(str(ver), ref, path = str(crate) + '/Cargo.toml')
+            '::error file={path}::version {version} does not match release tag {tag}'
+            .format(tag = ref, version = str(ver), path = str(crate) + '/Cargo.toml')
         )
 
 def bundle_version(crates):
@@ -42,7 +42,7 @@ def bundle_version(crates):
     if not all(consistency):
         list(map(print_error, crates, bundle, consistency))
         sys.exit(1)
-    else:
+    elif all(consistency):
         version = bundle[0]
         return version
 
