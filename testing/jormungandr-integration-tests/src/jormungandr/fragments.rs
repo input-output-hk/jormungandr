@@ -23,7 +23,7 @@ pub fn send_all_fragments() {
         &[receiver.clone()],
         ConfigurationBuilder::new()
             .with_block0_consensus(ConsensusType::GenesisPraos)
-            .with_slots_per_epoch(30)
+            .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(3)
             .with_linear_fees(LinearFee::new(1, 1, 1))
