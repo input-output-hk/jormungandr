@@ -7,9 +7,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
+      - name: Install linters
+        run: pip3 install black
+
       - uses: actions/checkout@v2
 
       - name: Check formatting (black)
-        uses: psf/black@stable
-        with:
-          args: "ci/**.py --check"
+        run: black . --check
