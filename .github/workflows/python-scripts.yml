@@ -1,0 +1,15 @@
+name: Python scripts linters
+
+on:
+  push:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Check formatting (black)
+        uses: psf/black@stable
+        with:
+          args: "ci/**.py --check"
