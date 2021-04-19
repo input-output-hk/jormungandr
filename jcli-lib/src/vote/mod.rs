@@ -1,6 +1,7 @@
 //! Voting operations.
 use crate::utils::output_file::{self, OutputFile};
 use crate::utils::vote::{SharesError, VotePlanError};
+use crate::key::Seed;
 
 pub mod bech32_constants;
 mod committee;
@@ -83,23 +84,5 @@ impl Vote {
             Vote::Crs(cmd) => cmd.exec(),
             Vote::Tally(cmd) => cmd.exec(),
         }
-    }
-}
-
-// FIXME: Duplicated with key.rs
-#[derive(Debug)]
-struct Seed([u8; 32]);
-impl std::str::FromStr for Seed {
-    type Err = Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let vec = hex::decode(s)?;
-        if vec.len() != 32 {
-            return Err(Error::InvalidSeed {
-                seed_len: vec.len(),
-            });
-        }
-        let mut bytes = [0; 32];
-        bytes.copy_from_slice(&vec);
-        Ok(Seed(bytes))
     }
 }
