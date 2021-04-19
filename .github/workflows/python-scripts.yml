@@ -1,0 +1,16 @@
+name: Python scripts linters
+
+on:
+  push:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install linters
+        run: pip3 install black
+
+      - uses: actions/checkout@v2
+
+      - name: Check formatting (black)
+        run: black ./ci ./scripts --check
