@@ -2130,7 +2130,7 @@ dependencies = [
 [[package]]
 name = "jortestkit"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#79033558ac7eae01cbb1311cc1a1d00ec100c36a"
+source = "git+https://github.com/Zeegomo/jortestkit.git?branch=discard-cpu-specific-releases#efc0ee9c574a70a6170d36f1bf8f3a300a103b9e"
 dependencies = [
  "assert_fs",
  "base64 0.12.3",
