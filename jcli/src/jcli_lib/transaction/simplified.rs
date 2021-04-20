@@ -7,9 +7,7 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct Simplified {
-    input_address_sk: String,
-
+pub struct SimplifiedTransaction {
     /// the account to debit the funds from
     #[structopt(name = "ACCOUNT")]
     pub faucet_address: interfaces::Address,
@@ -32,7 +30,7 @@ pub struct Simplified {
     pub change: Option<interfaces::Address>,
 }
 
-impl Simplified {
+impl SimplifiedTransaction {
     pub fn exec(self) -> Result<(), Error> {
         simplified_transaction(
             self.faucet_address,
@@ -55,7 +53,7 @@ pub fn simplified_transaction(
     let mut transaction = Staging::new();
 
     // add account
-    transaction::add_account::add_account(faucet_address, value.clone(), &mut transaction)?;
+    transaction::add_account::add_account(faucet_address, value, &mut transaction)?;
 
     // add output
     transaction.add_output(Output {

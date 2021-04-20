@@ -64,7 +64,7 @@ pub enum Transaction {
     /// get the message format out of a sealed transaction
     ToMessage(common::CommonTransaction),
     /// send  a transaction from faucet (simplified method)
-    Send(simplified::Send),
+    Send(simplified::SimplifiedTransaction),
 }
 
 type StaticStr = &'static str;

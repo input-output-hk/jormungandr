@@ -39,4 +39,5 @@ pub fn finalize(
         Some(change) => OutputPolicy::One(change.into()),
     };
     let _balance = transaction.balance_inputs_outputs(&fee_algo, output_policy)?;
+    Ok(())
 }
