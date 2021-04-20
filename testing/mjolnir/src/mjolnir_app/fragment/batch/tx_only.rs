@@ -80,6 +80,7 @@ impl TxOnly {
             self.pace,
             self.build_monitor(),
             30,
+            1,
         );
 
         let mut builder = RemoteJormungandrBuilder::new("node".to_owned());

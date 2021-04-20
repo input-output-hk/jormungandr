@@ -50,6 +50,7 @@ impl VotingLoadTestConfig {
                 100,
                 Monitor::Standard(100),
                 100,
+                1,
             ),
             initial_fund_per_wallet: 10_000,
             wallets_count: 3_000,
@@ -73,6 +74,7 @@ impl VotingLoadTestConfig {
                 100,
                 Monitor::Standard(100),
                 100,
+                1,
             ),
             initial_fund_per_wallet: 10_000,
             wallets_count: 8_000,
@@ -225,5 +227,5 @@ impl PublicVotingLoadTestConfig {
 }
 
 pub fn adversary_noise_config(tps: usize, duration: Duration) -> Configuration {
-    Configuration::duration(tps, duration, 100, Monitor::Disabled(1), 10000)
+    Configuration::duration(tps, duration, 100, Monitor::Disabled(1), 10000, 1)
 }

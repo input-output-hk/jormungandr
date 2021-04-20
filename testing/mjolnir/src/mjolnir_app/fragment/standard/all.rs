@@ -109,6 +109,7 @@ impl AllFragments {
             self.pace,
             self.build_monitor(),
             30,
+            1,
         );
         let mut builder = RemoteJormungandrBuilder::new("node".to_string());
         builder.with_rest(self.endpoint.parse().unwrap());

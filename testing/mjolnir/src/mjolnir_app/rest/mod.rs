@@ -58,6 +58,7 @@ impl RestLoadCommand {
             self.pace,
             self.build_monitor(),
             0,
+            1,
         );
         let stats = jortestkit::load::start_sync(request_gen, config, "rest load test");
         if self.measure {
