@@ -1,5 +1,5 @@
+use crate::jcli_lib::transaction::{common, Error};
 use crate::transaction;
-use crate::transaction::common;
 use crate::transaction::staging::Staging;
 use chain_impl_mockchain::transaction::Output;
 use jormungandr_lib::interfaces;
@@ -7,7 +7,7 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct Send {
+pub struct Simplified {
     input_address_sk: String,
 
     /// the account to debit the funds from
@@ -32,26 +32,39 @@ pub struct Send {
     pub change: Option<interfaces::Address>,
 }
 
-impl Send {
-    pub fn exec(self) -> std::io::Result<()> {
-        let mut transaction = Staging::new();
-
-        // add account
-        transaction::add_account::add_account(
+impl Simplified {
+    pub fn exec(self) -> Result<(), Error> {
+        simplified_transaction(
             self.faucet_address,
-            self.value.clone(),
-            &mut transaction,
+            self.receiver_address,
+            self.value,
+            self.fee,
+            self.change,
         )?;
-
-        // add output
-        transaction.add_output(Output {
-            address: self.receiver_address.into(),
-            value: self.value.into(),
-        })?;
-
-        //finalize
-        transaction::finalize::finalize(self.fee, self.change, &mut transaction)?;
-
         Ok(())
     }
+}
+
+pub fn simplified_transaction(
+    faucet_address: interfaces::Address,
+    receiver_address: interfaces::Address,
+    value: interfaces::Value,
+    fee: common::CommonFees,
+    change: Option<interfaces::Address>,
+) -> Result<(), Error> {
+    let mut transaction = Staging::new();
+
+    // add account
+    transaction::add_account::add_account(faucet_address, value.clone(), &mut transaction)?;
+
+    // add output
+    transaction.add_output(Output {
+        address: receiver_address.into(),
+        value: value.into(),
+    })?;
+
+    //finalize
+    transaction::finalize::finalize(fee, change, &mut transaction)?;
+
+    Ok(())
 }
