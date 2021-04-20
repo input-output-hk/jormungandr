@@ -1,15 +1,16 @@
-mod add_account;
+pub mod add_account;
 mod add_certificate;
 mod add_input;
-mod add_output;
+pub mod add_output;
 mod add_witness;
 mod auth;
 mod common;
-mod finalize;
+pub mod finalize;
 mod info;
 mod mk_witness;
-mod new;
+pub mod new;
 mod seal;
+mod simplified;
 mod staging;
 
 use self::staging::StagingKind;
@@ -62,6 +63,8 @@ pub enum Transaction {
     Auth(auth::Auth),
     /// get the message format out of a sealed transaction
     ToMessage(common::CommonTransaction),
+    /// send  a transaction from faucet (simplified method)
+    Send(simplified::Send),
 }
 
 type StaticStr = &'static str;
@@ -215,6 +218,7 @@ impl Transaction {
             Transaction::MakeWitness(mk_witness) => mk_witness.exec(),
             Transaction::Auth(auth) => auth.exec(),
             Transaction::ToMessage(common) => display_message(common),
+            Transaction::Send(send) => send.exec(),
         }
     }
 }
