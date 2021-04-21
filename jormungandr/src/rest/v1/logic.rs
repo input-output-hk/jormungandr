@@ -91,12 +91,15 @@ pub async fn post_fragments(
         .map(|fragment| fragment.id().to_string())
         .collect();
     let mut msgbox = context.try_full()?.transaction_task.clone();
+    let (reply_handle, reply_future) = intercom::unary_reply();
     let msg = TransactionMsg::SendTransactions {
         origin: FragmentOrigin::Rest,
         fragments,
         fail_fast: true,
+        reply_handle,
     };
     msgbox.try_send(msg)?;
+    let _summary = reply_future.await?;
     Ok(fragment_ids)
 }
 

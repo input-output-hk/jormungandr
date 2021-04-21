@@ -109,7 +109,7 @@ impl Process {
                         match maybe_msg {
                             None => break,
                             Some(msg) => match msg {
-                                TransactionMsg::SendTransactions { origin, fragments, fail_fast } => {
+                                TransactionMsg::SendTransactions { origin, fragments, fail_fast, reply_handle } => {
                                     // Note that we cannot use apply_block here, since we don't have a valid context to which to apply
                                     // those blocks. one valid tx in a given context, could be invalid in another. for example
                                     // fee calculations, existence utxo / account solvency.
@@ -123,9 +123,13 @@ impl Process {
 
                                     let stats_counter = stats_counter.clone();
 
-                                    pool.insert_and_propagate_all(origin, fragments, fail_fast)
-                                        .await
-                                        .map(move |count| stats_counter.add_tx_recv_cnt(count))?;
+                                    let summary = pool
+                            .insert_and_propagate_all(origin, fragments, fail_fast)
+                            .await?;
+
+                        stats_counter.add_tx_recv_cnt(summary.accepted.len());
+
+                        reply_handle.reply_ok(summary);
                                 }
                                 TransactionMsg::RemoveTransactions(fragment_ids, status) => {
                                     tracing::debug!(

@@ -135,12 +135,15 @@ pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Err
 pub async fn post_message(context: &Context, message: &[u8]) -> Result<String, Error> {
     let fragment = Fragment::deserialize(message).map_err(Error::Deserialize)?;
     let fragment_id = fragment.id().to_string();
+    let (reply_handle, reply_future) = intercom::unary_reply();
     let msg = TransactionMsg::SendTransactions {
         origin: FragmentOrigin::Rest,
         fragments: vec![fragment],
         fail_fast: true,
+        reply_handle,
     };
     context.try_full()?.transaction_task.clone().try_send(msg)?;
+    let _summary = reply_future.await?;
     Ok(fragment_id)
 }
 
