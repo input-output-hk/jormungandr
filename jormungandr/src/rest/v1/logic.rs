@@ -1,9 +1,10 @@
 use crate::{
     blockchain::StorageError,
+    fragment::FragmentsProcessingSummary,
     intercom::{self, TransactionMsg},
     rest::Context,
 };
-use chain_core::property::{Deserialize, Fragment as _};
+use chain_core::property::Deserialize;
 use chain_crypto::{digest::Error as DigestError, hash::Error as HashError, PublicKeyFromStrError};
 use chain_impl_mockchain::{
     fragment::{Fragment, FragmentId},
@@ -78,7 +79,7 @@ pub async fn get_fragment_statuses<'a>(
 pub async fn post_fragments(
     context: &Context,
     messages: Vec<String>,
-) -> Result<Vec<String>, Error> {
+) -> Result<FragmentsProcessingSummary, Error> {
     let fragments = messages
         .into_iter()
         .map(|message| {
@@ -86,10 +87,6 @@ pub async fn post_fragments(
             Fragment::deserialize(message.as_slice()).map_err(Error::Deserialize)
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let fragment_ids = fragments
-        .iter()
-        .map(|fragment| fragment.id().to_string())
-        .collect();
     let mut msgbox = context.try_full()?.transaction_task.clone();
     let (reply_handle, reply_future) = intercom::unary_reply();
     let msg = TransactionMsg::SendTransactions {
@@ -99,8 +96,7 @@ pub async fn post_fragments(
         reply_handle,
     };
     msgbox.try_send(msg)?;
-    let _summary = reply_future.await?;
-    Ok(fragment_ids)
+    reply_future.await.map_err(Into::into)
 }
 
 pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Error> {

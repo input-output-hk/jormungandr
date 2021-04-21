@@ -36,15 +36,55 @@ paths:
           content:
             application/json:
               schema:
-                description: A list of fragment IDs (same order as in input)
-                type: array
-                items:
-                  type: string
-                  pattern: '[0-9a-f]+'
-              example:
-                [
-                  '68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968',
-                ]
+                description: The information about whether a message was accepted or rejected
+                type: object
+                properties:
+                  accepted:
+                    description: IDs of accepted fragments
+                    type: array
+                    items:
+                      type: string
+                      format: '[0-9a-f]+'
+                  rejected:
+                    description: Detailed information about rejected fragments
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - id
+                        - reason
+                      properties:
+                        id:
+                          description: The ID of a rejected fragment
+                          type: string
+                          format: '[0-9a-f]+'
+                        reason:
+                          oneOf:
+                            - description: This fragment was already processed by this node
+                              type: string
+                              enum:
+                                - FragmentInLog
+                            - description: This fragment failed validation
+                              type: string
+                              enum:
+                                - FragmentInvalid
+                            - description: A previous fragment was rejected
+                              type: string
+                              enum:
+                                - PreviousFragmentInvalid
+                            - description: One of the pools rejected this fragment due to reaching the capacity limit
+                              type: object
+                              required:
+                                - PoolOverflow
+                              properties:
+                                PoolOverflow:
+                                  type: object
+                                  required:
+                                    - pool_number
+                                  properties:
+                                    pool_number:
+                                      description: The number of the pool (corresponding to the leader number) that triggered this error
+                                      type: integer
         '400':
           description: One of messages is malformed
 

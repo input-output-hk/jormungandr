@@ -15,6 +15,8 @@ use jormungandr_lib::{
     interfaces::{FragmentLog, FragmentOrigin, FragmentStatus, PersistentFragmentLog},
     time::SecondsSinceUnixEpoch,
 };
+use serde::Serialize;
+use serde_with::{serde_as, DisplayFromStr};
 use std::collections::HashSet;
 use thiserror::Error;
 
@@ -34,7 +36,8 @@ pub enum Error {
     CannotPropagate(#[source] SendError),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FragmentRejectionReason {
     FragmentInLog,
     FragmentInvalid,
@@ -42,14 +45,18 @@ pub enum FragmentRejectionReason {
     PoolOverflow { pool_number: usize },
 }
 
-#[derive(Debug)]
+#[serde_as]
+#[derive(Debug, Serialize)]
 pub struct RejectedFragmentInfo {
+    #[serde_as(as = "DisplayFromStr")]
     pub id: FragmentId,
     pub reason: FragmentRejectionReason,
 }
 
-#[derive(Debug)]
+#[serde_as]
+#[derive(Debug, Serialize)]
 pub struct FragmentsProcessingSummary {
+    #[serde_as(as = "Vec<DisplayFromStr>")]
     pub accepted: Vec<FragmentId>,
     pub rejected: Vec<RejectedFragmentInfo>,
 }
