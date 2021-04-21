@@ -91,10 +91,8 @@ pub async fn post_fragments(
         .map(|fragment| fragment.id().to_string())
         .collect();
     let mut msgbox = context.try_full()?.transaction_task.clone();
-    for fragment in fragments.into_iter() {
-        let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
-        msgbox.try_send(msg)?;
-    }
+    let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, fragments);
+    msgbox.try_send(msg)?;
     Ok(fragment_ids)
 }
 
