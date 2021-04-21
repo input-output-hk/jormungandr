@@ -46,11 +46,12 @@ impl Quarantine {
         if self.quarantine_whitelist.contains(&node.address) {
             tracing::debug!(
                 node = %node.address,
+                id=?node.id,
                 "quarantine whitelists prevents this node from being quarantined",
             );
             false
         } else {
-            tracing::debug!(node = %node.address, ?self.quarantine_duration, "quarantining node");
+            tracing::debug!(node = %node.address, id=?node.id, ?self.quarantine_duration, "quarantining node");
             node.quarantined = Some(SystemTime::now().into());
             self.quarantined_records.put(node, Instant::now());
             true

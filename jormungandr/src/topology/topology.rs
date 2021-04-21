@@ -151,7 +151,7 @@ impl P2pTopology {
             // If that happens we should not promote it anymore.
             let is_dirty = self.topology.peers().dirty().contains(node.id.as_ref());
             if is_dirty {
-                tracing::debug!(node = %node.address, "lifting node from quarantine");
+                tracing::debug!(node = %node.address, id=?node.id, "lifting node from quarantine");
                 self.topology.promote_peer(&node.id.as_ref());
             } else {
                 tracing::debug!(node = %node.address, "node from quarantine have left the dirty pool. skipping it");
