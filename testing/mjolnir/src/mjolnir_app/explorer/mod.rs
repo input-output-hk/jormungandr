@@ -58,6 +58,7 @@ impl ExplorerLoadCommand {
             self.pace,
             self.build_monitor(),
             0,
+            1,
         );
         let stats = jortestkit::load::start_sync(request_gen, config, "Explorer load test");
         if self.measure {

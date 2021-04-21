@@ -79,6 +79,7 @@ impl TxOnly {
             self.pace,
             self.build_monitor(),
             30,
+            1,
         );
         let stats = jortestkit::load::start_sync(generator, config, title);
         stats.print_summary(title);
