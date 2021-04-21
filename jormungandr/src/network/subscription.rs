@@ -348,10 +348,10 @@ impl FragmentProcessor {
             Vec::with_capacity(buffer_sizes::inbound::FRAGMENTS),
         );
         self.mbox
-            .start_send(TransactionMsg::SendTransaction(
-                FragmentOrigin::Network,
+            .start_send(TransactionMsg::SendTransactions {
+                origin: FragmentOrigin::Network,
                 fragments,
-            ))
+            })
             .map_err(|e| {
                 tracing::error!(
                     reason = %e,
