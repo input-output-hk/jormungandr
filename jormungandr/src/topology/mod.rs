@@ -86,18 +86,7 @@ impl Serialize for NodeId {
 
 /// This represents a peer and its public key used for
 /// identification in the topology.
-#[derive(Debug, Hash, Clone, PartialEq, Eq)]
-pub struct Peer(Gossip);
-
-impl Peer {
-    pub fn address(&self) -> Address {
-        self.0.address()
-    }
-
-    pub fn id(&self) -> NodeId {
-        self.0.id()
-    }
-}
+pub type Peer = Gossip;
 
 #[derive(Eq, Clone, Serialize, Debug)]
 pub struct PeerInfo {
@@ -133,27 +122,12 @@ impl From<&Arc<Profile>> for PeerInfo {
                 .iter()
                 .map(|s| Subscription {
                     topic: s.topic().to_string(),
-                    interest: format!("{:?}", s.interest_level()).parse::<u32>().unwrap(),
+                    interest: s
+                        .interest_level()
+                        .priority_score(poldercast::InterestLevel::ZERO)
+                        as u32,
                 })
                 .collect(),
         }
-    }
-}
-
-impl From<Gossip> for Peer {
-    fn from(gossip: Gossip) -> Self {
-        Self(gossip)
-    }
-}
-
-impl From<poldercast::Gossip> for Peer {
-    fn from(gossip: poldercast::Gossip) -> Self {
-        Self(Gossip::from(gossip))
-    }
-}
-
-impl From<Peer> for Gossip {
-    fn from(peer: Peer) -> Self {
-        peer.0
     }
 }
