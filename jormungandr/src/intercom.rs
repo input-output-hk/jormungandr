@@ -2,7 +2,7 @@ use crate::blockcfg::{
     ApplyBlockLedger, Block, Fragment, FragmentId, Header, HeaderHash, LedgerParameters,
 };
 use crate::blockchain::{Checkpoints, LeadershipBlock, StorageError};
-use crate::fragment::selection::FragmentSelectionAlgorithmParams;
+use crate::fragment::{selection::FragmentSelectionAlgorithmParams, FragmentsProcessingSummary};
 use crate::network::p2p::{comm::PeerInfo, Address};
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
@@ -502,6 +502,7 @@ pub enum TransactionMsg {
         origin: FragmentOrigin,
         fragments: Vec<Fragment>,
         fail_fast: bool,
+        reply_handle: ReplyHandle<FragmentsProcessingSummary>,
     },
     RemoveTransactions(Vec<FragmentId>, FragmentStatus),
     GetLogs(ReplyHandle<Vec<FragmentLog>>),

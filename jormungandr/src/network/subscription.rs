@@ -339,11 +339,13 @@ impl FragmentProcessor {
             &mut self.buffered_fragments,
             Vec::with_capacity(buffer_sizes::inbound::FRAGMENTS),
         );
+        let (reply_handle, _reply_future) = intercom::unary_reply();
         self.mbox
             .start_send(TransactionMsg::SendTransactions {
                 origin: FragmentOrigin::Network,
                 fragments,
                 fail_fast: false,
+                reply_handle,
             })
             .map_err(|e| {
                 tracing::error!(

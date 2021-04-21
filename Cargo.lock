@@ -2127,7 +2127,6 @@ dependencies = [
  "hex",
  "http",
  "imhamt",
- "itertools 0.10.0",
  "jormungandr-lib",
  "lazy_static",
  "libc",

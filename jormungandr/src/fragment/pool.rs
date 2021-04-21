@@ -15,6 +15,7 @@ use jormungandr_lib::{
     interfaces::{FragmentLog, FragmentOrigin, FragmentStatus, PersistentFragmentLog},
     time::SecondsSinceUnixEpoch,
 };
+use std::collections::HashSet;
 use thiserror::Error;
 
 use std::fs::File;
@@ -31,6 +32,26 @@ pub struct Pools {
 pub enum Error {
     #[error("cannot propagate a fragment to the network")]
     CannotPropagate(#[source] SendError),
+}
+
+#[derive(Debug)]
+pub enum FragmentRejectionReason {
+    FragmentInLog,
+    FragmentInvalid,
+    PreviousFragmentInvalid,
+    PoolOverflow { pool_number: usize },
+}
+
+#[derive(Debug)]
+pub struct RejectedFragmentInfo {
+    pub id: FragmentId,
+    pub reason: FragmentRejectionReason,
+}
+
+#[derive(Debug)]
+pub struct FragmentsProcessingSummary {
+    pub accepted: Vec<FragmentId>,
+    pub rejected: Vec<RejectedFragmentInfo>,
 }
 
 impl Pools {
@@ -79,33 +100,46 @@ impl Pools {
         origin: FragmentOrigin,
         fragments: Vec<Fragment>,
         fail_fast: bool,
-    ) -> Result<usize, Error> {
+    ) -> Result<FragmentsProcessingSummary, Error> {
         use bincode::Options;
 
         tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
 
         let mut network_msg_box = self.network_msg_box.clone();
 
-        let fragments = fragments.into_iter();
+        let mut filtered_fragments = Vec::new();
+        let mut rejected = Vec::new();
 
-        let fragments = if fail_fast {
-            itertools::Either::Left(fragments.take_while(is_fragment_valid))
-        } else {
-            itertools::Either::Right(fragments.filter(is_fragment_valid))
-        };
+        let mut fragments = fragments.into_iter();
 
-        let fragment_ids: Vec<_> = fragments.clone().map(|fragment| fragment.id()).collect();
-        let fragments_exist_in_logs = self.logs.exist_all(fragment_ids);
-        let fragments = fragments
-            .zip(fragments_exist_in_logs)
-            .filter(|(_, exists_in_logs)| !exists_in_logs)
-            .map(|(fragment, _)| fragment);
+        for fragment in fragments.by_ref() {
+            let id = fragment.id();
 
-        if let Some(mut persistent_log) = self.persistent_log.as_mut() {
-            for fragment in fragments.clone() {
+            if self.logs.exists(id) {
+                rejected.push(RejectedFragmentInfo {
+                    id,
+                    reason: FragmentRejectionReason::FragmentInLog,
+                });
+                continue;
+            }
+
+            if !is_fragment_valid(&fragment) {
+                rejected.push(RejectedFragmentInfo {
+                    id,
+                    reason: FragmentRejectionReason::PreviousFragmentInvalid,
+                });
+
+                if fail_fast {
+                    break;
+                }
+
+                continue;
+            }
+
+            if let Some(mut persistent_log) = self.persistent_log.as_mut() {
                 let entry = PersistentFragmentLog {
                     time: SecondsSinceUnixEpoch::now(),
-                    fragment,
+                    fragment: fragment.clone(),
                 };
                 // this must be sufficient: the PersistentFragmentLog format is using byte array
                 // for serialization so we do not expect any problems during deserialization
@@ -114,29 +148,49 @@ impl Pools {
                     tracing::error!(err = %err, "failed to write persistent fragment log entry");
                 }
             }
+
+            filtered_fragments.push(fragment);
         }
 
-        let mut max_added = 0;
+        if fail_fast {
+            for fragment in fragments {
+                rejected.push(RejectedFragmentInfo {
+                    id: fragment.id(),
+                    reason: FragmentRejectionReason::PreviousFragmentInvalid,
+                })
+            }
+        }
 
-        for (i, pool) in self.pools.iter_mut().enumerate() {
-            let new_fragments = pool.insert_all(fragments.clone());
+        let mut accepted = HashSet::new();
+
+        for (pool_number, pool) in self.pools.iter_mut().enumerate() {
+            let mut fragments = filtered_fragments.clone().into_iter();
+            let new_fragments = pool.insert_all(fragments.by_ref());
             let count = new_fragments.len();
             tracing::debug!(
                 "{} of the received fragments were added to the pool number {}",
                 count,
-                i
+                pool_number
             );
             let fragment_logs: Vec<_> = new_fragments
                 .iter()
                 .map(move |fragment| FragmentLog::new(fragment.id(), origin))
                 .collect();
             self.logs.insert_all(fragment_logs);
-            if count > max_added {
-                max_added = count;
+
+            for fragment in &new_fragments {
+                accepted.insert(fragment.id());
+            }
+
+            for fragment in fragments {
+                rejected.push(RejectedFragmentInfo {
+                    id: fragment.id(),
+                    reason: FragmentRejectionReason::PoolOverflow { pool_number },
+                })
             }
         }
 
-        for fragment in fragments.into_iter() {
+        for fragment in filtered_fragments.into_iter() {
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
             network_msg_box
                 .send(fragment_msg)
@@ -144,7 +198,9 @@ impl Pools {
                 .map_err(Error::CannotPropagate)?;
         }
 
-        Ok(max_added)
+        let accepted = accepted.into_iter().collect();
+
+        Ok(FragmentsProcessingSummary { accepted, rejected })
     }
 
     pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
