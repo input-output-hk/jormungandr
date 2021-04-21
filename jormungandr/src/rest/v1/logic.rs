@@ -94,6 +94,7 @@ pub async fn post_fragments(
     let msg = TransactionMsg::SendTransactions {
         origin: FragmentOrigin::Rest,
         fragments,
+        fail_fast: true,
     };
     msgbox.try_send(msg)?;
     Ok(fragment_ids)

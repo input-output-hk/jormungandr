@@ -1904,6 +1904,7 @@ dependencies = [
  "hex",
  "http",
  "imhamt",
+ "itertools 0.10.0",
  "jormungandr-lib",
  "keynesis",
  "lazy_static",
