@@ -343,6 +343,7 @@ impl FragmentProcessor {
             .start_send(TransactionMsg::SendTransactions {
                 origin: FragmentOrigin::Network,
                 fragments,
+                fail_fast: false,
             })
             .map_err(|e| {
                 tracing::error!(

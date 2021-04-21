@@ -72,31 +72,37 @@ impl Pools {
         }
     }
 
-    /// Returns number of registered fragments
+    /// Returns number of registered fragments. Setting `fail_fast` to `true` will force this
+    /// method to reject all fragments after the first invalid fragments was met.
     pub async fn insert_and_propagate_all(
         &mut self,
         origin: FragmentOrigin,
-        mut fragments: Vec<Fragment>,
+        fragments: Vec<Fragment>,
+        fail_fast: bool,
     ) -> Result<usize, Error> {
         use bincode::Options;
 
         tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
-        fragments.retain(is_fragment_valid);
-        if fragments.is_empty() {
-            tracing::debug!("none of the received fragments are valid");
-            return Ok(0);
-        }
+
         let mut network_msg_box = self.network_msg_box.clone();
-        let fragment_ids = fragments.iter().map(Fragment::id).collect::<Vec<_>>();
+
+        let fragments = fragments.into_iter();
+
+        let fragments = if fail_fast {
+            itertools::Either::Left(fragments.take_while(is_fragment_valid))
+        } else {
+            itertools::Either::Right(fragments.filter(is_fragment_valid))
+        };
+
+        let fragment_ids: Vec<_> = fragments.clone().map(|fragment| fragment.id()).collect();
         let fragments_exist_in_logs = self.logs.exist_all(fragment_ids);
-        let new_fragments = fragments
-            .into_iter()
+        let fragments = fragments
             .zip(fragments_exist_in_logs)
             .filter(|(_, exists_in_logs)| !exists_in_logs)
             .map(|(fragment, _)| fragment);
 
         if let Some(mut persistent_log) = self.persistent_log.as_mut() {
-            for fragment in new_fragments.clone() {
+            for fragment in fragments.clone() {
                 let entry = PersistentFragmentLog {
                     time: SecondsSinceUnixEpoch::now(),
                     fragment,
@@ -113,24 +119,24 @@ impl Pools {
         let mut max_added = 0;
 
         for (i, pool) in self.pools.iter_mut().enumerate() {
-            let new_fragments = pool.insert_all(new_fragments.clone());
+            let new_fragments = pool.insert_all(fragments.clone());
             let count = new_fragments.len();
             tracing::debug!(
                 "{} of the received fragments were added to the pool number {}",
                 count,
                 i
             );
-            let fragment_logs = new_fragments
+            let fragment_logs: Vec<_> = new_fragments
                 .iter()
                 .map(move |fragment| FragmentLog::new(fragment.id(), origin))
-                .collect::<Vec<_>>();
+                .collect();
             self.logs.insert_all(fragment_logs);
             if count > max_added {
                 max_added = count;
             }
         }
 
-        for fragment in new_fragments.into_iter() {
+        for fragment in fragments.into_iter() {
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
             network_msg_box
                 .send(fragment_msg)

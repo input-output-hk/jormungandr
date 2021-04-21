@@ -501,6 +501,7 @@ pub enum TransactionMsg {
     SendTransactions {
         origin: FragmentOrigin,
         fragments: Vec<Fragment>,
+        fail_fast: bool,
     },
     RemoveTransactions(Vec<FragmentId>, FragmentStatus),
     GetLogs(ReplyHandle<Vec<FragmentLog>>),

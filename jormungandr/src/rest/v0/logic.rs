@@ -135,6 +135,7 @@ pub async fn post_message(context: &Context, message: &[u8]) -> Result<String, E
     let msg = TransactionMsg::SendTransactions {
         origin: FragmentOrigin::Rest,
         fragments: vec![fragment],
+        fail_fast: true,
     };
     context.try_full()?.transaction_task.clone().try_send(msg)?;
     Ok(fragment_id)
