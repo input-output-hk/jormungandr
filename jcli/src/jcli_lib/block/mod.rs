@@ -116,16 +116,24 @@ pub struct Input {
 
 impl Input {
     pub fn open(&self) -> Result<impl BufRead, Error> {
-        io::open_file_read(&self.input_file).map_err(|source| Error::InputInvalid {
-            source,
-            path: self.input_file.clone().unwrap_or_default(),
-        })
+        open_block_file(&self.input_file)
     }
 
     pub fn load_block(&self) -> Result<Block, Error> {
         let reader = self.open()?;
-        Block::deserialize(reader).map_err(Error::BlockFileCorrupted)
+        load_block(reader)
     }
+}
+
+pub fn open_block_file(input_file: &Option<PathBuf>) -> Result<impl BufRead, Error> {
+    io::open_file_read(input_file).map_err(|source| Error::InputInvalid {
+        source,
+        path: input_file.clone().unwrap_or_default(),
+    })
+}
+
+pub fn load_block(block_reader: impl BufRead) -> Result<Block, Error> {
+    Block::deserialize(block_reader).map_err(Error::BlockFileCorrupted)
 }
 
 #[derive(StructOpt)]

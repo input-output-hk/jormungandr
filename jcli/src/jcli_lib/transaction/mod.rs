@@ -18,6 +18,7 @@ use crate::jcli_lib::{
     certificate,
     utils::{key_parser, output_format},
 };
+use crate::{block, rest, utils};
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
 use std::path::PathBuf;
@@ -190,6 +191,15 @@ pub enum Error {
     TxWithOwnerStakeDelegationHasUtxoInput,
     #[error("transaction has owner stake delegation, but has outputs")]
     TxWithOwnerStakeDelegationHasOutputs,
+
+    #[error(transparent)]
+    Block0Error(#[from] block::Error),
+
+    #[error(transparent)]
+    AccountIdError(#[from] utils::account_id::Error),
+
+    #[error(transparent)]
+    RestError(#[from] rest::Error),
 }
 
 /*

@@ -1,4 +1,4 @@
-mod account;
+pub mod account;
 mod block;
 mod diagnostic;
 mod leaders;
