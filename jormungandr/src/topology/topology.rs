@@ -36,6 +36,7 @@ pub struct View {
 pub struct P2pTopology {
     topology: Topology,
     quarantine: Quarantine,
+    key: keynesis::key::ed25519::SecretKey,
 }
 
 struct CustomLayerBuilder {
@@ -109,6 +110,7 @@ impl P2pTopology {
         P2pTopology {
             topology,
             quarantine,
+            key,
         }
     }
 
@@ -213,5 +215,11 @@ impl P2pTopology {
                 self.topology.remove_peer(node_id.as_ref());
             }
         }
+    }
+
+    /// update our gossip so that other nodes can see that we are updating
+    /// it and are alive
+    pub fn update_gossip(&mut self) {
+        self.topology.update_profile_subscriptions(&self.key);
     }
 }

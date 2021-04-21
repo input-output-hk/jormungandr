@@ -69,6 +69,7 @@ impl Process {
                     }
                 },
                 _ = self.gossip_interval.tick() => {
+                        self.topology.update_gossip();
                         let view = self.topology.view(poldercast::layer::Selection::Any);
                         for peer in view.peers {
                             // Peers returned by the topology will always have a NodeId
