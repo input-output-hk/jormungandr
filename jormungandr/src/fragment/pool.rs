@@ -36,7 +36,7 @@ pub enum Error {
 
 #[derive(Debug)]
 pub enum FragmentRejectionReason {
-    FragmentInLog,
+    FragmentAlreadyInLog,
     FragmentInvalid,
     PreviousFragmentInvalid,
     PoolOverflow { pool_number: usize },
@@ -118,7 +118,7 @@ impl Pools {
             if self.logs.exists(id) {
                 rejected.push(RejectedFragmentInfo {
                     id,
-                    reason: FragmentRejectionReason::FragmentInLog,
+                    reason: FragmentRejectionReason::FragmentAlreadyInLog,
                 });
                 continue;
             }
