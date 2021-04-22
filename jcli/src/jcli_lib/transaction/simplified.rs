@@ -65,6 +65,7 @@ impl SimplifiedTransaction {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn simplified_transaction(
     faucet_address: interfaces::Address,
     receiver_address: interfaces::Address,
@@ -96,11 +97,11 @@ pub fn simplified_transaction(
 
     // get spending counter
     let account_state = rest::v0::account::request_account_information(
-        rest_args,
+        rest_args.clone(),
         AccountId::try_from_str(&faucet_address.to_string())?,
     )?;
 
-    //make witness
+    // make witness
     let witness = transaction::mk_witness::make_witness(
         &WitnessType::Account,
         &block0_hash,
@@ -108,6 +109,16 @@ pub fn simplified_transaction(
         Some(SpendingCounter::from(account_state.counter())),
         &secret_key,
     )?;
+
+    // add witness
+    transaction.add_witness(witness)?;
+
+    // seal
+    transaction.seal()?;
+
+    // send fragment
+    let fragment = transaction.fragment()?;
+    let fragment_id = rest::v0::message::post_fragment(rest_args, fragment)?;
 
     Ok(())
 }

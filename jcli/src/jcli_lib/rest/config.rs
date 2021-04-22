@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
 
-#[derive(StructOpt)]
+#[derive(StructOpt, Clone)]
 pub struct RestArgs {
     /// node API address. Must always have `http://` or `https://` prefix.
     /// E.g. `-h http://127.0.0.1`, `--host https://node.com:8443/cardano/api`
