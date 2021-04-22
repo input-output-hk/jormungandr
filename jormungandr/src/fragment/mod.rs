@@ -6,7 +6,6 @@ pub mod selection;
 
 pub use self::entry::PoolEntry;
 pub use self::logs::Logs;
-pub use self::pool::FragmentsProcessingSummary;
 pub use self::pool::Pools;
 pub use self::process::Process;
 

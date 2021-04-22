@@ -6,6 +6,7 @@ use super::{
 };
 use crate::{
     blockcfg::Fragment,
+    intercom,
     intercom::{BlockMsg, TransactionMsg},
     settings::start::network::Configuration,
     utils::async_msg::{self, MessageBox},

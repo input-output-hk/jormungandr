@@ -12,7 +12,10 @@ use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
 use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
 use jormungandr_lib::{
-    interfaces::{FragmentLog, FragmentOrigin, FragmentStatus, PersistentFragmentLog},
+    interfaces::{
+        FragmentLog, FragmentOrigin, FragmentRejectionReason, FragmentStatus,
+        FragmentsProcessingSummary, PersistentFragmentLog, RejectedFragmentInfo,
+    },
     time::SecondsSinceUnixEpoch,
 };
 use std::collections::HashSet;
@@ -32,26 +35,6 @@ pub struct Pools {
 pub enum Error {
     #[error("cannot propagate a fragment to the network")]
     CannotPropagate(#[source] SendError),
-}
-
-#[derive(Debug)]
-pub enum FragmentRejectionReason {
-    FragmentAlreadyInLog,
-    FragmentInvalid,
-    PreviousFragmentInvalid,
-    PoolOverflow { pool_number: usize },
-}
-
-#[derive(Debug)]
-pub struct RejectedFragmentInfo {
-    pub id: FragmentId,
-    pub reason: FragmentRejectionReason,
-}
-
-#[derive(Debug)]
-pub struct FragmentsProcessingSummary {
-    pub accepted: Vec<FragmentId>,
-    pub rejected: Vec<RejectedFragmentInfo>,
 }
 
 impl Pools {

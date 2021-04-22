@@ -9,6 +9,7 @@ mod config;
 mod fragment;
 mod fragment_log;
 mod fragment_log_persistent;
+mod fragments_processing_summary;
 mod leadership_log;
 mod linear_fee;
 mod old_address;
@@ -45,6 +46,9 @@ pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
 pub use self::fragment_log_persistent::{
     load_persistent_fragments_logs_from_folder_path, read_persistent_fragment_logs_from_file_path,
     DeserializeError, FileFragments, PersistentFragmentLog,
+};
+pub use self::fragments_processing_summary::{
+    FragmentRejectionReason, FragmentsProcessingSummary, RejectedFragmentInfo,
 };
 pub use self::leadership_log::{
     EnclaveLeaderId, LeadershipLog, LeadershipLogId, LeadershipLogStatus,

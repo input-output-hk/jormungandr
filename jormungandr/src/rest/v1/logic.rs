@@ -10,7 +10,9 @@ use chain_impl_mockchain::{
     value::ValueError,
 };
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
-use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
+use jormungandr_lib::interfaces::{
+    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
+};
 use std::{collections::HashMap, str::FromStr};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
