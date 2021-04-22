@@ -200,6 +200,9 @@ pub enum Error {
 
     #[error(transparent)]
     RestError(#[from] rest::Error),
+
+    #[error("could not generate random key")]
+    RandError(#[from] rand::Error),
 }
 
 /*

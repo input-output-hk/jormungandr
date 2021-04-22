@@ -131,7 +131,7 @@ fn mk_delegation(prefix: &str, s: PublicKey<Ed25519>, testing: bool, d: PublicKe
     mk_address_2(prefix, s, d, testing, Kind::Group)
 }
 
-fn mk_account(prefix: &str, s: PublicKey<Ed25519>, testing: bool) {
+pub fn mk_account(prefix: &str, s: PublicKey<Ed25519>, testing: bool) {
     mk_address_1(prefix, s, testing, Kind::Account)
 }
 

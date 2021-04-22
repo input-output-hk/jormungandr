@@ -418,6 +418,7 @@ fn bytes_to_priv_key<K: AsymmetricKey>(bytes: &[u8]) -> Result<String, Error> {
 
 #[derive(Debug)]
 struct Seed([u8; 32]);
+
 impl std::str::FromStr for Seed {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
