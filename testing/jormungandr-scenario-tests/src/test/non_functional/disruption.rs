@@ -137,6 +137,9 @@ pub fn passive_leader_disruption_overlap(
     // 2. Only leader is up
     passive.shutdown()?;
 
+    // Wait a bit so that the leader can indeed notice that passive is offline
+    utils::wait(15);
+
     // 3. Both nodes are up
     let passive = controller.spawn_node(
         PASSIVE,
@@ -206,7 +209,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
 
     // 3. second node is down
     leader2.shutdown()?;
-    utils::wait(5);
+    utils::wait(15);
 
     // 4. both nodes are up
     let leader2 = controller.spawn_node(
