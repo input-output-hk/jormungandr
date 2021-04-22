@@ -58,14 +58,15 @@ impl From<LayersConfig> for CustomLayerBuilder {
 }
 
 impl CustomLayerBuilder {
-    fn build_layers(&self, rings: u8, vicinity: usize, cyclon: usize) -> Vec<Box<dyn Layer>> {
+    fn build_layers(&self, rings: u8, _vicinity: usize, cyclon: usize) -> Vec<Box<dyn Layer>> {
         let mut layers: Vec<Box<dyn Layer>> = Vec::with_capacity(4);
 
         layers.push(Box::new(layers::Rings::new(
             self.config.rings.clone(),
             poldercast_layer::Rings::new(rings),
         )));
-        layers.push(Box::new(poldercast_layer::Vicinity::new(vicinity)));
+        // disabled until https://github.com/primetype/poldercast/pull/36 is fixed and merged
+        //layers.push(Box::new(poldercast_layer::Vicinity::new(vicinity)));
         layers.push(Box::new(poldercast_layer::Cyclon::new(cyclon)));
 
         let mut seed = [0; 32];
