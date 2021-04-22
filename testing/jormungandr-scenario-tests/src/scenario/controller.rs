@@ -10,6 +10,7 @@ use crate::{
 };
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
+use assert_fs::NamedTempFile;
 use chain_impl_mockchain::certificate::{VoteAction, VotePlan};
 use chain_impl_mockchain::header::HeaderId;
 use chain_impl_mockchain::ledger::governance::{
@@ -36,6 +37,7 @@ use jormungandr_testing_utils::{
     Version,
 };
 use std::{
+    collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -64,6 +66,7 @@ pub struct Controller {
 
     topology: Topology,
     blockchain: Blockchain,
+    node_key_files: HashMap<String, NamedTempFile>,
 }
 
 impl ControllerBuilder {
@@ -122,12 +125,29 @@ impl ControllerBuilder {
             _ => (),
         }
 
+        let settings = self.settings.unwrap();
+        let node_key_files = settings
+            .network_settings
+            .nodes
+            .keys()
+            .map(|alias| {
+                let key =
+                    jormungandr_lib::crypto::key::SigningKey::<chain_crypto::Ed25519>::generate(
+                        rand::thread_rng(),
+                    );
+                let file = NamedTempFile::new("node_key").unwrap();
+                std::fs::write(file.path(), key.to_bech32_str().as_bytes())?;
+                Ok((alias.to_string(), file))
+            })
+            .collect::<Result<HashMap<_, _>>>()?;
+
         Controller::new(
-            self.settings.unwrap(),
+            settings,
             context,
             working_directory,
             self.blockchain.unwrap(),
             self.topology.unwrap(),
+            node_key_files,
         )
     }
 
@@ -166,6 +186,7 @@ impl Controller {
         working_directory: ChildPath,
         blockchain: Blockchain,
         topology: Topology,
+        node_key_files: HashMap<String, NamedTempFile>,
     ) -> Result<Self> {
         use chain_core::property::Serialize as _;
 
@@ -187,6 +208,7 @@ impl Controller {
             working_directory,
             blockchain,
             topology,
+            node_key_files,
         })
     }
 
@@ -329,7 +351,15 @@ impl Controller {
     }
 
     pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
-        SpawnParams::new(node_alias)
+        let mut spawn_params = SpawnParams::new(node_alias);
+        spawn_params.node_key_file(
+            self.node_key_files
+                .get(node_alias)
+                .expect("unknown node")
+                .path()
+                .into(),
+        );
+        spawn_params
     }
 
     pub fn spawn_legacy_node(
