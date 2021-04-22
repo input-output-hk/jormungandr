@@ -2,13 +2,15 @@ use crate::blockcfg::{
     ApplyBlockLedger, Block, Fragment, FragmentId, Header, HeaderHash, LedgerParameters,
 };
 use crate::blockchain::{Checkpoints, LeadershipBlock, StorageError};
-use crate::fragment::{selection::FragmentSelectionAlgorithmParams, FragmentsProcessingSummary};
+use crate::fragment::selection::FragmentSelectionAlgorithmParams;
 use crate::network::p2p::{comm::PeerInfo, Address};
 use crate::topology::{Gossips, NodeId, Peer, PeerInfo as TopologyPeerInfo, View};
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
 use chain_network::error as net_error;
-use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
+use jormungandr_lib::interfaces::{
+    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
+};
 use poldercast::layer::Selection;
 
 use futures::channel::{mpsc, oneshot};

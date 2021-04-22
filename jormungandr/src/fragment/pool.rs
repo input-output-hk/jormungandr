@@ -12,11 +12,12 @@ use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
 use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
 use jormungandr_lib::{
-    interfaces::{FragmentLog, FragmentOrigin, FragmentStatus, PersistentFragmentLog},
+    interfaces::{
+        FragmentLog, FragmentOrigin, FragmentRejectionReason, FragmentStatus,
+        FragmentsProcessingSummary, PersistentFragmentLog, RejectedFragmentInfo,
+    },
     time::SecondsSinceUnixEpoch,
 };
-use serde::Serialize;
-use serde_with::{serde_as, DisplayFromStr};
 use std::collections::HashSet;
 use thiserror::Error;
 
@@ -34,31 +35,6 @@ pub struct Pools {
 pub enum Error {
     #[error("cannot propagate a fragment to the network")]
     CannotPropagate(#[source] SendError),
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum FragmentRejectionReason {
-    FragmentAlreadyInLog,
-    FragmentInvalid,
-    PreviousFragmentInvalid,
-    PoolOverflow { pool_number: usize },
-}
-
-#[serde_as]
-#[derive(Debug, Serialize)]
-pub struct RejectedFragmentInfo {
-    #[serde_as(as = "DisplayFromStr")]
-    pub id: FragmentId,
-    pub reason: FragmentRejectionReason,
-}
-
-#[serde_as]
-#[derive(Debug, Serialize)]
-pub struct FragmentsProcessingSummary {
-    #[serde_as(as = "Vec<DisplayFromStr>")]
-    pub accepted: Vec<FragmentId>,
-    pub rejected: Vec<RejectedFragmentInfo>,
 }
 
 impl Pools {

@@ -10,7 +10,6 @@ use std::net::SocketAddr;
 use crate::{
     blockchain::StorageError,
     diagnostic::Diagnostic,
-    fragment::FragmentsProcessingSummary,
     intercom::{self, NetworkMsg, TopologyMsg, TransactionMsg},
     rest::Context,
     secure::NodeSecret,
@@ -34,9 +33,9 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
-        LeadershipLog, NodeStats, NodeStatsDto, PeerStats, Rewards as StakePoolRewards,
-        SettingsDto, StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde,
-        TransactionOutput, VotePlanStatus,
+        FragmentsProcessingSummary, LeadershipLog, NodeStats, NodeStatsDto, PeerStats,
+        Rewards as StakePoolRewards, SettingsDto, StakeDistribution, StakeDistributionDto,
+        StakePoolStats, TaxTypeSerde, TransactionOutput, VotePlanStatus,
     },
     time::SystemTime,
 };
