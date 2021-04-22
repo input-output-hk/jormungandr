@@ -642,7 +642,7 @@ paths:
                             - description: This fragment was already processed by this node
                               type: string
                               enum:
-                                - FragmentInLog
+                                - FragmentAlreadyInLog
                             - description: This fragment failed validation
                               type: string
                               enum:
