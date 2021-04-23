@@ -1,13 +1,14 @@
 use crate::block::{load_block, open_block_file};
 use crate::jcli_lib::rest::RestArgs;
 use crate::jcli_lib::transaction::{common, Error};
-use chain_crypto::{bech32::Bech32 as _, AsymmetricKey, Ed25519Extended, SecretKey};
+use chain_crypto::{bech32::Bech32 as _, Ed25519, Ed25519Extended, PublicKey, SecretKey};
 
 use crate::transaction::mk_witness::WitnessType;
 use crate::transaction::staging::Staging;
 use crate::utils::key_parser::read_ed25519_secret_key_from_file;
 use crate::utils::AccountId;
-use crate::{address, rest, transaction};
+use crate::{rest, transaction};
+use chain_addr::Kind;
 use chain_impl_mockchain::account::SpendingCounter;
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::transaction::Output;
@@ -85,20 +86,20 @@ fn create_new_private_key() -> Result<SecretKey<Ed25519Extended>, Error> {
     Ok(key)
 }
 
-fn create_receiver_address(sk: &EitherEd25519SecretKey) -> Result<interfaces::Address, Error> {
-    let sk = create_new_private_key()?;
+fn create_receiver_address(sk: &SecretKey<Ed25519Extended>) -> interfaces::Address {
     let pk = sk.to_public();
-    let address = interfaces::Address::;
-    let address = address::mk_account(Ed25519Extended::SECRET_BECH32_HRP, pk, true)?;
-    Ok(address)
+    make_address(pk)
+}
+
+fn make_address(pk: PublicKey<Ed25519>) -> interfaces::Address {
+    chain_addr::Address(chain_addr::Discrimination::Test, Kind::Account(pk)).into()
 }
 
 fn create_receiver_secret_key_and_address(
 ) -> Result<(SecretKey<Ed25519Extended>, interfaces::Address), Error> {
-    let pk = create_new_private_key()?;
-    let key = EitherEd25519SecretKey::Extended(pk.clone());
-    let address = create_receiver_address(&key)?;
-    Ok((pk, address))
+    let sk = create_new_private_key()?;
+    let address = create_receiver_address(&sk);
+    Ok((sk, address))
 }
 
 #[allow(clippy::too_many_arguments)]
