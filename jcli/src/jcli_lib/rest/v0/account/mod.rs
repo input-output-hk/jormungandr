@@ -36,9 +36,9 @@ pub fn request_account_information(
     args: RestArgs,
     account_id: AccountId,
 ) -> Result<AccountState, Error> {
-    Ok(args
-        .client()?
+    args.client()?
         .get(&["v0", "account", &account_id.to_url_arg()])
         .execute()?
-        .json()?)
+        .json()
+        .map_err(Into::into)
 }

@@ -64,8 +64,8 @@ pub enum Transaction {
     Auth(auth::Auth),
     /// get the message format out of a sealed transaction
     ToMessage(common::CommonTransaction),
-    /// send a transaction from faucet (simplified method)
-    Simplified(simplified::SimplifiedTransaction),
+    /// send a transaction from one account to another (simplified method)
+    MakeTransaction(simplified::MakeTransaction),
 }
 
 type StaticStr = &'static str;
@@ -203,6 +203,9 @@ pub enum Error {
 
     #[error("could not generate random key")]
     RandError(#[from] rand::Error),
+
+    #[error("invalid block0 header hash")]
+    InvalidBlock0HeaderHash,
 }
 
 /*
@@ -231,7 +234,7 @@ impl Transaction {
             Transaction::MakeWitness(mk_witness) => mk_witness.exec(),
             Transaction::Auth(auth) => auth.exec(),
             Transaction::ToMessage(common) => display_message(common),
-            Transaction::Simplified(send) => send.exec(),
+            Transaction::MakeTransaction(send) => send.exec(),
         }
     }
 }
