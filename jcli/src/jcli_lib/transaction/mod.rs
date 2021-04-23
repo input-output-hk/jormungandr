@@ -64,8 +64,8 @@ pub enum Transaction {
     Auth(auth::Auth),
     /// get the message format out of a sealed transaction
     ToMessage(common::CommonTransaction),
-    /// send  a transaction from faucet (simplified method)
-    Send(simplified::SimplifiedTransaction),
+    /// send a transaction from faucet (simplified method)
+    Simplified(simplified::SimplifiedTransaction),
 }
 
 type StaticStr = &'static str;
@@ -231,7 +231,7 @@ impl Transaction {
             Transaction::MakeWitness(mk_witness) => mk_witness.exec(),
             Transaction::Auth(auth) => auth.exec(),
             Transaction::ToMessage(common) => display_message(common),
-            Transaction::Send(send) => send.exec(),
+            Transaction::Simplified(send) => send.exec(),
         }
     }
 }
