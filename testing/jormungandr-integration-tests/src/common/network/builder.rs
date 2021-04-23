@@ -151,7 +151,3 @@ pub fn wallet(alias: &str) -> WalletTemplateBuilder {
         discrimination: Discrimination::Test,
     }
 }
-
-pub fn params(alias: &str) -> SpawnParams {
-    SpawnParams::new(&alias)
-}

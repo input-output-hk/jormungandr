@@ -14,7 +14,9 @@ use jormungandr_testing_utils::{
 
 use assert_fs::fixture::FixtureError;
 use assert_fs::prelude::*;
+use assert_fs::NamedTempFile;
 use assert_fs::TempDir;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -39,6 +41,7 @@ pub struct Controller {
     working_directory: TempDir,
     block0_file: PathBuf,
     block0_hash: HeaderId,
+    node_key_files: HashMap<String, NamedTempFile>,
 }
 
 impl Controller {
@@ -52,11 +55,26 @@ impl Controller {
         let file = std::fs::File::create(&block0_file)?;
         block0.serialize(file)?;
 
+        let node_key_files = settings
+            .nodes
+            .keys()
+            .map(|alias| {
+                let key =
+                    jormungandr_lib::crypto::key::SigningKey::<chain_crypto::Ed25519>::generate(
+                        rand::thread_rng(),
+                    );
+                let file = NamedTempFile::new("node_key").unwrap();
+                std::fs::write(file.path(), key.to_bech32_str().as_bytes())?;
+                Ok((alias.to_string(), file))
+            })
+            .collect::<Result<HashMap<_, _>, ControllerError>>()?;
+
         Ok(Controller {
             settings,
             block0_file,
             block0_hash,
             working_directory,
+            node_key_files,
         })
     }
 
@@ -75,6 +93,16 @@ impl Controller {
     fn node_settings(&self, alias: &str) -> Result<&NodeSetting, ControllerError> {
         if let Some(node_setting) = self.settings.nodes.get(alias) {
             Ok(node_setting)
+        } else {
+            Err(ControllerError::NodeNotFound(alias.to_string()))
+        }
+    }
+
+    pub fn spawn_params(&self, alias: &str) -> Result<SpawnParams, ControllerError> {
+        if let Some(node_key_file) = self.node_key_files.get(alias) {
+            let mut spawn_params = SpawnParams::new(alias);
+            spawn_params.node_key_file(node_key_file.path().into());
+            Ok(spawn_params)
         } else {
             Err(ControllerError::NodeNotFound(alias.to_string()))
         }
@@ -177,7 +205,7 @@ impl Controller {
         leadership_mode: LeadershipMode,
     ) -> Result<JormungandrProcess, ControllerError> {
         self.spawn_custom(
-            SpawnParams::new(alias)
+            self.spawn_params(alias)?
                 .leadership_mode(leadership_mode)
                 .persistence_mode(persistence_mode),
         )
