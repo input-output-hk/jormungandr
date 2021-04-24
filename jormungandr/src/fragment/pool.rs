@@ -109,7 +109,7 @@ impl Pools {
             if !is_fragment_valid(&fragment) {
                 rejected.push(RejectedFragmentInfo {
                     id,
-                    reason: FragmentRejectionReason::PreviousFragmentInvalid,
+                    reason: FragmentRejectionReason::FragmentInvalid,
                 });
 
                 if fail_fast {
