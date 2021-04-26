@@ -22,10 +22,6 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct MakeTransaction {
-    /// the file path to the file to read the signing key from.
-    /// If omitted it will be read from the standard input.
-    pub secret: Option<PathBuf>,
-
     /// the account to debit the funds from
     #[structopt(name = "ACCOUNT")]
     pub sender_account: interfaces::Address,
@@ -34,16 +30,20 @@ pub struct MakeTransaction {
     #[structopt(name = "VALUE")]
     pub value: interfaces::Value,
 
+    pub block0_hash: String,
+
+    /// the file path to the file to read the signing key from.
+    /// If omitted it will be read from the standard input.
+    pub secret: Option<PathBuf>,
+
+    /// Set the change in the given address
+    pub change: Option<interfaces::Address>,
+
     #[structopt(flatten)]
     pub common: common::CommonTransaction,
 
     #[structopt(flatten)]
     pub fee: common::CommonFees,
-
-    /// Set the change in the given address
-    pub change: Option<interfaces::Address>,
-
-    pub block0_hash: String,
 
     #[structopt(flatten)]
     rest_args: RestArgs,
@@ -65,12 +65,12 @@ impl MakeTransaction {
         )?;
         println!(
             "{}
-Private key of receiver (to revert transaction for testing purposes): {}
-To see if transaction is in block use:
-    jcli rest v0 message logs -h {host}
-To check new account balance:
-    jcli  rest v0 account get  {} -h {host}
-            ",
+        Private key of receiver (to revert transaction for testing purposes): {}
+        To see if transaction is in block use:
+            jcli rest v0 message logs -h {host}
+        To check new account balance:
+            jcli  rest v0 account get  {} -h {host}
+                    ",
             fragment_id,
             receiver_secret_key.to_bech32_str(),
             receiver_address,
