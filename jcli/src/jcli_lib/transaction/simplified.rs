@@ -104,7 +104,7 @@ fn create_receiver_secret_key_and_address(
 
 #[allow(clippy::too_many_arguments)]
 pub fn simplified_transaction(
-    faucet_address: interfaces::Address,
+    sender_account: interfaces::Address,
     receiver_address: interfaces::Address,
     secret_key: EitherEd25519SecretKey,
     value: interfaces::Value,
@@ -116,7 +116,7 @@ pub fn simplified_transaction(
     let mut transaction = Staging::new();
 
     // add account
-    transaction::add_account::add_account(faucet_address.clone(), value, &mut transaction)?;
+    transaction::add_account::add_account(sender_account.clone(), value, &mut transaction)?;
 
     // add output
     transaction.add_output(Output {
@@ -135,7 +135,7 @@ pub fn simplified_transaction(
     // get spending counter
     let account_state = rest::v0::account::request_account_information(
         rest_args.clone(),
-        AccountId::try_from_str(&faucet_address.to_string())?,
+        AccountId::try_from_str(&sender_account.to_string())?,
     )?;
 
     // make witness
