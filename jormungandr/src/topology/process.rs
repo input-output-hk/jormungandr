@@ -2,8 +2,11 @@ use super::{Gossip, Gossips, P2pTopology, Peer};
 use crate::intercom::{NetworkMsg, PropagateMsg, TopologyMsg};
 use crate::settings::start::network::Configuration;
 use crate::utils::async_msg::{MessageBox, MessageQueue};
-use tokio::time::Interval;
+use std::time::Duration;
+use tokio::time::{Instant, Interval};
 use tokio_stream::StreamExt;
+
+const STUCK_NETWORK_WARNING: Duration = Duration::from_secs(60 * 5); // 5 min
 
 struct Process {
     input: MessageQueue<TopologyMsg>,
@@ -47,11 +50,17 @@ pub async fn start(task_data: TaskData) {
 
 impl Process {
     async fn handle_input(&mut self) {
+        let stuck_notifier = tokio::time::sleep(STUCK_NETWORK_WARNING);
+        tokio::pin!(stuck_notifier);
+
         loop {
             tokio::select! {
                 Some(input) = self.input.next() => {
                     match input {
-                        TopologyMsg::AcceptGossip(gossip) => self.topology.accept_gossips(gossip),
+                        TopologyMsg::AcceptGossip(gossip) => {
+                            self.topology.accept_gossips(gossip);
+                            stuck_notifier.as_mut().reset(Instant::now() + STUCK_NETWORK_WARNING);
+                        },
                         TopologyMsg::DemotePeer(id) => self.topology.report_node(&id),
                         TopologyMsg::PromotePeer(id) => self.topology.promote_node(&id),
                         TopologyMsg::View(selection, handle) => {
@@ -71,22 +80,32 @@ impl Process {
                 _ = self.gossip_interval.tick() => {
                         self.topology.update_gossip();
                         let view = self.topology.view(poldercast::layer::Selection::Any);
-                        for peer in view.peers {
-                            // Peers returned by the topology will always have a NodeId
-                            let gossip = self.topology.initiate_gossips(&peer.id());
-
-                            self.network_msgbox
-                                // do not block the current thread to avoid deadlocks
-                                .try_send(NetworkMsg::Propagate(PropagateMsg::Gossip(peer, gossip)))
-                                .unwrap_or_else(|e| {
-                                    tracing::error!(
-                                        reason = ?e,
-                                        "cannot send PropagateMsg request to network"
-                                    )
-                                });
+                        if view.peers.is_empty() {
+                            tracing::warn!("no peers to gossip with found, check your connection");
                         }
+                        self.send_gossip_messages(view.peers)
                     }
+                _ = &mut stuck_notifier => {
+                    tracing::warn!("p2p network have been too quiet for some time, will try to contact nodes for which quarantine have elapsed");
+                    let quarantined_nodes = self.topology.lift_nodes_from_quarantine();
+                    self.send_gossip_messages(quarantined_nodes);
+                }
             }
+        }
+    }
+
+    fn send_gossip_messages(&mut self, peers: Vec<Peer>) {
+        for peer in peers {
+            let gossip = self.topology.initiate_gossips(&peer.id());
+            self.network_msgbox
+                // do not block the current thread to avoid deadlocks
+                .try_send(NetworkMsg::Propagate(PropagateMsg::Gossip(peer, gossip)))
+                .unwrap_or_else(|e| {
+                    tracing::error!(
+                        reason = ?e,
+                        "cannot send PropagateMsg request to network"
+                    )
+                });
         }
     }
 }
