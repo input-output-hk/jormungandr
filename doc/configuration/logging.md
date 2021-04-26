@@ -24,14 +24,15 @@ A single configurable backend is supported.
 
 ```yaml
 log:
-  - output: stdout
-    level:  trace
-    format: plain
+  output: stdout
+  level:  trace
+  format: plain
 ```
 
 ```yaml
-  - output:
+log:
+  output:
     file: example.log
-    level: info
-    format: json
+  level: info
+  format: json
 ```
