@@ -53,7 +53,7 @@ impl MakeTransaction {
     pub fn exec(self) -> Result<(), Error> {
         let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
         let (receiver_secret_key, receiver_address) = create_receiver_secret_key_and_address()?;
-        let fragment_id = simplified_transaction(
+        let fragment_id = make_transaction(
             self.sender_account,
             receiver_address.clone(),
             secret_key,
@@ -103,7 +103,7 @@ fn create_receiver_secret_key_and_address(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn simplified_transaction(
+pub fn make_transaction(
     sender_account: interfaces::Address,
     receiver_address: interfaces::Address,
     secret_key: EitherEd25519SecretKey,
