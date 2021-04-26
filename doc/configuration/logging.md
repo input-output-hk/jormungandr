@@ -22,6 +22,8 @@ The following options are available in the `log` section:
 
 A single configurable backend is supported.
 
+
+### Output to stdout
 ```yaml
 log:
   output: stdout
@@ -29,6 +31,7 @@ log:
   format: plain
 ```
 
+### Output to a file
 ```yaml
 log:
   output:
