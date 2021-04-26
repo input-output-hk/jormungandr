@@ -116,7 +116,7 @@ pub fn make_transaction(
     let mut transaction = Staging::new();
 
     // add account
-    transaction::add_account::add_account(sender_account.clone(), value, &mut transaction)?;
+    transaction.add_account(sender_account.clone(), value)?;
 
     // add output
     transaction.add_output(Output {

@@ -1,7 +1,4 @@
 use crate::jcli_lib::transaction::{common, Error};
-use crate::transaction::staging::Staging;
-use chain_addr::{Address, Kind};
-use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
 
@@ -23,27 +20,7 @@ pub struct AddAccount {
 impl AddAccount {
     pub fn exec(self) -> Result<(), Error> {
         let mut transaction = self.common.load()?;
-        add_account(self.account, self.value, &mut transaction)?;
+        transaction.add_account(self.account, self.value)?;
         self.common.store(&transaction)
     }
-}
-
-pub fn add_account(
-    account: interfaces::Address,
-    value: interfaces::Value,
-    transaction: &mut Staging,
-) -> Result<(), Error> {
-    let account_id = match Address::from(self.account).kind() {
-        Kind::Account(key) => UnspecifiedAccountIdentifier::from_single_account(key.clone().into()),
-        Kind::Multisig(key) => UnspecifiedAccountIdentifier::from_multi_account((*key).into()),
-        Kind::Single(_) => return Err(Error::AccountAddressSingle),
-        Kind::Group(_, _) => return Err(Error::AccountAddressGroup),
-        Kind::Script(_) => return Err(Error::AccountAddressScript),
-    };
-
-    transaction.add_input(interfaces::TransactionInput {
-        input: interfaces::TransactionInputType::Account(account_id.into()),
-        value,
-    })?;
-    Ok(())
 }
