@@ -146,20 +146,7 @@ impl P2pTopology {
     pub fn accept_gossips(&mut self, gossips: Gossips) {
         // Even if lifted from quarantine, peers will be re-added to the topology
         // only after we receive a gossip about them.
-        let lifted = self.quarantine.lift_from_quarantine();
-        for node in lifted {
-            // It may happen that a node is evicted from the dirty pool
-            // in poldercast and then re-enters the topology in the 'pool'
-            // pool, all while we hold the node in quarantine.
-            // If that happens we should not promote it anymore.
-            let is_dirty = self.topology.peers().dirty().contains(node.id.as_ref());
-            if is_dirty {
-                tracing::debug!(node = %node.address, id=?node.id, "lifting node from quarantine");
-                self.topology.promote_peer(&node.id.as_ref());
-            } else {
-                tracing::debug!(node = %node.address, "node from quarantine have left the dirty pool. skipping it");
-            }
-        }
+        let _ = self.lift_nodes_from_quarantine();
 
         let gossips = <Vec<poldercast::Gossip>>::from(gossips);
         for gossip in gossips {
@@ -222,5 +209,23 @@ impl P2pTopology {
     /// it and are alive
     pub fn update_gossip(&mut self) {
         self.topology.update_profile_subscriptions(&self.key);
+    }
+    pub fn lift_nodes_from_quarantine(&mut self) -> Vec<Peer> {
+        self.quarantine
+            .lift_from_quarantine()
+            .into_iter()
+            .filter_map(|node| {
+                let node = self.topology.peers().dirty().peek(node.id.as_ref()).cloned();
+                // It may happen that a node is evicted from the dirty pool
+                // in poldercast and then re-enters the topology in the 'pool'
+                // pool, all while we hold the node in quarantine.
+                // If that happens we should not promote it anymore.
+                if let Some(node) = &node {
+                    tracing::debug!(node = %node.address(), id=?node.id(), "lifting node from quarantine");
+                    self.topology.promote_peer(&node.id());
+                }
+                node.map(|node| Peer::from(node.gossip().clone()))
+            })
+            .collect()
     }
 }
