@@ -1,8 +1,7 @@
-use super::{P2pTopology, Peer};
+use super::{Gossip, Gossips, P2pTopology, Peer};
 use crate::intercom::{NetworkMsg, PropagateMsg, TopologyMsg};
 use crate::settings::start::network::Configuration;
 use crate::utils::async_msg::{MessageBox, MessageQueue};
-use futures::SinkExt;
 use tokio::time::Interval;
 use tokio_stream::StreamExt;
 
@@ -16,33 +15,26 @@ struct Process {
 pub struct TaskData {
     pub network_msgbox: MessageBox<NetworkMsg>,
     pub topology_queue: MessageQueue<TopologyMsg>,
+    pub initial_peers: Vec<Peer>,
     pub config: Configuration,
 }
 
 pub async fn start(task_data: TaskData) {
     let TaskData {
-        mut network_msgbox,
+        network_msgbox,
         topology_queue,
+        initial_peers,
         config,
     } = task_data;
 
     let mut topology = P2pTopology::new(&config);
 
-    // Send gossips for trusted peers at the beginning, without inserting them first in
-    // the topology
-    for peer in config.trusted_peers {
-        let gossips = topology.initiate_gossips(None);
-        network_msgbox
-            .send(NetworkMsg::Propagate(PropagateMsg::Gossip(
-                Peer {
-                    addr: peer.addr,
-                    id: peer.id,
-                },
-                gossips,
-            )))
-            .await
-            .unwrap_or_else(|e| tracing::error!("Error sending gossips to network task: {}", e));
-    }
+    topology.accept_gossips(Gossips::from(
+        initial_peers
+            .into_iter()
+            .map(Gossip::from)
+            .collect::<Vec<_>>(),
+    ));
 
     let mut process = Process {
         input: topology_queue,
@@ -77,11 +69,11 @@ impl Process {
                     }
                 },
                 _ = self.gossip_interval.tick() => {
+                        self.topology.update_gossip();
                         let view = self.topology.view(poldercast::layer::Selection::Any);
                         for peer in view.peers {
                             // Peers returned by the topology will always have a NodeId
-                            let id = peer.id.clone().unwrap();
-                            let gossip = self.topology.initiate_gossips(Some(&id));
+                            let gossip = self.topology.initiate_gossips(&peer.id());
 
                             self.network_msgbox
                                 // do not block the current thread to avoid deadlocks

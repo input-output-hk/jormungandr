@@ -1,13 +1,11 @@
-use super::limits;
+use super::{limits, NodeId};
 use crate::network::p2p::Address;
 
 use chain_core::property;
-use chain_network::data as net_data;
 use std::net::{IpAddr, Ipv4Addr};
 use thiserror::Error;
 
 use bincode::Options;
-pub use net_data::{Peer, Peers};
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Gossip(poldercast::Gossip);
@@ -19,6 +17,11 @@ impl Gossip {
     #[inline]
     pub fn address(&self) -> Address {
         self.0.address()
+    }
+
+    #[inline]
+    pub fn id(&self) -> NodeId {
+        NodeId(self.0.id())
     }
 
     pub fn has_valid_address(&self) -> bool {

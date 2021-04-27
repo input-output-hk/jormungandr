@@ -62,7 +62,10 @@ message FragmentIds {
 message PeersRequest { uint32 limit = 1; }
 
 // Responses as a bunch of peers
-message PeersResponse { repeated Peer peers = 1; }
+message PeersResponse {
+  // Serialized descriptions of nodes.
+  repeated bytes peers = 2;
+}
 
 // A Peer on the network
 message Peer {

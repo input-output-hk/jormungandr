@@ -2,6 +2,7 @@ use super::{JormungandrServerImpl, MockController, MockLogger, MockServerData, P
 use chain_impl_mockchain::{block::Header, key::Hash, testing::TestGen};
 use futures::FutureExt;
 use std::io::{Result, Write};
+use std::net::SocketAddr;
 use std::sync::mpsc::{sync_channel, SyncSender};
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -59,13 +60,16 @@ impl MockBuilder {
             self.genesis_hash,
             self.tip.clone(),
             self.protocol_version.clone(),
+            format!("127.0.0.1:{}", self.mock_port)
+                .parse::<SocketAddr>()
+                .unwrap(),
         );
         Arc::new(RwLock::new(data))
     }
 
     pub fn build(&self) -> MockController {
         let data = self.build_data();
-        start_thread(data, self.mock_port)
+        start_thread(data)
     }
 }
 
@@ -84,11 +88,12 @@ impl Write for ChannelWriter {
     }
 }
 
-fn start_thread(data: Arc<RwLock<MockServerData>>, mock_port: u16) -> MockController {
+fn start_thread(data: Arc<RwLock<MockServerData>>) -> MockController {
     let (tx, rx) = sync_channel(100);
     let logger = MockLogger::new(rx);
     let (shutdown_signal, rx) = oneshot::channel::<()>();
     let data_clone = data.clone();
+    let addr = data.read().unwrap().profile().address();
 
     std::thread::spawn(move || {
         let subscriber = tracing_subscriber::fmt()
@@ -101,16 +106,15 @@ fn start_thread(data: Arc<RwLock<MockServerData>>, mock_port: u16) -> MockContro
                 .build()
                 .unwrap();
             rt.block_on(async move {
-                let addr = format!("127.0.0.1:{}", mock_port);
-                let mock = JormungandrServerImpl::new(data_clone, mock_port);
+                let mock = JormungandrServerImpl::new(data_clone);
                 Server::builder()
                     .add_service(NodeServer::new(mock))
-                    .serve_with_shutdown(addr.parse().unwrap(), rx.map(drop))
+                    .serve_with_shutdown(addr, rx.map(drop))
                     .await
                     .unwrap();
             })
         });
     });
 
-    MockController::new(logger, shutdown_signal, data, mock_port)
+    MockController::new(logger, shutdown_signal, data, addr.port())
 }

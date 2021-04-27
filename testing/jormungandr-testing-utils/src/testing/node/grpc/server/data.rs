@@ -7,6 +7,7 @@ use chain_impl_mockchain::{
 };
 use chain_time::{Epoch, TimeEra};
 use rand::Rng;
+use std::net::SocketAddr;
 
 const AUTH_NONCE_LEN: usize = 32;
 
@@ -15,17 +16,26 @@ pub struct MockServerData {
     tip: Header,
     protocol: ProtocolVersion,
     keypair: KeyPair<Ed25519>,
+    profile: poldercast::Profile,
     auth_nonce: [u8; AUTH_NONCE_LEN],
 }
 
 impl MockServerData {
-    pub fn new(genesis_hash: Hash, tip: Header, protocol: ProtocolVersion) -> Self {
+    pub fn new(
+        genesis_hash: Hash,
+        tip: Header,
+        protocol: ProtocolVersion,
+        addr: SocketAddr,
+    ) -> Self {
         let keypair = KeyPair::generate(&mut rand::thread_rng());
+        let topology_key = keynesis::key::ed25519::SecretKey::new(&mut rand::thread_rng());
+        let profile = poldercast::Profile::new(addr, &topology_key);
         Self {
             genesis_hash,
             tip,
             protocol,
             keypair,
+            profile,
             auth_nonce: [0; AUTH_NONCE_LEN],
         }
     }
@@ -36,6 +46,10 @@ impl MockServerData {
 
     pub fn tip(&self) -> &Header {
         &self.tip
+    }
+
+    pub fn profile(&self) -> &poldercast::Profile {
+        &self.profile
     }
 
     pub fn protocol(&self) -> &ProtocolVersion {

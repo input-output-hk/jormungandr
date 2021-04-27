@@ -625,7 +625,7 @@ async fn get_topology_view(
         })?;
     reply_future
         .await
-        .map(|view| view.peers.into_iter().map(|peer| peer.addr).collect())
+        .map(|view| view.peers.into_iter().map(|peer| peer.address()).collect())
         .map_err(Into::into)
 }
 

@@ -29,12 +29,14 @@ pub fn secret_key_into_keynesis(key: SigningKey<Ed25519>) -> keynesis::key::ed25
 
 pub struct View {
     pub peers: Vec<Peer>,
+    pub self_node: Peer,
 }
 
 /// object holding the P2pTopology of the Node
 pub struct P2pTopology {
     topology: Topology,
     quarantine: Quarantine,
+    key: keynesis::key::ed25519::SecretKey,
 }
 
 struct CustomLayerBuilder {
@@ -56,14 +58,15 @@ impl From<LayersConfig> for CustomLayerBuilder {
 }
 
 impl CustomLayerBuilder {
-    fn build_layers(&self, rings: u8, vicinity: usize, cyclon: usize) -> Vec<Box<dyn Layer>> {
+    fn build_layers(&self, rings: u8, _vicinity: usize, cyclon: usize) -> Vec<Box<dyn Layer>> {
         let mut layers: Vec<Box<dyn Layer>> = Vec::with_capacity(4);
 
         layers.push(Box::new(layers::Rings::new(
             self.config.rings.clone(),
             poldercast_layer::Rings::new(rings),
         )));
-        layers.push(Box::new(poldercast_layer::Vicinity::new(vicinity)));
+        // disabled until https://github.com/primetype/poldercast/pull/36 is fixed and merged
+        //layers.push(Box::new(poldercast_layer::Vicinity::new(vicinity)));
         layers.push(Box::new(poldercast_layer::Cyclon::new(cyclon)));
 
         let mut seed = [0; 32];
@@ -108,6 +111,7 @@ impl P2pTopology {
         P2pTopology {
             topology,
             quarantine,
+            key,
         }
     }
 
@@ -118,22 +122,16 @@ impl P2pTopology {
             .topology
             .view(None, selection)
             .into_iter()
-            .map(|profile| Peer {
-                addr: profile.address(),
-                id: Some(NodeId(profile.id())),
-            })
+            .map(|profile| Peer::from(profile.gossip().clone()))
             .collect();
-        View { peers }
+        View {
+            peers,
+            self_node: self.topology.self_profile().gossip().clone().into(),
+        }
     }
 
-    // If the recipient is not specified gossip will only contain information
-    // about this node
-    pub fn initiate_gossips(&mut self, recipient: Option<&NodeId>) -> Gossips {
-        let mut gossips = if let Some(recipient) = recipient {
-            self.topology.gossips_for(recipient.as_ref())
-        } else {
-            Vec::new()
-        };
+    pub fn initiate_gossips(&mut self, recipient: &NodeId) -> Gossips {
+        let mut gossips = self.topology.gossips_for(recipient.as_ref());
         // If the recipient is not already in the topology
         // or was not specified poldercast will not return anything.
         // Let's broadcast out profile anyway
@@ -156,7 +154,7 @@ impl P2pTopology {
             // If that happens we should not promote it anymore.
             let is_dirty = self.topology.peers().dirty().contains(node.id.as_ref());
             if is_dirty {
-                tracing::debug!(node = %node.address, "lifting node from quarantine");
+                tracing::debug!(node = %node.address, id=?node.id, "lifting node from quarantine");
                 self.topology.promote_peer(&node.id.as_ref());
             } else {
                 tracing::debug!(node = %node.address, "node from quarantine have left the dirty pool. skipping it");
@@ -218,5 +216,11 @@ impl P2pTopology {
                 self.topology.remove_peer(node_id.as_ref());
             }
         }
+    }
+
+    /// update our gossip so that other nodes can see that we are updating
+    /// it and are alive
+    pub fn update_gossip(&mut self) {
+        self.topology.update_profile_subscriptions(&self.key);
     }
 }

@@ -6,9 +6,10 @@ use super::{
 };
 use crate::blockcfg as app_data;
 use crate::intercom::{self, BlockMsg, ClientMsg, TopologyMsg};
+use crate::topology::{self, Gossips};
 use crate::utils::async_msg::MessageBox;
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
-use chain_network::data::p2p::{AuthenticatedNodeId, Peer, Peers};
+use chain_network::data::p2p::{AuthenticatedNodeId, Peer};
 use chain_network::data::{
     Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, HandshakeResponse, Header,
 };
@@ -339,7 +340,7 @@ impl GossipService for NodeService {
         Ok(serve_subscription(outbound))
     }
 
-    async fn peers(&self, limit: u32) -> Result<Peers, Error> {
+    async fn peers(&self, limit: u32) -> Result<Gossip, Error> {
         let (reply_handle, reply_future) = intercom::unary_reply();
         let mbox = self.channels.topology_box.clone();
         send_message(
@@ -347,20 +348,15 @@ impl GossipService for NodeService {
             TopologyMsg::View(poldercast::layer::Selection::Any, reply_handle),
         )
         .await?;
-        let view = reply_future.await?;
-        let mut peers = Vec::new();
-        for peer in view.peers.into_iter() {
-            peers.push(peer.addr.into());
-            if peers.len() >= limit as usize {
-                break;
-            }
-        }
-        if peers.is_empty() {
-            // No peers yet, put self as the peer to bootstrap from
-            if let Some(addr) = self.global_state.config.public_address {
-                peers.push(addr.into());
-            }
-        }
-        Ok(peers.into_boxed_slice())
+        let res = reply_future.await?;
+        let gossip = Gossips::from(
+            std::iter::once(res.self_node)
+                .chain(res.peers.into_iter())
+                .take(limit as usize)
+                .map(topology::Gossip::from)
+                .collect::<Vec<_>>(),
+        )
+        .encode();
+        Ok(gossip)
     }
 }

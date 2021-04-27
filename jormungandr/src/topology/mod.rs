@@ -86,14 +86,7 @@ impl Serialize for NodeId {
 
 /// This represents a peer and its public key used for
 /// identification in the topology.
-#[derive(Debug, Clone)]
-pub struct Peer {
-    pub addr: Address,
-    // This will be missing only for trusted peers before we connect
-    // to them if no if is specified if the config file.
-    // We might enforce this field to be present in the future.
-    pub id: Option<NodeId>,
-}
+pub type Peer = Gossip;
 
 #[derive(Eq, Clone, Serialize, Debug)]
 pub struct PeerInfo {
@@ -129,7 +122,10 @@ impl From<&Arc<Profile>> for PeerInfo {
                 .iter()
                 .map(|s| Subscription {
                     topic: s.topic().to_string(),
-                    interest: format!("{:?}", s.interest_level()).parse::<u32>().unwrap(),
+                    interest: s
+                        .interest_level()
+                        .priority_score(poldercast::InterestLevel::ZERO)
+                        as u32,
                 })
                 .collect(),
         }
