@@ -17,15 +17,15 @@ bech32 = "0.7"
 bytesize = "1.0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-chain-impl-mockchain = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "peers-update", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "peers-update", features = [ "property-test-api" ] }
-chain-core      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "peers-update" }
-chain-crypto    = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "peers-update", features = [ "property-test-api" ] }
-chain-time      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "peers-update" }
-chain-storage   = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "peers-update", features = ["with-bench"] }
-chain-vote      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "peers-update" }
-cardano-legacy-address = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "peers-update" }
-typed-bytes = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "peers-update" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = ["with-bench"] }
+chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 rand = "0.8"
