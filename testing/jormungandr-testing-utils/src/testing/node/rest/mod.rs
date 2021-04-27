@@ -195,6 +195,12 @@ impl JormungandrRest {
         Ok(())
     }
 
+    pub fn send_raw_fragments_no_wait(&self, bytes: Vec<Vec<u8>>) -> Result<(), RestError> {
+        self.inner
+            .send_raw_fragments_no_wait(bytes)
+            .map_err(Into::into)
+    }
+
     pub fn fragments_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
         self.inner.fragments_logs()
     }
