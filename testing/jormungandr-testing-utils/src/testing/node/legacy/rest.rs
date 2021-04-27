@@ -192,8 +192,8 @@ impl BackwardCompatibleRest {
         Ok(response)
     }
 
-    pub fn send_raw_fragments_no_wait(&self, bodies: Vec<Vec<u8>>) -> Result<(), reqwest::Error> {
-        self.raw.send_raw_fragments_no_wait(bodies)
+    pub fn send_raw_fragments(&self, bodies: Vec<Vec<u8>>) -> Result<(), reqwest::Error> {
+        self.raw.send_raw_fragments(bodies)
     }
     pub fn send_fragment_batch(
         &self,
