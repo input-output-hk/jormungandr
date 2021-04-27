@@ -1,6 +1,6 @@
 use crate::jcli_lib::rest::RestArgs;
 use crate::jcli_lib::transaction::{common, Error};
-use chain_crypto::{bech32::Bech32 as _, Ed25519, Ed25519Extended, PublicKey, SecretKey};
+use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
 
 use crate::transaction::mk_witness::WitnessType;
 use crate::transaction::staging::Staging;
@@ -52,10 +52,10 @@ pub struct MakeTransaction {
 impl MakeTransaction {
     pub fn exec(self) -> Result<(), Error> {
         let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
-        let (receiver_secret_key, receiver_address) = create_receiver_secret_key_and_address()?;
-        let fragment_id = make_transaction(
+        let (_receiver_secret_key, receiver_address) = create_receiver_secret_key_and_address()?;
+        let transaction = make_transaction(
             self.sender_account,
-            receiver_address.clone(),
+            receiver_address,
             secret_key,
             self.value,
             self.fee,
@@ -63,19 +63,7 @@ impl MakeTransaction {
             self.rest_args.clone(),
             self.change,
         )?;
-        println!(
-            "{}
-        Private key of receiver (to revert transaction for testing purposes): {}
-        To see if transaction is in block use:
-            jcli rest v0 message logs -h {host}
-        To check new account balance:
-            jcli  rest v0 account get  {} -h {host}
-                    ",
-            fragment_id,
-            receiver_secret_key.to_bech32_str(),
-            receiver_address,
-            host = &self.rest_args.host
-        );
+        transaction.store(&self.common.staging_file)?;
         Ok(())
     }
 }
@@ -112,7 +100,7 @@ pub fn make_transaction(
     block0_hash: &str,
     rest_args: RestArgs,
     change: Option<interfaces::Address>,
-) -> Result<String, Error> {
+) -> Result<Staging, Error> {
     let mut transaction = Staging::new();
 
     // add account
@@ -134,7 +122,7 @@ pub fn make_transaction(
 
     // get spending counter
     let account_state = rest::v0::account::request_account_information(
-        rest_args.clone(),
+        rest_args,
         AccountId::try_from_str(&sender_account.to_string())?,
     )?;
 
@@ -153,9 +141,5 @@ pub fn make_transaction(
     // seal
     transaction.seal()?;
 
-    // send fragment
-    let fragment = transaction.fragment()?;
-    let fragment_id = rest::v0::message::post_fragment(rest_args, fragment)?;
-
-    Ok(fragment_id)
+    Ok(transaction)
 }
