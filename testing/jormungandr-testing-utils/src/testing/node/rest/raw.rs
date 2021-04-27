@@ -202,23 +202,22 @@ impl RawRest {
         self.post("message", body)
     }
 
-    #[tokio::main]
-    pub async fn send_raw_fragments_no_wait(&self, bodies: Vec<Vec<u8>>) -> Result<(), reqwest::Error> {
-        let clients: Vec<reqwest::RequestBuilder> = bodies.into_iter().map(|body| {
-            reqwest::Client::builder()
-               .build()
-                .unwrap()
-                .post(&self.path_http_or_https("message", ApiVersion::V0))
-                .headers(self.construct_headers())
-                .body(body)
-        }).collect();
+    pub fn send_raw_fragments(&self, bodies: Vec<Vec<u8>>) -> Result<(), reqwest::Error> {
+        let clients: Vec<reqwest::blocking::RequestBuilder> = bodies
+            .into_iter()
+            .map(|body| {
+                reqwest::blocking::Client::builder()
+                    .build()
+                    .unwrap()
+                    .post(&self.path_http_or_https("message", ApiVersion::V0))
+                    .headers(self.construct_headers())
+                    .body(body)
+            })
+            .collect();
 
-        tokio::spawn(async { 
-            for x in clients.into_iter(){
-                x.send().await.unwrap();
-            }
-        }).await
-          .unwrap();
+        for client in clients {
+            client.send()?;
+        }
         Ok(())
     }
 
