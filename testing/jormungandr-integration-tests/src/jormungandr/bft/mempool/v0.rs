@@ -96,7 +96,11 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         })
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).temp_dir(temp_dir).start().unwrap();
+    let jormungandr = Starter::new()
+        .config(config.clone())
+        .temp_dir(temp_dir)
+        .start()
+        .unwrap();
 
     let verifier = jormungandr
         .correct_state_verifier()
@@ -148,7 +152,11 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         })
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).temp_dir(temp_dir).start().unwrap();
+    let jormungandr = Starter::new()
+        .config(config.clone())
+        .temp_dir(temp_dir)
+        .start()
+        .unwrap();
 
     let verifier = jormungandr
         .correct_state_verifier()
@@ -206,7 +214,11 @@ pub fn test_mempool_log_max_entries_equals_0() {
         })
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config.clone()).temp_dir(temp_dir).start().unwrap();
+    let jormungandr = Starter::new()
+        .config(config.clone())
+        .temp_dir(temp_dir)
+        .start()
+        .unwrap();
 
     let verifier = jormungandr
         .correct_state_verifier()
