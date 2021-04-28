@@ -3,7 +3,6 @@ use crate::jcli_lib::utils::vote::{SharesError, VotePlanError};
 
 pub mod bech32_constants;
 mod committee;
-mod common_reference_string;
 mod encrypting_vote_key;
 mod tally;
 
@@ -64,8 +63,6 @@ pub enum Vote {
     Committee(committee::Committee),
     /// Build an encryption key from committee member keys
     EncryptingKey(encrypting_vote_key::EncryptingVoteKey),
-    /// Create a common reference string
-    Crs(common_reference_string::Crs),
     /// Perform decryption of private voting tally
     Tally(tally::Tally),
 }
@@ -75,7 +72,6 @@ impl Vote {
         match self {
             Vote::Committee(cmd) => cmd.exec(),
             Vote::EncryptingKey(cmd) => cmd.exec(),
-            Vote::Crs(cmd) => cmd.exec(),
             Vote::Tally(cmd) => cmd.exec(),
         }
     }
