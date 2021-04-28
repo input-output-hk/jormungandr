@@ -1778,7 +1778,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7baab56125e25686df467fe470785512329883aab42696d661247aca2a2896e4"
 dependencies = [
- "console 0.13.0",
+ "console 0.14.1",
  "lazy_static",
  "number_prefix",
  "regex",
@@ -4105,9 +4105,9 @@ dependencies = [
 
 [[package]]
 name = "tonic"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91491e5f15431f2189ec8c1f9dcbadac949450399c22c912ceae9570eb472f61"
+checksum = "556dc31b450f45d18279cfc3d2519280273f460d5387e6b7b24503e65d206f8b"
 dependencies = [
  "async-stream",
  "async-trait",
