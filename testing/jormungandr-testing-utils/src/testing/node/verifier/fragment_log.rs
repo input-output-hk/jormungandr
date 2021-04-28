@@ -25,7 +25,7 @@ impl FragmentLogVerifier {
         self
     }
 
-    pub fn contains_only(self, hash: &Hash) -> Self {
+    pub fn assert_contains_only(self, hash: &Hash) -> Self {
         assert_eq!(
             self.fragment_logs
                 .values()
