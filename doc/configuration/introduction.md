@@ -15,13 +15,9 @@ Example Configuration - 1:
 ```YAML
 ---
 log:
-  - output: stderr
-    level:  info
-    format: plain
-  - output:
-      file: example.log
-    level: info
-    format: json
+  output: stderr
+  level:  info
+  format: plain
 
 http_fetch_block0_service:
   - https://url/jormungandr-block0/raw/master/data

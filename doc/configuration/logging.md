@@ -22,16 +22,20 @@ The following options are available in the `log` section:
 
 A single configurable backend is supported.
 
+
+### Output to stdout
 ```yaml
 log:
-  - output: stdout
-    level:  trace
-    format: plain
+  output: stdout
+  level:  trace
+  format: plain
 ```
 
+### Output to a file
 ```yaml
-  - output:
+log:
+  output:
     file: example.log
-    level: info
-    format: json
+  level: info
+  format: json
 ```
