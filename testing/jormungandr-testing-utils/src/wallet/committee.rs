@@ -155,7 +155,9 @@ impl PrivateVoteCommitteeDataManager {
     where
         RNG: RngCore + CryptoRng,
     {
-        let crs = CRS::random(rng);
+        let mut buf = [0; 32];
+        rand::thread_rng().fill_bytes(&mut buf);
+        let crs = CRS::from_hash(&buf);
         let mut data = HashMap::new();
 
         let communication_secret_keys: Vec<MemberCommunicationKey> =

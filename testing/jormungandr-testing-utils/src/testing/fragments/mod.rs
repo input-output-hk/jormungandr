@@ -233,8 +233,9 @@ impl FragmentBuilder {
 
         let choice = choice.as_byte() - options.choice_range().start;
         let vote = chain_vote::Vote::new(length as usize, choice as usize);
+        let crs = chain_vote::CRS::from_hash(vote_plan.to_id().as_ref());
         let (encrypted_vote, proof) =
-            chain_impl_mockchain::vote::encrypt_vote(&mut rng, &encrypting_key, vote);
+            chain_impl_mockchain::vote::encrypt_vote(&mut rng, &crs, &encrypting_key, vote);
 
         let vote_cast = VoteCast::new(
             vote_plan.to_id(),

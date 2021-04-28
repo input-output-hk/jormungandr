@@ -43,7 +43,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .committee()
         .communication_key()
         .to_public(communication_sk);
-    let crs = jcli.votes().crs().generate();
+    let crs = "Committee member crs";
     let member_sk =
         jcli.votes()
             .committee()
