@@ -1,4 +1,9 @@
+mod fragment_log;
+
+pub use fragment_log::FragmentLogVerifier;
+
 use super::JormungandrRest;
+use crate::testing::node::rest::RestError;
 use crate::wallet::Wallet;
 use jormungandr_lib::interfaces::{AccountState, Value};
 
@@ -13,6 +18,10 @@ impl JormungandrStateVerifier {
             rest,
             snapshot_before: None,
         }
+    }
+
+    pub fn fragment_logs(&self) -> Result<FragmentLogVerifier, RestError> {
+        FragmentLogVerifier::new(self.rest.clone())
     }
 
     pub fn record_wallets_state(mut self, wallets: Vec<&Wallet>) -> Self {
@@ -62,6 +71,28 @@ impl JormungandrStateVerifier {
             expected, actual,
             "No value was deducted friom account: {} vs {}",
             expected, actual
+        );
+        Ok(())
+    }
+
+    pub fn no_changes(&self, wallets: Vec<&Wallet>) -> Result<(), StateVerifierError> {
+        for wallet in wallets {
+            self.wallet_has_the_same_value(wallet)?;
+        }
+        Ok(())
+    }
+
+    pub fn wallet_has_the_same_value(&self, wallet: &Wallet) -> Result<(), StateVerifierError> {
+        let snapshot = self
+            .snapshot_before
+            .as_ref()
+            .ok_or(StateVerifierError::NoSnapshot)?;
+        let expected = snapshot.value_for(wallet)?;
+        let actual = *self.rest.account_state(wallet)?.value();
+        assert_eq!(
+            expected, actual,
+            "value changed for account {:?}: {} vs {}",
+            wallet, expected, actual
         );
         Ok(())
     }
