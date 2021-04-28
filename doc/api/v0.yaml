@@ -639,17 +639,14 @@ paths:
                           format: '[0-9a-f]+'
                         reason:
                           oneOf:
-                            - description: This fragment was already processed by this node
+                            - description: |
+                                * `FragmentAlreadyInLog` -- this fragment was already processed by this node.
+                                * `FragmentInvalid` -- this fragment failed validation.
+                                * `PreviousFragmentInvalid` -- one of the previous fragments was rejected and `fail_fast` is enabled.
                               type: string
                               enum:
                                 - FragmentAlreadyInLog
-                            - description: This fragment failed validation
-                              type: string
-                              enum:
                                 - FragmentInvalid
-                            - description: A previous fragment was rejected
-                              type: string
-                              enum:
                                 - PreviousFragmentInvalid
                             - description: One of the pools rejected this fragment due to reaching the capacity limit
                               type: object
