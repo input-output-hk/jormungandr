@@ -16,8 +16,8 @@ pub struct Generate {
     threshold: usize,
 
     /// the common reference string
-    #[structopt(long, name = "CRS", parse(try_from_str = parse_crs))]
-    crs: chain_vote::CRS,
+    #[structopt(long, name = "CRS")]
+    crs: String,
 
     /// communication keys of all committee members
     #[structopt(long, short, name = "COMMUNICATION_KEYS",
@@ -82,10 +82,12 @@ impl Generate {
             return Err(Error::InvalidCommitteMemberIndex);
         }
 
+        let crs = chain_vote::CRS::from_hash(self.crs.as_bytes());
+
         let ms = MemberState::new(
             &mut rng,
             self.threshold,
-            &self.crs,
+            &crs,
             &self.keys,
             self.index.try_into().unwrap(),
         );
@@ -153,10 +155,4 @@ fn parse_member_communication_key(key: &str) -> Result<MemberCommunicationPublic
     let pk = PublicKey::from_bytes(&Vec::<u8>::from_base32(&raw_key).map_err(Error::Bech32)?)
         .ok_or(Error::InvalidPublicKey)?;
     Ok(MemberCommunicationPublicKey::from_public_key(pk))
-}
-
-fn parse_crs(crs: &str) -> Result<chain_vote::CRS, Error> {
-    let bytes = hex::decode(crs)?;
-
-    chain_vote::CRS::from_bytes(&bytes).ok_or(Error::InvalidCrs)
 }
