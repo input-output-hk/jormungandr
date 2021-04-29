@@ -12,13 +12,15 @@ use jormungandr_testing_utils::{
     wallet::Wallet,
 };
 
-use assert_fs::fixture::FixtureError;
+use assert_fs::fixture::{ChildPath, FixtureError};
 use assert_fs::prelude::*;
-use assert_fs::NamedTempFile;
 use assert_fs::TempDir;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use thiserror::Error;
+
+const NODE_CONFIG_FILE: &str = "node_config.yaml";
+const NODE_SECRETS_FILE: &str = "node_secret.yaml";
+const NODE_TOPOLOGY_KEY_FILE: &str = "node_topology_key";
 
 #[derive(Error, Debug)]
 pub enum ControllerError {
@@ -41,7 +43,6 @@ pub struct Controller {
     working_directory: TempDir,
     block0_file: PathBuf,
     block0_hash: HeaderId,
-    node_key_files: HashMap<String, NamedTempFile>,
 }
 
 impl Controller {
@@ -55,26 +56,11 @@ impl Controller {
         let file = std::fs::File::create(&block0_file)?;
         block0.serialize(file)?;
 
-        let node_key_files = settings
-            .nodes
-            .keys()
-            .map(|alias| {
-                let key =
-                    jormungandr_lib::crypto::key::SigningKey::<chain_crypto::Ed25519>::generate(
-                        rand::thread_rng(),
-                    );
-                let file = NamedTempFile::new("node_key").unwrap();
-                std::fs::write(file.path(), key.to_bech32_str().as_bytes())?;
-                Ok((alias.to_string(), file))
-            })
-            .collect::<Result<HashMap<_, _>, ControllerError>>()?;
-
         Ok(Controller {
             settings,
             block0_file,
             block0_hash,
             working_directory,
-            node_key_files,
         })
     }
 
@@ -98,14 +84,15 @@ impl Controller {
         }
     }
 
-    pub fn spawn_params(&self, alias: &str) -> Result<SpawnParams, ControllerError> {
-        if let Some(node_key_file) = self.node_key_files.get(alias) {
-            let mut spawn_params = SpawnParams::new(alias);
-            spawn_params.node_key_file(node_key_file.path().into());
-            Ok(spawn_params)
-        } else {
-            Err(ControllerError::NodeNotFound(alias.to_string()))
-        }
+    pub fn spawn_params(&self, alias: &str) -> SpawnParams {
+        let mut spawn_params = SpawnParams::new(alias);
+        spawn_params.node_key_file(
+            self.node_dir(alias)
+                .child(NODE_TOPOLOGY_KEY_FILE)
+                .path()
+                .into(),
+        );
+        spawn_params
     }
 
     pub fn spawn_and_wait(&mut self, alias: &str) -> JormungandrProcess {
@@ -147,9 +134,13 @@ impl Controller {
         Ok(process)
     }
 
+    fn node_dir(&self, alias: &str) -> ChildPath {
+        self.working_directory.child(alias)
+    }
+
     fn make_starter_for(&mut self, spawn_params: &SpawnParams) -> Result<Starter, ControllerError> {
         let node_setting = self.node_settings(&spawn_params.alias)?;
-        let dir = self.working_directory.child(&node_setting.alias);
+        let dir = self.node_dir(&node_setting.alias);
         let mut config = node_setting.config().clone();
         spawn_params.override_settings(&mut config);
 
@@ -170,13 +161,16 @@ impl Controller {
         }
         dir.create_dir_all()?;
 
-        let config_file = dir.child("node_config.yaml");
+        let config_file = dir.child(NODE_CONFIG_FILE);
         let yaml = serde_yaml::to_string(&config)?;
         config_file.write_str(&yaml)?;
 
-        let secret_file = dir.child("node_secret.yaml");
+        let secret_file = dir.child(NODE_SECRETS_FILE);
         let yaml = serde_yaml::to_string(node_setting.secrets())?;
         secret_file.write_str(&yaml)?;
+
+        let topology_file = dir.child(NODE_TOPOLOGY_KEY_FILE);
+        topology_file.write_str(&node_setting.topology_secret.to_bech32_str())?;
 
         let params = JormungandrParams::new(
             config,
@@ -205,7 +199,7 @@ impl Controller {
         leadership_mode: LeadershipMode,
     ) -> Result<JormungandrProcess, ControllerError> {
         self.spawn_custom(
-            self.spawn_params(alias)?
+            self.spawn_params(alias)
                 .leadership_mode(leadership_mode)
                 .persistence_mode(persistence_mode),
         )

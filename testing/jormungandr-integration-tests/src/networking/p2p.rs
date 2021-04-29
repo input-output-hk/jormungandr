@@ -149,12 +149,7 @@ pub fn node_whitelist_itself() {
     };
 
     let client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
-                .unwrap()
-                .policy(policy),
-        )
+        .spawn_custom(network_controller.spawn_params(CLIENT).policy(policy))
         .unwrap();
     client.assert_no_errors_in_log();
 }
@@ -186,12 +181,7 @@ pub fn node_does_not_quarantine_whitelisted_node() {
     };
 
     let client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
-                .unwrap()
-                .policy(policy),
-        )
+        .spawn_custom(network_controller.spawn_params(CLIENT).policy(policy))
         .unwrap();
 
     server.shutdown();
@@ -234,12 +224,7 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
     };
 
     let client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
-                .unwrap()
-                .policy(policy),
-        )
+        .spawn_custom(network_controller.spawn_params(CLIENT).policy(policy))
         .unwrap();
 
     server.shutdown();
@@ -287,7 +272,7 @@ pub fn node_trust_itself() {
 
     let _server = network_controller.spawn_and_wait(SERVER);
 
-    let config = network_controller.node_config(CLIENT).unwrap().p2p.clone();
+    let config = network_controller.node_config(CLIENT).unwrap().p2p;
 
     let peer = TrustedPeer {
         address: config.public_address,
@@ -295,7 +280,9 @@ pub fn node_trust_itself() {
     };
     network_controller
         .expect_spawn_failed(
-            params(CLIENT).trusted_peers(vec![peer]),
+            network_controller
+                .spawn_params(CLIENT)
+                .trusted_peers(vec![peer]),
             "failed to retrieve the list of bootstrap peers from trusted peer",
         )
         .unwrap();
@@ -315,7 +302,7 @@ pub fn node_put_itself_in_preffered_layers() {
 
     let _server = network_controller.spawn_and_wait(SERVER);
 
-    let config = network_controller.node_config(CLIENT).unwrap().p2p.clone();
+    let config = network_controller.node_config(CLIENT).unwrap().p2p;
 
     let peer = TrustedPeer {
         address: config.public_address,
@@ -331,7 +318,6 @@ pub fn node_put_itself_in_preffered_layers() {
         .expect_spawn_failed(
             network_controller
                 .spawn_params(CLIENT)
-                .unwrap()
                 .preferred_layer(layer),
             "topology tells the node to connect to itself"
         )

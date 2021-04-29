@@ -8,7 +8,7 @@ use chain_impl_mockchain::{
     vote::PayloadType,
 };
 
-use jormungandr_lib::crypto::account::Identifier;
+use jormungandr_lib::crypto::{account::Identifier, key::SigningKey};
 use jormungandr_lib::interfaces::try_initials_vec_from_messages;
 use jormungandr_lib::{
     interfaces::{
@@ -272,6 +272,7 @@ impl PrepareNodeSettings for NodeSetting {
             alias,
             config: NodeConfig::prepare(context),
             secret: NodeSecret::prepare(context),
+            topology_secret: SigningKey::generate(&mut rand::thread_rng()),
             node_topology: template.clone(),
         }
     }

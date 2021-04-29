@@ -10,7 +10,6 @@ use crate::{
 };
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
-use assert_fs::NamedTempFile;
 use chain_impl_mockchain::certificate::{VoteAction, VotePlan};
 use chain_impl_mockchain::header::HeaderId;
 use chain_impl_mockchain::ledger::governance::{
@@ -37,7 +36,6 @@ use jormungandr_testing_utils::{
     Version,
 };
 use std::{
-    collections::HashMap,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -66,7 +64,6 @@ pub struct Controller {
 
     topology: Topology,
     blockchain: Blockchain,
-    node_key_files: HashMap<String, NamedTempFile>,
 }
 
 impl ControllerBuilder {
@@ -126,20 +123,6 @@ impl ControllerBuilder {
         }
 
         let settings = self.settings.unwrap();
-        let node_key_files = settings
-            .network_settings
-            .nodes
-            .keys()
-            .map(|alias| {
-                let key =
-                    jormungandr_lib::crypto::key::SigningKey::<chain_crypto::Ed25519>::generate(
-                        rand::thread_rng(),
-                    );
-                let file = NamedTempFile::new("node_key").unwrap();
-                std::fs::write(file.path(), key.to_bech32_str().as_bytes())?;
-                Ok((alias.to_string(), file))
-            })
-            .collect::<Result<HashMap<_, _>>>()?;
 
         Controller::new(
             settings,
@@ -147,7 +130,6 @@ impl ControllerBuilder {
             working_directory,
             self.blockchain.unwrap(),
             self.topology.unwrap(),
-            node_key_files,
         )
     }
 
@@ -186,7 +168,6 @@ impl Controller {
         working_directory: ChildPath,
         blockchain: Blockchain,
         topology: Topology,
-        node_key_files: HashMap<String, NamedTempFile>,
     ) -> Result<Self> {
         use chain_core::property::Serialize as _;
 
@@ -208,7 +189,6 @@ impl Controller {
             working_directory,
             blockchain,
             topology,
-            node_key_files,
         })
     }
 
@@ -352,14 +332,12 @@ impl Controller {
 
     pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
         let mut spawn_params = SpawnParams::new(node_alias);
-        spawn_params.node_key_file(
-            self.node_key_files
-                .get(node_alias)
-                .expect("unknown node")
-                .path()
-                .into(),
-        );
+        spawn_params.node_key_file(self.node_dir(node_alias).path().into());
         spawn_params
+    }
+
+    fn node_dir(&self, alias: &str) -> ChildPath {
+        self.working_directory.child(alias)
     }
 
     pub fn spawn_legacy_node(
@@ -400,7 +378,7 @@ impl Controller {
             .progress_bar(pb)
             .alias(params.get_alias())
             .block0(block0_setting)
-            .working_dir(self.working_directory.path())
+            .working_dir(self.node_dir(&params.get_alias()).path())
             .peristence_mode(params.get_persistence_mode());
         let node = spawn_builder.build(version)?;
         Ok(node.controller())
@@ -444,7 +422,7 @@ impl Controller {
             .progress_bar(pb)
             .alias(params.get_alias())
             .block0(block0_setting)
-            .working_dir(self.working_directory.path())
+            .working_dir(self.node_dir(&params.get_alias()).path())
             .peristence_mode(params.get_persistence_mode());
         let node = spawn_builder.build()?;
 
