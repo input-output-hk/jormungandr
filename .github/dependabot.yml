@@ -1,0 +1,81 @@
+version: 2
+updates:
+- package-ecosystem: cargo
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: bytes
+    versions:
+    - ">= 0.6.a, < 0.7"
+  - dependency-name: slog-term
+    versions:
+    - "> 2.6.0, < 3"
+  - dependency-name: async-trait
+    versions:
+    - 0.1.48
+    - 0.1.49
+  - dependency-name: http
+    versions:
+    - 0.2.4
+  - dependency-name: poldercast
+    versions:
+    - 1.2.0
+  - dependency-name: libc
+    versions:
+    - 0.2.84
+    - 0.2.85
+    - 0.2.90
+    - 0.2.91
+    - 0.2.92
+  - dependency-name: serde
+    versions:
+    - 1.0.125
+  - dependency-name: tokio-stream
+    versions:
+    - 0.1.5
+  - dependency-name: warp
+    versions:
+    - 0.3.0
+    - 0.3.1
+  - dependency-name: tokio-util
+    versions:
+    - 0.6.3
+    - 0.6.5
+  - dependency-name: console
+    versions:
+    - 0.14.0
+  - dependency-name: openapiv3
+    versions:
+    - 0.4.0
+  - dependency-name: sysinfo
+    versions:
+    - 0.16.2
+    - 0.16.3
+  - dependency-name: lru
+    versions:
+    - 0.6.4
+    - 0.6.5
+  - dependency-name: image
+    versions:
+    - 0.23.12
+    - 0.23.13
+  - dependency-name: reqwest
+    versions:
+    - 0.11.0
+  - dependency-name: bytes
+    versions:
+    - 1.0.1
+  - dependency-name: tokio
+    versions:
+    - 1.2.0
+- package-ecosystem: gitsubmodule
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  labels:
+  - automated
+  - dependencies
+  - submodules
