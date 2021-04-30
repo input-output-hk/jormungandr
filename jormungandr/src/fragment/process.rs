@@ -9,6 +9,7 @@ use crate::{
 };
 
 use std::collections::HashMap;
+use std::fs::File;
 
 use thiserror::Error;
 use tokio_stream::StreamExt;
@@ -47,12 +48,14 @@ impl Process {
         service_info: TokioServiceInfo,
         stats_counter: StatsCounter,
         mut input: MessageQueue<TransactionMsg>,
+        persistent_log: Option<File>,
     ) -> Result<(), Error> {
         let mut pool = Pools::new(
             self.pool_max_entries,
             n_pools,
             self.logs,
             self.network_msg_box,
+            persistent_log,
         );
 
         async move {

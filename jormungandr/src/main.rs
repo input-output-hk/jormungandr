@@ -69,6 +69,7 @@ pub struct BootstrappedNode {
     explorer_db: Option<explorer::ExplorerDb>,
     rest_context: Option<rest::ContextLock>,
     services: Services,
+    persistent_fragment_log: Option<std::fs::File>,
     _logger_guards: Vec<WorkerGuard>,
 }
 
@@ -260,9 +261,16 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             bootstrapped_node.settings.mempool.log_max_entries.into(),
             network_msgbox.clone(),
         );
+        let persistent_fragment_log = bootstrapped_node.persistent_fragment_log;
 
         services.spawn_try_future("fragment", move |info| {
-            process.start(n_pools, info, stats_counter, fragment_queue)
+            process.start(
+                n_pools,
+                info,
+                stats_counter,
+                fragment_queue,
+                persistent_fragment_log,
+            )
         });
     };
 
@@ -330,6 +338,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         rest_context,
         mut services,
         cancellation_token,
+        persistent_fragment_log,
         _logger_guards,
     } = initialized_node;
 
@@ -359,6 +368,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         explorer_db,
         rest_context,
         services,
+        persistent_fragment_log,
         _logger_guards,
     })
 }
@@ -480,6 +490,7 @@ pub struct InitializedNode {
     pub rest_context: Option<rest::ContextLock>,
     pub services: Services,
     pub cancellation_token: CancellationToken,
+    pub persistent_fragment_log: Option<std::fs::File>,
     pub _logger_guards: Vec<WorkerGuard>,
 }
 
@@ -567,6 +578,20 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let settings = raw_settings.try_into_settings()?;
 
+    let persistent_fragment_log = settings
+        .mempool
+        .persistent_log_path
+        .as_ref()
+        .map(|path| {
+            std::fs::OpenOptions::new()
+                .append(true)
+                .create(true)
+                .read(false)
+                .open(path)
+        })
+        .transpose()
+        .map_err(start_up::Error::PersistentFragmentLog)?;
+
     let storage = start_up::prepare_storage(&settings)?;
     if exit_after_storage_setup {
         tracing::info!("Exiting after successful storage setup");
@@ -651,6 +676,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         rest_context,
         services,
         cancellation_token,
+        persistent_fragment_log,
         _logger_guards,
     })
 }

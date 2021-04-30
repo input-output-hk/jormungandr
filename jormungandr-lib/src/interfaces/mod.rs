@@ -8,6 +8,7 @@ mod committee;
 mod config;
 mod fragment;
 mod fragment_log;
+mod fragment_log_persistent;
 mod leadership_log;
 mod linear_fee;
 mod old_address;
@@ -41,6 +42,7 @@ pub use self::committee::CommitteeIdDef;
 pub use self::config::*;
 pub use self::fragment::FragmentDef;
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
+pub use self::fragment_log_persistent::PersistentFragmentLog;
 pub use self::leadership_log::{
     EnclaveLeaderId, LeadershipLog, LeadershipLogId, LeadershipLogStatus,
 };

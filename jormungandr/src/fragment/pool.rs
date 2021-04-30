@@ -11,13 +11,19 @@ use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
 use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
-use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
+use jormungandr_lib::{
+    interfaces::{FragmentLog, FragmentOrigin, FragmentStatus, PersistentFragmentLog},
+    time::SecondsSinceUnixEpoch,
+};
+use std::fs::File;
+use std::io::Write;
 use thiserror::Error;
 
 pub struct Pools {
     logs: Logs,
     pools: Vec<internal::Pool>,
     network_msg_box: MessageBox<NetworkMsg>,
+    persistent_log: Option<File>,
 }
 
 #[derive(Debug, Error)]
@@ -32,6 +38,7 @@ impl Pools {
         n_pools: usize,
         logs: Logs,
         network_msg_box: MessageBox<NetworkMsg>,
+        persistent_log: Option<File>,
     ) -> Self {
         let pools = (0..=n_pools)
             .map(|_| internal::Pool::new(max_entries))
@@ -40,6 +47,7 @@ impl Pools {
             logs,
             pools,
             network_msg_box,
+            persistent_log,
         }
     }
 
@@ -67,6 +75,21 @@ impl Pools {
             .zip(fragments_exist_in_logs)
             .filter(|(_, exists_in_logs)| !exists_in_logs)
             .map(|(fragment, _)| fragment);
+
+        if let Some(mut persistent_log) = self.persistent_log.as_mut() {
+            for fragment in new_fragments.clone() {
+                let entry = PersistentFragmentLog {
+                    time: SecondsSinceUnixEpoch::now(),
+                    fragment,
+                };
+                if let Err(err) = serde_json::to_writer(&mut persistent_log, &entry) {
+                    tracing::error!(err = %err, "failed to write persistent fragment log entry");
+                }
+                if let Err(err) = persistent_log.write_all("\n".as_bytes()) {
+                    tracing::error!(err = %err, "failed to write persistent fragment log delimiter");
+                }
+            }
+        }
 
         let mut max_added = 0;
 

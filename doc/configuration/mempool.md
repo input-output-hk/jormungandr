@@ -11,7 +11,15 @@ as follow:
 mempool:
     pool_max_entries: 10000
     log_max_entries: 100000
+    persistent_log_path: fragments.json
 ```
 
 * `pool_max_entries`: (optional, default is 10000). Set a maximum size of the mempool
 * `log_max_entries`: (optional, default is 100000). Set a maximum size of fragment logs
+* `persistent_log_path`: (optional, disabled by default) log all incoming fragments to a designated file
+
+## Persistent logs
+
+A persistent log is a collection of records comprised of a UNIX timestamp of when a fragment was
+registereed by the mempool followed by the hex-encoded fragment body. This log is a line-delimited
+JSON stream.
