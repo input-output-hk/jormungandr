@@ -39,7 +39,7 @@ impl Wallet {
     where
         RNG: CryptoRng + RngCore,
     {
-        let signing_key = SigningKey::generate(rng);
+        let signing_key = SigningKey::generate_extended(rng);
         let identifier = signing_key.identifier();
         Wallet {
             signing_key,

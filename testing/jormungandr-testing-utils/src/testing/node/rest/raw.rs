@@ -202,6 +202,25 @@ impl RawRest {
         self.post("message", body)
     }
 
+    pub fn send_raw_fragments(&self, bodies: Vec<Vec<u8>>) -> Result<(), reqwest::Error> {
+        let clients: Vec<reqwest::blocking::RequestBuilder> = bodies
+            .into_iter()
+            .map(|body| {
+                reqwest::blocking::Client::builder()
+                    .build()
+                    .unwrap()
+                    .post(&self.path_http_or_https("message", ApiVersion::V0))
+                    .headers(self.construct_headers())
+                    .body(body)
+            })
+            .collect();
+
+        for client in clients {
+            client.send()?;
+        }
+        Ok(())
+    }
+
     pub fn fragments_logs(&self) -> Result<Response, reqwest::Error> {
         let builder = reqwest::blocking::Client::builder();
         let client = builder.build()?;
