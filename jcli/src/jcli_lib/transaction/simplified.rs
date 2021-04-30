@@ -1,7 +1,5 @@
 use crate::jcli_lib::rest::RestArgs;
 use crate::jcli_lib::transaction::{common, Error};
-use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
-
 use crate::transaction::mk_witness::WitnessType;
 use crate::transaction::staging::Staging;
 use crate::utils::key_parser::read_ed25519_secret_key_from_file;
@@ -9,10 +7,14 @@ use crate::utils::AccountId;
 use crate::{rest, transaction};
 use chain_addr::Kind;
 use chain_core::property::FromStr;
+use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
 use chain_impl_mockchain::account::SpendingCounter;
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::transaction::Output;
 use jormungandr_lib::interfaces;
+
+use crate::transaction::common::CommonFees;
+use jormungandr_lib::interfaces::SettingsDto;
 use rand::rngs::OsRng;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
@@ -43,9 +45,6 @@ pub struct MakeTransaction {
     pub common: common::CommonTransaction,
 
     #[structopt(flatten)]
-    pub fee: common::CommonFees,
-
-    #[structopt(flatten)]
     rest_args: RestArgs,
 }
 
@@ -58,7 +57,6 @@ impl MakeTransaction {
             receiver_address,
             secret_key,
             self.value,
-            self.fee,
             &self.block0_hash,
             self.rest_args.clone(),
             self.change,
@@ -90,13 +88,41 @@ fn create_receiver_secret_key_and_address(
     Ok((sk, address))
 }
 
+fn common_fee_from_settings(settings: &SettingsDto) -> CommonFees {
+    let fees = settings.fees;
+    CommonFees {
+        constant: fees.constant,
+        coefficient: fees.coefficient,
+        certificate: fees.certificate,
+        certificate_pool_registration: fees
+            .per_certificate_fees
+            .certificate_pool_registration
+            .map(Into::into),
+        certificate_stake_delegation: fees
+            .per_certificate_fees
+            .certificate_owner_stake_delegation
+            .map(Into::into),
+        certificate_owner_stake_delegation: fees
+            .per_certificate_fees
+            .certificate_owner_stake_delegation
+            .map(Into::into),
+        certificate_vote_plan: fees
+            .per_vote_certificate_fees
+            .certificate_vote_plan
+            .map(Into::into),
+        certificate_vote_cast: fees
+            .per_vote_certificate_fees
+            .certificate_vote_cast
+            .map(Into::into),
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn make_transaction(
     sender_account: interfaces::Address,
     receiver_address: interfaces::Address,
     secret_key: EitherEd25519SecretKey,
     value: interfaces::Value,
-    fee: common::CommonFees,
     block0_hash: &str,
     rest_args: RestArgs,
     change: Option<interfaces::Address>,
@@ -111,6 +137,9 @@ pub fn make_transaction(
         address: receiver_address.into(),
         value: value.into(),
     })?;
+
+    let settings = rest::v0::settings::request_settings(rest_args.clone())?;
+    let fee = common_fee_from_settings(&settings);
 
     // finalize
     transaction::finalize::finalize(fee, change, &mut transaction)?;

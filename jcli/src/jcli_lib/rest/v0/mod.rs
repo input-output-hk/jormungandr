@@ -6,7 +6,7 @@ pub mod message;
 mod network;
 mod node;
 mod rewards;
-mod settings;
+pub mod settings;
 mod shutdown;
 mod stake;
 mod stake_pool;
