@@ -26,10 +26,17 @@ paths:
         content:
           application/json:
             schema:
-              type: array
-              items:
-                type: string
-                pattern: '[0-9a-f]+'
+              type: object
+              properties:
+                fail_fast:
+                  description: Stop processing the list of fragments upon meeting the first invalid fragment.
+                  type: boolean
+                fragments:
+                  description: The fragments to submit.
+                  type: array
+                  items:
+                    type: string
+                    pattern: '[0-9a-f]+'
       responses:
         '200':
           description: Success

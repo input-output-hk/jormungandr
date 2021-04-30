@@ -3,15 +3,11 @@ use crate::{
     intercom::{self, TransactionMsg},
     rest::Context,
 };
-use chain_core::property::Deserialize;
 use chain_crypto::{digest::Error as DigestError, hash::Error as HashError, PublicKeyFromStrError};
-use chain_impl_mockchain::{
-    fragment::{Fragment, FragmentId},
-    value::ValueError,
-};
+use chain_impl_mockchain::{fragment::FragmentId, value::ValueError};
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 use jormungandr_lib::interfaces::{
-    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
+    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch, FragmentsProcessingSummary,
 };
 use std::{collections::HashMap, str::FromStr};
 use tracing::{span, Level};
@@ -26,8 +22,6 @@ pub enum Error {
     PublicKey(#[from] PublicKeyFromStrError),
     #[error(transparent)]
     IntercomError(#[from] intercom::Error),
-    #[error(transparent)]
-    Deserialize(std::io::Error),
     #[error(transparent)]
     TxMsgSendError(#[from] TrySendError<TransactionMsg>),
     #[error(transparent)]
@@ -79,21 +73,14 @@ pub async fn get_fragment_statuses<'a>(
 
 pub async fn post_fragments(
     context: &Context,
-    messages: Vec<String>,
+    batch: FragmentsBatch,
 ) -> Result<FragmentsProcessingSummary, Error> {
-    let fragments = messages
-        .into_iter()
-        .map(|message| {
-            let message = hex::decode(message)?;
-            Fragment::deserialize(message.as_slice()).map_err(Error::Deserialize)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
     let mut msgbox = context.try_full()?.transaction_task.clone();
     let (reply_handle, reply_future) = intercom::unary_reply();
     let msg = TransactionMsg::SendTransactions {
         origin: FragmentOrigin::Rest,
-        fragments,
-        fail_fast: true,
+        fragments: batch.fragments,
+        fail_fast: batch.fail_fast,
         reply_handle,
     };
     msgbox.try_send(msg)?;

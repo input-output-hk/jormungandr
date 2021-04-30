@@ -5,6 +5,7 @@ use chain_core::property::Serialize;
 use chain_crypto::PublicKey;
 use chain_impl_mockchain::account;
 use chain_impl_mockchain::fragment::Fragment;
+use jormungandr_lib::interfaces::FragmentsBatch;
 use jortestkit::process::Wait;
 use reqwest::{
     blocking::Response,
@@ -242,6 +243,7 @@ impl RawRest {
     pub fn send_fragment_batch(
         &self,
         fragments: Vec<Fragment>,
+        fail_fast: bool,
     ) -> Result<Response, reqwest::Error> {
         let builder = reqwest::blocking::Client::builder();
         let client = builder.build()?;
@@ -249,12 +251,10 @@ impl RawRest {
         client
             .post(&self.path_http_or_https("fragments", ApiVersion::V1))
             .headers(self.construct_headers())
-            .json(
-                &fragments
-                    .iter()
-                    .map(|x| hex::encode(&x.serialize_as_vec().unwrap()))
-                    .collect::<Vec<String>>(),
-            )
+            .json(&FragmentsBatch {
+                fail_fast,
+                fragments,
+            })
             .send()
     }
 

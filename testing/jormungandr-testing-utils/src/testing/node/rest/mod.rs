@@ -213,9 +213,10 @@ impl JormungandrRest {
     pub fn send_fragment_batch(
         &self,
         fragments: Vec<Fragment>,
+        fail_fast: bool,
     ) -> Result<Vec<MemPoolCheck>, RestError> {
         self.inner
-            .send_fragment_batch(fragments)
+            .send_fragment_batch(fragments, fail_fast)
             .map_err(Into::into)
     }
 

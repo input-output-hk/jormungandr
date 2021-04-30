@@ -1,10 +1,11 @@
 use crate::rest::{v1::logic, ContextLock};
+use jormungandr_lib::interfaces::FragmentsBatch;
 use warp::{reject::Reject, Rejection, Reply};
 
 impl Reject for logic::Error {}
 
 pub async fn post_fragments(
-    fragments: Vec<String>,
+    fragments: FragmentsBatch,
     context: ContextLock,
 ) -> Result<impl Reply, Rejection> {
     let context = context.read().await;

@@ -45,7 +45,7 @@ pub fn test_v1_endpoint() {
         .unwrap();
 
     let tx_ids = transaction_sender
-        .send_batch_fragments(vec![alice_fragment, bob_fragment], &jormungandr)
+        .send_batch_fragments(vec![alice_fragment, bob_fragment], false, &jormungandr)
         .unwrap();
 
     tx_ids

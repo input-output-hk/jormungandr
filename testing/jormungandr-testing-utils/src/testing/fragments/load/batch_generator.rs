@@ -111,7 +111,7 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
     pub fn send_batch(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
         let transactions = self.generate_batch_transaction()?;
         self.fragment_sender
-            .send_batch_fragments(transactions, &self.jormungandr)
+            .send_batch_fragments(transactions, false, &self.jormungandr)
             .map(|checks| {
                 checks
                     .iter()
