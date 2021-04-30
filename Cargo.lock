@@ -2016,6 +2016,7 @@ dependencies = [
  "rand_core 0.6.2",
  "serde",
  "serde_json",
+ "serde_with",
  "serde_yaml",
  "thiserror",
  "typed-bytes",

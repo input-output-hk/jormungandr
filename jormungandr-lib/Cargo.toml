@@ -8,6 +8,7 @@ description = "Data structures and formats used by Jormungandr node API and conf
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+serde_with = { version = "1.8", features = ["macros"] }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
