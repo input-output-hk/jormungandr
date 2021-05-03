@@ -39,6 +39,7 @@ pub mod leadership;
 pub mod log;
 pub mod metrics;
 pub mod network;
+pub mod notifier;
 pub mod rest;
 pub mod secure;
 pub mod settings;
@@ -77,6 +78,7 @@ const NETWORK_TASK_QUEUE_LEN: usize = 64;
 const EXPLORER_TASK_QUEUE_LEN: usize = 32;
 const CLIENT_TASK_QUEUE_LEN: usize = 32;
 const TOPOLOGY_TASK_QUEUE_LEN: usize = 32;
+const NOTIFIER_TASK_QUEUE_LEN: usize = 32;
 const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
@@ -148,12 +150,29 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         }
     };
 
+    let (notifier_msgbox, notifier) = {
+        let (msgbox, queue) = async_msg::channel(NOTIFIER_TASK_QUEUE_LEN);
+
+        let blockchain_tip = blockchain_tip.clone();
+        let current_tip = block_on(async { blockchain_tip.get_ref().await.header().id() });
+
+        let (notifier, message_processor) =
+            notifier::Notifier::new(current_tip, blockchain.storage().clone());
+
+        services.spawn_future("notifier", move |info| async move {
+            message_processor.start(info, queue).await
+        });
+
+        (msgbox, notifier)
+    };
+
     {
         let blockchain = blockchain.clone();
         let blockchain_tip = blockchain_tip.clone();
         let network_msgbox = network_msgbox.clone();
         let fragment_msgbox = fragment_msgbox.clone();
         let explorer_msgbox = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
+        let notifier_msgbox = notifier_msgbox.clone();
         // TODO: we should get this value from the configuration
         let block_cache_ttl: Duration = Duration::from_secs(120);
         let stats_counter = stats_counter.clone();
@@ -165,6 +184,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 network_msgbox,
                 fragment_msgbox,
                 explorer_msgbox,
+                notifier_msgbox,
                 garbage_collection_interval: block_cache_ttl,
             };
             process.start(info, block_queue)
@@ -206,6 +226,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 global_state,
                 input: network_queue,
                 channels,
+                notification_service: notifier,
             };
             network::start(params)
         });

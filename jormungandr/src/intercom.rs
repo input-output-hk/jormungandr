@@ -628,5 +628,12 @@ pub enum ExplorerMsg {
     NewTip(HeaderHash),
 }
 
+/// Messages to the notifier task
+pub enum NotifierMsg {
+    NewBlock(Block),
+    NewTip(HeaderHash),
+    FragmentLog(FragmentId, FragmentStatus),
+}
+
 #[cfg(test)]
 mod tests {}

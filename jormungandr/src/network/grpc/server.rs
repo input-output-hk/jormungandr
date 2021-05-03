@@ -14,6 +14,7 @@ pub async fn run_listen_socket(
     listen: &Listen,
     state: GlobalStateR,
     channels: Channels,
+    notification_service: crate::notifier::Notifier,
 ) -> Result<(), ListenError> {
     let sockaddr = listen.address();
     let span = span!(parent: &state.span, Level::TRACE, "listen_socket", local_addr = %sockaddr.to_string());
@@ -25,6 +26,7 @@ pub async fn run_listen_socket(
             .concurrency_limit_per_connection(concurrency_limits::SERVER_REQUESTS)
             .tcp_keepalive(Some(keepalive_durations::TCP))
             .add_service(service)
+            .add_service(notification_service.into_server())
             .serve(sockaddr)
             .await
             .map_err(|cause| ListenError { cause, sockaddr })

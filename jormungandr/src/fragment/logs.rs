@@ -33,10 +33,12 @@ impl Logs {
     pub fn insert_pending(&mut self, log: FragmentLog) -> bool {
         assert!(log.is_pending());
         let fragment_id = *log.fragment_id();
+
         if self.entries.contains(&fragment_id) {
             false
         } else {
             self.entries.put(fragment_id, (log, None));
+
             true
         }
     }

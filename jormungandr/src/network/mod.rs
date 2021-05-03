@@ -269,6 +269,7 @@ pub struct TaskParams {
     pub global_state: GlobalStateR,
     pub input: MessageQueue<NetworkMsg>,
     pub channels: Channels,
+    pub notification_service: crate::notifier::Notifier,
 }
 
 pub async fn start(params: TaskParams) {
@@ -278,6 +279,7 @@ pub async fn start(params: TaskParams) {
     let input = params.input;
     let channels = params.channels;
     let global_state = params.global_state;
+    let notification_service = params.notification_service;
 
     // open the port for listening/accepting other peers to connect too
     let listen_state = global_state.clone();
@@ -286,14 +288,19 @@ pub async fn start(params: TaskParams) {
         if let Some(listen) = listen_state.config.listen() {
             match listen.protocol {
                 Protocol::Grpc => {
-                    grpc::run_listen_socket(&listen, listen_state, listen_channels)
-                        .await
-                        .unwrap_or_else(|e| {
-                            tracing::error!(
-                                reason = %e,
-                                "failed to listen for P2P connections at {}", listen.connection
-                            );
-                        });
+                    grpc::run_listen_socket(
+                        &listen,
+                        listen_state,
+                        listen_channels,
+                        notification_service,
+                    )
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::error!(
+                            reason = %e,
+                            "failed to listen for P2P connections at {}", listen.connection
+                        );
+                    });
                 }
                 Protocol::Ntt => unimplemented!(),
             }
