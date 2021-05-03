@@ -6,12 +6,13 @@ use std::time::Duration;
 use tokio::time::{Instant, Interval};
 use tokio_stream::StreamExt;
 
-const STUCK_NETWORK_WARNING: Duration = Duration::from_secs(60 * 5); // 5 min
+pub const DEFAULT_NETWORK_STUCK_INTERVAL: Duration = Duration::from_secs(60 * 5); // 5 min
 
 struct Process {
     input: MessageQueue<TopologyMsg>,
     network_msgbox: MessageBox<NetworkMsg>,
     gossip_interval: Interval,
+    network_stuck_check: Duration,
     topology: P2pTopology,
 }
 
@@ -42,6 +43,7 @@ pub async fn start(task_data: TaskData) {
     let mut process = Process {
         input: topology_queue,
         gossip_interval: tokio::time::interval(config.gossip_interval),
+        network_stuck_check: config.network_stuck_check,
         network_msgbox,
         topology,
     };

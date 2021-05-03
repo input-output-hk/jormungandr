@@ -19,7 +19,7 @@ mod quarantine;
 mod topology;
 
 pub use self::gossip::{Gossip, Gossips};
-pub use self::process::{start, TaskData};
+pub use self::process::{start, TaskData, DEFAULT_NETWORK_STUCK_INTERVAL};
 pub use self::topology::{P2pTopology, View};
 pub use quarantine::{Quarantine, QuarantineConfig};
 
