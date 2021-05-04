@@ -72,6 +72,7 @@ impl Process {
             let mut path: PathBuf = dir.into();
             let log_file_name = Utc::now().format("%Y-%m-%d_%H.log").to_string();
             path.push(log_file_name);
+            tracing::debug!("creating fragment log file `{:?}`", path);
             fs::OpenOptions::new()
                 .append(true)
                 .create(true)
@@ -84,23 +85,23 @@ impl Process {
 
         tokio::pin!(wakeup);
 
-        let persistent_log = match &persistent_log_dir {
-            None => None,
-            Some(dir) => {
-                let file = open_log_file(dir.as_ref())?;
-                Some(file)
-            }
-        };
-
-        let mut pool = Pools::new(
-            self.pool_max_entries,
-            n_pools,
-            self.logs,
-            self.network_msg_box,
-            persistent_log,
-        );
-
         async move {
+            let persistent_log = match &persistent_log_dir {
+                None => None,
+                Some(dir) => {
+                    let file = open_log_file(dir.as_ref())?;
+                    Some(file)
+                }
+            };
+
+            let mut pool = Pools::new(
+                self.pool_max_entries,
+                n_pools,
+                self.logs,
+                self.network_msg_box,
+                persistent_log,
+            );
+
             loop {
                 tokio::select! {
                     maybe_msg = input.next() => {
