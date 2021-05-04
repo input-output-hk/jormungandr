@@ -84,9 +84,7 @@ impl Process {
                 .map_err(Error::PersistentLog)
         }
 
-        let wakeup = hourly_wakeup(persistent_log_dir.is_some());
-
-        tokio::pin!(wakeup);
+        let mut wakeup = Box::pin(hourly_wakeup(persistent_log_dir.is_some()));
 
         async move {
             let persistent_log = match &persistent_log_dir {
@@ -178,6 +176,7 @@ impl Process {
                         let dir = persistent_log_dir.as_ref().unwrap();
                         let file = open_log_file(dir.as_ref())?;
                         pool.set_persistent_log(file);
+                        wakeup = Box::pin(hourly_wakeup(true));
                     }
                 }
             }
