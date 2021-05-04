@@ -270,6 +270,10 @@ async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
             logic::Error::PublicKey(_) | logic::Error::Hash(_) | logic::Error::Hex(_) => {
                 (err.to_string(), StatusCode::BAD_REQUEST)
             }
+            logic::Error::Fragment(summary) => (
+                serde_json::to_string(&summary).unwrap(),
+                StatusCode::BAD_REQUEST,
+            ),
             err => (
                 display_internal_server_error(err),
                 StatusCode::INTERNAL_SERVER_ERROR,

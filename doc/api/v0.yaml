@@ -613,15 +613,21 @@ paths:
         '200':
           description: Success
           content:
-            text/plain:
+            application/json:
               schema:
                 description: Hex-encoded ID of the posted transaction
                 type: string
                 pattern: '[0-9a-f]+'
               example: 68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968
         '400':
-          description: Message is malformed
-
+          description: An error occurred when processing this request
+          content:
+            application/json:
+              schema:
+                description: Hex-encoded ID of the posted transaction
+                type: string
+                pattern: '[0-9a-f]+'
+              example: 68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968
   /api/v0/network/stats:
     get:
       description: Fetches network stats
