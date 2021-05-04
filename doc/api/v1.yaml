@@ -65,30 +65,21 @@ paths:
                           description: The ID of a rejected fragment
                           type: string
                           format: '[0-9a-f]+'
+                        pool_number:
+                          description: The number of the pool that caused this error
+                          type: integer
                         reason:
-                          oneOf:
-                            - description: |
-                                * `FragmentAlreadyInLog` -- this fragment was already processed by this node.
-                                * `FragmentInvalid` -- this fragment failed validation.
-                                * `PreviousFragmentInvalid` -- one of the previous fragments was rejected and `fail_fast` is enabled.
-                              type: string
-                              enum:
-                                - FragmentAlreadyInLog
-                                - FragmentInvalid
-                                - PreviousFragmentInvalid
-                            - description: One of the pools rejected this fragment due to reaching the capacity limit
-                              type: object
-                              required:
-                                - PoolOverflow
-                              properties:
-                                PoolOverflow:
-                                  type: object
-                                  required:
-                                    - pool_number
-                                  properties:
-                                    pool_number:
-                                      description: The number of the pool (corresponding to the leader number) that triggered this error
-                                      type: integer
+                          description: |
+                              * `FragmentAlreadyInLog` -- this fragment was already processed by this node.
+                              * `FragmentInvalid` -- this fragment failed validation.
+                              * `PreviousFragmentInvalid` -- one of the previous fragments was rejected and `fail_fast` is enabled.
+                              * `PoolOverflow` -- One of the pools rejected this fragment due to reaching the capacity limit.
+                          type: string
+                          enum:
+                            - FragmentAlreadyInLog
+                            - FragmentInvalid
+                            - PreviousFragmentInvalid
+                            - PoolOverflow
         '400':
           description: One of messages is malformed
 
