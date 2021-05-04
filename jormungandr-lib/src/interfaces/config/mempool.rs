@@ -18,8 +18,10 @@ pub struct Mempool {
     #[serde(default)]
     pub log_max_entries: LogMaxEntries,
     /// path to the persistent log of all incoming fragments
+    // FIXME: should be a struct like `persistent_log.dir`,
+    // as we may want to add more options like rotation policy later
     #[serde(default)]
-    pub persistent_log_path: Option<PathBuf>,
+    pub persistent_log_dir: Option<PathBuf>,
 }
 
 impl Default for PoolMaxEntries {
@@ -39,7 +41,7 @@ impl Default for Mempool {
         Mempool {
             pool_max_entries: PoolMaxEntries::default(),
             log_max_entries: LogMaxEntries::default(),
-            persistent_log_path: None,
+            persistent_log_dir: None,
         }
     }
 }
