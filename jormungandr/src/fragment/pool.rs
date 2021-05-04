@@ -16,7 +16,6 @@ use jormungandr_lib::{
     time::SecondsSinceUnixEpoch,
 };
 use std::fs::File;
-use std::io::Write;
 use thiserror::Error;
 
 pub struct Pools {
