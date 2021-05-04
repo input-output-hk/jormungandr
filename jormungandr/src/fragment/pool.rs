@@ -99,9 +99,6 @@ impl Pools {
                 if let Err(err) = codec.serialize_into(&mut persistent_log, &entry) {
                     tracing::error!(err = %err, "failed to write persistent fragment log entry");
                 }
-                if let Err(err) = persistent_log.write_all("\n".as_bytes()) {
-                    tracing::error!(err = %err, "failed to write persistent fragment log delimiter");
-                }
             }
         }
 
