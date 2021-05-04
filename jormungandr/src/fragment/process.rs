@@ -9,8 +9,11 @@ use crate::{
 };
 
 use std::collections::HashMap;
-use std::fs::File;
+use std::fs;
+use std::io;
+use std::path::PathBuf;
 
+use chrono::Utc;
 use thiserror::Error;
 use tokio_stream::StreamExt;
 use tracing::{span, Level};
@@ -26,6 +29,8 @@ pub struct Process {
 pub enum Error {
     #[error("transaction pool error")]
     Pool(#[from] crate::fragment::pool::Error),
+    #[error("failed to open persistent log file")]
+    PersistentLog(#[source] io::Error),
 }
 
 impl Process {
@@ -42,14 +47,30 @@ impl Process {
         }
     }
 
-    pub async fn start(
+    pub async fn start<P: Into<PathBuf>>(
         self,
         n_pools: usize,
         service_info: TokioServiceInfo,
         stats_counter: StatsCounter,
         mut input: MessageQueue<TransactionMsg>,
-        persistent_log: Option<File>,
+        persistent_log_dir: Option<P>,
     ) -> Result<(), Error> {
+        let persistent_log = match persistent_log_dir {
+            None => None,
+            Some(dir) => {
+                let mut path = dir.into();
+                let log_file_name = Utc::now().format("%Y-%m-%d_%H.log").to_string();
+                path.push(log_file_name);
+                let file = fs::OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .read(false)
+                    .open(path)
+                    .map_err(Error::PersistentLog)?;
+                Some(file)
+            }
+        };
+
         let mut pool = Pools::new(
             self.pool_max_entries,
             n_pools,

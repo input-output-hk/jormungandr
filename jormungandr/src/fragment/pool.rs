@@ -55,6 +55,10 @@ impl Pools {
         &mut self.logs
     }
 
+    pub fn set_persistent_log(&mut self, file: File) {
+        self.persistent_log = Some(file);
+    }
+
     /// Returns number of registered fragments
     pub async fn insert_and_propagate_all(
         &mut self,
