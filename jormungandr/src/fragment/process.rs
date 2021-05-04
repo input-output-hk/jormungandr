@@ -71,7 +71,7 @@ impl Process {
         fn open_log_file(dir: &Path) -> Result<File, Error> {
             let mut path: PathBuf = dir.into();
             if !path.exists() {
-                std::fs::create_dir(dir).map_err(Error::PersistentLog)?;
+                std::fs::create_dir_all(dir).map_err(Error::PersistentLog)?;
             }
             let log_file_name = Utc::now().format("%Y-%m-%d_%H.log").to_string();
             path.push(log_file_name);
