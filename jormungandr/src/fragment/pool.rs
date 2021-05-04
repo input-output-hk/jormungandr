@@ -56,6 +56,11 @@ impl Pools {
     }
 
     pub fn set_persistent_log(&mut self, file: File) {
+        if let Some(old_file) = &mut self.persistent_log {
+            if let Err(e) = old_file.sync_all() {
+                tracing::error!(error = %e, "failed to sync persistent log file");
+            }
+        }
         self.persistent_log = Some(file);
     }
 
