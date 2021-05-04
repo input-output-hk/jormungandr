@@ -18,8 +18,6 @@ pub enum ErrorKind {
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Cannot open the persistent fragments log for writing")]
-    PersistentFragmentLog(#[source] io::Error),
     #[error("Unable to initialize the logger")]
     LoggingInitializationError(#[from] logging::Error),
     #[error("Error in the overall configuration of the node")]
@@ -94,7 +92,6 @@ impl Error {
             Error::ExplorerBootstrapError { .. } => 11,
             Error::ServiceTerminatedWithError { .. } => 12,
             Error::DiagnosticError { .. } => 13,
-            Error::PersistentFragmentLog(_) => 14,
         }
     }
 }
