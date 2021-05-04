@@ -11,12 +11,13 @@ as follow:
 mempool:
     pool_max_entries: 10000
     log_max_entries: 100000
-    persistent_log_path: fragments.json
 ```
 
 * `pool_max_entries`: (optional, default is 10000). Set a maximum size of the mempool
 * `log_max_entries`: (optional, default is 100000). Set a maximum size of fragment logs
-* `persistent_log_path`: (optional, disabled by default) log all incoming fragments to a designated file
+* `persistent_log`: (optional, disabled by default) log all incoming fragments to log files,
+    rotated on a hourly basis. The value is an object, with the `dir` field
+    specifying the directory name where log files are stored.
 
 ## Persistent logs
 
