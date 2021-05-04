@@ -104,10 +104,10 @@ pub async fn post_fragments(
     };
     msgbox.try_send(msg)?;
     let reply = reply_future.await?;
-    if reply.rejected.is_empty() {
-        Ok(fragment_ids)
-    } else {
+    if reply.is_error() {
         Err(Error::Fragments(fragment_ids))
+    } else {
+        Ok(fragment_ids)
     }
 }
 

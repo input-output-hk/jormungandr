@@ -143,10 +143,10 @@ pub async fn post_message(context: &Context, message: &[u8]) -> Result<String, E
     };
     context.try_full()?.transaction_task.clone().try_send(msg)?;
     let reply = reply_future.await?;
-    if reply.rejected.is_empty() {
-        Ok(fragment_id)
-    } else {
+    if reply.is_error() {
         Err(Error::Fragment(fragment_id))
+    } else {
+        Ok(fragment_id)
     }
 }
 
