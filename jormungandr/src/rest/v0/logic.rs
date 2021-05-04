@@ -146,7 +146,7 @@ pub async fn post_message(
     };
     context.try_full()?.transaction_task.clone().try_send(msg)?;
     let reply = reply_future.await?;
-    if reply.rejected.is_empty() {
+    if reply.is_error() {
         Ok(reply)
     } else {
         Err(Error::Fragment(reply))

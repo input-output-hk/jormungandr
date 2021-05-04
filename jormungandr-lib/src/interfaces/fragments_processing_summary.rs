@@ -34,3 +34,22 @@ pub struct FragmentsProcessingSummary {
     pub accepted: Vec<FragmentId>,
     pub rejected: Vec<RejectedFragmentInfo>,
 }
+
+impl FragmentRejectionReason {
+    /// Should this rejection be treated as an error
+    pub fn is_error(&self) -> bool {
+        matches!(
+            self,
+            FragmentRejectionReason::FragmentInvalid
+                | FragmentRejectionReason::PreviousFragmentInvalid
+                | FragmentRejectionReason::PoolOverflow { .. }
+        )
+    }
+}
+
+impl FragmentsProcessingSummary {
+    /// Whether any of rejected entries should be treated as an error.
+    pub fn is_error(&self) -> bool {
+        self.rejected.iter().any(|info| info.reason.is_error())
+    }
+}
