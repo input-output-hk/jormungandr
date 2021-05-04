@@ -70,6 +70,8 @@ impl Pools {
         origin: FragmentOrigin,
         mut fragments: Vec<Fragment>,
     ) -> Result<usize, Error> {
+        use bincode::Options;
+
         tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
         fragments.retain(is_fragment_valid);
         if fragments.is_empty() {
@@ -91,7 +93,10 @@ impl Pools {
                     time: SecondsSinceUnixEpoch::now(),
                     fragment,
                 };
-                if let Err(err) = serde_json::to_writer(&mut persistent_log, &entry) {
+                // this must be sufficient: the PersistentFragmentLog format is using byte array
+                // for serialization so we do not expect any problems during deserialization
+                let codec = bincode::DefaultOptions::new().with_fixint_encoding();
+                if let Err(err) = codec.serialize_into(&mut persistent_log, &entry) {
                     tracing::error!(err = %err, "failed to write persistent fragment log entry");
                 }
                 if let Err(err) = persistent_log.write_all("\n".as_bytes()) {
