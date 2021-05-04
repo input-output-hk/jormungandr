@@ -31,7 +31,7 @@ pub fn send_all_fragments() {
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
-                persistent_log_dir: None,
+                persistent_log: None,
             }),
     )
     .unwrap();

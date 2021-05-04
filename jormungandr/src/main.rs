@@ -276,7 +276,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             bootstrapped_node.settings.mempool.log_max_entries.into(),
             network_msgbox.clone(),
         );
-        let fragment_log_dir = bootstrapped_node.settings.mempool.persistent_log_dir;
+        let fragment_log_dir = bootstrapped_node
+            .settings
+            .mempool
+            .persistent_log
+            .map(|s| s.dir);
 
         services.spawn_try_future("fragment", move |info| {
             process.start(
