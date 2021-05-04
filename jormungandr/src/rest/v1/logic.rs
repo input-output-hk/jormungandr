@@ -36,6 +36,8 @@ pub enum Error {
     Storage(#[from] StorageError),
     #[error(transparent)]
     Hex(#[from] hex::FromHexError),
+    #[error("Could not process all fragments")]
+    Fragments(FragmentsProcessingSummary),
 }
 
 pub async fn get_fragment_statuses<'a>(
@@ -84,7 +86,12 @@ pub async fn post_fragments(
         reply_handle,
     };
     msgbox.try_send(msg)?;
-    reply_future.await.map_err(Into::into)
+    let reply = reply_future.await?;
+    if reply.rejected.is_empty() {
+        Ok(reply)
+    } else {
+        Err(Error::Fragments(reply))
+    }
 }
 
 pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Error> {

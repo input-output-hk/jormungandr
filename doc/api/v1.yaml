@@ -43,46 +43,13 @@ paths:
           content:
             application/json:
               schema:
-                description: The information about whether a message was accepted or rejected
-                type: object
-                properties:
-                  accepted:
-                    description: IDs of accepted fragments
-                    type: array
-                    items:
-                      type: string
-                      format: '[0-9a-f]+'
-                  rejected:
-                    description: Detailed information about rejected fragments
-                    type: array
-                    items:
-                      type: object
-                      required:
-                        - id
-                        - reason
-                      properties:
-                        id:
-                          description: The ID of a rejected fragment
-                          type: string
-                          format: '[0-9a-f]+'
-                        pool_number:
-                          description: The number of the pool that caused this error
-                          type: integer
-                        reason:
-                          description: |
-                              * `FragmentAlreadyInLog` -- this fragment was already processed by this node.
-                              * `FragmentInvalid` -- this fragment failed validation.
-                              * `PreviousFragmentInvalid` -- one of the previous fragments was rejected and `fail_fast` is enabled.
-                              * `PoolOverflow` -- One of the pools rejected this fragment due to reaching the capacity limit.
-                          type: string
-                          enum:
-                            - FragmentAlreadyInLog
-                            - FragmentInvalid
-                            - PreviousFragmentInvalid
-                            - PoolOverflow
+                $ref: '#/components/schemas/FragmentsProcessingSummary'
         '400':
-          description: One of messages is malformed
-
+          description: An error occurred when processing this request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FragmentsProcessingSummary'
   /api/v1/fragments/statuses:
     get:
       description: Get statuses of fragments
@@ -273,3 +240,44 @@ paths:
                           },
                       },
                     ]
+
+components:
+  schemas:
+    FragmentsProcessingSummary:
+      description: The information about whether a message was accepted or rejected
+      type: object
+      properties:
+        accepted:
+          description: IDs of accepted fragments
+          type: array
+          items:
+            type: string
+            format: '[0-9a-f]+'
+        rejected:
+          description: Detailed information about rejected fragments
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - reason
+            properties:
+              id:
+                description: The ID of a rejected fragment
+                type: string
+                format: '[0-9a-f]+'
+              pool_number:
+                description: The number of the pool that caused this error
+                type: integer
+              reason:
+                description: |
+                  * `FragmentAlreadyInLog` -- this fragment was already processed by this node.
+                  * `FragmentInvalid` -- this fragment failed validation.
+                  * `PreviousFragmentInvalid` -- one of the previous fragments was rejected and `fail_fast` is enabled.
+                  * `PoolOverflow` -- One of the pools rejected this fragment due to reaching the capacity limit.
+                type: string
+                enum:
+                  - FragmentAlreadyInLog
+                  - FragmentInvalid
+                  - PreviousFragmentInvalid
+                  - PoolOverflow

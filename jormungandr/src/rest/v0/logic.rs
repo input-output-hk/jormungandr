@@ -77,6 +77,8 @@ pub enum Error {
     InvalidTopic,
     #[error(transparent)]
     Hex(#[from] hex::FromHexError),
+    #[error("Could not process fragment")]
+    Fragment(FragmentsProcessingSummary),
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -143,7 +145,12 @@ pub async fn post_message(
         reply_handle,
     };
     context.try_full()?.transaction_task.clone().try_send(msg)?;
-    reply_future.await.map_err(Into::into)
+    let reply = reply_future.await?;
+    if reply.rejected.is_empty() {
+        Ok(reply)
+    } else {
+        Err(Error::Fragment(reply))
+    }
 }
 
 pub async fn get_tip(context: &Context) -> Result<String, Error> {
