@@ -122,8 +122,10 @@ impl ControllerBuilder {
             _ => (),
         }
 
+        let settings = self.settings.unwrap();
+
         Controller::new(
-            self.settings.unwrap(),
+            settings,
             context,
             working_directory,
             self.blockchain.unwrap(),
@@ -329,7 +331,13 @@ impl Controller {
     }
 
     pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
-        SpawnParams::new(node_alias)
+        let mut spawn_params = SpawnParams::new(node_alias);
+        spawn_params.node_key_file(self.node_dir(node_alias).path().into());
+        spawn_params
+    }
+
+    fn node_dir(&self, alias: &str) -> ChildPath {
+        self.working_directory.child(alias)
     }
 
     pub fn spawn_legacy_node(
@@ -370,7 +378,7 @@ impl Controller {
             .progress_bar(pb)
             .alias(params.get_alias())
             .block0(block0_setting)
-            .working_dir(self.working_directory.path())
+            .working_dir(self.node_dir(&params.get_alias()).path())
             .peristence_mode(params.get_persistence_mode());
         let node = spawn_builder.build(version)?;
         Ok(node.controller())
@@ -414,7 +422,7 @@ impl Controller {
             .progress_bar(pb)
             .alias(params.get_alias())
             .block0(block0_setting)
-            .working_dir(self.working_directory.path())
+            .working_dir(self.node_dir(&params.get_alias()).path())
             .peristence_mode(params.get_persistence_mode());
         let node = spawn_builder.build()?;
 

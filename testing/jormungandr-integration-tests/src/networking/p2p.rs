@@ -1,6 +1,6 @@
 use crate::common::{
     jormungandr::process::JormungandrProcess,
-    network::{self, params, wallet},
+    network::{self, wallet},
 };
 
 use jormungandr_lib::{
@@ -9,6 +9,7 @@ use jormungandr_lib::{
     },
     time::Duration,
 };
+use jormungandr_testing_utils::testing::network_builder::SpawnParams;
 use jortestkit::process as process_utils;
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
@@ -129,7 +130,9 @@ pub fn node_whitelist_itself() {
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
             wallet("delegated2").with(1_000_000).delegated_to(SERVER),
         ])
-        .custom_config(vec![params(CLIENT).explorer(Explorer { enabled: true })])
+        .custom_config(vec![
+            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
+        ])
         .build()
         .unwrap();
 
@@ -146,7 +149,7 @@ pub fn node_whitelist_itself() {
     };
 
     let client = network_controller
-        .spawn_custom(params(CLIENT).policy(policy))
+        .spawn_custom(network_controller.spawn_params(CLIENT).policy(policy))
         .unwrap();
     client.assert_no_errors_in_log();
 }
@@ -159,7 +162,9 @@ pub fn node_does_not_quarantine_whitelisted_node() {
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
             wallet("delegated2").with(1_000_000).delegated_to(SERVER),
         ])
-        .custom_config(vec![params(CLIENT).explorer(Explorer { enabled: true })])
+        .custom_config(vec![
+            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
+        ])
         .build()
         .unwrap();
 
@@ -176,7 +181,7 @@ pub fn node_does_not_quarantine_whitelisted_node() {
     };
 
     let client = network_controller
-        .spawn_custom(params(CLIENT).policy(policy))
+        .spawn_custom(network_controller.spawn_params(CLIENT).policy(policy))
         .unwrap();
 
     server.shutdown();
@@ -200,7 +205,9 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
             wallet("delegated2").with(1_000_000).delegated_to(SERVER),
         ])
-        .custom_config(vec![params(CLIENT).explorer(Explorer { enabled: true })])
+        .custom_config(vec![
+            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
+        ])
         .build()
         .unwrap();
 
@@ -217,7 +224,7 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
     };
 
     let client = network_controller
-        .spawn_custom(params(CLIENT).policy(policy))
+        .spawn_custom(network_controller.spawn_params(CLIENT).policy(policy))
         .unwrap();
 
     server.shutdown();
@@ -257,13 +264,15 @@ pub fn node_trust_itself() {
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
             wallet("delegated2").with(1_000_000).delegated_to(SERVER),
         ])
-        .custom_config(vec![params(CLIENT).explorer(Explorer { enabled: true })])
+        .custom_config(vec![
+            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
+        ])
         .build()
         .unwrap();
 
     let _server = network_controller.spawn_and_wait(SERVER);
 
-    let config = network_controller.node_config(CLIENT).unwrap().p2p.clone();
+    let config = network_controller.node_config(CLIENT).unwrap().p2p;
 
     let peer = TrustedPeer {
         address: config.public_address,
@@ -271,7 +280,9 @@ pub fn node_trust_itself() {
     };
     network_controller
         .expect_spawn_failed(
-            params(CLIENT).trusted_peers(vec![peer]),
+            network_controller
+                .spawn_params(CLIENT)
+                .trusted_peers(vec![peer]),
             "failed to retrieve the list of bootstrap peers from trusted peer",
         )
         .unwrap();
@@ -291,7 +302,7 @@ pub fn node_put_itself_in_preffered_layers() {
 
     let _server = network_controller.spawn_and_wait(SERVER);
 
-    let config = network_controller.node_config(CLIENT).unwrap().p2p.clone();
+    let config = network_controller.node_config(CLIENT).unwrap().p2p;
 
     let peer = TrustedPeer {
         address: config.public_address,
@@ -305,7 +316,9 @@ pub fn node_put_itself_in_preffered_layers() {
 
     assert!(network_controller
         .expect_spawn_failed(
-            params(CLIENT).preferred_layer(layer),
+            network_controller
+                .spawn_params(CLIENT)
+                .preferred_layer(layer),
             "topology tells the node to connect to itself"
         )
         .is_ok());
@@ -339,8 +352,8 @@ pub fn topic_of_interest_influences_node_sync_ability() {
                 .delegated_to(slow_client_alias),
         ])
         .custom_config(vec![
-            params(fast_client_alias).topics_of_interest(high_topic_of_interests),
-            params(slow_client_alias).topics_of_interest(low_topic_of_interests),
+            SpawnParams::new(fast_client_alias).topics_of_interest(high_topic_of_interests),
+            SpawnParams::new(slow_client_alias).topics_of_interest(low_topic_of_interests),
         ])
         .build()
         .unwrap();

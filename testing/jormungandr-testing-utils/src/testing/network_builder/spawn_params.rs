@@ -28,6 +28,7 @@ pub struct SpawnParams {
     pub version: Option<Version>,
     pub bootstrap_from_peers: Option<bool>,
     pub skip_bootstrap: Option<bool>,
+    pub node_key_file: Option<PathBuf>,
 }
 
 impl SpawnParams {
@@ -50,6 +51,7 @@ impl SpawnParams {
             version: None,
             bootstrap_from_peers: None,
             skip_bootstrap: None,
+            node_key_file: None,
         }
     }
 
@@ -168,6 +170,11 @@ impl SpawnParams {
         self
     }
 
+    pub fn node_key_file(&mut self, node_key_file: PathBuf) -> &mut Self {
+        self.node_key_file = Some(node_key_file);
+        self
+    }
+
     pub fn get_jormungandr(&self) -> &Option<PathBuf> {
         &self.jormungandr
     }
@@ -233,6 +240,10 @@ impl SpawnParams {
 
         if let Some(skip_bootstrap) = &self.skip_bootstrap {
             node_config.skip_bootstrap = Some(*skip_bootstrap);
+        }
+
+        if let Some(node_key_file) = &self.node_key_file {
+            node_config.p2p.node_key_file = Some(node_key_file.clone());
         }
     }
 }

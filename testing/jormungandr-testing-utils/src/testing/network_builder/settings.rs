@@ -34,6 +34,8 @@ pub struct NodeSetting {
 
     pub config: NodeConfig,
 
+    pub topology_secret: SigningKey<Ed25519>,
+
     pub node_topology: NodeTemplate,
 }
 
@@ -42,12 +44,14 @@ impl NodeSetting {
         alias: NodeAlias,
         config: NodeConfig,
         secret: NodeSecret,
+        topology_secret: SigningKey<Ed25519>,
         template: NodeTemplate,
     ) -> Self {
         Self {
             alias,
             config,
             secret,
+            topology_secret,
             node_topology: template,
         }
     }

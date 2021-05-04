@@ -2,6 +2,7 @@ use super::{Controller, ControllerError};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::value::Value;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
+use jormungandr_lib::crypto::key::SigningKey;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KesUpdateSpeed, NodeSecret, NumberOfSlotsPerEpoch, SlotDuration,
 };
@@ -72,6 +73,7 @@ impl NetworkBuilder {
                             bft: None,
                             genesis: None,
                         },
+                        topology_secret: SigningKey::generate(&mut rand::thread_rng()),
                         node_topology: template,
                     },
                 )
@@ -150,8 +152,4 @@ pub fn wallet(alias: &str) -> WalletTemplateBuilder {
         node_alias: None,
         discrimination: Discrimination::Test,
     }
-}
-
-pub fn params(alias: &str) -> SpawnParams {
-    SpawnParams::new(&alias)
 }

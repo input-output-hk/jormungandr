@@ -180,6 +180,7 @@ pub struct Node {
 
 const NODE_CONFIG: &str = "node_config.yaml";
 const NODE_SECRET: &str = "node_secret.yaml";
+const NODE_TOPOLOGY_KEY: &str = "node_topology_key";
 const NODE_STORAGE: &str = "storage.db";
 
 impl NodeController {
@@ -758,6 +759,13 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
         })
     }
 
+    fn write_topology_file<P: AsRef<Path>>(&self, key_file: P) -> Result<()> {
+        Ok(std::fs::write(
+            key_file.as_ref(),
+            self.node_settings.topology_secret.to_bech32_str(),
+        )?)
+    }
+
     fn apply_persistence_setting(&mut self, dir: &Path) {
         if self.peristence_mode == PersistenceMode::Persistent {
             let path_to_storage = dir.join(NODE_STORAGE);
@@ -795,13 +803,17 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
 
 impl<'a, R: RngCore> SpawnBuilder<'a, R, Node> {
     pub fn build(mut self) -> Result<Node> {
-        let dir = self.working_dir.join(self.alias.to_owned());
+        let dir = self.working_dir.clone();
         std::fs::DirBuilder::new().recursive(true).create(&dir)?;
 
         let config_file = dir.join(NODE_CONFIG);
         let config_secret = dir.join(NODE_SECRET);
+        let topology_key_file = dir.join(NODE_TOPOLOGY_KEY);
 
         self.apply_persistence_setting(&dir);
+
+        self.node_settings.config.p2p.node_key_file = Some(topology_key_file.clone());
+        self.write_topology_file(&topology_key_file)?;
         self.write_config_file(&config_file)?;
         self.write_secret_file(&config_secret)?;
 
