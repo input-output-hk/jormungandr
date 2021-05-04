@@ -15,8 +15,10 @@ use jormungandr_lib::{
     interfaces::{FragmentLog, FragmentOrigin, FragmentStatus, PersistentFragmentLog},
     time::SecondsSinceUnixEpoch,
 };
-use std::fs::File;
 use thiserror::Error;
+
+use std::fs::File;
+use std::mem;
 
 pub struct Pools {
     logs: Logs,
@@ -54,13 +56,20 @@ impl Pools {
         &mut self.logs
     }
 
+    /// Sets the persistent log to a file.
+    /// The file must be opened for writing.
     pub fn set_persistent_log(&mut self, file: File) {
-        if let Some(old_file) = &mut self.persistent_log {
-            if let Err(e) = old_file.sync_all() {
+        self.persistent_log = Some(file);
+    }
+
+    /// Synchronizes the persistent log file contents and metadata
+    /// to the file system and closes the file.
+    pub fn close_persistent_log(&mut self) {
+        if let Some(file) = mem::replace(&mut self.persistent_log, None) {
+            if let Err(e) = file.sync_all() {
                 tracing::error!(error = %e, "failed to sync persistent log file");
             }
         }
-        self.persistent_log = Some(file);
     }
 
     /// Returns number of registered fragments

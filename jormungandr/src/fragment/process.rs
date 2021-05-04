@@ -173,6 +173,7 @@ impl Process {
                         }
                     }
                     _ = &mut wakeup => {
+                        pool.close_persistent_log();
                         let dir = persistent_log_dir.as_ref().unwrap();
                         let file = open_log_file(dir.as_ref())?;
                         pool.set_persistent_log(file);
