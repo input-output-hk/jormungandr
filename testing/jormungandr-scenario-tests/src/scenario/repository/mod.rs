@@ -176,6 +176,7 @@ fn scenarios_repository() -> Vec<Scenario> {
             transaction_to_passive,
             vec![Tag::Short],
         ),
+        Scenario::new("bft_forks", bft_forks, vec![Tag::Short]),
         Scenario::new("interactive", interactive, vec![Tag::Interactive]),
         Scenario::new("example", scenario_2, vec![Tag::Example]),
         Scenario::new("leader_restart", leader_restart, vec![Tag::Short]),
