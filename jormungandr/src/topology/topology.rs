@@ -210,6 +210,7 @@ impl P2pTopology {
     pub fn update_gossip(&mut self) {
         self.topology.update_profile_subscriptions(&self.key);
     }
+
     pub fn lift_nodes_from_quarantine(&mut self) -> Vec<Peer> {
         self.quarantine
             .lift_from_quarantine()
