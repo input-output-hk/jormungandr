@@ -21,7 +21,8 @@ use jormungandr_lib::{
 };
 pub use jormungandr_testing_utils::testing::{
     network_builder::{
-        LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
+        FaketimeConfig, LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode,
+        Settings,
     },
     node::{
         grpc::{client::MockClientError, JormungandrClient},
@@ -260,6 +261,10 @@ impl NodeController {
         self.grpc_client
             .pull_blocks_to_tip(from)
             .map_err(Error::InvalidGrpcCall)
+    }
+
+    pub fn rest(&self) -> JormungandrRest {
+        self.rest_client.clone()
     }
 
     pub fn network_stats(&self) -> Result<Vec<PeerStats>> {
@@ -675,6 +680,7 @@ pub struct SpawnBuilder<'a, R: RngCore, N> {
     block0: NodeBlock0,
     working_dir: PathBuf,
     peristence_mode: PersistenceMode,
+    faketime: Option<FaketimeConfig>,
     phantom_data: PhantomData<N>,
 }
 
@@ -699,6 +705,7 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
             working_dir: PathBuf::new(),
             peristence_mode: PersistenceMode::Persistent,
             phantom_data: PhantomData,
+            faketime: None,
         }
     }
 
@@ -713,6 +720,11 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
 
     pub fn alias<S: Into<String>>(&mut self, alias: S) -> &mut Self {
         self.alias = alias.into();
+        self
+    }
+
+    pub fn faketime(&mut self, faketime: FaketimeConfig) -> &mut Self {
+        self.faketime = Some(faketime);
         self
     }
 
@@ -778,7 +790,14 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
         config_file: P,
         config_secret: Q,
     ) -> Command {
-        let mut command = Command::new(self.jormungandr.clone());
+        let mut command = if let Some(faketime) = &self.faketime {
+            let mut cmd = Command::new("faketime");
+            cmd.args(&["-f", &format!("{:+}s", faketime.offset)]);
+            cmd.arg(self.jormungandr.clone());
+            cmd
+        } else {
+            Command::new(self.jormungandr.clone())
+        };
 
         command.arg("--config");
         command.arg(config_file.as_ref());
