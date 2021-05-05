@@ -7,7 +7,7 @@ use serde_with::{serde_as, DisplayFromStr};
 /// them to mempool. If a fragment ended up being included to mempool, it will be listed in
 /// fragment logs and all further errors would be listed in fragment logs as well.
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "reason")]
 pub enum FragmentRejectionReason {
     FragmentAlreadyInLog,
     FragmentInvalid,
