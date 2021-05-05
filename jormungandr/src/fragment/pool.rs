@@ -11,13 +11,20 @@ use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
 use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
-use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
+use jormungandr_lib::{
+    interfaces::{FragmentLog, FragmentOrigin, FragmentStatus, PersistentFragmentLog},
+    time::SecondsSinceUnixEpoch,
+};
 use thiserror::Error;
+
+use std::fs::File;
+use std::mem;
 
 pub struct Pools {
     logs: Logs,
     pools: Vec<internal::Pool>,
     network_msg_box: MessageBox<NetworkMsg>,
+    persistent_log: Option<File>,
 }
 
 #[derive(Debug, Error)]
@@ -32,6 +39,7 @@ impl Pools {
         n_pools: usize,
         logs: Logs,
         network_msg_box: MessageBox<NetworkMsg>,
+        persistent_log: Option<File>,
     ) -> Self {
         let pools = (0..=n_pools)
             .map(|_| internal::Pool::new(max_entries))
@@ -40,11 +48,28 @@ impl Pools {
             logs,
             pools,
             network_msg_box,
+            persistent_log,
         }
     }
 
     pub fn logs(&mut self) -> &mut Logs {
         &mut self.logs
+    }
+
+    /// Sets the persistent log to a file.
+    /// The file must be opened for writing.
+    pub fn set_persistent_log(&mut self, file: File) {
+        self.persistent_log = Some(file);
+    }
+
+    /// Synchronizes the persistent log file contents and metadata
+    /// to the file system and closes the file.
+    pub fn close_persistent_log(&mut self) {
+        if let Some(file) = mem::replace(&mut self.persistent_log, None) {
+            if let Err(e) = file.sync_all() {
+                tracing::error!(error = %e, "failed to sync persistent log file");
+            }
+        }
     }
 
     /// Returns number of registered fragments
@@ -53,6 +78,8 @@ impl Pools {
         origin: FragmentOrigin,
         mut fragments: Vec<Fragment>,
     ) -> Result<usize, Error> {
+        use bincode::Options;
+
         tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
         fragments.retain(is_fragment_valid);
         if fragments.is_empty() {
@@ -67,6 +94,21 @@ impl Pools {
             .zip(fragments_exist_in_logs)
             .filter(|(_, exists_in_logs)| !exists_in_logs)
             .map(|(fragment, _)| fragment);
+
+        if let Some(mut persistent_log) = self.persistent_log.as_mut() {
+            for fragment in new_fragments.clone() {
+                let entry = PersistentFragmentLog {
+                    time: SecondsSinceUnixEpoch::now(),
+                    fragment,
+                };
+                // this must be sufficient: the PersistentFragmentLog format is using byte array
+                // for serialization so we do not expect any problems during deserialization
+                let codec = bincode::DefaultOptions::new().with_fixint_encoding();
+                if let Err(err) = codec.serialize_into(&mut persistent_log, &entry) {
+                    tracing::error!(err = %err, "failed to write persistent fragment log entry");
+                }
+            }
+        }
 
         let mut max_added = 0;
 

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
@@ -6,7 +8,12 @@ pub struct PoolMaxEntries(usize);
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
 pub struct LogMaxEntries(usize);
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct PersistentLog {
+    pub dir: PathBuf,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Mempool {
     /// maximum number of entries in the mempool
@@ -15,6 +22,9 @@ pub struct Mempool {
     /// maximum number of entries in the fragment logs
     #[serde(default)]
     pub log_max_entries: LogMaxEntries,
+    /// path to the persistent log of all incoming fragments
+    #[serde(default)]
+    pub persistent_log: Option<PersistentLog>,
 }
 
 impl Default for PoolMaxEntries {
@@ -34,6 +44,7 @@ impl Default for Mempool {
         Mempool {
             pool_max_entries: PoolMaxEntries::default(),
             log_max_entries: LogMaxEntries::default(),
+            persistent_log: None,
         }
     }
 }
