@@ -1,5 +1,5 @@
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed};
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
 use jormungandr_testing_utils::testing::node::RestRequestGen;
 use jortestkit::load::{self, Configuration, Monitor};
 
@@ -15,7 +15,7 @@ pub fn rest_load_quick() {
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_epoch_stability_depth(10)
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
@@ -29,6 +29,7 @@ pub fn rest_load_quick() {
         10,
         Monitor::Progress(100),
         0,
+        1_000,
     );
     let stats = load::start_sync(request, config, "Jormungandr rest load test");
     assert!((stats.calculate_passrate() as u32) > 95);

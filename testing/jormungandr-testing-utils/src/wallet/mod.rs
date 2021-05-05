@@ -430,6 +430,12 @@ impl Wallet {
             self.address().1.public_key().unwrap().clone(),
         ))
     }
+
+    pub fn update_counter(&mut self, counter: u32) {
+        if let Wallet::Account(account) = self {
+            account.set_counter(counter)
+        }
+    }
 }
 
 impl From<Wallet> for WalletLib {

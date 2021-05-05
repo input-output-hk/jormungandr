@@ -1,7 +1,7 @@
 use crate::common::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed, Mempool};
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed, Mempool};
 use jormungandr_testing_utils::testing::{benchmark_consumption, benchmark_endurance};
 use jortestkit::process::Wait;
 use std::time::Duration;
@@ -20,10 +20,11 @@ pub fn test_blocks_are_being_created_for_7_hours() {
             .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(3)
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap())
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
+                persistent_log: None,
             }),
     )
     .unwrap();

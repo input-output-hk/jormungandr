@@ -1,6 +1,6 @@
 use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
 
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed};
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
 use jormungandr_testing_utils::{
     testing::{
         benchmark_efficiency, benchmark_endurance, EfficiencyBenchmarkDef,
@@ -58,7 +58,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(2)
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
@@ -108,7 +108,7 @@ pub fn test_100_transaction_is_processed_simple() {
             .with_slots_per_epoch(60)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
@@ -163,7 +163,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_epoch_stability_depth(10)
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
