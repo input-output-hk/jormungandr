@@ -324,6 +324,7 @@ fn e2e_stake_pool(testnet_config: TestnetConfig) {
 
     let jormungandr = Starter::new()
         .config(testnet_config.make_leader_config(&temp_dir))
+        .temp_dir(temp_dir)
         .timeout(Duration::from_secs(8000))
         .passive()
         .verify_by(StartupVerificationMode::Rest)

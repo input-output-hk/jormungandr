@@ -1,7 +1,7 @@
 use crate::common::jormungandr::ConfigurationBuilder;
 use crate::common::startup;
 use jormungandr_lib::interfaces::BlockDate;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KESUpdateSpeed};
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
 use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::FragmentSender;
@@ -26,7 +26,7 @@ pub fn fragment_load_test() {
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_epoch_stability_depth(10)
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
@@ -38,6 +38,7 @@ pub fn fragment_load_test() {
         500,
         Monitor::Standard(1000),
         1_000,
+        1_000,
     );
 
     let mut request_generator = FragmentGenerator::new(
@@ -46,6 +47,8 @@ pub fn fragment_load_test() {
         jormungandr.to_remote(),
         jormungandr.explorer(),
         60,
+        30,
+        30,
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),
@@ -86,7 +89,7 @@ pub fn fragment_batch_load_test() {
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_epoch_stability_depth(10)
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
@@ -98,6 +101,7 @@ pub fn fragment_batch_load_test() {
         1000,
         Monitor::Standard(100),
         3_000,
+        1_000,
     );
 
     let mut request_generator = BatchFragmentGenerator::new(
@@ -129,7 +133,7 @@ pub fn transaction_load_test() {
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_epoch_stability_depth(10)
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
@@ -141,6 +145,7 @@ pub fn transaction_load_test() {
         100,
         Monitor::Standard(100),
         100,
+        1_000,
     );
 
     let mut request_generator = TransactionGenerator::new(

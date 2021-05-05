@@ -27,17 +27,25 @@ pub struct FragmentGenerator<'a, S: SyncNode + Send> {
     explorer: Explorer,
     slots_per_epoch: u32,
     fragment_sender: FragmentSender<'a, S>,
+    stake_pools_count: usize,
+    vote_plans_for_tally_count: usize,
 }
 
 impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         sender: Wallet,
         receiver: Wallet,
         node: RemoteJormungandr,
         explorer: Explorer,
         slots_per_epoch: u32,
+        stake_pools_count: usize,
+        vote_plans_for_tally_count: usize,
         fragment_sender: FragmentSender<'a, S>,
     ) -> Self {
+        assert!(stake_pools_count > 1);
+        assert!(vote_plans_for_tally_count > 1);
+
         Self {
             sender,
             receiver,
@@ -49,14 +57,20 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             explorer,
             slots_per_epoch,
             fragment_sender,
+            stake_pools_count,
+            vote_plans_for_tally_count,
         }
+    }
+
+    pub fn active_stake_pools(&self) -> Vec<StakePool> {
+        self.active_stake_pools.clone()
     }
 
     pub fn prepare(&mut self, start_block_date: BlockDate) {
         let time_era = start_block_date.time_era(self.slots_per_epoch);
 
         let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&self.sender)))
-            .take(30)
+            .take(self.stake_pools_count)
             .collect();
 
         for stake_pool in stake_pools.iter() {
@@ -83,12 +97,10 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     .build(),
             )
         })
-        .take(30)
+        .take(self.vote_plans_for_tally_count)
         .collect();
 
         for vote_plan in vote_plans_for_tally.iter() {
-            println!("{:?}", vote_plan);
-
             self.fragment_sender
                 .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
                 .unwrap();

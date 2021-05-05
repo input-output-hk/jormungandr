@@ -136,6 +136,29 @@ pub fn start_stake_pool(
         .map(|process| (process, stake_pools))
 }
 
+pub fn start_bft(
+    initial_funds: Vec<&Wallet>,
+    config_builder: &mut ConfigurationBuilder,
+) -> Result<JormungandrProcess, StartupError> {
+    let temp_dir = TempDir::new()?;
+
+    let config = config_builder
+        .with_funds(
+            initial_funds
+                .iter()
+                .map(|x| InitialUTxO {
+                    address: x.address(),
+                    value: 1_000_000_000.into(),
+                })
+                .collect(),
+        )
+        .with_block0_consensus(ConsensusVersion::Bft)
+        .with_explorer()
+        .build(&temp_dir);
+
+    Starter::new().temp_dir(temp_dir).config(config).start()
+}
+
 pub fn sleep_till_epoch(epoch_interval: u32, grace_period: u32, config: &Block0Configuration) {
     let coeff = epoch_interval * 2;
     let slots_per_epoch: u32 = config.blockchain_configuration.slots_per_epoch.into();
