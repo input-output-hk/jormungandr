@@ -149,16 +149,16 @@ If there is more than one vote plan in the this file, we also need to provide th
 vote_plan_id=$(cat active_plans.json |jq '.[0].id')
 ...
 ```
-Each committee member needs to generate their shares for the vote plan, which we will use later to decrypt the tally. 
+Each committee member needs to generate their shares for the vote plan, which we will use later to decrypt the tally.
 
 ```shell
-jcli votes tally decryption-shares --vote-plan active_plans.json --vote-plan-id $"vote_plan_id" --key member.sk --output-format json 
+jcli votes tally decryption-shares --vote-plan active_plans.json --vote-plan-id $"vote_plan_id" --key member.sk --output-format json
 ```
 Then, the committee members need to exchange their shares (only one full set of shares is needed).
 Once all shares are available, we need to merge them in a single file with the following command (needed even if there is only one set of shares):
 
 ```shell
-jcli votes tally merge-shares  share_file1 share_file2 ... > merged_shares.json 
+jcli votes tally merge-shares  share_file1 share_file2 ... > merged_shares.json
 ```
 
 

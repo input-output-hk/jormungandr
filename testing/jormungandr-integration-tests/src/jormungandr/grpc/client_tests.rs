@@ -253,7 +253,7 @@ pub fn upload_block_incompatible_protocol() {
 
     assert_eq!(
         MockClientError::InvalidRequest(
-            "invalid request data (The block header verification failed: The block Version is incompatible with LeaderSelection.)".into() 
+            "invalid request data (The block header verification failed: The block Version is incompatible with LeaderSelection.)".into()
         ),
         setup.client.upload_blocks(block.clone()).err().unwrap()
     );

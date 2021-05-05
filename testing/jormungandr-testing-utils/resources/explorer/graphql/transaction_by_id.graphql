@@ -1,4 +1,4 @@
-query TransactionById($id: String!){	
+query TransactionById($id: String!){
     transaction(id: $id) {
         id
     }

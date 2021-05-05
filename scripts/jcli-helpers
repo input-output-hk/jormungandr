@@ -8,9 +8,9 @@ jcli-stake-delegate-new() {
         return 1
     fi
 
-    ACCOUNT_SK=$1 
+    ACCOUNT_SK=$1
     STAKE_POOL_ID=$2
-    
+
     ACCOUNT_PK=$(echo ${ACCOUNT_SK} | $CLI key to-public)
     ACCOUNT_ADDR=$($CLI address account --testing $ACCOUNT_PK)
 

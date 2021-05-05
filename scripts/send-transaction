@@ -68,11 +68,11 @@ TRANSACTION_ID=$($CLI transaction id --staging $STAGING_FILE)
 GENESIS_BLOCK_HASH=$($CLI genesis hash --input  $BLOCK0_FILE)
 
 
-### WITNESS_SECRET 
+### WITNESS_SECRET
 echo $INPUT_ADDRESS_PRIVATE_KEY > witness.secret.tmp
 #Workaround for https://github.com/input-output-hk/jormungandr/issues/448
 tr -d ' \r\n' <witness.secret.tmp >witness.secret
-rm witness.secret.tmp 
+rm witness.secret.tmp
 WITNESS_SECRET_FILE="witness.secret"
 
 ACCOUNT_SPENDING_COUNTER=$( $CLI  rest v0 account get  $FAUCET_ADDRESS -h $JORMUNGANDR_REST_API  | grep -oP '(?<=counter: ).*')

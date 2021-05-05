@@ -1,4 +1,4 @@
-query AllStakePools($first: Int!){ 
+query AllStakePools($first: Int!){
     tip {
         allStakePools(first: $first) {
             edges{

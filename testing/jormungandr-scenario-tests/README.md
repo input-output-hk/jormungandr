@@ -6,7 +6,7 @@ prepares small network of nodes and allows to interact with them, by sending tra
 
 ### How to run
 ```
-cd testing/jormungandr-scenario-tests 
+cd testing/jormungandr-scenario-tests
 cargo run --bin interactive
 ```
 
@@ -24,10 +24,10 @@ cd jormungandr
 cargo install --locked --force --path jormungandr
 
 cargo install --locked --force --path jcli
-	
+
 cargo install --locked --force --path testing/iapyx
 
-cargo install --locked --force --path testing/jormungandr-scenario-tests 
+cargo install --locked --force --path testing/jormungandr-scenario-tests
 ```
 
 #### Run

@@ -17,7 +17,7 @@ pub enum Show {
     /// Prints stats
     Stats(ShowNodeStats),
     /// Prints logs, can filter logs to print
-    /// only errors or filter by custom string  
+    /// only errors or filter by custom string
     Logs(ShowLogs),
     /// Active Vote Plans
     VotePlans(ActiveVotePlans),

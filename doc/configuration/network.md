@@ -108,7 +108,7 @@ Use the CA certificate with `jcli`.
   - `quarantine_duration` set the time to leave a node in quarantine before allowing
     it back (or not) into the fold.
     It is recommended to leave the default value `[default: 30min]`.
-  - `quarantine_whitelist` set a trusted list of peers that will not be quarantined in any circumstance. 
+  - `quarantine_whitelist` set a trusted list of peers that will not be quarantined in any circumstance.
     It should be a list of valid addresses, for example: `["/ip4/127.0.0.1/tcp/3000"]`.
     By default this list is empty, `[default: []]`.
 - `layers`: (optional) set the settings for some of the poldercast custom layers (see below)

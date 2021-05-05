@@ -118,7 +118,7 @@ commands:
           name: Compress Artifacts
           command: tar -cvzf /tmp/jormungandr-logs.tar /tmp/jormungandr_*
           when: on_fail
-      - store_artifacts: 
+      - store_artifacts:
           path: /tmp/jormungandr-logs.tar
           destination: failed_logs
           when: on_fail

@@ -87,7 +87,7 @@ In normal use, the blockchain genesis configuration is given to you or
 automatically fetched from the network.
 
 ## Quick-Start - Public Mode
- 
+
 To start a new node from scratch on a given blockchain, you need to know the
 block0 hash of this blockchain for trust purpose and internet peers to connect
 to. The simplest way to start such a node is:
@@ -118,7 +118,7 @@ bootstrap -b        # BFT setup
 bootstrap -g -s 2   # Genesis-praos setup
 bootstrap -h        # further help
 ```
- 
+
 The bootstrap script creates a simple setup with a faucet with 10 millions
 coins, a BFT leader, and a stake pool.
 

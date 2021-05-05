@@ -1,4 +1,4 @@
-query StakePool($id: PoolId!, $first: Int!){ 
+query StakePool($id: PoolId!, $first: Int!){
     stakePool(id: $id) {
         id,
         registration {
