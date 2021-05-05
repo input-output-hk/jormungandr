@@ -76,7 +76,7 @@ features = ["rustls-tls"]
 rand_core = "0.6"
 tokio = { version = "^1.4", features = ["full"] }
 quickcheck = "0.9"
-quickcheck_macros = "0.9"
+quickcheck_macros = "1.0"
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }

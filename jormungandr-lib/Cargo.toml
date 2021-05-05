@@ -32,7 +32,7 @@ eccoxide = { git = "https://github.com/eugene-babichenko/eccoxide.git", branch =
 
 [dev-dependencies]
 quickcheck = "0.9"
-quickcheck_macros = "0.9"
+quickcheck_macros = "1.0"
 # FIXME required to work with quickcheck 0.9. Remove after migrating another crate or newer quickcheck
 rand07 = { package = "rand", version = "0.7" }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
