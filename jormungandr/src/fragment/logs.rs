@@ -57,15 +57,21 @@ impl Logs {
                 }
             }
             None => {
-                // while a log modification, if the log was not already present in the
-                // logs it means we received it from the a new block from the network.
-                // we can mark the status of the transaction so newly received transaction
-                // be stored.
-
-                self.entries.put(
-                    fragment_id,
-                    FragmentLog::new(fragment_id.clone().into_hash(), FragmentOrigin::Network),
-                );
+                // Possible reasons for entering this branch are:
+                //
+                // - Receiving a fragment with a network block.
+                // - Having a fragment evicted from the log due to overflow.
+                //
+                // For both scenarios the code defaults to FragmentOrigin::Network, since there are
+                // no means of knowing where the fragment came from.
+                //
+                // Also, in this scenario we accept any provided FragmentStatus, since we do not
+                // actually know what the previous status was, and thus cannot execute the correct
+                // state transition.
+                let mut entry =
+                    FragmentLog::new(fragment_id.clone().into_hash(), FragmentOrigin::Network);
+                entry.modify(status);
+                self.entries.put(fragment_id, entry);
             }
         }
     }
