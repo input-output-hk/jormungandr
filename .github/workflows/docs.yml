@@ -14,21 +14,20 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install linkcheck
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          mkdir $GITHUB_WORKSPACE/mdbook-linkcheck
-          cd $GITHUB_WORKSPACE/mdbook-linkcheck
-          gh release --repo Michael-F-Bryan/mdbook-linkcheck download --pattern '*x86_64-unknown-linux-gnu.zip'
-          unzip *x86_64-unknown-linux-gnu.zip
-          rm *x86_64-unknown-linux-gnu.zip
-          echo $GITHUB_WORKSPACE/mdbook-linkcheck >> $GITHUB_PATH
-
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
           mdbook-version: 'latest'
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+            profile: minimal
+            override: true
+
+      - name: Install mdbook-linkcheck
+        run: cargo install mdbook-linkcheck
 
       - name: Build
         run: mdbook build
