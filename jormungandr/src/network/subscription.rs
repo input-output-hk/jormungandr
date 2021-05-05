@@ -1,7 +1,7 @@
 use super::{buffer_sizes, convert::Decode, p2p::Address, GlobalStateR};
 use crate::{
     blockcfg::Fragment,
-    intercom::{BlockMsg, TopologyMsg, TransactionMsg},
+    intercom::{self, BlockMsg, TopologyMsg, TransactionMsg},
     settings::start::network::Configuration,
     topology::Gossip,
     utils::async_msg::{self, MessageBox},
@@ -347,11 +347,14 @@ impl FragmentProcessor {
             &mut self.buffered_fragments,
             Vec::with_capacity(buffer_sizes::inbound::FRAGMENTS),
         );
+        let (reply_handle, _reply_future) = intercom::unary_reply();
         self.mbox
-            .start_send(TransactionMsg::SendTransaction(
-                FragmentOrigin::Network,
+            .start_send(TransactionMsg::SendTransactions {
+                origin: FragmentOrigin::Network,
                 fragments,
-            ))
+                fail_fast: false,
+                reply_handle,
+            })
             .map_err(|e| {
                 tracing::error!(
                     reason = %e,

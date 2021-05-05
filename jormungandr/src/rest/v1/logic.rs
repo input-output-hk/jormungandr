@@ -3,14 +3,12 @@ use crate::{
     intercom::{self, TransactionMsg},
     rest::Context,
 };
-use chain_core::property::{Deserialize, Fragment as _};
 use chain_crypto::{digest::Error as DigestError, hash::Error as HashError, PublicKeyFromStrError};
-use chain_impl_mockchain::{
-    fragment::{Fragment, FragmentId},
-    value::ValueError,
-};
+use chain_impl_mockchain::{fragment::FragmentId, value::ValueError};
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
-use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
+use jormungandr_lib::interfaces::{
+    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch, FragmentsProcessingSummary,
+};
 use std::{collections::HashMap, str::FromStr};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
@@ -25,8 +23,6 @@ pub enum Error {
     #[error(transparent)]
     IntercomError(#[from] intercom::Error),
     #[error(transparent)]
-    Deserialize(std::io::Error),
-    #[error(transparent)]
     TxMsgSendError(#[from] TrySendError<TransactionMsg>),
     #[error(transparent)]
     MsgSendError(#[from] SendError),
@@ -40,6 +36,8 @@ pub enum Error {
     Storage(#[from] StorageError),
     #[error(transparent)]
     Hex(#[from] hex::FromHexError),
+    #[error("Could not process all fragments")]
+    Fragments(FragmentsProcessingSummary),
 }
 
 pub async fn get_fragment_statuses<'a>(
@@ -77,25 +75,23 @@ pub async fn get_fragment_statuses<'a>(
 
 pub async fn post_fragments(
     context: &Context,
-    messages: Vec<String>,
-) -> Result<Vec<String>, Error> {
-    let fragments = messages
-        .into_iter()
-        .map(|message| {
-            let message = hex::decode(message)?;
-            Fragment::deserialize(message.as_slice()).map_err(Error::Deserialize)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let fragment_ids = fragments
-        .iter()
-        .map(|fragment| fragment.id().to_string())
-        .collect();
+    batch: FragmentsBatch,
+) -> Result<FragmentsProcessingSummary, Error> {
     let mut msgbox = context.try_full()?.transaction_task.clone();
-    for fragment in fragments.into_iter() {
-        let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
-        msgbox.try_send(msg)?;
+    let (reply_handle, reply_future) = intercom::unary_reply();
+    let msg = TransactionMsg::SendTransactions {
+        origin: FragmentOrigin::Rest,
+        fragments: batch.fragments,
+        fail_fast: batch.fail_fast,
+        reply_handle,
+    };
+    msgbox.try_send(msg)?;
+    let reply = reply_future.await?;
+    if reply.is_error() {
+        Ok(reply)
+    } else {
+        Err(Error::Fragments(reply))
     }
-    Ok(fragment_ids)
 }
 
 pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Error> {

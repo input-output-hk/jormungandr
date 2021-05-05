@@ -8,7 +8,9 @@ use crate::topology::{Gossips, NodeId, Peer, PeerInfo as TopologyPeerInfo, View}
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
 use chain_network::error as net_error;
-use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
+use jormungandr_lib::interfaces::{
+    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
+};
 use poldercast::layer::Selection;
 
 use futures::channel::{mpsc, oneshot};
@@ -500,7 +502,12 @@ pub fn stream_request<T, R>(
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum TransactionMsg {
-    SendTransaction(FragmentOrigin, Vec<Fragment>),
+    SendTransactions {
+        origin: FragmentOrigin,
+        fragments: Vec<Fragment>,
+        fail_fast: bool,
+        reply_handle: ReplyHandle<FragmentsProcessingSummary>,
+    },
     RemoveTransactions(Vec<FragmentId>, FragmentStatus),
     GetLogs(ReplyHandle<Vec<FragmentLog>>),
     GetStatuses(

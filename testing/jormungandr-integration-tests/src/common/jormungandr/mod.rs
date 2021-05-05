@@ -48,9 +48,10 @@ impl FragmentNode for JormungandrProcess {
     fn send_batch_fragments(
         &self,
         fragments: Vec<Fragment>,
+        fail_fast: bool,
     ) -> Result<Vec<MemPoolCheck>, FragmentNodeError> {
         self.rest()
-            .send_fragment_batch(fragments.clone())
+            .send_fragment_batch(fragments.clone(), fail_fast)
             .map_err(|e| FragmentNodeError::CannotSendFragmentBatch {
                 reason: e.to_string(),
                 alias: self.alias().to_string(),

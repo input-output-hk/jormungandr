@@ -56,6 +56,7 @@ pub trait FragmentNode {
     fn send_batch_fragments(
         &self,
         fragments: Vec<Fragment>,
+        fail_fast: bool,
     ) -> Result<Vec<MemPoolCheck>, FragmentNodeError>;
     fn log_pending_fragment(&self, fragment_id: FragmentId);
     fn log_rejected_fragment(&self, fragment_id: FragmentId, reason: String);

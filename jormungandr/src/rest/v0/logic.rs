@@ -16,9 +16,7 @@ use crate::{
     topology::PeerInfo,
     utils::async_msg::MessageBox,
 };
-use chain_core::property::{
-    Block as _, Deserialize, Fragment as fragment_property, FromStr, Serialize,
-};
+use chain_core::property::{Block as _, Deserialize, FromStr, Serialize};
 use chain_crypto::{
     bech32::Bech32, digest::Error as DigestError, hash::Error as HashError, Blake2b256, PublicKey,
     PublicKeyFromStrError,
@@ -35,9 +33,9 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
-        LeadershipLog, NodeStats, NodeStatsDto, PeerStats, Rewards as StakePoolRewards,
-        SettingsDto, StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde,
-        TransactionOutput, VotePlanStatus,
+        FragmentsProcessingSummary, LeadershipLog, NodeStats, NodeStatsDto, PeerStats,
+        Rewards as StakePoolRewards, SettingsDto, StakeDistribution, StakeDistributionDto,
+        StakePoolStats, TaxTypeSerde, TransactionOutput, VotePlanStatus,
     },
     time::SystemTime,
 };
@@ -79,6 +77,8 @@ pub enum Error {
     InvalidTopic,
     #[error(transparent)]
     Hex(#[from] hex::FromHexError),
+    #[error("Could not process fragment")]
+    Fragment(FragmentsProcessingSummary),
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -132,12 +132,25 @@ pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Err
     .await
 }
 
-pub async fn post_message(context: &Context, message: &[u8]) -> Result<String, Error> {
+pub async fn post_message(
+    context: &Context,
+    message: &[u8],
+) -> Result<FragmentsProcessingSummary, Error> {
     let fragment = Fragment::deserialize(message).map_err(Error::Deserialize)?;
-    let fragment_id = fragment.id().to_string();
-    let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
+    let (reply_handle, reply_future) = intercom::unary_reply();
+    let msg = TransactionMsg::SendTransactions {
+        origin: FragmentOrigin::Rest,
+        fragments: vec![fragment],
+        fail_fast: true,
+        reply_handle,
+    };
     context.try_full()?.transaction_task.clone().try_send(msg)?;
-    Ok(fragment_id)
+    let reply = reply_future.await?;
+    if reply.is_error() {
+        Ok(reply)
+    } else {
+        Err(Error::Fragment(reply))
+    }
 }
 
 pub async fn get_tip(context: &Context) -> Result<String, Error> {

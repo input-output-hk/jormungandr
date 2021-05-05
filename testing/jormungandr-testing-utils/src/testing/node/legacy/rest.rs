@@ -198,12 +198,13 @@ impl BackwardCompatibleRest {
     pub fn send_fragment_batch(
         &self,
         fragments: Vec<Fragment>,
+        fail_fast: bool,
     ) -> Result<Vec<MemPoolCheck>, RestError> {
         let checks: Vec<MemPoolCheck> = fragments
             .iter()
             .map(|x| MemPoolCheck::new(x.id()))
             .collect();
-        let response = self.raw.send_fragment_batch(fragments)?;
+        let response = self.raw.send_fragment_batch(fragments, fail_fast)?;
         self.print_debug_response(&response);
         Ok(checks)
     }

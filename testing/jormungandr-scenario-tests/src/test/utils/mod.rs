@@ -120,6 +120,7 @@ impl FragmentNode for LegacyNodeController {
     fn send_batch_fragments(
         &self,
         _fragments: Vec<Fragment>,
+        _fail_fast: bool,
     ) -> std::result::Result<Vec<MemPoolCheck>, FragmentNodeError> {
         //TODO implement
         unimplemented!()
