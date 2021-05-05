@@ -8,6 +8,9 @@ use crate::{
     },
     Context,
 };
+
+use jormungandr_testing_utils::testing::network_builder::FaketimeConfig;
+
 use function_name::named;
 use rand_chacha::ChaChaRng;
 
@@ -157,6 +160,80 @@ pub fn passive_leader_disruption_overlap(
 
     leader.shutdown()?;
     passive.shutdown()?;
+    controller.finalize();
+    Ok(ScenarioResult::passed(name))
+}
+
+#[named]
+pub fn bft_forks(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+    let name = function_name!();
+    let scenario_settings = prepare_scenario! {
+        name,
+        &mut context,
+        topology [
+            LEADER_1,
+            LEADER_2 -> LEADER_1,
+            LEADER_3 -> LEADER_1,
+        ]
+        blockchain {
+            consensus = Bft,
+            number_of_slots_per_epoch = 60,
+            slot_duration = 5,
+            leaders = [ LEADER_1, LEADER_2, LEADER_3 ],
+            initials = [
+                "account" "alice" with   100_000_000,
+                "account" "bob" with   100_000_000,
+            ],
+        }
+    };
+
+    let mut controller = scenario_settings.build(context)?;
+
+    let leader_1 = controller.spawn_node(
+        LEADER_1,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    leader_1.wait_for_bootstrap()?;
+    let leader_2 = controller.spawn_node(
+        LEADER_2,
+        LeadershipMode::Leader,
+        PersistenceMode::Persistent,
+    )?;
+    leader_2.wait_for_bootstrap()?;
+    let leader_3 = controller.spawn_node_custom(
+        controller
+            .new_spawn_params(LEADER_3)
+            .leadership_mode(LeadershipMode::Leader)
+            .persistence_mode(PersistenceMode::Persistent)
+            .faketime(FaketimeConfig {
+                offset: -2,
+                drift: 0.0,
+            }),
+    )?;
+    leader_3.wait_for_bootstrap()?;
+
+    let mut alice = controller.wallet("alice")?;
+    let bob = controller.wallet("bob")?;
+
+    for _ in 0..50 {
+        // Sooner or later this will fail because a transaction will settle
+        // in the fork and the spending counter will not be correct anymore
+        controller.fragment_sender().send_transaction(
+            &mut alice,
+            &bob,
+            &leader_1,
+            1_000_000.into(),
+        )?;
+        // Spans at least one slot for every leader
+        std::thread::sleep(std::time::Duration::from_millis(500));
+    }
+
+    println!("{:?}", leader_1.rest().account_state(&alice));
+
+    leader_1.shutdown()?;
+    leader_2.shutdown()?;
+    leader_3.shutdown()?;
     controller.finalize();
     Ok(ScenarioResult::passed(name))
 }
