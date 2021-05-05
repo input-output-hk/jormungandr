@@ -22,7 +22,7 @@ use tracing_futures::Instrument;
 
 pub struct Process {
     pool_max_entries: usize,
-    logs: Logs,
+    logs_max_entries: usize,
     network_msg_box: MessageBox<NetworkMsg>,
 }
 
@@ -40,10 +40,9 @@ impl Process {
         logs_max_entries: usize,
         network_msg_box: MessageBox<NetworkMsg>,
     ) -> Self {
-        let logs = Logs::new(logs_max_entries);
         Process {
             pool_max_entries,
-            logs,
+            logs_max_entries,
             network_msg_box,
         }
     }
@@ -84,6 +83,14 @@ impl Process {
                 .map_err(Error::PersistentLog)
         }
 
+        let min_logs_size = n_pools * self.pool_max_entries;
+        if self.logs_max_entries < min_logs_size {
+            tracing::warn!(
+                "Having 'log_max_entries' < 'pool_max_entries' * n_pools is not recommendend. Overriding 'log_max_entries' to {}", min_logs_size
+            );
+        }
+        let logs = Logs::new(std::cmp::max(self.logs_max_entries, min_logs_size));
+
         let mut wakeup = Box::pin(hourly_wakeup(persistent_log_dir.is_some()));
 
         async move {
@@ -98,7 +105,7 @@ impl Process {
             let mut pool = Pools::new(
                 self.pool_max_entries,
                 n_pools,
-                self.logs,
+                logs,
                 self.network_msg_box,
                 persistent_log,
             );
