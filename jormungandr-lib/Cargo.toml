@@ -31,7 +31,7 @@ http = "0.2.2"
 eccoxide = { git = "https://github.com/eugene-babichenko/eccoxide.git", branch = "fast-u64-scalar-mul", features = ["fast-u64-scalar-mul"], optional = true }
 
 [dev-dependencies]
-quickcheck = "0.9"
+quickcheck = "1.0"
 quickcheck_macros = "0.9"
 # FIXME required to work with quickcheck 0.9. Remove after migrating another crate or newer quickcheck
 rand07 = { package = "rand", version = "0.7" }
