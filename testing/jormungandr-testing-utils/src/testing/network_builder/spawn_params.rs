@@ -5,6 +5,7 @@ use jormungandr_lib::interfaces::{
 use super::{LeadershipMode, PersistenceMode};
 use crate::testing::node::Version;
 use std::path::PathBuf;
+use std::path::Path;
 
 #[derive(Clone)]
 pub struct SpawnParams {
@@ -18,6 +19,7 @@ pub struct SpawnParams {
     pub preferred_layer: Option<LayersConfig>,
     pub leadership_mode: LeadershipMode,
     pub persistence_mode: PersistenceMode,
+    pub persistent_fragment_log: Option<PathBuf>,
     pub max_connections: Option<u32>,
     pub max_inbound_connections: Option<u32>,
     pub alias: String,
@@ -47,6 +49,7 @@ impl SpawnParams {
             version: None,
             bootstrap_from_peers: None,
             skip_bootstrap: None,
+            persistent_fragment_log: None
         }
     }
 
@@ -60,6 +63,11 @@ impl SpawnParams {
 
     pub fn listen_address(&mut self, address: Option<poldercast::Address>) -> &mut Self {
         self.listen_address = Some(address);
+        self
+    }
+
+    pub fn persistent_fragment_log<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+        self.persistent_fragment_log = Some(path.as_ref().to_path_buf());
         self
     }
 
