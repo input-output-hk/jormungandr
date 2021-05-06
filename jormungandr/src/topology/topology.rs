@@ -2,7 +2,7 @@
 //!
 use super::{
     layers::{self, LayersConfig},
-    topic, Gossip, Gossips, NodeId, Peer, PeerInfo, Quarantine,
+    topic, Gossips, NodeId, Peer, PeerInfo, Quarantine,
 };
 
 use crate::settings::start::network::Configuration;
@@ -161,30 +161,29 @@ impl P2pTopology {
         self.quarantine.quarantined_nodes()
     }
 
-    pub fn list_available(&self) -> Vec<PeerInfo> {
+    pub fn list_available(&self) -> impl Iterator<Item = Peer> + '_ {
         let profiles = self.topology.peers();
         profiles
             .pool()
             .iter()
             .chain(profiles.trusted().iter())
-            .map(|(_, profile)| profile.into())
-            .collect()
+            .map(|(_, profile)| profile.gossip().clone().into())
     }
 
-    pub fn list_non_public(&self) -> Vec<PeerInfo> {
+    pub fn list_non_public(&self) -> impl Iterator<Item = Peer> + '_ {
         let profiles = self.topology.peers();
         profiles
             .pool()
             .iter()
             .chain(profiles.trusted().iter())
             .filter_map(|(_, profile)| {
-                if Gossip::from(profile.gossip().clone()).is_global() {
+                let peer = Peer::from(profile.gossip().clone());
+                if peer.is_global() {
                     None
                 } else {
-                    Some(profile.into())
+                    Some(peer)
                 }
             })
-            .collect()
     }
 
     /// register that we were able to establish an handshake with given peer
@@ -195,7 +194,10 @@ impl P2pTopology {
     /// register a strike against the given peer
     pub fn report_node(&mut self, node_id: &NodeId) {
         if let Some(node) = self.topology.get(node_id.as_ref()).cloned() {
-            if self.quarantine.quarantine_node((&node).into()) {
+            if self
+                .quarantine
+                .quarantine_node(Peer::from(node.gossip().clone()).into())
+            {
                 self.topology.remove_peer(node_id.as_ref());
                 // Trusted peers in poldercast requires to be demoted 2 times before
                 // moving to the dirty pool

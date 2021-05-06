@@ -7,6 +7,8 @@ use tokio::time::{Instant, Interval};
 use tokio_stream::StreamExt;
 
 pub const DEFAULT_NETWORK_STUCK_INTERVAL: Duration = Duration::from_secs(60 * 5); // 5 min
+const QUARANTINE_CHECK: Duration = Duration::from_secs(60);
+const MAX_GOSSIP_SIZE: usize = 10;
 
 struct Process {
     input: MessageQueue<TopologyMsg>,
@@ -53,7 +55,7 @@ pub async fn start(task_data: TaskData) {
 impl Process {
     async fn handle_input(&mut self) {
         let mut last_update = Instant::now();
-        let mut stuck_inverval = tokio::time::interval(Duration::from_secs(60));
+        let mut quarantine_check = tokio::time::interval(QUARANTINE_CHECK);
 
         loop {
             tokio::select! {
@@ -69,10 +71,10 @@ impl Process {
                             handle.reply_ok(self.topology.view(selection))
                         }
                         TopologyMsg::ListAvailable(handle) => {
-                            handle.reply_ok(self.topology.list_available())
+                            handle.reply_ok(self.topology.list_available().map(Into::into).collect::<Vec<_>>())
                         }
                         TopologyMsg::ListNonPublic(handle) => {
-                            handle.reply_ok(self.topology.list_non_public())
+                            handle.reply_ok(self.topology.list_non_public().map(Into::into).collect::<Vec<_>>())
                         }
                         TopologyMsg::ListQuarantined(handle) => {
                             handle.reply_ok(self.topology.list_quarantined())
@@ -87,17 +89,23 @@ impl Process {
                         }
                         self.send_gossip_messages(view.peers)
                     }
-                // For some reason, resetting a tokio::time::Sleep instance when receiving a new gossip
-                // result in a stack overflow / allocation failure in some tests.
-                // This should achieve the same thing, without hopefully the blowing-up-the-stack part
-                _ = stuck_inverval.tick() => {
-                    if last_update.elapsed() >= self.network_stuck_check {
-                        tracing::warn!("p2p network have been too quiet for some time, will try to contact nodes for which quarantine have elapsed");
-                        let quarantined_nodes = self.topology.lift_nodes_from_quarantine();
-                        self.send_gossip_messages(quarantined_nodes);
+                _ = quarantine_check.tick() => {
+                    // Even if lifted from quarantine, peers will be re-added to the topology
+                    // only after we receive a gossip about them.
+                    let mut nodes_to_contact = self.topology.lift_nodes_from_quarantine();
 
+                    // If we did not receive any incoming gossip recently let's try to contact known (but not active) nodes.
+                    if last_update.elapsed() > self.network_stuck_check {
                         last_update = Instant::now();
+                        tracing::warn!("p2p network have been too quiet for some time, will try to contanct known nodes");
+                        nodes_to_contact.extend(
+                            self.topology
+                                .list_available()
+                                .take(MAX_GOSSIP_SIZE.saturating_sub(nodes_to_contact.len()))
+                        );
                     }
+
+                    self.send_gossip_messages(nodes_to_contact);
                 }
             }
         }

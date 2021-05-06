@@ -4,12 +4,10 @@
 use crate::network::p2p::Address;
 use jormungandr_lib::interfaces::Subscription;
 use jormungandr_lib::time::SystemTime;
-use poldercast::Profile;
 use serde::Serialize;
 use serde::Serializer;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
-use std::sync::Arc;
 
 mod gossip;
 pub mod layers;
@@ -110,12 +108,13 @@ impl Hash for PeerInfo {
     }
 }
 
-impl From<&Arc<Profile>> for PeerInfo {
-    fn from(other: &Arc<Profile>) -> Self {
+impl From<Peer> for PeerInfo {
+    fn from(other: Peer) -> Self {
+        let other: poldercast::Gossip = other.into();
         Self {
             id: NodeId(other.id()),
             address: other.address(),
-            last_update: other.last_update().to_system_time().into(),
+            last_update: other.time().to_system_time().into(),
             quarantined: None,
             subscriptions: other
                 .subscriptions()
