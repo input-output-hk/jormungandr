@@ -42,7 +42,10 @@ pub use self::committee::CommitteeIdDef;
 pub use self::config::*;
 pub use self::fragment::FragmentDef;
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
-pub use self::fragment_log_persistent::*;
+pub use self::fragment_log_persistent::{
+    get_fragments_log_files_path, load_fragments_from_folder_path, read_entries_from_files_path,
+    Error, FileFragments, PersistentFragmentLog,
+};
 pub use self::leadership_log::{
     EnclaveLeaderId, LeadershipLog, LeadershipLogId, LeadershipLogStatus,
 };
