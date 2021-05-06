@@ -43,7 +43,7 @@ pub struct FileFragmentsIterator {
 impl FileFragments {
     pub fn from_path(file_path: PathBuf) -> std::io::Result<Self> {
         let mut reader = BufReader::new(fs::File::open(file_path.clone())?);
-        reader.fill_buf();
+        reader.fill_buf()?;
         Ok(Self { reader, file_path })
     }
 }
