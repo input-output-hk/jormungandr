@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::io::BufReader;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 
 use crate::interfaces::FragmentDef;
@@ -42,10 +42,9 @@ pub struct FileFragmentsIterator {
 
 impl FileFragments {
     pub fn from_path(file_path: PathBuf) -> std::io::Result<Self> {
-        fs::File::open(file_path.clone()).map(|file| Self {
-            reader: BufReader::new(file),
-            file_path,
-        })
+        let mut reader = BufReader::new(fs::File::open(file_path.clone())?);
+        reader.fill_buf();
+        Ok(Self { reader, file_path })
     }
 }
 
@@ -66,9 +65,9 @@ impl Iterator for FileFragmentsIterator {
     type Item = Result<PersistentFragmentLog, DeserializeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // EOF reached when buffer is empty after reading successfully at least one.
-        // Then we stop the iterator.
-        if self.reader.buffer().is_empty() && self.counter != 0 {
+        // EOF reached when buffer is empty.
+        // Then we stop the iterator. Buffer if prefilled during initialization of FileFragments
+        if self.reader.buffer().is_empty() {
             return None;
         }
         let codec = bincode::DefaultOptions::new()
