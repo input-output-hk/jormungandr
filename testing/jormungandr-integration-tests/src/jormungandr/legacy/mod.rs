@@ -19,6 +19,9 @@ use jormungandr_testing_utils::{
 use assert_fs::TempDir;
 
 #[test]
+// Re-enable when rate of breaking changes subsides and we can maintain
+// backward compatible releases again.
+#[ignore]
 pub fn test_legacy_node_all_fragments() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
