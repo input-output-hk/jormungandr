@@ -73,17 +73,16 @@ impl Iterator for FileFragmentsIterator {
         let codec = bincode::DefaultOptions::new()
             .with_fixint_encoding()
             .allow_trailing_bytes();
-        let current = self.counter;
+
+        let result = codec
+            .deserialize_from(&mut self.reader)
+            .map_err(|cause| DeserializeError {
+                file: self.file_path.to_string_lossy().to_string(),
+                entry: self.counter,
+                cause,
+            });
         self.counter += 1;
-        Some(
-            codec
-                .deserialize_from(&mut self.reader)
-                .map_err(|cause| DeserializeError {
-                    file: self.file_path.to_string_lossy().to_string(),
-                    entry: current,
-                    cause,
-                }),
-        )
+        Some(result)
     }
 }
 
