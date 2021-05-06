@@ -274,12 +274,12 @@ The process is similar to the public one, but we need to issue different certifi
 vote_plan_id=$(cat active_plans.json |jq '.[0].id')
 ...
 </code></pre>
-<p>Each committee member needs to generate their shares for the vote plan, which we will use later to decrypt the tally. </p>
-<pre><code class="language-shell">jcli votes tally decryption-shares --vote-plan active_plans.json --vote-plan-id $&quot;vote_plan_id&quot; --key member.sk --output-format json 
+<p>Each committee member needs to generate their shares for the vote plan, which we will use later to decrypt the tally.</p>
+<pre><code class="language-shell">jcli votes tally decryption-shares --vote-plan active_plans.json --vote-plan-id $&quot;vote_plan_id&quot; --key member.sk --output-format json
 </code></pre>
 <p>Then, the committee members need to exchange their shares (only one full set of shares is needed).
 Once all shares are available, we need to merge them in a single file with the following command (needed even if there is only one set of shares):</p>
-<pre><code class="language-shell">jcli votes tally merge-shares  share_file1 share_file2 ... &gt; merged_shares.json 
+<pre><code class="language-shell">jcli votes tally merge-shares  share_file1 share_file2 ... &gt; merged_shares.json
 </code></pre>
 <p>With the merged shares file, we are finally able to process the final tally result as follows:</p>
 <pre><code class="language-shell">jcli votes tally decrypt-results \
