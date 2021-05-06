@@ -12,13 +12,11 @@ use bincode::Options;
 use serde::{Deserialize, Serialize};
 
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error("Couldn't deserialize entry {entry} in {file} due to: {cause}")]
-    DeserializeError {
-        file: String,
-        entry: usize,
-        cause: bincode::Error,
-    },
+#[error("Couldn't deserialize entry {entry} in {file} due to: {cause}")]
+pub struct DeserializeError {
+    file: String,
+    entry: usize,
+    cause: bincode::Error,
 }
 
 /// Represents a persistent fragments log entry.
@@ -52,7 +50,7 @@ impl FileFragments {
 }
 
 impl IntoIterator for FileFragments {
-    type Item = Result<PersistentFragmentLog, Error>;
+    type Item = Result<PersistentFragmentLog, DeserializeError>;
     type IntoIter = FileFragmentsIterator;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -65,7 +63,7 @@ impl IntoIterator for FileFragments {
 }
 
 impl Iterator for FileFragmentsIterator {
-    type Item = Result<PersistentFragmentLog, Error>;
+    type Item = Result<PersistentFragmentLog, DeserializeError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // EOF reached when buffer is empty after reading successfully at least one.
@@ -81,7 +79,7 @@ impl Iterator for FileFragmentsIterator {
         Some(
             codec
                 .deserialize_from(&mut self.reader)
-                .map_err(|cause| Error::DeserializeError {
+                .map_err(|cause| DeserializeError {
                     file: self.file_path.to_string_lossy().to_string(),
                     entry: current,
                     cause,
@@ -103,7 +101,7 @@ pub fn get_fragments_log_files_path(folder: &Path) -> io::Result<impl Iterator<I
 
 pub fn read_entries_from_files_path(
     entries: impl Iterator<Item = PathBuf>,
-) -> io::Result<impl Iterator<Item = Result<PersistentFragmentLog, Error>>> {
+) -> io::Result<impl Iterator<Item = Result<PersistentFragmentLog, DeserializeError>>> {
     let mut handles = Vec::new();
     for entry in entries {
         handles.push(FileFragments::from_path(entry)?);
@@ -113,6 +111,6 @@ pub fn read_entries_from_files_path(
 
 pub fn load_fragments_from_folder_path(
     folder: &Path,
-) -> io::Result<impl Iterator<Item = Result<PersistentFragmentLog, Error>>> {
+) -> io::Result<impl Iterator<Item = Result<PersistentFragmentLog, DeserializeError>>> {
     read_entries_from_files_path(get_fragments_log_files_path(folder)?)
 }
