@@ -9,7 +9,7 @@ use crate::{
     Context,
 };
 
-use jormungandr_testing_utils::testing::network_builder::FaketimeConfig;
+use jormungandr_testing_utils::{testing::network_builder::FaketimeConfig, wallet::Wallet};
 
 use function_name::named;
 use rand_chacha::ChaChaRng;
@@ -216,20 +216,42 @@ pub fn bft_forks(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut alice = controller.wallet("alice")?;
     let bob = controller.wallet("bob")?;
 
-    for _ in 0..50 {
+    for i in 0..3 {
         // Sooner or later this will fail because a transaction will settle
         // in the fork and the spending counter will not be correct anymore
+        let mut alice_clone = alice.clone();
+        //println!("{:?} | {:?}", alice, alice_clone);
         controller.fragment_sender().send_transaction(
-            &mut alice,
+            &mut alice_clone,
             &bob,
             &leader_1,
-            1_000_000.into(),
+            // so the transaction is not the same
+            (1_000_000 + i).into(),
         )?;
+        //alice = alice_clone;
+        let state = leader_1.rest().account_state(&alice).unwrap();
+        if let Wallet::Account(account) = &alice {
+            let counter: u32 = account.internal_counter().into();
+            if counter < state.counter() {
+                alice.confirm_transaction();
+            }
+        }
         // Spans at least one slot for every leader
-        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::thread::sleep(std::time::Duration::from_secs(5));
     }
 
-    println!("{:?}", leader_1.rest().account_state(&alice));
+    let account_value: u64 = leader_1
+        .rest()
+        .account_state(&alice)
+        .unwrap()
+        .value()
+        .clone()
+        .into();
+    assert!(
+        account_value < 100_000_000 - 1_000_000 * 3,
+        "found {}",
+        account_value
+    );
 
     leader_1.shutdown()?;
     leader_2.shutdown()?;
