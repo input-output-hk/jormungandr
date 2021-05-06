@@ -58,9 +58,9 @@ impl Controller {
 
         Ok(Controller {
             settings,
+            working_directory,
             block0_file,
             block0_hash,
-            working_directory,
         })
     }
 

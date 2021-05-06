@@ -382,9 +382,9 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
 
     Ok(BootstrappedNode {
         settings,
-        block0_hash,
         blockchain,
         blockchain_tip,
+        block0_hash,
         explorer_db,
         rest_context,
         services,

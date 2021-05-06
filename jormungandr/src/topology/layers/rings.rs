@@ -62,8 +62,8 @@ pub struct Rings {
 impl Rings {
     pub fn new(interest_levels: RingsConfig, rings: poldercast::layer::Rings) -> Self {
         Self {
-            interest_levels,
             rings,
+            interest_levels,
         }
     }
 }

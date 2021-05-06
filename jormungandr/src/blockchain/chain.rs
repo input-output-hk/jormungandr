@@ -461,10 +461,10 @@ impl Blockchain {
             header,
             epoch_leadership_schedule,
             epoch_ledger_parameters,
-            epoch_rewards_info,
             parent_ledger_state,
             time_frame,
             previous_epoch_state,
+            epoch_rewards_info,
         })
     }
 
@@ -613,10 +613,10 @@ impl Blockchain {
             header,
             epoch_leadership_schedule,
             epoch_ledger_parameters,
-            epoch_rewards_info,
             parent_ledger_state,
             time_frame,
             previous_epoch_state,
+            epoch_rewards_info,
         };
 
         self.apply_block_check_rewards(&post_checked_header, &new_ledger)?;
