@@ -166,10 +166,10 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#delegating-your-stake" id="delegating-your-stake">Delegating your stake</a></h1>
-<h2><a class="header" href="#how-to-create-the-delegation-certificate" id="how-to-create-the-delegation-certificate">how to create the delegation certificate</a></h2>
+                        <h1 id="delegating-your-stake"><a class="header" href="#delegating-your-stake">Delegating your stake</a></h1>
+<h2 id="how-to-create-the-delegation-certificate"><a class="header" href="#how-to-create-the-delegation-certificate">how to create the delegation certificate</a></h2>
 <p>Stake is concentrated in accounts, and you will need account public key to delegate its associated stake.</p>
-<h3><a class="header" href="#for-own-account" id="for-own-account">for own account</a></h3>
+<h3 id="for-own-account"><a class="header" href="#for-own-account">for own account</a></h3>
 <p>You will need:</p>
 <ul>
 <li>the Stake Pool ID: an hexadecimal string identifying the stake pool you want
@@ -186,7 +186,7 @@ In order for delegation to work it must be submitted to a node inside a very spe
 <li>Transaction must have 0 outputs</li>
 </ul>
 <p>The account used for input will have its stake delegated to the stake pool</p>
-<h3><a class="header" href="#for-any-account" id="for-any-account">for any account</a></h3>
+<h3 id="for-any-account"><a class="header" href="#for-any-account">for any account</a></h3>
 <p>You will need:</p>
 <ul>
 <li>account public key: a bech32 string of a public key</li>
@@ -195,7 +195,7 @@ to delegate your stake to.</li>
 </ul>
 <pre><code class="language-sh">jcli certificate new stake-delegation ACCOUNT_PUBLIC_KEY STAKE_POOL_ID --output stake_delegation.cert
 </code></pre>
-<h2><a class="header" href="#submitting-to-a-node" id="submitting-to-a-node">submitting to a node</a></h2>
+<h2 id="submitting-to-a-node"><a class="header" href="#submitting-to-a-node">submitting to a node</a></h2>
 <p>The <code>jcli transaction add-certificate</code> command should be used to add a certificate <strong>before finalizing</strong> the transaction.</p>
 <p>For example:</p>
 <pre><code class="language-sh">
@@ -212,7 +212,7 @@ jcli transaction auth --key account_key.prv --staging tx
 </code></pre>
 <p>The <code>--fee-certificate</code> flag indicates the cost of adding a certificate, used for computing the fees, it can be omitted if it is zero.</p>
 <p>See <a href="../jcli/transaction.html">here</a> for more documentation on transaction creation.</p>
-<h2><a class="header" href="#how-to-sign-your-delegation-certificate" id="how-to-sign-your-delegation-certificate">how to sign your delegation certificate</a></h2>
+<h2 id="how-to-sign-your-delegation-certificate"><a class="header" href="#how-to-sign-your-delegation-certificate">how to sign your delegation certificate</a></h2>
 <p>This procedure is needed only for certificates that are to be included
 in the <code>genesis config</code> file.</p>
 <p>We need to make sure that the owner of the account is authorizing this

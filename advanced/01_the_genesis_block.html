@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#genesis-file" id="genesis-file">genesis file</a></h1>
+                        <h1 id="genesis-file"><a class="header" href="#genesis-file">genesis file</a></h1>
 <p>The genesis file is the file that allows you to create a new blockchain
 from block 0. It lays out the different parameter of your blockchain:
 the initial utxo, the start time, the slot duration time, etc...</p>
@@ -398,7 +398,7 @@ parameters of the blockchain, some of which can be changed later
 via the update protocol;</li>
 <li><code>initial</code>: list of steps to create initial state of ledger</li>
 </ul>
-<h2><a class="header" href="#blockchain_configuration-options" id="blockchain_configuration-options"><code>blockchain_configuration</code> options</a></h2>
+<h2 id="blockchain_configuration-options"><a class="header" href="#blockchain_configuration-options"><code>blockchain_configuration</code> options</a></h2>
 <table><thead><tr><th align="left">option</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
 <tr><td align="left"><code>block0_date</code></td><td align="left">number</td><td align="left">the official start time of the blockchain, in seconds since UNIX EPOCH</td></tr>
 <tr><td align="left"><code>discrimination</code></td><td align="left">string</td><td align="left"><code>production</code> or <code>test</code></td></tr>
@@ -414,7 +414,7 @@ via the update protocol;</li>
 </tbody></table>
 <p><em>for more information about the BFT leaders in the genesis file, see
 <a href="./02_starting_bft_blockchain.html">Starting a BFT Blockchain</a></em></p>
-<h2><a class="header" href="#initial-options" id="initial-options"><code>initial</code> options</a></h2>
+<h2 id="initial-options"><a class="header" href="#initial-options"><code>initial</code> options</a></h2>
 <p>Each entry can be one of 3 variants:</p>
 <table><thead><tr><th align="left">variant</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
 <tr><td align="left"><code>fund</code></td><td align="left">sequence</td><td align="left">initial deposits present in the blockchain (up to 255 outputs per entry)</td></tr>
@@ -438,7 +438,7 @@ via the update protocol;</li>
       - address: &lt;another address&gt;
         value: 1001
 </code></pre>
-<h3><a class="header" href="#fund-and-legacy_fund-format" id="fund-and-legacy_fund-format"><code>fund</code> and <code>legacy_fund</code> format</a></h3>
+<h3 id="fund-and-legacy_fund-format"><a class="header" href="#fund-and-legacy_fund-format"><code>fund</code> and <code>legacy_fund</code> format</a></h3>
 <table><thead><tr><th align="left">variant</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
 <tr><td align="left"><code>address</code></td><td align="left">string</td><td align="left">can be a <a href="../jcli/address.html#address-for-utxo">single address</a> or an <a href="../jcli/address.html#address-for-account">account address</a></td></tr>
 <tr><td align="left"><code>value</code></td><td align="left">number</td><td align="left">assigned value</td></tr>

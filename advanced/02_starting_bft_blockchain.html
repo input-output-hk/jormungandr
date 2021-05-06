@@ -166,13 +166,13 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#starting-a-bft-node" id="starting-a-bft-node">starting a bft node</a></h1>
+                        <h1 id="starting-a-bft-node"><a class="header" href="#starting-a-bft-node">starting a bft node</a></h1>
 <p>BFT stands for the Byzantine Fault Tolerant
 (<a href="https://iohk.io/research/papers/#L5IHCV53">read the paper</a>).</p>
 <p>Jormungandr allows you to start a BFT blockchain fairly easily. The main
 downside is that it is centralized, only a handful of nodes will ever have
 the right to create blocks.</p>
-<h2><a class="header" href="#how-does-it-work" id="how-does-it-work">How does it work</a></h2>
+<h2 id="how-does-it-work"><a class="header" href="#how-does-it-work">How does it work</a></h2>
 <p>It is fairly simple. A given number of Nodes (<code>N</code>) will generate
 a key pairs of type <code>Ed25519</code> (see
 <a href="./../jcli/key.html">JCLI's Keys</a>).</p>
@@ -181,7 +181,7 @@ It is the source of truth, the file that will generate the first block
 of the blockchain: the <strong>Block 0</strong>.</p>
 <p>Then, only by one after the other, each Node will be allowed to create a block.
 Utilising a Round Robin algorithm.</p>
-<h2><a class="header" href="#example-of-genesis-file" id="example-of-genesis-file">Example of genesis file</a></h2>
+<h2 id="example-of-genesis-file"><a class="header" href="#example-of-genesis-file">Example of genesis file</a></h2>
 <pre><code class="language-yaml">blockchain_configuration:
   block0_date: 1550822014
   discrimination: test
@@ -212,12 +212,12 @@ initial:
 <li><code>consensus_leader_ids</code> is non empty;</li>
 </ul>
 <p>more information regarding the <a href="./01_the_genesis_block.html">genesis file here</a>.</p>
-<h2><a class="header" href="#creating-the-block-0" id="creating-the-block-0">Creating the block 0</a></h2>
+<h2 id="creating-the-block-0"><a class="header" href="#creating-the-block-0">Creating the block 0</a></h2>
 <pre><code class="language-sh">jcli genesis encode --input genesis.yaml --output block-0.bin
 </code></pre>
 <p>This command will create (or replace) the <strong>Block 0</strong> of the blockchain
 from the given genesis configuration file (<code>genesis.yaml</code>).</p>
-<h2><a class="header" href="#starting-the-node" id="starting-the-node">Starting the node</a></h2>
+<h2 id="starting-the-node"><a class="header" href="#starting-the-node">Starting the node</a></h2>
 <p>Now that the blockchain is initialized, you need to start your node.</p>
 <p>Write you private key in a file on your HD:</p>
 <pre><code class="language-sh">$ cat node_secret.yaml
@@ -231,7 +231,7 @@ bft:
 </code></pre>
 <p>It's possible to use the flag <code>--secret</code> multiple times to run a node
 with multiple leaders.</p>
-<h2><a class="header" href="#step-by-step-to-start-the-bft-node" id="step-by-step-to-start-the-bft-node">Step by step to start the BFT node</a></h2>
+<h2 id="step-by-step-to-start-the-bft-node"><a class="header" href="#step-by-step-to-start-the-bft-node">Step by step to start the BFT node</a></h2>
 <ol>
 <li>Generate initial config <code>jcli genesis init &gt; genesis.yaml</code></li>
 <li>Generate secret key, e.g. <code> jcli key generate --type=Ed25519 &gt; key.prv</code></li>
@@ -263,7 +263,7 @@ p2p:
 </ol>
 <pre><code class="language-sh">jormungandr --genesis-block block-0.bin --config node.config --secret node_secret.yaml
 </code></pre>
-<h1><a class="header" href="#script" id="script">Script</a></h1>
+<h1 id="script"><a class="header" href="#script">Script</a></h1>
 <p>Additionally, there is a script <a href="https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap">here</a> that can be used to bootstrap a test node with bft consensus protocol.</p>
 
                     </main>

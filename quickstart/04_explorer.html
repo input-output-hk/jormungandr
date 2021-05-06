@@ -166,17 +166,17 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#explorer-mode" id="explorer-mode">Explorer mode</a></h1>
+                        <h1 id="explorer-mode"><a class="header" href="#explorer-mode">Explorer mode</a></h1>
 <p>The node can be configured to work as a explorer. This consumes more resources, but makes it possible to query data otherwise not available.</p>
-<h2><a class="header" href="#configuration" id="configuration">Configuration</a></h2>
+<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <p>There is two ways of enabling the explorer api. It can either be done by passing the <code>--enable-explorer</code> flag on the start arguemnts or by the config file:</p>
 <pre><code class="language-yaml">explorer:
     enabled: true
 </code></pre>
-<h3><a class="header" href="#cors" id="cors">CORS</a></h3>
+<h3 id="cors"><a class="header" href="#cors">CORS</a></h3>
 <p>For configuring CORS the explorer API, this needs to be done on the REST section of the config, as documented <a href="../configuration/network.html">here</a>.</p>
-<h2><a class="header" href="#api" id="api">API</a></h2>
-<p>A graphql interface can be used to query the explorer data, when enabled, two endpoints are available in the <a href="03_rest_api.html">REST interface</a>: <code>/explorer/graphql</code> and <code>/explorer/graphiql</code> .</p>
+<h2 id="api"><a class="header" href="#api">API</a></h2>
+<p>A graphql interface can be used to query the explorer data, when enabled, two endpoints are available in the <a href="03_rest_api.html">REST interface</a>: <code>/explorer/graphql</code> and <code>/explorer/playground</code> .</p>
 <p>The first is the one that queries are made against, for example:</p>
 <pre><code class="language-sh">curl \
     -X POST \

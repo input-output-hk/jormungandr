@@ -166,12 +166,12 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#genesis" id="genesis">Genesis</a></h1>
+                        <h1 id="genesis"><a class="header" href="#genesis">Genesis</a></h1>
 <p>Tooling for working with a genesis file</p>
-<h2><a class="header" href="#usage" id="usage">Usage</a></h2>
+<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
 <pre><code class="language-sh">jcli genesis [subcommand]
 </code></pre>
-<h2><a class="header" href="#subcommands" id="subcommands">Subcommands</a></h2>
+<h2 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h2>
 <ul>
 <li>decode: Print the YAML file corresponding to an encoded genesis block.</li>
 <li>encode: Create the genesis block of the blockchain from a given yaml file.</li>
@@ -179,14 +179,14 @@
 <li>init: Create a default Genesis file with appropriate documentation to help creating the YAML file</li>
 <li>help</li>
 </ul>
-<h2><a class="header" href="#examples" id="examples">Examples</a></h2>
-<h3><a class="header" href="#encode-a-genesis-file" id="encode-a-genesis-file">Encode a genesis file</a></h3>
+<h2 id="examples"><a class="header" href="#examples">Examples</a></h2>
+<h3 id="encode-a-genesis-file"><a class="header" href="#encode-a-genesis-file">Encode a genesis file</a></h3>
 <pre><code class="language-sh">jcli genesis encode --input genesis.yaml --output block-0.bin
 </code></pre>
 <p>or equivantely</p>
 <pre><code class="language-sh">cat genesis.yaml | jcli genesis encode &gt; block-0.bin
 </code></pre>
-<h3><a class="header" href="#get-the-hash-of-an-encoded-genesis-file" id="get-the-hash-of-an-encoded-genesis-file">Get the hash of an encoded genesis file</a></h3>
+<h3 id="get-the-hash-of-an-encoded-genesis-file"><a class="header" href="#get-the-hash-of-an-encoded-genesis-file">Get the hash of an encoded genesis file</a></h3>
 <pre><code class="language-sh">jcli genesis hash --input block-0.bin
 </code></pre>
 

@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#registering-a-stake-pool" id="registering-a-stake-pool">Registering a stake pool</a></h1>
+                        <h1 id="registering-a-stake-pool"><a class="header" href="#registering-a-stake-pool">Registering a stake pool</a></h1>
 <p>There are multiple components to be aware of when running a stake pool:</p>
 <ul>
 <li>your <code>NodeId</code>: it is the identifier within the blockchain protocol (wallet
@@ -179,8 +179,8 @@ block with.</li>
 the stake pool before distributing rewards (if any left) to the delegators.</li>
 </ul>
 <p>So in order to start your stake pool you will need to generate these objects.</p>
-<h2><a class="header" href="#the-primitives" id="the-primitives">The primitives</a></h2>
-<h3><a class="header" href="#vrf-key-pair" id="vrf-key-pair">VRF key pair</a></h3>
+<h2 id="the-primitives"><a class="header" href="#the-primitives">The primitives</a></h2>
+<h3 id="vrf-key-pair"><a class="header" href="#vrf-key-pair">VRF key pair</a></h3>
 <p>To generate your <a href="https://en.wikipedia.org/wiki/Verifiable_random_function"><strong>VRF</strong></a> Key pairs, we will utilise <a href="../jcli/introduction.html"><code>jcli</code></a> as described
 <a href="../jcli/key.html">here</a>:</p>
 <pre><code class="language-sh">jcli key generate --type=Curve25519_2HashDH stake_pool_vrf.prv
@@ -189,7 +189,7 @@ the stake pool before distributing rewards (if any left) to the delegators.</li>
 <pre><code class="language-sh">jcli key to-public --input stake_pool_vrf.prv stake_pool_vrf.pub
 </code></pre>
 <p><code>stake_pool_vrf.pub</code> file now contains the VRF public key.</p>
-<h3><a class="header" href="#kes-key-pair" id="kes-key-pair">KES key pair</a></h3>
+<h3 id="kes-key-pair"><a class="header" href="#kes-key-pair">KES key pair</a></h3>
 <p>Similar to above:</p>
 <pre><code class="language-sh">jcli key generate --type=SumEd25519_12 stake_pool_kes.prv
 </code></pre>
@@ -197,7 +197,7 @@ the stake pool before distributing rewards (if any left) to the delegators.</li>
 <pre><code class="language-sh">jcli key to-public --input stake_pool_kes.prv stake_pool_kes.pub
 </code></pre>
 <p><code>stake_pool_kes.pub</code> file now contains the KES public key</p>
-<h2><a class="header" href="#choosing-the-tax-parameters" id="choosing-the-tax-parameters">Choosing the <strong>Tax</strong> parameters</a></h2>
+<h2 id="choosing-the-tax-parameters"><a class="header" href="#choosing-the-tax-parameters">Choosing the <strong>Tax</strong> parameters</a></h2>
 <p>There are 3 values you can set to configure the stake pool's <strong>Tax</strong>:</p>
 <ul>
 <li><code>tax-fixed</code>: this is the fixed cut the stake pool will take from the total reward due to
@@ -207,7 +207,7 @@ the stake pool;</li>
 </ul>
 <p>All of these values are optionals, if not set, they will be set to <code>0</code>. This will mean
 no tax for the stake pool: rewards are all distributed to the delegators.</p>
-<h3><a class="header" href="#so-how-does-this-works" id="so-how-does-this-works">So how does this works</a></h3>
+<h3 id="so-how-does-this-works"><a class="header" href="#so-how-does-this-works">So how does this works</a></h3>
 <p>Let say you control a stake pool <code>SP</code>, with 2 owners (<code>O1</code> and <code>O2</code>). During epoch 1, <code>SP</code> has
 created some blocks and is entitled to receive <code>10_000</code>.</p>
 <p>Before distributing the <code>10_000</code> among the delegators, <code>SP</code> will take its <strong>Tax</strong>.</p>
@@ -227,7 +227,7 @@ to that account and nothing to <code>O1</code> and <code>O2</code>.</li>
 <tr><td>fixed + 10%</td><td align="center">2000</td><td align="center">1000</td><td align="center">1/10</td><td align="center">0</td><td align="center">1100</td><td align="center">550</td><td align="center">550</td><td align="center">900</td></tr>
 <tr><td>fixed + 20% up to 150</td><td align="center">2000</td><td align="center">1000</td><td align="center">1/5</td><td align="center">150</td><td align="center">1150</td><td align="center">575</td><td align="center">575</td><td align="center">850</td></tr>
 </tbody></table>
-<h3><a class="header" href="#the-options-to-set" id="the-options-to-set">The options to set</a></h3>
+<h3 id="the-options-to-set"><a class="header" href="#the-options-to-set">The options to set</a></h3>
 <pre><code>--tax-limit &lt;TAX_LIMIT&gt;
     The maximum tax value the stake pool will take.
 
@@ -241,7 +241,7 @@ to that account and nothing to <code>O1</code> and <code>O2</code>.</li>
 
     For example, a stake pool may set this value to cover their fixed operation costs. [default: 0]
 </code></pre>
-<h2><a class="header" href="#creating-a-stake-pool-certificate" id="creating-a-stake-pool-certificate">creating a stake pool certificate</a></h2>
+<h2 id="creating-a-stake-pool-certificate"><a class="header" href="#creating-a-stake-pool-certificate">creating a stake pool certificate</a></h2>
 <p>The certificate is what will be sent to the blockchain in order to register
 yourself to the other participants of the blockchain that you are a stake
 pool too.</p>
@@ -260,7 +260,7 @@ pool too.</p>
 <pre><code class="language-sh">jcli certificate get-stake-pool-id stake_pool.cert
 ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74
 </code></pre>
-<h2><a class="header" href="#submitting-to-a-node" id="submitting-to-a-node">submitting to a node</a></h2>
+<h2 id="submitting-to-a-node"><a class="header" href="#submitting-to-a-node">submitting to a node</a></h2>
 <p>The <code>jcli transaction add-certificate</code> command should be used to add a certificate <strong>before finalizing</strong> the transaction.</p>
 <p>For example:</p>
 <pre><code class="language-sh">...

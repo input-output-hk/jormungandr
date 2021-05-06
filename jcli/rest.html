@@ -166,9 +166,9 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#rest" id="rest">REST</a></h1>
+                        <h1 id="rest"><a class="header" href="#rest">REST</a></h1>
 <p>Jormungandr comes with a CLI client for manual communication with nodes over HTTP.</p>
-<h2><a class="header" href="#conventions" id="conventions">Conventions</a></h2>
+<h2 id="conventions"><a class="header" href="#conventions">Conventions</a></h2>
 <p>Many CLI commands have common arguments:</p>
 <ul>
 <li><code>-h &lt;addr&gt;</code> or <code>--host &lt;addr&gt;</code> - Node API address. Must always have <code>http://</code> or
@@ -179,7 +179,7 @@ The output format is intentionally undocumented and unstable</li>
 Any other value is treated as a custom format using values from output data structure.
 Syntax is Go text template: https://golang.org/pkg/text/template/.</li>
 </ul>
-<h2><a class="header" href="#node-stats" id="node-stats">Node stats</a></h2>
+<h2 id="node-stats"><a class="header" href="#node-stats">Node stats</a></h2>
 <p>Fetches node stats</p>
 <pre><code class="language-sh">jcli rest v0 node stats get &lt;options&gt;
 </code></pre>
@@ -230,7 +230,7 @@ uptime: 20032
 # Node app version
 version: jormungandr 0.8.9-30d20d2e
 </code></pre>
-<h2><a class="header" href="#get-utxo" id="get-utxo">Get UTxO</a></h2>
+<h2 id="get-utxo"><a class="header" href="#get-utxo">Get UTxO</a></h2>
 <p>Fetches UTxO details</p>
 <pre><code class="language-sh">jcli rest v0 utxo &lt;fragment-id&gt; &lt;output-index&gt; get &lt;options&gt;
 </code></pre>
@@ -251,7 +251,7 @@ address: ca1svs0mwkfky9htpam576mc93mee5709khre8dgnqslj6y3p5f77s5gpgv02w
 # UTxO value
 value: 10000
 </code></pre>
-<h2><a class="header" href="#post-transaction" id="post-transaction">Post transaction</a></h2>
+<h2 id="post-transaction"><a class="header" href="#post-transaction">Post transaction</a></h2>
 <p>Posts a signed, hex-encoded transaction</p>
 <pre><code class="language-sh">jcli rest v0 message post &lt;options&gt;
 </code></pre>
@@ -265,7 +265,7 @@ If not provided, transaction will be read from stdin.</li>
 <p>Fragment Id is printed on success (which can help finding transaction status using get message log command)</p>
 <pre><code class="language-sh">50f21ac6bd3f57f231c4bf9c5fff7c45e2529c4dffed68f92410dbf7647541f1
 </code></pre>
-<h2><a class="header" href="#get-message-log" id="get-message-log">Get message log</a></h2>
+<h2 id="get-message-log"><a class="header" href="#get-message-log">Get message log</a></h2>
 <p>Get the node's logs on the message pool. This will provide information on pending transaction,
 rejected transaction and or when a transaction has been added in a block</p>
 <pre><code class="language-sh">jcli rest v0 message logs &lt;options&gt;
@@ -301,7 +301,7 @@ rejected transaction and or when a transaction has been added in a block</p>
     date: &quot;6637.3&quot;            # block epoch and slot ID formed as &lt;epoch&gt;.&lt;slot_id&gt;
     block: &quot;d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174&quot;
 </code></pre>
-<h2><a class="header" href="#blockchain-tip" id="blockchain-tip">Blockchain tip</a></h2>
+<h2 id="blockchain-tip"><a class="header" href="#blockchain-tip">Blockchain tip</a></h2>
 <p>Retrieves a hex-encoded ID of the blockchain tip</p>
 <pre><code class="language-sh">jcli rest v0 tip get &lt;options&gt;
 </code></pre>
@@ -310,7 +310,7 @@ rejected transaction and or when a transaction has been added in a block</p>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
 </ul>
-<h2><a class="header" href="#get-block" id="get-block">Get block</a></h2>
+<h2 id="get-block"><a class="header" href="#get-block">Get block</a></h2>
 <p>Retrieves a hex-encoded block with given ID</p>
 <pre><code class="language-sh">jcli rest v0 block &lt;block_id&gt; get &lt;options&gt;
 </code></pre>
@@ -322,7 +322,7 @@ rejected transaction and or when a transaction has been added in a block</p>
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
 </ul>
-<h2><a class="header" href="#get-next-block-id" id="get-next-block-id">Get next block ID</a></h2>
+<h2 id="get-next-block-id"><a class="header" href="#get-next-block-id">Get next block ID</a></h2>
 <p>Retrieves a list of hex-encoded IDs of descendants of block with given ID.
 Every list element is in separate line. The IDs are sorted from closest to farthest.</p>
 <pre><code class="language-sh">jcli rest v0 block &lt;block_id&gt; next-id get &lt;options&gt;
@@ -336,7 +336,7 @@ Every list element is in separate line. The IDs are sorted from closest to farth
 <li>--debug - see <a href="#conventions">conventions</a></li>
 <li>-c --count &lt;count&gt; - Maximum number of IDs, must be between 1 and 100, default 1</li>
 </ul>
-<h2><a class="header" href="#get-account-state" id="get-account-state">Get account state</a></h2>
+<h2 id="get-account-state"><a class="header" href="#get-account-state">Get account state</a></h2>
 <p>Get account state</p>
 <pre><code class="language-sh">jcli rest v0 account get &lt;account-id&gt; &lt;options&gt;
 </code></pre>
@@ -363,7 +363,7 @@ this is useful to know when signing new transactions;</li>
 it is possible this value is not set if there is no delegation certificate
 sent associated to this account.</li>
 </ul>
-<h2><a class="header" href="#node-settings" id="node-settings">Node settings</a></h2>
+<h2 id="node-settings"><a class="header" href="#node-settings">Node settings</a></h2>
 <p>Fetches node settings</p>
 <pre><code class="language-sh">jcli rest v0 settings get &lt;options&gt;
 </code></pre>
@@ -406,7 +406,7 @@ treasuryTax:                                    # tax from reward that goes to p
     denominator: 10000
   max: 100                                      # limit of tax (optional)
 </code></pre>
-<h2><a class="header" href="#node-shutdown" id="node-shutdown">Node shutdown</a></h2>
+<h2 id="node-shutdown"><a class="header" href="#node-shutdown">Node shutdown</a></h2>
 <p>Node shutdown</p>
 <pre><code class="language-sh">jcli rest v0 shutdown get &lt;options&gt;
 </code></pre>
@@ -415,7 +415,7 @@ treasuryTax:                                    # tax from reward that goes to p
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
 </ul>
-<h2><a class="header" href="#get-leaders" id="get-leaders">Get leaders</a></h2>
+<h2 id="get-leaders"><a class="header" href="#get-leaders">Get leaders</a></h2>
 <p>Fetches list of leader IDs</p>
 <pre><code class="language-sh">jcli rest v0 leaders get &lt;options&gt;
 </code></pre>
@@ -430,7 +430,7 @@ treasuryTax:                                    # tax from reward that goes to p
 - 1 # list of leader IDs
 - 2
 </code></pre>
-<h2><a class="header" href="#register-leader" id="register-leader">Register leader</a></h2>
+<h2 id="register-leader"><a class="header" href="#register-leader">Register leader</a></h2>
 <p>Register new leader and get its ID</p>
 <pre><code class="language-sh">jcli rest v0 leaders post &lt;options&gt;
 </code></pre>
@@ -444,7 +444,7 @@ treasuryTax:                                    # tax from reward that goes to p
 <p>On success created leader ID is printed</p>
 <pre><code class="language-sh">3
 </code></pre>
-<h2><a class="header" href="#delete-leader" id="delete-leader">Delete leader</a></h2>
+<h2 id="delete-leader"><a class="header" href="#delete-leader">Delete leader</a></h2>
 <p>Delete leader with given ID</p>
 <pre><code class="language-sh">jcli rest v0 leaders delete &lt;id&gt; &lt;options&gt;
 </code></pre>
@@ -456,7 +456,7 @@ treasuryTax:                                    # tax from reward that goes to p
 <li>-h &lt;node_addr&gt; - see <a href="#conventions">conventions</a></li>
 <li>--debug - see <a href="#conventions">conventions</a></li>
 </ul>
-<h2><a class="header" href="#get-leadership-logs" id="get-leadership-logs">Get leadership logs</a></h2>
+<h2 id="get-leadership-logs"><a class="header" href="#get-leadership-logs">Get leadership logs</a></h2>
 <p>Fetches leadership logs</p>
 <pre><code class="language-sh">jcli rest v0 leaders logs get &lt;options&gt;
 </code></pre>
@@ -497,7 +497,7 @@ status:
   Rejected:
     reason: &quot;Missed the deadline to compute the schedule&quot;
 </code></pre>
-<h2><a class="header" href="#get-stake-pools" id="get-stake-pools">Get stake pools</a></h2>
+<h2 id="get-stake-pools"><a class="header" href="#get-stake-pools">Get stake pools</a></h2>
 <p>Fetches list of stake pool IDs</p>
 <pre><code class="language-sh">jcli rest v0 stake-pools get &lt;options&gt;
 </code></pre>
@@ -512,7 +512,7 @@ status:
 - 5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f # list of stake pool IDs
 - 3815602c096fcbb91072f419c296c3dfe1f730e0f446a9bd2553145688e75615
 </code></pre>
-<h2><a class="header" href="#get-stake-distribution" id="get-stake-distribution">Get stake distribution</a></h2>
+<h2 id="get-stake-distribution"><a class="header" href="#get-stake-distribution">Get stake distribution</a></h2>
 <p>Fetches stake information</p>
 <pre><code class="language-sh">jcli rest v0 stake get &lt;options&gt; [&lt;epoch&gt;]
 </code></pre>
@@ -554,7 +554,7 @@ stake:
       - 1000000000000                                                    # staked value
   unassigned: 0 # Total value stored in accounts, but not assigned to any pool
 </code></pre>
-<h2><a class="header" href="#network-stats" id="network-stats">Network stats</a></h2>
+<h2 id="network-stats"><a class="header" href="#network-stats">Network stats</a></h2>
 <p>Fetches network stats</p>
 <pre><code class="language-sh">jcli rest v0 network stats get &lt;options&gt;
 </code></pre>
@@ -579,7 +579,7 @@ stake:
   # timestamp of last time gossip was received from node if ever (optional)
   lastGossipReceived: &quot;2019-10-14T00:45:59.419496188+00:00&quot;
 </code></pre>
-<h2><a class="header" href="#get-stake-pool-details" id="get-stake-pool-details">Get stake pool details</a></h2>
+<h2 id="get-stake-pool-details"><a class="header" href="#get-stake-pool-details">Get stake pool details</a></h2>
 <p>Fetches stake pool details</p>
 <pre><code class="language-sh">jcli rest v0 stake-pool get &lt;pool-id&gt; &lt;options&gt;
 </code></pre>
@@ -606,7 +606,7 @@ kesPublicKey: kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpu
 # bech32-encoded stake pool VRF key
 vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
 </code></pre>
-<h2><a class="header" href="#get-rewards-history-for-a-specific-epoch" id="get-rewards-history-for-a-specific-epoch">Get rewards history for a specific epoch</a></h2>
+<h2 id="get-rewards-history-for-a-specific-epoch"><a class="header" href="#get-rewards-history-for-a-specific-epoch">Get rewards history for a specific epoch</a></h2>
 <p>Get the rewards history of a given <em>epoch</em>.</p>
 <pre><code class="language-sh">jcli rest v0 rewards epoch get &lt;epoch&gt; &lt;options&gt;
 </code></pre>
@@ -646,7 +646,7 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
   }
 ]
 </code></pre>
-<h2><a class="header" href="#get-rewards-history-for-some-epochs" id="get-rewards-history-for-some-epochs">Get rewards history for some epochs</a></h2>
+<h2 id="get-rewards-history-for-some-epochs"><a class="header" href="#get-rewards-history-for-some-epochs">Get rewards history for some epochs</a></h2>
 <p>Get the rewards history of the <em>length</em> last epoch(s) from tip.</p>
 <pre><code class="language-sh">jcli rest v0 rewards history get &lt;length&gt; &lt;options&gt;
 </code></pre>
@@ -718,7 +718,7 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
 ]
 </code></pre>
 <hr />
-<h2><a class="header" href="#get-voting-committee-members" id="get-voting-committee-members">Get voting committee members</a></h2>
+<h2 id="get-voting-committee-members"><a class="header" href="#get-voting-committee-members">Get voting committee members</a></h2>
 <p>Get the list of voting committee members.</p>
 <pre><code class="language-sh">jcli rest v0 vote active committees get &lt;options&gt;
 </code></pre>
@@ -733,7 +733,7 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
 - 7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19 # list of members
 - f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db
 </code></pre>
-<h2><a class="header" href="#get-active-voting-plans-and-proposals" id="get-active-voting-plans-and-proposals">Get active voting plans and proposals</a></h2>
+<h2 id="get-active-voting-plans-and-proposals"><a class="header" href="#get-active-voting-plans-and-proposals">Get active voting plans and proposals</a></h2>
 <p>Get the list of active voting plans and proposals.</p>
 <pre><code class="language-sh">jcli rest v0 vote active plans get &lt;options&gt;
 </code></pre>

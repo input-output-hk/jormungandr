@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#network-overview" id="network-overview">Network overview</a></h1>
+                        <h1 id="network-overview"><a class="header" href="#network-overview">Network overview</a></h1>
 <p>Jörmungandr network capabilities are split into:</p>
 <ol>
 <li>the REST API, used for informational queries or control of the node;</li>
@@ -174,13 +174,13 @@
 </ol>
 <p>Here we will only review the gRPC API as the REST API is described in another
 chapter: <a href="../quickstart/03_rest_api.html">go to the REST documentation</a></p>
-<h2><a class="header" href="#the-protocol" id="the-protocol">The protocol</a></h2>
+<h2 id="the-protocol"><a class="header" href="#the-protocol">The protocol</a></h2>
 <p>The protocol is based on <a href="https://www.grpc.io"><code>gRPC</code></a> that combines commonly used protocols like HTTP/2 and RPC.
 More precisely, Jörmungandr utilises.</p>
 <p>This choice was made because  <a href="https://www.grpc.io"><code>gRPC</code></a> is already widely supported around the world because
 of it's uitilization of standard protocols HTTP/2 which makes it much easier for Proxies and Firewalls to recognise
 the protocol and permit the traffic.</p>
-<h2><a class="header" href="#type-of-queries" id="type-of-queries">Type of queries</a></h2>
+<h2 id="type-of-queries"><a class="header" href="#type-of-queries">Type of queries</a></h2>
 <p>The protocol allows you to send multiple types of messages between nodes:</p>
 <ul>
 <li>sync block to remote peer's <em>Last Block</em> (<code>tip</code>).</li>
@@ -193,7 +193,7 @@ between nodes that will be documented here in the future.</p>
 <p>Another type of messages is the <code>Gossip</code> message. These gossip messages allow Nodes to exchange
 information (gossips) about other nodes on the network, allowing for peer
 discovery.</p>
-<h2><a class="header" href="#peer-to-peer" id="peer-to-peer">Peer to peer</a></h2>
+<h2 id="peer-to-peer"><a class="header" href="#peer-to-peer">Peer to peer</a></h2>
 <p>The peer 2 peer connections are established utilising multiple components:</p>
 <ul>
 <li>A multilayered topology (e.g. <a href="https://hal.inria.fr/hal-01555561/document">Poldercast</a>);</li>
@@ -202,7 +202,7 @@ discovery.</p>
 <li>Security and countermeasures: (such as Topology Policy for scoring and/or
 blacklisting nodes);</li>
 </ul>
-<h3><a class="header" href="#multilayered-topology" id="multilayered-topology">Multilayered topology</a></h3>
+<h3 id="multilayered-topology"><a class="header" href="#multilayered-topology">Multilayered topology</a></h3>
 <p>As described in the <a href="https://hal.inria.fr/hal-01555561/document">Poldercast</a> paper, our network topology is
 built on multiple layers that allow for granular control of it's behavior. In
 practice this means a node will have different groups of nodes that it connects to
@@ -223,7 +223,7 @@ ones, such as:</p>
 trustworthy and that we could use to check in the current state of the
 network and verify the user's node is not within a long running fork;</li>
 </ul>
-<h3><a class="header" href="#gossiping" id="gossiping">Gossiping</a></h3>
+<h3 id="gossiping"><a class="header" href="#gossiping">Gossiping</a></h3>
 <p>Gossiping is the process used for peer discovery. It allows two things:</p>
 <ol>
 <li>For any nodes to advertise themselves as discoverable;</li>
@@ -233,7 +233,7 @@ network and verify the user's node is not within a long running fork;</li>
 For the Poldercast modules, the gossips are selected just as in the paper.
 Additional modules may select new nodes in the gossip list or may decide to
 not add any new information.</p>
-<h3><a class="header" href="#subscription-mechanism" id="subscription-mechanism">Subscription mechanism</a></h3>
+<h3 id="subscription-mechanism"><a class="header" href="#subscription-mechanism">Subscription mechanism</a></h3>
 <p>Based on the multilayered topology, the node will open multiplexed and
 bi-directional connections (thanks to industry standard <a href="https://www.grpc.io"><code>gRPC</code></a>, this comes for
 free). These bi-directional connections are used to propagate events such as:</p>
@@ -242,7 +242,7 @@ free). These bi-directional connections are used to propagate events such as:</p
 <li>Fragment events, when a node wants to propagate a new fragment to other nodes;</li>
 <li>Block events, when a node wants to propagate a new block creation event</li>
 </ul>
-<h3><a class="header" href="#security-and-countermeasures" id="security-and-countermeasures">Security and countermeasures</a></h3>
+<h3 id="security-and-countermeasures"><a class="header" href="#security-and-countermeasures">Security and countermeasures</a></h3>
 <p>In order to facilitate the handling of unreachable nodes or of misbehaving ones
 we have built a node policy tooling. This is constructed via 2 mechanisms:
 collecting connectivity statuses and blockchain status for each node. The policy
@@ -262,7 +262,7 @@ that node, last time a block has been received from that node…)</li>
 <li>Contributions in the network</li>
 <li>Their blockchain status (e.g. tips)</li>
 </ul>
-<h3><a class="header" href="#policy" id="policy">Policy</a></h3>
+<h3 id="policy"><a class="header" href="#policy">Policy</a></h3>
 <p>The p2p policy provides some more fine control on how to handle nodes flagged
 as not behaving as expected (see the list of data collected).</p>
 <p>It currently works as a 3 levels: possible contact, quarantined, forgotten.

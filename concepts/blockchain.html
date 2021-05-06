@@ -166,18 +166,18 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#blockchain-concepts" id="blockchain-concepts">Blockchain concepts</a></h1>
-<h2><a class="header" href="#time" id="time">Time</a></h2>
+                        <h1 id="blockchain-concepts"><a class="header" href="#blockchain-concepts">Blockchain concepts</a></h1>
+<h2 id="time"><a class="header" href="#time">Time</a></h2>
 <p>Slots represent the basic unit of time in the blockchain, and at each slot
 a block could be present.</p>
 <p>Consecutive slots are grouped into epochs, which have updatable size defined
 by the protocol.</p>
-<h2><a class="header" href="#fragments" id="fragments">Fragments</a></h2>
+<h2 id="fragments"><a class="header" href="#fragments">Fragments</a></h2>
 <p>Fragments are part of the blockchain data that represent all the possible
 events related to the blockchain health (e.g. update to the protocol), but
 also and mainly the general recording of information like transactions and
 certificates.</p>
-<h2><a class="header" href="#blocks" id="blocks">Blocks</a></h2>
+<h2 id="blocks"><a class="header" href="#blocks">Blocks</a></h2>
 <p>Blocks represent the spine of the blockchain, safely and securely linking
 blocks in a chain, whilst grouping valid fragments together.</p>
 <p>Blocks are composed of 2 parts:</p>
@@ -187,7 +187,7 @@ blocks in a chain, whilst grouping valid fragments together.</p>
 </ul>
 <p>The header link the content with the blocks securely together, while the
 content is effectively a sequence of fragments.</p>
-<h2><a class="header" href="#blockchain" id="blockchain">Blockchain</a></h2>
+<h2 id="blockchain"><a class="header" href="#blockchain">Blockchain</a></h2>
 <p>The blockchain is the general set of rules and the blocks that are periodically created.
 Some of the rules and settings, can be changed dynamically in the system by updates,
 while some other are hardcoded in the genesis block (first block of the blockchain).</p>
@@ -201,7 +201,7 @@ while some other are hardcoded in the genesis block (first block of the blockcha
     |Content|      |Content|
     +-------+      +-------+
 </code></pre>
-<h2><a class="header" href="#consensus" id="consensus">Consensus</a></h2>
+<h2 id="consensus"><a class="header" href="#consensus">Consensus</a></h2>
 <p>The node currently support the following consensus protocol:</p>
 <ul>
 <li>Ouroboros BFT (OBFT)</li>
@@ -220,17 +220,17 @@ creating blocks is not stable, since the creation of blocks is a probability
 that is linked to the stake and consensus_genesis_praos_active_slot_coeff.</p>
 <p><strong>Note</strong>: In Genesis-Praos, if there is no stake in the system, no blocks will be
 created anymore starting with the next epoch.</p>
-<h2><a class="header" href="#leadership" id="leadership">Leadership</a></h2>
+<h2 id="leadership"><a class="header" href="#leadership">Leadership</a></h2>
 <p>The leadership represent in abstract term, who are the overall leaders of the
 system and allow each individual node to check that specific blocks are
 lawfully created in the system.</p>
 <p>The leadership is re-evaluated at each new epoch and is constant for the
 duration of an epoch.</p>
-<h2><a class="header" href="#leader" id="leader">Leader</a></h2>
+<h2 id="leader"><a class="header" href="#leader">Leader</a></h2>
 <p>Leader are an abstraction related to the specific actor that have the ability
 to create block; In OBFT mode, the leader just the owner of a cryptographic
 key, whereas in Genesis-Praos mode, the leader is a stake pool.</p>
-<h2><a class="header" href="#transaction" id="transaction">Transaction</a></h2>
+<h2 id="transaction"><a class="header" href="#transaction">Transaction</a></h2>
 <p>Transaction forms the cornerstone of the blockchain, and is one type of fragment
 and also the most frequent one.</p>
 <p>Transaction is composed of inputs and outputs; On one side, the inputs represent
@@ -249,7 +249,7 @@ coins being spent, and on the other side the outputs represent coins being recei
 <p>Transaction need to be authorized by each of the inputs in the transaction by their respective witness.
 In the most basic case, a witness is a cryptographic signature, but depending on the type of input can
 the type of witness vary.</p>
-<h2><a class="header" href="#accounting" id="accounting">Accounting</a></h2>
+<h2 id="accounting"><a class="header" href="#accounting">Accounting</a></h2>
 <p>The blockchain has two methods of accounting which are interoperable:</p>
 <ul>
 <li>Unspent Transaction Output (UTXO)</li>

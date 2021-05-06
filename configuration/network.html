@@ -166,14 +166,14 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#node-network" id="node-network">Node network</a></h1>
+                        <h1 id="node-network"><a class="header" href="#node-network">Node network</a></h1>
 <p>There are 2 different network interfaces which are covered by their respective section:</p>
 <pre><code class="language-yaml">rest:
    ...
 p2p:
    ...
 </code></pre>
-<h2><a class="header" href="#rest-interface-configuration" id="rest-interface-configuration">REST interface configuration</a></h2>
+<h2 id="rest-interface-configuration"><a class="header" href="#rest-interface-configuration">REST interface configuration</a></h2>
 <ul>
 <li><code>listen</code>: listen address</li>
 <li><code>tls</code>: (optional) enables TLS and disables plain HTTP if provided
@@ -190,9 +190,9 @@ an origin should include a scheme, for example: <code>http://127.0.0.1:8080</cod
 </ul>
 </li>
 </ul>
-<h3><a class="header" href="#configuring-tls" id="configuring-tls">Configuring TLS</a></h3>
+<h3 id="configuring-tls"><a class="header" href="#configuring-tls">Configuring TLS</a></h3>
 <p>In order to enable TLS there must be provided certificate and private key files.</p>
-<h4><a class="header" href="#jcli-tls-requirements" id="jcli-tls-requirements"><code>jcli</code> TLS requirements.</a></h4>
+<h4 id="jcli-tls-requirements"><a class="header" href="#jcli-tls-requirements"><code>jcli</code> TLS requirements.</a></h4>
 <p>Note that <code>jormungandr</code> itself does not have any specific requirements for TLS certificates and you
 may give whatever you want including self-signed certificates as long as you do not intend to use
 <code>jcli</code>.</p>
@@ -206,7 +206,7 @@ alternative name.</li>
 <p>Given that, your options are to either get a certificate from a well-known CA (Let's Encrypt will
 do, <code>jcli</code> uses Mozilla's CA bundle for verification) or create your own local CA and provide the
 root certificate to <code>jcli</code> via the <code>--tls-cert-path</code> option.</p>
-<h4><a class="header" href="#creating-a-local-ca-using-openssl-and-easyrsa" id="creating-a-local-ca-using-openssl-and-easyrsa">Creating a local CA using OpenSSL and EasyRSA</a></h4>
+<h4 id="creating-a-local-ca-using-openssl-and-easyrsa"><a class="header" href="#creating-a-local-ca-using-openssl-and-easyrsa">Creating a local CA using OpenSSL and EasyRSA</a></h4>
 <p>EasyRSA is a set of scripts that use OpenSSL and give you an easier experience with setting up your
 local CA. You can download them <a href="https://github.com/OpenVPN/easy-rsa">here</a>.</p>
 <ol>
@@ -244,7 +244,7 @@ request. You will be prompted to enter the host name (<code>localhost</code> for
     priv_key_file: &lt;path to server.key&gt;
 </code></pre>
 <p>Use the CA certificate with <code>jcli</code>.</p>
-<h2><a class="header" href="#p2p-configuration" id="p2p-configuration">P2P configuration</a></h2>
+<h2 id="p2p-configuration"><a class="header" href="#p2p-configuration">P2P configuration</a></h2>
 <ul>
 <li><code>trusted_peers</code>: (optional) the list of nodes' <a href="https://github.com/multiformats/multiaddr">multiaddr</a> to connect to in order to
 bootstrap the p2p topology (and bootstrap our local blockchain). Note that you can use a DNS
@@ -254,12 +254,14 @@ if you want the peer to connect with IPv6.</li>
 from. This is the public address that will be distributed to other peers
 of the network that may find interest into participating to the blockchain
 dissemination with the node.  Currently only TCP is supported.</li>
-<li><code>public_id</code>: (optional) This is a static identifier, 24 bytes encoded in hexadecimal. They are used
-to bootstrap the connection to the node if the node introduce itself as a trusted peer.
-<strong>Most of the user don't need to set this value</strong> and in fact we are working toward potentially
-removing the need for this value.</li>
-<li><code>listen_address</code>: (optional) <a href="https://github.com/multiformats/multiaddr">multiaddr</a> specifies the address the node
-will listen to to receive p2p connection. Can be left empty and the node will listen
+<li><code>node_key_file</code>: (optional) Path to a file containing a bech32-encoded ed25519 secret key.
+The keys are used to advertize the node in network gossip and to authenticate
+a connection to the node if the node is used as a trusted peer.
+<strong>Most of the users don't need to set this value</strong> as the key will be randomly
+generated if the option is not present.</li>
+<li><code>listen</code>: (optional) socket address (IP address and port separated by a comma),
+specifies the interface address and port the node
+will listen at to receive p2p connection. Can be left empty and the node will listen
 to whatever value was given to <code>public_address</code>.</li>
 <li><code>topics_of_interest</code>: (optional) the different topics we are interested to hear about:
 <ul>
@@ -293,9 +295,6 @@ to the one selected by other p2p topology layer <code>[default: 20]</code></li>
 changing the value will affect the bandwidth. The more often the node will
 gossip the more bandwidth the node will need. The less often the node gossips
 the less good the resilience to node churn. <code>[default: 10s]</code></li>
-<li><code>topology_force_reset_interval</code>: (optional) If this value is set, it will
-trigger a force reset of the topology layers. The default is to not do
-force the reset. It is recommended to let the protocol handle it.</li>
 <li><code>max_bootstrap_attempts</code>: (optional) number of times to retry bootstrapping from trusted peers.
 If not set, default behavior, the bootstrap process will keep retrying indefinitely, until completed successfully.
 If set to <em>0</em> (zero), the node will skip bootstrap all together -- <em>even if trusted peers are defined</em>.
@@ -304,19 +303,19 @@ then the node will continue to run without completing the bootstrap process.
 This will allow the node to act as the first node in the p2p network (i.e. genesis node),
 or immediately begin gossip with the trusted peers if any are defined.</li>
 </ul>
-<h3><a class="header" href="#the-trusted-peers" id="the-trusted-peers">The trusted peers</a></h3>
+<h3 id="the-trusted-peers"><a class="header" href="#the-trusted-peers">The trusted peers</a></h3>
 <p>The trusted peers is a concept that is not fully implemented yet. One of the key element
 for now is that this is the first node any node tries to connect in order to meet new nodes.
 Right now, as far as we know, only one of them is needed. IOHK provides a few others for
 redundancy.</p>
-<h3><a class="header" href="#layers" id="layers">Layers</a></h3>
+<h3 id="layers"><a class="header" href="#layers">Layers</a></h3>
 <p>Jörmungandr provides multiple additional layers to the <code>poldercast</code> default ones:
 the preferred list or the bottle in the sea.</p>
-<h4><a class="header" href="#preferred-list" id="preferred-list">Preferred list</a></h4>
+<h4 id="preferred-list"><a class="header" href="#preferred-list">Preferred list</a></h4>
 <p>this is a special list that allows to connect multiple nodes together without relying
 on the auto peer discovery. All entries in the preferred list are also whitelisted
 automatically, so they cannot be quarantined.</p>
-<h5><a class="header" href="#configuration" id="configuration">configuration:</a></h5>
+<h5 id="configuration"><a class="header" href="#configuration">configuration:</a></h5>
 <ul>
 <li><code>view_max</code>: this is the number of entries to show in the view each round
 the layer will <strong>randomly</strong> select up to <code>view_max</code> entries from the whole
@@ -328,7 +327,7 @@ attempt to connect to (up to <code>view_max</code> of) these nodes every time, e
 are down, unreachable or not operated anymore.</p>
 <p><strong>COMPATIBILITY NOTE</strong>: in near future the peer list will be only a list of addresses and the <strong>ID</strong>
 part will not be necessary.</p>
-<h5><a class="header" href="#example" id="example">Example:</a></h5>
+<h5 id="example"><a class="header" href="#example">Example:</a></h5>
 <pre><code class="language-yaml">p2p:
   layers:
     preferred_list:
@@ -338,11 +337,11 @@ part will not be necessary.</p>
           id: 019abc...
         - ...
 </code></pre>
-<h3><a class="header" href="#setting-the-public_id" id="setting-the-public_id">Setting the <code>public_id</code></a></h3>
+<h3 id="setting-the-public_id"><a class="header" href="#setting-the-public_id">Setting the <code>public_id</code></a></h3>
 <p>This is needed to advertise your node as a trusted peer.
 If not set, the node will generate a random ID, which is fine for a regular user.
 You can generate a public id with <strong>openssl</strong>, for example: <code>openssl rand -hex 24</code></p>
-<h3><a class="header" href="#topics_of_interest" id="topics_of_interest"><code>topics_of_interest</code></a></h3>
+<h3 id="topics_of_interest"><a class="header" href="#topics_of_interest"><code>topics_of_interest</code></a></h3>
 <p>This is optional an optional value to set. The default is:</p>
 <pre><code class="language-yaml">messages: low
 blocks: normal

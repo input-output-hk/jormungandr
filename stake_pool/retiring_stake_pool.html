@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#retiring-a-stake-pool" id="retiring-a-stake-pool">Retiring a stake pool</a></h1>
+                        <h1 id="retiring-a-stake-pool"><a class="header" href="#retiring-a-stake-pool">Retiring a stake pool</a></h1>
 <p>Stake pool can be retired by sending transaction with retirement certificate.
 From technical stand point, it is very similar to register stake pool operation.
 Before start we need to be sure, that:</p>
@@ -174,12 +174,12 @@ Before start we need to be sure, that:</p>
 <li>you have sufficient amount of ada to pay fee for transaction with retirement certificate.</li>
 <li>you know your stake pool id.</li>
 </ul>
-<h2><a class="header" href="#retrieve-stake-pool-id" id="retrieve-stake-pool-id">Retrieve stake pool id</a></h2>
+<h2 id="retrieve-stake-pool-id"><a class="header" href="#retrieve-stake-pool-id">Retrieve stake pool id</a></h2>
 <p>To retrieve your stake pool id:</p>
 <pre><code class="language-sh">jcli certificate get-stake-pool-id stake_pool.cert
 ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74
 </code></pre>
-<h3><a class="header" href="#creating-a-retirement-certificate" id="creating-a-retirement-certificate">creating a retirement certificate</a></h3>
+<h3 id="creating-a-retirement-certificate"><a class="header" href="#creating-a-retirement-certificate">creating a retirement certificate</a></h3>
 <p>The certificate is what will be sent to the blockchain in order to retire
 your stake pool.</p>
 <pre><code class="language-sh">jcli certificate new stake-pool-retirement \
@@ -193,7 +193,7 @@ your stake pool.</p>
 <li><code>--retirement-time 0 </code>                                                        - <code>0</code> means as soon as possible. Which is until the next following epoch.</li>
 <li><code>--pool-id ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74</code>  - hex-encoded stake pool ID.</li>
 </ul>
-<h3><a class="header" href="#submitting-to-a-node" id="submitting-to-a-node">submitting to a node</a></h3>
+<h3 id="submitting-to-a-node"><a class="header" href="#submitting-to-a-node">submitting to a node</a></h3>
 <p>The <code>jcli transaction add-certificate</code> command should be used to add a certificate <strong>before finalizing</strong> the transaction.</p>
 <p>For example:</p>
 <pre><code class="language-sh">...

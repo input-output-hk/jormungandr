@@ -166,10 +166,10 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#configuration" id="configuration">Configuration</a></h1>
+                        <h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>This chapter covers the node documentation, necessary to have a working system.
 It covers the network, logging and storage parameters.</p>
-<h2><a class="header" href="#node-configuration" id="node-configuration">Node Configuration</a></h2>
+<h2 id="node-configuration"><a class="header" href="#node-configuration">Node Configuration</a></h2>
 <p>This is an common example of a Jörmungandr node configuration file typically named <code>node-config.yaml</code>, however your's will vary depending on your needs.
 Additionally, this configuration has been tested on a <em>specific Jörmungandr version</em> and may change with newer versions.
 It's important to keep in mind that the <code>trusted_peers</code> portion of this configuration will be different for each Cardano blockchain network.
@@ -177,13 +177,9 @@ If you're trying to connect this node to a specific network, you need to know it
 <p>Example Configuration - 1:</p>
 <pre><code class="language-YAML">---
 log:
-  - output: stderr
-    level:  info
-    format: plain
-  - output:
-      file: example.log
-    level: info
-    format: json
+  output: stderr
+  level:  info
+  format: plain
 
 http_fetch_block0_service:
   - https://url/jormungandr-block0/raw/master/data
@@ -194,7 +190,7 @@ bootstrap_from_trusted_peers: false
 
 p2p:
   public_address: &quot;/ip4/X.X.X.X/tcp/Y&quot; # This should match your public IP address (X) and port number (Y)
-  #listen_address: /ip4/0.0.0.0/tcp/Z
+  #listen: 0.0.0.0:Y
   topics_of_interest:
     blocks: normal # Default is normal - set to high for stakepool
     messages: low  # Default is low    - set to high for stakepool
@@ -204,7 +200,6 @@ p2p:
   max_unreachable_nodes_to_connect_per_event: 20
   gossip_interval: 10s
   max_bootstrap_attempts: # Default is not set
-  topology_force_reset_interval: # Default is not set
   trusted_peers:
     - address: &quot;/ip4/13.230.137.72/tcp/3000&quot;
       id: e4fda5a674f0838b64cacf6d22bbae38594d7903aba2226f
@@ -257,13 +252,16 @@ no_blockchain_updates_warning_interval: 15m
 </code></pre>
 <p>Note:
 The node configuration uses the <a href="https://en.wikipedia.org/wiki/YAML">YAML</a> format.</p>
-<h2><a class="header" href="#advanced" id="advanced">Advanced</a></h2>
-<h3><a class="header" href="#rewards-report" id="rewards-report">Rewards report</a></h3>
+<h2 id="advanced"><a class="header" href="#advanced">Advanced</a></h2>
+<h3 id="rewards-report"><a class="header" href="#rewards-report">Rewards report</a></h3>
 <p>Starting the node <code>jormungandr</code> with the command line option <code>--rewards-report-all</code> will
 collect a thorough report of all the reward distribution. It can then be accessed via the
 REST endpoints <code>/api/v0/rewards/history/1</code> or <code>/api/v0/rewards/epoch/10</code>.</p>
 <p><strong>this is not a recommended settings as it may take memory and may trigger some latency</strong>.</p>
-<h4><a class="header" href="#the-following-is-deprecated-and-will-be-removed" id="the-following-is-deprecated-and-will-be-removed">The following is deprecated and will be removed</a></h4>
+<h3 id="handling-of-time-consuming-transactions"><a class="header" href="#handling-of-time-consuming-transactions">Handling of time-consuming transactions</a></h3>
+<p>By default we allow a single transaction to delay a block by 50 slots. This can
+be changed by adjusting the <code>block_hard_deadline</code> setting.</p>
+<h4 id="the-following-is-deprecated-and-will-be-removed"><a class="header" href="#the-following-is-deprecated-and-will-be-removed">The following is deprecated and will be removed</a></h4>
 <p>If you want to record the reward distributions in a directory it is possible to set
 the environment variable: <code>JORMUNGANDR_REWARD_DUMP_DIRECTORY=/PATH/TO/DIR/TO/WRITE/REWARD</code>.</p>
 <p>If an error occur while dumping the reward, the node will <strong>panic</strong> with an appropriate

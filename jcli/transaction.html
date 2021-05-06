@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#transaction" id="transaction">Transaction</a></h1>
+                        <h1 id="transaction"><a class="header" href="#transaction">Transaction</a></h1>
 <p>Tooling for offline transaction creation and signing.</p>
 <pre><code class="language-sh">jcli transaction
 </code></pre>
@@ -204,7 +204,7 @@ content information of a transaction:</p>
 <ul>
 <li><code>id</code> get the data to sign from a given transaction (use <code>data-for-witness</code> instead)</li>
 </ul>
-<h2><a class="header" href="#transaction-info" id="transaction-info">Transaction info</a></h2>
+<h2 id="transaction-info"><a class="header" href="#transaction-info">Transaction info</a></h2>
 <p>On every stage of building a transaction user can display its summary</p>
 <pre><code class="language-sh">jcli transaction info &lt;options&gt;
 </code></pre>
@@ -278,36 +278,36 @@ outputs:            # list of transaction outputs
 sign_data_hash: 26be0b8bd7e34efffb769864f00d7c4aab968760f663a7e0b3ce213c4b21651b
 status: sealed      # transaction status, can be &quot;balancing&quot;, &quot;finalizing&quot;, &quot;sealed&quot; or &quot;authed&quot;
 </code></pre>
-<h1><a class="header" href="#examples" id="examples">Examples</a></h1>
+<h1 id="examples"><a class="header" href="#examples">Examples</a></h1>
 <p>The following example focuses on using an utxo as input, the few differences when transfering from an account will be pointed out when necessary.
 There is also a script <a href="https://github.com/input-output-hk/jormungandr/blob/master/scripts/send-transaction">here</a> to send a transaction from a faucet account to a specific address which could be used as a reference.</p>
 <p>Let's use the following utxo as input and transfer 50 lovelaces to the destination address</p>
-<h2><a class="header" href="#input-utxo" id="input-utxo">Input utxo</a></h2>
+<h2 id="input-utxo"><a class="header" href="#input-utxo">Input utxo</a></h2>
 <table><thead><tr><th>Field</th><th align="center">Value</th></tr></thead><tbody>
 <tr><td>UTXO's transaction ID</td><td align="center">55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c</td></tr>
 <tr><td>UTXO's output index</td><td align="center">0</td></tr>
 <tr><td>associated address</td><td align="center">ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu</td></tr>
 <tr><td>associated value</td><td align="center">100</td></tr>
 </tbody></table>
-<h2><a class="header" href="#destination-address" id="destination-address">Destination address</a></h2>
+<h2 id="destination-address"><a class="header" href="#destination-address">Destination address</a></h2>
 <p><strong>address</strong>: ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6</p>
-<h2><a class="header" href="#create-a-staging-area" id="create-a-staging-area">Create a staging area</a></h2>
+<h2 id="create-a-staging-area"><a class="header" href="#create-a-staging-area">Create a staging area</a></h2>
 <pre><code class="language-sh">jcli transaction new --staging tx
 </code></pre>
-<h2><a class="header" href="#add-input" id="add-input">Add input</a></h2>
+<h2 id="add-input"><a class="header" href="#add-input">Add input</a></h2>
 <p>For the input, we need to reference the uxto with the <strong>UTXO's transaction ID</strong> and <strong>UTXO'S output index</strong> fields and we need to specify how much coins are there with the <strong>associated value</strong> field.</p>
-<h3><a class="header" href="#example---utxo-address-as-input" id="example---utxo-address-as-input">Example - UTXO address as Input</a></h3>
+<h3 id="example---utxo-address-as-input"><a class="header" href="#example---utxo-address-as-input">Example - UTXO address as Input</a></h3>
 <pre><code class="language-sh">jcli transaction add-input 55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c 0 100 --staging tx
 </code></pre>
-<h3><a class="header" href="#example---account-address-as-input" id="example---account-address-as-input">Example - Account address as Input</a></h3>
+<h3 id="example---account-address-as-input"><a class="header" href="#example---account-address-as-input">Example - Account address as Input</a></h3>
 <p>If the input is an account, the command is slightly different</p>
 <pre><code class="language-sh">jcli transaction add-account account_address account_funds --staging tx
 </code></pre>
-<h2><a class="header" href="#add-output" id="add-output">Add output</a></h2>
+<h2 id="add-output"><a class="header" href="#add-output">Add output</a></h2>
 <p>For the output, we need the address we want to transfer to, and the amount.</p>
 <pre><code class="language-sh">jcli transaction add-output ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6 50 --staging tx
 </code></pre>
-<h2><a class="header" href="#add-fee-and-change-address" id="add-fee-and-change-address">Add fee and change address</a></h2>
+<h2 id="add-fee-and-change-address"><a class="header" href="#add-fee-and-change-address">Add fee and change address</a></h2>
 <p>We want to get the change in the same address that we are sending from (the <em>associated address</em> of the utxo). We also specify how to compute the fees.
 You can leave out the <code>--fee-constant 5 --fee-coefficient 2</code> part if those are both 0.</p>
 <pre><code class="language-sh">jcli transaction finalize ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu --fee-constant 5 --fee-coefficient 2 --staging tx
@@ -337,8 +337,8 @@ outputs:
 sign_data_hash: 0df39a87d3f18a188b40ba8c203f85f37af665df229fb4821e477f6998864273
 status: finalizing
 </code></pre>
-<h2><a class="header" href="#sign-the-transaction" id="sign-the-transaction">Sign the transaction</a></h2>
-<h3><a class="header" href="#make-witness" id="make-witness">Make witness</a></h3>
+<h2 id="sign-the-transaction"><a class="header" href="#sign-the-transaction">Sign the transaction</a></h2>
+<h3 id="make-witness"><a class="header" href="#make-witness">Make witness</a></h3>
 <p>For signing the transaction, you need:</p>
 <ul>
 <li>the hash of the genesis block of the network you are connected to.</li>
@@ -361,15 +361,15 @@ status: finalizing
 <pre><code class="language-sh">jcli transaction make-witness --genesis-block-hash abcdef987654321... --type utxo 0df39a87d3f18a188b40ba8c203f85f37af665df229fb4821e477f6998864273 witness key.prv
 </code></pre>
 <hr />
-<h4><a class="header" href="#account-input" id="account-input">Account input</a></h4>
+<h4 id="account-input"><a class="header" href="#account-input">Account input</a></h4>
 <p>When using an account as input, the command takes <code>account</code> as the type and an additional parameter: <code>--account-spending-counter</code>, that should be increased every time the account is used as input.</p>
 <p>e.g.</p>
 <pre><code class="language-sh">jcli transaction make-witness --genesis-block-hash abcdef987654321... --type account --account-spending-counter 0 0df39a87d3f18a188b40ba8c203f85f37af665df229fb4821e477f6998864273 witness key.prv
 </code></pre>
-<h3><a class="header" href="#add-witness" id="add-witness">Add witness</a></h3>
+<h3 id="add-witness"><a class="header" href="#add-witness">Add witness</a></h3>
 <pre><code class="language-sh">jcli transaction add-witness witness --staging tx
 </code></pre>
-<h2><a class="header" href="#send-the-transaction" id="send-the-transaction">Send the transaction</a></h2>
+<h2 id="send-the-transaction"><a class="header" href="#send-the-transaction">Send the transaction</a></h2>
 <pre><code class="language-sh">jcli transaction seal --staging tx
 </code></pre>
 <pre><code class="language-sh">jcli transaction to-message --staging tx &gt; txmsg
@@ -380,7 +380,7 @@ status: finalizing
 <p>You should get some data back referring to the TransactionID (also known as FragmentID)</p>
 <pre><code class="language-sh">d6ef0b2148a51ed64531efc17978a527fd2d2584da1e344a35ad12bf5460a7e2
 </code></pre>
-<h2><a class="header" href="#checking-if-the-transaction-was-accepted" id="checking-if-the-transaction-was-accepted">Checking if the transaction was accepted</a></h2>
+<h2 id="checking-if-the-transaction-was-accepted"><a class="header" href="#checking-if-the-transaction-was-accepted">Checking if the transaction was accepted</a></h2>
 <p>You can check if the transaction was accepted by checking the node logs, for example, if the transaction is accepted</p>
 <p><code>jcli rest v0 message logs -h http://127.0.0.1:8443/api</code></p>
 <pre><code class="language-plaintext">---

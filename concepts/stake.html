@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#stake" id="stake">Stake</a></h1>
+                        <h1 id="stake"><a class="header" href="#stake">Stake</a></h1>
 <p>In a proof of stake, participants are issued a stake equivalent to the amount
 of coins they own. The stake is then used to allow participation in the protocol,
 simply explained as:</p>
@@ -176,7 +176,7 @@ simply explained as:</p>
 <p>When using the BFT consensus, the stake doesn't influence how the system
 runs, but stake can still be manipulated for a later transition of the chain
 to another consensus mode.</p>
-<h2><a class="header" href="#stake-in-the-account-model" id="stake-in-the-account-model">Stake in the Account Model</a></h2>
+<h2 id="stake-in-the-account-model"><a class="header" href="#stake-in-the-account-model">Stake in the Account Model</a></h2>
 <p>Account are represented by 1 type of address and are just composed of a public key.
 The account accumulate moneys and its stake power is directly represented by the amount it contains</p>
 <p>For example:</p>
@@ -187,7 +187,7 @@ The account accumulate moneys and its stake power is directly represented by the
 </code></pre>
 <p>The account might have a bigger stake than what it actually contains, since it could
 also have associated UTXOs, and this case is covered in the next section.</p>
-<h2><a class="header" href="#stake-in-the-utxo-model" id="stake-in-the-utxo-model">Stake in the UTXO Model</a></h2>
+<h2 id="stake-in-the-utxo-model"><a class="header" href="#stake-in-the-utxo-model">Stake in the UTXO Model</a></h2>
 <p>UTXO are represented by two kind of addresses:</p>
 <ul>
 <li>single address: those type of address have no stake associated</li>
@@ -202,13 +202,13 @@ also have associated UTXOs, and this case is covered in the next section.</p>
 
     UTXO4 20$ (group address B) --&gt;- B - Account with 5$ =&gt; Account B has stake of 25
 </code></pre>
-<h2><a class="header" href="#stake-pool" id="stake-pool">Stake pool</a></h2>
+<h2 id="stake-pool"><a class="header" href="#stake-pool">Stake pool</a></h2>
 <p>Stake pool are the trusted block creators in the genesis-praos system. A pool
 is declared on the network explicitly by its owners and contains, metadata
 and cryptographic material.</p>
 <p>Stake pool has no stake power on their own, but participants in the network
 delegate their stake to a pool for running the operation.</p>
-<h2><a class="header" href="#stake-delegation" id="stake-delegation">Stake Delegation</a></h2>
+<h2 id="stake-delegation"><a class="header" href="#stake-delegation">Stake Delegation</a></h2>
 <p>Stake can and need to be delegated to stake pool in the system. They can
 change over time with a publication of a new delegation certificate.</p>
 <p>Delegation certificate are a simple declaration statement in the form of:</p>

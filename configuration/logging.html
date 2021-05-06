@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#logging" id="logging">Logging</a></h1>
+                        <h1 id="logging"><a class="header" href="#logging">Logging</a></h1>
 <p>The following options are available in the <code>log</code> section:</p>
 <ul>
 <li>
@@ -181,13 +181,6 @@ Possible values: <code>off</code>, <code>critical</code>, <code>error</code>, <c
 <ul>
 <li><code>stdout</code>: standard output</li>
 <li><code>stderr</code>: standard error</li>
-<li><code>syslog</code>: syslog (only available on Unix systems)</li>
-<li><code>syslogudp</code>: remote syslog  (only available on Unix systems)
-<ul>
-<li><code>host</code>: address and port of a syslog server</li>
-<li><code>hostname</code>: hostname to attach to syslog messages</li>
-</ul>
-</li>
 <li><code>journald</code>: journald service (only available on Linux with systemd,
 (if jormungandr is built with the <code>systemd</code> feature)</li>
 <li><code>gelf</code>: Configuration fields for GELF (Graylog) network logging protocol
@@ -201,16 +194,20 @@ Possible values: <code>off</code>, <code>critical</code>, <code>error</code>, <c
 </ul>
 </li>
 </ul>
-<h2><a class="header" href="#example" id="example">Example</a></h2>
-<p>Multiple logging backends are supported.</p>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<p>A single configurable backend is supported.</p>
+<h3 id="output-to-stdout"><a class="header" href="#output-to-stdout">Output to stdout</a></h3>
 <pre><code class="language-yaml">log:
-  - output: stdout
-    level:  trace
-    format: plain
-  - output:
-      file: example.log
-    level: info
-    format: json
+  output: stdout
+  level:  trace
+  format: plain
+</code></pre>
+<h3 id="output-to-a-file"><a class="header" href="#output-to-a-file">Output to a file</a></h3>
+<pre><code class="language-yaml">log:
+  output:
+    file: example.log
+  level: info
+  format: json
 </code></pre>
 
                     </main>

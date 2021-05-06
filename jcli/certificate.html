@@ -166,9 +166,9 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#certificate" id="certificate">Certificate</a></h1>
+                        <h1 id="certificate"><a class="header" href="#certificate">Certificate</a></h1>
 <p>Tooling for offline transaction creation</p>
-<h2><a class="header" href="#building-stake-pool-registration-certificate" id="building-stake-pool-registration-certificate">Building stake pool registration certificate</a></h2>
+<h2 id="building-stake-pool-registration-certificate"><a class="header" href="#building-stake-pool-registration-certificate">Building stake pool registration certificate</a></h2>
 <p>Builds a stake pool registration certificate.</p>
 <pre><code class="language-sh">jcli certificate new stake-pool-registration \
     --vrf-key &lt;vrf-public-key&gt; \
@@ -184,7 +184,7 @@
 <li><code>--operator &lt;operator-public-key&gt;</code> - <em>optional</em>, public key of the operator(s) of the pool.</li>
 <li><code>output-file</code>                      - <em>optional</em>, write the output to the given file or print it to the standard output if not defined</li>
 </ul>
-<h2><a class="header" href="#retiring-a-stake-pool" id="retiring-a-stake-pool">Retiring a stake pool</a></h2>
+<h2 id="retiring-a-stake-pool"><a class="header" href="#retiring-a-stake-pool">Retiring a stake pool</a></h2>
 <p>It is possible to retire a stake pool from the blockchain. By doing so the stake delegated
 to the stake pool will become dangling and will need to be re-delegated.</p>
 <p>Remember though that the action won't be applied until the next following epoch. I.e.
@@ -209,7 +209,7 @@ to make the stake pool retire. <code>0</code> means as soon as possible.</li>
 <li><code>--pool-id</code>                   - hex-encoded stake pool ID. Can be retrieved using  <code>jcli certificate get-stake-pool-id</code> command.
 See <a href="../stake_pool/registering_stake_pool.html">here</a> for more details.</li>
 </ul>
-<h2><a class="header" href="#building-stake-pool-delegation-certificate" id="building-stake-pool-delegation-certificate">Building stake pool delegation certificate</a></h2>
+<h2 id="building-stake-pool-delegation-certificate"><a class="header" href="#building-stake-pool-delegation-certificate">Building stake pool delegation certificate</a></h2>
 <p>Builds a stake pool delegation certificate.</p>
 <pre><code class="language-sh">jcli certificate new stake-delegation &lt;STAKE_KEY&gt; &lt;STAKE_POOL_IDS&gt; [--output &lt;output-file&gt;]
 </code></pre>

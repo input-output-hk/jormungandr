@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#cryptographic-keys" id="cryptographic-keys">cryptographic keys</a></h1>
+                        <h1 id="cryptographic-keys"><a class="header" href="#cryptographic-keys">cryptographic keys</a></h1>
 <p>There are multiple type of key for multiple use cases.</p>
 <table><thead><tr><th align="center">type</th><th align="left">usage</th></tr></thead><tbody>
 <tr><td align="center"><code>Ed25519</code></td><td align="left">Signing algorithm for Ed25519 algorithm</td></tr>
@@ -183,7 +183,7 @@ ed25519_sk1cvac48ddf2rpk9na94nv2zqhj74j0j8a99q33gsqdvalkrz6ar9srnhvmt
 <pre><code class="language-sh">$ echo ed25519_sk1cvac48ddf2rpk9na94nv2zqhj74j0j8a99q33gsqdvalkrz6ar9srnhvmt | jcli key to-public
 ed25519_pk1z2ffur59cq7t806nc9y2g64wa60pg5m6e9cmrhxz9phppaxk5d4sn8nsqg
 </code></pre>
-<h2><a class="header" href="#signing-data" id="signing-data">Signing data</a></h2>
+<h2 id="signing-data"><a class="header" href="#signing-data">Signing data</a></h2>
 <p>Sign data with private key. Supported key formats are: ed25519, ed25519bip32, ed25519extended and
 sumed25519_12.</p>
 <pre><code class="language-sh">jcli key sign &lt;options&gt; &lt;data&gt;
@@ -195,7 +195,7 @@ sumed25519_12.</p>
 standard output will be used</li>
 </ul>
 <p>&lt;data&gt; - path to file with data to sign, if no value is passed, standard input will be used</p>
-<h2><a class="header" href="#verifying-signed-data" id="verifying-signed-data">Verifying signed data</a></h2>
+<h2 id="verifying-signed-data"><a class="header" href="#verifying-signed-data">Verifying signed data</a></h2>
 <p>Verify signed data with public key. Supported key formats are: ed25519, ed25519bip32 and
 sumed25519_12.</p>
 <pre><code class="language-sh">jcli key verify &lt;options&gt; &lt;data&gt;

@@ -168,32 +168,32 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#jörmungandr-user-guide" id="jörmungandr-user-guide">Jörmungandr User Guide</a></h1>
+                        <h1 id="jörmungandr-user-guide"><a class="header" href="#jörmungandr-user-guide">Jörmungandr User Guide</a></h1>
 <p>Welcome to the Jörmungandr User Guide.</p>
 <p>Jörmungandr is a node implementation, written in rust, with the
 initial aim to support the Ouroboros type of consensus protocol.</p>
 <p>A node is a participant of a blockchain network, continuously making,
 sending, receiving, and validating blocks. Each node is responsible
 to make sure that all the rules of the protocol are followed.</p>
-<h2><a class="header" href="#mythology" id="mythology">Mythology</a></h2>
+<h2 id="mythology"><a class="header" href="#mythology">Mythology</a></h2>
 <p>Jörmungandr refers to the <em>Midgard Serpent</em> in Norse mythology. It is a hint to
 <em>Ouroboros</em>, the Ancient Egyptian serpent, who eat its own tail, as well as the
 <a href="https://eprint.iacr.org/2016/889.pdf">IOHK paper</a> on proof of stake.</p>
-<h1><a class="header" href="#general-concepts" id="general-concepts">General Concepts</a></h1>
+<h1 id="general-concepts"><a class="header" href="#general-concepts">General Concepts</a></h1>
 <p>This chapter covers the general concepts of the blockchain, and their application
 in the node, and is followed by the node organisation and the user interaction with it.</p>
-<h1><a class="header" href="#blockchain-concepts" id="blockchain-concepts">Blockchain concepts</a></h1>
-<h2><a class="header" href="#time" id="time">Time</a></h2>
+<h1 id="blockchain-concepts"><a class="header" href="#blockchain-concepts">Blockchain concepts</a></h1>
+<h2 id="time"><a class="header" href="#time">Time</a></h2>
 <p>Slots represent the basic unit of time in the blockchain, and at each slot
 a block could be present.</p>
 <p>Consecutive slots are grouped into epochs, which have updatable size defined
 by the protocol.</p>
-<h2><a class="header" href="#fragments" id="fragments">Fragments</a></h2>
+<h2 id="fragments"><a class="header" href="#fragments">Fragments</a></h2>
 <p>Fragments are part of the blockchain data that represent all the possible
 events related to the blockchain health (e.g. update to the protocol), but
 also and mainly the general recording of information like transactions and
 certificates.</p>
-<h2><a class="header" href="#blocks" id="blocks">Blocks</a></h2>
+<h2 id="blocks"><a class="header" href="#blocks">Blocks</a></h2>
 <p>Blocks represent the spine of the blockchain, safely and securely linking
 blocks in a chain, whilst grouping valid fragments together.</p>
 <p>Blocks are composed of 2 parts:</p>
@@ -203,7 +203,7 @@ blocks in a chain, whilst grouping valid fragments together.</p>
 </ul>
 <p>The header link the content with the blocks securely together, while the
 content is effectively a sequence of fragments.</p>
-<h2><a class="header" href="#blockchain" id="blockchain">Blockchain</a></h2>
+<h2 id="blockchain"><a class="header" href="#blockchain">Blockchain</a></h2>
 <p>The blockchain is the general set of rules and the blocks that are periodically created.
 Some of the rules and settings, can be changed dynamically in the system by updates,
 while some other are hardcoded in the genesis block (first block of the blockchain).</p>
@@ -217,7 +217,7 @@ while some other are hardcoded in the genesis block (first block of the blockcha
     |Content|      |Content|
     +-------+      +-------+
 </code></pre>
-<h2><a class="header" href="#consensus" id="consensus">Consensus</a></h2>
+<h2 id="consensus"><a class="header" href="#consensus">Consensus</a></h2>
 <p>The node currently support the following consensus protocol:</p>
 <ul>
 <li>Ouroboros BFT (OBFT)</li>
@@ -236,17 +236,17 @@ creating blocks is not stable, since the creation of blocks is a probability
 that is linked to the stake and consensus_genesis_praos_active_slot_coeff.</p>
 <p><strong>Note</strong>: In Genesis-Praos, if there is no stake in the system, no blocks will be
 created anymore starting with the next epoch.</p>
-<h2><a class="header" href="#leadership" id="leadership">Leadership</a></h2>
+<h2 id="leadership"><a class="header" href="#leadership">Leadership</a></h2>
 <p>The leadership represent in abstract term, who are the overall leaders of the
 system and allow each individual node to check that specific blocks are
 lawfully created in the system.</p>
 <p>The leadership is re-evaluated at each new epoch and is constant for the
 duration of an epoch.</p>
-<h2><a class="header" href="#leader" id="leader">Leader</a></h2>
+<h2 id="leader"><a class="header" href="#leader">Leader</a></h2>
 <p>Leader are an abstraction related to the specific actor that have the ability
 to create block; In OBFT mode, the leader just the owner of a cryptographic
 key, whereas in Genesis-Praos mode, the leader is a stake pool.</p>
-<h2><a class="header" href="#transaction" id="transaction">Transaction</a></h2>
+<h2 id="transaction"><a class="header" href="#transaction">Transaction</a></h2>
 <p>Transaction forms the cornerstone of the blockchain, and is one type of fragment
 and also the most frequent one.</p>
 <p>Transaction is composed of inputs and outputs; On one side, the inputs represent
@@ -265,7 +265,7 @@ coins being spent, and on the other side the outputs represent coins being recei
 <p>Transaction need to be authorized by each of the inputs in the transaction by their respective witness.
 In the most basic case, a witness is a cryptographic signature, but depending on the type of input can
 the type of witness vary.</p>
-<h2><a class="header" href="#accounting" id="accounting">Accounting</a></h2>
+<h2 id="accounting"><a class="header" href="#accounting">Accounting</a></h2>
 <p>The blockchain has two methods of accounting which are interoperable:</p>
 <ul>
 <li>Unspent Transaction Output (UTXO)</li>
@@ -279,7 +279,7 @@ can be used. This is the accounting model found in Ethereum. An account is
 uniquely identified by its public key.</p>
 <p>Each inputs could refer arbitrarily to an account or a UTXO, and similarly
 each outputs could refer to an account or represent a new UTXO.</p>
-<h1><a class="header" href="#stake" id="stake">Stake</a></h1>
+<h1 id="stake"><a class="header" href="#stake">Stake</a></h1>
 <p>In a proof of stake, participants are issued a stake equivalent to the amount
 of coins they own. The stake is then used to allow participation in the protocol,
 simply explained as:</p>
@@ -289,7 +289,7 @@ simply explained as:</p>
 <p>When using the BFT consensus, the stake doesn't influence how the system
 runs, but stake can still be manipulated for a later transition of the chain
 to another consensus mode.</p>
-<h2><a class="header" href="#stake-in-the-account-model" id="stake-in-the-account-model">Stake in the Account Model</a></h2>
+<h2 id="stake-in-the-account-model"><a class="header" href="#stake-in-the-account-model">Stake in the Account Model</a></h2>
 <p>Account are represented by 1 type of address and are just composed of a public key.
 The account accumulate moneys and its stake power is directly represented by the amount it contains</p>
 <p>For example:</p>
@@ -300,7 +300,7 @@ The account accumulate moneys and its stake power is directly represented by the
 </code></pre>
 <p>The account might have a bigger stake than what it actually contains, since it could
 also have associated UTXOs, and this case is covered in the next section.</p>
-<h2><a class="header" href="#stake-in-the-utxo-model" id="stake-in-the-utxo-model">Stake in the UTXO Model</a></h2>
+<h2 id="stake-in-the-utxo-model"><a class="header" href="#stake-in-the-utxo-model">Stake in the UTXO Model</a></h2>
 <p>UTXO are represented by two kind of addresses:</p>
 <ul>
 <li>single address: those type of address have no stake associated</li>
@@ -315,13 +315,13 @@ also have associated UTXOs, and this case is covered in the next section.</p>
 
     UTXO4 20$ (group address B) --&gt;- B - Account with 5$ =&gt; Account B has stake of 25
 </code></pre>
-<h2><a class="header" href="#stake-pool" id="stake-pool">Stake pool</a></h2>
+<h2 id="stake-pool"><a class="header" href="#stake-pool">Stake pool</a></h2>
 <p>Stake pool are the trusted block creators in the genesis-praos system. A pool
 is declared on the network explicitly by its owners and contains, metadata
 and cryptographic material.</p>
 <p>Stake pool has no stake power on their own, but participants in the network
 delegate their stake to a pool for running the operation.</p>
-<h2><a class="header" href="#stake-delegation" id="stake-delegation">Stake Delegation</a></h2>
+<h2 id="stake-delegation"><a class="header" href="#stake-delegation">Stake Delegation</a></h2>
 <p>Stake can and need to be delegated to stake pool in the system. They can
 change over time with a publication of a new delegation certificate.</p>
 <p>Delegation certificate are a simple declaration statement in the form of:</p>
@@ -329,12 +329,12 @@ change over time with a publication of a new delegation certificate.</p>
 </code></pre>
 <p>Effectively it assigns the stake in the account and its associated UTXO stake
 to the pool it delegates to until another delegation certificate is made.</p>
-<h1><a class="header" href="#node-organization" id="node-organization">Node organization</a></h1>
-<h2><a class="header" href="#secure-enclave" id="secure-enclave">Secure Enclave</a></h2>
+<h1 id="node-organization"><a class="header" href="#node-organization">Node organization</a></h1>
+<h2 id="secure-enclave"><a class="header" href="#secure-enclave">Secure Enclave</a></h2>
 <p>The secure enclave is the component containing the secret cryptographic
 material, and offering safe and secret high level interfaces to the rest of
 the node.</p>
-<h2><a class="header" href="#network" id="network">Network</a></h2>
+<h2 id="network"><a class="header" href="#network">Network</a></h2>
 <p>The node's network is 3 components:</p>
 <ul>
 <li>Intercommunication API (GRPC)</li>
@@ -342,7 +342,7 @@ the node.</p>
 <li>Control client API (REST)</li>
 </ul>
 <p>More detailed information <a href="concepts/./network.html">here</a></p>
-<h3><a class="header" href="#intercommunication-api-grpc" id="intercommunication-api-grpc">Intercommunication API (GRPC)</a></h3>
+<h3 id="intercommunication-api-grpc"><a class="header" href="#intercommunication-api-grpc">Intercommunication API (GRPC)</a></h3>
 <p>This interface is a binary, efficient interface using the protobuf format and
 GRPC standard. The protobuf files of types and interfaces are available in
 the source code.</p>
@@ -352,7 +352,7 @@ the source code.</p>
 <li>fragments (transaction, certificates) broadcast</li>
 <li>peer2peer gossip</li>
 </ul>
-<h3><a class="header" href="#public-api-rest" id="public-api-rest">Public API REST</a></h3>
+<h3 id="public-api-rest"><a class="header" href="#public-api-rest">Public API REST</a></h3>
 <p>This interface is for simple queries for clients like:</p>
 <ul>
 <li>Wallet Client &amp; Middleware</li>
@@ -361,7 +361,7 @@ the source code.</p>
 </ul>
 <p>it's recommended for this interface to not be opened to the public.</p>
 <p>TODO: Add a high level overview of what it does</p>
-<h3><a class="header" href="#control-api-rest" id="control-api-rest">Control API REST</a></h3>
+<h3 id="control-api-rest"><a class="header" href="#control-api-rest">Control API REST</a></h3>
 <p>This interface is not finished, but is a restricted interface with ACL,
 to be able to do maintenance tasks on the process:</p>
 <ul>
@@ -369,7 +369,7 @@ to be able to do maintenance tasks on the process:</p>
 <li>Load/Retire cryptographic material</li>
 </ul>
 <p>TODO: Detail the ACL/Security measure</p>
-<h1><a class="header" href="#network-overview" id="network-overview">Network overview</a></h1>
+<h1 id="network-overview"><a class="header" href="#network-overview">Network overview</a></h1>
 <p>Jörmungandr network capabilities are split into:</p>
 <ol>
 <li>the REST API, used for informational queries or control of the node;</li>
@@ -377,13 +377,13 @@ to be able to do maintenance tasks on the process:</p>
 </ol>
 <p>Here we will only review the gRPC API as the REST API is described in another
 chapter: <a href="concepts/../quickstart/03_rest_api.html">go to the REST documentation</a></p>
-<h2><a class="header" href="#the-protocol" id="the-protocol">The protocol</a></h2>
+<h2 id="the-protocol"><a class="header" href="#the-protocol">The protocol</a></h2>
 <p>The protocol is based on <a href="https://www.grpc.io"><code>gRPC</code></a> that combines commonly used protocols like HTTP/2 and RPC.
 More precisely, Jörmungandr utilises.</p>
 <p>This choice was made because  <a href="https://www.grpc.io"><code>gRPC</code></a> is already widely supported around the world because
 of it's uitilization of standard protocols HTTP/2 which makes it much easier for Proxies and Firewalls to recognise
 the protocol and permit the traffic.</p>
-<h2><a class="header" href="#type-of-queries" id="type-of-queries">Type of queries</a></h2>
+<h2 id="type-of-queries"><a class="header" href="#type-of-queries">Type of queries</a></h2>
 <p>The protocol allows you to send multiple types of messages between nodes:</p>
 <ul>
 <li>sync block to remote peer's <em>Last Block</em> (<code>tip</code>).</li>
@@ -396,7 +396,7 @@ between nodes that will be documented here in the future.</p>
 <p>Another type of messages is the <code>Gossip</code> message. These gossip messages allow Nodes to exchange
 information (gossips) about other nodes on the network, allowing for peer
 discovery.</p>
-<h2><a class="header" href="#peer-to-peer" id="peer-to-peer">Peer to peer</a></h2>
+<h2 id="peer-to-peer"><a class="header" href="#peer-to-peer">Peer to peer</a></h2>
 <p>The peer 2 peer connections are established utilising multiple components:</p>
 <ul>
 <li>A multilayered topology (e.g. <a href="https://hal.inria.fr/hal-01555561/document">Poldercast</a>);</li>
@@ -405,7 +405,7 @@ discovery.</p>
 <li>Security and countermeasures: (such as Topology Policy for scoring and/or
 blacklisting nodes);</li>
 </ul>
-<h3><a class="header" href="#multilayered-topology" id="multilayered-topology">Multilayered topology</a></h3>
+<h3 id="multilayered-topology"><a class="header" href="#multilayered-topology">Multilayered topology</a></h3>
 <p>As described in the <a href="https://hal.inria.fr/hal-01555561/document">Poldercast</a> paper, our network topology is
 built on multiple layers that allow for granular control of it's behavior. In
 practice this means a node will have different groups of nodes that it connects to
@@ -426,7 +426,7 @@ ones, such as:</p>
 trustworthy and that we could use to check in the current state of the
 network and verify the user's node is not within a long running fork;</li>
 </ul>
-<h3><a class="header" href="#gossiping" id="gossiping">Gossiping</a></h3>
+<h3 id="gossiping"><a class="header" href="#gossiping">Gossiping</a></h3>
 <p>Gossiping is the process used for peer discovery. It allows two things:</p>
 <ol>
 <li>For any nodes to advertise themselves as discoverable;</li>
@@ -436,7 +436,7 @@ network and verify the user's node is not within a long running fork;</li>
 For the Poldercast modules, the gossips are selected just as in the paper.
 Additional modules may select new nodes in the gossip list or may decide to
 not add any new information.</p>
-<h3><a class="header" href="#subscription-mechanism" id="subscription-mechanism">Subscription mechanism</a></h3>
+<h3 id="subscription-mechanism"><a class="header" href="#subscription-mechanism">Subscription mechanism</a></h3>
 <p>Based on the multilayered topology, the node will open multiplexed and
 bi-directional connections (thanks to industry standard <a href="https://www.grpc.io"><code>gRPC</code></a>, this comes for
 free). These bi-directional connections are used to propagate events such as:</p>
@@ -445,7 +445,7 @@ free). These bi-directional connections are used to propagate events such as:</p
 <li>Fragment events, when a node wants to propagate a new fragment to other nodes;</li>
 <li>Block events, when a node wants to propagate a new block creation event</li>
 </ul>
-<h3><a class="header" href="#security-and-countermeasures" id="security-and-countermeasures">Security and countermeasures</a></h3>
+<h3 id="security-and-countermeasures"><a class="header" href="#security-and-countermeasures">Security and countermeasures</a></h3>
 <p>In order to facilitate the handling of unreachable nodes or of misbehaving ones
 we have built a node policy tooling. This is constructed via 2 mechanisms:
 collecting connectivity statuses and blockchain status for each node. The policy
@@ -465,7 +465,7 @@ that node, last time a block has been received from that node…)</li>
 <li>Contributions in the network</li>
 <li>Their blockchain status (e.g. tips)</li>
 </ul>
-<h3><a class="header" href="#policy" id="policy">Policy</a></h3>
+<h3 id="policy"><a class="header" href="#policy">Policy</a></h3>
 <p>The p2p policy provides some more fine control on how to handle nodes flagged
 as not behaving as expected (see the list of data collected).</p>
 <p>It currently works as a 3 levels: possible contact, quarantined, forgotten.
@@ -486,7 +486,7 @@ p2p database. This is not enforced by the protocol.</p>
 <tr><td align="left">quarantined</td><td align="left">Node is not available for the p2p topology for view selection or gossips. After a certain amount of time, if the node is still being gossiped about, it will be moved to available.</td></tr>
 <tr><td align="left">forgotten</td><td align="left">A node forgotten is simply removed from the whole p2p database. However, if the node is still being gossiped about it will be added back as available and the process will start again.</td></tr>
 </tbody></table>
-<h1><a class="header" href="#quickstart" id="quickstart">Quickstart</a></h1>
+<h1 id="quickstart"><a class="header" href="#quickstart">Quickstart</a></h1>
 <p>The rust node comes with tools and help in order to quickly start
 a node and connect to the blockchain.</p>
 <p>It is compatible with most platforms and it is pre-packaged for some
@@ -494,31 +494,31 @@ of them.</p>
 <p>Here we will see how to install <code>jormungandr</code> and its helper <code>jcli</code>
 and how to connect quickly to a given blockchain.</p>
 <p>There are three posible ways you can start jormungandr.</p>
-<h2><a class="header" href="#as-a-passive-node-in-an-existing-network" id="as-a-passive-node-in-an-existing-network">As a passive node in an existing network</a></h2>
+<h2 id="as-a-passive-node-in-an-existing-network"><a class="header" href="#as-a-passive-node-in-an-existing-network">As a passive node in an existing network</a></h2>
 <p>As described <a href="quickstart/./02_passive_node.html">here</a>.</p>
 <p>The passive Node is the most common type of Node on the network. It can be used to download the blocks and broadcast transactions to peers, but it
 doesn't have cryptographic materials or any mean to create blocks.
 This type of nodes are mostly used for wallets, explorers or relays.</p>
-<h2><a class="header" href="#as-a-node-generating-blocks-in-an-existing-network" id="as-a-node-generating-blocks-in-an-existing-network">As a node generating blocks in an existing network</a></h2>
+<h2 id="as-a-node-generating-blocks-in-an-existing-network"><a class="header" href="#as-a-node-generating-blocks-in-an-existing-network">As a node generating blocks in an existing network</a></h2>
 <p>The network could be running either bft or genesis consensus. In the former case the node must have the private key of a registered as a slot leader, while for the latter the private keys of a registered stake pool are needed.</p>
 <p>More information <a href="quickstart/./05_leader_candidate.html">here</a></p>
-<h2><a class="header" href="#creating-your-own-network" id="creating-your-own-network">Creating your own network</a></h2>
+<h2 id="creating-your-own-network"><a class="header" href="#creating-your-own-network">Creating your own network</a></h2>
 <p>This is similar to the previous case, but configuring a genesis file is needed. Consult the <a href="quickstart/../advanced/introduction.html">Advanced section</a> for more information on this procedure.</p>
-<h1><a class="header" href="#command-line-tools" id="command-line-tools">Command line tools</a></h1>
+<h1 id="command-line-tools"><a class="header" href="#command-line-tools">Command line tools</a></h1>
 <p>The software is bundled with 2 different command line software:</p>
 <ol>
 <li><strong>jormungandr</strong>: the node;</li>
 <li><strong>jcli</strong>: Jörmungandr Command Line Interface, the helpers and primitives to run and interact with the node.</li>
 </ol>
-<h2><a class="header" href="#installation" id="installation">Installation</a></h2>
-<h3><a class="header" href="#from-a-release" id="from-a-release">From a release</a></h3>
+<h2 id="installation"><a class="header" href="#installation">Installation</a></h2>
+<h3 id="from-a-release"><a class="header" href="#from-a-release">From a release</a></h3>
 <p>This is the recommended method. Releases are all available
 <a href="https://github.com/input-output-hk/jormungandr/releases">here</a>.</p>
-<h3><a class="header" href="#from-source" id="from-source">From source</a></h3>
+<h3 id="from-source"><a class="header" href="#from-source">From source</a></h3>
 <p>Jörmungandr's code source is available on
 <a href="https://github.com/input-output-hk/jormungandr#how-to-install-from-sources">github</a>.
 Follow the instructions to build the software from sources.</p>
-<h2><a class="header" href="#help-and-auto-completion" id="help-and-auto-completion">Help and auto completion</a></h2>
+<h2 id="help-and-auto-completion"><a class="header" href="#help-and-auto-completion">Help and auto completion</a></h2>
 <p>All commands come with usage help with the option <code>--help</code> or <code>-h</code>.</p>
 <p>For <code>jcli</code>, it is possible to generate the auto completion with:</p>
 <pre><code class="language-sh">jcli auto-completion bash ${HOME}/.bash_completion.d
@@ -537,7 +537,7 @@ In order to use auto completion you still need to:</p>
 <pre><code class="language-sh">source ${HOME}/.bash_completion.d/jcli.bash
 </code></pre>
 <p>You can also put it in your <code>${HOME}/.bashrc</code>.</p>
-<h1><a class="header" href="#starting-a-passive-node" id="starting-a-passive-node">Starting a passive node</a></h1>
+<h1 id="starting-a-passive-node"><a class="header" href="#starting-a-passive-node">Starting a passive node</a></h1>
 <p>In order to start the node, you first need to gather the blockchain
 information you need to connect to.</p>
 <ol>
@@ -552,9 +552,9 @@ will utilise the <strong>Hash</strong> to retrieve it from the other peers. It w
 allows the Node to verify the integrity of the downloaded <strong>genesis block</strong>.</p>
 <p>The <strong>trusted peers</strong> are the nodes in the public network that your Node will
 trust in order to initialise the Peer To Peer network.</p>
-<h2><a class="header" href="#the-node-configuration" id="the-node-configuration">The node configuration</a></h2>
+<h2 id="the-node-configuration"><a class="header" href="#the-node-configuration">The node configuration</a></h2>
 <p>Your node configuration file may look like the following:</p>
-<h3><a class="header" href="#note" id="note">Note</a></h3>
+<h3 id="note"><a class="header" href="#note">Note</a></h3>
 <p>This config shouldn't work as it is, the ip address and port for the trusted peer should be those of an already running node.
 Also, the public_address ('u.x.v.t') should be a valid address (you can use an internal one, eg: 127.0.0.1).
 Furthermore, you need to have permission to write in the path specified by the storage config.</p>
@@ -652,7 +652,7 @@ this node should maintain.</li>
 were received after this period of time, the node will start sending you
 warnings in the logs.</li>
 </ul>
-<h2><a class="header" href="#starting-the-node" id="starting-the-node">Starting the node</a></h2>
+<h2 id="starting-the-node"><a class="header" href="#starting-the-node">Starting the node</a></h2>
 <pre><code class="language-sh">jormungandr --config config.yaml --genesis-block-hash 'abcdef987654321....'
 </code></pre>
 <p>The 'abcdef987654321....' part refers to the hash of the genesis, that should be given to you from one of the peers in the network you are connecting to.</p>
@@ -662,7 +662,7 @@ warnings in the logs.</li>
 <p>or, in case you only have the yaml file</p>
 <pre><code class="language-sh">jcli genesis encode --input genesis.yaml | jcli genesis hash
 </code></pre>
-<h1><a class="header" href="#rest-api" id="rest-api">REST Api</a></h1>
+<h1 id="rest-api"><a class="header" href="#rest-api">REST Api</a></h1>
 <p>It is possible to query the node via its REST Interface.</p>
 <p>In the node configuration, you have set something like:</p>
 <pre><code class="language-yaml"># ...
@@ -685,17 +685,17 @@ rest:
 <p>Please note that the end points and the results may change in the future.</p>
 <p>To see the whole Node API documentation,
 <a href="https://editor.swagger.io/?url=https://raw.githubusercontent.com/input-output-hk/jormungandr/master/doc/api/v0.yaml">click here</a></p>
-<h1><a class="header" href="#explorer-mode" id="explorer-mode">Explorer mode</a></h1>
+<h1 id="explorer-mode"><a class="header" href="#explorer-mode">Explorer mode</a></h1>
 <p>The node can be configured to work as a explorer. This consumes more resources, but makes it possible to query data otherwise not available.</p>
-<h2><a class="header" href="#configuration" id="configuration">Configuration</a></h2>
+<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <p>There is two ways of enabling the explorer api. It can either be done by passing the <code>--enable-explorer</code> flag on the start arguemnts or by the config file:</p>
 <pre><code class="language-yaml">explorer:
     enabled: true
 </code></pre>
-<h3><a class="header" href="#cors" id="cors">CORS</a></h3>
+<h3 id="cors"><a class="header" href="#cors">CORS</a></h3>
 <p>For configuring CORS the explorer API, this needs to be done on the REST section of the config, as documented <a href="quickstart/../configuration/network.html">here</a>.</p>
-<h2><a class="header" href="#api" id="api">API</a></h2>
-<p>A graphql interface can be used to query the explorer data, when enabled, two endpoints are available in the <a href="quickstart/03_rest_api.html">REST interface</a>: <code>/explorer/graphql</code> and <code>/explorer/graphiql</code> .</p>
+<h2 id="api"><a class="header" href="#api">API</a></h2>
+<p>A graphql interface can be used to query the explorer data, when enabled, two endpoints are available in the <a href="quickstart/03_rest_api.html">REST interface</a>: <code>/explorer/graphql</code> and <code>/explorer/playground</code> .</p>
 <p>The first is the one that queries are made against, for example:</p>
 <pre><code class="language-sh">curl \
     -X POST \
@@ -716,8 +716,8 @@ rest:
   http://127.0.0.1:8443/explorer/graphql
 </code></pre>
 <p>While the second serves an in-browser graphql IDE that can be used to try queries interactively.</p>
-<h1><a class="header" href="#how-to-start-a-node-as-a-leader-candidate" id="how-to-start-a-node-as-a-leader-candidate">How to start a node as a leader candidate</a></h1>
-<h2><a class="header" href="#gathering-data" id="gathering-data">Gathering data</a></h2>
+<h1 id="how-to-start-a-node-as-a-leader-candidate"><a class="header" href="#how-to-start-a-node-as-a-leader-candidate">How to start a node as a leader candidate</a></h1>
+<h2 id="gathering-data"><a class="header" href="#gathering-data">Gathering data</a></h2>
 <p>Like in the passive node case, two things are needed to connect to an existing network</p>
 <ol>
 <li>the hash of the <strong>genesis block</strong> of the blockchain, this will be the source
@@ -726,38 +726,38 @@ of truth of the blockchain. It is 64 hexadecimal characters.</li>
 </ol>
 <p>The node configuration could be the same as that for <a href="quickstart/./02_passive_node.html">running a passive node</a>.</p>
 <p>There are some differences depending if you are connecting to a network running a genesis or bft consensus protocol.</p>
-<h3><a class="header" href="#connecting-to-a-genesis-blockchain" id="connecting-to-a-genesis-blockchain">Connecting to a genesis blockchain</a></h3>
-<h4><a class="header" href="#registering-a-stake-pool" id="registering-a-stake-pool">Registering a stake pool</a></h4>
+<h3 id="connecting-to-a-genesis-blockchain"><a class="header" href="#connecting-to-a-genesis-blockchain">Connecting to a genesis blockchain</a></h3>
+<h4 id="registering-a-stake-pool"><a class="header" href="#registering-a-stake-pool">Registering a stake pool</a></h4>
 <p>In order to be able to generate blocks in an existing genesis network, a <a href="quickstart/../stake_pool/registering_stake_pool.html">registered stake pool</a> is needed.</p>
-<h4><a class="header" href="#creating-the-secrets-file" id="creating-the-secrets-file">Creating the secrets file</a></h4>
+<h4 id="creating-the-secrets-file"><a class="header" href="#creating-the-secrets-file">Creating the secrets file</a></h4>
 <p>Put the node id and private keys in a yaml file in the following way:</p>
-<h5><a class="header" href="#example" id="example">Example</a></h5>
+<h5 id="example"><a class="header" href="#example">Example</a></h5>
 <p>filename: <em>node_secret.yaml</em></p>
 <pre><code class="language-yaml">genesis:
   sig_key: Content of stake_pool_kes.prv file
   vrf_key: Content of stake_pool_vrf.prv file
   node_id: Content of stake_pool.id file
 </code></pre>
-<h4><a class="header" href="#starting-the-node-1" id="starting-the-node-1">Starting the node</a></h4>
+<h4 id="starting-the-node-1"><a class="header" href="#starting-the-node-1">Starting the node</a></h4>
 <pre><code class="language-sh">jormungandr --genesis-block-hash asdf1234... --config config.yaml --secret node_secret.yaml
 </code></pre>
 <p><em>The 'asdf1234...' part should be the actual block0 hash of the network</em></p>
-<h3><a class="header" href="#connecting-to-a-bft-blockchain" id="connecting-to-a-bft-blockchain">Connecting to a BFT blockchain</a></h3>
+<h3 id="connecting-to-a-bft-blockchain"><a class="header" href="#connecting-to-a-bft-blockchain">Connecting to a BFT blockchain</a></h3>
 <p>In order to generate blocks, the node should be registered as a slot leader in the network and started in the following way.</p>
-<h2><a class="header" href="#the-secret-file" id="the-secret-file">The secret file</a></h2>
+<h2 id="the-secret-file"><a class="header" href="#the-secret-file">The secret file</a></h2>
 <p>Put secret key in a yaml file, e.g. <code>node_secret.yaml</code> as follows:</p>
 <pre><code class="language-yaml">bft:
  signing_key: ed25519_sk1kppercsk06k03yk4qgea....
 </code></pre>
 <p>where signing_key is a private key associated to the public id of a slot leader.</p>
-<h3><a class="header" href="#starting-the-node-2" id="starting-the-node-2">Starting the node</a></h3>
+<h3 id="starting-the-node-2"><a class="header" href="#starting-the-node-2">Starting the node</a></h3>
 <pre><code class="language-sh">jormungandr --genesis-block asdf1234... --config node.config --secret node_secret.yaml
 </code></pre>
 <p><em>The 'asdf1234...' part should be the actual block0 hash of the network</em></p>
-<h1><a class="header" href="#configuration-1" id="configuration-1">Configuration</a></h1>
+<h1 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h1>
 <p>This chapter covers the node documentation, necessary to have a working system.
 It covers the network, logging and storage parameters.</p>
-<h2><a class="header" href="#node-configuration" id="node-configuration">Node Configuration</a></h2>
+<h2 id="node-configuration"><a class="header" href="#node-configuration">Node Configuration</a></h2>
 <p>This is an common example of a Jörmungandr node configuration file typically named <code>node-config.yaml</code>, however your's will vary depending on your needs.
 Additionally, this configuration has been tested on a <em>specific Jörmungandr version</em> and may change with newer versions.
 It's important to keep in mind that the <code>trusted_peers</code> portion of this configuration will be different for each Cardano blockchain network.
@@ -765,13 +765,9 @@ If you're trying to connect this node to a specific network, you need to know it
 <p>Example Configuration - 1:</p>
 <pre><code class="language-YAML">---
 log:
-  - output: stderr
-    level:  info
-    format: plain
-  - output:
-      file: example.log
-    level: info
-    format: json
+  output: stderr
+  level:  info
+  format: plain
 
 http_fetch_block0_service:
   - https://url/jormungandr-block0/raw/master/data
@@ -782,7 +778,7 @@ bootstrap_from_trusted_peers: false
 
 p2p:
   public_address: &quot;/ip4/X.X.X.X/tcp/Y&quot; # This should match your public IP address (X) and port number (Y)
-  #listen_address: /ip4/0.0.0.0/tcp/Z
+  #listen: 0.0.0.0:Y
   topics_of_interest:
     blocks: normal # Default is normal - set to high for stakepool
     messages: low  # Default is low    - set to high for stakepool
@@ -792,7 +788,6 @@ p2p:
   max_unreachable_nodes_to_connect_per_event: 20
   gossip_interval: 10s
   max_bootstrap_attempts: # Default is not set
-  topology_force_reset_interval: # Default is not set
   trusted_peers:
     - address: &quot;/ip4/13.230.137.72/tcp/3000&quot;
       id: e4fda5a674f0838b64cacf6d22bbae38594d7903aba2226f
@@ -845,18 +840,21 @@ no_blockchain_updates_warning_interval: 15m
 </code></pre>
 <p>Note:
 The node configuration uses the <a href="https://en.wikipedia.org/wiki/YAML">YAML</a> format.</p>
-<h2><a class="header" href="#advanced" id="advanced">Advanced</a></h2>
-<h3><a class="header" href="#rewards-report" id="rewards-report">Rewards report</a></h3>
+<h2 id="advanced"><a class="header" href="#advanced">Advanced</a></h2>
+<h3 id="rewards-report"><a class="header" href="#rewards-report">Rewards report</a></h3>
 <p>Starting the node <code>jormungandr</code> with the command line option <code>--rewards-report-all</code> will
 collect a thorough report of all the reward distribution. It can then be accessed via the
 REST endpoints <code>/api/v0/rewards/history/1</code> or <code>/api/v0/rewards/epoch/10</code>.</p>
 <p><strong>this is not a recommended settings as it may take memory and may trigger some latency</strong>.</p>
-<h4><a class="header" href="#the-following-is-deprecated-and-will-be-removed" id="the-following-is-deprecated-and-will-be-removed">The following is deprecated and will be removed</a></h4>
+<h3 id="handling-of-time-consuming-transactions"><a class="header" href="#handling-of-time-consuming-transactions">Handling of time-consuming transactions</a></h3>
+<p>By default we allow a single transaction to delay a block by 50 slots. This can
+be changed by adjusting the <code>block_hard_deadline</code> setting.</p>
+<h4 id="the-following-is-deprecated-and-will-be-removed"><a class="header" href="#the-following-is-deprecated-and-will-be-removed">The following is deprecated and will be removed</a></h4>
 <p>If you want to record the reward distributions in a directory it is possible to set
 the environment variable: <code>JORMUNGANDR_REWARD_DUMP_DIRECTORY=/PATH/TO/DIR/TO/WRITE/REWARD</code>.</p>
 <p>If an error occur while dumping the reward, the node will <strong>panic</strong> with an appropriate
 error message.</p>
-<h1><a class="header" href="#logging" id="logging">Logging</a></h1>
+<h1 id="logging"><a class="header" href="#logging">Logging</a></h1>
 <p>The following options are available in the <code>log</code> section:</p>
 <ul>
 <li>
@@ -871,13 +869,6 @@ Possible values: <code>off</code>, <code>critical</code>, <code>error</code>, <c
 <ul>
 <li><code>stdout</code>: standard output</li>
 <li><code>stderr</code>: standard error</li>
-<li><code>syslog</code>: syslog (only available on Unix systems)</li>
-<li><code>syslogudp</code>: remote syslog  (only available on Unix systems)
-<ul>
-<li><code>host</code>: address and port of a syslog server</li>
-<li><code>hostname</code>: hostname to attach to syslog messages</li>
-</ul>
-</li>
 <li><code>journald</code>: journald service (only available on Linux with systemd,
 (if jormungandr is built with the <code>systemd</code> feature)</li>
 <li><code>gelf</code>: Configuration fields for GELF (Graylog) network logging protocol
@@ -891,25 +882,29 @@ Possible values: <code>off</code>, <code>critical</code>, <code>error</code>, <c
 </ul>
 </li>
 </ul>
-<h2><a class="header" href="#example-1" id="example-1">Example</a></h2>
-<p>Multiple logging backends are supported.</p>
+<h2 id="example-1"><a class="header" href="#example-1">Example</a></h2>
+<p>A single configurable backend is supported.</p>
+<h3 id="output-to-stdout"><a class="header" href="#output-to-stdout">Output to stdout</a></h3>
 <pre><code class="language-yaml">log:
-  - output: stdout
-    level:  trace
-    format: plain
-  - output:
-      file: example.log
-    level: info
-    format: json
+  output: stdout
+  level:  trace
+  format: plain
 </code></pre>
-<h1><a class="header" href="#node-network" id="node-network">Node network</a></h1>
+<h3 id="output-to-a-file"><a class="header" href="#output-to-a-file">Output to a file</a></h3>
+<pre><code class="language-yaml">log:
+  output:
+    file: example.log
+  level: info
+  format: json
+</code></pre>
+<h1 id="node-network"><a class="header" href="#node-network">Node network</a></h1>
 <p>There are 2 different network interfaces which are covered by their respective section:</p>
 <pre><code class="language-yaml">rest:
    ...
 p2p:
    ...
 </code></pre>
-<h2><a class="header" href="#rest-interface-configuration" id="rest-interface-configuration">REST interface configuration</a></h2>
+<h2 id="rest-interface-configuration"><a class="header" href="#rest-interface-configuration">REST interface configuration</a></h2>
 <ul>
 <li><code>listen</code>: listen address</li>
 <li><code>tls</code>: (optional) enables TLS and disables plain HTTP if provided
@@ -926,9 +921,9 @@ an origin should include a scheme, for example: <code>http://127.0.0.1:8080</cod
 </ul>
 </li>
 </ul>
-<h3><a class="header" href="#configuring-tls" id="configuring-tls">Configuring TLS</a></h3>
+<h3 id="configuring-tls"><a class="header" href="#configuring-tls">Configuring TLS</a></h3>
 <p>In order to enable TLS there must be provided certificate and private key files.</p>
-<h4><a class="header" href="#jcli-tls-requirements" id="jcli-tls-requirements"><code>jcli</code> TLS requirements.</a></h4>
+<h4 id="jcli-tls-requirements"><a class="header" href="#jcli-tls-requirements"><code>jcli</code> TLS requirements.</a></h4>
 <p>Note that <code>jormungandr</code> itself does not have any specific requirements for TLS certificates and you
 may give whatever you want including self-signed certificates as long as you do not intend to use
 <code>jcli</code>.</p>
@@ -942,7 +937,7 @@ alternative name.</li>
 <p>Given that, your options are to either get a certificate from a well-known CA (Let's Encrypt will
 do, <code>jcli</code> uses Mozilla's CA bundle for verification) or create your own local CA and provide the
 root certificate to <code>jcli</code> via the <code>--tls-cert-path</code> option.</p>
-<h4><a class="header" href="#creating-a-local-ca-using-openssl-and-easyrsa" id="creating-a-local-ca-using-openssl-and-easyrsa">Creating a local CA using OpenSSL and EasyRSA</a></h4>
+<h4 id="creating-a-local-ca-using-openssl-and-easyrsa"><a class="header" href="#creating-a-local-ca-using-openssl-and-easyrsa">Creating a local CA using OpenSSL and EasyRSA</a></h4>
 <p>EasyRSA is a set of scripts that use OpenSSL and give you an easier experience with setting up your
 local CA. You can download them <a href="https://github.com/OpenVPN/easy-rsa">here</a>.</p>
 <ol>
@@ -980,7 +975,7 @@ request. You will be prompted to enter the host name (<code>localhost</code> for
     priv_key_file: &lt;path to server.key&gt;
 </code></pre>
 <p>Use the CA certificate with <code>jcli</code>.</p>
-<h2><a class="header" href="#p2p-configuration" id="p2p-configuration">P2P configuration</a></h2>
+<h2 id="p2p-configuration"><a class="header" href="#p2p-configuration">P2P configuration</a></h2>
 <ul>
 <li><code>trusted_peers</code>: (optional) the list of nodes' <a href="https://github.com/multiformats/multiaddr">multiaddr</a> to connect to in order to
 bootstrap the p2p topology (and bootstrap our local blockchain). Note that you can use a DNS
@@ -990,12 +985,14 @@ if you want the peer to connect with IPv6.</li>
 from. This is the public address that will be distributed to other peers
 of the network that may find interest into participating to the blockchain
 dissemination with the node.  Currently only TCP is supported.</li>
-<li><code>public_id</code>: (optional) This is a static identifier, 24 bytes encoded in hexadecimal. They are used
-to bootstrap the connection to the node if the node introduce itself as a trusted peer.
-<strong>Most of the user don't need to set this value</strong> and in fact we are working toward potentially
-removing the need for this value.</li>
-<li><code>listen_address</code>: (optional) <a href="https://github.com/multiformats/multiaddr">multiaddr</a> specifies the address the node
-will listen to to receive p2p connection. Can be left empty and the node will listen
+<li><code>node_key_file</code>: (optional) Path to a file containing a bech32-encoded ed25519 secret key.
+The keys are used to advertize the node in network gossip and to authenticate
+a connection to the node if the node is used as a trusted peer.
+<strong>Most of the users don't need to set this value</strong> as the key will be randomly
+generated if the option is not present.</li>
+<li><code>listen</code>: (optional) socket address (IP address and port separated by a comma),
+specifies the interface address and port the node
+will listen at to receive p2p connection. Can be left empty and the node will listen
 to whatever value was given to <code>public_address</code>.</li>
 <li><code>topics_of_interest</code>: (optional) the different topics we are interested to hear about:
 <ul>
@@ -1029,9 +1026,6 @@ to the one selected by other p2p topology layer <code>[default: 20]</code></li>
 changing the value will affect the bandwidth. The more often the node will
 gossip the more bandwidth the node will need. The less often the node gossips
 the less good the resilience to node churn. <code>[default: 10s]</code></li>
-<li><code>topology_force_reset_interval</code>: (optional) If this value is set, it will
-trigger a force reset of the topology layers. The default is to not do
-force the reset. It is recommended to let the protocol handle it.</li>
 <li><code>max_bootstrap_attempts</code>: (optional) number of times to retry bootstrapping from trusted peers.
 If not set, default behavior, the bootstrap process will keep retrying indefinitely, until completed successfully.
 If set to <em>0</em> (zero), the node will skip bootstrap all together -- <em>even if trusted peers are defined</em>.
@@ -1040,19 +1034,19 @@ then the node will continue to run without completing the bootstrap process.
 This will allow the node to act as the first node in the p2p network (i.e. genesis node),
 or immediately begin gossip with the trusted peers if any are defined.</li>
 </ul>
-<h3><a class="header" href="#the-trusted-peers" id="the-trusted-peers">The trusted peers</a></h3>
+<h3 id="the-trusted-peers"><a class="header" href="#the-trusted-peers">The trusted peers</a></h3>
 <p>The trusted peers is a concept that is not fully implemented yet. One of the key element
 for now is that this is the first node any node tries to connect in order to meet new nodes.
 Right now, as far as we know, only one of them is needed. IOHK provides a few others for
 redundancy.</p>
-<h3><a class="header" href="#layers" id="layers">Layers</a></h3>
+<h3 id="layers"><a class="header" href="#layers">Layers</a></h3>
 <p>Jörmungandr provides multiple additional layers to the <code>poldercast</code> default ones:
 the preferred list or the bottle in the sea.</p>
-<h4><a class="header" href="#preferred-list" id="preferred-list">Preferred list</a></h4>
+<h4 id="preferred-list"><a class="header" href="#preferred-list">Preferred list</a></h4>
 <p>this is a special list that allows to connect multiple nodes together without relying
 on the auto peer discovery. All entries in the preferred list are also whitelisted
 automatically, so they cannot be quarantined.</p>
-<h5><a class="header" href="#configuration-2" id="configuration-2">configuration:</a></h5>
+<h5 id="configuration-2"><a class="header" href="#configuration-2">configuration:</a></h5>
 <ul>
 <li><code>view_max</code>: this is the number of entries to show in the view each round
 the layer will <strong>randomly</strong> select up to <code>view_max</code> entries from the whole
@@ -1064,7 +1058,7 @@ attempt to connect to (up to <code>view_max</code> of) these nodes every time, e
 are down, unreachable or not operated anymore.</p>
 <p><strong>COMPATIBILITY NOTE</strong>: in near future the peer list will be only a list of addresses and the <strong>ID</strong>
 part will not be necessary.</p>
-<h5><a class="header" href="#example-2" id="example-2">Example:</a></h5>
+<h5 id="example-2"><a class="header" href="#example-2">Example:</a></h5>
 <pre><code class="language-yaml">p2p:
   layers:
     preferred_list:
@@ -1074,11 +1068,11 @@ part will not be necessary.</p>
           id: 019abc...
         - ...
 </code></pre>
-<h3><a class="header" href="#setting-the-public_id" id="setting-the-public_id">Setting the <code>public_id</code></a></h3>
+<h3 id="setting-the-public_id"><a class="header" href="#setting-the-public_id">Setting the <code>public_id</code></a></h3>
 <p>This is needed to advertise your node as a trusted peer.
 If not set, the node will generate a random ID, which is fine for a regular user.
 You can generate a public id with <strong>openssl</strong>, for example: <code>openssl rand -hex 24</code></p>
-<h3><a class="header" href="#topics_of_interest" id="topics_of_interest"><code>topics_of_interest</code></a></h3>
+<h3 id="topics_of_interest"><a class="header" href="#topics_of_interest"><code>topics_of_interest</code></a></h3>
 <p>This is optional an optional value to set. The default is:</p>
 <pre><code class="language-yaml">messages: low
 blocks: normal
@@ -1093,7 +1087,7 @@ blocks: normal
 <pre><code class="language-yaml">messages: high
 blocks: high
 </code></pre>
-<h1><a class="header" href="#mempool" id="mempool">Mempool</a></h1>
+<h1 id="mempool"><a class="header" href="#mempool">Mempool</a></h1>
 <p>When running an active node (BFT leader or stake pool) it is interesting to be
 able to make choices on how to manage the pending transactions: how long to keep
 them, how to prioritize them etc.</p>
@@ -1106,8 +1100,15 @@ as follow:</p>
 <ul>
 <li><code>pool_max_entries</code>: (optional, default is 10000). Set a maximum size of the mempool</li>
 <li><code>log_max_entries</code>: (optional, default is 100000). Set a maximum size of fragment logs</li>
+<li><code>persistent_log</code>: (optional, disabled by default) log all incoming fragments to log files,
+rotated on a hourly basis. The value is an object, with the <code>dir</code> field
+specifying the directory name where log files are stored.</li>
 </ul>
-<h1><a class="header" href="#leadership-1" id="leadership-1">Leadership</a></h1>
+<h2 id="persistent-logs"><a class="header" href="#persistent-logs">Persistent logs</a></h2>
+<p>A persistent log is a collection of records comprised of a UNIX timestamp of when a fragment was
+registereed by the mempool followed by the hex-encoded fragment body. This log is a line-delimited
+JSON stream.</p>
+<h1 id="leadership-1"><a class="header" href="#leadership-1">Leadership</a></h1>
 <p>The <code>leadership</code> field in your node config file is not mandatory, by default it is set
 as follow:</p>
 <pre><code class="language-yaml">leadership:
@@ -1118,7 +1119,7 @@ as follow:</p>
 is reached, older logs will be removed in order to leave more space for new ones
 [default: 1024]</li>
 </ul>
-<h1><a class="header" href="#jcli" id="jcli">jcli</a></h1>
+<h1 id="jcli"><a class="header" href="#jcli">jcli</a></h1>
 <p>This is the node command line helper. It is mostly meant for developers and
 stake pool operators. It allows offline operations:</p>
 <ul>
@@ -1132,7 +1133,7 @@ stake pool operators. It allows offline operations:</p>
 <li>send transactions and certificates;</li>
 <li>get raw blocks and UTxOs.</li>
 </ul>
-<h1><a class="header" href="#cryptographic-keys" id="cryptographic-keys">cryptographic keys</a></h1>
+<h1 id="cryptographic-keys"><a class="header" href="#cryptographic-keys">cryptographic keys</a></h1>
 <p>There are multiple type of key for multiple use cases.</p>
 <table><thead><tr><th align="center">type</th><th align="left">usage</th></tr></thead><tbody>
 <tr><td align="center"><code>Ed25519</code></td><td align="left">Signing algorithm for Ed25519 algorithm</td></tr>
@@ -1149,7 +1150,7 @@ ed25519_sk1cvac48ddf2rpk9na94nv2zqhj74j0j8a99q33gsqdvalkrz6ar9srnhvmt
 <pre><code class="language-sh">$ echo ed25519_sk1cvac48ddf2rpk9na94nv2zqhj74j0j8a99q33gsqdvalkrz6ar9srnhvmt | jcli key to-public
 ed25519_pk1z2ffur59cq7t806nc9y2g64wa60pg5m6e9cmrhxz9phppaxk5d4sn8nsqg
 </code></pre>
-<h2><a class="header" href="#signing-data" id="signing-data">Signing data</a></h2>
+<h2 id="signing-data"><a class="header" href="#signing-data">Signing data</a></h2>
 <p>Sign data with private key. Supported key formats are: ed25519, ed25519bip32, ed25519extended and
 sumed25519_12.</p>
 <pre><code class="language-sh">jcli key sign &lt;options&gt; &lt;data&gt;
@@ -1161,7 +1162,7 @@ sumed25519_12.</p>
 standard output will be used</li>
 </ul>
 <p>&lt;data&gt; - path to file with data to sign, if no value is passed, standard input will be used</p>
-<h2><a class="header" href="#verifying-signed-data" id="verifying-signed-data">Verifying signed data</a></h2>
+<h2 id="verifying-signed-data"><a class="header" href="#verifying-signed-data">Verifying signed data</a></h2>
 <p>Verify signed data with public key. Supported key formats are: ed25519, ed25519bip32 and
 sumed25519_12.</p>
 <pre><code class="language-sh">jcli key verify &lt;options&gt; &lt;data&gt;
@@ -1172,11 +1173,11 @@ sumed25519_12.</p>
 <li>--signature &lt;signature&gt; - path to file with signature</li>
 </ul>
 <p>&lt;data&gt; - path to file with data to sign, if no value is passed, standard input will be used</p>
-<h1><a class="header" href="#address" id="address">Address</a></h1>
+<h1 id="address"><a class="header" href="#address">Address</a></h1>
 <p>Jormungandr comes with a separate CLI to create and manipulate addresses.</p>
 <p>This is useful for creating addresses from their components in the CLI,
 for debugging addresses and for testing.</p>
-<h2><a class="header" href="#display-address-info" id="display-address-info">Display address info</a></h2>
+<h2 id="display-address-info"><a class="header" href="#display-address-info">Display address info</a></h2>
 <p>To display an address and verify it is in a valid format you can utilise:</p>
 <pre><code class="language-sh">$ jcli address info ta1svy0mwwm7mdwcuj308aapjw6ra4c3e6cygd0f333nvtjzxg8ahdvxlswdf0
 discrimination: testing
@@ -1190,7 +1191,7 @@ discrimination: production
 public key: ed25519_pk1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtpsx9rnmx
 group key:  ed25519_pk1pr7mnklkmtk8y5tel0gvnksldwywwkpzrt6vvvvmzus3jpldmtpsx9rnmx
 </code></pre>
-<h2><a class="header" href="#creating-an-address" id="creating-an-address">Creating an address</a></h2>
+<h2 id="creating-an-address"><a class="header" href="#creating-an-address">Creating an address</a></h2>
 <p>Each command following allows to create addresses for production and testing
 chains. For chains, where the discrimination is <code>testing</code>, you need to
 use the <code>--testing</code> flag.</p>
@@ -1200,7 +1201,7 @@ use the <code>--testing</code> flag.</p>
 <li>Grouped address : A spending key attached to an account key. The stake is automatically</li>
 <li>Account address : An account key. The account is its own stake</li>
 </ul>
-<h3><a class="header" href="#address-for-utxo" id="address-for-utxo">Address for UTxO</a></h3>
+<h3 id="address-for-utxo"><a class="header" href="#address-for-utxo">Address for UTxO</a></h3>
 <p>You can create a single address (non-staked) using the spending public key for
 this address utilising the following command:</p>
 <pre><code class="language-sh">$ jcli address \
@@ -1215,13 +1216,13 @@ public key as a second parameter of the command:</p>
     ed25519_pk1as03wxmy2426ceh8nurplvjmauwpwlcz7ycwj7xtl9gmx9u5gkqscc5ylx
 ca1q3yen35r2tmdye3zc5lfw3x992s7p4dcu4jkwxcda80tv8xh5ym74mqlzudkg42443nw08cxr7e9hmcuzals9ufsa9uvh723kvteg3vpvrcxcq
 </code></pre>
-<h3><a class="header" href="#address-for-account" id="address-for-account">Address for Account</a></h3>
+<h3 id="address-for-account"><a class="header" href="#address-for-account">Address for Account</a></h3>
 <p>To create an account address you need the account public key and run:</p>
 <pre><code class="language-sh">$ jcli address \
     account ed25519_pk1c4yq3hflulynn8fef0hdq92579n3c49qxljasrl9dnuvcksk84gs9sqvc2
 ca1qhz5szxa8lnujwva8997a5q42nckw8z55qm7tkq0u4k03nz6zc74ze780qe
 </code></pre>
-<h3><a class="header" href="#changing-the-address-prefix" id="changing-the-address-prefix">changing the address prefix</a></h3>
+<h3 id="changing-the-address-prefix"><a class="header" href="#changing-the-address-prefix">changing the address prefix</a></h3>
 <p>You can decide to change the address prefix, allowing you to provide more
 enriched data to the user. However, this prefix is not forwarded to the node,
 it is only for UI/UX.</p>
@@ -1231,7 +1232,7 @@ it is only for UI/UX.</p>
     ed25519_pk1yx6q8rsndawfx8hjzwntfs2h2c37v5g6edv67hmcxvrmxfjdz9wqeejchg
 address_1q5smgquwzdh4eyc77gf6ddxp2atz8ej3rt94nt6l0qes0vexf5g4cw68kdx
 </code></pre>
-<h1><a class="header" href="#transaction-1" id="transaction-1">Transaction</a></h1>
+<h1 id="transaction-1"><a class="header" href="#transaction-1">Transaction</a></h1>
 <p>Tooling for offline transaction creation and signing.</p>
 <pre><code class="language-sh">jcli transaction
 </code></pre>
@@ -1269,7 +1270,7 @@ content information of a transaction:</p>
 <ul>
 <li><code>id</code> get the data to sign from a given transaction (use <code>data-for-witness</code> instead)</li>
 </ul>
-<h2><a class="header" href="#transaction-info" id="transaction-info">Transaction info</a></h2>
+<h2 id="transaction-info"><a class="header" href="#transaction-info">Transaction info</a></h2>
 <p>On every stage of building a transaction user can display its summary</p>
 <pre><code class="language-sh">jcli transaction info &lt;options&gt;
 </code></pre>
@@ -1343,36 +1344,36 @@ outputs:            # list of transaction outputs
 sign_data_hash: 26be0b8bd7e34efffb769864f00d7c4aab968760f663a7e0b3ce213c4b21651b
 status: sealed      # transaction status, can be &quot;balancing&quot;, &quot;finalizing&quot;, &quot;sealed&quot; or &quot;authed&quot;
 </code></pre>
-<h1><a class="header" href="#examples" id="examples">Examples</a></h1>
+<h1 id="examples"><a class="header" href="#examples">Examples</a></h1>
 <p>The following example focuses on using an utxo as input, the few differences when transfering from an account will be pointed out when necessary.
 There is also a script <a href="https://github.com/input-output-hk/jormungandr/blob/master/scripts/send-transaction">here</a> to send a transaction from a faucet account to a specific address which could be used as a reference.</p>
 <p>Let's use the following utxo as input and transfer 50 lovelaces to the destination address</p>
-<h2><a class="header" href="#input-utxo" id="input-utxo">Input utxo</a></h2>
+<h2 id="input-utxo"><a class="header" href="#input-utxo">Input utxo</a></h2>
 <table><thead><tr><th>Field</th><th align="center">Value</th></tr></thead><tbody>
 <tr><td>UTXO's transaction ID</td><td align="center">55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c</td></tr>
 <tr><td>UTXO's output index</td><td align="center">0</td></tr>
 <tr><td>associated address</td><td align="center">ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu</td></tr>
 <tr><td>associated value</td><td align="center">100</td></tr>
 </tbody></table>
-<h2><a class="header" href="#destination-address" id="destination-address">Destination address</a></h2>
+<h2 id="destination-address"><a class="header" href="#destination-address">Destination address</a></h2>
 <p><strong>address</strong>: ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6</p>
-<h2><a class="header" href="#create-a-staging-area" id="create-a-staging-area">Create a staging area</a></h2>
+<h2 id="create-a-staging-area"><a class="header" href="#create-a-staging-area">Create a staging area</a></h2>
 <pre><code class="language-sh">jcli transaction new --staging tx
 </code></pre>
-<h2><a class="header" href="#add-input" id="add-input">Add input</a></h2>
+<h2 id="add-input"><a class="header" href="#add-input">Add input</a></h2>
 <p>For the input, we need to reference the uxto with the <strong>UTXO's transaction ID</strong> and <strong>UTXO'S output index</strong> fields and we need to specify how much coins are there with the <strong>associated value</strong> field.</p>
-<h3><a class="header" href="#example---utxo-address-as-input" id="example---utxo-address-as-input">Example - UTXO address as Input</a></h3>
+<h3 id="example---utxo-address-as-input"><a class="header" href="#example---utxo-address-as-input">Example - UTXO address as Input</a></h3>
 <pre><code class="language-sh">jcli transaction add-input 55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c 0 100 --staging tx
 </code></pre>
-<h3><a class="header" href="#example---account-address-as-input" id="example---account-address-as-input">Example - Account address as Input</a></h3>
+<h3 id="example---account-address-as-input"><a class="header" href="#example---account-address-as-input">Example - Account address as Input</a></h3>
 <p>If the input is an account, the command is slightly different</p>
 <pre><code class="language-sh">jcli transaction add-account account_address account_funds --staging tx
 </code></pre>
-<h2><a class="header" href="#add-output" id="add-output">Add output</a></h2>
+<h2 id="add-output"><a class="header" href="#add-output">Add output</a></h2>
 <p>For the output, we need the address we want to transfer to, and the amount.</p>
 <pre><code class="language-sh">jcli transaction add-output ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6 50 --staging tx
 </code></pre>
-<h2><a class="header" href="#add-fee-and-change-address" id="add-fee-and-change-address">Add fee and change address</a></h2>
+<h2 id="add-fee-and-change-address"><a class="header" href="#add-fee-and-change-address">Add fee and change address</a></h2>
 <p>We want to get the change in the same address that we are sending from (the <em>associated address</em> of the utxo). We also specify how to compute the fees.
 You can leave out the <code>--fee-constant 5 --fee-coefficient 2</code> part if those are both 0.</p>
 <pre><code class="language-sh">jcli transaction finalize ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu --fee-constant 5 --fee-coefficient 2 --staging tx
@@ -1402,8 +1403,8 @@ outputs:
 sign_data_hash: 0df39a87d3f18a188b40ba8c203f85f37af665df229fb4821e477f6998864273
 status: finalizing
 </code></pre>
-<h2><a class="header" href="#sign-the-transaction" id="sign-the-transaction">Sign the transaction</a></h2>
-<h3><a class="header" href="#make-witness" id="make-witness">Make witness</a></h3>
+<h2 id="sign-the-transaction"><a class="header" href="#sign-the-transaction">Sign the transaction</a></h2>
+<h3 id="make-witness"><a class="header" href="#make-witness">Make witness</a></h3>
 <p>For signing the transaction, you need:</p>
 <ul>
 <li>the hash of the genesis block of the network you are connected to.</li>
@@ -1426,15 +1427,15 @@ status: finalizing
 <pre><code class="language-sh">jcli transaction make-witness --genesis-block-hash abcdef987654321... --type utxo 0df39a87d3f18a188b40ba8c203f85f37af665df229fb4821e477f6998864273 witness key.prv
 </code></pre>
 <hr />
-<h4><a class="header" href="#account-input" id="account-input">Account input</a></h4>
+<h4 id="account-input"><a class="header" href="#account-input">Account input</a></h4>
 <p>When using an account as input, the command takes <code>account</code> as the type and an additional parameter: <code>--account-spending-counter</code>, that should be increased every time the account is used as input.</p>
 <p>e.g.</p>
 <pre><code class="language-sh">jcli transaction make-witness --genesis-block-hash abcdef987654321... --type account --account-spending-counter 0 0df39a87d3f18a188b40ba8c203f85f37af665df229fb4821e477f6998864273 witness key.prv
 </code></pre>
-<h3><a class="header" href="#add-witness" id="add-witness">Add witness</a></h3>
+<h3 id="add-witness"><a class="header" href="#add-witness">Add witness</a></h3>
 <pre><code class="language-sh">jcli transaction add-witness witness --staging tx
 </code></pre>
-<h2><a class="header" href="#send-the-transaction" id="send-the-transaction">Send the transaction</a></h2>
+<h2 id="send-the-transaction"><a class="header" href="#send-the-transaction">Send the transaction</a></h2>
 <pre><code class="language-sh">jcli transaction seal --staging tx
 </code></pre>
 <pre><code class="language-sh">jcli transaction to-message --staging tx &gt; txmsg
@@ -1445,7 +1446,7 @@ status: finalizing
 <p>You should get some data back referring to the TransactionID (also known as FragmentID)</p>
 <pre><code class="language-sh">d6ef0b2148a51ed64531efc17978a527fd2d2584da1e344a35ad12bf5460a7e2
 </code></pre>
-<h2><a class="header" href="#checking-if-the-transaction-was-accepted" id="checking-if-the-transaction-was-accepted">Checking if the transaction was accepted</a></h2>
+<h2 id="checking-if-the-transaction-was-accepted"><a class="header" href="#checking-if-the-transaction-was-accepted">Checking if the transaction was accepted</a></h2>
 <p>You can check if the transaction was accepted by checking the node logs, for example, if the transaction is accepted</p>
 <p><code>jcli rest v0 message logs -h http://127.0.0.1:8443/api</code></p>
 <pre><code class="language-plaintext">---
@@ -1464,9 +1465,9 @@ and for block <code>d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b52141796
 <p><strong>Pending</strong>: if the transaction is received and is pending being added in the blockchain (or rejected).</p>
 <p>or</p>
 <p><strong>Rejected</strong>: with an attached message of the reason the transaction was rejected.</p>
-<h1><a class="header" href="#certificate" id="certificate">Certificate</a></h1>
+<h1 id="certificate"><a class="header" href="#certificate">Certificate</a></h1>
 <p>Tooling for offline transaction creation</p>
-<h2><a class="header" href="#building-stake-pool-registration-certificate" id="building-stake-pool-registration-certificate">Building stake pool registration certificate</a></h2>
+<h2 id="building-stake-pool-registration-certificate"><a class="header" href="#building-stake-pool-registration-certificate">Building stake pool registration certificate</a></h2>
 <p>Builds a stake pool registration certificate.</p>
 <pre><code class="language-sh">jcli certificate new stake-pool-registration \
     --vrf-key &lt;vrf-public-key&gt; \
@@ -1482,7 +1483,7 @@ and for block <code>d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b52141796
 <li><code>--operator &lt;operator-public-key&gt;</code> - <em>optional</em>, public key of the operator(s) of the pool.</li>
 <li><code>output-file</code>                      - <em>optional</em>, write the output to the given file or print it to the standard output if not defined</li>
 </ul>
-<h2><a class="header" href="#retiring-a-stake-pool" id="retiring-a-stake-pool">Retiring a stake pool</a></h2>
+<h2 id="retiring-a-stake-pool"><a class="header" href="#retiring-a-stake-pool">Retiring a stake pool</a></h2>
 <p>It is possible to retire a stake pool from the blockchain. By doing so the stake delegated
 to the stake pool will become dangling and will need to be re-delegated.</p>
 <p>Remember though that the action won't be applied until the next following epoch. I.e.
@@ -1507,7 +1508,7 @@ to make the stake pool retire. <code>0</code> means as soon as possible.</li>
 <li><code>--pool-id</code>                   - hex-encoded stake pool ID. Can be retrieved using  <code>jcli certificate get-stake-pool-id</code> command.
 See <a href="jcli/../stake_pool/registering_stake_pool.html">here</a> for more details.</li>
 </ul>
-<h2><a class="header" href="#building-stake-pool-delegation-certificate" id="building-stake-pool-delegation-certificate">Building stake pool delegation certificate</a></h2>
+<h2 id="building-stake-pool-delegation-certificate"><a class="header" href="#building-stake-pool-delegation-certificate">Building stake pool delegation certificate</a></h2>
 <p>Builds a stake pool delegation certificate.</p>
 <pre><code class="language-sh">jcli certificate new stake-delegation &lt;STAKE_KEY&gt; &lt;STAKE_POOL_IDS&gt; [--output &lt;output-file&gt;]
 </code></pre>
@@ -1518,12 +1519,12 @@ See <a href="jcli/../stake_pool/registering_stake_pool.html">here</a> for more d
 <li><code>&lt;STAKE_POOL_IDS&gt;...</code>        - hex-encoded stake pool IDs and their numeric weights in format <strong>&quot;pool_id:weight&quot;</strong>.
 If <em>weight</em> is not provided, <em>it defaults to 1</em>.</li>
 </ul>
-<h1><a class="header" href="#genesis" id="genesis">Genesis</a></h1>
+<h1 id="genesis"><a class="header" href="#genesis">Genesis</a></h1>
 <p>Tooling for working with a genesis file</p>
-<h2><a class="header" href="#usage" id="usage">Usage</a></h2>
+<h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
 <pre><code class="language-sh">jcli genesis [subcommand]
 </code></pre>
-<h2><a class="header" href="#subcommands" id="subcommands">Subcommands</a></h2>
+<h2 id="subcommands"><a class="header" href="#subcommands">Subcommands</a></h2>
 <ul>
 <li>decode: Print the YAML file corresponding to an encoded genesis block.</li>
 <li>encode: Create the genesis block of the blockchain from a given yaml file.</li>
@@ -1531,49 +1532,51 @@ If <em>weight</em> is not provided, <em>it defaults to 1</em>.</li>
 <li>init: Create a default Genesis file with appropriate documentation to help creating the YAML file</li>
 <li>help</li>
 </ul>
-<h2><a class="header" href="#examples-1" id="examples-1">Examples</a></h2>
-<h3><a class="header" href="#encode-a-genesis-file" id="encode-a-genesis-file">Encode a genesis file</a></h3>
+<h2 id="examples-1"><a class="header" href="#examples-1">Examples</a></h2>
+<h3 id="encode-a-genesis-file"><a class="header" href="#encode-a-genesis-file">Encode a genesis file</a></h3>
 <pre><code class="language-sh">jcli genesis encode --input genesis.yaml --output block-0.bin
 </code></pre>
 <p>or equivantely</p>
 <pre><code class="language-sh">cat genesis.yaml | jcli genesis encode &gt; block-0.bin
 </code></pre>
-<h3><a class="header" href="#get-the-hash-of-an-encoded-genesis-file" id="get-the-hash-of-an-encoded-genesis-file">Get the hash of an encoded genesis file</a></h3>
+<h3 id="get-the-hash-of-an-encoded-genesis-file"><a class="header" href="#get-the-hash-of-an-encoded-genesis-file">Get the hash of an encoded genesis file</a></h3>
 <pre><code class="language-sh">jcli genesis hash --input block-0.bin
 </code></pre>
-<h1><a class="header" href="#voting" id="voting">Voting</a></h1>
+<h1 id="voting"><a class="header" href="#voting">Voting</a></h1>
 <p>Jormungandr supports decentralized voting with privacy features.</p>
 <p>The voting process is controlled by a committee whose private keys can be used
 to decrypt and certify the tally.</p>
-<h2><a class="header" href="#creating-committee-keys" id="creating-committee-keys">Creating committee keys</a></h2>
-<h3><a class="header" href="#private" id="private">Private</a></h3>
+<h2 id="creating-committee-keys"><a class="header" href="#creating-committee-keys">Creating committee keys</a></h2>
+<h3 id="private"><a class="header" href="#private">Private</a></h3>
 <p>Please refer to <code>jcli votes committee --help</code> for help with the committee related cli operations and specification of arguments.</p>
 <p>In this example we will be using 3 kind of keys for the private vote and tallying.</p>
 <p>In order:</p>
-<h4><a class="header" href="#committee-communication-key" id="committee-communication-key">Committee communication key</a></h4>
+<h4 id="committee-communication-key"><a class="header" href="#committee-communication-key">Committee communication key</a></h4>
 <pre><code class="language-shell">jcli votes committee communication-key generate &gt; ./comm.sk
 </code></pre>
 <p>We can get its public representation with:</p>
 <pre><code class="language-shell">jcli votes committee communication-key to-public --input ./comm.sk &gt; ./comm.pk
 </code></pre>
-<h4><a class="header" href="#committee-member-key" id="committee-member-key">Committee member key</a></h4>
-<pre><code class="language-shell">crs=$(jcli votes crs generate)
-jcli votes committee member-key generate --threshold 3 --crs &quot;$crs&quot; --index 0 --keys pk1 pk2 pk3 &gt; ./member.sk
+<h4 id="committee-member-key"><a class="header" href="#committee-member-key">Committee member key</a></h4>
+<pre><code class="language-shell">jcli votes committee member-key generate --threshold 3 --crs &quot;$crs&quot; --index 0 --keys pk1 pk2 pk3 &gt; ./member.sk
 </code></pre>
-<p>Where <code>pkX</code> are each of the committee communication public keys.
-Note that <strong>all committee members should use the same CRS</strong></p>
+<p>Where <code>pkX</code> are each of the committee communication public keys in bech32 format.
+The order of the keys shall be the same for every member invoking the command,
+and the <code>--index</code> parameter provides the 0-based index of the member this key
+is generated for.
+Note that <strong>all committee members shall use the same CRS</strong>.</p>
 <p>We can also easily get its public representation as before:</p>
 <pre><code class="language-shell">jcli votes committee member-key to-public --input ./member.sk ./member.pk
 </code></pre>
-<h4><a class="header" href="#vote-encrypting-key" id="vote-encrypting-key">Vote encrypting key</a></h4>
+<h4 id="vote-encrypting-key"><a class="header" href="#vote-encrypting-key">Vote encrypting key</a></h4>
 <p>This key (<em>public</em>) is the key <strong>every vote</strong> should be encrypted with.</p>
-<pre><code class="language-shell">jcli votes encrypting-key --eys mpk1 mpk2 mpkn &gt; ./vote.pk
+<pre><code class="language-shell">jcli votes encrypting-key --keys mpk1 mpk2 mpk3 &gt; ./vote.pk
 </code></pre>
 <p>Notice that we can always rebuild this key with the committee member public keys found
 within the <a href="jcli/vote.html#creating-a-vote-plan">voteplan certificate</a>.</p>
 <pre><code class="language-shell">jcli rest v0 vote active plans &gt; voteplan.json
 </code></pre>
-<h2><a class="header" href="#creating-a-vote-plan" id="creating-a-vote-plan">Creating a vote plan</a></h2>
+<h2 id="creating-a-vote-plan"><a class="header" href="#creating-a-vote-plan">Creating a vote plan</a></h2>
 <p>We need to provide a vote plan definition file to generate a new voteplan certificate.
 That file should be a <code>yaml</code> (or json) with the following format:</p>
 <pre><code class="language-yaml">{
@@ -1598,7 +1601,7 @@ That file should be a <code>yaml</code> (or json) with the following format:</p>
     },
     ...
   ],
-  &quot;committee_member_public_keys &quot;: [
+  &quot;committee_member_public_keys&quot;: [
     &quot;pk....&quot;,
   ]
 }
@@ -1611,10 +1614,10 @@ That file should be a <code>yaml</code> (or json) with the following format:</p>
 <p>Then, we can generate the voteplan certificate with:</p>
 <pre><code class="language-shell">jcli certificate new vote-plan voteplan_def.json --output voteplan.certificate
 </code></pre>
-<h2><a class="header" href="#casting-votes" id="casting-votes">Casting votes</a></h2>
+<h2 id="casting-votes"><a class="header" href="#casting-votes">Casting votes</a></h2>
 <p>TBA</p>
-<h2><a class="header" href="#tallying" id="tallying">Tallying</a></h2>
-<h3><a class="header" href="#public-vote-plan" id="public-vote-plan">Public vote plan</a></h3>
+<h2 id="tallying"><a class="header" href="#tallying">Tallying</a></h2>
+<h3 id="public-vote-plan"><a class="header" href="#public-vote-plan">Public vote plan</a></h3>
 <p>To tally public votes, a single committee member is sufficient.
 In the example below, the file <code>committee.sk</code> contains the committee member's
 private key in bech32 format, and <code>block0.bin</code> contains the genesis block of
@@ -1636,40 +1639,35 @@ jcli transaction auth --staging vote-tally.staging --key committee.sk
 jcli transaction to-message --staging vote-tally.staging &gt; vote-tally.fragment
 jcli rest v0 message post --file vote-tally.fragment
 </code></pre>
-<h3><a class="header" href="#private-1" id="private-1">Private</a></h3>
+<h3 id="private-1"><a class="header" href="#private-1">Private</a></h3>
 <p>To tally private votes, all committee members are needed.
 The process is similar to the public one, but we need to issue different certificates.</p>
+<p>First, we need to retrieve vote plans info:</p>
+<pre><code class="language-shell">jcli rest v0 vote active plans &gt; active_plans.json
+</code></pre>
+<p>If there is more than one vote plan in the this file, we also need to provide the id of the vote plan we are interested in to following commands. We can get the id of the first vote plan with:</p>
 <pre><code class="language-shell">...
-vote_plan_id=$(jcli rest v0 vote active plans get --output-format json|jq '.[0].id')
-jcli certificate new encrypted-vote-tally --vote-plan-id &quot;$vote_plan_id&quot; --output encrypted-vote-tally.certificate
+vote_plan_id=$(cat active_plans.json |jq '.[0].id')
 ...
 </code></pre>
-<p><strong>WIP</strong></p>
-<p>After the certificate is issued we need each of the committee members to create a share for each voteplan:</p>
-<pre><code class="language-shell">jcli res v0 vote active plans &gt; active_plans.json
+<p>Each committee member needs to generate their shares for the vote plan, which we will use later to decrypt the tally. </p>
+<pre><code class="language-shell">jcli votes tally decryption-shares --vote-plan active_plans.json --vote-plan-id $&quot;vote_plan_id&quot; --key member.sk --output-format json 
 </code></pre>
-<p>For each proposal in the <code>active_plans.json</code> we need to retrieve the <code>proposal[&quot;tally&quot;][&quot;private&quot;][&quot;encrypted&quot;][&quot;encrypted_tally&quot;]</code> and dump it to a file.</p>
-<p>Then, for each of those encrypted tally each of the committee member need to generate a share.</p>
-<pre><code class="language-shell">jcli votes tally decyption-share --encrypted-tally voteplan1.secret_tally --key member.sk --output-format json 
+<p>Then, the committee members need to exchange their shares (only one full set of shares is needed).
+Once all shares are available, we need to merge them in a single file with the following command (needed even if there is only one set of shares):</p>
+<pre><code class="language-shell">jcli votes tally merge-shares  share_file1 share_file2 ... &gt; merged_shares.json 
 </code></pre>
-<p>Then the committee members need to exchange their share (only one full set of shares is needed) for finally get the results.
-We will need those share files merged into a single file where each of the shares are in separated lines.
-With that we can process the final tally result as follows:</p>
-<pre><code class="language-shell">jcli votes tally decrypt \
---encrypted-tally voteplan1.secret_tally \
---shares merged_shares_file_path.shares \
+<p>With the merged shares file, we are finally able to process the final tally result as follows:</p>
+<pre><code class="language-shell">jcli votes tally decrypt-results \
+--vote-plan active_plans.json \
+--vote-plan-id $&quot;vote_plan_id&quot; \
+--shares merged_shares.json \
 --threshold number_of_committee_members \
---max-votes total_votes_cast \
---table-size table_size \
 --output-format json &gt; result.json
 </code></pre>
-<p>Notes:</p>
-<p>The table size is a cache parameter, any value greater than one would be enough but the best approximated values would be
-<code>table_size = votes_cast / vote_options</code>. So, if we had <code>1000</code> votes and <code>2</code> options (<em>yes</em>, <em>no</em>), and optimum table size value
-would be <code>1000/2 = 500</code></p>
-<h1><a class="header" href="#rest" id="rest">REST</a></h1>
+<h1 id="rest"><a class="header" href="#rest">REST</a></h1>
 <p>Jormungandr comes with a CLI client for manual communication with nodes over HTTP.</p>
-<h2><a class="header" href="#conventions" id="conventions">Conventions</a></h2>
+<h2 id="conventions"><a class="header" href="#conventions">Conventions</a></h2>
 <p>Many CLI commands have common arguments:</p>
 <ul>
 <li><code>-h &lt;addr&gt;</code> or <code>--host &lt;addr&gt;</code> - Node API address. Must always have <code>http://</code> or
@@ -1680,7 +1678,7 @@ The output format is intentionally undocumented and unstable</li>
 Any other value is treated as a custom format using values from output data structure.
 Syntax is Go text template: https://golang.org/pkg/text/template/.</li>
 </ul>
-<h2><a class="header" href="#node-stats" id="node-stats">Node stats</a></h2>
+<h2 id="node-stats"><a class="header" href="#node-stats">Node stats</a></h2>
 <p>Fetches node stats</p>
 <pre><code class="language-sh">jcli rest v0 node stats get &lt;options&gt;
 </code></pre>
@@ -1731,7 +1729,7 @@ uptime: 20032
 # Node app version
 version: jormungandr 0.8.9-30d20d2e
 </code></pre>
-<h2><a class="header" href="#get-utxo" id="get-utxo">Get UTxO</a></h2>
+<h2 id="get-utxo"><a class="header" href="#get-utxo">Get UTxO</a></h2>
 <p>Fetches UTxO details</p>
 <pre><code class="language-sh">jcli rest v0 utxo &lt;fragment-id&gt; &lt;output-index&gt; get &lt;options&gt;
 </code></pre>
@@ -1752,7 +1750,7 @@ address: ca1svs0mwkfky9htpam576mc93mee5709khre8dgnqslj6y3p5f77s5gpgv02w
 # UTxO value
 value: 10000
 </code></pre>
-<h2><a class="header" href="#post-transaction" id="post-transaction">Post transaction</a></h2>
+<h2 id="post-transaction"><a class="header" href="#post-transaction">Post transaction</a></h2>
 <p>Posts a signed, hex-encoded transaction</p>
 <pre><code class="language-sh">jcli rest v0 message post &lt;options&gt;
 </code></pre>
@@ -1766,7 +1764,7 @@ If not provided, transaction will be read from stdin.</li>
 <p>Fragment Id is printed on success (which can help finding transaction status using get message log command)</p>
 <pre><code class="language-sh">50f21ac6bd3f57f231c4bf9c5fff7c45e2529c4dffed68f92410dbf7647541f1
 </code></pre>
-<h2><a class="header" href="#get-message-log" id="get-message-log">Get message log</a></h2>
+<h2 id="get-message-log"><a class="header" href="#get-message-log">Get message log</a></h2>
 <p>Get the node's logs on the message pool. This will provide information on pending transaction,
 rejected transaction and or when a transaction has been added in a block</p>
 <pre><code class="language-sh">jcli rest v0 message logs &lt;options&gt;
@@ -1802,7 +1800,7 @@ rejected transaction and or when a transaction has been added in a block</p>
     date: &quot;6637.3&quot;            # block epoch and slot ID formed as &lt;epoch&gt;.&lt;slot_id&gt;
     block: &quot;d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b521417964174&quot;
 </code></pre>
-<h2><a class="header" href="#blockchain-tip" id="blockchain-tip">Blockchain tip</a></h2>
+<h2 id="blockchain-tip"><a class="header" href="#blockchain-tip">Blockchain tip</a></h2>
 <p>Retrieves a hex-encoded ID of the blockchain tip</p>
 <pre><code class="language-sh">jcli rest v0 tip get &lt;options&gt;
 </code></pre>
@@ -1811,7 +1809,7 @@ rejected transaction and or when a transaction has been added in a block</p>
 <li>-h &lt;node_addr&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
 <li>--debug - see <a href="jcli/rest.html#conventions">conventions</a></li>
 </ul>
-<h2><a class="header" href="#get-block" id="get-block">Get block</a></h2>
+<h2 id="get-block"><a class="header" href="#get-block">Get block</a></h2>
 <p>Retrieves a hex-encoded block with given ID</p>
 <pre><code class="language-sh">jcli rest v0 block &lt;block_id&gt; get &lt;options&gt;
 </code></pre>
@@ -1823,7 +1821,7 @@ rejected transaction and or when a transaction has been added in a block</p>
 <li>-h &lt;node_addr&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
 <li>--debug - see <a href="jcli/rest.html#conventions">conventions</a></li>
 </ul>
-<h2><a class="header" href="#get-next-block-id" id="get-next-block-id">Get next block ID</a></h2>
+<h2 id="get-next-block-id"><a class="header" href="#get-next-block-id">Get next block ID</a></h2>
 <p>Retrieves a list of hex-encoded IDs of descendants of block with given ID.
 Every list element is in separate line. The IDs are sorted from closest to farthest.</p>
 <pre><code class="language-sh">jcli rest v0 block &lt;block_id&gt; next-id get &lt;options&gt;
@@ -1837,7 +1835,7 @@ Every list element is in separate line. The IDs are sorted from closest to farth
 <li>--debug - see <a href="jcli/rest.html#conventions">conventions</a></li>
 <li>-c --count &lt;count&gt; - Maximum number of IDs, must be between 1 and 100, default 1</li>
 </ul>
-<h2><a class="header" href="#get-account-state" id="get-account-state">Get account state</a></h2>
+<h2 id="get-account-state"><a class="header" href="#get-account-state">Get account state</a></h2>
 <p>Get account state</p>
 <pre><code class="language-sh">jcli rest v0 account get &lt;account-id&gt; &lt;options&gt;
 </code></pre>
@@ -1864,7 +1862,7 @@ this is useful to know when signing new transactions;</li>
 it is possible this value is not set if there is no delegation certificate
 sent associated to this account.</li>
 </ul>
-<h2><a class="header" href="#node-settings" id="node-settings">Node settings</a></h2>
+<h2 id="node-settings"><a class="header" href="#node-settings">Node settings</a></h2>
 <p>Fetches node settings</p>
 <pre><code class="language-sh">jcli rest v0 settings get &lt;options&gt;
 </code></pre>
@@ -1907,7 +1905,7 @@ treasuryTax:                                    # tax from reward that goes to p
     denominator: 10000
   max: 100                                      # limit of tax (optional)
 </code></pre>
-<h2><a class="header" href="#node-shutdown" id="node-shutdown">Node shutdown</a></h2>
+<h2 id="node-shutdown"><a class="header" href="#node-shutdown">Node shutdown</a></h2>
 <p>Node shutdown</p>
 <pre><code class="language-sh">jcli rest v0 shutdown get &lt;options&gt;
 </code></pre>
@@ -1916,7 +1914,7 @@ treasuryTax:                                    # tax from reward that goes to p
 <li>-h &lt;node_addr&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
 <li>--debug - see <a href="jcli/rest.html#conventions">conventions</a></li>
 </ul>
-<h2><a class="header" href="#get-leaders" id="get-leaders">Get leaders</a></h2>
+<h2 id="get-leaders"><a class="header" href="#get-leaders">Get leaders</a></h2>
 <p>Fetches list of leader IDs</p>
 <pre><code class="language-sh">jcli rest v0 leaders get &lt;options&gt;
 </code></pre>
@@ -1931,7 +1929,7 @@ treasuryTax:                                    # tax from reward that goes to p
 - 1 # list of leader IDs
 - 2
 </code></pre>
-<h2><a class="header" href="#register-leader" id="register-leader">Register leader</a></h2>
+<h2 id="register-leader"><a class="header" href="#register-leader">Register leader</a></h2>
 <p>Register new leader and get its ID</p>
 <pre><code class="language-sh">jcli rest v0 leaders post &lt;options&gt;
 </code></pre>
@@ -1945,7 +1943,7 @@ treasuryTax:                                    # tax from reward that goes to p
 <p>On success created leader ID is printed</p>
 <pre><code class="language-sh">3
 </code></pre>
-<h2><a class="header" href="#delete-leader" id="delete-leader">Delete leader</a></h2>
+<h2 id="delete-leader"><a class="header" href="#delete-leader">Delete leader</a></h2>
 <p>Delete leader with given ID</p>
 <pre><code class="language-sh">jcli rest v0 leaders delete &lt;id&gt; &lt;options&gt;
 </code></pre>
@@ -1957,7 +1955,7 @@ treasuryTax:                                    # tax from reward that goes to p
 <li>-h &lt;node_addr&gt; - see <a href="jcli/rest.html#conventions">conventions</a></li>
 <li>--debug - see <a href="jcli/rest.html#conventions">conventions</a></li>
 </ul>
-<h2><a class="header" href="#get-leadership-logs" id="get-leadership-logs">Get leadership logs</a></h2>
+<h2 id="get-leadership-logs"><a class="header" href="#get-leadership-logs">Get leadership logs</a></h2>
 <p>Fetches leadership logs</p>
 <pre><code class="language-sh">jcli rest v0 leaders logs get &lt;options&gt;
 </code></pre>
@@ -1998,7 +1996,7 @@ status:
   Rejected:
     reason: &quot;Missed the deadline to compute the schedule&quot;
 </code></pre>
-<h2><a class="header" href="#get-stake-pools" id="get-stake-pools">Get stake pools</a></h2>
+<h2 id="get-stake-pools"><a class="header" href="#get-stake-pools">Get stake pools</a></h2>
 <p>Fetches list of stake pool IDs</p>
 <pre><code class="language-sh">jcli rest v0 stake-pools get &lt;options&gt;
 </code></pre>
@@ -2013,7 +2011,7 @@ status:
 - 5cf03f333f37eb7b987dbc9017b8a928287a3d77d086cd93cd9ad05bcba7e60f # list of stake pool IDs
 - 3815602c096fcbb91072f419c296c3dfe1f730e0f446a9bd2553145688e75615
 </code></pre>
-<h2><a class="header" href="#get-stake-distribution" id="get-stake-distribution">Get stake distribution</a></h2>
+<h2 id="get-stake-distribution"><a class="header" href="#get-stake-distribution">Get stake distribution</a></h2>
 <p>Fetches stake information</p>
 <pre><code class="language-sh">jcli rest v0 stake get &lt;options&gt; [&lt;epoch&gt;]
 </code></pre>
@@ -2055,7 +2053,7 @@ stake:
       - 1000000000000                                                    # staked value
   unassigned: 0 # Total value stored in accounts, but not assigned to any pool
 </code></pre>
-<h2><a class="header" href="#network-stats" id="network-stats">Network stats</a></h2>
+<h2 id="network-stats"><a class="header" href="#network-stats">Network stats</a></h2>
 <p>Fetches network stats</p>
 <pre><code class="language-sh">jcli rest v0 network stats get &lt;options&gt;
 </code></pre>
@@ -2080,7 +2078,7 @@ stake:
   # timestamp of last time gossip was received from node if ever (optional)
   lastGossipReceived: &quot;2019-10-14T00:45:59.419496188+00:00&quot;
 </code></pre>
-<h2><a class="header" href="#get-stake-pool-details" id="get-stake-pool-details">Get stake pool details</a></h2>
+<h2 id="get-stake-pool-details"><a class="header" href="#get-stake-pool-details">Get stake pool details</a></h2>
 <p>Fetches stake pool details</p>
 <pre><code class="language-sh">jcli rest v0 stake-pool get &lt;pool-id&gt; &lt;options&gt;
 </code></pre>
@@ -2107,7 +2105,7 @@ kesPublicKey: kes25519-12-pk1q7susucqwje0lpetqzjgzncgcrjzx7e2guh900qszdjskkeyqpu
 # bech32-encoded stake pool VRF key
 vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
 </code></pre>
-<h2><a class="header" href="#get-rewards-history-for-a-specific-epoch" id="get-rewards-history-for-a-specific-epoch">Get rewards history for a specific epoch</a></h2>
+<h2 id="get-rewards-history-for-a-specific-epoch"><a class="header" href="#get-rewards-history-for-a-specific-epoch">Get rewards history for a specific epoch</a></h2>
 <p>Get the rewards history of a given <em>epoch</em>.</p>
 <pre><code class="language-sh">jcli rest v0 rewards epoch get &lt;epoch&gt; &lt;options&gt;
 </code></pre>
@@ -2147,7 +2145,7 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
   }
 ]
 </code></pre>
-<h2><a class="header" href="#get-rewards-history-for-some-epochs" id="get-rewards-history-for-some-epochs">Get rewards history for some epochs</a></h2>
+<h2 id="get-rewards-history-for-some-epochs"><a class="header" href="#get-rewards-history-for-some-epochs">Get rewards history for some epochs</a></h2>
 <p>Get the rewards history of the <em>length</em> last epoch(s) from tip.</p>
 <pre><code class="language-sh">jcli rest v0 rewards history get &lt;length&gt; &lt;options&gt;
 </code></pre>
@@ -2219,7 +2217,7 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
 ]
 </code></pre>
 <hr />
-<h2><a class="header" href="#get-voting-committee-members" id="get-voting-committee-members">Get voting committee members</a></h2>
+<h2 id="get-voting-committee-members"><a class="header" href="#get-voting-committee-members">Get voting committee members</a></h2>
 <p>Get the list of voting committee members.</p>
 <pre><code class="language-sh">jcli rest v0 vote active committees get &lt;options&gt;
 </code></pre>
@@ -2234,7 +2232,7 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
 - 7ef044ba437057d6d944ace679b7f811335639a689064cd969dffc8b55a7cc19 # list of members
 - f5285eeead8b5885a1420800de14b0d1960db1a990a6c2f7b517125bedc000db
 </code></pre>
-<h2><a class="header" href="#get-active-voting-plans-and-proposals" id="get-active-voting-plans-and-proposals">Get active voting plans and proposals</a></h2>
+<h2 id="get-active-voting-plans-and-proposals"><a class="header" href="#get-active-voting-plans-and-proposals">Get active voting plans and proposals</a></h2>
 <p>Get the list of active voting plans and proposals.</p>
 <pre><code class="language-sh">jcli rest v0 vote active plans get &lt;options&gt;
 </code></pre>
@@ -2265,17 +2263,17 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
     epoch: 1
     slot_id: 0
 </code></pre>
-<h1><a class="header" href="#staking-with-jörmungandr" id="staking-with-jörmungandr">Staking with Jörmungandr</a></h1>
+<h1 id="staking-with-jörmungandr"><a class="header" href="#staking-with-jörmungandr">Staking with Jörmungandr</a></h1>
 <p>Here we will describe how to:</p>
 <ul>
 <li><em>delegate your stake to a stake pool</em> - so that you can participate to the consensus and maybe collect rewards for that.</li>
 <li><em>register a stake pool</em></li>
 <li><em>retire a stake pool</em></li>
 </ul>
-<h1><a class="header" href="#delegating-your-stake" id="delegating-your-stake">Delegating your stake</a></h1>
-<h2><a class="header" href="#how-to-create-the-delegation-certificate" id="how-to-create-the-delegation-certificate">how to create the delegation certificate</a></h2>
+<h1 id="delegating-your-stake"><a class="header" href="#delegating-your-stake">Delegating your stake</a></h1>
+<h2 id="how-to-create-the-delegation-certificate"><a class="header" href="#how-to-create-the-delegation-certificate">how to create the delegation certificate</a></h2>
 <p>Stake is concentrated in accounts, and you will need account public key to delegate its associated stake.</p>
-<h3><a class="header" href="#for-own-account" id="for-own-account">for own account</a></h3>
+<h3 id="for-own-account"><a class="header" href="#for-own-account">for own account</a></h3>
 <p>You will need:</p>
 <ul>
 <li>the Stake Pool ID: an hexadecimal string identifying the stake pool you want
@@ -2292,7 +2290,7 @@ In order for delegation to work it must be submitted to a node inside a very spe
 <li>Transaction must have 0 outputs</li>
 </ul>
 <p>The account used for input will have its stake delegated to the stake pool</p>
-<h3><a class="header" href="#for-any-account" id="for-any-account">for any account</a></h3>
+<h3 id="for-any-account"><a class="header" href="#for-any-account">for any account</a></h3>
 <p>You will need:</p>
 <ul>
 <li>account public key: a bech32 string of a public key</li>
@@ -2301,7 +2299,7 @@ to delegate your stake to.</li>
 </ul>
 <pre><code class="language-sh">jcli certificate new stake-delegation ACCOUNT_PUBLIC_KEY STAKE_POOL_ID --output stake_delegation.cert
 </code></pre>
-<h2><a class="header" href="#submitting-to-a-node" id="submitting-to-a-node">submitting to a node</a></h2>
+<h2 id="submitting-to-a-node"><a class="header" href="#submitting-to-a-node">submitting to a node</a></h2>
 <p>The <code>jcli transaction add-certificate</code> command should be used to add a certificate <strong>before finalizing</strong> the transaction.</p>
 <p>For example:</p>
 <pre><code class="language-sh">
@@ -2318,7 +2316,7 @@ jcli transaction auth --key account_key.prv --staging tx
 </code></pre>
 <p>The <code>--fee-certificate</code> flag indicates the cost of adding a certificate, used for computing the fees, it can be omitted if it is zero.</p>
 <p>See <a href="stake_pool/../jcli/transaction.html">here</a> for more documentation on transaction creation.</p>
-<h2><a class="header" href="#how-to-sign-your-delegation-certificate" id="how-to-sign-your-delegation-certificate">how to sign your delegation certificate</a></h2>
+<h2 id="how-to-sign-your-delegation-certificate"><a class="header" href="#how-to-sign-your-delegation-certificate">how to sign your delegation certificate</a></h2>
 <p>This procedure is needed only for certificates that are to be included
 in the <code>genesis config</code> file.</p>
 <p>We need to make sure that the owner of the account is authorizing this
@@ -2330,7 +2328,7 @@ delegation to happens, and for that we need a cryptographic signature.</p>
 <pre><code class="language-sh">signedcert1q9uxkxptz3zx7akmugkmt4ecjjd3nmzween2qfr5enhzkt37tdt4uqt0j0039z5048mu9ayv3ujep5sl28q2cpdnx9fkvpq30lmjrrgtmqqctzczvu6e3v65m40n40c3y2pnu4vhd888dygkrtnfm0ts92fe50jy0h0ugh6wlvgy4xvr3lz4uuqzg2xgu6vv8tr24jrwhg0l09klp5wvwzl5
 </code></pre>
 <p>and can now be added in the <code>genesis config</code> file.</p>
-<h1><a class="header" href="#registering-a-stake-pool-1" id="registering-a-stake-pool-1">Registering a stake pool</a></h1>
+<h1 id="registering-a-stake-pool-1"><a class="header" href="#registering-a-stake-pool-1">Registering a stake pool</a></h1>
 <p>There are multiple components to be aware of when running a stake pool:</p>
 <ul>
 <li>your <code>NodeId</code>: it is the identifier within the blockchain protocol (wallet
@@ -2343,8 +2341,8 @@ block with.</li>
 the stake pool before distributing rewards (if any left) to the delegators.</li>
 </ul>
 <p>So in order to start your stake pool you will need to generate these objects.</p>
-<h2><a class="header" href="#the-primitives" id="the-primitives">The primitives</a></h2>
-<h3><a class="header" href="#vrf-key-pair" id="vrf-key-pair">VRF key pair</a></h3>
+<h2 id="the-primitives"><a class="header" href="#the-primitives">The primitives</a></h2>
+<h3 id="vrf-key-pair"><a class="header" href="#vrf-key-pair">VRF key pair</a></h3>
 <p>To generate your <a href="https://en.wikipedia.org/wiki/Verifiable_random_function"><strong>VRF</strong></a> Key pairs, we will utilise <a href="stake_pool/../jcli/introduction.html"><code>jcli</code></a> as described
 <a href="stake_pool/../jcli/key.html">here</a>:</p>
 <pre><code class="language-sh">jcli key generate --type=Curve25519_2HashDH stake_pool_vrf.prv
@@ -2353,7 +2351,7 @@ the stake pool before distributing rewards (if any left) to the delegators.</li>
 <pre><code class="language-sh">jcli key to-public --input stake_pool_vrf.prv stake_pool_vrf.pub
 </code></pre>
 <p><code>stake_pool_vrf.pub</code> file now contains the VRF public key.</p>
-<h3><a class="header" href="#kes-key-pair" id="kes-key-pair">KES key pair</a></h3>
+<h3 id="kes-key-pair"><a class="header" href="#kes-key-pair">KES key pair</a></h3>
 <p>Similar to above:</p>
 <pre><code class="language-sh">jcli key generate --type=SumEd25519_12 stake_pool_kes.prv
 </code></pre>
@@ -2361,7 +2359,7 @@ the stake pool before distributing rewards (if any left) to the delegators.</li>
 <pre><code class="language-sh">jcli key to-public --input stake_pool_kes.prv stake_pool_kes.pub
 </code></pre>
 <p><code>stake_pool_kes.pub</code> file now contains the KES public key</p>
-<h2><a class="header" href="#choosing-the-tax-parameters" id="choosing-the-tax-parameters">Choosing the <strong>Tax</strong> parameters</a></h2>
+<h2 id="choosing-the-tax-parameters"><a class="header" href="#choosing-the-tax-parameters">Choosing the <strong>Tax</strong> parameters</a></h2>
 <p>There are 3 values you can set to configure the stake pool's <strong>Tax</strong>:</p>
 <ul>
 <li><code>tax-fixed</code>: this is the fixed cut the stake pool will take from the total reward due to
@@ -2371,7 +2369,7 @@ the stake pool;</li>
 </ul>
 <p>All of these values are optionals, if not set, they will be set to <code>0</code>. This will mean
 no tax for the stake pool: rewards are all distributed to the delegators.</p>
-<h3><a class="header" href="#so-how-does-this-works" id="so-how-does-this-works">So how does this works</a></h3>
+<h3 id="so-how-does-this-works"><a class="header" href="#so-how-does-this-works">So how does this works</a></h3>
 <p>Let say you control a stake pool <code>SP</code>, with 2 owners (<code>O1</code> and <code>O2</code>). During epoch 1, <code>SP</code> has
 created some blocks and is entitled to receive <code>10_000</code>.</p>
 <p>Before distributing the <code>10_000</code> among the delegators, <code>SP</code> will take its <strong>Tax</strong>.</p>
@@ -2391,7 +2389,7 @@ to that account and nothing to <code>O1</code> and <code>O2</code>.</li>
 <tr><td>fixed + 10%</td><td align="center">2000</td><td align="center">1000</td><td align="center">1/10</td><td align="center">0</td><td align="center">1100</td><td align="center">550</td><td align="center">550</td><td align="center">900</td></tr>
 <tr><td>fixed + 20% up to 150</td><td align="center">2000</td><td align="center">1000</td><td align="center">1/5</td><td align="center">150</td><td align="center">1150</td><td align="center">575</td><td align="center">575</td><td align="center">850</td></tr>
 </tbody></table>
-<h3><a class="header" href="#the-options-to-set" id="the-options-to-set">The options to set</a></h3>
+<h3 id="the-options-to-set"><a class="header" href="#the-options-to-set">The options to set</a></h3>
 <pre><code>--tax-limit &lt;TAX_LIMIT&gt;
     The maximum tax value the stake pool will take.
 
@@ -2405,7 +2403,7 @@ to that account and nothing to <code>O1</code> and <code>O2</code>.</li>
 
     For example, a stake pool may set this value to cover their fixed operation costs. [default: 0]
 </code></pre>
-<h2><a class="header" href="#creating-a-stake-pool-certificate" id="creating-a-stake-pool-certificate">creating a stake pool certificate</a></h2>
+<h2 id="creating-a-stake-pool-certificate"><a class="header" href="#creating-a-stake-pool-certificate">creating a stake pool certificate</a></h2>
 <p>The certificate is what will be sent to the blockchain in order to register
 yourself to the other participants of the blockchain that you are a stake
 pool too.</p>
@@ -2424,7 +2422,7 @@ pool too.</p>
 <pre><code class="language-sh">jcli certificate get-stake-pool-id stake_pool.cert
 ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74
 </code></pre>
-<h2><a class="header" href="#submitting-to-a-node-1" id="submitting-to-a-node-1">submitting to a node</a></h2>
+<h2 id="submitting-to-a-node-1"><a class="header" href="#submitting-to-a-node-1">submitting to a node</a></h2>
 <p>The <code>jcli transaction add-certificate</code> command should be used to add a certificate <strong>before finalizing</strong> the transaction.</p>
 <p>For example:</p>
 <pre><code class="language-sh">...
@@ -2439,7 +2437,7 @@ jcli transaction auth --key owner_key.prv --staging tx
 </code></pre>
 <p>The <code>--fee-certificate</code> flag indicates the cost of adding a certificate, used for computing the fees, it can be omitted if it is zero.</p>
 <p>See <a href="stake_pool/../jcli/transaction.html">here</a> for more documentation on transaction creation.</p>
-<h1><a class="header" href="#retiring-a-stake-pool-1" id="retiring-a-stake-pool-1">Retiring a stake pool</a></h1>
+<h1 id="retiring-a-stake-pool-1"><a class="header" href="#retiring-a-stake-pool-1">Retiring a stake pool</a></h1>
 <p>Stake pool can be retired by sending transaction with retirement certificate.
 From technical stand point, it is very similar to register stake pool operation.
 Before start we need to be sure, that:</p>
@@ -2447,12 +2445,12 @@ Before start we need to be sure, that:</p>
 <li>you have sufficient amount of ada to pay fee for transaction with retirement certificate.</li>
 <li>you know your stake pool id.</li>
 </ul>
-<h2><a class="header" href="#retrieve-stake-pool-id" id="retrieve-stake-pool-id">Retrieve stake pool id</a></h2>
+<h2 id="retrieve-stake-pool-id"><a class="header" href="#retrieve-stake-pool-id">Retrieve stake pool id</a></h2>
 <p>To retrieve your stake pool id:</p>
 <pre><code class="language-sh">jcli certificate get-stake-pool-id stake_pool.cert
 ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74
 </code></pre>
-<h3><a class="header" href="#creating-a-retirement-certificate" id="creating-a-retirement-certificate">creating a retirement certificate</a></h3>
+<h3 id="creating-a-retirement-certificate"><a class="header" href="#creating-a-retirement-certificate">creating a retirement certificate</a></h3>
 <p>The certificate is what will be sent to the blockchain in order to retire
 your stake pool.</p>
 <pre><code class="language-sh">jcli certificate new stake-pool-retirement \
@@ -2466,7 +2464,7 @@ your stake pool.</p>
 <li><code>--retirement-time 0 </code>                                                        - <code>0</code> means as soon as possible. Which is until the next following epoch.</li>
 <li><code>--pool-id ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74</code>  - hex-encoded stake pool ID.</li>
 </ul>
-<h3><a class="header" href="#submitting-to-a-node-2" id="submitting-to-a-node-2">submitting to a node</a></h3>
+<h3 id="submitting-to-a-node-2"><a class="header" href="#submitting-to-a-node-2">submitting to a node</a></h3>
 <p>The <code>jcli transaction add-certificate</code> command should be used to add a certificate <strong>before finalizing</strong> the transaction.</p>
 <p>For example:</p>
 <pre><code class="language-sh">...
@@ -2483,13 +2481,13 @@ jcli transaction auth --key owner_key.prv --staging tx
 <p><strong>Important !</strong>
 Please be sure that you have sufficient amount of owners signatures in order to retire stake pool. At least half of owners singatures (which were provided when registering stake pool) are required to sign retirement certificate.</p>
 <p>See <a href="stake_pool/../jcli/transaction.html">here</a> for more documentation on transaction creation.</p>
-<h1><a class="header" href="#advanced-1" id="advanced-1">Advanced</a></h1>
+<h1 id="advanced-1"><a class="header" href="#advanced-1">Advanced</a></h1>
 <p>This section is meant for advanced users and developers of the node, or if
 you to learn more about the node.</p>
 <p>At the moment, it only covers details on how to create your own blockchain genesis
 configuration, but in normal case, the blockchain configuration should be available
 with the specific blockchain system.</p>
-<h1><a class="header" href="#genesis-file" id="genesis-file">genesis file</a></h1>
+<h1 id="genesis-file"><a class="header" href="#genesis-file">genesis file</a></h1>
 <p>The genesis file is the file that allows you to create a new blockchain
 from block 0. It lays out the different parameter of your blockchain:
 the initial utxo, the start time, the slot duration time, etc...</p>
@@ -2721,7 +2719,7 @@ parameters of the blockchain, some of which can be changed later
 via the update protocol;</li>
 <li><code>initial</code>: list of steps to create initial state of ledger</li>
 </ul>
-<h2><a class="header" href="#blockchain_configuration-options" id="blockchain_configuration-options"><code>blockchain_configuration</code> options</a></h2>
+<h2 id="blockchain_configuration-options"><a class="header" href="#blockchain_configuration-options"><code>blockchain_configuration</code> options</a></h2>
 <table><thead><tr><th align="left">option</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
 <tr><td align="left"><code>block0_date</code></td><td align="left">number</td><td align="left">the official start time of the blockchain, in seconds since UNIX EPOCH</td></tr>
 <tr><td align="left"><code>discrimination</code></td><td align="left">string</td><td align="left"><code>production</code> or <code>test</code></td></tr>
@@ -2737,7 +2735,7 @@ via the update protocol;</li>
 </tbody></table>
 <p><em>for more information about the BFT leaders in the genesis file, see
 <a href="advanced/./02_starting_bft_blockchain.html">Starting a BFT Blockchain</a></em></p>
-<h2><a class="header" href="#initial-options" id="initial-options"><code>initial</code> options</a></h2>
+<h2 id="initial-options"><a class="header" href="#initial-options"><code>initial</code> options</a></h2>
 <p>Each entry can be one of 3 variants:</p>
 <table><thead><tr><th align="left">variant</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
 <tr><td align="left"><code>fund</code></td><td align="left">sequence</td><td align="left">initial deposits present in the blockchain (up to 255 outputs per entry)</td></tr>
@@ -2761,19 +2759,19 @@ via the update protocol;</li>
       - address: &lt;another address&gt;
         value: 1001
 </code></pre>
-<h3><a class="header" href="#fund-and-legacy_fund-format" id="fund-and-legacy_fund-format"><code>fund</code> and <code>legacy_fund</code> format</a></h3>
+<h3 id="fund-and-legacy_fund-format"><a class="header" href="#fund-and-legacy_fund-format"><code>fund</code> and <code>legacy_fund</code> format</a></h3>
 <table><thead><tr><th align="left">variant</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
 <tr><td align="left"><code>address</code></td><td align="left">string</td><td align="left">can be a <a href="advanced/../jcli/address.html#address-for-utxo">single address</a> or an <a href="advanced/../jcli/address.html#address-for-account">account address</a></td></tr>
 <tr><td align="left"><code>value</code></td><td align="left">number</td><td align="left">assigned value</td></tr>
 </tbody></table>
 <p><code>legacy_fund</code> differs only in address format, which is legacy Cardano</p>
-<h1><a class="header" href="#starting-a-bft-node" id="starting-a-bft-node">starting a bft node</a></h1>
+<h1 id="starting-a-bft-node"><a class="header" href="#starting-a-bft-node">starting a bft node</a></h1>
 <p>BFT stands for the Byzantine Fault Tolerant
 (<a href="https://iohk.io/research/papers/#L5IHCV53">read the paper</a>).</p>
 <p>Jormungandr allows you to start a BFT blockchain fairly easily. The main
 downside is that it is centralized, only a handful of nodes will ever have
 the right to create blocks.</p>
-<h2><a class="header" href="#how-does-it-work" id="how-does-it-work">How does it work</a></h2>
+<h2 id="how-does-it-work"><a class="header" href="#how-does-it-work">How does it work</a></h2>
 <p>It is fairly simple. A given number of Nodes (<code>N</code>) will generate
 a key pairs of type <code>Ed25519</code> (see
 <a href="advanced/./../jcli/key.html">JCLI's Keys</a>).</p>
@@ -2782,7 +2780,7 @@ It is the source of truth, the file that will generate the first block
 of the blockchain: the <strong>Block 0</strong>.</p>
 <p>Then, only by one after the other, each Node will be allowed to create a block.
 Utilising a Round Robin algorithm.</p>
-<h2><a class="header" href="#example-of-genesis-file" id="example-of-genesis-file">Example of genesis file</a></h2>
+<h2 id="example-of-genesis-file"><a class="header" href="#example-of-genesis-file">Example of genesis file</a></h2>
 <pre><code class="language-yaml">blockchain_configuration:
   block0_date: 1550822014
   discrimination: test
@@ -2813,12 +2811,12 @@ initial:
 <li><code>consensus_leader_ids</code> is non empty;</li>
 </ul>
 <p>more information regarding the <a href="advanced/./01_the_genesis_block.html">genesis file here</a>.</p>
-<h2><a class="header" href="#creating-the-block-0" id="creating-the-block-0">Creating the block 0</a></h2>
+<h2 id="creating-the-block-0"><a class="header" href="#creating-the-block-0">Creating the block 0</a></h2>
 <pre><code class="language-sh">jcli genesis encode --input genesis.yaml --output block-0.bin
 </code></pre>
 <p>This command will create (or replace) the <strong>Block 0</strong> of the blockchain
 from the given genesis configuration file (<code>genesis.yaml</code>).</p>
-<h2><a class="header" href="#starting-the-node-3" id="starting-the-node-3">Starting the node</a></h2>
+<h2 id="starting-the-node-3"><a class="header" href="#starting-the-node-3">Starting the node</a></h2>
 <p>Now that the blockchain is initialized, you need to start your node.</p>
 <p>Write you private key in a file on your HD:</p>
 <pre><code class="language-sh">$ cat node_secret.yaml
@@ -2832,7 +2830,7 @@ bft:
 </code></pre>
 <p>It's possible to use the flag <code>--secret</code> multiple times to run a node
 with multiple leaders.</p>
-<h2><a class="header" href="#step-by-step-to-start-the-bft-node" id="step-by-step-to-start-the-bft-node">Step by step to start the BFT node</a></h2>
+<h2 id="step-by-step-to-start-the-bft-node"><a class="header" href="#step-by-step-to-start-the-bft-node">Step by step to start the BFT node</a></h2>
 <ol>
 <li>Generate initial config <code>jcli genesis init &gt; genesis.yaml</code></li>
 <li>Generate secret key, e.g. <code> jcli key generate --type=Ed25519 &gt; key.prv</code></li>
@@ -2864,9 +2862,9 @@ p2p:
 </ol>
 <pre><code class="language-sh">jormungandr --genesis-block block-0.bin --config node.config --secret node_secret.yaml
 </code></pre>
-<h1><a class="header" href="#script" id="script">Script</a></h1>
+<h1 id="script"><a class="header" href="#script">Script</a></h1>
 <p>Additionally, there is a script <a href="https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap">here</a> that can be used to bootstrap a test node with bft consensus protocol.</p>
-<h1><a class="header" href="#starting-a-genesis-blockchain" id="starting-a-genesis-blockchain">starting a genesis blockchain</a></h1>
+<h1 id="starting-a-genesis-blockchain"><a class="header" href="#starting-a-genesis-blockchain">starting a genesis blockchain</a></h1>
 <p>When starting a genesis praos blockchain there is an element to take
 into consideration while constructing the block 0: <em>the stake distribution</em>.</p>
 <p>In the context of Genesis/Praos the network is fully decentralized and it is
@@ -2884,18 +2882,18 @@ blockchain_configuration:
 genesis praos as the consensus layer.</p>
 <p><code>consensus_genesis_praos_active_slot_coeff</code> determines minimum stake required to
 try becoming slot leader, must be in range 0 exclusive and 1 inclusive.</p>
-<h2><a class="header" href="#the-initial-certificates" id="the-initial-certificates">The initial certificates</a></h2>
+<h2 id="the-initial-certificates"><a class="header" href="#the-initial-certificates">The initial certificates</a></h2>
 <p>In the <code>initial_certs</code> field you will set the initial certificate. This is important
 to declare the stake pool and delegate stake to them. Otherwise no block will be ever
 created.</p>
 <p>Remember that in this array the <strong>order</strong> matters:</p>
 <p>In order to delegate your stake, you need a stake pool to already exist, so the stake pool registration certificate should go first.</p>
-<h3><a class="header" href="#stake-pool-registration" id="stake-pool-registration">Stake pool registration</a></h3>
+<h3 id="stake-pool-registration"><a class="header" href="#stake-pool-registration">Stake pool registration</a></h3>
 <p>Now you can register a stake pool.
 Follow the instruction in <a href="advanced/../stake_pool/registering_stake_pool.html">registering stake pool guide</a>.</p>
 <p>The <em>owner key</em> (the key you sign the stake pool registration certificate) is the secret
 key associated to a previously registered stake key.</p>
-<h3><a class="header" href="#delegating-stake" id="delegating-stake">Delegating stake</a></h3>
+<h3 id="delegating-stake"><a class="header" href="#delegating-stake">Delegating stake</a></h3>
 <p>Now that there is both your stake key and there are stake pools available
 in the block0 you need to delegate to one of the stake pool. Follow the instruction
 in <a href="advanced/../stake_pool/delegating_stake.html">delegating stake</a>.</p>
@@ -2923,7 +2921,7 @@ initial_funds:
   - address: ta1sjx4j3jwel94g0cgwzq9au7h6m8f5q3qnyh0gfnryl3xan6qnmjse3k2uv062mzj34eacjnxthxqv8fvdcn6f4xhxwa7ms729ak3gsl4qrq2mm
     value: 1000000
 </code></pre>
-<h3><a class="header" href="#starting-the-node-4" id="starting-the-node-4">Starting the node</a></h3>
+<h3 id="starting-the-node-4"><a class="header" href="#starting-the-node-4">Starting the node</a></h3>
 <p>Now, for starting the node and be able to generate new blocks, you have to put your pool's private keys and id in a file and start the node with the <code>--secret filename</code> parameter.</p>
 <hr />
 <p>For example, if you follow the examples of the <a href="advanced/../stake_pool/registering_stake_pool.html">registering stake pool guide</a></p>
@@ -2936,7 +2934,7 @@ initial_funds:
 <p>And you could start the node with this command</p>
 <pre><code class="language-sh">jormungandr --genesis-block block-0.bin --config config.yaml --secret poolsecret.yaml
 </code></pre>
-<h1><a class="header" href="#test-script" id="test-script">Test script</a></h1>
+<h1 id="test-script"><a class="header" href="#test-script">Test script</a></h1>
 <p>There is a script <a href="https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap">here</a> that can be used to bootstrap a test node with a pre-set faucet and stake pool and can be used as an example.</p>
 
                     </main>

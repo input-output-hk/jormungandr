@@ -166,7 +166,7 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1><a class="header" href="#mempool" id="mempool">Mempool</a></h1>
+                        <h1 id="mempool"><a class="header" href="#mempool">Mempool</a></h1>
 <p>When running an active node (BFT leader or stake pool) it is interesting to be
 able to make choices on how to manage the pending transactions: how long to keep
 them, how to prioritize them etc.</p>
@@ -179,7 +179,14 @@ as follow:</p>
 <ul>
 <li><code>pool_max_entries</code>: (optional, default is 10000). Set a maximum size of the mempool</li>
 <li><code>log_max_entries</code>: (optional, default is 100000). Set a maximum size of fragment logs</li>
+<li><code>persistent_log</code>: (optional, disabled by default) log all incoming fragments to log files,
+rotated on a hourly basis. The value is an object, with the <code>dir</code> field
+specifying the directory name where log files are stored.</li>
 </ul>
+<h2 id="persistent-logs"><a class="header" href="#persistent-logs">Persistent logs</a></h2>
+<p>A persistent log is a collection of records comprised of a UNIX timestamp of when a fragment was
+registereed by the mempool followed by the hex-encoded fragment body. This log is a line-delimited
+JSON stream.</p>
 
                     </main>
 
