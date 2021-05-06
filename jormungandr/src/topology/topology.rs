@@ -144,15 +144,14 @@ impl P2pTopology {
 
     #[instrument(skip(self, gossips), level = "debug")]
     pub fn accept_gossips(&mut self, gossips: Gossips) {
-        // Even if lifted from quarantine, peers will be re-added to the topology
-        // only after we receive a gossip about them.
-        let _ = self.lift_nodes_from_quarantine();
-
         let gossips = <Vec<poldercast::Gossip>>::from(gossips);
         for gossip in gossips {
             let peer = Profile::from_gossip(gossip);
+            let peer_id = NodeId(peer.id());
             tracing::trace!(node = %peer.address(), "received peer from gossip");
-            self.topology.add_peer(peer);
+            if self.topology.add_peer(peer) {
+                self.quarantine.record_new_gossip(&peer_id);
+            }
         }
     }
 
