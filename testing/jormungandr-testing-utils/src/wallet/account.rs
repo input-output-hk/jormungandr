@@ -49,6 +49,21 @@ impl Wallet {
         }
     }
 
+    pub fn generate_extended<RNG>(rng: &mut RNG, discrimination: Discrimination) -> Self
+    where
+        RNG: CryptoRng + RngCore,
+    {
+        let signing_key = SigningKey::generate_extended(rng);
+        let identifier = signing_key.identifier();
+        Wallet {
+            signing_key,
+            identifier,
+            internal_counter: account::SpendingCounter::zero(),
+            discrimination,
+        }
+    }
+
+
     pub fn from_existing_account(bech32_str: &str, spending_counter: Option<u32>) -> Self {
         let signing_key = SigningKey::from_bech32_str(bech32_str).expect("bad bech32");
         let identifier = signing_key.identifier();
