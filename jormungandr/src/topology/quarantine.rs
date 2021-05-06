@@ -16,6 +16,12 @@ const DEFAULT_MAX_QUARANTINE_DURATION: StdDuration = StdDuration::from_secs(2 * 
 /// default number of records is 24_000
 const DEFAULT_MAX_NUM_QUARANTINE_RECORDS: usize = 24_000;
 
+#[derive(Debug, Clone)]
+struct QuarantineRecord {
+    peer_info: PeerInfo,
+    quarantine_time: Instant,
+}
+
 /// Forgive nodes we demoted after some time
 pub struct Quarantine {
     quarantine_duration: StdDuration,
@@ -53,7 +59,13 @@ impl Quarantine {
         } else {
             tracing::debug!(node = %node.address, id=?node.id, ?self.quarantine_duration, "quarantining node");
             node.quarantined = Some(SystemTime::now().into());
-            self.quarantined_records.put(node, Instant::now());
+            self.quarantined_records.put(
+                node.id.clone(),
+                QuarantineRecord {
+                    peer_info: node,
+                    quarantine_time: Instant::now(),
+                },
+            );
             true
         }
     }
@@ -61,7 +73,7 @@ impl Quarantine {
     pub fn quarantined_nodes(&self) -> Vec<PeerInfo> {
         self.quarantined_records
             .iter()
-            .map(|(k, _)| k.clone())
+            .map(|(_, v)| v.peer_info.clone())
             .collect()
     }
 
@@ -69,8 +81,8 @@ impl Quarantine {
         let mut res = Vec::new();
         // This is basically a FIFO queue, a lru cache is being used just to
         // avoid keeping another data structure to know if an address was already quarantined
-        while let Some(record) = self.quarantined_records.peek_lru() {
-            if record.1.elapsed() < self.quarantine_duration {
+        while let Some((_id, record)) = self.quarantined_records.peek_lru() {
+            if record.quarantine_time.elapsed() < self.quarantine_duration {
                 break;
             }
 
