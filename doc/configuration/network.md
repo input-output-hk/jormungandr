@@ -122,7 +122,7 @@ Use the CA certificate with `jcli`.
   gossip the more bandwidth the node will need. The less often the node gossips
   the less good the resilience to node churn. `[default: 10s]`
 - `network-stuck_check`: (optional) If no gossip has been received in the last interval,
-  try to connect to nodes that were put in quarantine and for which quarantine has elapsed.
+  try to connect to nodes that were previously known to this node.
   This helps to rejoin the protocol in case there is a network outage and the node cannot reach
   any other peer. `[default: 5min]`
 - `max_bootstrap_attempts`: (optional) number of times to retry bootstrapping from trusted peers.

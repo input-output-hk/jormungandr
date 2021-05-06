@@ -124,8 +124,7 @@ pub struct P2pConfig {
     pub gossip_interval: Option<Duration>,
 
     /// if no gossip has been received in the last interval, try to connect
-    /// to nodes that were put in quarantine and for which quarantine has
-    /// elapsed.
+    /// to nodes that were previously known to this node.
     ///
     /// The default value is 5 min.
     #[serde(default)]
