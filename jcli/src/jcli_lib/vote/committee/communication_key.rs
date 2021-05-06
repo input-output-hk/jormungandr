@@ -74,12 +74,12 @@ impl ToPublic {
             return Err(Error::InvalidSecretKey);
         }
 
-        let key = chain_vote::gargamel::SecretKey::from_bytes(
+        let key = chain_vote::encryption::SecretKey::from_bytes(
             &Vec::<u8>::from_base32(&bytes).map_err(|_| Error::InvalidSecretKey)?,
         )
         .ok_or(Error::InvalidSecretKey)?;
 
-        let kp = chain_vote::gargamel::Keypair::from_secretkey(key);
+        let kp = chain_vote::encryption::Keypair::from_secretkey(key);
 
         let mut output = self.output_file.open()?;
         writeln!(

@@ -1,5 +1,5 @@
 use crate::wallet::Wallet;
-use chain_crypto::{Curve25519_2HashDH, Ed25519, SumEd25519_12};
+use chain_crypto::{Curve25519_2HashDh, Ed25519, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::{PoolId, PoolPermissions, PoolRegistration},
     rewards::{Ratio as RatioLib, TaxType},
@@ -65,8 +65,8 @@ impl StakePool {
         KeyPair::<SumEd25519_12>(self.inner.kes())
     }
 
-    pub fn vrf(&self) -> KeyPair<Curve25519_2HashDH> {
-        KeyPair::<Curve25519_2HashDH>(self.inner.vrf())
+    pub fn vrf(&self) -> KeyPair<Curve25519_2HashDh> {
+        KeyPair::<Curve25519_2HashDh>(self.inner.vrf())
     }
 }
 

@@ -53,10 +53,8 @@ impl ClientLoadCommand {
     pub fn exec(&self) -> Result<(), ClientLoadCommandError> {
         let scenario_type = if let Some(duration) = self.duration {
             Some(ScenarioType::Duration(duration))
-        } else if let Some(iteration) = self.sync_iteration {
-            Some(ScenarioType::Iteration(iteration))
         } else {
-            None
+            self.sync_iteration.map(ScenarioType::Iteration)
         };
 
         if scenario_type.is_none() {

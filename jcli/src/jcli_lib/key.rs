@@ -2,7 +2,7 @@ use crate::jcli_lib::utils::io;
 use crate::jcli_lib::utils::output_file::{self, OutputFile};
 use bech32::{self, u5, FromBase32, ToBase32};
 use chain_crypto::{
-    bech32::Bech32 as _, AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDH, Ed25519,
+    bech32::Bech32 as _, AsymmetricKey, AsymmetricPublicKey, Curve25519_2HashDh, Ed25519,
     Ed25519Bip32, Ed25519Extended, SecretKey, SigningAlgorithm, SumEd25519_12, Verification,
     VerificationAlgorithm,
 };
@@ -216,7 +216,7 @@ impl Generate {
             GenPrivKeyType::Ed25519Bip32 => gen_priv_key::<Ed25519Bip32>(self.seed)?,
             GenPrivKeyType::Ed25519Extended => gen_priv_key::<Ed25519Extended>(self.seed)?,
             GenPrivKeyType::SumEd25519_12 => gen_priv_key::<SumEd25519_12>(self.seed)?,
-            GenPrivKeyType::Curve25519_2HashDh => gen_priv_key::<Curve25519_2HashDH>(self.seed)?,
+            GenPrivKeyType::Curve25519_2HashDh => gen_priv_key::<Curve25519_2HashDh>(self.seed)?,
         };
         let mut output = self.output_file.open()?;
         writeln!(output, "{}", priv_key_bech32)?;
@@ -232,7 +232,7 @@ impl ToPublic {
             Ed25519Bip32::SECRET_BECH32_HRP => gen_pub_key::<Ed25519Bip32>(&data),
             Ed25519Extended::SECRET_BECH32_HRP => gen_pub_key::<Ed25519Extended>(&data),
             SumEd25519_12::SECRET_BECH32_HRP => gen_pub_key::<SumEd25519_12>(&data),
-            Curve25519_2HashDH::SECRET_BECH32_HRP => gen_pub_key::<Curve25519_2HashDH>(&data),
+            Curve25519_2HashDh::SECRET_BECH32_HRP => gen_pub_key::<Curve25519_2HashDh>(&data),
             _ => Err(Error::UnknownBech32PrivKeyHrp { hrp }),
         }?;
         let mut output = self.output_file.open()?;
@@ -249,12 +249,12 @@ impl ToBytes {
             Ed25519::PUBLIC_BECH32_HRP
             | Ed25519Bip32::PUBLIC_BECH32_HRP
             | SumEd25519_12::PUBLIC_BECH32_HRP
-            | Curve25519_2HashDH::PUBLIC_BECH32_HRP
+            | Curve25519_2HashDh::PUBLIC_BECH32_HRP
             | Ed25519::SECRET_BECH32_HRP
             | Ed25519Bip32::SECRET_BECH32_HRP
             | Ed25519Extended::SECRET_BECH32_HRP
             | SumEd25519_12::SECRET_BECH32_HRP
-            | Curve25519_2HashDH::SECRET_BECH32_HRP => Ok(()),
+            | Curve25519_2HashDh::SECRET_BECH32_HRP => Ok(()),
             _ => Err(Error::UnknownBech32PrivKeyHrp { hrp }),
         }?;
         let bytes = Vec::<u8>::from_base32(&data)?;
@@ -273,7 +273,7 @@ impl FromBytes {
             GenPrivKeyType::Ed25519Bip32 => bytes_to_priv_key::<Ed25519Bip32>(&bytes)?,
             GenPrivKeyType::Ed25519Extended => bytes_to_priv_key::<Ed25519Extended>(&bytes)?,
             GenPrivKeyType::SumEd25519_12 => bytes_to_priv_key::<SumEd25519_12>(&bytes)?,
-            GenPrivKeyType::Curve25519_2HashDh => bytes_to_priv_key::<Curve25519_2HashDH>(&bytes)?,
+            GenPrivKeyType::Curve25519_2HashDh => bytes_to_priv_key::<Curve25519_2HashDh>(&bytes)?,
         };
         let mut output = self.output_file.open()?;
         writeln!(output, "{}", priv_key_bech32)?;

@@ -1,6 +1,6 @@
 use crate::jcli_lib::vote::{Error, OutputFile, Seed};
 use bech32::{FromBase32, ToBase32};
-use chain_vote::gargamel::PublicKey;
+use chain_vote::encryption::PublicKey;
 use chain_vote::{MemberCommunicationPublicKey, MemberState};
 use rand::rngs::OsRng;
 use rand_chacha::rand_core::SeedableRng;
@@ -16,7 +16,7 @@ pub struct Generate {
     threshold: usize,
 
     /// the common reference string
-    #[structopt(long, name = "CRS")]
+    #[structopt(long, name = "Crs")]
     crs: String,
 
     /// communication keys of all committee members
@@ -82,7 +82,7 @@ impl Generate {
             return Err(Error::InvalidCommitteMemberIndex);
         }
 
-        let crs = chain_vote::CRS::from_hash(self.crs.as_bytes());
+        let crs = chain_vote::Crs::from_hash(self.crs.as_bytes());
 
         let ms = MemberState::new(
             &mut rng,
@@ -117,12 +117,12 @@ impl ToPublic {
             return Err(Error::InvalidSecretKey);
         }
 
-        let key = chain_vote::gargamel::SecretKey::from_bytes(
+        let key = chain_vote::encryption::SecretKey::from_bytes(
             &Vec::<u8>::from_base32(&key).map_err(|_| Error::InvalidSecretKey)?,
         )
         .ok_or(Error::InvalidSecretKey)?;
 
-        let pk = chain_vote::gargamel::Keypair::from_secretkey(key).public_key;
+        let pk = chain_vote::encryption::Keypair::from_secretkey(key).public_key;
 
         let mut output = self.output_file.open()?;
         let key = bech32::encode(

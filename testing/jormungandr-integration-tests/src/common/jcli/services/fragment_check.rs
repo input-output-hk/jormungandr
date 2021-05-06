@@ -22,8 +22,8 @@ impl<'a> FragmentCheck<'a> {
     pub fn new(jcli: JCli, jormungandr: &'a JormungandrProcess, id: FragmentId) -> Self {
         Self {
             jcli,
-            jormungandr,
             id,
+            jormungandr,
         }
     }
 

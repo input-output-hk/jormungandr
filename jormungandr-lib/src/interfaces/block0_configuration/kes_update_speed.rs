@@ -55,7 +55,7 @@ impl TryFrom<ConfigParam> for KesUpdateSpeed {
     type Error = TryFromKesUpdateSpeedError;
     fn try_from(config_param: ConfigParam) -> Result<Self, Self::Error> {
         match config_param {
-            ConfigParam::KESUpdateSpeed(speed) => {
+            ConfigParam::KesUpdateSpeed(speed) => {
                 KesUpdateSpeed::new(speed).ok_or(TryFromKesUpdateSpeedError::Invalid { speed })
             }
             _ => Err(TryFromKesUpdateSpeedError::Incompatible),
@@ -65,7 +65,7 @@ impl TryFrom<ConfigParam> for KesUpdateSpeed {
 
 impl From<KesUpdateSpeed> for ConfigParam {
     fn from(kes_update_speed: KesUpdateSpeed) -> Self {
-        ConfigParam::KESUpdateSpeed(kes_update_speed.0)
+        ConfigParam::KesUpdateSpeed(kes_update_speed.0)
     }
 }
 

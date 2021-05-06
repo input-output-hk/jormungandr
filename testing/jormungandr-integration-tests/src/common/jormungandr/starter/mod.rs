@@ -206,10 +206,9 @@ impl Starter {
     }
 
     pub fn start_benchmark_run(&self) -> Option<SpeedBenchmarkRun> {
-        match &self.benchmark {
-            Some(benchmark_def) => Some(benchmark_def.clone().target(self.timeout).start()),
-            None => None,
-        }
+        self.benchmark
+            .as_ref()
+            .map(|benchmark_def| benchmark_def.clone().target(self.timeout).start())
     }
 
     pub fn finish_benchmark(&self, benchmark_run: Option<SpeedBenchmarkRun>) {
@@ -296,8 +295,8 @@ impl<'a> ConfiguredStarter<'a, legacy::NodeConfig> {
         params.write_node_config();
         Ok(ConfiguredStarter {
             starter,
-            temp_dir,
             params,
+            temp_dir,
         })
     }
 }

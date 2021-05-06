@@ -2,7 +2,7 @@ use crate::jcli_lib::{
     certificate::{write_cert, Error},
     utils::key_parser::parse_pub_key,
 };
-use chain_crypto::{Curve25519_2HashDH, Ed25519, PublicKey, SumEd25519_12};
+use chain_crypto::{Curve25519_2HashDh, Ed25519, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::{Certificate, PoolPermissions, PoolRegistration},
     key::GenesisPraosLeader,
@@ -87,7 +87,7 @@ pub struct StakePoolRegistration {
         name = "VRF_KEY",
         parse(try_from_str = parse_pub_key)
     )]
-    pub vrf_key: PublicKey<Curve25519_2HashDH>,
+    pub vrf_key: PublicKey<Curve25519_2HashDh>,
 
     /// set the fixed value tax the stake pool will reserve from the reward
     ///

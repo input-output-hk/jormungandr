@@ -35,8 +35,8 @@ impl NodeService {
         let span = span!(parent: global_state.span(), Level::TRACE, "sub_task", kind = "server");
         NodeService {
             channels,
-            span,
             global_state,
+            span,
         }
     }
 

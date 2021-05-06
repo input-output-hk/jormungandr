@@ -309,12 +309,12 @@ impl FaultyTransactionBuilder {
         let input_value = self.fees.calculate(None, 1, 1).saturating_add(Value(1u64));
         let input = from.add_input_with_value(input_value.into());
         let output = OutputAddress::from_address(to.address().into(), Value(1u64));
-        self.transaction_to(&[input], &[output], |_sign_data| vec![])
+        self.transaction_to(&[input], &[output], |_sign_data| Vec::new())
     }
 
     pub fn no_input(&self, to: &Wallet) -> Fragment {
         let output = Output::from_address(to.address().into(), Value(1u64));
-        self.transaction_to(&[], &[output], |_sign_data| vec![])
+        self.transaction_to(&[], &[output], |_sign_data| Vec::new())
     }
 
     pub fn no_output(&self, from: &Wallet) -> Fragment {
@@ -334,7 +334,7 @@ impl FaultyTransactionBuilder {
     }
 
     pub fn empty(&self) -> Fragment {
-        self.transaction_to(&[], &[], |_sign_data| vec![])
+        self.transaction_to(&[], &[], |_sign_data| Vec::new())
     }
 
     pub fn wrong_counter(&self, from: &Wallet, to: &Wallet) -> Fragment {

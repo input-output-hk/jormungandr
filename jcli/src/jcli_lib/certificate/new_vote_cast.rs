@@ -91,7 +91,7 @@ impl PrivateVoteCast {
             chain_vote::EncryptingVoteKey::from_bytes(&key_bin).ok_or(Error::VoteEncryptingKey)?;
 
         let vote = chain_vote::Vote::new(self.options, self.choice as usize);
-        let crs = chain_vote::CRS::from_hash(self.vote_plan_id.as_ref());
+        let crs = chain_vote::Crs::from_hash(self.vote_plan_id.as_ref());
         let (encrypted_vote, proof) =
             chain_impl_mockchain::vote::encrypt_vote(&mut rng, &crs, &key, vote);
 
