@@ -45,7 +45,7 @@ fn parse_member_key(key: &str) -> Result<chain_vote::committee::MemberPublicKey,
             if hrp != crate::jcli_lib::vote::bech32_constants::MEMBER_PK_HRP {
                 return Err(Error::InvalidPublicKey);
             }
-            chain_vote::gargamel::PublicKey::from_bytes(
+            chain_vote::encryption::PublicKey::from_bytes(
                 &Vec::<u8>::from_base32(&raw_key).map_err(|_| Error::InvalidPublicKey)?,
             )
             .ok_or(Error::InvalidPublicKey)
