@@ -19,6 +19,7 @@ use jormungandr_testing_utils::{
 use assert_fs::TempDir;
 
 #[test]
+#[ignore]
 pub fn test_legacy_node_all_fragments() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
