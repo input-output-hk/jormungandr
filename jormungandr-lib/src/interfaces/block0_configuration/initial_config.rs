@@ -254,7 +254,7 @@ impl BlockchainConfiguration {
                         .map(|_| "consensus_genesis_praos_active_slot_coeff")
                 }
                 ConfigParam::LinearFee(param) => linear_fees.replace(param).map(|_| "linear_fees"),
-                cp @ ConfigParam::KESUpdateSpeed(_) => kes_update_speed
+                cp @ ConfigParam::KesUpdateSpeed(_) => kes_update_speed
                     .replace(KesUpdateSpeed::try_from(cp)?)
                     .map(|_| "kes_update_speed"),
                 cp @ ConfigParam::FeesInTreasury(_) => fees_go_to

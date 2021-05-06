@@ -16,7 +16,7 @@ pub struct Generate {
     threshold: usize,
 
     /// the common reference string
-    #[structopt(long, name = "CRS")]
+    #[structopt(long, name = "Crs")]
     crs: String,
 
     /// communication keys of all committee members
@@ -82,7 +82,7 @@ impl Generate {
             return Err(Error::InvalidCommitteMemberIndex);
         }
 
-        let crs = chain_vote::CRS::from_hash(self.crs.as_bytes());
+        let crs = chain_vote::Crs::from_hash(self.crs.as_bytes());
 
         let ms = MemberState::new(
             &mut rng,

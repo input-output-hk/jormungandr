@@ -4,7 +4,7 @@ use crate::common::{
     startup,
 };
 
-use chain_crypto::{Curve25519_2HashDH, SumEd25519_12};
+use chain_crypto::{Curve25519_2HashDh, SumEd25519_12};
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -109,7 +109,7 @@ pub fn create_new_stake_pool(
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let kes = startup::create_new_key_pair::<Curve25519_2HashDH>();
+    let kes = startup::create_new_key_pair::<Curve25519_2HashDh>();
     let vrf = startup::create_new_key_pair::<SumEd25519_12>();
 
     let owner_stake_key = temp_dir.child("stake_key.private_key");

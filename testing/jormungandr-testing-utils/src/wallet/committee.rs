@@ -8,8 +8,8 @@ use chain_impl_mockchain::{
     vote::VotePlanStatus,
 };
 use chain_vote::{
-    committee::ElectionPublicKey, EncryptingVoteKey, MemberCommunicationKey,
-    MemberCommunicationPublicKey, MemberPublicKey, MemberState, OpeningVoteKey, CRS,
+    committee::ElectionPublicKey, Crs, EncryptingVoteKey, MemberCommunicationKey,
+    MemberCommunicationPublicKey, MemberPublicKey, MemberState, OpeningVoteKey,
 };
 use jormungandr_lib::crypto::account::Identifier;
 use rand_core::{CryptoRng, RngCore};
@@ -157,7 +157,7 @@ impl PrivateVoteCommitteeDataManager {
     {
         let mut buf = [0; 32];
         rand::thread_rng().fill_bytes(&mut buf);
-        let crs = CRS::from_hash(&buf);
+        let crs = Crs::from_hash(&buf);
         let mut data = HashMap::new();
 
         let communication_secret_keys: Vec<MemberCommunicationKey> =
