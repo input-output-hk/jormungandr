@@ -120,7 +120,7 @@ fn assert_all_fragment_are_persisted<P: AsRef<Path>, R: AsRef<Path>>(left: P, ri
     let exporter = FragmentExporter::new(left.as_ref().to_path_buf()).unwrap();
     let fragments = exporter.read_as_bytes().unwrap();
 
-    let persistent_log_viewer = PersistentLogViewer::new(right.as_ref().to_path_buf()).unwrap();
+    let persistent_log_viewer = PersistentLogViewer::new(right.as_ref().to_path_buf());
     assert_eq!(fragments.len(), persistent_log_viewer.get_all().len());
     assert_eq!(fragments, persistent_log_viewer.get_bin());
 }
@@ -211,14 +211,7 @@ pub fn fragment_which_reached_mempool_should_be_persisted() {
         .send_transactions_with_invalid_counter(10, &mut sender, &receiver, &jormungandr)
         .unwrap();
 
-    let exporter = FragmentExporter::new(dump_folder.path().to_path_buf()).unwrap();
-    let fragments = exporter.read_as_bytes().unwrap();
-
-    let persistent_log_viewer =
-        PersistentLogViewer::new(persistent_log_path.path().to_path_buf()).unwrap();
-
-    assert_eq!(fragments.len(), persistent_log_viewer.get_all().len());
-    assert_eq!(fragments, persistent_log_viewer.get_bin());
+    assert_all_fragment_are_persisted(dump_folder.path(), persistent_log_path.path());
 }
 
 #[test]
@@ -255,14 +248,7 @@ pub fn fragment_which_is_not_in_fragment_log_should_be_persisted() {
         .send_transactions_with_invalid_counter(10, &mut sender, &receiver, &jormungandr)
         .unwrap();
 
-    let exporter = FragmentExporter::new(dump_folder.path().to_path_buf()).unwrap();
-    let fragments = exporter.read_as_bytes().unwrap();
-
-    let persistent_log_viewer =
-        PersistentLogViewer::new(persistent_log_path.path().to_path_buf()).unwrap();
-
-    assert_eq!(fragments.len(), persistent_log_viewer.get_all().len());
-    assert_eq!(fragments, persistent_log_viewer.get_bin());
+    assert_all_fragment_are_persisted(dump_folder.path(), persistent_log_path.path());
 }
 
 #[test]
@@ -299,8 +285,7 @@ pub fn pending_fragment_should_be_persisted() {
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
         .unwrap();
 
-    let persistent_log_viewer =
-        PersistentLogViewer::new(persistent_log_path.path().to_path_buf()).unwrap();
+    let persistent_log_viewer = PersistentLogViewer::new(persistent_log_path.path().to_path_buf());
 
     assert_eq!(1, persistent_log_viewer.get_all().len());
 
@@ -377,8 +362,7 @@ pub fn node_should_pickup_log_after_restart() {
         .send_transactions_with_invalid_counter(10, &mut sender, &receiver, &jormungandr)
         .unwrap();
 
-    let persistent_log_viewer =
-        PersistentLogViewer::new(persistent_log_path.path().to_path_buf()).unwrap();
+    let persistent_log_viewer = PersistentLogViewer::new(persistent_log_path.path().to_path_buf());
 
     assert_eq!(20, persistent_log_viewer.get_all().len());
 }

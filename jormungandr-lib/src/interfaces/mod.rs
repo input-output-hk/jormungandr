@@ -42,7 +42,7 @@ pub use self::committee::CommitteeIdDef;
 pub use self::config::*;
 pub use self::fragment::FragmentDef;
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
-pub use self::fragment_log_persistent::PersistentFragmentLog;
+pub use self::fragment_log_persistent::*;
 pub use self::leadership_log::{
     EnclaveLeaderId, LeadershipLog, LeadershipLogId, LeadershipLogStatus,
 };

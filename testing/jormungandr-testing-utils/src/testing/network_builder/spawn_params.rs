@@ -4,8 +4,8 @@ use jormungandr_lib::interfaces::{
 
 use super::{LeadershipMode, PersistenceMode};
 use crate::testing::node::Version;
-use std::path::PathBuf;
 use std::path::Path;
+use std::path::PathBuf;
 
 #[derive(Clone)]
 pub struct SpawnParams {
@@ -49,7 +49,7 @@ impl SpawnParams {
             version: None,
             bootstrap_from_peers: None,
             skip_bootstrap: None,
-            persistent_fragment_log: None
+            persistent_fragment_log: None,
         }
     }
 
