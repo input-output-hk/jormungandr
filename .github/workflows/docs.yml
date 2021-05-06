@@ -1,4 +1,5 @@
 name: Build and publish docs
+
 on:
   push:
     branches:
@@ -23,6 +24,7 @@ jobs:
           gh release --repo Michael-F-Bryan/mdbook-linkcheck download --pattern '*x86_64-unknown-linux-gnu.zip'
           unzip *x86_64-unknown-linux-gnu.zip
           rm *x86_64-unknown-linux-gnu.zip
+          chmod +x ./mdbook-linkcheck
           echo $GITHUB_WORKSPACE/mdbook-linkcheck >> $GITHUB_PATH
 
       - name: Setup mdBook
