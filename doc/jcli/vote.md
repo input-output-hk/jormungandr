@@ -29,7 +29,6 @@ jcli votes committee communication-key to-public --input ./comm.sk > ./comm.pk
 #### Committee member key
 
 ```shell
-crs=$(jcli votes crs generate)
 jcli votes committee member-key generate --threshold 3 --crs "$crs" --index 0 --keys pk1 pk2 pk3 > ./member.sk
 ```
 Where `pkX` are each of the committee communication public keys in bech32 format.

@@ -35,11 +35,14 @@ use jortestkit::load::Configuration;
 use jortestkit::measurement::Status;
 use rand::rngs::OsRng;
 
+const CRS_SEED: &[u8] = "Testing seed".as_bytes();
+
 pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
     let temp_dir = TempDir::new().unwrap().into_persistent();
     let mut rng = OsRng;
     let members = CommitteeMembersManager::new(
         &mut rng,
+        CRS_SEED,
         quick_config.tally_threshold(),
         quick_config.members_count(),
     );
@@ -207,6 +210,7 @@ pub fn adversary_private_vote_load_scenario(
     let mut rng = OsRng;
     let members = CommitteeMembersManager::new(
         &mut rng,
+        CRS_SEED,
         quick_config.tally_threshold(),
         quick_config.members_count(),
     );

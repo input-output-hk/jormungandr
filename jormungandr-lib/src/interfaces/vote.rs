@@ -737,7 +737,7 @@ mod test {
     #[test]
     fn test_deserialize_member_public_keys() {
         let mut rng = rand_chacha::ChaChaRng::from_entropy();
-        let crs = chain_vote::CRS::random(&mut rng);
+        let crs = chain_vote::CRS::from_hash("Dummy shared string".as_bytes());
         let comm_key = chain_vote::MemberCommunicationKey::new(&mut rng);
 
         let member_key =
@@ -761,7 +761,7 @@ mod test {
         struct Helper(#[serde(with = "VotePlanDef")] VotePlan);
 
         let mut rng = rand_chacha::ChaChaRng::from_entropy();
-        let crs = chain_vote::CRS::random(&mut rng);
+        let crs = chain_vote::CRS::from_hash("Dummy shared string".as_bytes());
         let comm_key = chain_vote::MemberCommunicationKey::new(&mut rng);
 
         let member_key =
