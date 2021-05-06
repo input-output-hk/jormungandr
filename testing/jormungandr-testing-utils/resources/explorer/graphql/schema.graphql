@@ -200,7 +200,7 @@ type Proposal {
 
   """
   get the vote options range
-  
+
   this is the available range of choices to make for the given
   proposal. all casted votes for this proposals ought to be in
   within the given range

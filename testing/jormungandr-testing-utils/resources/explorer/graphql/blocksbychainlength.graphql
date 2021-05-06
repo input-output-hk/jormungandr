@@ -1,4 +1,4 @@
-query BlocksByChainLength($length: ChainLength!){ 
+query BlocksByChainLength($length: ChainLength!){
     blocksByChainLength(length: $length) {
         id,
     }

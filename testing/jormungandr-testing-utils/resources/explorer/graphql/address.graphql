@@ -1,4 +1,4 @@
-query Address($bech32: String!){ 
+query Address($bech32: String!){
     address(bech32: $bech32) {
         id,
         delegation{

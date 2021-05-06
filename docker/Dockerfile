@@ -23,14 +23,14 @@ RUN apt-get update && \
     cd src && git checkout ${ENV_VER} && \
     cp scripts/bootstrap scripts/faucet-send-money.shtempl scripts/faucet-send-certificate.shtempl \
     scripts/create-stakepool.shtempl \
-    scripts/create-account-and-delegate.shtempl scripts/jcli-helpers ${ENV_PREFIX}/bin 
+    scripts/create-account-and-delegate.shtempl scripts/jcli-helpers ${ENV_PREFIX}/bin
 
 # install the node and jcli from binary
 RUN if [ "${ENV_BUILD}" = "false" ]; then \
     echo "[INFO] - you have selected to install binaries" && \
     cd ${ENV_PREFIX}/bin && \
     curl -s -O -L https://github.com/input-output-hk/jormungandr/releases/download/${ENV_VER}/jormungandr-${ENV_VER}-x86_64-unknown-linux-gnu.tar.gz && \
-    tar xzf jormungandr-${ENV_VER}-x86_64-unknown-linux-gnu.tar.gz && rm jormungandr-${ENV_VER}-x86_64-unknown-linux-gnu.tar.gz ; fi 
+    tar xzf jormungandr-${ENV_VER}-x86_64-unknown-linux-gnu.tar.gz && rm jormungandr-${ENV_VER}-x86_64-unknown-linux-gnu.tar.gz ; fi
 
 # install the node and jcli from source
 RUN if [ "${ENV_BUILD}" = "true" ]; then \

@@ -35,7 +35,7 @@ There are also scenarios for testing ledger in a 'turn-based' aproach. For examp
         (&bob_stake_pool, 3u8),
         (&clarice_stake_pool, 5u8),
     ];
-    
+
     /// post delegation certificates
     controller
         .delegates_to_many(&david, &delegation_ratio, &mut ledger)

@@ -33,20 +33,20 @@ Certificate:
                     8b:19
                 Exponent: 65537 (0x10001)
         X509v3 extensions:
-            X509v3 Basic Constraints: 
+            X509v3 Basic Constraints:
                 CA:FALSE
-            X509v3 Subject Key Identifier: 
+            X509v3 Subject Key Identifier:
                 22:ED:4F:59:D1:45:82:36:4D:09:EC:03:56:46:6F:74:EB:92:1B:B3
-            X509v3 Authority Key Identifier: 
+            X509v3 Authority Key Identifier:
                 keyid:53:9A:10:7B:54:7E:2D:4E:C8:81:BB:4D:A1:91:1A:C1:84:AB:8E:96
                 DirName:/CN=localhost
                 serial:7A:5A:C0:73:6A:C1:51:93:D9:17:77:E2:32:34:73:27:76:15:C3:95
 
-            X509v3 Extended Key Usage: 
+            X509v3 Extended Key Usage:
                 TLS Web Server Authentication
-            X509v3 Key Usage: 
+            X509v3 Key Usage:
                 Digital Signature, Key Encipherment
-            X509v3 Subject Alternative Name: 
+            X509v3 Subject Alternative Name:
                 DNS:localhost
     Signature Algorithm: sha256WithRSAEncryption
          87:14:ae:4b:77:4e:09:32:88:6d:97:4d:d6:6f:d7:47:32:f8:

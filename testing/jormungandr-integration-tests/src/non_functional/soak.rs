@@ -56,7 +56,7 @@ pub fn test_blocks_are_being_created_for_7_hours() {
         match checker.wait_until_processed(&wait) {
             Ok(fragment_id) => fragment_id,
             Err(err) => {
-                let message = format!("error: {}, transaction with id: {} was not in a block as expected. Message log: {:?}. Jormungandr log: {}", 
+                let message = format!("error: {}, transaction with id: {} was not in a block as expected. Message log: {:?}. Jormungandr log: {}",
                             err,
                             fragment_id,
                             jcli.rest().v0().message().logs(jormungandr.rest_uri()),
