@@ -113,7 +113,7 @@ pub fn read_persistent_fragment_logs_from_file_path(
     for entry in entries {
         handles.push(FileFragments::from_path(entry)?);
     }
-    Ok(handles.into_iter().flat_map(|handle| handle.into_iter()))
+    Ok(handles.into_iter().flatten())
 }
 
 pub fn load_persistent_fragments_logs_from_folder_path(
