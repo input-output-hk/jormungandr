@@ -1,6 +1,6 @@
 use std::fs;
 use std::io;
-use std::io::{BufRead, BufReader};
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
 use crate::interfaces::FragmentDef;
@@ -41,10 +41,16 @@ pub struct FileFragmentsIterator {
 }
 
 impl FileFragments {
-    pub fn from_path(file_path: PathBuf) -> std::io::Result<Self> {
-        let mut reader = BufReader::new(fs::File::open(file_path.clone())?);
-        reader.fill_buf()?;
-        Ok(Self { reader, file_path })
+    pub fn from_path(
+        file_path: PathBuf,
+    ) -> std::io::Result<Box<dyn Iterator<Item = Result<PersistentFragmentLog, DeserializeError>>>>
+    {
+        let metadata = fs::metadata(file_path.clone())?;
+        if metadata.len() == 0 {
+            return Ok(Box::new(vec![].into_iter()));
+        }
+        let reader = BufReader::new(fs::File::open(file_path.clone())?);
+        Ok(Box::new(Self { reader, file_path }.into_iter()))
     }
 }
 
@@ -66,8 +72,9 @@ impl Iterator for FileFragmentsIterator {
 
     fn next(&mut self) -> Option<Self::Item> {
         // EOF reached when buffer is empty.
-        // Then we stop the iterator. Buffer if prefilled during initialization of FileFragments
-        if self.reader.buffer().is_empty() {
+        // Then we stop the iterator. File is guaranteed to be non-empty by construction, the check
+        // cannot be done till buffer is filled, hence first time should be able to read at least something.
+        if self.reader.buffer().is_empty() && self.counter != 0 {
             return None;
         }
         let codec = bincode::DefaultOptions::new()
