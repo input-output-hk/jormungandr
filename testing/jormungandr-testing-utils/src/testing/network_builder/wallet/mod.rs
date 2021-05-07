@@ -45,7 +45,10 @@ impl Wallet {
         RNG: CryptoRng + RngCore,
     {
         Wallet {
-            inner: Inner::Account(AccountWallet::generate_extended(rng, template.discrimination())),
+            inner: Inner::Account(AccountWallet::generate_extended(
+                rng,
+                template.discrimination(),
+            )),
             template,
         }
     }

@@ -63,7 +63,6 @@ impl Wallet {
         }
     }
 
-
     pub fn from_existing_account(bech32_str: &str, spending_counter: Option<u32>) -> Self {
         let signing_key = SigningKey::from_bech32_str(bech32_str).expect("bad bech32");
         let identifier = signing_key.identifier();
