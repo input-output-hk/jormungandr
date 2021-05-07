@@ -86,7 +86,9 @@ impl Iterator for FileFragmentsIterator {
     }
 }
 
-pub fn get_fragments_log_files_path(folder: &Path) -> io::Result<impl Iterator<Item = PathBuf>> {
+pub fn list_persistent_fragment_log_files_from_folder_path(
+    folder: &Path,
+) -> io::Result<impl Iterator<Item = PathBuf>> {
     let mut entries: Vec<_> = fs::read_dir(folder)?
         .filter_map(|entry| match entry {
             Ok(entry) => Some(folder.join(entry.path())),
@@ -97,7 +99,7 @@ pub fn get_fragments_log_files_path(folder: &Path) -> io::Result<impl Iterator<I
     Ok(entries.into_iter())
 }
 
-pub fn read_entries_from_files_path(
+pub fn read_persistent_fragment_logs_from_file_path(
     entries: impl Iterator<Item = PathBuf>,
 ) -> io::Result<impl Iterator<Item = Result<PersistentFragmentLog, DeserializeError>>> {
     let mut handles = Vec::new();
@@ -107,8 +109,10 @@ pub fn read_entries_from_files_path(
     Ok(handles.into_iter().flat_map(|handle| handle.into_iter()))
 }
 
-pub fn load_fragments_from_folder_path(
+pub fn load_persistent_fragments_logs_from_folder_path(
     folder: &Path,
 ) -> io::Result<impl Iterator<Item = Result<PersistentFragmentLog, DeserializeError>>> {
-    read_entries_from_files_path(get_fragments_log_files_path(folder)?)
+    read_persistent_fragment_logs_from_file_path(
+        list_persistent_fragment_log_files_from_folder_path(folder)?,
+    )
 }
