@@ -225,5 +225,9 @@ impl SpawnParams {
         if let Some(skip_bootstrap) = &self.skip_bootstrap {
             node_config.skip_bootstrap = Some(*skip_bootstrap);
         }
+
+        if let Some(persistent_fragment_log) = &self.persistent_fragment_log {
+            node_config.mempool.as_mut().expect("cannot set persistent_log while mempool is not defined").persistent_log = Some(*persistent_fragment_log);
+        }
     }
 }
