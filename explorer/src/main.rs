@@ -19,7 +19,7 @@ use std::sync::Arc;
 use thiserror::Error;
 use tokio::{signal::ctrl_c, sync::watch};
 use tonic::Streaming;
-use tracing::{debug, error, info, instrument, span, trace, Instrument, Level};
+use tracing::{error, span, Instrument, Level};
 use tracing_subscriber::FmtSubscriber;
 
 #[derive(Debug, Error)]
@@ -43,9 +43,6 @@ async fn main() -> Result<(), Error> {
         .with_max_level(Level::DEBUG)
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
-
-    // let span = span!(Level::DEBUG, "main span");
-    // let _guard = span.enter();
 
     let settings = Settings::load()?;
 
