@@ -31,6 +31,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
             log_max_entries: 100.into(),
+            persistent_log: None,
         })
         .build(&temp_dir);
 
@@ -67,7 +68,11 @@ pub fn test_mempool_pool_max_entries_limit() {
         .unwrap();
 
     let mempools = fragment_sender
-        .send_batch_fragments(vec![first_transaction, second_transaction], &jormungandr)
+        .send_batch_fragments(
+            vec![first_transaction, second_transaction],
+            false,
+            &jormungandr,
+        )
         .unwrap();
 
     jormungandr
@@ -109,6 +114,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .with_mempool(Mempool {
             pool_max_entries: 0.into(),
             log_max_entries: 100.into(),
+            persistent_log: None,
         })
         .build(&temp_dir);
 
@@ -145,7 +151,11 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .unwrap();
 
     fragment_sender
-        .send_batch_fragments(vec![first_transaction, second_transaction], &jormungandr)
+        .send_batch_fragments(
+            vec![first_transaction, second_transaction],
+            false,
+            &jormungandr,
+        )
         .unwrap();
 
     jormungandr
@@ -181,6 +191,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .with_mempool(Mempool {
             pool_max_entries: 2.into(),
             log_max_entries: 1.into(),
+            persistent_log: None,
         })
         .build(&temp_dir);
 
@@ -217,7 +228,11 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .unwrap();
 
     let mempools = fragment_sender
-        .send_batch_fragments(vec![first_transaction, second_transaction], &jormungandr)
+        .send_batch_fragments(
+            vec![first_transaction, second_transaction],
+            false,
+            &jormungandr,
+        )
         .unwrap();
 
     jormungandr
@@ -259,6 +274,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .with_mempool(Mempool {
             pool_max_entries: 2.into(),
             log_max_entries: 0.into(),
+            persistent_log: None,
         })
         .build(&temp_dir);
 
@@ -295,7 +311,11 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .unwrap();
 
     fragment_sender
-        .send_batch_fragments(vec![first_transaction, second_transaction], &jormungandr)
+        .send_batch_fragments(
+            vec![first_transaction, second_transaction],
+            false,
+            &jormungandr,
+        )
         .unwrap();
 
     jormungandr

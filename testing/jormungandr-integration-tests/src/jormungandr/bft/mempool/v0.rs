@@ -31,6 +31,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
             log_max_entries: 100.into(),
+            persistent_log: None,
         })
         .build(&temp_dir);
 
@@ -93,6 +94,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .with_mempool(Mempool {
             pool_max_entries: 0.into(),
             log_max_entries: 100.into(),
+            persistent_log: None,
         })
         .build(&temp_dir);
 
@@ -149,6 +151,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .with_mempool(Mempool {
             pool_max_entries: 2.into(),
             log_max_entries: 1.into(),
+            persistent_log: None,
         })
         .build(&temp_dir);
 
@@ -211,6 +214,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .with_mempool(Mempool {
             pool_max_entries: 2.into(),
             log_max_entries: 0.into(),
+            persistent_log: None,
         })
         .build(&temp_dir);
 
