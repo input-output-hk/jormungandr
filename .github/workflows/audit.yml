@@ -19,6 +19,7 @@ jobs:
             cut -f 1
           )
           echo "::set-output name=head::$commit"
+
       - name: Cache cargo registry index
         uses: actions/cache@v2
         with:
@@ -27,6 +28,7 @@ jobs:
           restore-keys: |
             cargo-index-
 
-      - uses: actions-rs/audit-check@v1
+      # FIXME switch back to actions-rs/audit-check when the fix is merged
+      - uses: eugene-babichenko/audit-check@dont-override-cargo-lock
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
