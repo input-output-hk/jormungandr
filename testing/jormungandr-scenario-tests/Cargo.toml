@@ -40,7 +40,7 @@ hex = "0.4"
 futures = "0.3.14"
 console = "0.14"
 yaml-rust = "0.4.4"
-indicatif = "0.15"
+indicatif = "0.16"
 lazy_static = "1"
 multiaddr = { package = "parity-multiaddr", version = "0.11" }
 
