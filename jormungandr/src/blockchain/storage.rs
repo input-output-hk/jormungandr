@@ -262,6 +262,34 @@ impl Storage {
         }))
     }
 
+    // This should be done better
+    pub fn find_common_ancestor(
+        &self,
+        tip_1: HeaderHash,
+        tip_2: HeaderHash,
+    ) -> Result<Block, Error> {
+        use chain_core::property::Block;
+
+        let mut tip_1 = self.get(tip_1)?.unwrap();
+        let mut tip_2 = self.get(tip_2)?.unwrap();
+
+        // tip1 is the one with lowest chain length
+        if tip_1.chain_length() > tip_2.chain_length() {
+            std::mem::swap(&mut tip_1, &mut tip_2);
+        }
+
+        while tip_2.chain_length() > tip_1.chain_length() {
+            tip_2 = self.get(tip_2.header.block_parent_hash())?.unwrap();
+        }
+
+        while tip_1.chain_length() > 0.into() && tip_1 != tip_2 {
+            tip_2 = self.get(tip_2.header.block_parent_hash())?.unwrap();
+            tip_1 = self.get(tip_1.header.block_parent_hash())?.unwrap();
+        }
+
+        Ok(tip_1)
+    }
+
     pub fn gc(&self, threshold_depth: u32, main_branch_tip: &[u8]) -> Result<(), Error> {
         let _enter = self.span.enter();
         let main_info = self.storage.get_block_info(main_branch_tip)?;

@@ -193,11 +193,19 @@ impl Process {
         let tip = self.blockchain_tip.clone();
         let blockchain = self.blockchain.clone();
         let explorer = self.explorer_msgbox.clone();
+        let tx_msg_box = self.fragment_msgbox.clone();
 
         info.run_periodic_fallible(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
-            move || reprocess_tip(blockchain.clone(), tip.clone(), explorer.clone()),
+            move || {
+                reprocess_tip(
+                    blockchain.clone(),
+                    tip.clone(),
+                    explorer.clone(),
+                    tx_msg_box.clone(),
+                )
+            },
         )
     }
 
@@ -282,6 +290,7 @@ async fn reprocess_tip(
     mut blockchain: Blockchain,
     tip: Tip,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    tx_msg_box: MessageBox<TransactionMsg>,
 ) -> Result<(), Error> {
     let branches: Vec<Arc<Ref>> = blockchain.branches().branches().await;
 
@@ -298,6 +307,7 @@ async fn reprocess_tip(
             tip.clone(),
             Arc::clone(other),
             explorer_msg_box.clone(),
+            Some(tx_msg_box.clone()),
         )
         .await?
     }
@@ -319,6 +329,7 @@ pub async fn process_new_ref(
     mut tip: Tip,
     candidate: Arc<Ref>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    mut tx_msg_box: Option<MessageBox<TransactionMsg>>,
 ) -> Result<(), Error> {
     let candidate_hash = candidate.hash();
     let tip_ref = tip.get_ref().await;
@@ -344,8 +355,38 @@ pub async fn process_new_ref(
                     .put_tag(MAIN_BRANCH_TAG, candidate_hash)
                     .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))?;
 
+                let block = blockchain.storage().get(candidate_hash)?;
+                if let Some(block) = block {
+                    let fragment_ids = block.fragments().map(|f| f.id()).collect();
+                    if let Some(ref mut tx_msg_box) = tx_msg_box {
+                        try_request_fragment_removal(tx_msg_box, fragment_ids, &block.header())
+                            .map_err(|_| "cannot remove fragments from pool".to_string())?;
+                    }
+                } else {
+                    panic!();
+                }
+
                 tip.update_ref(candidate).await;
             } else {
+                let common_ancestor = blockchain
+                    .storage()
+                    .find_common_ancestor(candidate_hash, tip_ref.hash())?;
+
+                let stream = blockchain
+                    .storage()
+                    .stream_from_to(common_ancestor.header.hash(), candidate_hash)?
+                    .collect::<Vec<_>>()
+                    .await;
+
+                for block in stream.into_iter() {
+                    let block = block.unwrap();
+                    let fragment_ids = block.fragments().map(|f| f.id()).collect();
+                    if let Some(ref mut tx_msg_box) = tx_msg_box {
+                        try_request_fragment_removal(tx_msg_box, fragment_ids, &block.header())
+                            .map_err(|_| "cannot remove fragments from pool".to_string())?;
+                    }
+                }
+
                 tracing::info!(
                     "switching branch from {} to {}",
                     tip_ref.header().description(),
@@ -381,11 +422,18 @@ async fn process_and_propagate_new_ref(
     new_block_ref: Arc<Ref>,
     mut network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    tx_msg_box: MessageBox<TransactionMsg>,
 ) -> Result<(), Error> {
     let header = new_block_ref.header().clone();
     tracing::debug!("processing the new block and propagating");
-
-    process_new_ref(blockchain, tip, new_block_ref, explorer_msg_box).await?;
+    process_new_ref(
+        blockchain,
+        tip,
+        new_block_ref,
+        explorer_msg_box,
+        Some(tx_msg_box),
+    )
+    .await?;
 
     tracing::debug!("propagating block to the network");
     network_msg_box
@@ -399,7 +447,7 @@ async fn process_and_propagate_new_ref(
 async fn process_leadership_block(
     mut blockchain: Blockchain,
     blockchain_tip: Tip,
-    mut tx_msg_box: MessageBox<TransactionMsg>,
+    tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     leadership_block: LeadershipBlock,
@@ -408,18 +456,13 @@ async fn process_leadership_block(
     let block = leadership_block.block.clone();
     let new_block_ref = process_leadership_block_inner(&mut blockchain, leadership_block).await?;
 
-    let fragments = block.fragments().map(|f| f.id()).collect();
-
-    tracing::trace!("updating fragments log");
-    try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
-        .map_err(|_| "cannot remove fragments from pool".to_string())?;
-
     process_and_propagate_new_ref(
         &mut blockchain,
         blockchain_tip,
         Arc::clone(&new_block_ref),
         network_msg_box,
         explorer_msg_box.clone(),
+        tx_msg_box,
     )
     .await?;
 
@@ -562,6 +605,7 @@ async fn process_network_blocks(
                 Arc::clone(&new_block_ref),
                 network_msg_box,
                 explorer_msg_box,
+                tx_msg_box,
             )
             .await?;
 
@@ -653,9 +697,6 @@ async fn check_and_apply_block(
             parent = %header.parent_id(),
             date = %header.block_date(),
             "applied block to storage"
-        );
-        try_request_fragment_removal(tx_msg_box, fragment_ids, header).unwrap_or_else(
-            |err| tracing::error!(reason = %err, "cannot remove fragments from pool"),
         );
         if let Some(msg_box) = explorer_msg_box {
             msg_box
