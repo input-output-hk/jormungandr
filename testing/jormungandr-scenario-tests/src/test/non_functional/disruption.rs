@@ -9,7 +9,10 @@ use crate::{
     Context,
 };
 
-use jormungandr_testing_utils::{testing::network_builder::FaketimeConfig, wallet::Wallet};
+use jormungandr_testing_utils::{
+    testing::{network_builder::FaketimeConfig, FragmentSenderSetup},
+    wallet::Wallet,
+};
 
 use function_name::named;
 use rand_chacha::ChaChaRng;
@@ -184,6 +187,7 @@ pub fn bft_forks(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
                 "account" "alice" with   100_000_000,
                 "account" "bob" with   100_000_000,
             ],
+            block_content_max_size = 200.into()
         }
     };
 
@@ -208,36 +212,36 @@ pub fn bft_forks(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
             .persistence_mode(PersistenceMode::Persistent)
             .faketime(FaketimeConfig {
                 offset: -2,
-                drift: 0.0,
+                // it will catch up with the real time eventually (and go beyond it, but it's not important),
+                // so that we can see what happens when it switches branches
+                drift: 1.01,
             }),
     )?;
     leader_3.wait_for_bootstrap()?;
 
     let mut alice = controller.wallet("alice")?;
     let bob = controller.wallet("bob")?;
+    let fragment_sender = controller.fragment_sender_with_setup(FragmentSenderSetup::no_verify());
 
-    for i in 0..3 {
-        // Sooner or later this will fail because a transaction will settle
-        // in the fork and the spending counter will not be correct anymore
-        let mut alice_clone = alice.clone();
-        //println!("{:?} | {:?}", alice, alice_clone);
-        controller.fragment_sender().send_transaction(
-            &mut alice_clone,
-            &bob,
-            &leader_1,
-            // so the transaction is not the same
-            (1_000_000 + i).into(),
-        )?;
-        //alice = alice_clone;
-        let state = leader_1.rest().account_state(&alice).unwrap();
-        if let Wallet::Account(account) = &alice {
-            let counter: u32 = account.internal_counter().into();
-            if counter < state.counter() {
-                alice.confirm_transaction();
-            }
-        }
+    let num_transactions = 30;
+
+    let mut last_fragment;
+    for _ in 0..num_transactions {
+        last_fragment =
+            fragment_sender.send_transaction(&mut alice, &bob, &leader_1, 1_000_000.into())?;
         // Spans at least one slot for every leader
-        std::thread::sleep(std::time::Duration::from_secs(5));
+        std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+
+    println!("waiting for fragments to settle");
+    while leader_1
+        .rest()
+        .fragments_logs()
+        .unwrap()
+        .values()
+        .any(|log| log.is_pending())
+    {
+        utils::wait(5);
     }
 
     let account_value: u64 = leader_1
@@ -247,9 +251,11 @@ pub fn bft_forks(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         .value()
         .clone()
         .into();
+
     assert!(
-        account_value < 100_000_000 - 1_000_000 * 3,
-        "found {}",
+        account_value < 100_000_000 - 1_000_000 * num_transactions,
+        "expected {} found {}",
+        100_000_000 - 1_000_000 * num_transactions,
         account_value
     );
 
