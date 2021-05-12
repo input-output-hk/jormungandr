@@ -380,6 +380,7 @@ pub async fn process_new_ref(
 
                 for block in stream.into_iter() {
                     let block = block.unwrap();
+                    tracing::debug!("merging {:?}", block);
                     let fragment_ids = block.fragments().map(|f| f.id()).collect();
                     if let Some(ref mut tx_msg_box) = tx_msg_box {
                         try_request_fragment_removal(tx_msg_box, fragment_ids, &block.header())
@@ -546,7 +547,7 @@ async fn process_block_announcement(
 async fn process_network_blocks(
     mut blockchain: Blockchain,
     blockchain_tip: Tip,
-    mut tx_msg_box: MessageBox<TransactionMsg>,
+    tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
     mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     mut get_next_block_scheduler: GetNextBlockScheduler,
@@ -565,7 +566,6 @@ async fn process_network_blocks(
                 let res = process_network_block(
                     &blockchain,
                     block.clone(),
-                    &mut tx_msg_box,
                     explorer_msg_box.as_mut(),
                     &mut get_next_block_scheduler,
                 )
@@ -622,7 +622,6 @@ async fn process_network_blocks(
 async fn process_network_block(
     blockchain: &Blockchain,
     block: Block,
-    tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
     get_next_block_scheduler: &mut GetNextBlockScheduler,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
@@ -654,9 +653,7 @@ async fn process_network_block(
             Err(ErrorKind::MissingParentBlock(parent_hash).into())
         }
         PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
-            let r =
-                check_and_apply_block(blockchain, parent_ref, block, tx_msg_box, explorer_msg_box)
-                    .await;
+            let r = check_and_apply_block(blockchain, parent_ref, block, explorer_msg_box).await;
             r
         }
     }
@@ -666,7 +663,6 @@ async fn check_and_apply_block(
     blockchain: &Blockchain,
     parent_ref: Arc<Ref>,
     block: Block,
-    tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
     let explorer_enabled = explorer_msg_box.is_some();
@@ -686,7 +682,6 @@ async fn check_and_apply_block(
     } else {
         None
     };
-    let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
     let applied_block = blockchain
         .apply_and_store_block(post_checked, block)
         .await?;

@@ -9,10 +9,7 @@ use crate::{
     Context,
 };
 
-use jormungandr_testing_utils::{
-    testing::{network_builder::FaketimeConfig, FragmentSenderSetup},
-    wallet::Wallet,
-};
+use jormungandr_testing_utils::testing::{network_builder::FaketimeConfig, FragmentSenderSetup};
 
 use function_name::named;
 use rand_chacha::ChaChaRng;
@@ -225,10 +222,8 @@ pub fn bft_forks(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let num_transactions = 30;
 
-    let mut last_fragment;
     for _ in 0..num_transactions {
-        last_fragment =
-            fragment_sender.send_transaction(&mut alice, &bob, &leader_1, 1_000_000.into())?;
+        fragment_sender.send_transaction(&mut alice, &bob, &leader_1, 1_000_000.into())?;
         // Spans at least one slot for every leader
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
