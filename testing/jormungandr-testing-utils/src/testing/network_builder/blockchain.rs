@@ -4,7 +4,8 @@ pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::{fee::LinearFee, testing::scenario::template::VotePlanDef};
 use jormungandr_lib::interfaces::CommitteeIdDef;
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
+    ActiveSlotCoefficient, BlockContentMaxSize, KesUpdateSpeed, NumberOfSlotsPerEpoch,
+    SlotDuration, DEFAULT_BLOCK_CONTENT_MAX_SIZE,
 };
 use std::collections::HashMap;
 
@@ -24,6 +25,7 @@ pub struct Blockchain {
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
     linear_fee: LinearFee,
     discrimination: Discrimination,
+    block_content_max_size: BlockContentMaxSize,
 }
 
 impl Blockchain {
@@ -49,6 +51,7 @@ impl Blockchain {
             consensus_genesis_praos_active_slot_coeff,
             linear_fee: LinearFee::new(1, 1, 1),
             discrimination: Discrimination::Test,
+            block_content_max_size: DEFAULT_BLOCK_CONTENT_MAX_SIZE.into(),
         }
     }
 
@@ -127,6 +130,10 @@ impl Blockchain {
         self.wallets.insert(wallet.alias().clone(), wallet);
     }
 
+    pub fn set_block_max_content_size(&mut self, size: BlockContentMaxSize) {
+        self.block_content_max_size = size;
+    }
+
     pub fn consensus(&self) -> &ConsensusVersion {
         &self.consensus
     }
@@ -153,5 +160,9 @@ impl Blockchain {
 
     pub fn wallets(&self) -> impl Iterator<Item = &WalletTemplate> {
         self.wallets.values()
+    }
+
+    pub fn block_content_max_size(&self) -> BlockContentMaxSize {
+        self.block_content_max_size
     }
 }

@@ -76,6 +76,7 @@ macro_rules! prepare_scenario {
                     $(proposal adds $action_value:tt to $action_target:tt with $proposal_options_count:tt vote options),+ $(,)*
                 ]
             )*],)?
+            $(block_content_max_size = $block_content_max_size:expr)?
         }
     ) => {{
         let mut builder = $crate::scenario::ControllerBuilder::new($title);
@@ -103,6 +104,10 @@ macro_rules! prepare_scenario {
             let node_leader = $node_leader.to_owned();
             blockchain.add_leader(node_leader);
         )*
+
+        $(
+            blockchain.set_block_max_content_size($block_content_max_size);
+        )?
 
         $(
             let wallet = {
