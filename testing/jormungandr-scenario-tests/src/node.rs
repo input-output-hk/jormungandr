@@ -792,7 +792,12 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
     ) -> Command {
         let mut command = if let Some(faketime) = &self.faketime {
             let mut cmd = Command::new("faketime");
-            cmd.args(&["-f", &format!("{:+}s", faketime.offset)]);
+            let arg = if faketime.drift > f32::MIN_POSITIVE {
+                format!("{:+}s x{}", faketime.offset, faketime.drift)
+            } else {
+                format!("{:+}s", faketime.offset)
+            };
+            cmd.args(&["-f", &arg]);
             cmd.arg(self.jormungandr.clone());
             cmd
         } else {
