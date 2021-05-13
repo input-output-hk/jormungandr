@@ -20,7 +20,7 @@ pub struct DeserializeError {
 }
 
 /// Represents a persistent fragments log entry.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PersistentFragmentLog {
     /// the time this fragment was registered and accepted by the pool
     pub time: SecondsSinceUnixEpoch,
