@@ -3728,7 +3728,7 @@ checksum = "8049cf85f0e715d6af38dde439cb0ccb91f67fb9f5f63c80f8b43e48356e1a3f"
 [[package]]
 name = "symmetric-cipher"
 version = "0.5.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#f1587198cb0817ba9b690056c576721f6d2525c5"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#59d27dc4a7e3b84b3d80afd207f2a17d37783eb8"
 dependencies = [
  "cryptoxide",
  "rand 0.8.3",
