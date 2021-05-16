@@ -1,10 +1,16 @@
 # Full Node
+Jörmungandr is a node implementation, written in rust, with the initial aim to support the Ouroboros type of consensus protocol.
+
+A node is a participant of a blockchain network, continuously making, sending, receiving, and validating blocks. Each node is responsible to make sure that all the rules of the protocol are followed.
 
 > Just because you call something a blockchain, that doesn't mean you aren't
 > subject to normal engineering laws.
 
 User guide documentation available [here][docs]
 
+# Mythology
+
+Jörmungandr refers to the Midgard Serpent in Norse mythology. It is a hint to Ouroboros, the Ancient Egyptian serpent, who eat its own tail, as well as the IOHK paper on proof of stake.
 [docs]: https://input-output-hk.github.io/jormungandr
 
 ## Master current build status
