@@ -6,7 +6,8 @@ A node is a participant of a blockchain network, continuously making, sending, r
 
 > Just because you call something a blockchain, that doesn't mean you aren't
 > subject to normal engineering laws.
-User guide documentation available [here][docs]
+> 
+User guide documentation available [https://input-output-hk.github.io/jormungandr/][docs]
 
 # Mythology
 
