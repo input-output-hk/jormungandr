@@ -5,7 +5,6 @@ use crate::jcli_lib::{
 use bech32::{self, ToBase32 as _};
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain::{
-    account::SpendingCounter,
     header::HeaderId,
     transaction::{TransactionSignDataHash, Witness},
 };
@@ -30,11 +29,6 @@ pub struct MkWitness {
     /// the hash of the block0, the first block of the blockchain
     #[structopt(long = "genesis-block-hash", parse(try_from_str))]
     pub genesis_block_hash: HeaderId,
-
-    /// value is mandatory is `--type=account' It is the counter for
-    /// every time the account is being utilized.
-    #[structopt(long = "account-spending-counter")]
-    pub account_spending_counter: Option<u32>,
 
     /// the file path to the file to read the signing key from.
     /// If omitted it will be read from the standard input.
@@ -79,18 +73,10 @@ impl MkWitness {
                 )
             }
             WitnessType::Account => {
-                let account_spending_counter = self
-                    .account_spending_counter
-                    .ok_or(Error::MakeWitnessAccountCounterMissing)
-                    .map(SpendingCounter::from)?;
-
                 let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
-                Witness::new_account(
-                    &self.genesis_block_hash,
-                    &self.sign_data_hash,
-                    account_spending_counter,
-                    |d| secret_key.sign(d),
-                )
+                Witness::new_account(&self.genesis_block_hash, &self.sign_data_hash, |d| {
+                    secret_key.sign(d)
+                })
             }
         };
 

@@ -12,16 +12,16 @@ pub struct TransactionInput {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TransactionInputType {
-    Account([u8; INPUT_PTR_SIZE]),
+    Account([u8; INPUT_PTR_SIZE], u32),
     Utxo([u8; INPUT_PTR_SIZE], u8),
 }
 
 impl From<TransactionInput> for Input {
     fn from(i: TransactionInput) -> Input {
         match i.input {
-            TransactionInputType::Account(aid) => {
-                Input::from_enum(InputEnum::AccountInput(aid.into(), i.value.into()))
-            }
+            TransactionInputType::Account(aid, spending_counter) => Input::from_enum(
+                InputEnum::AccountInput(aid.into(), spending_counter.into(), i.value.into()),
+            ),
             TransactionInputType::Utxo(txptr, txid) => {
                 Input::from_enum(InputEnum::UtxoInput(UtxoPointer {
                     output_index: txid,
@@ -36,8 +36,8 @@ impl From<TransactionInput> for Input {
 impl From<Input> for TransactionInput {
     fn from(i: Input) -> TransactionInput {
         match i.to_enum() {
-            InputEnum::AccountInput(ai, value) => TransactionInput {
-                input: TransactionInputType::Account(ai.into()),
+            InputEnum::AccountInput(ai, spending_counter, value) => TransactionInput {
+                input: TransactionInputType::Account(ai.into(), spending_counter.into()),
                 value: value.into(),
             },
             InputEnum::UtxoInput(utxoptr) => TransactionInput {

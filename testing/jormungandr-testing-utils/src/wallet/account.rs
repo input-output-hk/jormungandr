@@ -94,16 +94,17 @@ impl Wallet {
         block0_hash: &Hash,
         signing_data: &TransactionSignDataHash,
     ) -> Witness {
-        Witness::new_account(
-            &block0_hash.clone().into_hash(),
-            signing_data,
-            self.internal_counter(),
-            |d| self.signing_key().as_ref().sign(d),
-        )
+        Witness::new_account(&block0_hash.clone().into_hash(), signing_data, |d| {
+            self.signing_key().as_ref().sign(d)
+        })
     }
 
     pub fn add_input_with_value(&self, value: Value) -> Input {
-        Input::from_account_single(self.identifier().to_inner(), value.into())
+        Input::from_account_single(
+            self.identifier().to_inner(),
+            self.internal_counter(),
+            value.into(),
+        )
     }
 
     pub fn add_input<'a, Extra: Payload>(
@@ -128,7 +129,11 @@ impl Wallet {
             }
         };
 
-        let input = Input::from_account_single(self.identifier().to_inner(), value);
+        let input = Input::from_account_single(
+            self.identifier().to_inner(),
+            self.internal_counter(),
+            value,
+        );
         iobuilder.add_input(&input).unwrap();
         Ok(())
     }

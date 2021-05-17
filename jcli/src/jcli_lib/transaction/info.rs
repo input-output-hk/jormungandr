@@ -44,7 +44,7 @@ impl Info {
                     "txid": Hash::from(utxo_ptr),
                     "index": index,
                 })),
-                TransactionInputType::Account(account) => {
+                TransactionInputType::Account(account, spending_counter) => {
                     let account_id = UnspecifiedAccountIdentifier::from(account)
                         .to_single_account()
                         .ok_or(Error::InfoExpectedSingleAccount)?;
@@ -52,6 +52,7 @@ impl Info {
                         "kind": "account",
                         "value": input.value,
                         "account": account_id.to_string(),
+                        "spending_counter": spending_counter,
                     }))
                 }
             })

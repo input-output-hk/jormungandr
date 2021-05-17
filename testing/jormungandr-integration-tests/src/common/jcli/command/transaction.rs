@@ -40,12 +40,14 @@ impl TransactionCommand {
     pub fn add_account<P: AsRef<Path>>(
         mut self,
         account_addr: &str,
+        spending_counter: u32,
         amount: &str,
         staging_file: P,
     ) -> Self {
         self.command
             .arg("add-account")
             .arg(account_addr.to_string())
+            .arg(spending_counter.to_string())
             .arg(amount)
             .arg("--staging")
             .arg(staging_file.as_ref());
@@ -108,12 +110,9 @@ impl TransactionCommand {
         block0_hash: &str,
         tx_id: &str,
         addr_type: &str,
-        spending_account_counter: Option<u32>,
         witness_file: P,
         witness_key: Q,
     ) -> Self {
-        let spending_counter = spending_account_counter.unwrap_or(0);
-
         self.command
             .arg("make-witness")
             .arg("--genesis-block-hash")
@@ -122,8 +121,6 @@ impl TransactionCommand {
             .arg(&addr_type)
             .arg(&tx_id)
             .arg(witness_file.as_ref())
-            .arg("--account-spending-counter")
-            .arg(spending_counter.to_string())
             .arg(witness_key.as_ref());
         self
     }

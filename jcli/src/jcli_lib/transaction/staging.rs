@@ -296,7 +296,7 @@ impl Staging {
                     let balance = self.finalize_payload(&c, fee_algorithm, output_policy)?;
                     match self.inputs() {
                         [input] => match input.input {
-                            interfaces::TransactionInputType::Account(_) => (),
+                            interfaces::TransactionInputType::Account(_, _) => (),
                             interfaces::TransactionInputType::Utxo(_, _) => {
                                 return Err(Error::TxWithOwnerStakeDelegationHasUtxoInput)
                             }
@@ -580,7 +580,7 @@ mod tests {
         let mut input_ptr = [0u8; chain::transaction::INPUT_PTR_SIZE];
         input_ptr.clone_from_slice(hash.as_ref());
 
-        let result = staging.add_input(Input::new(0, Value(200), input_ptr).into());
+        let result = staging.add_input(Input::new(0, Value(200), Some(0.into()), input_ptr).into());
 
         assert!(
             result.is_err(),

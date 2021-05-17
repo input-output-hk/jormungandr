@@ -139,9 +139,17 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn add_account(&mut self, account_addr: &str, amount: &Value) -> &mut Self {
+    pub fn add_account(&mut self, wallet: &Wallet, amount: &Value) -> &mut Self {
+        let account_addr = wallet.address().to_string();
+        let spending_counter = if let Wallet::Account(wallet) = wallet {
+            wallet.internal_counter()
+        } else {
+            panic!("wallet should be an account");
+        };
+
         self.jcli.transaction().add_account(
             &account_addr,
+            spending_counter.into(),
             &amount.to_string(),
             self.staging_file().path(),
         );
@@ -151,11 +159,13 @@ impl TransactionBuilder {
     pub fn add_account_expect_fail(
         &mut self,
         account_addr: &str,
+        spending_counter: u32,
         amount: &str,
         expected_msg: &str,
     ) -> &mut Self {
         self.jcli.transaction().add_account_expect_fail(
             &account_addr,
+            spending_counter,
             amount,
             self.staging_file().path(),
             expected_msg,
@@ -163,9 +173,9 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn add_account_from_legacy(&mut self, fund: &LegacyUTxO) -> &mut Self {
+    /*pub fn add_account_from_legacy(&mut self, fund: &LegacyUTxO) -> &mut Self {
         self.add_account(&fund.address.to_string(), &fund.value)
-    }
+    }*/
 
     pub fn add_output(&mut self, addr: &str, amount: Value) -> &mut Self {
         self.jcli
@@ -216,9 +226,8 @@ impl TransactionBuilder {
         &mut self,
         private_key: &str,
         transaction_type: &str,
-        spending_key: Option<u32>,
     ) -> &mut Self {
-        let witness = self.create_witness_from_key(&private_key, &transaction_type, spending_key);
+        let witness = self.create_witness_from_key(&private_key, &transaction_type);
         self.seal_with_witness(&witness);
         self
     }
@@ -244,30 +253,18 @@ impl TransactionBuilder {
 
     pub fn create_witness_from_wallet(&self, wallet: &Wallet) -> Witness {
         match wallet {
-            Wallet::Account(account) => self.create_witness_from_key(
-                &account.signing_key().to_bech32_str(),
-                &"account",
-                Some(account.internal_counter().into()),
-            ),
-            Wallet::UTxO(utxo) => self.create_witness_from_key(
-                &utxo.last_signing_key().to_bech32_str(),
-                &"utxo",
-                None,
-            ),
-            Wallet::Delegation(delegation) => self.create_witness_from_key(
-                &delegation.last_signing_key().to_bech32_str(),
-                &"utxo",
-                None,
-            ),
+            Wallet::Account(account) => {
+                self.create_witness_from_key(&account.signing_key().to_bech32_str(), &"account")
+            }
+            Wallet::UTxO(utxo) => {
+                self.create_witness_from_key(&utxo.last_signing_key().to_bech32_str(), &"utxo")
+            }
+            Wallet::Delegation(delegation) => self
+                .create_witness_from_key(&delegation.last_signing_key().to_bech32_str(), &"utxo"),
         }
     }
 
-    pub fn create_witness_from_key(
-        &self,
-        private_key: &str,
-        addr_type: &str,
-        spending_key: Option<u32>,
-    ) -> Witness {
+    pub fn create_witness_from_key(&self, private_key: &str, addr_type: &str) -> Witness {
         let transaction_id = self.transaction_id();
         Witness::new(
             &self.staging_dir,
@@ -275,13 +272,12 @@ impl TransactionBuilder {
             &transaction_id,
             &addr_type,
             private_key,
-            spending_key,
         )
     }
 
-    pub fn create_witness_default(&self, addr_type: &str, spending_key: Option<u32>) -> Witness {
+    pub fn create_witness_default(&self, addr_type: &str) -> Witness {
         let private_key = self.jcli.key().generate_default();
-        self.create_witness_from_key(&private_key, &addr_type, spending_key)
+        self.create_witness_from_key(&private_key, &addr_type)
     }
 
     pub fn add_witness_expect_fail(&mut self, witness: &Witness, expected_part: &str) {

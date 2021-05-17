@@ -49,8 +49,8 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
         .add_output(&receiver.address().to_string(), *utxo.associated_fund())
         .finalize();
 
-    let witness1 = transaction_builder.create_witness_default("utxo", None);
-    let witness2 = transaction_builder.create_witness_default("utxo", None);
+    let witness1 = transaction_builder.create_witness_default("utxo");
+    let witness2 = transaction_builder.create_witness_default("utxo");
 
     transaction_builder
         .make_witness(&witness1)
@@ -444,7 +444,7 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
     let transaction_message = jcli
         .transaction_builder(block0_hash)
         .new_transaction()
-        .add_account(&sender.address().to_string(), &transfer_amount)
+        .add_account(&sender, &transfer_amount)
         .add_output(&receiver.address().to_string(), transfer_amount)
         .finalize()
         .seal_with_witness_for_address(&sender)
@@ -480,7 +480,7 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
     let transaction_message = jcli
         .transaction_builder(block0_hash)
         .new_transaction()
-        .add_account(&sender.address().to_string(), &transfer_amount)
+        .add_account(&sender, &transfer_amount)
         .add_output(&receiver.address().to_string(), transfer_amount)
         .finalize()
         .seal_with_witness_for_address(&sender)

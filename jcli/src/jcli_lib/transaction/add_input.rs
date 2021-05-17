@@ -82,7 +82,7 @@ mod tests {
         );
         let input = &staging.inputs()[0];
         match input.input {
-            interfaces::TransactionInputType::Account(_) => {
+            interfaces::TransactionInputType::Account(..) => {
                 panic!("didn't create an account input")
             }
             interfaces::TransactionInputType::Utxo(fid, index) => {

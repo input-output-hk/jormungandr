@@ -90,9 +90,15 @@ impl Transaction {
             .success();
     }
 
-    pub fn add_account<P: AsRef<Path>>(self, account_addr: &str, amount: &str, staging_file: P) {
+    pub fn add_account<P: AsRef<Path>>(
+        self,
+        account_addr: &str,
+        spending_counter: u32,
+        amount: &str,
+        staging_file: P,
+    ) {
         self.command
-            .add_account(&account_addr, amount, staging_file)
+            .add_account(&account_addr, spending_counter, amount, staging_file)
             .build()
             .assert()
             .success();
@@ -101,25 +107,26 @@ impl Transaction {
     pub fn add_account_expect_fail<P: AsRef<Path>>(
         self,
         account_addr: &str,
+        spending_counter: u32,
         amount: &str,
         staging_file: P,
         expected_msg: &str,
     ) {
         self.command
-            .add_account(account_addr, amount, staging_file)
+            .add_account(account_addr, spending_counter, amount, staging_file)
             .build()
             .assert()
             .failure()
             .stderr(predicates::str::contains(expected_msg));
     }
 
-    pub fn add_account_from_legacy<P: AsRef<Path>>(self, fund: &LegacyUTxO, staging_file: P) {
+    /*pub fn add_account_from_legacy<P: AsRef<Path>>(self, fund: &LegacyUTxO, staging_file: P) {
         self.add_account(
             &fund.address.to_string(),
             &fund.value.to_string(),
             staging_file,
         )
-    }
+    }*/
 
     pub fn add_output<P: AsRef<Path>>(self, addr: &str, amount: Value, staging_file: P) {
         self.command
@@ -173,7 +180,6 @@ impl Transaction {
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
                 &witness.addr_type,
-                witness.spending_account_counter,
                 &witness.file,
                 &witness.private_key_path,
             )
@@ -188,7 +194,6 @@ impl Transaction {
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
                 &witness.addr_type,
-                witness.spending_account_counter,
                 &witness.file,
                 &witness.private_key_path,
             )
@@ -211,7 +216,6 @@ impl Transaction {
                 genesis_hash,
                 &account.signing_key().to_bech32_str(),
                 &"account",
-                Some(account.internal_counter().into()),
                 staging_file,
             ),
             Wallet::UTxO(utxo) => self.create_witness_from_key(
@@ -219,7 +223,6 @@ impl Transaction {
                 genesis_hash,
                 &utxo.last_signing_key().to_bech32_str(),
                 &"utxo",
-                None,
                 staging_file,
             ),
             Wallet::Delegation(delegation) => self.create_witness_from_key(
@@ -227,7 +230,6 @@ impl Transaction {
                 genesis_hash,
                 &delegation.last_signing_key().to_bech32_str(),
                 &"utxo",
-                None,
                 staging_file,
             ),
         }
@@ -239,7 +241,6 @@ impl Transaction {
         genesis_hash: Hash,
         private_key: &str,
         addr_type: &str,
-        spending_key: Option<u32>,
         staging_file: P,
     ) -> Witness {
         let transaction_id = self.id(staging_file);
@@ -249,7 +250,6 @@ impl Transaction {
             &transaction_id,
             &addr_type,
             private_key,
-            spending_key,
         )
     }
 

@@ -11,7 +11,6 @@ pub struct Witness {
     pub transaction_id: Hash,
     pub addr_type: String,
     pub private_key_path: PathBuf,
-    pub spending_account_counter: Option<u32>,
     pub file: PathBuf,
 }
 
@@ -22,7 +21,6 @@ impl Witness {
         transaction_id: &Hash,
         addr_type: &str,
         private_key: &str,
-        spending_account_counter: Option<u32>,
     ) -> Witness {
         Witness {
             block_hash: *block_hash,
@@ -30,7 +28,6 @@ impl Witness {
             addr_type: addr_type.to_string(),
             private_key_path: write_witness_key(temp_dir, private_key),
             file: temp_dir.child("witness").path().into(),
-            spending_account_counter,
         }
     }
 }

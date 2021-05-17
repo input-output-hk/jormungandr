@@ -14,6 +14,10 @@ pub struct AddAccount {
     #[structopt(name = "ACCOUNT")]
     pub account: interfaces::Address,
 
+    /// the current spending counter of this account
+    #[structopt(name = "SPENDING_COUNTER")]
+    pub spending_counter: u32,
+
     /// the value
     #[structopt(name = "VALUE")]
     pub value: interfaces::Value,
@@ -36,7 +40,10 @@ impl AddAccount {
         };
 
         transaction.add_input(interfaces::TransactionInput {
-            input: interfaces::TransactionInputType::Account(account_id.into()),
+            input: interfaces::TransactionInputType::Account(
+                account_id.into(),
+                self.spending_counter,
+            ),
             value: self.value,
         })?;
 

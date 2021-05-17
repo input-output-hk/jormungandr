@@ -141,7 +141,7 @@ pub fn create_new_stake_pool(
     let transaction = jcli
         .transaction_builder(block0_hash)
         .new_transaction()
-        .add_account(&account.address().to_string(), &fee_value)
+        .add_account(&account, &fee_value)
         .add_certificate(&stake_pool_certificate)
         .finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
@@ -195,7 +195,7 @@ pub fn delegate_stake(
     let transaction = jcli
         .transaction_builder(block0_hash)
         .new_transaction()
-        .add_account(&account.address().to_string(), &fee_value)
+        .add_account(&account, &fee_value)
         .add_certificate(&stake_pool_delegation)
         .finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
@@ -248,7 +248,7 @@ pub fn retire_stake_pool(
     let transaction = jcli
         .transaction_builder(block0_hash)
         .new_transaction()
-        .add_account(&account.address().to_string(), &fee_value)
+        .add_account(&account, &fee_value)
         .add_certificate(&retirement_cert)
         .finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(&account)

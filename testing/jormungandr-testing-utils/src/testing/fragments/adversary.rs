@@ -338,13 +338,13 @@ impl FaultyTransactionBuilder {
     }
 
     pub fn wrong_counter(&self, from: &Wallet, to: &Wallet) -> Fragment {
+        let mut from = from.clone();
+        from.confirm_transaction();
         let input_value: Value = (self.fees.calculate(None, 1, 1) + Value(1u64)).unwrap();
         let input = from.add_input_with_value(input_value.into());
         let output = OutputAddress::from_address(to.address().into(), Value(1u64));
         self.transaction_to(&[input], &[output], |sign_data| {
-            let mut false_from = from.clone();
-            false_from.confirm_transaction();
-            vec![false_from.mk_witness(&self.block0_hash, sign_data)]
+            vec![from.mk_witness(&self.block0_hash, sign_data)]
         })
     }
 

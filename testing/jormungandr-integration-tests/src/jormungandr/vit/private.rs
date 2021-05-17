@@ -106,7 +106,7 @@ pub fn jcli_e2e_flow_private_vote() {
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
-        .add_account(&alice.address().to_string(), &Value::zero().into())
+        .add_account(&alice, &Value::zero().into())
         .add_certificate(&vote_plan_cert)
         .finalize()
         .seal_with_witness_for_address(&alice)
@@ -155,7 +155,7 @@ pub fn jcli_e2e_flow_private_vote() {
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
-        .add_account(&alice.address().to_string(), &Value::zero().into())
+        .add_account(&alice, &Value::zero().into())
         .add_certificate(&yes_vote_cast)
         .finalize()
         .seal_with_witness_for_address(&alice)
@@ -170,7 +170,7 @@ pub fn jcli_e2e_flow_private_vote() {
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
-        .add_account(&bob.address().to_string(), &Value::zero().into())
+        .add_account(&bob, &Value::zero().into())
         .add_certificate(&yes_vote_cast)
         .finalize()
         .seal_with_witness_for_address(&bob)
@@ -183,7 +183,7 @@ pub fn jcli_e2e_flow_private_vote() {
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
-        .add_account(&clarice.address().to_string(), &Value::zero().into())
+        .add_account(&clarice, &Value::zero().into())
         .add_certificate(&no_vote_cast)
         .finalize()
         .seal_with_witness_for_address(&clarice)
@@ -204,7 +204,7 @@ pub fn jcli_e2e_flow_private_vote() {
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
-        .add_account(&alice.address().to_string(), &Value::zero().into())
+        .add_account(&alice, &Value::zero().into())
         .add_certificate(&encrypted_vote_tally_cert)
         .finalize()
         .seal_with_witness_for_address(&alice)
@@ -258,7 +258,7 @@ pub fn jcli_e2e_flow_private_vote() {
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
-        .add_account(&alice.address().to_string(), &Value::zero().into())
+        .add_account(&alice, &Value::zero().into())
         .add_certificate(&vote_tally_cert)
         .finalize()
         .seal_with_witness_for_address(&alice)
