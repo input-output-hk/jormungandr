@@ -1,4 +1,4 @@
-use crate::common::jormungandr::{starter::Role, Starter};
+use crate::common::jormungandr::{starter::Role, JormungandrProcess, Starter};
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
@@ -9,10 +9,11 @@ use jormungandr_lib::interfaces::{BlockDate, Mempool};
 use jormungandr_testing_utils::testing::fragments::FragmentExporter;
 use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
 use jormungandr_testing_utils::testing::{
-    node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentVerifier,
-    MemPoolCheck,
+    node::time, FaultyTransactionBuilder, FragmentGenerator, FragmentSender, FragmentSenderSetup,
+    FragmentVerifier, MemPoolCheck,
 };
 use jormungandr_testing_utils::testing::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
+use jormungandr_testing_utils::wallet::Wallet;
 use jortestkit::prelude::Wait;
 use std::fs::metadata;
 use std::path::Path;
@@ -296,12 +297,112 @@ pub fn pending_fragment_should_be_persisted() {
 }
 
 #[test]
-pub fn node_should_pickup_log_after_restart() {
+pub fn fragment_with_wrong_block0_hash_should_be_persisted() {
     let temp_dir = TempDir::new().unwrap();
-    let dump_folder = temp_dir.child("dump_folder");
     let persistent_log_path = temp_dir.child("persistent_log");
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+
+    let (jormungandr, from, to) = setup(persistent_log_path.path(), &temp_dir);
+
+    let faulty_tx_builder =
+        FaultyTransactionBuilder::new(jormungandr.genesis_block_hash(), jormungandr.fees());
+    let fragment = faulty_tx_builder.wrong_block0_hash(&from, &to);
+    jormungandr.rest().send_fragment(fragment).unwrap();
+
+    assert!(fragment_should_be_persisted(persistent_log_path.path()))
+}
+
+#[test]
+pub fn fragment_with_no_input_should_not_be_persisted() {
+    let temp_dir = TempDir::new().unwrap();
+    let persistent_log_path = temp_dir.child("persistent_log");
+
+    let (jormungandr, from, _) = setup(persistent_log_path.path(), &temp_dir);
+
+    let faulty_tx_builder =
+        FaultyTransactionBuilder::new(jormungandr.genesis_block_hash(), jormungandr.fees());
+    let fragment = faulty_tx_builder.no_input(&from);
+    jormungandr.rest().send_fragment(fragment).unwrap();
+
+    assert!(fragment_should_not_be_persisted(persistent_log_path.path()))
+}
+
+#[test]
+pub fn fragment_with_no_output_should_be_persisted() {
+    let temp_dir = TempDir::new().unwrap();
+    let persistent_log_path = temp_dir.child("persistent_log");
+
+    let (jormungandr, from, _) = setup(persistent_log_path.path(), &temp_dir);
+
+    let faulty_tx_builder =
+        FaultyTransactionBuilder::new(jormungandr.genesis_block_hash(), jormungandr.fees());
+    let fragment = faulty_tx_builder.no_output(&from);
+    jormungandr.rest().send_fragment(fragment).unwrap();
+
+    assert!(fragment_should_be_persisted(persistent_log_path.path()))
+}
+
+#[test]
+pub fn unbalanced_fragment_should_not_be_persisted() {
+    let temp_dir = TempDir::new().unwrap();
+    let persistent_log_path = temp_dir.child("persistent_log");
+
+    let (jormungandr, from, to) = setup(persistent_log_path.path(), &temp_dir);
+
+    let faulty_tx_builder =
+        FaultyTransactionBuilder::new(jormungandr.genesis_block_hash(), jormungandr.fees());
+    let fragment = faulty_tx_builder.unbalanced(&from, &to);
+    jormungandr.rest().send_fragment(fragment).unwrap();
+
+    assert!(fragment_should_not_be_persisted(persistent_log_path.path()))
+}
+
+#[test]
+pub fn empty_fragment_should_be_persisted() {
+    let temp_dir = TempDir::new().unwrap();
+    let persistent_log_path = temp_dir.child("persistent_log");
+
+    let (jormungandr, _, _) = setup(persistent_log_path.path(), &temp_dir);
+
+    let faulty_tx_builder =
+        FaultyTransactionBuilder::new(jormungandr.genesis_block_hash(), jormungandr.fees());
+    let fragment = faulty_tx_builder.empty();
+    jormungandr.rest().send_fragment(fragment).unwrap();
+
+    assert!(fragment_should_be_persisted(persistent_log_path.path()))
+}
+
+#[test]
+pub fn fragment_with_no_witnesses_should_not_be_persisted() {
+    let temp_dir = TempDir::new().unwrap();
+    let persistent_log_path = temp_dir.child("persistent_log");
+
+    let (jormungandr, from, to) = setup(persistent_log_path.path(), &temp_dir);
+
+    let faulty_tx_builder =
+        FaultyTransactionBuilder::new(jormungandr.genesis_block_hash(), jormungandr.fees());
+    let fragment = faulty_tx_builder.no_witnesses(&from, &to);
+    jormungandr.rest().send_fragment(fragment).unwrap();
+
+    assert!(fragment_should_not_be_persisted(persistent_log_path.path()))
+}
+
+fn fragment_should_be_persisted<P: AsRef<Path>>(persistent_log_path: P) -> bool {
+    std::thread::sleep(std::time::Duration::from_secs(5));
+    let persistent_log_viewer =
+        PersistentLogViewer::new(persistent_log_path.as_ref().to_path_buf());
+    1 == persistent_log_viewer.get_all().len()
+}
+
+fn fragment_should_not_be_persisted<P: AsRef<Path>>(persistent_log_path: P) -> bool {
+    !fragment_should_be_persisted(persistent_log_path)
+}
+
+fn setup<P: AsRef<Path>>(
+    persistent_log_path: P,
+    temp_dir: &TempDir,
+) -> (JormungandrProcess, Wallet, Wallet) {
+    let to = startup::create_new_account_address();
+    let from = startup::create_new_account_address();
 
     let config = ConfigurationBuilder::new()
         .with_slots_per_epoch(60)
@@ -311,21 +412,21 @@ pub fn node_should_pickup_log_after_restart() {
             pool_max_entries: 1usize.into(),
             log_max_entries: 1000usize.into(),
             persistent_log: Some(PersistentLog {
-                dir: persistent_log_path.path().to_path_buf(),
+                dir: persistent_log_path.as_ref().to_path_buf(),
             }),
         })
         .with_block0_consensus(ConsensusVersion::Bft)
         .with_funds(vec![
             InitialUTxO {
-                address: sender.address(),
+                address: from.address(),
                 value: 1_000_000.into(),
             },
             InitialUTxO {
-                address: receiver.address(),
+                address: to.address(),
                 value: 1_000_000.into(),
             },
         ])
-        .build(&temp_dir);
+        .build(temp_dir);
 
     let jormungandr = Starter::new()
         .config(config.clone())
@@ -333,36 +434,5 @@ pub fn node_should_pickup_log_after_restart() {
         .start()
         .unwrap();
 
-    let adversary_sender = AdversaryFragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
-    );
-
-    adversary_sender
-        .send_transactions_with_invalid_counter(10, &mut sender, &receiver, &jormungandr)
-        .unwrap();
-
-    jormungandr.stop();
-
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .role(Role::Leader)
-        .start()
-        .unwrap();
-
-    let adversary_sender = AdversaryFragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
-    );
-
-    adversary_sender
-        .send_transactions_with_invalid_counter(10, &mut sender, &receiver, &jormungandr)
-        .unwrap();
-
-    let persistent_log_viewer = PersistentLogViewer::new(persistent_log_path.path().to_path_buf());
-
-    assert_eq!(20, persistent_log_viewer.get_all().len());
+    (jormungandr, from, to)
 }

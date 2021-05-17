@@ -11,10 +11,10 @@ mod vit;
 pub use fragments::{
     signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, AdversaryFragmentSender,
     AdversaryFragmentSenderError, AdversaryFragmentSenderSetup, BatchFragmentGenerator,
-    DummySyncNode, FragmentBuilder, FragmentBuilderError, FragmentGenerator, FragmentNode,
-    FragmentNodeError, FragmentSender, FragmentSenderError, FragmentSenderSetup,
-    FragmentSenderSetupBuilder, FragmentStatusProvider, FragmentVerifier, FragmentVerifierError,
-    MemPoolCheck, VerifyStrategy, VoteCastsGenerator,
+    DummySyncNode, FaultyTransactionBuilder, FragmentBuilder, FragmentBuilderError,
+    FragmentGenerator, FragmentNode, FragmentNodeError, FragmentSender, FragmentSenderError,
+    FragmentSenderSetup, FragmentSenderSetupBuilder, FragmentStatusProvider, FragmentVerifier,
+    FragmentVerifierError, MemPoolCheck, VerifyStrategy, VoteCastsGenerator,
 };
 pub use jortestkit::archive::decompress;
 pub use jortestkit::github::{CachedReleases, GitHubApiBuilder, GitHubApiError, Release};
