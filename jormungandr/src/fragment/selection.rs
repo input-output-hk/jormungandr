@@ -5,6 +5,7 @@ use crate::{
     fragment::FragmentId,
 };
 use chain_core::property::Fragment as _;
+use chain_impl_mockchain::ledger::Error as LedgerError;
 use jormungandr_lib::interfaces::FragmentStatus;
 
 use async_trait::async_trait;
@@ -140,9 +141,23 @@ impl FragmentSelectionAlgorithm for OldestFirst {
 
             match result {
                 Ok(ledger_new) => {
+                    pool.notify_fragment_applied(&fragment);
                     contents_builder.push(fragment);
                     ledger = ledger_new;
                     tracing::debug!("successfully applied and committed the fragment");
+                }
+                Err(LedgerError::InvalidSpendingCounter {
+                    expected,
+                    got,
+                    account,
+                }) if got > expected => {
+                    let expected_n: u32 = expected.into();
+                    let got_n: u32 = got.into();
+                    tracing::debug!(
+                        "invalid spending counter for account {}: expected {}, got {}; putting the fragment back to queue",
+                        account, expected_n, got_n,
+                    );
+                    pool.return_to_pool_for_reorder(fragment, account, got);
                 }
                 Err(error) => {
                     let mut msg = error.to_string();

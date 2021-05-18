@@ -249,10 +249,15 @@ fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
 }
 
 pub(super) mod internal {
+    use chain_impl_mockchain::{
+        account::SpendingCounter, transaction::UnspecifiedAccountIdentifier,
+    };
+
     use super::*;
 
     use std::{
-        collections::HashMap,
+        cmp::Ordering,
+        collections::{hash_map::Entry, BinaryHeap, HashMap},
         hash::{Hash, Hasher},
         ptr,
     };
@@ -388,8 +393,27 @@ pub(super) mod internal {
         }
     }
 
+    #[derive(PartialEq, Eq)]
+    struct ReorderedFragment {
+        spending_counter: SpendingCounter,
+        fragment: Fragment,
+    }
+
+    impl PartialOrd for ReorderedFragment {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            other.spending_counter.partial_cmp(&self.spending_counter)
+        }
+    }
+
+    impl Ord for ReorderedFragment {
+        fn cmp(&self, other: &Self) -> Ordering {
+            other.spending_counter.cmp(&self.spending_counter)
+        }
+    }
+
     pub struct Pool {
         entries: IndexedDeqeue<FragmentId, Fragment>,
+        reordered_fragments: HashMap<UnspecifiedAccountIdentifier, BinaryHeap<ReorderedFragment>>,
         max_entries: usize,
     }
 
@@ -397,6 +421,7 @@ pub(super) mod internal {
         pub fn new(max_entries: usize) -> Self {
             Pool {
                 entries: IndexedDeqeue::new(),
+                reordered_fragments: HashMap::new(),
                 max_entries,
             }
         }
@@ -435,6 +460,80 @@ pub(super) mod internal {
         pub fn return_to_pool(&mut self, fragments: impl IntoIterator<Item = Fragment>) {
             for fragment in fragments.into_iter() {
                 self.entries.push_back(fragment.id(), fragment);
+            }
+        }
+
+        pub fn return_to_pool_for_reorder(
+            &mut self,
+            fragment: Fragment,
+            account_identifier: UnspecifiedAccountIdentifier,
+            spending_counter: SpendingCounter,
+        ) {
+            let reordered_fragment = ReorderedFragment {
+                fragment,
+                spending_counter,
+            };
+
+            match self.reordered_fragments.entry(account_identifier) {
+                Entry::Vacant(entry) => {
+                    let mut queue = BinaryHeap::new();
+                    queue.push(reordered_fragment);
+                    entry.insert(queue);
+                }
+                Entry::Occupied(mut entry) => {
+                    entry.get_mut().push(reordered_fragment);
+                }
+            }
+        }
+
+        pub fn notify_fragment_applied(&mut self, fragment: &Fragment) {
+            use chain_impl_mockchain::transaction::InputEnum;
+
+            let inputs = match fragment {
+                Fragment::Initial(_) => return,
+                Fragment::OldUtxoDeclaration(_) => return,
+                Fragment::Transaction(tx) => tx.as_slice().inputs().iter(),
+                Fragment::OwnerStakeDelegation(tx) => tx.as_slice().inputs().iter(),
+                Fragment::StakeDelegation(tx) => tx.as_slice().inputs().iter(),
+                Fragment::PoolRegistration(tx) => tx.as_slice().inputs().iter(),
+                Fragment::PoolRetirement(tx) => tx.as_slice().inputs().iter(),
+                Fragment::PoolUpdate(tx) => tx.as_slice().inputs().iter(),
+                Fragment::UpdateProposal(_) => return,
+                Fragment::UpdateVote(_) => return,
+                Fragment::VotePlan(tx) => tx.as_slice().inputs().iter(),
+                Fragment::VoteCast(tx) => tx.as_slice().inputs().iter(),
+                Fragment::VoteTally(tx) => tx.as_slice().inputs().iter(),
+                Fragment::EncryptedVoteTally(tx) => tx.as_slice().inputs().iter(),
+            };
+
+            for input in inputs {
+                if let InputEnum::AccountInput(account_identifier, spending_counter, _value) =
+                    input.to_enum()
+                {
+                    let expected_spending_counter = spending_counter.increment().unwrap();
+                    let maybe_spending_counter = self
+                        .reordered_fragments
+                        .get(&account_identifier)
+                        .map(|queue| queue.peek())
+                        .flatten()
+                        .map(|sc| sc.spending_counter);
+                    match maybe_spending_counter {
+                        Some(spending_counter) => {
+                            if spending_counter == expected_spending_counter {
+                                let fragment = self
+                                    .reordered_fragments
+                                    .get_mut(&account_identifier)
+                                    .map(|queue| queue.pop())
+                                    .flatten()
+                                    .map(|rf| rf.fragment)
+                                    .unwrap();
+                                self.entries.push_back(fragment.id(), fragment);
+                            }
+                        }
+                        // TODO delete empty queue from the dictionary
+                        None => continue,
+                    }
+                }
             }
         }
     }

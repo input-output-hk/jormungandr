@@ -10,5 +10,7 @@ pub mod jormungandr;
 pub mod networking;
 #[cfg(test)]
 pub mod non_functional;
+#[cfg(test)]
+pub mod reordered_fragments;
 
 pub mod common;
