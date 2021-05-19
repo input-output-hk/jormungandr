@@ -32,9 +32,9 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
-        FragmentsProcessingSummary, LeadershipLog, NodeStats, NodeStatsDto, PeerStats,
-        Rewards as StakePoolRewards, SettingsDto, StakeDistribution, StakeDistributionDto,
-        StakePoolStats, TaxTypeSerde, TransactionOutput, VotePlanStatus,
+        LeadershipLog, NodeStats, NodeStatsDto, PeerStats, Rewards as StakePoolRewards,
+        SettingsDto, StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde,
+        TransactionOutput, VotePlanStatus,
     },
     time::SystemTime,
 };
