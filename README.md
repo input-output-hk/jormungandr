@@ -2,7 +2,7 @@
 [![API Check](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/api.yml/badge.svg)](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/api.yml)
 [![Python scripts linters](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/python-scripts.yml/badge.svg)](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/python-scripts.yml)
 
-Do NOT use!.....Developmental Testing repo and source code* (WIP)
+Do NOT use!.....Experimental repo and source code release* (WIP)
 Jörmungandr is a node implementation, written in rust, with the initial aim to support the Ouroboros type of consensus protocol.
 
 A node is a participant of a blockchain network, continuously making, sending, receiving, and validating blocks. Each node is responsible to make sure that all the rules of the protocol are followed.  
