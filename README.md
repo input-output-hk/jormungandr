@@ -9,9 +9,13 @@ Jörmungandr is a node implementation, written in rust, with the initial aim to 
 A node is a participant of a blockchain network, continuously making, sending, receiving, and validating blocks. Each node is responsible to make sure that all the rules of the protocol are followed.  
 
 > Just because you call something a blockchain, that doesn't mean you aren't
-> subject to normal engineering laws.
+> subject to normal engineering laws...
 > 
 User guide documentation available [https://input-output-hk.github.io/jormungandr/][docs]
+
+<p align="center">
+  <img src="jormungandr-XENsmite_4kwallpaper.png" alt="demo" />
+</p>
 
 # Mythology
 
