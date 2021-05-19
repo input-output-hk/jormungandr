@@ -81,7 +81,16 @@ impl Pools {
         use bincode::Options;
 
         tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
-        fragments.retain(is_fragment_valid);
+        fragments.retain(|fragment| {
+            let res = is_fragment_valid(fragment);
+            let id = fragment.id();
+            if res {
+                tracing::debug!(id=?id, "received valid fragment");
+            } else {
+                tracing::debug!(id=?id, "invalid fragment not included into the pool");
+            }
+            res
+        });
         if fragments.is_empty() {
             tracing::debug!("none of the received fragments are valid");
             return Ok(0);
