@@ -1,4 +1,4 @@
-#  Experimental Full-Node ~ Jörmungandr
+#  Jörmungandr-Æxperimental Full-Node 
 [![API Check](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/api.yml/badge.svg)](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/api.yml)
 [![Python scripts linters](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/python-scripts.yml/badge.svg)](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/python-scripts.yml)
 [![EditorConfig check](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/editorconfig.yml/badge.svg)](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/editorconfig.yml)
