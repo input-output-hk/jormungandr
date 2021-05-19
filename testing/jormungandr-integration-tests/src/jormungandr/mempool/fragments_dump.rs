@@ -157,6 +157,7 @@ pub fn non_existing_folder() {
 }
 
 #[test]
+#[ignore]
 pub fn invalid_folder() {
     let temp_dir = TempDir::new().unwrap();
     let dump_folder = temp_dir.child("dump");
