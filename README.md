@@ -1,7 +1,6 @@
 #  Jörmungandr-Æxperimental Full-Node 
 [![API Check](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/api.yml/badge.svg)](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/api.yml)
 [![Python scripts linters](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/python-scripts.yml/badge.svg)](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/python-scripts.yml)
-[![EditorConfig check](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/editorconfig.yml/badge.svg)](https://github.com/MitchellTesla/jormungandr-XEN/actions/workflows/editorconfig.yml)
 
 Do NOT use!.....Developmental Testing repo and source code* (WIP)
 Jörmungandr is a node implementation, written in rust, with the initial aim to support the Ouroboros type of consensus protocol.
