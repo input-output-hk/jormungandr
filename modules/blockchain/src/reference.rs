@@ -87,8 +87,8 @@ impl Reference {
         let previous_epoch_state = None;
 
         Ok(Self {
-            header,
             ledger,
+            header,
             epoch_info,
             previous_epoch_state,
         })
