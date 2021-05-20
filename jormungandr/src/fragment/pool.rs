@@ -98,11 +98,15 @@ impl Pools {
         for fragment in fragments.by_ref() {
             let id = fragment.id();
 
+            let _enter =
+                tracing::span!(tracing::Level::TRACE, "pool_incoming_fragment", fragment_id=?id);
+
             if self.logs.exists(id) {
                 rejected.push(RejectedFragmentInfo {
                     id,
                     reason: FragmentRejectionReason::FragmentAlreadyInLog,
                 });
+                tracing::debug!("fragment is already logged");
                 continue;
             }
 
@@ -112,7 +116,10 @@ impl Pools {
                     reason: FragmentRejectionReason::FragmentInvalid,
                 });
 
+                tracing::debug!("fragment is invalid, not including to the pool");
+
                 if fail_fast {
+                    tracing::debug!("fail_fast is enabled; rejecting all downstream fragments");
                     break;
                 }
 
@@ -132,13 +139,20 @@ impl Pools {
                 }
             }
 
+            tracing::debug!("including fragment to the pool");
+
             filtered_fragments.push(fragment);
         }
 
         if fail_fast {
             for fragment in fragments {
+                let id = fragment.id();
+                let _enter = tracing::span!(tracing::Level::TRACE, "pool_incoming_fragment", fragment_id=?id);
+                tracing::error!(
+                    "rejected due to fail_fast and one of previous fragments being invalid"
+                );
                 rejected.push(RejectedFragmentInfo {
-                    id: fragment.id(),
+                    id,
                     reason: FragmentRejectionReason::PreviousFragmentInvalid,
                 })
             }
@@ -147,14 +161,12 @@ impl Pools {
         let mut accepted = HashSet::new();
 
         for (pool_number, pool) in self.pools.iter_mut().enumerate() {
+            let _enter = tracing::span!(tracing::Level::TRACE, "pool_insert_fragment", pool_number=?pool_number);
+
             let mut fragments = filtered_fragments.clone().into_iter();
             let new_fragments = pool.insert_all(fragments.by_ref());
             let count = new_fragments.len();
-            tracing::debug!(
-                "{} of the received fragments were added to the pool number {}",
-                count,
-                pool_number
-            );
+            tracing::debug!("{} of the received fragments were added to the pool", count,);
             let fragment_logs: Vec<_> = new_fragments
                 .iter()
                 .map(move |fragment| FragmentLog::new(fragment.id(), origin))
@@ -162,12 +174,16 @@ impl Pools {
             self.logs.insert_all(fragment_logs);
 
             for fragment in &new_fragments {
-                accepted.insert(fragment.id());
+                let id = fragment.id();
+                tracing::debug!(fragment_id=?id, "inserted fragment to the pool");
+                accepted.insert(id);
             }
 
             for fragment in fragments {
+                let id = fragment.id();
+                tracing::debug!(fragment_id=?id, "rejecting fragment due to pool overflow");
                 rejected.push(RejectedFragmentInfo {
-                    id: fragment.id(),
+                    id,
                     reason: FragmentRejectionReason::PoolOverflow { pool_number },
                 })
             }
