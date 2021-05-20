@@ -35,7 +35,6 @@ impl FragmentExporter {
     pub fn read(&self) -> Result<Vec<Fragment>, FragmentExporterError> {
         self.read_as_bytes()?
             .iter()
-            .rev()
             .map(|bytes| Ok(Fragment::deserialize(bytes.as_ref()).unwrap()))
             .collect()
     }
