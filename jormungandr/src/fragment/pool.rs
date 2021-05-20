@@ -98,8 +98,9 @@ impl Pools {
         for fragment in fragments.by_ref() {
             let id = fragment.id();
 
-            let _enter =
+            let span =
                 tracing::span!(tracing::Level::TRACE, "pool_incoming_fragment", fragment_id=?id);
+            let _enter = span.enter();
 
             if self.logs.exists(id) {
                 rejected.push(RejectedFragmentInfo {
@@ -147,7 +148,8 @@ impl Pools {
         if fail_fast {
             for fragment in fragments {
                 let id = fragment.id();
-                let _enter = tracing::span!(tracing::Level::TRACE, "pool_incoming_fragment", fragment_id=?id);
+                let span = tracing::span!(tracing::Level::TRACE, "pool_incoming_fragment", fragment_id=?id);
+                let _enter = span.enter();
                 tracing::error!(
                     "rejected due to fail_fast and one of previous fragments being invalid"
                 );
@@ -161,7 +163,8 @@ impl Pools {
         let mut accepted = HashSet::new();
 
         for (pool_number, pool) in self.pools.iter_mut().enumerate() {
-            let _enter = tracing::span!(tracing::Level::TRACE, "pool_insert_fragment", pool_number=?pool_number);
+            let span = tracing::span!(tracing::Level::TRACE, "pool_insert_fragment", pool_number=?pool_number);
+            let _enter = span.enter();
 
             let mut fragments = filtered_fragments.clone().into_iter();
             let new_fragments = pool.insert_all(fragments.by_ref());
