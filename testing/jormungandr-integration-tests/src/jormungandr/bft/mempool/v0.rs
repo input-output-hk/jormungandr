@@ -171,7 +171,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
         .unwrap();
 
-    let seccond_fragment = fragment_sender
+    let second_fragment = fragment_sender
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
         .unwrap();
 
@@ -180,10 +180,10 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .fragment_logs()
         .unwrap()
         .assert_size(1)
-        .assert_contains_only(seccond_fragment.fragment_id());
+        .assert_contains_only(second_fragment.fragment_id());
 
     FragmentVerifier
-        .wait_and_verify_is_in_block(Duration::from_secs(2), seccond_fragment, &jormungandr)
+        .wait_and_verify_is_in_block(Duration::from_secs(2), second_fragment, &jormungandr)
         .unwrap();
 
     verifier
