@@ -76,19 +76,13 @@ impl Pools {
         }
     }
 
-    /// Returns number of registered fragments. Setting `fail_fast` to `true` will force this
-    /// method to reject all fragments after the first invalid fragments was met.
-    pub async fn insert_and_propagate_all(
+    fn filter_fragments(
         &mut self,
         origin: FragmentOrigin,
         fragments: Vec<Fragment>,
         fail_fast: bool,
-    ) -> Result<FragmentsProcessingSummary, Error> {
+    ) -> (Vec<Fragment>, FragmentsProcessingSummary) {
         use bincode::Options;
-
-        tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
-
-        let mut network_msg_box = self.network_msg_box.clone();
 
         let mut filtered_fragments = Vec::new();
         let mut rejected = Vec::new();
@@ -192,6 +186,28 @@ impl Pools {
             }
         }
 
+        let accepted = accepted.into_iter().collect();
+
+        (
+            filtered_fragments,
+            FragmentsProcessingSummary { accepted, rejected },
+        )
+    }
+
+    /// Returns number of registered fragments. Setting `fail_fast` to `true` will force this
+    /// method to reject all fragments after the first invalid fragments was met.
+    pub async fn insert_and_propagate_all(
+        &mut self,
+        origin: FragmentOrigin,
+        fragments: Vec<Fragment>,
+        fail_fast: bool,
+    ) -> Result<FragmentsProcessingSummary, Error> {
+        tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
+
+        let (filtered_fragments, summary) = self.filter_fragments(origin, fragments, fail_fast);
+
+        let mut network_msg_box = self.network_msg_box.clone();
+
         for fragment in filtered_fragments.into_iter() {
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
             network_msg_box
@@ -200,9 +216,7 @@ impl Pools {
                 .map_err(Error::CannotPropagate)?;
         }
 
-        let accepted = accepted.into_iter().collect();
-
-        Ok(FragmentsProcessingSummary { accepted, rejected })
+        Ok(summary)
     }
 
     pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
