@@ -7,7 +7,9 @@ use crate::network::p2p::{comm::PeerInfo, Address};
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
 use chain_network::error as net_error;
-use jormungandr_lib::interfaces::{FragmentLog, FragmentOrigin, FragmentStatus};
+use jormungandr_lib::interfaces::{
+    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
+};
 
 use futures::channel::{mpsc, oneshot};
 use futures::prelude::*;
@@ -498,7 +500,12 @@ pub fn stream_request<T, R>(
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum TransactionMsg {
-    SendTransaction(FragmentOrigin, Vec<Fragment>),
+    SendTransactions {
+        origin: FragmentOrigin,
+        fragments: Vec<Fragment>,
+        fail_fast: bool,
+        reply_handle: ReplyHandle<FragmentsProcessingSummary>,
+    },
     RemoveTransactions(Vec<FragmentId>, FragmentStatus),
     GetLogs(ReplyHandle<Vec<FragmentLog>>),
     GetStatuses(

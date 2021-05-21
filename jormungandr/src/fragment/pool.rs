@@ -12,9 +12,13 @@ use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
 use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
 use jormungandr_lib::{
-    interfaces::{FragmentLog, FragmentOrigin, FragmentStatus, PersistentFragmentLog},
+    interfaces::{
+        FragmentLog, FragmentOrigin, FragmentRejectionReason, FragmentStatus,
+        FragmentsProcessingSummary, PersistentFragmentLog, RejectedFragmentInfo,
+    },
     time::SecondsSinceUnixEpoch,
 };
+use std::collections::HashSet;
 use thiserror::Error;
 
 use std::fs::File;
@@ -72,34 +76,55 @@ impl Pools {
         }
     }
 
-    /// Returns number of registered fragments
-    pub async fn insert_and_propagate_all(
+    fn filter_fragments(
         &mut self,
         origin: FragmentOrigin,
-        mut fragments: Vec<Fragment>,
-    ) -> Result<usize, Error> {
+        fragments: Vec<Fragment>,
+        fail_fast: bool,
+    ) -> (Vec<Fragment>, FragmentsProcessingSummary) {
         use bincode::Options;
 
-        tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
-        fragments.retain(is_fragment_valid);
-        if fragments.is_empty() {
-            tracing::debug!("none of the received fragments are valid");
-            return Ok(0);
-        }
-        let mut network_msg_box = self.network_msg_box.clone();
-        let fragment_ids = fragments.iter().map(Fragment::id).collect::<Vec<_>>();
-        let fragments_exist_in_logs = self.logs.exist_all(fragment_ids);
-        let new_fragments = fragments
-            .into_iter()
-            .zip(fragments_exist_in_logs)
-            .filter(|(_, exists_in_logs)| !exists_in_logs)
-            .map(|(fragment, _)| fragment);
+        let mut filtered_fragments = Vec::new();
+        let mut rejected = Vec::new();
 
-        if let Some(mut persistent_log) = self.persistent_log.as_mut() {
-            for fragment in new_fragments.clone() {
+        let mut fragments = fragments.into_iter();
+
+        for fragment in fragments.by_ref() {
+            let id = fragment.id();
+
+            let span =
+                tracing::span!(tracing::Level::TRACE, "pool_incoming_fragment", fragment_id=?id);
+            let _enter = span.enter();
+
+            if self.logs.exists(id) {
+                rejected.push(RejectedFragmentInfo {
+                    id,
+                    reason: FragmentRejectionReason::FragmentAlreadyInLog,
+                });
+                tracing::debug!("fragment is already logged");
+                continue;
+            }
+
+            if !is_fragment_valid(&fragment) {
+                rejected.push(RejectedFragmentInfo {
+                    id,
+                    reason: FragmentRejectionReason::FragmentInvalid,
+                });
+
+                tracing::debug!("fragment is invalid, not including to the pool");
+
+                if fail_fast {
+                    tracing::debug!("fail_fast is enabled; rejecting all downstream fragments");
+                    break;
+                }
+
+                continue;
+            }
+
+            if let Some(mut persistent_log) = self.persistent_log.as_mut() {
                 let entry = PersistentFragmentLog {
                     time: SecondsSinceUnixEpoch::now(),
-                    fragment,
+                    fragment: fragment.clone(),
                 };
                 // this must be sufficient: the PersistentFragmentLog format is using byte array
                 // for serialization so we do not expect any problems during deserialization
@@ -108,29 +133,82 @@ impl Pools {
                     tracing::error!(err = %err, "failed to write persistent fragment log entry");
                 }
             }
+
+            tracing::debug!("including fragment to the pool");
+
+            filtered_fragments.push(fragment);
         }
 
-        let mut max_added = 0;
-
-        for (i, pool) in self.pools.iter_mut().enumerate() {
-            let new_fragments = pool.insert_all(new_fragments.clone());
-            let count = new_fragments.len();
-            tracing::debug!(
-                "{} of the received fragments were added to the pool number {}",
-                count,
-                i
-            );
-            let fragment_logs = new_fragments
-                .iter()
-                .map(move |fragment| FragmentLog::new(fragment.id(), origin))
-                .collect::<Vec<_>>();
-            self.logs.insert_all(fragment_logs);
-            if count > max_added {
-                max_added = count;
+        if fail_fast {
+            for fragment in fragments {
+                let id = fragment.id();
+                let span = tracing::span!(tracing::Level::TRACE, "pool_incoming_fragment", fragment_id=?id);
+                let _enter = span.enter();
+                tracing::error!(
+                    "rejected due to fail_fast and one of previous fragments being invalid"
+                );
+                rejected.push(RejectedFragmentInfo {
+                    id,
+                    reason: FragmentRejectionReason::PreviousFragmentInvalid,
+                })
             }
         }
 
-        for fragment in new_fragments.into_iter() {
+        let mut accepted = HashSet::new();
+
+        for (pool_number, pool) in self.pools.iter_mut().enumerate() {
+            let span = tracing::span!(tracing::Level::TRACE, "pool_insert_fragment", pool_number=?pool_number);
+            let _enter = span.enter();
+
+            let mut fragments = filtered_fragments.clone().into_iter();
+            let new_fragments = pool.insert_all(fragments.by_ref());
+            let count = new_fragments.len();
+            tracing::debug!("{} of the received fragments were added to the pool", count,);
+            let fragment_logs: Vec<_> = new_fragments
+                .iter()
+                .map(move |fragment| FragmentLog::new(fragment.id(), origin))
+                .collect();
+            self.logs.insert_all(fragment_logs);
+
+            for fragment in &new_fragments {
+                let id = fragment.id();
+                tracing::debug!(fragment_id=?id, "inserted fragment to the pool");
+                accepted.insert(id);
+            }
+
+            for fragment in fragments {
+                let id = fragment.id();
+                tracing::debug!(fragment_id=?id, "rejecting fragment due to pool overflow");
+                rejected.push(RejectedFragmentInfo {
+                    id,
+                    reason: FragmentRejectionReason::PoolOverflow { pool_number },
+                })
+            }
+        }
+
+        let accepted = accepted.into_iter().collect();
+
+        (
+            filtered_fragments,
+            FragmentsProcessingSummary { accepted, rejected },
+        )
+    }
+
+    /// Returns number of registered fragments. Setting `fail_fast` to `true` will force this
+    /// method to reject all fragments after the first invalid fragments was met.
+    pub async fn insert_and_propagate_all(
+        &mut self,
+        origin: FragmentOrigin,
+        fragments: Vec<Fragment>,
+        fail_fast: bool,
+    ) -> Result<FragmentsProcessingSummary, Error> {
+        tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
+
+        let (filtered_fragments, summary) = self.filter_fragments(origin, fragments, fail_fast);
+
+        let mut network_msg_box = self.network_msg_box.clone();
+
+        for fragment in filtered_fragments.into_iter() {
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
             network_msg_box
                 .send(fragment_msg)
@@ -138,7 +216,7 @@ impl Pools {
                 .map_err(Error::CannotPropagate)?;
         }
 
-        Ok(max_added)
+        Ok(summary)
     }
 
     pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {

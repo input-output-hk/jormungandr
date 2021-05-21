@@ -40,6 +40,8 @@ pub enum Error {
     Storage(#[from] StorageError),
     #[error(transparent)]
     Hex(#[from] hex::FromHexError),
+    #[error("Could not process all fragments")]
+    Fragments(Vec<String>),
 }
 
 pub async fn get_fragment_statuses<'a>(
@@ -91,11 +93,20 @@ pub async fn post_fragments(
         .map(|fragment| fragment.id().to_string())
         .collect();
     let mut msgbox = context.try_full()?.transaction_task.clone();
-    for fragment in fragments.into_iter() {
-        let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
-        msgbox.try_send(msg)?;
+    let (reply_handle, reply_future) = intercom::unary_reply();
+    let msg = TransactionMsg::SendTransactions {
+        origin: FragmentOrigin::Rest,
+        fragments,
+        fail_fast: true,
+        reply_handle,
+    };
+    msgbox.try_send(msg)?;
+    let reply = reply_future.await?;
+    if reply.is_error() {
+        Err(Error::Fragments(fragment_ids))
+    } else {
+        Ok(fragment_ids)
     }
-    Ok(fragment_ids)
 }
 
 pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Error> {

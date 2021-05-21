@@ -76,6 +76,8 @@ pub enum Error {
     InvalidTopic,
     #[error(transparent)]
     Hex(#[from] hex::FromHexError),
+    #[error("Could not process fragment")]
+    Fragment(String),
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -132,9 +134,20 @@ pub async fn get_message_logs(context: &Context) -> Result<Vec<FragmentLog>, Err
 pub async fn post_message(context: &Context, message: &[u8]) -> Result<String, Error> {
     let fragment = Fragment::deserialize(message).map_err(Error::Deserialize)?;
     let fragment_id = fragment.id().to_string();
-    let msg = TransactionMsg::SendTransaction(FragmentOrigin::Rest, vec![fragment]);
+    let (reply_handle, reply_future) = intercom::unary_reply();
+    let msg = TransactionMsg::SendTransactions {
+        origin: FragmentOrigin::Rest,
+        fragments: vec![fragment],
+        fail_fast: true,
+        reply_handle,
+    };
     context.try_full()?.transaction_task.clone().try_send(msg)?;
-    Ok(fragment_id)
+    let reply = reply_future.await?;
+    if reply.is_error() {
+        Err(Error::Fragment(fragment_id))
+    } else {
+        Ok(fragment_id)
+    }
 }
 
 pub async fn get_tip(context: &Context) -> Result<String, Error> {
