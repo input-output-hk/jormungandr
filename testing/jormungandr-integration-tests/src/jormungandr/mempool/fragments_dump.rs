@@ -160,11 +160,10 @@ pub fn non_existing_folder() {
 }
 
 #[test]
-#[ignore]
 pub fn invalid_folder() {
     let temp_dir = TempDir::new().unwrap();
     let dump_folder = temp_dir.child("dump");
-    let persistent_log_path = dump_folder.child("persist::///;ent_log");
+    let persistent_log_path = dump_folder.child("/dev/null/foo::///;log");
 
     let config = ConfigurationBuilder::new()
         .with_mempool(Mempool {
