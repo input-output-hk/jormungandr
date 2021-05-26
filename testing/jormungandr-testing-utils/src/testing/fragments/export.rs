@@ -40,17 +40,20 @@ impl FragmentExporter {
     }
 
     pub fn read_as_bytes(&self) -> Result<Vec<Vec<u8>>, FragmentExporterError> {
-        fs::read_dir(&self.dump_folder)?
+        let mut entries = fs::read_dir(&self.dump_folder)?
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, std::io::Error>>()?;
+        entries.sort();
+        // the order is platform dependant, let's sort again in time order
+        entries
             .into_iter()
-            .filter(|r| {
-                let path = r.as_ref().unwrap().path();
+            .filter(|path| {
                 let file_name = path.file_name().unwrap().to_str().unwrap();
                 file_name.contains("_from_")
                     && file_name.contains("_to_")
                     && file_name.ends_with(".txt")
             })
-            .map(|r| {
-                let path = r.as_ref().unwrap().path();
+            .map(|path| {
                 let content = jortestkit::prelude::read_file(path);
                 let bytes = hex::decode(content.trim()).unwrap();
                 Ok(bytes)
