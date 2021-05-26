@@ -10,7 +10,6 @@ pub mod scenario;
 pub mod example_scenarios;
 pub mod interactive;
 pub mod report;
-pub mod slog;
 pub mod test;
 
 pub use jortestkit::console::style;

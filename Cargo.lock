@@ -2036,7 +2036,6 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "serde_yaml",
- "slog",
  "structopt",
  "thiserror",
  "tokio 1.6.0",
@@ -3572,12 +3571,6 @@ dependencies = [
  "log",
  "parking_lot",
 ]
-
-[[package]]
-name = "slog"
-version = "2.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8347046d4ebd943127157b94d63abb990fcf729dc4e9978927fdf4ac3c998d06"
 
 [[package]]
 name = "smallvec"
