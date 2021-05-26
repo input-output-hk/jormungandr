@@ -1,6 +1,3 @@
-#[macro_use(error_chain, bail)]
-extern crate error_chain;
-
 pub mod introduction;
 pub mod legacy;
 pub mod node;
