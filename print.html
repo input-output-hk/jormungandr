@@ -141,13 +141,15 @@
                         </a>
                         
                         
+                        
+
                     </div>
                 </div>
 
                 
                 <div id="search-wrapper" class="hidden">
                     <form id="searchbar-outer" class="searchbar-outer">
-                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
                     </form>
                     <div id="searchresults-outer" class="searchresults-outer hidden">
                         <div id="searchresults-header" class="searchresults-header"></div>
@@ -179,10 +181,10 @@ to make sure that all the rules of the protocol are followed.</p>
 <p>Jörmungandr refers to the <em>Midgard Serpent</em> in Norse mythology. It is a hint to
 <em>Ouroboros</em>, the Ancient Egyptian serpent, who eat its own tail, as well as the
 <a href="https://eprint.iacr.org/2016/889.pdf">IOHK paper</a> on proof of stake.</p>
-<h1 id="general-concepts"><a class="header" href="#general-concepts">General Concepts</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="general-concepts"><a class="header" href="#general-concepts">General Concepts</a></h1>
 <p>This chapter covers the general concepts of the blockchain, and their application
 in the node, and is followed by the node organisation and the user interaction with it.</p>
-<h1 id="blockchain-concepts"><a class="header" href="#blockchain-concepts">Blockchain concepts</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="blockchain-concepts"><a class="header" href="#blockchain-concepts">Blockchain concepts</a></h1>
 <h2 id="time"><a class="header" href="#time">Time</a></h2>
 <p>Slots represent the basic unit of time in the blockchain, and at each slot
 a block could be present.</p>
@@ -261,7 +263,7 @@ coins being spent, and on the other side the outputs represent coins being recei
     Outputs            Charlie (50$)  Dan (50$)
 </code></pre>
 <p>Transaction have fees that are defined by the blockchain settings and the following invariant hold:</p>
-<p>\[ \sum Inputs = \sum Outputs + fees \]</p>
+<p>\( \sum Inputs = \sum Outputs + fees \)</p>
 <p>Transaction need to be authorized by each of the inputs in the transaction by their respective witness.
 In the most basic case, a witness is a cryptographic signature, but depending on the type of input can
 the type of witness vary.</p>
@@ -279,7 +281,7 @@ can be used. This is the accounting model found in Ethereum. An account is
 uniquely identified by its public key.</p>
 <p>Each inputs could refer arbitrarily to an account or a UTXO, and similarly
 each outputs could refer to an account or represent a new UTXO.</p>
-<h1 id="stake"><a class="header" href="#stake">Stake</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="stake"><a class="header" href="#stake">Stake</a></h1>
 <p>In a proof of stake, participants are issued a stake equivalent to the amount
 of coins they own. The stake is then used to allow participation in the protocol,
 simply explained as:</p>
@@ -329,7 +331,7 @@ change over time with a publication of a new delegation certificate.</p>
 </code></pre>
 <p>Effectively it assigns the stake in the account and its associated UTXO stake
 to the pool it delegates to until another delegation certificate is made.</p>
-<h1 id="node-organization"><a class="header" href="#node-organization">Node organization</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="node-organization"><a class="header" href="#node-organization">Node organization</a></h1>
 <h2 id="secure-enclave"><a class="header" href="#secure-enclave">Secure Enclave</a></h2>
 <p>The secure enclave is the component containing the secret cryptographic
 material, and offering safe and secret high level interfaces to the rest of
@@ -369,7 +371,7 @@ to be able to do maintenance tasks on the process:</p>
 <li>Load/Retire cryptographic material</li>
 </ul>
 <p>TODO: Detail the ACL/Security measure</p>
-<h1 id="network-overview"><a class="header" href="#network-overview">Network overview</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="network-overview"><a class="header" href="#network-overview">Network overview</a></h1>
 <p>Jörmungandr network capabilities are split into:</p>
 <ol>
 <li>the REST API, used for informational queries or control of the node;</li>
@@ -486,7 +488,7 @@ p2p database. This is not enforced by the protocol.</p>
 <tr><td align="left">quarantined</td><td align="left">Node is not available for the p2p topology for view selection or gossips. After a certain amount of time, if the node is still being gossiped about, it will be moved to available.</td></tr>
 <tr><td align="left">forgotten</td><td align="left">A node forgotten is simply removed from the whole p2p database. However, if the node is still being gossiped about it will be added back as available and the process will start again.</td></tr>
 </tbody></table>
-<h1 id="quickstart"><a class="header" href="#quickstart">Quickstart</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="quickstart"><a class="header" href="#quickstart">Quickstart</a></h1>
 <p>The rust node comes with tools and help in order to quickly start
 a node and connect to the blockchain.</p>
 <p>It is compatible with most platforms and it is pre-packaged for some
@@ -504,7 +506,7 @@ This type of nodes are mostly used for wallets, explorers or relays.</p>
 <p>More information <a href="quickstart/./05_leader_candidate.html">here</a></p>
 <h2 id="creating-your-own-network"><a class="header" href="#creating-your-own-network">Creating your own network</a></h2>
 <p>This is similar to the previous case, but configuring a genesis file is needed. Consult the <a href="quickstart/../advanced/introduction.html">Advanced section</a> for more information on this procedure.</p>
-<h1 id="command-line-tools"><a class="header" href="#command-line-tools">Command line tools</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="command-line-tools"><a class="header" href="#command-line-tools">Command line tools</a></h1>
 <p>The software is bundled with 2 different command line software:</p>
 <ol>
 <li><strong>jormungandr</strong>: the node;</li>
@@ -537,7 +539,7 @@ In order to use auto completion you still need to:</p>
 <pre><code class="language-sh">source ${HOME}/.bash_completion.d/jcli.bash
 </code></pre>
 <p>You can also put it in your <code>${HOME}/.bashrc</code>.</p>
-<h1 id="starting-a-passive-node"><a class="header" href="#starting-a-passive-node">Starting a passive node</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="starting-a-passive-node"><a class="header" href="#starting-a-passive-node">Starting a passive node</a></h1>
 <p>In order to start the node, you first need to gather the blockchain
 information you need to connect to.</p>
 <ol>
@@ -662,7 +664,7 @@ warnings in the logs.</li>
 <p>or, in case you only have the yaml file</p>
 <pre><code class="language-sh">jcli genesis encode --input genesis.yaml | jcli genesis hash
 </code></pre>
-<h1 id="rest-api"><a class="header" href="#rest-api">REST Api</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="rest-api"><a class="header" href="#rest-api">REST Api</a></h1>
 <p>It is possible to query the node via its REST Interface.</p>
 <p>In the node configuration, you have set something like:</p>
 <pre><code class="language-yaml"># ...
@@ -685,7 +687,7 @@ rest:
 <p>Please note that the end points and the results may change in the future.</p>
 <p>To see the whole Node API documentation,
 <a href="https://editor.swagger.io/?url=https://raw.githubusercontent.com/input-output-hk/jormungandr/master/doc/api/v0.yaml">click here</a></p>
-<h1 id="explorer-mode"><a class="header" href="#explorer-mode">Explorer mode</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="explorer-mode"><a class="header" href="#explorer-mode">Explorer mode</a></h1>
 <p>The node can be configured to work as a explorer. This consumes more resources, but makes it possible to query data otherwise not available.</p>
 <h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <p>There is two ways of enabling the explorer api. It can either be done by passing the <code>--enable-explorer</code> flag on the start arguemnts or by the config file:</p>
@@ -716,7 +718,7 @@ rest:
   http://127.0.0.1:8443/explorer/graphql
 </code></pre>
 <p>While the second serves an in-browser graphql IDE that can be used to try queries interactively.</p>
-<h1 id="how-to-start-a-node-as-a-leader-candidate"><a class="header" href="#how-to-start-a-node-as-a-leader-candidate">How to start a node as a leader candidate</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="how-to-start-a-node-as-a-leader-candidate"><a class="header" href="#how-to-start-a-node-as-a-leader-candidate">How to start a node as a leader candidate</a></h1>
 <h2 id="gathering-data"><a class="header" href="#gathering-data">Gathering data</a></h2>
 <p>Like in the passive node case, two things are needed to connect to an existing network</p>
 <ol>
@@ -754,7 +756,7 @@ of truth of the blockchain. It is 64 hexadecimal characters.</li>
 <pre><code class="language-sh">jormungandr --genesis-block asdf1234... --config node.config --secret node_secret.yaml
 </code></pre>
 <p><em>The 'asdf1234...' part should be the actual block0 hash of the network</em></p>
-<h1 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h1>
 <p>This chapter covers the node documentation, necessary to have a working system.
 It covers the network, logging and storage parameters.</p>
 <h2 id="node-configuration"><a class="header" href="#node-configuration">Node Configuration</a></h2>
@@ -854,7 +856,7 @@ be changed by adjusting the <code>block_hard_deadline</code> setting.</p>
 the environment variable: <code>JORMUNGANDR_REWARD_DUMP_DIRECTORY=/PATH/TO/DIR/TO/WRITE/REWARD</code>.</p>
 <p>If an error occur while dumping the reward, the node will <strong>panic</strong> with an appropriate
 error message.</p>
-<h1 id="logging"><a class="header" href="#logging">Logging</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="logging"><a class="header" href="#logging">Logging</a></h1>
 <p>The following options are available in the <code>log</code> section:</p>
 <ul>
 <li>
@@ -897,7 +899,7 @@ Possible values: <code>off</code>, <code>critical</code>, <code>error</code>, <c
   level: info
   format: json
 </code></pre>
-<h1 id="node-network"><a class="header" href="#node-network">Node network</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="node-network"><a class="header" href="#node-network">Node network</a></h1>
 <p>There are 2 different network interfaces which are covered by their respective section:</p>
 <pre><code class="language-yaml">rest:
    ...
@@ -1026,6 +1028,10 @@ to the one selected by other p2p topology layer <code>[default: 20]</code></li>
 changing the value will affect the bandwidth. The more often the node will
 gossip the more bandwidth the node will need. The less often the node gossips
 the less good the resilience to node churn. <code>[default: 10s]</code></li>
+<li><code>network-stuck_check</code>: (optional) If no gossip has been received in the last interval,
+try to connect to nodes that were previously known to this node.
+This helps to rejoin the protocol in case there is a network outage and the node cannot reach
+any other peer. <code>[default: 5min]</code></li>
 <li><code>max_bootstrap_attempts</code>: (optional) number of times to retry bootstrapping from trusted peers.
 If not set, default behavior, the bootstrap process will keep retrying indefinitely, until completed successfully.
 If set to <em>0</em> (zero), the node will skip bootstrap all together -- <em>even if trusted peers are defined</em>.
@@ -1087,7 +1093,7 @@ blocks: normal
 <pre><code class="language-yaml">messages: high
 blocks: high
 </code></pre>
-<h1 id="mempool"><a class="header" href="#mempool">Mempool</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="mempool"><a class="header" href="#mempool">Mempool</a></h1>
 <p>When running an active node (BFT leader or stake pool) it is interesting to be
 able to make choices on how to manage the pending transactions: how long to keep
 them, how to prioritize them etc.</p>
@@ -1108,7 +1114,7 @@ specifying the directory name where log files are stored.</li>
 <p>A persistent log is a collection of records comprised of a UNIX timestamp of when a fragment was
 registereed by the mempool followed by the hex-encoded fragment body. This log is a line-delimited
 JSON stream.</p>
-<h1 id="leadership-1"><a class="header" href="#leadership-1">Leadership</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="leadership-1"><a class="header" href="#leadership-1">Leadership</a></h1>
 <p>The <code>leadership</code> field in your node config file is not mandatory, by default it is set
 as follow:</p>
 <pre><code class="language-yaml">leadership:
@@ -1119,7 +1125,7 @@ as follow:</p>
 is reached, older logs will be removed in order to leave more space for new ones
 [default: 1024]</li>
 </ul>
-<h1 id="jcli"><a class="header" href="#jcli">jcli</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="jcli"><a class="header" href="#jcli">jcli</a></h1>
 <p>This is the node command line helper. It is mostly meant for developers and
 stake pool operators. It allows offline operations:</p>
 <ul>
@@ -1133,7 +1139,7 @@ stake pool operators. It allows offline operations:</p>
 <li>send transactions and certificates;</li>
 <li>get raw blocks and UTxOs.</li>
 </ul>
-<h1 id="cryptographic-keys"><a class="header" href="#cryptographic-keys">cryptographic keys</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="cryptographic-keys"><a class="header" href="#cryptographic-keys">cryptographic keys</a></h1>
 <p>There are multiple type of key for multiple use cases.</p>
 <table><thead><tr><th align="center">type</th><th align="left">usage</th></tr></thead><tbody>
 <tr><td align="center"><code>Ed25519</code></td><td align="left">Signing algorithm for Ed25519 algorithm</td></tr>
@@ -1173,7 +1179,7 @@ sumed25519_12.</p>
 <li>--signature &lt;signature&gt; - path to file with signature</li>
 </ul>
 <p>&lt;data&gt; - path to file with data to sign, if no value is passed, standard input will be used</p>
-<h1 id="address"><a class="header" href="#address">Address</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="address"><a class="header" href="#address">Address</a></h1>
 <p>Jormungandr comes with a separate CLI to create and manipulate addresses.</p>
 <p>This is useful for creating addresses from their components in the CLI,
 for debugging addresses and for testing.</p>
@@ -1232,7 +1238,7 @@ it is only for UI/UX.</p>
     ed25519_pk1yx6q8rsndawfx8hjzwntfs2h2c37v5g6edv67hmcxvrmxfjdz9wqeejchg
 address_1q5smgquwzdh4eyc77gf6ddxp2atz8ej3rt94nt6l0qes0vexf5g4cw68kdx
 </code></pre>
-<h1 id="transaction-1"><a class="header" href="#transaction-1">Transaction</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="transaction-1"><a class="header" href="#transaction-1">Transaction</a></h1>
 <p>Tooling for offline transaction creation and signing.</p>
 <pre><code class="language-sh">jcli transaction
 </code></pre>
@@ -1465,7 +1471,7 @@ and for block <code>d9040ca57e513a36ecd3bb54207dfcd10682200929cad6ada46b52141796
 <p><strong>Pending</strong>: if the transaction is received and is pending being added in the blockchain (or rejected).</p>
 <p>or</p>
 <p><strong>Rejected</strong>: with an attached message of the reason the transaction was rejected.</p>
-<h1 id="certificate"><a class="header" href="#certificate">Certificate</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="certificate"><a class="header" href="#certificate">Certificate</a></h1>
 <p>Tooling for offline transaction creation</p>
 <h2 id="building-stake-pool-registration-certificate"><a class="header" href="#building-stake-pool-registration-certificate">Building stake pool registration certificate</a></h2>
 <p>Builds a stake pool registration certificate.</p>
@@ -1519,7 +1525,7 @@ See <a href="jcli/../stake_pool/registering_stake_pool.html">here</a> for more d
 <li><code>&lt;STAKE_POOL_IDS&gt;...</code>        - hex-encoded stake pool IDs and their numeric weights in format <strong>&quot;pool_id:weight&quot;</strong>.
 If <em>weight</em> is not provided, <em>it defaults to 1</em>.</li>
 </ul>
-<h1 id="genesis"><a class="header" href="#genesis">Genesis</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="genesis"><a class="header" href="#genesis">Genesis</a></h1>
 <p>Tooling for working with a genesis file</p>
 <h2 id="usage"><a class="header" href="#usage">Usage</a></h2>
 <pre><code class="language-sh">jcli genesis [subcommand]
@@ -1542,7 +1548,7 @@ If <em>weight</em> is not provided, <em>it defaults to 1</em>.</li>
 <h3 id="get-the-hash-of-an-encoded-genesis-file"><a class="header" href="#get-the-hash-of-an-encoded-genesis-file">Get the hash of an encoded genesis file</a></h3>
 <pre><code class="language-sh">jcli genesis hash --input block-0.bin
 </code></pre>
-<h1 id="voting"><a class="header" href="#voting">Voting</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="voting"><a class="header" href="#voting">Voting</a></h1>
 <p>Jormungandr supports decentralized voting with privacy features.</p>
 <p>The voting process is controlled by a committee whose private keys can be used
 to decrypt and certify the tally.</p>
@@ -1665,7 +1671,7 @@ Once all shares are available, we need to merge them in a single file with the f
 --threshold number_of_committee_members \
 --output-format json &gt; result.json
 </code></pre>
-<h1 id="rest"><a class="header" href="#rest">REST</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="rest"><a class="header" href="#rest">REST</a></h1>
 <p>Jormungandr comes with a CLI client for manual communication with nodes over HTTP.</p>
 <h2 id="conventions"><a class="header" href="#conventions">Conventions</a></h2>
 <p>Many CLI commands have common arguments:</p>
@@ -2263,14 +2269,14 @@ vrfPublicKey: vrf_pk1rcm4qm3q9dtwq22x9a4avnan7a3k987zvepuxwekzj3uyu6a8v0s6sdy0l
     epoch: 1
     slot_id: 0
 </code></pre>
-<h1 id="staking-with-jörmungandr"><a class="header" href="#staking-with-jörmungandr">Staking with Jörmungandr</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="staking-with-jörmungandr"><a class="header" href="#staking-with-jörmungandr">Staking with Jörmungandr</a></h1>
 <p>Here we will describe how to:</p>
 <ul>
 <li><em>delegate your stake to a stake pool</em> - so that you can participate to the consensus and maybe collect rewards for that.</li>
 <li><em>register a stake pool</em></li>
 <li><em>retire a stake pool</em></li>
 </ul>
-<h1 id="delegating-your-stake"><a class="header" href="#delegating-your-stake">Delegating your stake</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="delegating-your-stake"><a class="header" href="#delegating-your-stake">Delegating your stake</a></h1>
 <h2 id="how-to-create-the-delegation-certificate"><a class="header" href="#how-to-create-the-delegation-certificate">how to create the delegation certificate</a></h2>
 <p>Stake is concentrated in accounts, and you will need account public key to delegate its associated stake.</p>
 <h3 id="for-own-account"><a class="header" href="#for-own-account">for own account</a></h3>
@@ -2328,7 +2334,7 @@ delegation to happens, and for that we need a cryptographic signature.</p>
 <pre><code class="language-sh">signedcert1q9uxkxptz3zx7akmugkmt4ecjjd3nmzween2qfr5enhzkt37tdt4uqt0j0039z5048mu9ayv3ujep5sl28q2cpdnx9fkvpq30lmjrrgtmqqctzczvu6e3v65m40n40c3y2pnu4vhd888dygkrtnfm0ts92fe50jy0h0ugh6wlvgy4xvr3lz4uuqzg2xgu6vv8tr24jrwhg0l09klp5wvwzl5
 </code></pre>
 <p>and can now be added in the <code>genesis config</code> file.</p>
-<h1 id="registering-a-stake-pool-1"><a class="header" href="#registering-a-stake-pool-1">Registering a stake pool</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="registering-a-stake-pool-1"><a class="header" href="#registering-a-stake-pool-1">Registering a stake pool</a></h1>
 <p>There are multiple components to be aware of when running a stake pool:</p>
 <ul>
 <li>your <code>NodeId</code>: it is the identifier within the blockchain protocol (wallet
@@ -2437,7 +2443,7 @@ jcli transaction auth --key owner_key.prv --staging tx
 </code></pre>
 <p>The <code>--fee-certificate</code> flag indicates the cost of adding a certificate, used for computing the fees, it can be omitted if it is zero.</p>
 <p>See <a href="stake_pool/../jcli/transaction.html">here</a> for more documentation on transaction creation.</p>
-<h1 id="retiring-a-stake-pool-1"><a class="header" href="#retiring-a-stake-pool-1">Retiring a stake pool</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="retiring-a-stake-pool-1"><a class="header" href="#retiring-a-stake-pool-1">Retiring a stake pool</a></h1>
 <p>Stake pool can be retired by sending transaction with retirement certificate.
 From technical stand point, it is very similar to register stake pool operation.
 Before start we need to be sure, that:</p>
@@ -2481,13 +2487,13 @@ jcli transaction auth --key owner_key.prv --staging tx
 <p><strong>Important !</strong>
 Please be sure that you have sufficient amount of owners signatures in order to retire stake pool. At least half of owners singatures (which were provided when registering stake pool) are required to sign retirement certificate.</p>
 <p>See <a href="stake_pool/../jcli/transaction.html">here</a> for more documentation on transaction creation.</p>
-<h1 id="advanced-1"><a class="header" href="#advanced-1">Advanced</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="advanced-1"><a class="header" href="#advanced-1">Advanced</a></h1>
 <p>This section is meant for advanced users and developers of the node, or if
 you to learn more about the node.</p>
 <p>At the moment, it only covers details on how to create your own blockchain genesis
 configuration, but in normal case, the blockchain configuration should be available
 with the specific blockchain system.</p>
-<h1 id="genesis-file"><a class="header" href="#genesis-file">genesis file</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="genesis-file"><a class="header" href="#genesis-file">genesis file</a></h1>
 <p>The genesis file is the file that allows you to create a new blockchain
 from block 0. It lays out the different parameter of your blockchain:
 the initial utxo, the start time, the slot duration time, etc...</p>
@@ -2765,7 +2771,7 @@ via the update protocol;</li>
 <tr><td align="left"><code>value</code></td><td align="left">number</td><td align="left">assigned value</td></tr>
 </tbody></table>
 <p><code>legacy_fund</code> differs only in address format, which is legacy Cardano</p>
-<h1 id="starting-a-bft-node"><a class="header" href="#starting-a-bft-node">starting a bft node</a></h1>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="starting-a-bft-node"><a class="header" href="#starting-a-bft-node">starting a bft node</a></h1>
 <p>BFT stands for the Byzantine Fault Tolerant
 (<a href="https://iohk.io/research/papers/#L5IHCV53">read the paper</a>).</p>
 <p>Jormungandr allows you to start a BFT blockchain fairly easily. The main
@@ -2863,8 +2869,9 @@ p2p:
 <pre><code class="language-sh">jormungandr --genesis-block block-0.bin --config node.config --secret node_secret.yaml
 </code></pre>
 <h1 id="script"><a class="header" href="#script">Script</a></h1>
-<p>Additionally, there is a script <a href="https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap">here</a> that can be used to bootstrap a test node with bft consensus protocol.</p>
-<h1 id="starting-a-genesis-blockchain"><a class="header" href="#starting-a-genesis-blockchain">starting a genesis blockchain</a></h1>
+<p>Additionally, there is a script <a href="https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap.py">here</a>
+that can be used to bootstrap a test node with bft consensus protocol.</p>
+<div id="chapter_begin" style="break-before: page; page-break-before: always;"></div><h1 id="starting-a-genesis-blockchain"><a class="header" href="#starting-a-genesis-blockchain">starting a genesis blockchain</a></h1>
 <p>When starting a genesis praos blockchain there is an element to take
 into consideration while constructing the block 0: <em>the stake distribution</em>.</p>
 <p>In the context of Genesis/Praos the network is fully decentralized and it is
@@ -2935,7 +2942,9 @@ initial_funds:
 <pre><code class="language-sh">jormungandr --genesis-block block-0.bin --config config.yaml --secret poolsecret.yaml
 </code></pre>
 <h1 id="test-script"><a class="header" href="#test-script">Test script</a></h1>
-<p>There is a script <a href="https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap">here</a> that can be used to bootstrap a test node with a pre-set faucet and stake pool and can be used as an example.</p>
+<p>There is a script <a href="https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap.py">here</a>
+that can be used to bootstrap a test node with a pre-set faucet and stake pool and can be used as an
+example.</p>
 
                     </main>
 

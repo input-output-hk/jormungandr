@@ -139,13 +139,15 @@
                         </a>
                         
                         
+                        
+
                     </div>
                 </div>
 
                 
                 <div id="search-wrapper" class="hidden">
                     <form id="searchbar-outer" class="searchbar-outer">
-                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
                     </form>
                     <div id="searchresults-outer" class="searchresults-outer hidden">
                         <div id="searchresults-header" class="searchresults-header"></div>
@@ -295,6 +297,10 @@ to the one selected by other p2p topology layer <code>[default: 20]</code></li>
 changing the value will affect the bandwidth. The more often the node will
 gossip the more bandwidth the node will need. The less often the node gossips
 the less good the resilience to node churn. <code>[default: 10s]</code></li>
+<li><code>network-stuck_check</code>: (optional) If no gossip has been received in the last interval,
+try to connect to nodes that were previously known to this node.
+This helps to rejoin the protocol in case there is a network outage and the node cannot reach
+any other peer. <code>[default: 5min]</code></li>
 <li><code>max_bootstrap_attempts</code>: (optional) number of times to retry bootstrapping from trusted peers.
 If not set, default behavior, the bootstrap process will keep retrying indefinitely, until completed successfully.
 If set to <em>0</em> (zero), the node will skip bootstrap all together -- <em>even if trusted peers are defined</em>.

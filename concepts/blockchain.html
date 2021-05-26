@@ -139,13 +139,15 @@
                         </a>
                         
                         
+                        
+
                     </div>
                 </div>
 
                 
                 <div id="search-wrapper" class="hidden">
                     <form id="searchbar-outer" class="searchbar-outer">
-                        <input type="search" name="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
                     </form>
                     <div id="searchresults-outer" class="searchresults-outer hidden">
                         <div id="searchresults-header" class="searchresults-header"></div>
@@ -245,7 +247,7 @@ coins being spent, and on the other side the outputs represent coins being recei
     Outputs            Charlie (50$)  Dan (50$)
 </code></pre>
 <p>Transaction have fees that are defined by the blockchain settings and the following invariant hold:</p>
-<p>\[ \sum Inputs = \sum Outputs + fees \]</p>
+<p>\( \sum Inputs = \sum Outputs + fees \)</p>
 <p>Transaction need to be authorized by each of the inputs in the transaction by their respective witness.
 In the most basic case, a witness is a cryptographic signature, but depending on the type of input can
 the type of witness vary.</p>
