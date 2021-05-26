@@ -217,7 +217,7 @@ mod tests {
     #[tokio::test]
     async fn enclave_add_different_bft_leaders() {
         let enclave = Enclave::new();
-        let mut rng = rand_core::OsRng;
+        let mut rng = rand::rngs::OsRng;
 
         let leader1 = Leader {
             bft_leader: Some(BftLeader {
@@ -248,7 +248,7 @@ mod tests {
     #[tokio::test]
     async fn enclave_add_duplicated_bft_leaders() {
         let enclave = Enclave::new();
-        let secret_key = SecretKey::generate(rand_core::OsRng);
+        let secret_key = SecretKey::generate(rand::rngs::OsRng);
 
         let leader1 = Leader {
             bft_leader: Some(BftLeader {
@@ -276,7 +276,7 @@ mod tests {
         assert_eq!(leaders_data.added_leaders_cache.len(), 1);
     }
 
-    fn mk_pool_id(rng: &mut dyn rand_core::RngCore) -> chain_impl_mockchain::certificate::PoolId {
+    fn mk_pool_id(rng: &mut dyn rand::RngCore) -> chain_impl_mockchain::certificate::PoolId {
         let mut bytes = [0; 32];
 
         rng.fill_bytes(&mut bytes);
@@ -287,7 +287,7 @@ mod tests {
     #[tokio::test]
     async fn enclave_add_different_genesis_leaders() {
         let enclave = Enclave::new();
-        let mut rng = rand_core::OsRng;
+        let mut rng = rand::rngs::OsRng;
 
         let leader1 = Leader {
             bft_leader: None,
@@ -323,7 +323,7 @@ mod tests {
     async fn enclave_add_duplicated_genesis_leaders() {
         let enclave = Enclave::new();
 
-        let mut rng = rand_core::OsRng;
+        let mut rng = rand::rngs::OsRng;
         let sig_key_1 = SecretKey::generate(&mut rng);
         let sig_key_2 = SecretKey::generate(&mut rng);
         let id = mk_pool_id(&mut rng);
