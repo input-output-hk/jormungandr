@@ -1,3 +1,4 @@
+use super::stable_storage::StableIndexError;
 use crate::blockcfg::HeaderHash;
 use crate::{blockchain::StorageError, intercom};
 use thiserror::Error;
@@ -10,6 +11,8 @@ pub enum ExplorerError {
     AncestorNotFound(HeaderHash),
     #[error("transaction '{0}' is already indexed")]
     TransactionAlreadyExists(crate::blockcfg::FragmentId),
+    #[error("transaction '{0}' not found")]
+    TransactionNotFound(crate::blockcfg::FragmentId),
     #[error("tried to index block '{0}' twice")]
     BlockAlreadyExists(HeaderHash),
     #[error("block with {0} chain length already exists in explorer branch")]
@@ -20,6 +23,8 @@ pub enum ExplorerError {
     StorageError(#[from] StorageError),
     #[error("streaming error")]
     StreamingError(#[from] intercom::Error),
+    #[error("stable storage error")]
+    StableIndexError(#[from] StableIndexError),
 }
 
 pub type Result<T> = std::result::Result<T, ExplorerError>;

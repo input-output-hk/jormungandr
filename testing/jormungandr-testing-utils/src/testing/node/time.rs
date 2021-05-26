@@ -1,4 +1,5 @@
 use crate::testing::node::explorer::Explorer;
+use chain_impl_mockchain::block::ChainLength;
 use jormungandr_lib::interfaces::BlockDate;
 
 pub fn wait_for_epoch(epoch_id: u64, mut explorer: Explorer) {
@@ -37,5 +38,26 @@ pub fn wait_for_date(target_block_date: BlockDate, mut explorer: Explorer) {
         }
 
         std::thread::sleep(std::time::Duration::from_secs(1));
+    }
+}
+
+pub fn wait_n_blocks(start: ChainLength, n: u32, explorer: &Explorer) {
+    loop {
+        let current = explorer
+            .last_block()
+            .unwrap()
+            .data
+            .unwrap()
+            .tip
+            .block
+            .chain_length;
+
+        let current: u32 = current.parse().unwrap();
+
+        if u32::from(start) + n <= current {
+            return;
+        }
+
+        std::thread::sleep(std::time::Duration::from_secs(2));
     }
 }

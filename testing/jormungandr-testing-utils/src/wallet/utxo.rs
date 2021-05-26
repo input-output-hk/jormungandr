@@ -1,11 +1,11 @@
 use chain_addr::Discrimination;
-use chain_impl_mockchain::transaction::{TransactionSignDataHash, Witness};
+use chain_impl_mockchain::transaction::{Input, TransactionSignDataHash, UtxoPointer, Witness};
 use jormungandr_lib::{
     crypto::{
         hash::Hash,
         key::{self, Identifier},
     },
-    interfaces::{Address, UTxOInfo},
+    interfaces::{Address, UTxOInfo, Value},
 };
 use rand_chacha::ChaChaRng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
@@ -93,5 +93,27 @@ impl Wallet {
         Witness::new_utxo(&block0_hash.clone().into_hash(), signing_data, |d| {
             self.last_signing_key().as_ref().sign(d)
         })
+    }
+
+    pub fn add_input_with_value(&self, value: Value) -> Input {
+        if let Some((_, info)) = self
+            .utxos
+            .iter()
+            .find(|(_, info)| info.associated_fund() >= &value)
+        {
+            let utxo = UtxoPointer {
+                transaction_id: info.transaction_id().into_hash(),
+                output_index: info.index_in_transaction(),
+                value: value.into(),
+            };
+
+            Input::from_utxo(utxo)
+        } else {
+            todo!("no utxo found to cover for {}", value);
+        }
+    }
+
+    pub fn add_utxo(&mut self, utxo: UTxOInfo) {
+        self.utxos.push((0, utxo));
     }
 }
