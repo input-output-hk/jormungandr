@@ -108,25 +108,19 @@ setup:
 ```sh
 mkdir mynode
 cd mynode
-PATH/TO/SOURCE/REPOSITORY/scripts/bootstrap <options>
+python3 PATH/TO/SOURCE/REPOSITORY/scripts/bootstrap.py <options>
 ```
 
 Use the following recommended bootstrap options:
 
 ```sh
-bootstrap -b        # BFT setup
-bootstrap -g -s 2   # Genesis-praos setup
-bootstrap -h        # further help
+bootstrap --bft # BFT setup
+bootstrap --genesis-praos --slot-duration 2 # Genesis-praos setup
+bootstrap --help # further help
 ```
 
 The bootstrap script creates a simple setup with a faucet with 10 millions
 coins, a BFT leader, and a stake pool.
-
-It also creates 2 shell scripts parametrized to this specific
-run of bootstrap:
-
-* `faucet-send-money`
-* `faucet-send-certificate`
 
 Both scripts can be used to do simple limited operation through the jcli
 debugging tools.
