@@ -304,9 +304,6 @@ rest:
 p2p:
   trusted_peers: []
   public_address: "/ip4/{rest_host}/tcp/8299"
-  topics_of_interest:
-    messages: low
-    blocks: normal
 """.format(
     storage=storage, rest_listen=rest_listen, rest_host=REST_HOST
 )
