@@ -2,7 +2,7 @@ use super::{
     candidate,
     chain::{self, AppliedBlock, CheckHeaderProof, LeadershipBlock},
     chain_selection::{self, ComparisonResult},
-    Blockchain, Error, ErrorKind, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
+    Blockchain, Error, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
 };
 use crate::{
     blockcfg::{Block, FragmentId, Header, HeaderHash},
@@ -341,8 +341,7 @@ pub async fn process_new_ref(
 
                 blockchain
                     .storage()
-                    .put_tag(MAIN_BRANCH_TAG, candidate_hash)
-                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))?;
+                    .put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
 
                 tip.update_ref(candidate).await;
             } else {
@@ -354,8 +353,7 @@ pub async fn process_new_ref(
 
                 blockchain
                     .storage()
-                    .put_tag(MAIN_BRANCH_TAG, candidate_hash)
-                    .map_err(|e| Error::with_chain(e, "Cannot update the main storage's tip"))?;
+                    .put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
 
                 let branch = blockchain.branches_mut().apply_or_create(candidate).await;
                 tip.swap(branch).await;
@@ -381,7 +379,7 @@ async fn process_and_propagate_new_ref(
     new_block_ref: Arc<Ref>,
     mut network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-) -> Result<(), Error> {
+) -> chain::Result<()> {
     let header = new_block_ref.header().clone();
     tracing::debug!("processing the new block and propagating");
 
@@ -391,7 +389,7 @@ async fn process_and_propagate_new_ref(
     network_msg_box
         .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
         .await
-        .map_err(|_| "Cannot propagate block to network".into())
+        .map_err(Into::into)
         .map(|_| ())
 }
 
@@ -404,15 +402,14 @@ async fn process_leadership_block(
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     leadership_block: LeadershipBlock,
     stats_counter: StatsCounter,
-) -> Result<(), Error> {
+) -> chain::Result<()> {
     let block = leadership_block.block.clone();
     let new_block_ref = process_leadership_block_inner(&mut blockchain, leadership_block).await?;
 
     let fragments = block.fragments().map(|f| f.id()).collect();
 
     tracing::trace!("updating fragments log");
-    try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())
-        .map_err(|_| "cannot remove fragments from pool".to_string())?;
+    try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())?;
 
     process_and_propagate_new_ref(
         &mut blockchain,
@@ -427,11 +424,9 @@ async fn process_leadership_block(
     stats_counter.set_tip_block(Arc::new(block.clone()));
 
     if let Some(mut msg_box) = explorer_msg_box {
-        msg_box
-            .send(ExplorerMsg::NewBlock(block))
-            .await
-            .map_err(|_| "Cannot propagate block to explorer".to_string())?;
+        msg_box.send(ExplorerMsg::NewBlock(block)).await?;
     }
+
     Ok(())
 }
 
@@ -441,8 +436,7 @@ async fn process_leadership_block_inner(
 ) -> Result<Arc<Ref>, Error> {
     let applied = blockchain
         .apply_and_store_leadership_block(leadership_block)
-        .await
-        .map_err(|err| Error::with_chain(err, "cannot process leadership block"))?;
+        .await?;
     let new_ref = applied
         .new_ref()
         .expect("block from leadership must be unique");
@@ -458,10 +452,7 @@ async fn process_block_announcement(
     mut pull_headers_scheduler: PullHeadersScheduler,
     mut get_next_block_scheduler: GetNextBlockScheduler,
 ) -> Result<(), Error> {
-    let pre_checked = blockchain
-        .pre_check_header(header, false)
-        .await
-        .map_err(|err| Error::with_chain(err, "cannot process block announcement"))?;
+    let pre_checked = blockchain.pre_check_header(header, false).await?;
     match pre_checked {
         PreCheckedHeader::AlreadyPresent { .. } => {
             tracing::debug!("block is already present");
@@ -607,7 +598,7 @@ async fn process_network_block(
                 date = %header.block_date(),
                 "block is missing a locally stored parent"
             );
-            Err(ErrorKind::MissingParentBlock(parent_hash).into())
+            Err(Error::MissingParentBlock(parent_hash))
         }
         PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
             let r =
@@ -695,8 +686,7 @@ async fn process_chain_headers(
                     |e| tracing::error!(reason = ?e, "get blocks schedule completion failed"),
                 );
 
-            if header_ids.is_empty() {
-            } else {
+            if !header_ids.is_empty() {
                 network_msg_box
                     .send(NetworkMsg::GetBlocks(header_ids))
                     .await
@@ -713,9 +703,9 @@ async fn process_chain_headers(
 }
 
 fn network_block_error_into_reply(err: chain::Error) -> intercom::Error {
-    use super::chain::ErrorKind::*;
+    use super::chain::Error::*;
 
-    match err.0 {
+    match err {
         Storage(e) => intercom::Error::failed(e),
         Ledger(e) => intercom::Error::failed_precondition(e),
         Block0(e) => intercom::Error::failed(e),

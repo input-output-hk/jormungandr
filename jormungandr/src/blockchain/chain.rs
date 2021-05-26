@@ -63,61 +63,55 @@ use chain_time::TimeFrame;
 use std::sync::Arc;
 use tokio_stream::StreamExt;
 
-// derive
-use thiserror::Error;
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error(transparent)]
+    Storage(#[from] StorageError),
 
-error_chain! {
-    foreign_links {
-        Storage(StorageError);
-        Ledger(ledger::Error);
-        Block0(Block0Error);
-    }
+    #[error(transparent)]
+    Ledger(#[from] ledger::Error),
 
-    errors {
-        Block0InitialLedgerError {
-            description("Error while creating the initial ledger out of the block0")
-        }
+    #[error(transparent)]
+    Block0(#[from] Block0Error),
 
-        Block0AlreadyInStorage {
-            description("Block0 already exists in the storage")
-        }
+    #[error(transparent)]
+    Intercom(#[from] crate::intercom::Error),
 
-        Block0NotAlreadyInStorage {
-            description("Block0 is not yet in the storage")
-        }
+    #[error(transparent)]
+    SendError(#[from] futures::channel::mpsc::SendError),
 
-        MissingParentBlock(hash: HeaderHash) {
-            description("missing a parent block from the storage"),
-            display(
-                "Missing a block from the storage. The node was recovering \
-                 the blockchain and the parent block '{}' was not \
-                 already stored",
-                hash,
-            ),
-        }
+    #[error("failed to send message to the fragments process")]
+    TransactionSendError(#[from] crate::async_msg::TrySendError<crate::intercom::TransactionMsg>),
 
-        NoTag (tag: String) {
-            description("Missing tag from the storage"),
-            display("Tag '{}' not found in the storage", tag),
-        }
+    #[error("Error while creating the initial ledger out of the block0")]
+    Block0InitialLedgerError(#[source] ledger::Error),
 
-        BlockHeaderVerificationFailed (reason: String) {
-            description("Block header verification failed"),
-            display("The block header verification failed: {}", reason),
-        }
+    #[error("Block0 already exists in the storage")]
+    Block0AlreadyInStorage,
 
-        BlockNotRequested (hash: HeaderHash) {
-            description("Received an unknown block"),
-            display("Received block {} is not known from previously received headers", hash)
-        }
+    #[error("Block0 is not yet in the storage")]
+    Block0NotAlreadyInStorage,
 
-        CannotApplyBlock {
-            description("Block cannot be applied on top of the previous block's ledger state"),
-        }
-    }
+    #[error("Missing a block from the storage. The node was recovering the blockchain and the parent block `{0}` was not already stored.")]
+    MissingParentBlock(HeaderHash),
+
+    #[error("Tag `{0}` not found in the storage")]
+    NoTag(String),
+
+    #[error("The block header verification failed: {0}")]
+    BlockHeaderVerificationFailed(#[from] HeaderChainVerifyError),
+
+    #[error("Failed to get a new leadership schedule")]
+    NewLeadershipScheduleFailed(#[from] chain_impl_mockchain::leadership::Error),
+
+    #[error("Received block `{0}` is not known from previously received headers")]
+    BlockNotRequested(HeaderHash),
+
+    #[error("Block cannot be applied on top of the previous block's ledger state")]
+    CannotApplyBlock(#[source] ledger::Error),
 }
 
-#[derive(Error, Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum HeaderChainVerifyError {
     #[error("date is set before parent; new block: {child}, parent: {parent}")]
     BlockDateBeforeParent { child: BlockDate, parent: BlockDate },
@@ -127,6 +121,8 @@ pub enum HeaderChainVerifyError {
         parent: ChainLength,
     },
 }
+
+pub type Result<T> = core::result::Result<T, Error>;
 
 pub const MAIN_BRANCH_TAG: &str = "HEAD";
 
@@ -357,10 +353,7 @@ impl Blockchain {
     ///       is not implemented
     pub async fn get_ref(&self, header_hash: HeaderHash) -> Result<Option<Arc<Ref>>> {
         let maybe_ref = self.ref_cache.get(header_hash).await;
-        let block_exists = self
-            .storage
-            .block_exists(header_hash)
-            .map_err(|e| Error::with_chain(e, "cannot check if the block is in the storage"))?;
+        let block_exists = self.storage.block_exists(header_hash)?;
 
         if maybe_ref.is_none() {
             if block_exists {
@@ -417,7 +410,7 @@ impl Blockchain {
             PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
                 pre_verify_link(header, parent_ref.header())
                     .map(|()| pre_check)
-                    .map_err(|e| ErrorKind::BlockHeaderVerificationFailed(e.to_string()).into())
+                    .map_err(Error::BlockHeaderVerificationFailed)
             }
             _ => Ok(pre_check),
         }
@@ -450,9 +443,7 @@ impl Blockchain {
 
         if check_header_proof == CheckHeaderProof::Enabled {
             match epoch_leadership_schedule.verify(&header) {
-                Verification::Failure(error) => {
-                    Err(ErrorKind::BlockHeaderVerificationFailed(error.to_string()))
-                }
+                Verification::Failure(error) => Err(Error::NewLeadershipScheduleFailed(error)),
                 Verification::Success => Ok(()),
             }?;
         }
@@ -488,7 +479,7 @@ impl Blockchain {
                 &block.contents,
                 &metadata,
             )
-            .chain_err(|| ErrorKind::CannotApplyBlock)?;
+            .map_err(Error::CannotApplyBlock)?;
 
         Ok(ledger)
     }
@@ -515,7 +506,7 @@ impl Blockchain {
                     &post_checked_header.epoch_ledger_parameters,
                     reward_info_dist,
                 )
-                .chain_err(|| ErrorKind::CannotApplyBlock)?;
+                .map_err(Error::CannotApplyBlock)?;
         }
 
         Ok(())
@@ -634,7 +625,7 @@ impl Blockchain {
     ///
     /// The resulted future may fail if
     ///
-    /// * the block0 does build an invalid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
+    /// * the block0 does build an invalid `Ledger`: `Error::Block0InitialLedgerError`;
     ///
     async fn apply_block0(&self, block0: &Block) -> Result<Branch> {
         let block0_id = block0.header.hash();
@@ -645,12 +636,8 @@ impl Blockchain {
         let time_frame = {
             use crate::blockcfg::Block0DataSource as _;
 
-            let start_time = block0
-                .start_time()
-                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
-            let slot_duration = block0
-                .slot_duration()
-                .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
+            let start_time = block0.start_time().map_err(Error::Block0)?;
+            let slot_duration = block0.slot_duration().map_err(Error::Block0)?;
 
             TimeFrame::new(
                 chain_time::Timeline::new(start_time),
@@ -662,7 +649,7 @@ impl Blockchain {
         // this allow chaining of the operation and lifting the error handling
         // in the same place
         let block0_ledger = Ledger::new(block0_id, block0.contents.iter())
-            .map_err(|err| Error::with_chain(err, ErrorKind::Block0InitialLedgerError))?;
+            .map_err(Error::Block0InitialLedgerError)?;
         let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
         let ledger_parameters = block0_leadership.ledger_parameters().clone();
 
@@ -694,8 +681,8 @@ impl Blockchain {
     ///
     /// The resulted future may fail if
     ///
-    /// * the block0 already exists in the storage: `ErrorKind::Block0AlreadyInStorage`;
-    /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
+    /// * the block0 already exists in the storage: `Error::Block0AlreadyInStorage`;
+    /// * the block0 does build a valid `Ledger`: `Error::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
     pub async fn load_from_block0(&self, block0: Block) -> Result<Branch> {
@@ -703,23 +690,16 @@ impl Blockchain {
 
         let block0_id = block0.id();
 
-        let already_exist = self
-            .storage
-            .block_exists(block0_id)
-            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
+        let already_exist = self.storage.block_exists(block0_id)?;
 
         if already_exist {
-            return Err(ErrorKind::Block0AlreadyInStorage.into());
+            return Err(Error::Block0AlreadyInStorage.into());
         }
 
         let block0_branch = self.apply_block0(&block0).await?;
 
-        self.storage
-            .put_block(&block0)
-            .map_err(|e| Error::with_chain(e, "Cannot put block0 in storage"))?;
-        self.storage
-            .put_tag(MAIN_BRANCH_TAG, block0_id)
-            .map_err(|e| Error::with_chain(e, "Cannot put block0's hash in the HEAD tag"))?;
+        self.storage.put_block(&block0)?;
+        self.storage.put_tag(MAIN_BRANCH_TAG, block0_id)?;
         Ok(block0_branch)
     }
 
@@ -733,30 +713,24 @@ impl Blockchain {
     ///
     /// The resulted future may fail if
     ///
-    /// * the block0 is not already in the storage: `ErrorKind::Block0NotAlreadyInStorage`;
-    /// * the block0 does build a valid `Ledger`: `ErrorKind::Block0InitialLedgerError`;
+    /// * the block0 is not already in the storage: `Error::Block0NotAlreadyInStorage`;
+    /// * the block0 does build a valid `Ledger`: `Error::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
     pub async fn load_from_storage(&self, block0: Block) -> Result<Branch> {
         let block0_id = block0.header.hash();
-        let already_exist = self
-            .storage
-            .block_exists(block0_id)
-            .map_err(|e| Error::with_chain(e, "Cannot check if block0 is in storage"))?;
+        let already_exist = self.storage.block_exists(block0_id)?;
 
         if !already_exist {
-            return Err(ErrorKind::Block0NotAlreadyInStorage.into());
+            return Err(Error::Block0NotAlreadyInStorage.into());
         }
 
-        let opt = self
-            .storage
-            .get_tag(MAIN_BRANCH_TAG)
-            .map_err(|e| Error::with_chain(e, "Cannot get hash of the HEAD tag"))?;
+        let opt = self.storage.get_tag(MAIN_BRANCH_TAG)?;
 
         let head_hash = if let Some(id) = opt {
             id
         } else {
-            return Err(ErrorKind::NoTag(MAIN_BRANCH_TAG.to_owned()).into());
+            return Err(Error::NoTag(MAIN_BRANCH_TAG.to_owned()).into());
         };
 
         let block0_branch = self.apply_block0(&block0).await?;
@@ -764,8 +738,7 @@ impl Blockchain {
         let mut block_stream = self
             .storage
             .stream_from_to(block0_id, head_hash)
-            .map(Box::pin)
-            .map_err(|e| Error::with_chain(e, "Cannot iterate blocks from block0 to HEAD"))?;
+            .map(Box::pin)?;
 
         let mut branch = block0_branch;
         let mut count = 0u64;
@@ -773,70 +746,55 @@ impl Blockchain {
         let mut block_processing = std::time::Duration::from_secs(0);
 
         while let Some(r) = block_stream.next().await {
-            match r {
-                Err(e) => {
-                    return Err(Error::with_chain(
-                        e,
-                        "Error while iterating between block0 and HEAD",
-                    ))
-                }
-                Ok(block) => {
-                    let header = block.header.clone();
+            let block = r?;
 
-                    const PROCESS_LOGGING_DISTANCE: u64 = 2500;
-                    if count % PROCESS_LOGGING_DISTANCE == 0 {
-                        tracing::info!(
-                            "loading from storage, currently at {} processing={:?} ({:?} per block) ...",
-                            header.description(),
-                            block_processing,
-                            block_processing / PROCESS_LOGGING_DISTANCE as u32,
-                        );
-                        block_processing = std::time::Duration::from_secs(0);
-                    }
+            let header = block.header.clone();
 
-                    let block_process_start = std::time::SystemTime::now();
-
-                    let pre_checked_header: PreCheckedHeader =
-                        self.pre_check_header(header, true).await?;
-
-                    let post_checked_header = match pre_checked_header {
-                        PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
-                            self.post_check_header(
-                                header,
-                                parent_ref,
-                                CheckHeaderProof::SkipFromStorage,
-                            )
-                            .await?
-                        }
-                        PreCheckedHeader::AlreadyPresent {
-                            header,
-                            cached_reference: _cached_reference,
-                        } => unreachable!(
-                            "block already present, this should not happen. {:#?}",
-                            header
-                        ),
-                        PreCheckedHeader::MissingParent { header } => {
-                            return Err(
-                                ErrorKind::MissingParentBlock(header.block_parent_hash()).into()
-                            )
-                        }
-                    };
-
-                    let new_ledger = self.apply_block_dry_run(&post_checked_header, &block)?;
-                    let new_ref = self
-                        .apply_block_finalize(post_checked_header, new_ledger)
-                        .await;
-
-                    count += 1;
-                    let _: Arc<Ref> = branch.update_ref(new_ref).await;
-
-                    let block_process_end = std::time::SystemTime::now();
-                    let duration = block_process_end
-                        .duration_since(block_process_start)
-                        .unwrap_or_else(|_| std::time::Duration::from_secs(0));
-                    block_processing += duration;
-                }
+            const PROCESS_LOGGING_DISTANCE: u64 = 2500;
+            if count % PROCESS_LOGGING_DISTANCE == 0 {
+                tracing::info!(
+                    "loading from storage, currently at {} processing={:?} ({:?} per block) ...",
+                    header.description(),
+                    block_processing,
+                    block_processing / PROCESS_LOGGING_DISTANCE as u32,
+                );
+                block_processing = std::time::Duration::from_secs(0);
             }
+
+            let block_process_start = std::time::SystemTime::now();
+
+            let pre_checked_header: PreCheckedHeader = self.pre_check_header(header, true).await?;
+
+            let post_checked_header = match pre_checked_header {
+                PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
+                    self.post_check_header(header, parent_ref, CheckHeaderProof::SkipFromStorage)
+                        .await?
+                }
+                PreCheckedHeader::AlreadyPresent {
+                    header,
+                    cached_reference: _cached_reference,
+                } => unreachable!(
+                    "block already present, this should not happen. {:#?}",
+                    header
+                ),
+                PreCheckedHeader::MissingParent { header } => {
+                    return Err(Error::MissingParentBlock(header.block_parent_hash()).into())
+                }
+            };
+
+            let new_ledger = self.apply_block_dry_run(&post_checked_header, &block)?;
+            let new_ref = self
+                .apply_block_finalize(post_checked_header, new_ledger)
+                .await;
+
+            count += 1;
+            let _: Arc<Ref> = branch.update_ref(new_ref).await;
+
+            let block_process_end = std::time::SystemTime::now();
+            let duration = block_process_end
+                .duration_since(block_process_start)
+                .unwrap_or_else(|_| std::time::Duration::from_secs(0));
+            block_processing += duration;
         }
         Ok(branch)
     }
