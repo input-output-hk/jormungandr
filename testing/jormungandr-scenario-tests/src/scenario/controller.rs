@@ -196,7 +196,7 @@ impl Controller {
         if let Some(stake_pool) = self.settings.network_settings.stake_pools.get(node_alias) {
             Ok(stake_pool.clone())
         } else {
-            Err(Error::StakePoolNotFound(node_alias.to_owned()).into())
+            Err(Error::StakePoolNotFound(node_alias.to_owned()))
         }
     }
 
@@ -212,7 +212,7 @@ impl Controller {
         if let Some(vote_plan) = self.settings.network_settings.vote_plans.get(alias) {
             Ok(self.convert_to_def(alias, vote_plan))
         } else {
-            Err(Error::VotePlanNotFound(alias.to_owned()).into())
+            Err(Error::VotePlanNotFound(alias.to_owned()))
         }
     }
 
@@ -326,7 +326,7 @@ impl Controller {
         if let Some(wallet) = self.settings.network_settings.wallets.get(wallet) {
             Ok(wallet.clone().into())
         } else {
-            Err(Error::WalletNotFound(wallet.to_owned()).into())
+            Err(Error::WalletNotFound(wallet.to_owned()))
         }
     }
 

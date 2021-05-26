@@ -693,7 +693,7 @@ impl Blockchain {
         let already_exist = self.storage.block_exists(block0_id)?;
 
         if already_exist {
-            return Err(Error::Block0AlreadyInStorage.into());
+            return Err(Error::Block0AlreadyInStorage);
         }
 
         let block0_branch = self.apply_block0(&block0).await?;
@@ -722,7 +722,7 @@ impl Blockchain {
         let already_exist = self.storage.block_exists(block0_id)?;
 
         if !already_exist {
-            return Err(Error::Block0NotAlreadyInStorage.into());
+            return Err(Error::Block0NotAlreadyInStorage);
         }
 
         let opt = self.storage.get_tag(MAIN_BRANCH_TAG)?;
@@ -730,7 +730,7 @@ impl Blockchain {
         let head_hash = if let Some(id) = opt {
             id
         } else {
-            return Err(Error::NoTag(MAIN_BRANCH_TAG.to_owned()).into());
+            return Err(Error::NoTag(MAIN_BRANCH_TAG.to_owned()));
         };
 
         let block0_branch = self.apply_block0(&block0).await?;
@@ -778,7 +778,7 @@ impl Blockchain {
                     header
                 ),
                 PreCheckedHeader::MissingParent { header } => {
-                    return Err(Error::MissingParentBlock(header.block_parent_hash()).into())
+                    return Err(Error::MissingParentBlock(header.block_parent_hash()))
                 }
             };
 
