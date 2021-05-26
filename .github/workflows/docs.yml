@@ -2,8 +2,6 @@ name: Build and publish docs
 
 on:
   push:
-    branches:
-      - master
     paths:
       - 'book.toml'
       - 'doc/**'
@@ -36,6 +34,7 @@ jobs:
         run: mdbook build
 
       - name: Deploy
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
