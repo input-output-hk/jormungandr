@@ -106,7 +106,7 @@ coins being spent, and on the other side the outputs represent coins being recei
 
 Transaction have fees that are defined by the blockchain settings and the following invariant hold:
 
-\\[ \sum Inputs = \sum Outputs + fees \\]
+\\( \sum Inputs = \sum Outputs + fees \\)
 
 Transaction need to be authorized by each of the inputs in the transaction by their respective witness.
 In the most basic case, a witness is a cryptographic signature, but depending on the type of input can
