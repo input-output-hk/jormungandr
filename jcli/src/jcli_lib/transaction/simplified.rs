@@ -32,13 +32,16 @@ pub struct MakeTransaction {
     #[structopt(name = "VALUE")]
     pub value: interfaces::Value,
 
+    #[structopt(long)]
     pub block0_hash: String,
 
     /// the file path to the file to read the signing key from.
     /// If omitted it will be read from the standard input.
+    #[structopt(long)]
     pub secret: Option<PathBuf>,
 
     /// Set the change in the given address
+    #[structopt(long)]
     pub change: Option<interfaces::Address>,
 
     #[structopt(flatten)]

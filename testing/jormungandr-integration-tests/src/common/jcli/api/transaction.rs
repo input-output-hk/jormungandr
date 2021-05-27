@@ -279,6 +279,22 @@ impl Transaction {
         self.command.seal(staging_file).build().assert().success();
     }
 
+    pub fn make_transaction(
+        self,
+        host: String,
+        sender: jormungandr_lib::interfaces::Address,
+        value: jormungandr_lib::interfaces::Value,
+        block0_hash: String,
+        secret: impl AsRef<Path>,
+        staging_file: impl AsRef<Path>,
+    ) {
+        self.command
+            .make_transaction(host, sender, value, block0_hash, secret, staging_file)
+            .build()
+            .assert()
+            .success();
+    }
+
     pub fn convert_to_message<P: AsRef<Path>>(self, staging_file: P) -> String {
         self.command
             .to_message(staging_file)

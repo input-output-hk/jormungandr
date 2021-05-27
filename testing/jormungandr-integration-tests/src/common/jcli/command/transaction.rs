@@ -186,6 +186,30 @@ impl TransactionCommand {
         self
     }
 
+    pub fn make_transaction(
+        mut self,
+        host: String,
+        sender: jormungandr_lib::interfaces::Address,
+        value: jormungandr_lib::interfaces::Value,
+        block0_hash: String,
+        secret: impl AsRef<Path>,
+        staging_file: impl AsRef<Path>,
+    ) -> Self {
+        self.command
+            .arg("make-transaction")
+            .arg("--secret")
+            .arg(secret.as_ref())
+            .arg("--staging")
+            .arg(staging_file.as_ref())
+            .arg("--host")
+            .arg(host)
+            .arg("--block0-hash")
+            .arg(block0_hash)
+            .arg(sender.to_string())
+            .arg(value.to_string());
+        self
+    }
+
     pub fn build(self) -> Command {
         println!("{:?}", self.command);
         self.command
