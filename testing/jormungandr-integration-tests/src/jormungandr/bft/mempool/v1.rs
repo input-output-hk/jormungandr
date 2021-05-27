@@ -164,7 +164,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .unwrap()
         .assert_empty();
 
-    time::wait_for_date(BlockDate::new(0, 10), jormungandr.explorer());
+    time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
 }
 
@@ -324,7 +324,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .unwrap()
         .assert_empty();
 
-    time::wait_for_date(BlockDate::new(0, 10), jormungandr.explorer());
+    time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
 
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
 }
@@ -402,7 +402,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .unwrap()
         .assert_size(2);
 
-    time::wait_for_date(BlockDate::new(0, 10), jormungandr.explorer());
+    time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 2.into())

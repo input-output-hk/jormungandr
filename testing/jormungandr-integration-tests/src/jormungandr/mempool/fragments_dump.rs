@@ -65,7 +65,7 @@ pub fn dump_send_correct_fragments() {
     fragment_generator.prepare(BlockDate::new(1, 0));
     let verifier = FragmentVerifier;
 
-    time::wait_for_epoch(1, jormungandr.explorer());
+    time::wait_for_epoch(1, jormungandr.rest());
 
     let wait = Wait::new(Duration::from_secs(1), 25);
     verifier
