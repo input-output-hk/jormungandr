@@ -386,11 +386,12 @@ async fn process_and_propagate_new_ref(
     process_new_ref(blockchain, tip, new_block_ref, explorer_msg_box).await?;
 
     tracing::debug!("propagating block to the network");
+
     network_msg_box
         .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
-        .await
-        .map_err(Into::into)
-        .map(|_| ())
+        .await?;
+
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
