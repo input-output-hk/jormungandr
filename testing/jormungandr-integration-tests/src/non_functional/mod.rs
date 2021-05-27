@@ -35,6 +35,9 @@ pub mod fragment;
 #[cfg(feature = "sanity-non-functional")]
 pub mod bootstrap;
 
+#[cfg(feature = "sanity-non-functional")]
+pub mod persistent_log;
+
 pub mod voting;
 
 use crate::common::{

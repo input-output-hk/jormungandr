@@ -106,6 +106,14 @@ impl<'a> AdversaryFragmentSenderSetup<'a, DummySyncNode> {
             dump_fragments: None,
         }
     }
+
+    pub fn dump_into(path: PathBuf, verify: bool) -> Self {
+        Self {
+            verify,
+            sync_nodes: vec![],
+            dump_fragments: Some(path),
+        }
+    }
 }
 
 use super::DummySyncNode;
@@ -136,6 +144,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         via: &A,
     ) -> Result<MemPoolCheck, AdversaryFragmentSenderError> {
         let fragment = self.random_faulty_transaction(from, to);
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(fragment, via)
     }
 
@@ -153,6 +162,49 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
             6 => faulty_tx_builder.no_witnesses(from, to),
             _ => unreachable!(),
         }
+    }
+
+    pub fn send_transactions_with_invalid_counter<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        n: usize,
+        from: &mut Wallet,
+        to: &Wallet,
+        via: &A,
+    ) -> Result<Vec<MemPoolCheck>, AdversaryFragmentSenderError> {
+        let mut mem_checks = Vec::new();
+        let faulty_tx_builder = FaultyTransactionBuilder::new(self.block0_hash, self.fees);
+
+        for _ in 0..n {
+            let fragment = faulty_tx_builder.wrong_counter(from, to);
+            self.dump_fragment_if_enabled(from, &fragment, via)?;
+            mem_checks.push(self.send_fragment(fragment, via)?);
+            from.confirm_transaction();
+        }
+        Ok(mem_checks)
+    }
+
+    pub fn send_all_faulty_transactions<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        from: &mut Wallet,
+        to: &Wallet,
+        via: &A,
+    ) -> Result<Vec<MemPoolCheck>, AdversaryFragmentSenderError> {
+        let faulty_tx_builder = FaultyTransactionBuilder::new(self.block0_hash, self.fees);
+        let mut mem_checks = Vec::new();
+
+        for fragment in vec![
+            faulty_tx_builder.wrong_block0_hash(from, to),
+            faulty_tx_builder.no_input(to),
+            faulty_tx_builder.no_output(from),
+            faulty_tx_builder.unbalanced(from, to),
+            faulty_tx_builder.empty(),
+            faulty_tx_builder.wrong_counter(from, to),
+            faulty_tx_builder.no_witnesses(from, to),
+        ] {
+            self.dump_fragment_if_enabled(from, &fragment, via)?;
+            mem_checks.push(self.send_fragment(fragment, via)?);
+        }
+        Ok(mem_checks)
     }
 
     pub fn send_faulty_full_delegation<A: FragmentNode + SyncNode + Sized + Send>(
@@ -194,11 +246,14 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         mut wallet1: &mut Wallet,
         wallet2: &Wallet,
         node: &A,
-    ) -> Result<(), AdversaryFragmentSenderError> {
-        for _ in 0..n {
-            self.send_random_faulty_transaction(&mut wallet1, &wallet2, node)?;
-        }
-        Ok(())
+    ) -> Result<Vec<MemPoolCheck>, AdversaryFragmentSenderError> {
+        self.send_faulty_transactions_with_iteration_delay(
+            n,
+            &mut wallet1,
+            &wallet2,
+            node,
+            std::time::Duration::from_secs(0),
+        )
     }
 
     pub fn send_faulty_transactions_with_iteration_delay<
@@ -210,12 +265,13 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         wallet2: &Wallet,
         node: &A,
         duration: Duration,
-    ) -> Result<(), AdversaryFragmentSenderError> {
+    ) -> Result<Vec<MemPoolCheck>, AdversaryFragmentSenderError> {
+        let mut mem_checks = Vec::new();
         for _ in 0..n {
-            self.send_random_faulty_transaction(&mut wallet1, &wallet2, node)?;
+            mem_checks.push(self.send_random_faulty_transaction(&mut wallet1, &wallet2, node)?);
             std::thread::sleep(duration);
         }
-        Ok(())
+        Ok(mem_checks)
     }
 
     fn verify<A: FragmentNode + SyncNode + Sized + Send>(
