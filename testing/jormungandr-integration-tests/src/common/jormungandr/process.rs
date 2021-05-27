@@ -19,6 +19,7 @@ use jormungandr_testing_utils::testing::{
 use jormungandr_testing_utils::testing::{RemoteJormungandr, RemoteJormungandrBuilder};
 use jortestkit::prelude::ProcessOutput;
 
+use jormungandr_testing_utils::testing::{FragmentSender, FragmentSenderSetup};
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
@@ -70,6 +71,13 @@ impl JormungandrProcess {
             block0_configuration: params.block0_configuration().clone(),
             fees: params.fees(),
         }
+    }
+
+    pub fn fragment_sender<'a, S: SyncNode + Send>(
+        &self,
+        setup: FragmentSenderSetup<'a, S>,
+    ) -> FragmentSender<'a, S> {
+        FragmentSender::new(self.genesis_block_hash(), self.fees(), setup)
     }
 
     pub fn wait_for_bootstrap(
