@@ -253,7 +253,7 @@ pub fn upload_block_incompatible_protocol() {
 
     assert_eq!(
         MockClientError::InvalidRequest(
-            "invalid request data (The block header verification failed)".into()
+            "invalid request data (the block header verification failed)".into()
         ),
         setup.client.upload_blocks(block.clone()).err().unwrap()
     );
@@ -288,7 +288,7 @@ pub fn upload_block_nonexisting_stake_pool() {
 
     assert_eq!(
         MockClientError::InvalidRequest(
-            "invalid request data (The block header verification failed)".into()
+            "invalid request data (the block header verification failed)".into()
         ),
         setup.client.upload_blocks(block.clone()).err().unwrap()
     );

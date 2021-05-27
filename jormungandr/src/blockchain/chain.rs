@@ -83,28 +83,28 @@ pub enum Error {
     #[error("failed to send message to the fragments process")]
     TransactionSendError(#[from] crate::async_msg::TrySendError<crate::intercom::TransactionMsg>),
 
-    #[error("Error while creating the initial ledger out of the block0")]
+    #[error("error while creating the initial ledger out of the block0")]
     Block0InitialLedgerError(#[source] ledger::Error),
 
-    #[error("Block0 already exists in the storage")]
+    #[error("block0 already exists in the storage")]
     Block0AlreadyInStorage,
 
-    #[error("Block0 is not yet in the storage")]
+    #[error("block0 is not yet in the storage")]
     Block0NotAlreadyInStorage,
 
-    #[error("Missing a block from the storage. The node was recovering the blockchain and the parent block `{0}` was not already stored.")]
+    #[error("missing a block from the storage while recovering the blockchain: `{0}`")]
     MissingParentBlock(HeaderHash),
 
-    #[error("Tag `{0}` not found in the storage")]
+    #[error("tag `{0}` not found in the storage")]
     NoTag(String),
 
-    #[error("The block header verification failed")]
+    #[error("the block header verification failed")]
     BlockHeaderVerificationFailed(#[from] HeaderChainVerifyError),
 
-    #[error("Received block `{0}` is not known from previously received headers")]
+    #[error("received block `{0}` is not known from previously received headers")]
     BlockNotRequested(HeaderHash),
 
-    #[error("Block cannot be applied on top of the previous block's ledger state")]
+    #[error("block cannot be applied on top of the previous block's ledger state")]
     CannotApplyBlock(#[source] ledger::Error),
 }
 
