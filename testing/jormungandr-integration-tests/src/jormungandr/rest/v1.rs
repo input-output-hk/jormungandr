@@ -130,8 +130,6 @@ fn assert_in_block(fragment_status: &FragmentStatus) {
 }
 
 fn assert_not_in_block(fragment_status: &FragmentStatus) {
-    match fragment_status {
-        FragmentStatus::InABlock { .. } => panic!("should NOT be in block '{:?}'", fragment_status),
-        _ => (),
-    }
+    let in_block = matches!(fragment_status, FragmentStatus::InABlock { .. });
+    assert!(!in_block, "should NOT be in block '{:?}'", fragment_status);
 }
