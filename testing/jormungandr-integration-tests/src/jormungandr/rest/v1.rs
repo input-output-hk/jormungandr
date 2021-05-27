@@ -56,7 +56,7 @@ pub fn test_v1_endpoint() {
 
     assert_single_id(alice_tx_id.clone(), "alice tx", &jormungandr);
     assert_multiple_ids(
-        vec![alice_tx_id.clone(), bob_tx_id.clone()],
+        vec![alice_tx_id, bob_tx_id],
         "alice or bob tx",
         &jormungandr,
     );

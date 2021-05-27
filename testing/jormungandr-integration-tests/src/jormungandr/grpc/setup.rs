@@ -23,7 +23,7 @@ impl Config {
     }
 
     pub fn client(&self) -> JormungandrClient {
-        JormungandrClient::new(self.addr.clone())
+        JormungandrClient::new(self.addr)
     }
 }
 

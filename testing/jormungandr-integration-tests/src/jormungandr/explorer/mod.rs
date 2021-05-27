@@ -85,7 +85,7 @@ pub fn explorer_sanity_test() {
 
     let explorer = jormungandr.explorer();
 
-    transaction_by_id(&explorer, fragment_id.into());
+    transaction_by_id(&explorer, fragment_id);
     blocks(&explorer, jormungandr.logger.get_created_blocks_hashes());
     stake_pools(&explorer, &initial_stake_pools);
     stake_pool(&explorer, &initial_stake_pools);
@@ -154,7 +154,7 @@ fn stake_pools(explorer: &Explorer, initial_stake_pools: &[StakePool]) {
 fn stake_pool(explorer: &Explorer, initial_stake_pools: &[StakePool]) {
     let stake_pool_id = initial_stake_pools.first().unwrap().id().to_string();
     let stake_pool = explorer.stake_pool(stake_pool_id, 100).unwrap();
-    let explorer_stake_pool_id = stake_pool.data.unwrap().stake_pool.id.clone();
+    let explorer_stake_pool_id = stake_pool.data.unwrap().stake_pool.id;
 
     assert!(
         initial_stake_pools

@@ -23,7 +23,7 @@ pub fn stake_distribution() {
             .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_rewards_history()
-            .with_linear_fees(fee.clone())
+            .with_linear_fees(fee)
             .with_total_rewards_supply(1_000_000.into())
             .with_slot_duration(3),
     )
@@ -63,14 +63,13 @@ pub fn stake_distribution() {
     startup::sleep_till_next_epoch(10, jormungandr.block0_configuration());
 
     let identifier: AccountIdentifier = stake_pool_owner_1.identifier().into();
-    let reward: u64 = jormungandr
+    let reward: u64 = (*jormungandr
         .rest()
         .epoch_reward_history(1)
         .unwrap()
         .accounts()
         .get(&identifier)
-        .unwrap()
-        .clone()
+        .unwrap())
         .into();
 
     jcli.rest().v0().account_stats(

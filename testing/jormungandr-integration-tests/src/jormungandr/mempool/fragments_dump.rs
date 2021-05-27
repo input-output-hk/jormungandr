@@ -52,8 +52,8 @@ pub fn dump_send_correct_fragments() {
     let time_era = jormungandr.time_era();
 
     let mut fragment_generator = FragmentGenerator::new(
-        sender.clone(),
-        receiver.clone(),
+        sender,
+        receiver,
         jormungandr.to_remote(),
         jormungandr.explorer(),
         time_era.slots_per_epoch(),
@@ -74,7 +74,7 @@ pub fn dump_send_correct_fragments() {
 
     let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
     verifier
-        .wait_and_verify_all_are_in_block(Duration::from_secs(2), mem_checks.clone(), &jormungandr)
+        .wait_and_verify_all_are_in_block(Duration::from_secs(2), mem_checks, &jormungandr)
         .unwrap();
 
     assert_all_fragment_are_persisted(dump_folder.path(), persistent_log_path.path());

@@ -268,7 +268,7 @@ impl Settings {
                 let stake_pool_id: StakePoolId = if let Some(node) = self.nodes.get_mut(delegation)
                 {
                     if let Some(genesis) = &node.secret.genesis {
-                        genesis.node_id.clone().into_digest_of()
+                        genesis.node_id.into_digest_of()
                     } else {
                         // create and register the stake pool
                         let owner = WalletLib::new_account(&mut rand::rngs::OsRng);

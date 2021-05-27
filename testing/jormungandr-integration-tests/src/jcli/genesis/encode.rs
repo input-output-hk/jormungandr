@@ -189,7 +189,7 @@ pub fn test_genesis_decode_bijection() {
     let actual_yaml_file = fixture.temp_dir().child("actual-genesis.yaml");
     let jcli: JCli = Default::default();
 
-    jcli.clone()
+    jcli
         .genesis()
         .decode(params.genesis_block_path(), &actual_yaml_file);
     actual_yaml_file.assert(jortestkit::prelude::file_text_content_is_same_as(
@@ -197,7 +197,7 @@ pub fn test_genesis_decode_bijection() {
     ));
 
     let block0_after = fixture.temp_dir().child("block-0-after.bin");
-    jcli.clone()
+    jcli
         .genesis()
         .encode(actual_yaml_file.path(), &block0_after);
 
