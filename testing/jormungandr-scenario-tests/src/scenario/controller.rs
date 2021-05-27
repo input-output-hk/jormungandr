@@ -4,7 +4,7 @@ use crate::{
     prepare_command,
     scenario::{
         settings::{Dotifier, PrepareSettings},
-        ContextChaCha, ErrorKind, ProgressBarMode, Result,
+        ContextChaCha, Error, ProgressBarMode, Result,
     },
     style, Node, NodeBlock0, NodeController,
 };
@@ -196,7 +196,7 @@ impl Controller {
         if let Some(stake_pool) = self.settings.network_settings.stake_pools.get(node_alias) {
             Ok(stake_pool.clone())
         } else {
-            Err(ErrorKind::StakePoolNotFound(node_alias.to_owned()).into())
+            Err(Error::StakePoolNotFound(node_alias.to_owned()))
         }
     }
 
@@ -212,7 +212,7 @@ impl Controller {
         if let Some(vote_plan) = self.settings.network_settings.vote_plans.get(alias) {
             Ok(self.convert_to_def(alias, vote_plan))
         } else {
-            Err(ErrorKind::VotePlanNotFound(alias.to_owned()).into())
+            Err(Error::VotePlanNotFound(alias.to_owned()))
         }
     }
 
@@ -326,7 +326,7 @@ impl Controller {
         if let Some(wallet) = self.settings.network_settings.wallets.get(wallet) {
             Ok(wallet.clone().into())
         } else {
-            Err(ErrorKind::WalletNotFound(wallet.to_owned()).into())
+            Err(Error::WalletNotFound(wallet.to_owned()))
         }
     }
 
@@ -353,7 +353,7 @@ impl Controller {
         {
             node_setting
         } else {
-            bail!(ErrorKind::NodeNotFound(params.get_alias()))
+            return Err(Error::NodeNotFound(params.get_alias()));
         };
 
         let mut node_setting_overriden = node_setting.clone();
@@ -393,7 +393,7 @@ impl Controller {
         {
             node_setting
         } else {
-            bail!(ErrorKind::NodeNotFound(params.get_alias()))
+            return Err(Error::NodeNotFound(params.get_alias()));
         };
         let mut node_setting_overriden = node_setting.clone();
         params.override_settings(&mut node_setting_overriden.config);

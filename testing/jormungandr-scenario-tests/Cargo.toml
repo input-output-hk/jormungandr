@@ -8,10 +8,8 @@ default-run = "jormungandr-scenario-tests"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-slog = "2"
 custom_debug = "0.5"
 dialoguer = "0.8.0"
-error-chain = "0.12"
 assert_fs = "1.0"
 chain-core           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-crypto         = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }

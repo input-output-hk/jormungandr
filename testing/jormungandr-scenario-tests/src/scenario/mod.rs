@@ -21,35 +21,40 @@ pub use jormungandr_testing_utils::testing::network_builder::{
     WalletType,
 };
 
-error_chain! {
-    foreign_links {
-        Node(crate::node::Error);
-        Wallet(jormungandr_testing_utils::wallet::WalletError);
-        FsFixture(assert_fs::fixture::FixtureError);
-        Io(std::io::Error);
-        Reqwest(reqwest::Error);
-        BlockFormatError(chain_core::mempack::ReadError);
-    }
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error(transparent)]
+    Node(#[from] crate::node::Error),
 
-    errors {
-        NodeNotFound(node: String) {
-            description("Node not found"),
-            display("No node with alias {}", node),
-        }
-        WalletNotFound(wallet: String) {
-            description("Wallet was not found"),
-            display("Wallet '{}' was not found. Used before or never initialize", wallet)
-        }
-        StakePoolNotFound(node: String) {
-            description("StakePool was not found"),
-            display("StakePool '{}' was not found. Used before or never initialize", node)
-        }
-        VotePlanNotFound(name: String) {
-            description("Vote plan was not found"),
-            display("Vote plan '{}' was not found", name)
-        }
-    }
+    #[error(transparent)]
+    Wallet(#[from] jormungandr_testing_utils::wallet::WalletError),
+
+    #[error(transparent)]
+    FsFixture(#[from] assert_fs::fixture::FixtureError),
+
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+
+    #[error(transparent)]
+    Reqwest(#[from] reqwest::Error),
+
+    #[error(transparent)]
+    BlockFormatError(#[from] chain_core::mempack::ReadError),
+
+    #[error("No node with alias {0}")]
+    NodeNotFound(String),
+
+    #[error("Wallet '{0}' was not found. Used before or never initialize")]
+    WalletNotFound(String),
+
+    #[error("StakePool '{0}' was not found. Used before or never initialize")]
+    StakePoolNotFound(String),
+
+    #[error("VotePlan '{0}' was not found. Used before or never initialize")]
+    VotePlanNotFound(String),
 }
+
+pub type Result<T> = ::core::result::Result<T, Error>;
 
 #[macro_export]
 macro_rules! prepare_scenario {

@@ -9,39 +9,49 @@ use jormungandr_lib::interfaces::FragmentStatus;
 
 use std::time::Duration;
 
-error_chain! {
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error(transparent)]
+    Interactive(#[from] jortestkit::console::InteractiveCommandError),
 
-    foreign_links {
-        Interactive(jortestkit::console::InteractiveCommandError);
-        IoError(std::io::Error);
-        Node(crate::node::Error);
-        Wallet(jormungandr_testing_utils::wallet::WalletError);
-        FragmentSender(jormungandr_testing_utils::testing::FragmentSenderError);
-        FragmentVerifier(jormungandr_testing_utils::testing::FragmentVerifierError);
-        VerificationFailed(jormungandr_testing_utils::testing::VerificationError);
-        MonitorResourcesError(jormungandr_testing_utils::testing::ConsumptionBenchmarkError);
-        ExplorerError(jormungandr_testing_utils::testing::node::ExplorerError);
-    }
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
 
-    links {
-        Scenario(crate::scenario::Error, crate::scenario::ErrorKind);
-    }
+    #[error(transparent)]
+    Node(#[from] crate::node::Error),
 
-    errors {
-        SyncTimeoutOccurred(info: String, timeout: Duration) {
-            description("synchronization for nodes has failed"),
-            display("synchronization for nodes has failed. {}. Timeout was: {} s", info, timeout.as_secs()),
-        }
+    #[error(transparent)]
+    Wallet(#[from] jormungandr_testing_utils::wallet::WalletError),
 
-        AssertionFailed(info: String) {
-            description("assertion has failed"),
-            display("{}", info),
-        }
-        TransactionNotInBlock(node: String, status: FragmentStatus) {
-            description("transaction not in block"),
-            display("transaction should be 'In Block'. status: {:?}, node: {}", status, node),
-        }
+    #[error(transparent)]
+    FragmentSender(#[from] jormungandr_testing_utils::testing::FragmentSenderError),
 
+    #[error(transparent)]
+    FragmentVerifier(#[from] jormungandr_testing_utils::testing::FragmentVerifierError),
 
-    }
+    #[error(transparent)]
+    VerificationFailed(#[from] jormungandr_testing_utils::testing::VerificationError),
+
+    #[error(transparent)]
+    MonitorResourcesError(#[from] jormungandr_testing_utils::testing::ConsumptionBenchmarkError),
+
+    #[error(transparent)]
+    ExplorerError(#[from] jormungandr_testing_utils::testing::node::ExplorerError),
+
+    #[error(transparent)]
+    Scenario(#[from] crate::scenario::Error),
+
+    #[error("synchronization for nodes has failed. {info}. Timeout was: {} s", timeout.as_secs())]
+    SyncTimeoutOccurred { info: String, timeout: Duration },
+
+    #[error("assertion failed: {0}")]
+    AssertionFailed(String),
+
+    #[error("transaction should be 'In Block'. status: {status:?}, node: {node}")]
+    TransactionNotInBlock {
+        node: String,
+        status: FragmentStatus,
+    },
 }
+
+pub type Result<T> = ::core::result::Result<T, Error>;
