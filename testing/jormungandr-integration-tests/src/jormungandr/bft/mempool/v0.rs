@@ -183,7 +183,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .assert_contains_only(first_fragment.fragment_id());
 
     FragmentVerifier
-        .wait_and_verify_is_in_block(Duration::from_secs(12), first_fragment, &jormungandr)
+        .wait_and_verify_is_in_block(Duration::from_secs(15), first_fragment, &jormungandr)
         .unwrap();
 
     verifier
