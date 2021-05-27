@@ -98,11 +98,8 @@ pub enum Error {
     #[error("Tag `{0}` not found in the storage")]
     NoTag(String),
 
-    #[error("The block header verification failed: {0}")]
+    #[error("The block header verification failed")]
     BlockHeaderVerificationFailed(#[from] HeaderChainVerifyError),
-
-    #[error("Failed to get a new leadership schedule")]
-    NewLeadershipScheduleFailed(#[from] chain_impl_mockchain::leadership::Error),
 
     #[error("Received block `{0}` is not known from previously received headers")]
     BlockNotRequested(HeaderHash),
@@ -113,6 +110,8 @@ pub enum Error {
 
 #[derive(Debug, thiserror::Error)]
 pub enum HeaderChainVerifyError {
+    #[error(transparent)]
+    NewLeadershipScheduleFailed(#[from] chain_impl_mockchain::leadership::Error),
     #[error("date is set before parent; new block: {child}, parent: {parent}")]
     BlockDateBeforeParent { child: BlockDate, parent: BlockDate },
     #[error("chain length is not incrementally increasing; new block: {child}, parent: {parent}")]
@@ -443,7 +442,9 @@ impl Blockchain {
 
         if check_header_proof == CheckHeaderProof::Enabled {
             match epoch_leadership_schedule.verify(&header) {
-                Verification::Failure(error) => Err(Error::NewLeadershipScheduleFailed(error)),
+                Verification::Failure(error) => Err(Error::BlockHeaderVerificationFailed(
+                    HeaderChainVerifyError::NewLeadershipScheduleFailed(error),
+                )),
                 Verification::Success => Ok(()),
             }?;
         }
