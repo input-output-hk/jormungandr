@@ -24,7 +24,7 @@ cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.
 imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 
 arc-swap = "^1.1.0"
-async-trait = "=0.1.42" # https://github.com/dtolnay/async-trait/issues/144
+async-trait = "=0.1.47" # https://github.com/dtolnay/async-trait/issues/144
 async-graphql = "2.5.1"
 async-graphql-warp = "2.6.0"
 base64 = "0.13.0"
