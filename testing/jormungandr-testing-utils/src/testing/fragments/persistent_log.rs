@@ -27,6 +27,6 @@ impl PersistentLogViewer {
     }
 
     pub fn count(&self) -> usize {
-        self.get_all().iter().count()
+        self.get_all().len()
     }
 }
