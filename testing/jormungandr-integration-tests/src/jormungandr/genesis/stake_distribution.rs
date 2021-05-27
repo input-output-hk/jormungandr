@@ -70,7 +70,7 @@ pub fn stake_distribution() {
         .accounts()
         .get(&identifier)
         .unwrap())
-        .into();
+    .into();
 
     jcli.rest().v0().account_stats(
         stake_pool_owner_1.address().to_string(),

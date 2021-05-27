@@ -157,11 +157,7 @@ pub fn test_all_adversary_fragments() {
 
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner.clone()],
-        &[
-            full_delegator.clone(),
-            split_delegator,
-            faucet.clone(),
-        ],
+        &[full_delegator.clone(), split_delegator, faucet.clone()],
         &mut ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
     )
     .unwrap();
