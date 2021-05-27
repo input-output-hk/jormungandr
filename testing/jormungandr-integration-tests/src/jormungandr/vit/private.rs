@@ -133,7 +133,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .parse::<u64>()
         .unwrap();
 
-    time::wait_for_epoch(1, jormungandr.explorer());
+    time::wait_for_epoch(1, jormungandr.rest());
 
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
     let yes_vote_cast = jcli.certificate().new_private_vote_cast(
@@ -192,7 +192,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .send(&tx)
         .assert_in_block();
 
-    time::wait_for_epoch(2, jormungandr.explorer());
+    time::wait_for_epoch(2, jormungandr.rest());
 
     let encrypted_vote_tally = temp_dir.child("encrypted-vote-tally.certificate");
 
@@ -269,7 +269,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .send(&tx)
         .assert_in_block();
 
-    time::wait_for_epoch(3, jormungandr.explorer());
+    time::wait_for_epoch(3, jormungandr.rest());
 
     let rewards_after = jormungandr
         .explorer()

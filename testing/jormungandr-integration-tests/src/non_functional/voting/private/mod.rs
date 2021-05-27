@@ -144,10 +144,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         Status::Green
     );
 
-    wait_for_epoch(
-        quick_config.voting_timing()[1].into(),
-        jormungandr.explorer(),
-    );
+    wait_for_epoch(quick_config.voting_timing()[1], jormungandr.rest());
 
     transaction_sender
         .send_encrypted_tally(&mut committee, &vote_plan, &jormungandr)
@@ -158,7 +155,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
             quick_config.voting_timing()[1],
             quick_config.slots_in_epoch() / 2,
         ),
-        jormungandr.explorer(),
+        jormungandr.rest(),
     );
 
     let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
@@ -178,10 +175,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         )
         .unwrap();
 
-    wait_for_epoch(
-        quick_config.voting_timing()[2].into(),
-        jormungandr.explorer(),
-    );
+    wait_for_epoch(quick_config.voting_timing()[2], jormungandr.rest());
     let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
 
     let vote_plan_status = active_vote_plans
@@ -338,10 +332,7 @@ pub fn adversary_private_vote_load_scenario(
         Status::Green
     );
 
-    wait_for_epoch(
-        quick_config.voting_timing()[1].into(),
-        jormungandr.explorer(),
-    );
+    wait_for_epoch(quick_config.voting_timing()[1], jormungandr.rest());
 
     transaction_sender
         .send_encrypted_tally(&mut committee, &vote_plan, &jormungandr)
@@ -352,7 +343,7 @@ pub fn adversary_private_vote_load_scenario(
             quick_config.voting_timing()[1],
             quick_config.slots_in_epoch() / 2,
         ),
-        jormungandr.explorer(),
+        jormungandr.rest(),
     );
 
     let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
@@ -372,10 +363,7 @@ pub fn adversary_private_vote_load_scenario(
         )
         .unwrap();
 
-    wait_for_epoch(
-        quick_config.voting_timing()[2].into(),
-        jormungandr.explorer(),
-    );
+    wait_for_epoch(quick_config.voting_timing()[2], jormungandr.rest());
     let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
 
     let vote_plan_status = active_vote_plans

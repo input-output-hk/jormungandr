@@ -74,7 +74,8 @@ impl AllFragments {
         builder.with_rest(self.endpoint.parse().unwrap());
         let remote_jormungandr = builder.build();
 
-        let settings = remote_jormungandr.rest().settings().unwrap();
+        let rest = remote_jormungandr.rest().clone();
+        let settings = rest.settings().unwrap();
 
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
@@ -103,7 +104,7 @@ impl AllFragments {
 
         generator.prepare(target_date);
 
-        time::wait_for_date(target_date, explorer);
+        time::wait_for_date(target_date, rest);
 
         let config = Configuration::duration(
             self.count,
