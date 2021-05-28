@@ -8,7 +8,7 @@ use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::interfaces::FragmentsBatch;
 use jortestkit::process::Wait;
 use reqwest::{
-    blocking::Response,
+    blocking::{Client, Response},
     header::{HeaderMap, HeaderValue, CONTENT_TYPE},
 };
 use std::fmt;
@@ -33,16 +33,44 @@ impl fmt::Display for ApiVersion {
 #[derive(Debug, Clone)]
 pub struct RawRest {
     uri: String,
-    settings: RestSettings,
+    client: Client,
+    logging_enabled: bool,
 }
 
 impl RawRest {
     pub fn new(uri: String, settings: RestSettings) -> Self {
-        Self { uri, settings }
+        let client = match &settings.certificate {
+            None => Client::new(),
+            Some(cert) => Client::builder()
+                .use_rustls_tls()
+                .add_root_certificate(cert.clone())
+                .build()
+                .unwrap(),
+        };
+        let uri = if settings.use_https {
+            let url = url::Url::parse(&uri).unwrap();
+            format!(
+                "https://{}:443/{}",
+                url.domain().unwrap(),
+                url.path_segments().unwrap().next().unwrap()
+            )
+        } else {
+            uri
+        };
+
+        Self {
+            uri,
+            client,
+            logging_enabled: settings.enable_debug,
+        }
     }
 
-    pub fn update_settings(&mut self, settings: RestSettings) {
-        self.settings = settings;
+    pub fn enable_logger(&mut self) {
+        self.logging_enabled = true;
+    }
+
+    pub fn disable_logger(&mut self) {
+        self.logging_enabled = false;
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<Response, reqwest::Error> {
@@ -64,17 +92,7 @@ impl RawRest {
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
         let request = self.path(path, ApiVersion::V0);
         self.print_request_path(&request);
-        match &self.settings.certificate {
-            None => reqwest::blocking::get(&request),
-            Some(cert) => {
-                let client = reqwest::blocking::Client::builder()
-                    .use_rustls_tls()
-                    .add_root_certificate(cert.clone())
-                    .build()
-                    .unwrap();
-                client.get(&request).send()
-            }
-        }
+        self.client.get(request).send()
     }
 
     fn path(&self, path: &str, api_version: ApiVersion) -> String {
@@ -168,10 +186,8 @@ impl RawRest {
         path: &str,
         body: Vec<u8>,
     ) -> Result<reqwest::blocking::Response, reqwest::Error> {
-        let builder = reqwest::blocking::Client::builder();
-        let client = builder.build()?;
-        client
-            .post(&self.path_http_or_https(path, ApiVersion::V0))
+        self.client
+            .post(&self.path(path, ApiVersion::V0))
             .headers(self.construct_headers())
             .body(body)
             .send()
@@ -193,10 +209,8 @@ impl RawRest {
         let clients: Vec<reqwest::blocking::RequestBuilder> = bodies
             .into_iter()
             .map(|body| {
-                reqwest::blocking::Client::builder()
-                    .build()
-                    .unwrap()
-                    .post(&self.path_http_or_https("message", ApiVersion::V0))
+                self.client
+                    .post(&self.path("message", ApiVersion::V0))
                     .headers(self.construct_headers())
                     .body(body)
             })
@@ -209,19 +223,14 @@ impl RawRest {
     }
 
     pub fn fragments_logs(&self) -> Result<Response, reqwest::Error> {
-        let builder = reqwest::blocking::Client::builder();
-        let client = builder.build()?;
-
-        client
-            .get(&self.path_http_or_https("fragments/logs", ApiVersion::V1))
+        self.client
+            .get(&self.path("fragments/logs", ApiVersion::V1))
             .send()
     }
 
     pub fn fragments_statuses(&self, ids: Vec<String>) -> Result<Response, reqwest::Error> {
-        let builder = reqwest::blocking::Client::builder();
-        let client = builder.build()?;
-        client
-            .get(&self.path_http_or_https("fragments/statuses", ApiVersion::V1))
+        self.client
+            .get(&self.path("fragments/statuses", ApiVersion::V1))
             .query(&[("fragment_ids", ids.join(","))])
             .send()
     }
@@ -231,11 +240,8 @@ impl RawRest {
         fragments: Vec<Fragment>,
         fail_fast: bool,
     ) -> Result<Response, reqwest::Error> {
-        let builder = reqwest::blocking::Client::builder();
-        let client = builder.build()?;
-
-        client
-            .post(&self.path_http_or_https("fragments", ApiVersion::V1))
+        self.client
+            .post(&self.path("fragments", ApiVersion::V1))
             .headers(self.construct_headers())
             .json(&FragmentsBatch {
                 fail_fast,
