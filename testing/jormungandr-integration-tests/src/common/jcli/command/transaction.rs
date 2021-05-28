@@ -186,6 +186,7 @@ impl TransactionCommand {
         self
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn make_transaction(
         mut self,
         host: String,

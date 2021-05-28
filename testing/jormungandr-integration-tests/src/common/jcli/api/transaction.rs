@@ -279,6 +279,7 @@ impl Transaction {
         self.command.seal(staging_file).build().assert().success();
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn make_transaction(
         self,
         host: String,
