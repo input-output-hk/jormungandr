@@ -71,8 +71,7 @@ pub fn persistent_log_load_test() {
         "Wallet backend load test",
     );
 
-    let persistent_log_viewer =
-        PersistentLogViewer::new(persistent_log_path.path().to_path_buf()).unwrap();
+    let persistent_log_viewer = PersistentLogViewer::new(persistent_log_path.path().to_path_buf());
     assert_eq!(
         base_fragment_count
             + (batch_size as usize) * (requests_per_thread as usize) * threads_count,
