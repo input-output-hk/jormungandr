@@ -190,6 +190,7 @@ impl TransactionCommand {
         mut self,
         host: String,
         sender: jormungandr_lib::interfaces::Address,
+        receiver: Option<jormungandr_lib::interfaces::Address>,
         value: jormungandr_lib::interfaces::Value,
         block0_hash: String,
         secret: impl AsRef<Path>,
@@ -204,9 +205,14 @@ impl TransactionCommand {
             .arg("--host")
             .arg(host)
             .arg("--block0-hash")
-            .arg(block0_hash)
-            .arg(sender.to_string())
-            .arg(value.to_string());
+            .arg(block0_hash);
+
+        if let Some(receiver) = receiver {
+            self.command
+                .arg("--receiver-account")
+                .arg(receiver.to_string());
+        };
+        self.command.arg(sender.to_string()).arg(value.to_string());
         self
     }
 

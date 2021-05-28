@@ -283,13 +283,22 @@ impl Transaction {
         self,
         host: String,
         sender: jormungandr_lib::interfaces::Address,
+        receiver: Option<jormungandr_lib::interfaces::Address>,
         value: jormungandr_lib::interfaces::Value,
         block0_hash: String,
         secret: impl AsRef<Path>,
         staging_file: impl AsRef<Path>,
     ) {
         self.command
-            .make_transaction(host, sender, value, block0_hash, secret, staging_file)
+            .make_transaction(
+                host,
+                sender,
+                receiver,
+                value,
+                block0_hash,
+                secret,
+                staging_file,
+            )
             .build()
             .assert()
             .success();
