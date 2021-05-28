@@ -56,13 +56,13 @@ impl RawRest {
     }
 
     fn print_request_path(&self, text: &str) {
-        if self.settings.enable_debug {
+        if self.logging_enabled {
             println!("Request: {}", text);
         }
     }
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
-        let request = self.path(path);
+        let request = self.path(path, ApiVersion::V0);
         self.print_request_path(&request);
         match &self.settings.certificate {
             None => reqwest::blocking::get(&request),
@@ -77,21 +77,7 @@ impl RawRest {
         }
     }
 
-    fn path(&self, path: &str) -> String {
-        format!("{}/v0/{}", self.uri, path)
-    }
-
-    fn path_http_or_https(&self, path: &str, api_version: ApiVersion) -> String {
-        if self.settings.use_https_for_post {
-            let url = url::Url::parse(&self.uri).unwrap();
-            return format!(
-                "https://{}:443/{}/{}/{}",
-                url.domain().unwrap(),
-                url.path_segments().unwrap().next().unwrap(),
-                api_version.to_string(),
-                path
-            );
-        }
+    fn path(&self, path: &str, api_version: ApiVersion) -> String {
         format!("{}/{}/{}", self.uri, api_version, path)
     }
 
