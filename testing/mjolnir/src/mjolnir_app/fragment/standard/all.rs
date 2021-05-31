@@ -1,10 +1,9 @@
 use crate::mjolnir_app::MjolnirError;
 use jormungandr_integration_tests::common::startup;
-use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
 use jormungandr_testing_utils::{
     testing::{
-        node::{time, Explorer},
-        FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentStatusProvider,
+        node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentStatusProvider,
         RemoteJormungandrBuilder,
     },
     wallet::Wallet,
@@ -83,20 +82,27 @@ impl AllFragments {
         let fragment_sender =
             FragmentSender::new(block0_hash, fees, FragmentSenderSetup::no_verify());
 
-        let explorer = Explorer::new(self.explorer_endpoint.clone());
-
         let mut generator = FragmentGenerator::new(
             faucet,
             receiver,
             remote_jormungandr,
-            explorer.clone(),
             settings.slots_per_epoch,
             30,
             30,
             fragment_sender,
         );
 
-        let current_date = explorer.current_time();
+        let current_date = BlockDate::from_str(
+            rest.stats()
+                .unwrap()
+                .stats
+                .unwrap()
+                .last_block_date
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
+
         let target_date = current_date.shift_slot(
             self.rump_up,
             &current_date.time_era(settings.slots_per_epoch),
