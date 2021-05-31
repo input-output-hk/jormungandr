@@ -8,26 +8,32 @@ use async_graphql::{
     Context, EmptyMutation, FieldError, FieldResult, Object, SimpleObject, Subscription,
 };
 
-use self::connections::{
-    compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
-    ValidatedPaginationArguments,
-};
-use self::error::ApiError;
 use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PoolCount,
-    PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange,
+    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PayloadType,
+    PoolCount, PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange,
+    VotePlanStatusCount,
 };
+use self::{
+    connections::{
+        compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
+        ValidatedPaginationArguments,
+    },
+    scalars::VotePlanId,
+};
+use self::{error::ApiError, scalars::Weight};
 use crate::db::indexing::{
-    BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, StakePoolData,
+    BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, ExplorerVote,
+    ExplorerVotePlan, ExplorerVoteTally, StakePoolData,
 };
 use crate::db::persistent_sequence::PersistentSequence;
 use crate::db::{ExplorerDb, Settings as ChainSettings};
 use cardano_legacy_address::Addr as OldAddress;
 use certificates::*;
-use chain_impl_mockchain::block::{
-    BlockDate as InternalBlockDate, Epoch as InternalEpoch, HeaderId as HeaderHash,
-};
 use chain_impl_mockchain::key::BftLeaderId;
+use chain_impl_mockchain::{
+    block::{BlockDate as InternalBlockDate, Epoch as InternalEpoch, HeaderId as HeaderHash},
+    vote::{EncryptedVote, ProofOfCorrectVote},
+};
 use chain_impl_mockchain::{certificate, fragment::FragmentId};
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
@@ -193,6 +199,86 @@ impl Branch {
                 connection.append(edges.iter().map(|(h, i)| {
                     Edge::new(IndexCursor::from(*i), Transaction::from_valid_id(*h))
                 }));
+
+                Ok(connection)
+            },
+        )
+        .await
+    }
+
+    pub async fn all_vote_plans(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<String>,
+        after: Option<String>,
+    ) -> FieldResult<
+        Connection<IndexCursor, VotePlanStatus, ConnectionFields<VotePlanStatusCount>, EmptyFields>,
+    > {
+        let mut vote_plans = self.state.state().get_vote_plans();
+
+        vote_plans.sort_unstable_by_key(|(id, _data)| id.clone());
+
+        query(
+            after,
+            before,
+            first,
+            last,
+            |after, before, first, last| async move {
+                let boundaries = if !vote_plans.is_empty() {
+                    PaginationInterval::Inclusive(InclusivePaginationInterval {
+                        lower_bound: 0u32,
+                        upper_bound: vote_plans
+                            .len()
+                            .checked_sub(1)
+                            .unwrap()
+                            .try_into()
+                            .expect("tried to paginate more than 2^32 elements"),
+                    })
+                } else {
+                    PaginationInterval::Empty
+                };
+
+                let pagination_arguments = ValidatedPaginationArguments {
+                    first,
+                    last,
+                    before: before.map(u32::try_from).transpose()?,
+                    after: after.map(u32::try_from).transpose()?,
+                };
+
+                let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+                let mut connection = Connection::with_additional_fields(
+                    page_meta.has_previous_page,
+                    page_meta.has_next_page,
+                    ConnectionFields {
+                        total_count: page_meta.total_count,
+                    },
+                );
+
+                let edges = match range {
+                    PaginationInterval::Empty => vec![],
+                    PaginationInterval::Inclusive(range) => {
+                        let from = range.lower_bound;
+                        let to = range.upper_bound;
+
+                        (from..=to)
+                            .map(|i: u32| {
+                                let (_pool_id, vote_plan_data) =
+                                    &vote_plans[usize::try_from(i).unwrap()];
+                                (
+                                    VotePlanStatus::vote_plan_from_data(Arc::clone(vote_plan_data)),
+                                    i,
+                                )
+                            })
+                            .collect::<Vec<(VotePlanStatus, u32)>>()
+                    }
+                };
+
+                connection.append(
+                    edges
+                        .iter()
+                        .map(|(vps, cursor)| Edge::new(IndexCursor::from(*cursor), vps.clone())),
+                );
 
                 Ok(connection)
             },
@@ -1175,6 +1261,255 @@ pub struct PoolStakeDistribution {
     delegated_stake: Value,
 }
 
+#[derive(Clone)]
+pub struct VotePayloadPublicStatus {
+    choice: i32,
+}
+
+#[derive(Clone)]
+pub struct VotePayloadPrivateStatus {
+    proof: ProofOfCorrectVote,
+    encrypted_vote: EncryptedVote,
+}
+
+#[Object]
+impl VotePayloadPublicStatus {
+    pub async fn choice(&self, _context: &Context<'_>) -> i32 {
+        self.choice
+    }
+}
+
+#[Object]
+impl VotePayloadPrivateStatus {
+    pub async fn proof(&self, _context: &Context<'_>) -> String {
+        let bytes_proof = self.proof.serialize();
+        base64::encode_config(bytes_proof, base64::URL_SAFE)
+    }
+
+    pub async fn encrypted_vote(&self, _context: &Context<'_>) -> String {
+        let encrypted_bote_bytes = self.encrypted_vote.serialize();
+        base64::encode_config(encrypted_bote_bytes, base64::URL_SAFE)
+    }
+}
+
+#[derive(Clone, async_graphql::Union)]
+pub enum VotePayloadStatus {
+    Public(VotePayloadPublicStatus),
+    Private(VotePayloadPrivateStatus),
+}
+
+// TODO do proper vote tally
+#[derive(Clone, SimpleObject)]
+pub struct TallyPublicStatus {
+    results: Vec<Weight>,
+    options: VoteOptionRange,
+}
+
+#[derive(Clone, SimpleObject)]
+pub struct TallyPrivateStatus {
+    results: Option<Vec<Weight>>,
+    options: VoteOptionRange,
+}
+
+#[derive(Clone, async_graphql::Union)]
+pub enum TallyStatus {
+    Public(TallyPublicStatus),
+    Private(TallyPrivateStatus),
+}
+
+#[derive(Clone, SimpleObject)]
+pub struct VotePlanStatus {
+    id: VotePlanId,
+    vote_start: BlockDate,
+    vote_end: BlockDate,
+    committee_end: BlockDate,
+    payload_type: PayloadType,
+    proposals: Vec<VoteProposalStatus>,
+}
+
+impl VotePlanStatus {
+    pub async fn vote_plan_from_id(
+        vote_plan_id: VotePlanId,
+        context: &Context<'_>,
+    ) -> FieldResult<Self> {
+        let vote_plan_id = chain_impl_mockchain::certificate::VotePlanId::from_str(&vote_plan_id.0)
+            .map_err(|err| -> FieldError { ApiError::InvalidAddress(err.to_string()).into() })?;
+        if let Some(vote_plan) = extract_context(&context)
+            .db
+            .get_vote_plan_by_id(&vote_plan_id)
+            .await
+        {
+            return Ok(Self::vote_plan_from_data(vote_plan));
+        }
+
+        Err(ApiError::NotFound(format!(
+            "Vote plan with id {} not found",
+            vote_plan_id.to_string()
+        ))
+        .into())
+    }
+
+    pub fn vote_plan_from_data(vote_plan: Arc<ExplorerVotePlan>) -> Self {
+        let ExplorerVotePlan {
+            id,
+            vote_start,
+            vote_end,
+            committee_end,
+            payload_type,
+            proposals,
+        } = (*vote_plan).clone();
+
+        VotePlanStatus {
+            id: VotePlanId::from(id),
+            vote_start: BlockDate::from(vote_start),
+            vote_end: BlockDate::from(vote_end),
+            committee_end: BlockDate::from(committee_end),
+            payload_type: PayloadType::from(payload_type),
+            proposals: proposals
+                .into_iter()
+                .map(|proposal| VoteProposalStatus {
+                    proposal_id: ExternalProposalId::from(proposal.proposal_id),
+                    options: VoteOptionRange::from(proposal.options),
+                    tally: proposal.tally.map(|tally| match tally {
+                        ExplorerVoteTally::Public { results, options } => {
+                            TallyStatus::Public(TallyPublicStatus {
+                                results: results.into_iter().map(Into::into).collect(),
+                                options: options.into(),
+                            })
+                        }
+                        ExplorerVoteTally::Private { results, options } => {
+                            TallyStatus::Private(TallyPrivateStatus {
+                                results: results
+                                    .map(|res| res.into_iter().map(Into::into).collect()),
+                                options: options.into(),
+                            })
+                        }
+                    }),
+                    votes: proposal
+                        .votes
+                        .iter()
+                        .map(|(key, vote)| match vote.as_ref() {
+                            ExplorerVote::Public(choice) => VoteStatus {
+                                address: key.into(),
+                                payload: VotePayloadStatus::Public(VotePayloadPublicStatus {
+                                    choice: choice.as_byte().into(),
+                                }),
+                            },
+                            ExplorerVote::Private {
+                                proof,
+                                encrypted_vote,
+                            } => VoteStatus {
+                                address: key.into(),
+                                payload: VotePayloadStatus::Private(VotePayloadPrivateStatus {
+                                    proof: proof.clone(),
+                                    encrypted_vote: encrypted_vote.clone(),
+                                }),
+                            },
+                        })
+                        .collect(),
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Clone, SimpleObject)]
+pub struct VoteStatus {
+    address: Address,
+    payload: VotePayloadStatus,
+}
+
+#[derive(Clone)]
+pub struct VoteProposalStatus {
+    proposal_id: ExternalProposalId,
+    options: VoteOptionRange,
+    tally: Option<TallyStatus>,
+    votes: Vec<VoteStatus>,
+}
+
+#[Object]
+impl VoteProposalStatus {
+    pub async fn proposal_id(&self) -> &ExternalProposalId {
+        &self.proposal_id
+    }
+
+    pub async fn options(&self) -> &VoteOptionRange {
+        &self.options
+    }
+
+    pub async fn tally(&self) -> Option<&TallyStatus> {
+        self.tally.as_ref()
+    }
+
+    pub async fn votes(
+        &self,
+        first: Option<i32>,
+        last: Option<i32>,
+        before: Option<String>,
+        after: Option<String>,
+    ) -> FieldResult<Connection<IndexCursor, VoteStatus, ConnectionFields<u64>, EmptyFields>> {
+        query(
+            after,
+            before,
+            first,
+            last,
+            |after, before, first, last| async move {
+                let boundaries = if !self.votes.is_empty() {
+                    PaginationInterval::Inclusive(InclusivePaginationInterval {
+                        lower_bound: 0u32,
+                        upper_bound: self
+                            .votes
+                            .len()
+                            .checked_sub(1)
+                            .unwrap()
+                            .try_into()
+                            .expect("tried to paginate more than 2^32 elements"),
+                    })
+                } else {
+                    PaginationInterval::Empty
+                };
+
+                let pagination_arguments = ValidatedPaginationArguments {
+                    first,
+                    last,
+                    before: before.map(u32::try_from).transpose()?,
+                    after: after.map(u32::try_from).transpose()?,
+                };
+
+                let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+                let mut connection = Connection::with_additional_fields(
+                    page_meta.has_previous_page,
+                    page_meta.has_next_page,
+                    ConnectionFields {
+                        total_count: page_meta.total_count,
+                    },
+                );
+
+                let edges = match range {
+                    PaginationInterval::Empty => vec![],
+                    PaginationInterval::Inclusive(range) => {
+                        let from = range.lower_bound;
+                        let to = range.upper_bound;
+
+                        (from..=to)
+                            .map(|i: u32| (self.votes[i as usize].clone(), i))
+                            .collect::<Vec<(VoteStatus, u32)>>()
+                    }
+                };
+
+                connection.append(
+                    edges
+                        .iter()
+                        .map(|(vs, cursor)| Edge::new(IndexCursor::from(*cursor), vs.clone())),
+                );
+
+                Ok(connection)
+            },
+        )
+        .await
+    }
+}
+
 pub struct Query;
 
 #[Object]
@@ -1244,6 +1579,14 @@ impl Query {
 
     pub async fn settings(&self, _context: &Context<'_>) -> FieldResult<Settings> {
         Ok(Settings {})
+    }
+
+    pub async fn vote_plan(
+        &self,
+        context: &Context<'_>,
+        id: String,
+    ) -> FieldResult<VotePlanStatus> {
+        VotePlanStatus::vote_plan_from_id(VotePlanId(id), context).await
     }
 }
 

@@ -1,5 +1,5 @@
 mod api;
-mod db;
+pub mod db;
 mod indexer;
 mod settings;
 

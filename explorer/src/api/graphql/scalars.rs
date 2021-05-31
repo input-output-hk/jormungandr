@@ -110,6 +110,7 @@ impl ScalarType for Value {
 pub type BlockCount = u64;
 pub type TransactionCount = u64;
 pub type PoolCount = u64;
+pub type VotePlanStatusCount = u64;
 
 pub struct PublicKey(pub String);
 

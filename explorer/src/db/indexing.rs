@@ -4,7 +4,9 @@ use chain_addr::{Address, Discrimination};
 use chain_core::property::{Block as _, Fragment as _};
 use chain_impl_mockchain::{
     block::{Block, Proof},
-    certificate::{Certificate, PoolId, PoolRegistration, PoolRetirement},
+    certificate::{
+        Certificate, ExternalProposalId, PoolId, PoolRegistration, PoolRetirement, VotePlanId,
+    },
     fragment::{Fragment, FragmentId},
     header::BlockDate,
     header::ChainLength,
@@ -13,6 +15,7 @@ use chain_impl_mockchain::{
     key::BftLeaderId,
     transaction::{InputEnum, TransactionSlice, Witness},
     value::Value,
+    vote::{Choice, EncryptedVote, Options, PayloadType, ProofOfCorrectVote, Weight},
 };
 use std::{
     collections::{hash_map::DefaultHasher, HashMap},
@@ -31,6 +34,8 @@ pub type Epochs = Hamt<Epoch, EpochData>;
 
 pub type StakePoolBlocks = Hamt<PoolId, PersistentSequence<HeaderHash>>;
 pub type StakePool = Hamt<PoolId, StakePoolData>;
+
+pub type VotePlans = Hamt<VotePlanId, ExplorerVotePlan>;
 
 #[derive(Clone)]
 pub struct StakePoolData {
@@ -93,6 +98,46 @@ pub struct EpochData {
 pub enum ExplorerAddress {
     New(Address),
     Old(OldAddress),
+}
+
+#[derive(Clone)]
+pub struct ExplorerVotePlan {
+    pub id: VotePlanId,
+    pub vote_start: BlockDate,
+    pub vote_end: BlockDate,
+    pub committee_end: BlockDate,
+    pub payload_type: PayloadType,
+    pub proposals: Vec<ExplorerVoteProposal>,
+}
+
+#[derive(Clone)]
+pub enum ExplorerVote {
+    Public(Choice),
+    Private {
+        proof: ProofOfCorrectVote,
+        encrypted_vote: EncryptedVote,
+    },
+}
+
+#[derive(Clone)]
+pub struct ExplorerVoteProposal {
+    pub proposal_id: ExternalProposalId,
+    pub options: Options,
+    pub tally: Option<ExplorerVoteTally>,
+    pub votes: Hamt<ExplorerAddress, ExplorerVote>,
+}
+
+// TODO do proper vote tally
+#[derive(Clone)]
+pub enum ExplorerVoteTally {
+    Public {
+        results: Vec<Weight>,
+        options: Options,
+    },
+    Private {
+        results: Option<Vec<Weight>>,
+        options: Options,
+    },
 }
 
 pub struct ExplorerBlockBuildingContext<'a> {

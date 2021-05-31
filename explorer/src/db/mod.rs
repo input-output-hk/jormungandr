@@ -5,16 +5,17 @@ pub mod persistent_sequence;
 
 use self::error::{ExplorerError as Error, Result};
 use self::indexing::{
-    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock, StakePool,
-    StakePoolBlocks, StakePoolData, Transactions,
+    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
+    ExplorerVote, ExplorerVotePlan, ExplorerVoteProposal, StakePool, StakePoolBlocks,
+    StakePoolData, Transactions, VotePlans,
 };
 use self::persistent_sequence::PersistentSequence;
 use chain_core::property::Block as _;
 pub use multiverse::Ref;
 
 use chain_addr::Discrimination;
-use chain_impl_mockchain::block::HeaderId as HeaderHash;
 use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::{block::HeaderId as HeaderHash, certificate::VotePlanId};
 use chain_impl_mockchain::{
     block::{Block, ChainLength, Epoch},
     certificate::{Certificate, PoolId},
@@ -81,6 +82,7 @@ pub struct State {
     chain_lengths: ChainLengths,
     stake_pool_data: StakePool,
     stake_pool_blocks: StakePoolBlocks,
+    vote_plans: VotePlans,
 }
 
 #[derive(Clone)]
@@ -122,6 +124,7 @@ impl ExplorerDb {
         let addresses = apply_block_to_addresses(Addresses::new(), &block);
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(StakePool::new(), StakePoolBlocks::new(), &block);
+        let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &block);
 
         let initial_state = State {
             transactions,
@@ -131,6 +134,7 @@ impl ExplorerDb {
             addresses,
             stake_pool_data,
             stake_pool_blocks,
+            vote_plans,
         };
 
         let block0_id = block0.id();
@@ -177,6 +181,7 @@ impl ExplorerDb {
             chain_lengths,
             stake_pool_data,
             stake_pool_blocks,
+            vote_plans,
         } = previous_state.state().clone();
 
         let explorer_block = ExplorerBlock::resolve_from(
@@ -203,6 +208,7 @@ impl ExplorerDb {
                     chain_lengths: apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
                     stake_pool_data,
                     stake_pool_blocks,
+                    vote_plans: apply_block_to_vote_plans(vote_plans, &explorer_block),
                 },
             )
             .await;
@@ -381,6 +387,19 @@ impl ExplorerDb {
         None
     }
 
+    pub async fn get_vote_plan_by_id(
+        &self,
+        vote_plan_id: &VotePlanId,
+    ) -> Option<Arc<ExplorerVotePlan>> {
+        for (_hash, state_ref) in self.multiverse.tips().await.iter() {
+            if let Some(b) = state_ref.state().vote_plans.lookup(&vote_plan_id) {
+                return Some(Arc::clone(b));
+            }
+        }
+
+        None
+    }
+
     pub async fn get_branch(&self, hash: &HeaderHash) -> Option<multiverse::Ref> {
         self.multiverse.get_ref(hash).await
     }
@@ -550,6 +569,104 @@ fn apply_block_to_stake_pools(
     (data, blocks)
 }
 
+fn apply_block_to_vote_plans(mut vote_plans: VotePlans, block: &ExplorerBlock) -> VotePlans {
+    for tx in block.transactions.values() {
+        if let Some(cert) = &tx.certificate {
+            vote_plans = match cert {
+                Certificate::VotePlan(vote_plan) => vote_plans
+                    .insert(
+                        vote_plan.to_id(),
+                        Arc::new(ExplorerVotePlan {
+                            id: vote_plan.to_id(),
+                            vote_start: vote_plan.vote_start(),
+                            vote_end: vote_plan.vote_end(),
+                            committee_end: vote_plan.committee_end(),
+                            payload_type: vote_plan.payload_type(),
+                            proposals: vote_plan
+                                .proposals()
+                                .iter()
+                                .map(|proposal| ExplorerVoteProposal {
+                                    proposal_id: proposal.external_id().clone(),
+                                    options: proposal.options().clone(),
+                                    tally: None,
+                                    votes: Default::default(),
+                                })
+                                .collect(),
+                        }),
+                    )
+                    .unwrap(),
+                Certificate::VoteCast(vote_cast) => {
+                    use chain_impl_mockchain::vote::Payload;
+                    let voter = tx.inputs[0].address.clone();
+                    match vote_cast.payload() {
+                        Payload::Public { choice } => vote_plans
+                            .update(vote_cast.vote_plan(), |vote_plan| {
+                                let mut proposals = vote_plan.proposals.clone();
+                                proposals[vote_cast.proposal_index() as usize].votes = proposals
+                                    [vote_cast.proposal_index() as usize]
+                                    .votes
+                                    .insert_or_update(
+                                        voter,
+                                        Arc::new(ExplorerVote::Public(*choice)),
+                                        |_| {
+                                            Ok::<_, std::convert::Infallible>(Some(Arc::new(
+                                                ExplorerVote::Public(*choice),
+                                            )))
+                                        },
+                                    )
+                                    .unwrap();
+                                let vote_plan = ExplorerVotePlan {
+                                    proposals,
+                                    ..(**vote_plan).clone()
+                                };
+                                Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
+                            })
+                            .unwrap(),
+                        Payload::Private {
+                            proof,
+                            encrypted_vote,
+                        } => vote_plans
+                            .update(vote_cast.vote_plan(), |vote_plan| {
+                                let mut proposals = vote_plan.proposals.clone();
+                                proposals[vote_cast.proposal_index() as usize].votes = proposals
+                                    [vote_cast.proposal_index() as usize]
+                                    .votes
+                                    .insert_or_update(
+                                        voter,
+                                        Arc::new(ExplorerVote::Private {
+                                            proof: proof.clone(),
+                                            encrypted_vote: encrypted_vote.clone(),
+                                        }),
+                                        |_| {
+                                            Ok::<_, std::convert::Infallible>(Some(Arc::new(
+                                                ExplorerVote::Private {
+                                                    proof: proof.clone(),
+                                                    encrypted_vote: encrypted_vote.clone(),
+                                                },
+                                            )))
+                                        },
+                                    )
+                                    .unwrap();
+                                let vote_plan = ExplorerVotePlan {
+                                    proposals,
+                                    ..(**vote_plan).clone()
+                                };
+                                Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
+                            })
+                            .unwrap(),
+                    }
+                }
+                Certificate::VoteTally(_vote_tally) => {
+                    unimplemented!("this may require access to the node's Tip");
+                }
+                _ => vote_plans,
+            }
+        }
+    }
+
+    vote_plans
+}
+
 impl BlockchainConfig {
     fn from_config_params(params: &ConfigParams) -> BlockchainConfig {
         let mut discrimination: Option<Discrimination> = None;
@@ -597,6 +714,13 @@ impl Tip {
 }
 
 impl State {
+    pub fn get_vote_plans(&self) -> Vec<(VotePlanId, Arc<ExplorerVotePlan>)> {
+        self.vote_plans
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
+    }
+
     pub fn get_stake_pools(&self) -> Vec<(PoolId, Arc<StakePoolData>)> {
         self.stake_pool_data
             .iter()
