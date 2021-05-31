@@ -842,22 +842,6 @@ dependencies = [
 
 [[package]]
 name = "console"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a50aab2529019abfabfa93f1e6c41ef392f91fbf179b347a7e96abb524884a08"
-dependencies = [
- "encode_unicode",
- "lazy_static",
- "libc",
- "regex",
- "terminal_size",
- "unicode-width",
- "winapi",
- "winapi-util",
-]
-
-[[package]]
-name = "console"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3993e6445baa160675931ec041a5e03ca84b9c6e32a056150d3aa2bdda0a1f45"
@@ -884,10 +868,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea221b5284a47e40033bf9b66f35f984ec0ea2931eb03505246cd27a963f981b"
 
 [[package]]
-name = "cpuid-bool"
-version = "0.1.2"
+name = "cpufeatures"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8aebca1129a03dc6dc2b127edd729435bbc4a37e1d5f4d7513165089ceb02634"
+checksum = "ed00c67cb5d0a7d64a44f6ad2668db7e7530311dd53ea79bcd4fb022c64911c8"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "crc32fast"
@@ -957,9 +944,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-epoch"
-version = "0.9.3"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2584f639eb95fea8c798496315b297cf81b9b58b6d30ab066a75455333cf4b12"
+checksum = "4ec02e091aa634e2c3ada4a392989e7c3116673ef0ac5b72232439094d73b7fd"
 dependencies = [
  "cfg-if 1.0.0",
  "crossbeam-utils",
@@ -970,11 +957,10 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-utils"
-version = "0.8.3"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7e9d99fa91428effe99c5c6d4634cdeba32b8cf784fc428a2a687f61a952c49"
+checksum = "d82cfc11ce7f2c3faef78d8a684447b40d503d9681acebed6cb728d45940c4db"
 dependencies = [
- "autocfg",
  "cfg-if 1.0.0",
  "lazy_static",
 ]
@@ -1027,7 +1013,7 @@ dependencies = [
  "digest 0.9.0",
  "rand_core 0.5.1",
  "subtle",
- "zeroize 1.2.0",
+ "zeroize",
 ]
 
 [[package]]
@@ -1040,7 +1026,7 @@ dependencies = [
  "digest 0.9.0",
  "rand_core 0.6.2",
  "subtle-ng",
- "zeroize 1.2.0",
+ "zeroize",
 ]
 
 [[package]]
@@ -1202,14 +1188,14 @@ dependencies = [
 
 [[package]]
 name = "dialoguer"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70f807b2943dc90f9747497d9d65d7e92472149be0b88bf4ce1201b4ac979c26"
+checksum = "c9dd058f8b65922819fabb4a41e7d1964e56344042c26efbccd465202c23fa0c"
 dependencies = [
- "console 0.13.0",
+ "console 0.14.1",
  "lazy_static",
  "tempfile",
- "zeroize 0.9.3",
+ "zeroize",
 ]
 
 [[package]]
@@ -1285,7 +1271,7 @@ dependencies = [
  "rand 0.7.3",
  "serde",
  "sha2",
- "zeroize 1.2.0",
+ "zeroize",
 ]
 
 [[package]]
@@ -1797,7 +1783,7 @@ dependencies = [
  "headers-core",
  "http",
  "mime",
- "sha-1 0.9.4",
+ "sha-1 0.9.6",
  "time",
 ]
 
@@ -2255,7 +2241,7 @@ dependencies = [
  "chrono",
  "console 0.14.1",
  "custom_debug",
- "dialoguer 0.7.1",
+ "dialoguer 0.8.0",
  "error-chain",
  "function_name",
  "futures 0.3.13",
@@ -2377,7 +2363,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "serde_yaml",
- "sha-1 0.9.4",
+ "sha-1 0.9.6",
  "sha2",
  "sysinfo 0.14.15",
  "tar",
@@ -2652,7 +2638,7 @@ dependencies = [
  "blake2b_simd",
  "blake2s_simd",
  "digest 0.9.0",
- "sha-1 0.9.4",
+ "sha-1 0.9.6",
  "sha2",
  "sha3",
  "unsigned-varint",
@@ -3801,26 +3787,26 @@ dependencies = [
 
 [[package]]
 name = "sha-1"
-version = "0.9.4"
+version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfebf75d25bd900fd1e7d11501efab59bc846dbc76196839663e6637bba9f25f"
+checksum = "8c4cfa741c5832d0ef7fab46cabed29c2aae926db0b11bb2069edd8db5e64e16"
 dependencies = [
  "block-buffer 0.9.0",
  "cfg-if 1.0.0",
- "cpuid-bool",
+ "cpufeatures",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
 ]
 
 [[package]]
 name = "sha2"
-version = "0.9.3"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa827a14b29ab7f44778d14a88d3cb76e949c45083f7dbfa507d0cb699dc12de"
+checksum = "b362ae5752fd2137731f9fa25fd4d9058af34666ca1966fb969119cc35719f12"
 dependencies = [
  "block-buffer 0.9.0",
  "cfg-if 1.0.0",
- "cpuid-bool",
+ "cpufeatures",
  "digest 0.9.0",
  "opaque-debug 0.3.0",
 ]
@@ -4604,7 +4590,7 @@ dependencies = [
  "input_buffer",
  "log",
  "rand 0.8.3",
- "sha-1 0.9.4",
+ "sha-1 0.9.6",
  "url",
  "utf-8",
 ]
@@ -5058,12 +5044,6 @@ checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
 dependencies = [
  "linked-hash-map",
 ]
-
-[[package]]
-name = "zeroize"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45af6a010d13e4cf5b54c94ba5a2b2eba5596b9e46bf5875612d332a1f2b3f86"
 
 [[package]]
 name = "zeroize"
