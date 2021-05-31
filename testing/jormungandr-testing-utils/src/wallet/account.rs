@@ -99,7 +99,7 @@ impl Wallet {
         signing_data: &TransactionSignDataHash,
     ) -> Witness {
         Witness::new_account(
-            &block0_hash.clone().into_hash(),
+            &(*block0_hash).into_hash(),
             signing_data,
             self.internal_counter(),
             |d| self.signing_key().as_ref().sign(d),

@@ -36,7 +36,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
-        .config(leader_config.clone())
+        .config(leader_config)
         .temp_dir(temp_dir)
         .start()
         .unwrap();
@@ -99,7 +99,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
-        .config(config.clone())
+        .config(config)
         .temp_dir(temp_dir)
         .start()
         .unwrap();
@@ -124,7 +124,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .unwrap()
         .assert_empty();
 
-    time::wait_for_date(BlockDate::new(0, 5).into(), jormungandr.explorer());
+    time::wait_for_date(BlockDate::new(0, 5), jormungandr.explorer());
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
 }
 
@@ -156,7 +156,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
-        .config(config.clone())
+        .config(config)
         .temp_dir(temp_dir)
         .start()
         .unwrap();
@@ -219,7 +219,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
-        .config(config.clone())
+        .config(config)
         .temp_dir(temp_dir)
         .start()
         .unwrap();
@@ -244,7 +244,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .unwrap()
         .assert_empty();
 
-    time::wait_for_date(BlockDate::new(0, 5).into(), jormungandr.explorer());
+    time::wait_for_date(BlockDate::new(0, 5), jormungandr.explorer());
 
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
 }
@@ -277,7 +277,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
-        .config(config.clone())
+        .config(config)
         .temp_dir(temp_dir)
         .start()
         .unwrap();
@@ -302,7 +302,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .unwrap()
         .assert_size(2);
 
-    time::wait_for_date(BlockDate::new(0, 10).into(), jormungandr.explorer());
+    time::wait_for_date(BlockDate::new(0, 10), jormungandr.explorer());
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 2.into())

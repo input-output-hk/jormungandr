@@ -27,7 +27,7 @@ pub fn more_than_one_stake_pool_in_app() {
     let third_spo = startup::create_new_account_address();
 
     let (jormungandr, _) = startup::start_stake_pool(
-        &[first_spo.clone(), second_spo.clone(), third_spo.clone()],
+        &[first_spo.clone(), second_spo.clone(), third_spo],
         &[],
         &mut ConfigurationBuilder::new(),
     )

@@ -62,7 +62,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
     )
     .unwrap();
 
-    let output_value = 1 as u64;
+    let output_value = 1_u64;
     let mut efficiency_benchmark_run = efficiency_benchmark_def.start();
     for i in 0..iterations_count {
         let transation_messages: Vec<String> = receivers
@@ -112,7 +112,7 @@ pub fn test_100_transaction_is_processed_simple() {
     )
     .unwrap();
 
-    let output_value = 1 as u64;
+    let output_value = 1_u64;
     let mut benchmark = benchmark_efficiency("test_100_transaction_is_processed_simple")
         .target(transaction_max_count)
         .start();
@@ -167,7 +167,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
     )
     .unwrap();
 
-    let output_value = 1 as u64;
+    let output_value = 1_u64;
     let benchmark = benchmark_endurance("test_blocks_are_created_for_more_than_15_minutes")
         .target(Duration::from_secs(900))
         .start();

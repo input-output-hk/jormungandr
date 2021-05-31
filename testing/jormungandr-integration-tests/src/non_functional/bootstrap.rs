@@ -51,7 +51,7 @@ pub fn bootstrap_from_100_mb_storage() {
 
     let _jormungandr = Starter::new()
         .timeout(Duration::from_secs(24_000))
-        .config(config.clone())
+        .config(config)
         .benchmark(&format!(
             "bootstrap from {} MB storage after kill",
             storage_size
@@ -118,9 +118,9 @@ pub fn legacy_bootstrap_from_1_gb_storage() {
 
     let _jormungandr = Starter::new()
         .timeout(Duration::from_secs(24_000))
-        .config(config.clone())
+        .config(config)
         .legacy(legacy_release.version())
-        .jormungandr_app(jormungandr_app.clone())
+        .jormungandr_app(jormungandr_app)
         .benchmark(&format!(
             "legacy {} bootstrap from {} MB storage after kill",
             legacy_release.version(),

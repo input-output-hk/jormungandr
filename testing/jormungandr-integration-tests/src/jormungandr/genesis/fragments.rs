@@ -31,7 +31,7 @@ pub fn test_all_fragments() {
     )
     .unwrap();
 
-    let initial_stake_pool = stake_pools.iter().next().unwrap();
+    let initial_stake_pool = stake_pools.get(0).unwrap();
 
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -157,16 +157,12 @@ pub fn test_all_adversary_fragments() {
 
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner.clone()],
-        &[
-            full_delegator.clone(),
-            split_delegator.clone(),
-            faucet.clone(),
-        ],
+        &[full_delegator.clone(), split_delegator, faucet.clone()],
         &mut ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
     )
     .unwrap();
 
-    let initial_stake_pool = stake_pools.iter().next().unwrap();
+    let initial_stake_pool = stake_pools.get(0).unwrap();
 
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),

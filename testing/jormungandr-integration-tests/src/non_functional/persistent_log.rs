@@ -2,20 +2,13 @@ use crate::common::jormungandr::ConfigurationBuilder;
 use crate::common::startup;
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
-use jormungandr_lib::interfaces::BlockDate;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
 use jormungandr_lib::interfaces::{Mempool, PersistentLog};
 use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
-use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::{
-    BatchFragmentGenerator, FragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
+    BatchFragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
 };
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 use jortestkit::load::{self, Configuration, Monitor};
-use jortestkit::prelude::Wait;
-use std::time::Duration;
 
 #[test]
 pub fn persistent_log_load_test() {
@@ -71,8 +64,7 @@ pub fn persistent_log_load_test() {
         "Wallet backend load test",
     );
 
-    let persistent_log_viewer =
-        PersistentLogViewer::new(persistent_log_path.path().to_path_buf()).unwrap();
+    let persistent_log_viewer = PersistentLogViewer::new(persistent_log_path.path().to_path_buf());
     assert_eq!(
         base_fragment_count
             + (batch_size as usize) * (requests_per_thread as usize) * threads_count,

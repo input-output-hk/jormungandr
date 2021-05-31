@@ -153,7 +153,6 @@ impl LogEntry {
     pub fn block_date(&self) -> Option<BlockDate> {
         self.fields
             .get("block_date")
-            .clone()
             .map(|block| block::BlockDate::from_str(&block).unwrap().into())
     }
 

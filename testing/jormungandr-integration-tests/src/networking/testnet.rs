@@ -48,28 +48,23 @@ impl TestnetConfig {
     pub fn new(prefix: &str) -> Self {
         let actor_account_private_key_var_name = format!("{}_ACCOUNT_SK", prefix);
         let actor_account_private_key = env::var(actor_account_private_key_var_name.clone())
-            .expect(&format!(
-                "{} env is not set",
-                actor_account_private_key_var_name
-            ));
+            .unwrap_or_else(|_| panic!("{} env is not set", actor_account_private_key_var_name));
 
         let block_hash_var_name = format!("{}_BLOCK0_HASH", prefix);
-        let block0_hash = env::var(block_hash_var_name).expect(&format!(
-            "{} env is not set",
-            actor_account_private_key_var_name
-        ));
+        let block0_hash = env::var(block_hash_var_name)
+            .unwrap_or_else(|_| panic!("{} env is not set", actor_account_private_key_var_name));
 
         let public_ip_var_name = "PUBLIC_IP";
-        let public_ip =
-            env::var(public_ip_var_name).expect(&format!("{} env is not set", public_ip_var_name));
+        let public_ip = env::var(public_ip_var_name)
+            .unwrap_or_else(|_| panic!("{} env is not set", public_ip_var_name));
 
         let public_port_var_name = "PUBLIC_PORT";
         let public_port = env::var(public_port_var_name)
-            .expect(&format!("{} env is not set", public_port_var_name));
+            .unwrap_or_else(|_| panic!("{} env is not set", public_port_var_name));
 
         let listen_port_var_name = "LISTEN_PORT";
         let listen_port = env::var(listen_port_var_name)
-            .expect(&format!("{} env is not set", listen_port_var_name));
+            .unwrap_or_else(|_| panic!("{} env is not set", listen_port_var_name));
 
         let trusted_peers = Self::initialize_trusted_peers(prefix);
 
@@ -176,7 +171,7 @@ fn bootstrap_current(testnet_config: TestnetConfig, network_alias: &str) {
     let loading_from_storage_timeout = Duration::from_secs(12_000);
     let jormungandr_from_storage = Starter::new()
         .config(jormungandr_config)
-        .timeout(loading_from_storage_timeout.clone())
+        .timeout(loading_from_storage_timeout)
         .passive()
         .verify_by(StartupVerificationMode::Rest)
         .start()
@@ -268,7 +263,7 @@ fn bootstrap_legacy(testnet_config: TestnetConfig, network_prefix: &str) {
     legacy_jormungandr_config.refresh_instance_params();
 
     let _rollback_jormungandr = Starter::new()
-        .config(legacy_jormungandr_config.clone())
+        .config(legacy_jormungandr_config)
         .timeout(Duration::from_secs(48_000))
         .legacy(version)
         .benchmark(&format!(
@@ -287,7 +282,7 @@ pub fn itn_bootstrap_current() {
 
 fn get_legacy_app(temp_dir: &TempDir) -> (PathBuf, Version) {
     let releases = download_last_n_releases(1);
-    let last_release = releases.iter().next().unwrap();
+    let last_release = releases.get(0).unwrap();
     let jormungandr = get_jormungandr_bin(&last_release, temp_dir);
     (jormungandr, last_release.version())
 }
@@ -323,7 +318,6 @@ fn e2e_stake_pool(testnet_config: TestnetConfig) {
     let block0_hash = testnet_config.block0_hash();
 
     let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
         .config(testnet_config.make_leader_config(&temp_dir))
         .temp_dir(temp_dir)
         .timeout(Duration::from_secs(8000))
