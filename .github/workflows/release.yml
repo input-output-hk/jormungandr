@@ -314,10 +314,10 @@ jobs:
 
   remove_failed_release:
     name: Remove the release upon a build failure
-    needs: [create_release, build_assets]
+    needs: [create_release, publish_release]
     runs-on: ubuntu-latest
     # we need always() to force the check to run even if one of the needed jobs fails
-    if: ${{ always() && needs.build_assets.outputs.status == 'failure' }}
+    if: ${{ always() && needs.publish_release.outputs.status != 'success' }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v2
