@@ -48,7 +48,6 @@ pub fn send_all_fragments() {
         sender,
         receiver,
         jormungandr.to_remote(),
-        jormungandr.explorer(),
         time_era.slots_per_epoch(),
         30,
         30,

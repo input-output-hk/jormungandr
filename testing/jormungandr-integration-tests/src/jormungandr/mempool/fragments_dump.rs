@@ -55,7 +55,6 @@ pub fn dump_send_correct_fragments() {
         sender,
         receiver,
         jormungandr.to_remote(),
-        jormungandr.explorer(),
         time_era.slots_per_epoch(),
         2,
         2,
