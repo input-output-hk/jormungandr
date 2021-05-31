@@ -118,7 +118,7 @@ pub fn test_make_transaction_to_receiver_account_with_fees() {
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
             address: sender.address(),
-            value: 1000.into(),
+            value: 111.into(),
         }])
         .with_linear_fees(LinearFee::new(10, 0, 0))
         .build(&temp_dir);
