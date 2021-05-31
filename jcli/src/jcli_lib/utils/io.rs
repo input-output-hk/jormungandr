@@ -72,5 +72,5 @@ pub fn ask_yes_or_no(with_output: bool) -> std::io::Result<bool> {
     }
     let mut buff = String::new();
     std::io::stdin().read_line(&mut buff)?;
-    Ok(matches!(buff.to_ascii_lowercase().as_str(), "yes" | "y"))
+    Ok(matches!(buff.to_ascii_lowercase().trim_end(), "yes" | "y"))
 }
