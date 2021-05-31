@@ -34,7 +34,7 @@ pub struct MakeTransaction {
 
     /// the account to debit the funds from
     #[structopt(long)]
-    pub receiver_account: Option<interfaces::Address>,
+    pub receiver: Option<interfaces::Address>,
 
     #[structopt(long)]
     pub block0_hash: String,
@@ -58,7 +58,7 @@ pub struct MakeTransaction {
 impl MakeTransaction {
     pub fn exec(self) -> Result<(), Error> {
         let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
-        let receiver_address = if let Some(address) = self.receiver_account {
+        let receiver_address = if let Some(address) = self.receiver {
             address
         } else {
             let (_, address) = create_receiver_secret_key_and_address()?;

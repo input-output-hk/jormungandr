@@ -209,9 +209,7 @@ impl TransactionCommand {
             .arg(block0_hash);
 
         if let Some(receiver) = receiver {
-            self.command
-                .arg("--receiver-account")
-                .arg(receiver.to_string());
+            self.command.arg("--receiver").arg(receiver.to_string());
         };
         self.command.arg(sender.to_string()).arg(value.to_string());
         self
