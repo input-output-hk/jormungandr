@@ -8,7 +8,7 @@ pub fn rest_load_quick() {
     let faucet = startup::create_new_account_address();
 
     let (mut jormungandr, _) = startup::start_stake_pool(
-        &[faucet.clone()],
+        &[faucet],
         &[],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)

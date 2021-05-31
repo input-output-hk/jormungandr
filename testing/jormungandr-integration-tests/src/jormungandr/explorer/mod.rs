@@ -19,7 +19,7 @@ use std::time::Duration;
 #[cfg(unix)]
 pub fn explorer_schema_diff_test() {
     use crate::common::jormungandr::Starter;
-    use assert_fs::{assert::PathAssert, fixture::PathChild, TempDir};
+    use assert_fs::{fixture::PathChild, TempDir};
 
     let temp_dir = TempDir::new().unwrap();
     let config = ConfigurationBuilder::new().with_explorer().build(&temp_dir);

@@ -2,20 +2,13 @@ use crate::common::jormungandr::ConfigurationBuilder;
 use crate::common::startup;
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
-use jormungandr_lib::interfaces::BlockDate;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
 use jormungandr_lib::interfaces::{Mempool, PersistentLog};
 use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
-use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::{
-    BatchFragmentGenerator, FragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
+    BatchFragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
 };
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 use jortestkit::load::{self, Configuration, Monitor};
-use jortestkit::prelude::Wait;
-use std::time::Duration;
 
 #[test]
 pub fn persistent_log_load_test() {

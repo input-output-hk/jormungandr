@@ -37,7 +37,7 @@ pub fn collect_reward_for_15_minutes() {
     .unwrap();
 
     let benchmark_endurance = benchmark_endurance("collect_reward_for_15_minutes")
-        .target(duration_48_hours.clone())
+        .target(duration_48_hours)
         .start();
 
     let mut benchmark_consumption =
@@ -75,7 +75,7 @@ pub fn collect_reward_for_15_minutes() {
             let message = format!("{}", err);
             benchmark_endurance.exception(message.clone()).print();
             benchmark_consumption.exception(message.clone()).print();
-            panic!(message);
+            std::panic::panic_any(message);
         }
 
         benchmark_consumption.snapshot().unwrap();

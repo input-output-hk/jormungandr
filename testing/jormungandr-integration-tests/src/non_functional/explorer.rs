@@ -37,7 +37,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
     )
     .unwrap();
 
-    let output_value = 1 as u64;
+    let output_value = 1_u64;
     let benchmark = benchmark_endurance("test_explorer_is_in_sync_with_node_for_15_minutes")
         .target(Duration::from_secs(900))
         .start();
