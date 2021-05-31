@@ -206,6 +206,12 @@ pub enum Error {
 
     #[error("invalid block0 header hash")]
     InvalidBlock0HeaderHash,
+
+    #[error("canceled by user")]
+    CancelByUser,
+
+    #[error("error requesting user input")]
+    UserInputError(#[from] std::io::Error),
 }
 
 /*

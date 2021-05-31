@@ -206,7 +206,8 @@ impl TransactionCommand {
             .arg("--host")
             .arg(host)
             .arg("--block0-hash")
-            .arg(block0_hash);
+            .arg(block0_hash)
+            .arg("--force");
 
         if let Some(receiver) = receiver {
             self.command.arg("--receiver").arg(receiver.to_string());

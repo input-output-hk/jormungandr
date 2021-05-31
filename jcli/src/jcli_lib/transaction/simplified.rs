@@ -14,6 +14,7 @@ use chain_impl_mockchain::transaction::Output;
 use jormungandr_lib::interfaces;
 
 use crate::transaction::common::CommonFees;
+use crate::utils::io::ask_yes_or_no;
 use jormungandr_lib::interfaces::SettingsDto;
 use rand::rngs::OsRng;
 use rand::SeedableRng;
@@ -53,6 +54,10 @@ pub struct MakeTransaction {
 
     #[structopt(flatten)]
     rest_args: RestArgs,
+
+    // force transaction without requesting for confirmation
+    #[structopt(long)]
+    force: bool,
 }
 
 impl MakeTransaction {
@@ -72,6 +77,7 @@ impl MakeTransaction {
             &self.block0_hash,
             self.rest_args.clone(),
             self.change,
+            self.force,
         )?;
         transaction.store(&self.common.staging_file)?;
         Ok(())
@@ -138,20 +144,34 @@ pub fn make_transaction(
     block0_hash: &str,
     rest_args: RestArgs,
     change: Option<interfaces::Address>,
+    force: bool,
 ) -> Result<Staging, Error> {
     let mut transaction = Staging::new();
 
+    let settings = rest::v0::settings::request_settings(rest_args.clone())?;
+    let fee = common_fee_from_settings(&settings);
+
+    let transfer_value = value.saturating_add(transaction.fees(&settings.fees).into());
+
+    // ask for user confirmation after adding fees
+    if !force {
+        println!(
+            "Total value to transfer (including fees): {}\n",
+            transfer_value
+        );
+        if !ask_yes_or_no(true).map_err(Error::UserInputError)? {
+            return Err(Error::CancelByUser);
+        }
+    }
+
     // add account
-    transaction.add_account(sender_account.clone(), value)?;
+    transaction.add_account(sender_account.clone(), transfer_value)?;
 
     // add output
     transaction.add_output(Output {
         address: receiver_address.into(),
         value: value.into(),
     })?;
-
-    let settings = rest::v0::settings::request_settings(rest_args.clone())?;
-    let fee = common_fee_from_settings(&settings);
 
     // finalize
     transaction::finalize::finalize(fee, change, &mut transaction)?;

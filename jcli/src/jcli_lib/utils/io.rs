@@ -65,3 +65,12 @@ pub fn read_yaml<D: DeserializeOwned>(path: &Option<impl AsRef<Path>>) -> Result
     let yaml = serde_yaml::from_reader(reader)?;
     Ok(yaml)
 }
+
+pub fn ask_yes_or_no(with_output: bool) -> std::io::Result<bool> {
+    if with_output {
+        println!("Continue? Yes[y] or No[n]?");
+    }
+    let mut buff = String::new();
+    std::io::stdin().read_line(&mut buff)?;
+    Ok(matches!(buff.to_ascii_lowercase().as_str(), "yes" | "y"))
+}
