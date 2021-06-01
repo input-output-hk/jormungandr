@@ -196,6 +196,7 @@ impl TransactionCommand {
         block0_hash: String,
         secret: impl AsRef<Path>,
         staging_file: impl AsRef<Path>,
+        post: bool,
     ) -> Self {
         self.command
             .arg("make-transaction")
@@ -209,9 +210,13 @@ impl TransactionCommand {
             .arg(block0_hash)
             .arg("--force");
 
+        if post {
+            self.command.arg("--post");
+        }
         if let Some(receiver) = receiver {
             self.command.arg("--receiver").arg(receiver.to_string());
         };
+
         self.command.arg(sender.to_string()).arg(value.to_string());
         self
     }

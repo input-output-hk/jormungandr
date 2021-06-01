@@ -289,6 +289,7 @@ impl Transaction {
         block0_hash: String,
         secret: impl AsRef<Path>,
         staging_file: impl AsRef<Path>,
+        post: bool,
     ) {
         self.command
             .make_transaction(
@@ -299,6 +300,7 @@ impl Transaction {
                 block0_hash,
                 secret,
                 staging_file,
+                post,
             )
             .build()
             .assert()

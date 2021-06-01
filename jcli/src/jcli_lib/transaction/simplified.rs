@@ -13,6 +13,7 @@ use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::transaction::Output;
 use jormungandr_lib::interfaces;
 
+use crate::rest::v0::message::post_fragment;
 use crate::transaction::common::CommonFees;
 use crate::utils::io::ask_yes_or_no;
 use jormungandr_lib::interfaces::SettingsDto;
@@ -58,6 +59,9 @@ pub struct MakeTransaction {
     // force transaction without requesting for confirmation
     #[structopt(long)]
     force: bool,
+
+    #[structopt(long)]
+    post: bool,
 }
 
 impl MakeTransaction {
@@ -79,7 +83,15 @@ impl MakeTransaction {
             self.change,
             self.force,
         )?;
+
         transaction.store(&self.common.staging_file)?;
+
+        if self.post {
+            let fragment = transaction.fragment()?;
+            let fragment_id = post_fragment(self.rest_args, fragment)?;
+            println!("{}", fragment_id);
+        }
+
         Ok(())
     }
 }
