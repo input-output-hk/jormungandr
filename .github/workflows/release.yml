@@ -333,20 +333,22 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() }}
     steps:
-      - name: Status is OK
-        if: ${{ needs.publish_release.outputs.status == 'success'  }}
+      - name: Produce action-slack-notify variables
         run: |
+          status="${{ needs.publish_release.outputs.status }}"
+          release="${{ needs.create_release.outputs.release }}"
+          if [ "$status" == "success" ]; then
+            SLACK_COLOR="success"
+            SLACK_MESSAGE=":rocket: Published release $release."
+          else
+            SLACK_COLOR="failure"
+            SLACK_MESSAGE=":x: Release $release *FAILED*."
+          fi
           cat <<EOF >> $GITHUB_ENV
-          SLACK_COLOR=success
-          SLACK_MESSAGE=:rocket: Published release ${{ needs.create_release.outputs.release }}.
+          SLACK_COLOR=$SLACK_COLOR
+          SLACK_MESSAGE=$SLACK_MESSAGE
           EOF
-      - name: Status is FAILED
-        if: ${{ needs.publish_release.outputs.status != 'success'  }}
-        run: |
-          cat <<EOF >> $GITHUB_ENV
-          SLACK_COLOR=failure
-          SLACK_MESSAGE=:x: Release ${{ needs.create_release.outputs.release }} *FAILED*.
-          EOF
+
       - name: Send notification
         uses: rtCamp/action-slack-notify@v2
         env:
