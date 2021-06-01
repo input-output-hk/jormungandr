@@ -91,10 +91,10 @@ free). These bi-directional connections are used to propagate events such as:
 ### Security and countermeasures
 
 In order to facilitate the handling of unreachable nodes or of misbehaving ones
-we have built a node policy tooling. This is constructed via 2 mechanisms:
-collecting connectivity statuses and blockchain status for each node. The policy
-can then be tuned over the collected data to apply some parameters when
-connecting to a given node, as well as banning nodes from our topology.
+we have built a node policy tooling. Currently, we collect connectivity statuses
+for each node. The policy can then be tuned over the collected data to apply 
+some parameters when connecting to a given node, as well as banning nodes from
+our topology.
 
 For each node, the following data is collected:
 
@@ -105,7 +105,8 @@ Connection statuses:
 * Last message used per topic item (last time a fragment has been received from
   that node, last time a block has been received from that node…)
 
-Blockchain level info:
+In the future, we may expand the polocy to include data collected at the blockchain
+level lile:
 
 * Faults (e.g. trying to send an invalid block)
 * Contributions in the network
@@ -116,12 +117,16 @@ Blockchain level info:
 The p2p policy provides some more fine control on how to handle nodes flagged
 as not behaving as expected (see the list of data collected).
 
-It currently works as a 3 levels: possible contact, quarantined, forgotten.
-Each new gossip will create a new entry in the list of possible contact. Then
-the policy, based on the logged data associated to this node, may decide to put
-this node in quarantine for a certain amount of time. At the end of this time
-the node may decide one of the following: keep it quarantined, make it a
-possible contact again or forget about it.
+It currently works as a 4 levels: trusted, possible contact, quarantined, forgotten.
+Each gossip about a new node will create a new entry in the list of possible contact.
+Then the policy, based on the logged data associated to this node, may decide to put
+this node in quarantine for a certain amount of time.
+
+Trusted nodes are the ones to which we were able to connect successfully.
+A connectivity report against those nodes will make them transition to the possible 
+contact level, while a successful connection attempt will promote them again to
+trusted.
+
 
 The changes from one level to another is best effort only. Applying the policy
 may be costly so the node applies the policy only on the node it is interested
