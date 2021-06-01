@@ -1,14 +1,13 @@
 use crate::common::jormungandr::JormungandrProcess;
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
-use jormungandr_lib::interfaces::FragmentStatus;
-use jormungandr_testing_utils::testing::{FragmentSender, FragmentSenderSetup};
+use crate::jormungandr::rest::v1::assert_in_block;
+use crate::jormungandr::rest::v1::assert_not_in_block;
+use chain_impl_mockchain::fragment::FragmentId;
+use jormungandr_testing_utils::testing::FragmentSenderSetup;
+use rstest::*;
 
-#[test]
-pub fn test_v1_endpoint() {
-    let temp_dir = TempDir::new().unwrap();
-
+#[fixture]
+fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
     let mut alice = startup::create_new_account_address();
     let mut bob = startup::create_new_account_address();
     let mut clarice = startup::create_new_account_address();
@@ -16,15 +15,11 @@ pub fn test_v1_endpoint() {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
         &[bob.clone()],
-        &mut ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
+        &mut ConfigurationBuilder::new(),
     )
     .unwrap();
 
-    let transaction_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        FragmentSenderSetup::resend_3_times(),
-    );
+    let transaction_sender = jormungandr.fragment_sender(FragmentSenderSetup::resend_3_times());
 
     let alice_fragment = alice
         .transaction_to(
@@ -44,6 +39,11 @@ pub fn test_v1_endpoint() {
         )
         .unwrap();
 
+    let clarice_tx = transaction_sender
+        .clone_with_setup(FragmentSenderSetup::no_verify())
+        .send_transaction(&mut clarice, &bob, &jormungandr, 100.into())
+        .unwrap();
+
     let tx_ids = transaction_sender
         .send_batch_fragments(vec![alice_fragment, bob_fragment], false, &jormungandr)
         .unwrap();
@@ -51,25 +51,46 @@ pub fn test_v1_endpoint() {
     tx_ids
         .iter()
         .for_each(|x| transaction_sender.verify(x, &jormungandr).unwrap());
-    let alice_tx_id = tx_ids[0].fragment_id().to_string();
-    let bob_tx_id = tx_ids[1].fragment_id().to_string();
 
-    assert_single_id(alice_tx_id.clone(), "alice tx", &jormungandr);
+    let alice_tx_id = tx_ids[0].fragment_id();
+    let bob_tx_id = tx_ids[1].fragment_id();
+    let clarice_tx_id = clarice_tx.fragment_id();
+
+    (jormungandr, *alice_tx_id, *bob_tx_id, *clarice_tx_id)
+}
+
+#[rstest]
+pub fn test_single_id(world: (JormungandrProcess, FragmentId, FragmentId, FragmentId)) {
+    let (jormungandr, alice_tx_id, _, _) = world;
+
+    assert_single_id(alice_tx_id.to_string(), "alice tx", &jormungandr);
+}
+
+#[rstest]
+pub fn test_multiple_ids(world: (JormungandrProcess, FragmentId, FragmentId, FragmentId)) {
+    let (jormungandr, alice_tx_id, bob_tx_id, _) = world;
+
     assert_multiple_ids(
-        vec![alice_tx_id, bob_tx_id],
+        vec![alice_tx_id.to_string(), bob_tx_id.to_string()],
         "alice or bob tx",
         &jormungandr,
     );
+}
+
+#[rstest]
+pub fn test_empty_ids(world: (JormungandrProcess, FragmentId, FragmentId, FragmentId)) {
+    let (jormungandr, _, _, _) = world;
     assert_empty_ids(vec![], "no tx", &jormungandr);
+}
 
-    // invalid tx
-    let clarice_tx = transaction_sender
-        .clone_with_setup(FragmentSenderSetup::no_verify())
-        .send_transaction(&mut clarice, &bob, &jormungandr, 100.into())
-        .unwrap();
-
-    let clarice_tx_id = clarice_tx.fragment_id().to_string();
-    assert_invalid_id(clarice_tx_id, "invalid clarice tx", &jormungandr);
+#[rstest]
+pub fn test_invalid_id(world: (JormungandrProcess, FragmentId, FragmentId, FragmentId)) {
+    let (jormungandr, _, _, clarice_tx_id) = world;
+    assert_invalid_id(
+        clarice_tx_id.to_string(),
+        "invalid clarice tx",
+        &jormungandr,
+    );
 }
 
 fn assert_invalid_id(id: String, prefix: &str, jormungandr: &JormungandrProcess) {
@@ -120,16 +141,4 @@ fn assert_empty_ids(ids: Vec<String>, prefix: &str, jormungandr: &JormungandrPro
         "{} - expected failure",
         prefix
     );
-}
-
-fn assert_in_block(fragment_status: &FragmentStatus) {
-    match fragment_status {
-        FragmentStatus::InABlock { .. } => (),
-        _ => panic!("should be in block '{:?}'", fragment_status),
-    }
-}
-
-fn assert_not_in_block(fragment_status: &FragmentStatus) {
-    let in_block = matches!(fragment_status, FragmentStatus::InABlock { .. });
-    assert!(!in_block, "should NOT be in block '{:?}'", fragment_status);
 }
