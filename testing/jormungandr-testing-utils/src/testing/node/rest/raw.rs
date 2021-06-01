@@ -90,12 +90,12 @@ impl RawRest {
     }
 
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
-        let request = self.path(path, ApiVersion::V0);
+        let request = self.path(ApiVersion::V0, path);
         self.print_request_path(&request);
         self.client.get(request).send()
     }
 
-    fn path(&self, path: &str, api_version: ApiVersion) -> String {
+    fn path(&self, api_version: ApiVersion, path: &str) -> String {
         format!("{}/{}/{}", self.uri, api_version, path)
     }
 
@@ -187,7 +187,7 @@ impl RawRest {
         body: Vec<u8>,
     ) -> Result<reqwest::blocking::Response, reqwest::Error> {
         self.client
-            .post(&self.path(path, ApiVersion::V0))
+            .post(&self.path(ApiVersion::V0, path))
             .headers(self.construct_headers())
             .body(body)
             .send()
@@ -210,7 +210,7 @@ impl RawRest {
             .into_iter()
             .map(|body| {
                 self.client
-                    .post(&self.path("message", ApiVersion::V0))
+                    .post(&self.path(ApiVersion::V0, "message"))
                     .headers(self.construct_headers())
                     .body(body)
             })
@@ -224,13 +224,13 @@ impl RawRest {
 
     pub fn fragments_logs(&self) -> Result<Response, reqwest::Error> {
         self.client
-            .get(&self.path("fragments/logs", ApiVersion::V1))
+            .get(&self.path(ApiVersion::V1, "fragments/logs"))
             .send()
     }
 
     pub fn fragments_statuses(&self, ids: Vec<String>) -> Result<Response, reqwest::Error> {
         self.client
-            .get(&self.path("fragments/statuses", ApiVersion::V1))
+            .get(&self.path(ApiVersion::V1, "fragments/statuses"))
             .query(&[("fragment_ids", ids.join(","))])
             .send()
     }
@@ -241,7 +241,7 @@ impl RawRest {
         fail_fast: bool,
     ) -> Result<Response, reqwest::Error> {
         self.client
-            .post(&self.path("fragments", ApiVersion::V1))
+            .post(&self.path(ApiVersion::V1, "fragments"))
             .headers(self.construct_headers())
             .json(&FragmentsBatch {
                 fail_fast,
