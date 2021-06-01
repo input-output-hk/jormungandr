@@ -130,8 +130,6 @@ jobs:
     name: Build assets
     needs: [create_release, cache_info, update_deps]
     runs-on: ${{ matrix.config.os }}
-    outputs:
-      status: ${{ job.status }}
     strategy:
       fail-fast: false
       matrix:
@@ -300,6 +298,8 @@ jobs:
     name: Publish release
     needs: [create_release, build_assets]
     runs-on: ubuntu-latest
+    outputs:
+      status: ${{ job.status }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v2
