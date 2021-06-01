@@ -92,7 +92,7 @@ impl Process {
                 _ = quarantine_check.tick() => {
                     // Even if lifted from quarantine, peers will be re-added to the topology
                     // only after we receive a gossip about them.
-                    let mut nodes_to_contact = self.topology.lift_nodes_from_quarantine();
+                    let mut nodes_to_contact = self.topology.lift_reports();
 
                     // If we did not receive any incoming gossip recently let's try to contact known (but not active) nodes.
                     if last_update.elapsed() > self.network_stuck_check {
