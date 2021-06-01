@@ -40,19 +40,19 @@ impl Settings {
         let node = cmd
             .node
             .or(file.host)
-            .unwrap_or("127.0.0.1:8299".parse().unwrap());
+            .unwrap_or_else(|| "127.0.0.1:8299".parse().unwrap());
 
         let block0_hash = cmd.block0_hash.parse().unwrap();
 
         let binding_address = cmd
             .binding_address
             .or(file.binding_address)
-            .unwrap_or("0.0.0.0:3030".parse().unwrap());
+            .unwrap_or_else(|| "0.0.0.0:3030".parse().unwrap());
 
         let address_bech32_prefix = cmd
             .address_bech32_prefix
-            .or(file.address_bech32_prefix.clone())
-            .unwrap_or("addr".to_string());
+            .or(file.address_bech32_prefix)
+            .unwrap_or_else(|| "addr".to_string());
 
         let tls = file.tls;
         let cors = file.cors;

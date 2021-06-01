@@ -152,10 +152,7 @@ impl ExplorerBlock {
     /// and mapping the account inputs to addresses with the given discrimination
     /// This function relies on the given block to be validated previously, and will panic
     /// otherwise
-    pub fn resolve_from<'a>(
-        block: &Block,
-        context: ExplorerBlockBuildingContext<'a>,
-    ) -> ExplorerBlock {
+    pub fn resolve_from(block: &Block, context: ExplorerBlockBuildingContext) -> ExplorerBlock {
         let fragments = block.contents.iter();
         let id = block.id();
         let chain_length = block.chain_length();

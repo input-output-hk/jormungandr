@@ -67,7 +67,7 @@ async fn main() -> Result<(), Error> {
         async move {
             let db = bootstrap(sync_stream).await;
             tracing::debug!("sending ready event");
-            if let Err(_) = ready_tx.send(GlobalState::Ready(Indexer::new(db))) {
+            if ready_tx.send(GlobalState::Ready(Indexer::new(db))).is_err() {
                 todo!("failed to broadcast Ready state after bootstrapping");
             }
         }
@@ -170,7 +170,7 @@ async fn rest_service(db: ExplorerDb, settings: Settings) {
         },
     );
 
-    let binding_address = settings.binding_address.clone();
+    let binding_address = settings.binding_address;
     let tls = settings.tls.clone();
     let cors = settings.cors.clone();
 

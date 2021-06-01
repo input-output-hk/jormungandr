@@ -129,9 +129,9 @@ impl ExplorerDb {
         let initial_state = State {
             transactions,
             blocks,
+            addresses,
             epochs,
             chain_lengths,
-            addresses,
             stake_pool_data,
             stake_pool_blocks,
             vote_plans,
