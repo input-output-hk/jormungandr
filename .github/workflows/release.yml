@@ -326,3 +326,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: hub release delete ${{ needs.create_release.outputs.tag }}
+
+  send_slack_notification:
+    name: Notify the team Slack channel about this release
+    needs: [create_release, publish_release]
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: Status is OK
+        if: ${{ needs.publish_release.outputs.status == 'success'  }}
+        run: |
+          cat <<EOF >> $GITHUB_ENV
+          SLACK_COLOR=success
+          SLACK_MESSAGE=:rocket: Published release ${{ needs.create_release.outputs.release }}.
+          EOF
+      - name: Status is FAILED
+        if: ${{ needs.publish_release.outputs.status != 'success'  }}
+        run: |
+          cat <<EOF >> $GITHUB_ENV
+          SLACK_COLOR=failure
+          SLACK_MESSAGE=:x: Release ${{ needs.create_release.outputs.release }} *FAILED*.
+          EOF
+      - name: Send notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_COLOR: ${{ env.SLACK_COLOR  }}
+          SLACK_MESSAGE: ${{ env.SLACK_MESSAGE  }}
