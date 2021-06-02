@@ -233,11 +233,6 @@ pub struct Policy {
     pub quarantine_whitelist: Option<Vec<Multiaddr>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Explorer {
-    pub enabled: bool,
-}
-
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LayersConfig {
@@ -296,7 +291,6 @@ pub struct NodeConfig {
     pub rest: Rest,
     pub p2p: P2p,
     pub log: Option<Log>,
-    pub explorer: Explorer,
     pub mempool: Option<Mempool>,
     pub bootstrap_from_trusted_peers: Option<bool>,
     pub skip_bootstrap: Option<bool>,

@@ -36,8 +36,6 @@ pub struct Config {
     #[serde(default)]
     pub http_fetch_block0_service: Vec<String>,
 
-    pub explorer: Option<Explorer>,
-
     #[cfg(feature = "prometheus-metrics")]
     pub prometheus: Option<Prometheus>,
 
@@ -142,12 +140,6 @@ pub struct Leadership {
     /// the least recently used log will be erased from the logs for a new one
     /// to be inserted.
     pub logs_capacity: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct Explorer {
-    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
