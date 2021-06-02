@@ -100,11 +100,10 @@ impl ExplorerDb {
             block0
                 .contents
                 .iter()
-                .filter_map(|fragment| match fragment {
+                .find_map(|fragment| match fragment {
                     Fragment::Initial(config_params) => Some(config_params),
                     _ => None,
                 })
-                .next()
                 .expect("the Initial fragment to be present in the genesis block"),
         );
 
