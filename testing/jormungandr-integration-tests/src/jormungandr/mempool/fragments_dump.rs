@@ -16,6 +16,7 @@ use jormungandr_testing_utils::testing::{AdversaryFragmentSender, AdversaryFragm
 use jortestkit::prelude::Wait;
 use std::fs::metadata;
 use std::path::Path;
+use std::thread::sleep;
 use std::time::Duration;
 
 #[test]
@@ -113,6 +114,8 @@ pub fn dump_send_invalid_fragments() {
         .send_transactions_with_invalid_counter(10, &mut sender, &receiver, &jormungandr)
         .unwrap();
 
+    sleep(Duration::from_secs(1));
+
     assert_all_fragment_are_persisted(dump_folder.path(), persistent_log_path.path());
 }
 
@@ -160,7 +163,7 @@ pub fn non_existing_folder() {
 pub fn invalid_folder() {
     let temp_dir = TempDir::new().unwrap();
     let dump_folder = temp_dir.child("dump");
-    let persistent_log_path = dump_folder.child("persist::///;ent_log");
+    let persistent_log_path = dump_folder.child("/dev/null/foo::///;log");
 
     let config = ConfigurationBuilder::new()
         .with_mempool(Mempool {
@@ -211,6 +214,8 @@ pub fn fragment_which_reached_mempool_should_be_persisted() {
         .send_transactions_with_invalid_counter(10, &mut sender, &receiver, &jormungandr)
         .unwrap();
 
+    sleep(Duration::from_secs(1));
+
     assert_all_fragment_are_persisted(dump_folder.path(), persistent_log_path.path());
 }
 
@@ -248,6 +253,8 @@ pub fn fragment_which_is_not_in_fragment_log_should_be_persisted() {
         .send_transactions_with_invalid_counter(10, &mut sender, &receiver, &jormungandr)
         .unwrap();
 
+    sleep(Duration::from_secs(1));
+
     assert_all_fragment_are_persisted(dump_folder.path(), persistent_log_path.path());
 }
 
@@ -284,6 +291,8 @@ pub fn pending_fragment_should_be_persisted() {
     fragment_sender
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
         .unwrap();
+
+    sleep(Duration::from_secs(1));
 
     let persistent_log_viewer = PersistentLogViewer::new(persistent_log_path.path().to_path_buf());
 
@@ -343,6 +352,8 @@ pub fn node_should_pickup_log_after_restart() {
         .send_transactions_with_invalid_counter(10, &mut sender, &receiver, &jormungandr)
         .unwrap();
 
+    sleep(Duration::from_secs(1));
+
     jormungandr.stop();
 
     let jormungandr = Starter::new()
@@ -361,6 +372,8 @@ pub fn node_should_pickup_log_after_restart() {
     adversary_sender
         .send_transactions_with_invalid_counter(10, &mut sender, &receiver, &jormungandr)
         .unwrap();
+
+    sleep(Duration::from_secs(1));
 
     let persistent_log_viewer = PersistentLogViewer::new(persistent_log_path.path().to_path_buf());
 
