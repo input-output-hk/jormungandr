@@ -33,6 +33,7 @@ pub enum RestError {
     PollError(#[from] jortestkit::process::WaitError),
     #[error("non success error code {status}")]
     NonSuccessErrorCode {
+        response: String,
         status: reqwest::StatusCode,
         checks: Vec<MemPoolCheck>,
     },

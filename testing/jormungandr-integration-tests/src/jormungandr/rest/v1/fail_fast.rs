@@ -331,7 +331,7 @@ pub fn fail_fast_off_last_invalid(
 
 pub fn assert_bad_request(result: Result<Vec<MemPoolCheck>, RestError>) -> Vec<MemPoolCheck> {
     match result.err().unwrap() {
-        RestError::NonSuccessErrorCode { status, checks } => {
+        RestError::NonSuccessErrorCode { status, checks, .. } => {
             assert_eq!(status, reqwest::StatusCode::BAD_REQUEST);
             checks
         }

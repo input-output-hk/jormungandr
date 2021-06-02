@@ -207,9 +207,11 @@ impl BackwardCompatibleRest {
         let response = self.raw.send_fragment_batch(fragments, fail_fast)?;
 
         if response.status() != reqwest::StatusCode::OK {
+            println!("{:?}", response);
             return Err(RestError::NonSuccessErrorCode {
-                checks,
                 status: response.status(),
+                response: response.text().unwrap(),
+                checks,
             });
         }
 
