@@ -1,10 +1,10 @@
 use crate::testing::fragments::node::{FragmentNode, FragmentNodeError, MemPoolCheck};
 use chain_impl_mockchain::fragment::FragmentId;
-use jormungandr_lib::interfaces::FragmentStatus;
-use std::time::Duration;
-use std::collections::HashMap;
-use jortestkit::prelude::Wait;
 use jormungandr_lib::interfaces::FragmentLog;
+use jormungandr_lib::interfaces::FragmentStatus;
+use jortestkit::prelude::Wait;
+use std::collections::HashMap;
+use std::time::Duration;
 
 #[derive(custom_debug::Debug, thiserror::Error)]
 pub enum FragmentVerifierError {
@@ -30,7 +30,7 @@ pub enum FragmentVerifierError {
         #[debug(skip)]
         logs: Vec<String>,
     },
-   
+
     #[error("fragment sent to node: {alias} is not in in fragment pool :({fragment_id})")]
     FragmentNotInMemPoolLogs {
         alias: String,
@@ -214,11 +214,11 @@ impl FragmentVerifier {
         &self,
         duration: Duration,
         node: &A,
-    ) -> Result<HashMap<FragmentId,FragmentLog>, FragmentVerifierError> {
+    ) -> Result<HashMap<FragmentId, FragmentLog>, FragmentVerifierError> {
         let max_try = 50;
         for _ in 0..max_try {
             let status_result = node.fragment_logs();
-          
+
             if status_result.is_err() {
                 std::thread::sleep(duration);
                 continue;
@@ -226,9 +226,14 @@ impl FragmentVerifier {
 
             let statuses = status_result.unwrap();
 
-            if !statuses.iter().any(|(_,log)| 
-                !matches!(log.status(), FragmentStatus::Rejected { .. } | FragmentStatus::InABlock { .. })
-            ) {
+            let any_rejected = statuses.iter().any(|(_, log)| {
+                !matches!(
+                    log.status(),
+                    FragmentStatus::Rejected { .. } | FragmentStatus::InABlock { .. }
+                )
+            });
+
+            if !any_rejected {
                 return Ok(statuses);
             }
             std::thread::sleep(duration);

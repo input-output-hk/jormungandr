@@ -31,6 +31,11 @@ pub enum RestError {
     HashParseError(#[from] chain_crypto::hash::Error),
     #[error("error while polling endpoint")]
     PollError(#[from] jortestkit::process::WaitError),
+    #[error("non success error code {status}")]
+    NonSuccessErrorCode {
+        status: reqwest::StatusCode,
+        checks: Vec<MemPoolCheck>,
+    },
 }
 
 pub fn uri_from_socket_addr(addr: SocketAddr) -> String {
