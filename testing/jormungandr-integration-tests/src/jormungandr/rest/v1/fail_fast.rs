@@ -371,7 +371,7 @@ pub fn assert_valid(mem_pool_check: &MemPoolCheck, jormungandr: &JormungandrProc
 pub fn assert_not_exist(mem_pool_check: &MemPoolCheck, jormungandr: &JormungandrProcess) {
     let ids = vec![mem_pool_check.fragment_id().to_string()];
 
-    let statuses = jormungandr.rest().fragments_statuses(ids.clone()).unwrap();
+    let statuses = jormungandr.rest().fragments_statuses(ids).unwrap();
 
     assert_eq!(statuses.len(), 0);
 }
@@ -391,5 +391,5 @@ pub fn assert_invalid(mem_pool_check: &MemPoolCheck, jormungandr: &JormungandrPr
 
 pub fn assert_no_fragments(jormungandr: &JormungandrProcess) {
     let fragment_logs = jormungandr.rest().fragment_logs().unwrap();
-    assert!(fragment_logs.len() == 0);
+    assert!(fragment_logs.is_empty());
 }
