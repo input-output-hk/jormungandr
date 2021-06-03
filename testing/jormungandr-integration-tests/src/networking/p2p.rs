@@ -168,33 +168,36 @@ pub fn node_does_not_quarantine_whitelisted_node() {
         .build()
         .unwrap();
 
-    let server = network_controller.spawn_and_wait(SERVER);
-
-    let server_public_address = network_controller
-        .node_config(SERVER)
-        .unwrap()
-        .p2p
-        .public_address;
+    let fake_addr = "/ip4/127.0.0.1/tcp/80";
     let policy = Policy {
         quarantine_duration: Some(Duration::new(30, 0)),
-        quarantine_whitelist: Some(vec![server_public_address]),
+        quarantine_whitelist: Some(vec![fake_addr.parse().unwrap()]),
     };
 
-    let client = network_controller
-        .spawn_custom(network_controller.spawn_params(CLIENT).policy(policy))
+    let server = network_controller
+        .spawn_custom(network_controller.spawn_params(SERVER).policy(policy))
         .unwrap();
 
-    server.shutdown();
+    let _client = network_controller
+        .spawn_custom(
+            network_controller
+                .spawn_params(CLIENT)
+                // The client broadcast a different ip address from the one it's actually
+                // listening to, so that the server will fail connection
+                .public_address("/ip4/127.0.0.1/tcp/80".parse().unwrap())
+                .listen_address(Some(
+                    network_controller
+                        .node_config(CLIENT)
+                        .unwrap()
+                        .p2p
+                        .get_listen_addr()
+                        .unwrap(),
+                )),
+        )
+        .unwrap();
 
-    process_utils::sleep(10);
-
-    assert_node_stats(&client, 1, 0, 1, 0, "before spawning server again");
-    assert_empty_quarantine(&client, "before spawning server again");
-
-    let _server_after = network_controller.spawn_and_wait(SERVER);
-
-    assert_node_stats(&client, 1, 0, 1, 0, "after spawning server again");
-    assert_empty_quarantine(&client, "after spawning server again");
+    assert_node_stats(&server, 1, 0, 1, 0, "after starting client");
+    assert_empty_quarantine(&server, "after starting client");
 }
 
 #[test]
@@ -211,49 +214,28 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
         .build()
         .unwrap();
 
-    let mut server = network_controller.spawn_and_wait(SERVER);
-
-    let client_public_address = network_controller
-        .node_config(CLIENT)
-        .unwrap()
-        .p2p
-        .public_address;
-    let policy = Policy {
-        quarantine_duration: Some(Duration::new(1, 0)),
-        quarantine_whitelist: Some(vec![client_public_address]),
-    };
+    let server = network_controller.spawn_and_wait(SERVER);
 
     let client = network_controller
-        .spawn_custom(network_controller.spawn_params(CLIENT).policy(policy))
+        .spawn_custom(
+            network_controller
+                .spawn_params(CLIENT)
+                // The client broadcast a different ip address from the one it's actually
+                // listening to, so that the server will fail connection and put it in quarantine
+                .public_address("/ip4/127.0.0.1/tcp/80".parse().unwrap())
+                .listen_address(Some(
+                    network_controller
+                        .node_config(CLIENT)
+                        .unwrap()
+                        .p2p
+                        .get_listen_addr()
+                        .unwrap(),
+                )),
+        )
         .unwrap();
 
-    server.shutdown();
-
-    process_utils::sleep(10);
-
-    assert_node_stats(&client, 0, 1, 1, 0, "before spawning server again");
-    assert_are_in_quarantine(&client, vec![&server], "before spawning server again");
-
-    server = network_controller.spawn_and_wait(SERVER);
-
-    assert_node_stats(&client, 0, 1, 1, 0, "after spawning server again");
-    assert_are_in_quarantine(&client, vec![&server], "after spawning server again");
-
-    process_utils::sleep(10);
-
-    assert_node_stats(
-        &client,
-        0,
-        1,
-        1,
-        0,
-        "after spawning server again (10 s. delay)",
-    );
-    assert_are_in_quarantine(
-        &client,
-        vec![&server],
-        "after spawning server again (10 s. delay)",
-    );
+    assert_node_stats(&server, 0, 1, 1, 0, "after starting client");
+    assert_are_in_quarantine(&server, vec![&client], "after starting client");
 }
 
 #[test]
