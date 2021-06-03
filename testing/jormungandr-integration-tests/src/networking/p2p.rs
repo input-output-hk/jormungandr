@@ -239,6 +239,34 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
 }
 
 #[test]
+pub fn node_does_not_quarantine_trusted_node() {
+    let mut network_controller = network::builder()
+        .single_trust_direction(CLIENT, SERVER)
+        .initials(vec![
+            wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
+            wallet("delegated2").with(1_000_000).delegated_to(SERVER),
+        ])
+        .custom_config(vec![
+            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
+        ])
+        .build()
+        .unwrap();
+
+    let server = network_controller.spawn_and_wait(SERVER);
+    let client = network_controller.spawn_and_wait(CLIENT);
+
+    assert_node_stats(&server, 1, 0, 1, 0, "before stopping client");
+    assert_empty_quarantine(&server, "before stopping client");
+
+    client.shutdown();
+    process_utils::sleep(20);
+
+    // The server "forgets" the client but does not quarantine it
+    assert_node_stats(&server, 0, 0, 0, 0, "before restarting client");
+    assert_empty_quarantine(&server, "before restarting client");
+}
+
+#[test]
 pub fn node_trust_itself() {
     let mut network_controller = network::builder()
         .single_trust_direction(CLIENT, SERVER)
