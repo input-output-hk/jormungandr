@@ -203,7 +203,7 @@ impl P2pTopology {
     pub fn report_node(&mut self, node_id: &NodeId) {
         if let Some(node) = self.topology.get(node_id.as_ref()).cloned() {
             self.quarantine
-                .report_node(&mut self.topology, Peer::from(node.gossip().clone()).into());
+                .report_node(&mut self.topology, Peer::from(node.gossip().clone()));
         }
     }
 
