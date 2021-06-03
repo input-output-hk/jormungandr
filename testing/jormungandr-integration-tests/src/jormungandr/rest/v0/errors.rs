@@ -36,6 +36,6 @@ pub fn fragment_already_in_log(world: (JormungandrProcess, Wallet, Wallet, Walle
     assert_bad_request(
         jormungandr
             .rest()
-            .send_fragment_batch(vec![alice_fragment.clone(), alice_fragment.clone()], false),
+            .send_fragment_batch(vec![alice_fragment.clone(), alice_fragment], false),
     );
 }
