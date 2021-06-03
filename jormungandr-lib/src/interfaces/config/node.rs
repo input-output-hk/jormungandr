@@ -100,9 +100,9 @@ pub struct P2p {
     /// the p2p discovery from.
     pub trusted_peers: Vec<TrustedPeer>,
 
-    /// Listen address as a multiaddr.
+    /// Listen address.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub listen_address: Option<SocketAddr>,
+    pub listen: Option<SocketAddr>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_connections: Option<u32>,
@@ -203,7 +203,7 @@ pub struct NodeConfig {
 
 impl P2p {
     pub fn get_listen_addr(&self) -> Option<SocketAddr> {
-        self.listen_address
+        self.listen
             .or_else(|| multiaddr_utils::to_tcp_socket_addr(&self.public_address))
     }
 }

@@ -348,7 +348,7 @@ impl Prepare for P2p {
             public_address: context.generate_new_grpc_public_address(),
             trusted_peers: Vec::new(),
             allow_private_addresses: true,
-            listen_address: None,
+            listen: None,
             max_connections: None,
             max_inbound_connections: None,
             policy: Some(Policy::prepare(context)),
