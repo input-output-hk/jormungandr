@@ -2,15 +2,12 @@ use crate::common::jormungandr::{ConfigurationBuilder, Starter};
 use crate::common::startup;
 use assert_fs::TempDir;
 use chain_core::property::Fragment;
-use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::FragmentRejectionReason;
-use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::Mempool;
+use jormungandr_testing_utils::testing::node::assert_accepted_rejected;
 use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::node::RestError;
-use jormungandr_testing_utils::testing::MemPoolCheck;
 use jormungandr_testing_utils::testing::{FragmentSenderSetup, FragmentVerifier};
 use std::time::Duration;
 
@@ -91,7 +88,6 @@ pub fn test_mempool_pool_max_entries_limit() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_size(1)
         .assert_contains_only(mempools[0].fragment_id());
 
@@ -189,42 +185,10 @@ pub fn test_mempool_pool_max_entries_equal_0() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_empty();
 
     time::wait_for_date(BlockDate::new(0, 10), jormungandr.explorer());
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
-}
-
-pub fn assert_accepted_rejected(
-    accepted: Vec<FragmentId>,
-    rejected: Vec<(FragmentId, FragmentRejectionReason)>,
-    result: Result<Vec<MemPoolCheck>, RestError>,
-) -> Vec<MemPoolCheck> {
-    match result.err().unwrap() {
-        RestError::NonSuccessErrorCode {
-            checks,
-            status,
-            response,
-        } => {
-            let summary: FragmentsProcessingSummary = serde_json::from_str(&response).unwrap();
-            if rejected.len() > 0 {
-                assert_eq!(status, reqwest::StatusCode::BAD_REQUEST);
-            }
-            assert_eq!(summary.accepted, accepted);
-            assert_eq!(
-                summary
-                    .rejected
-                    .iter()
-                    .map(|x| (x.id.clone(), x.reason.clone()))
-                    .collect::<Vec<(FragmentId, FragmentRejectionReason)>>(),
-                rejected
-            );
-
-            checks
-        }
-        _ => panic!("wrong error code"),
-    }
 }
 
 #[test]
@@ -304,7 +268,6 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_size(1)
         .assert_contains_only(mempools[0].fragment_id());
 
@@ -402,7 +365,6 @@ pub fn test_mempool_log_max_entries_equals_0() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_empty();
 
     time::wait_for_date(BlockDate::new(0, 10), jormungandr.explorer());
@@ -480,7 +442,6 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_size(2);
 
     time::wait_for_date(BlockDate::new(0, 10), jormungandr.explorer());

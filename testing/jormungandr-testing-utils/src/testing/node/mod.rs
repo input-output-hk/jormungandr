@@ -15,4 +15,4 @@ pub use logger::{JormungandrLogger, Level as LogLevel, LogEntry};
 pub use rest::{
     uri_from_socket_addr, JormungandrRest, RawRest, RestError, RestRequestGen, RestSettings,
 };
-pub use verifier::JormungandrStateVerifier;
+pub use verifier::{assert_accepted_rejected, assert_bad_request, JormungandrStateVerifier};

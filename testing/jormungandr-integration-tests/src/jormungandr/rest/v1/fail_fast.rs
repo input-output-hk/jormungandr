@@ -1,13 +1,10 @@
 use crate::common::jormungandr::JormungandrProcess;
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
-use crate::jormungandr::rest::v1::assert_in_block;
-use crate::jormungandr::rest::v1::assert_not_in_block;
 use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_testing_utils::testing::fragments::FaultyTransactionBuilder;
-use jormungandr_testing_utils::testing::node::RestError;
+use jormungandr_testing_utils::testing::node::assert_bad_request;
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use jormungandr_testing_utils::testing::FragmentVerifier;
-use jormungandr_testing_utils::testing::MemPoolCheck;
 use rstest::*;
 use std::time::Duration;
 
@@ -107,7 +104,10 @@ pub fn fail_fast_on_all_valid(
         .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
         .unwrap();
 
-    assert_all_valid(&tx_ids, &jormungandr);
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_all_valid(&tx_ids);
 }
 
 #[rstest]
@@ -136,7 +136,10 @@ pub fn fail_fast_off_all_valid(
         .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
         .unwrap();
 
-    assert_all_valid(&tx_ids, &jormungandr);
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_all_valid(&tx_ids);
 }
 
 #[rstest]
@@ -161,7 +164,10 @@ pub fn fail_fast_on_first_invalid(
         .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
         .unwrap();
 
-    assert_no_fragments(&jormungandr);
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_no_fragments();
 }
 
 #[rstest]
@@ -190,9 +196,12 @@ pub fn fail_fast_on_first_late_invalid(
         .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
         .unwrap();
 
-    assert_invalid(&tx_ids[0], &jormungandr);
-    assert_valid(&tx_ids[1], &jormungandr);
-    assert_valid(&tx_ids[2], &jormungandr);
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_invalid(&tx_ids[0])
+        .assert_valid(&tx_ids[1])
+        .assert_valid(&tx_ids[2]);
 }
 
 #[rstest]
@@ -217,9 +226,12 @@ pub fn fail_fast_off_first_invalid(
         .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
         .unwrap();
 
-    assert_not_exist(&tx_ids[2], &jormungandr);
-    assert_valid(&tx_ids[0], &jormungandr);
-    assert_valid(&tx_ids[1], &jormungandr);
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_not_exist(&tx_ids[2])
+        .assert_valid(&tx_ids[0])
+        .assert_valid(&tx_ids[1]);
 }
 
 #[rstest]
@@ -244,9 +256,12 @@ pub fn fail_fast_off_invalid_in_middle(
         .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
         .unwrap();
 
-    assert_valid(&tx_ids[0], &jormungandr);
-    assert_valid(&tx_ids[2], &jormungandr);
-    assert_not_exist(&tx_ids[1], &jormungandr);
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_valid(&tx_ids[0])
+        .assert_valid(&tx_ids[2])
+        .assert_not_exist(&tx_ids[1]);
 }
 
 #[rstest]
@@ -271,9 +286,12 @@ pub fn fail_fast_on_invalid_in_middle(
         .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
         .unwrap();
 
-    assert_valid(&tx_ids[0], &jormungandr);
-    assert_not_exist(&tx_ids[1], &jormungandr);
-    assert_not_exist(&tx_ids[2], &jormungandr);
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_valid(&tx_ids[0])
+        .assert_not_exist(&tx_ids[1])
+        .assert_not_exist(&tx_ids[2]);
 }
 #[rstest]
 pub fn fail_fast_on_last_invalid(
@@ -297,9 +315,12 @@ pub fn fail_fast_on_last_invalid(
         .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
         .unwrap();
 
-    assert_valid(&tx_ids[0], &jormungandr);
-    assert_valid(&tx_ids[1], &jormungandr);
-    assert_not_exist(&tx_ids[2], &jormungandr);
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_valid(&tx_ids[0])
+        .assert_valid(&tx_ids[1])
+        .assert_not_exist(&tx_ids[2]);
 }
 
 #[rstest]
@@ -324,72 +345,10 @@ pub fn fail_fast_off_last_invalid(
         .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
         .unwrap();
 
-    assert_valid(&tx_ids[0], &jormungandr);
-    assert_valid(&tx_ids[1], &jormungandr);
-    assert_not_exist(&tx_ids[2], &jormungandr);
-}
-
-pub fn assert_bad_request(result: Result<Vec<MemPoolCheck>, RestError>) -> Vec<MemPoolCheck> {
-    match result.err().unwrap() {
-        RestError::NonSuccessErrorCode { status, checks, .. } => {
-            assert_eq!(status, reqwest::StatusCode::BAD_REQUEST);
-            checks
-        }
-        _ => panic!("unexcepted error"),
-    }
-}
-
-pub fn assert_all_valid(mem_pool_checks: &[MemPoolCheck], jormungandr: &JormungandrProcess) {
-    let ids: Vec<String> = mem_pool_checks
-        .iter()
-        .map(|x| x.fragment_id().to_string())
-        .collect();
-    let statuses = jormungandr.rest().fragments_statuses(ids.clone()).unwrap();
-
-    assert_eq!(ids.len(), statuses.len());
-
-    ids.iter()
-        .for_each(|id| match statuses.get(&id.to_string()) {
-            Some(status) => assert_in_block(status),
-            None => panic!("{} not found", id.to_string()),
-        })
-}
-
-pub fn assert_valid(mem_pool_check: &MemPoolCheck, jormungandr: &JormungandrProcess) {
-    let ids = vec![mem_pool_check.fragment_id().to_string()];
-
-    let statuses = jormungandr.rest().fragments_statuses(ids.clone()).unwrap();
-
-    assert_eq!(ids.len(), statuses.len());
-
-    ids.iter().for_each(|id| match statuses.get(id) {
-        Some(status) => assert_in_block(status),
-        None => panic!("{} not found", id.to_string()),
-    })
-}
-
-pub fn assert_not_exist(mem_pool_check: &MemPoolCheck, jormungandr: &JormungandrProcess) {
-    let ids = vec![mem_pool_check.fragment_id().to_string()];
-
-    let statuses = jormungandr.rest().fragments_statuses(ids).unwrap();
-
-    assert_eq!(statuses.len(), 0);
-}
-
-pub fn assert_invalid(mem_pool_check: &MemPoolCheck, jormungandr: &JormungandrProcess) {
-    let ids = vec![mem_pool_check.fragment_id().to_string()];
-    let fragment_logs = jormungandr.rest().fragment_logs().unwrap();
-    println!("{:#?}", fragment_logs);
-    let statuses = jormungandr.rest().fragments_statuses(ids.clone()).unwrap();
-    assert_eq!(ids.len(), statuses.len());
-
-    ids.iter().for_each(|id| match statuses.get(id) {
-        Some(status) => assert_not_in_block(status),
-        None => panic!("{} not found", id.to_string()),
-    })
-}
-
-pub fn assert_no_fragments(jormungandr: &JormungandrProcess) {
-    let fragment_logs = jormungandr.rest().fragment_logs().unwrap();
-    assert!(fragment_logs.is_empty());
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_valid(&tx_ids[0])
+        .assert_valid(&tx_ids[1])
+        .assert_not_exist(&tx_ids[2]);
 }

@@ -1,7 +1,5 @@
 use crate::common::jormungandr::JormungandrProcess;
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
-use crate::jormungandr::rest::v1::assert_in_block;
-use crate::jormungandr::rest::v1::assert_not_in_block;
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use rstest::*;
@@ -62,83 +60,39 @@ fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
 #[rstest]
 pub fn test_single_id(world: (JormungandrProcess, FragmentId, FragmentId, FragmentId)) {
     let (jormungandr, alice_tx_id, _, _) = world;
-
-    assert_single_id(alice_tx_id.to_string(), "alice tx", &jormungandr);
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_single_id(alice_tx_id.to_string(), "alice tx");
 }
 
 #[rstest]
 pub fn test_multiple_ids(world: (JormungandrProcess, FragmentId, FragmentId, FragmentId)) {
     let (jormungandr, alice_tx_id, bob_tx_id, _) = world;
 
-    assert_multiple_ids(
-        vec![alice_tx_id.to_string(), bob_tx_id.to_string()],
-        "alice or bob tx",
-        &jormungandr,
-    );
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_multiple_ids(
+            vec![alice_tx_id.to_string(), bob_tx_id.to_string()],
+            "alice or bob tx",
+        );
 }
 
 #[rstest]
 pub fn test_empty_ids(world: (JormungandrProcess, FragmentId, FragmentId, FragmentId)) {
     let (jormungandr, _, _, _) = world;
-    assert_empty_ids(vec![], "no tx", &jormungandr);
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_empty_ids(vec![], "no tx");
 }
 
 #[rstest]
 pub fn test_invalid_id(world: (JormungandrProcess, FragmentId, FragmentId, FragmentId)) {
     let (jormungandr, _, _, clarice_tx_id) = world;
-    assert_invalid_id(
-        clarice_tx_id.to_string(),
-        "invalid clarice tx",
-        &jormungandr,
-    );
-}
-
-fn assert_invalid_id(id: String, prefix: &str, jormungandr: &JormungandrProcess) {
-    let statuses = jormungandr
-        .rest()
-        .fragments_statuses(vec![id.clone()])
-        .unwrap();
-    assert_eq!(1, statuses.len());
-
-    let invalid_id = statuses.get(&id);
-
-    match invalid_id {
-        Some(status) => assert_not_in_block(status),
-        None => panic!("Assert Error: {}", prefix),
-    }
-}
-
-fn assert_single_id(id: String, prefix: &str, jormungandr: &JormungandrProcess) {
-    let statuses = jormungandr
-        .rest()
-        .fragments_statuses(vec![id.clone()])
-        .unwrap();
-
-    assert_eq!(1, statuses.len());
-
-    let alice_tx_status = statuses.get(&id);
-
-    match alice_tx_status {
-        Some(status) => assert_in_block(status),
-        None => panic!("Assert Error: {}", prefix),
-    }
-}
-
-fn assert_multiple_ids(ids: Vec<String>, prefix: &str, jormungandr: &JormungandrProcess) {
-    let statuses = jormungandr.rest().fragments_statuses(ids.clone()).unwrap();
-
-    assert_eq!(ids.len(), statuses.len());
-
-    ids.iter().for_each(|id| match statuses.get(id) {
-        Some(status) => assert_in_block(status),
-        None => panic!("{}", prefix),
-    })
-}
-
-fn assert_empty_ids(ids: Vec<String>, prefix: &str, jormungandr: &JormungandrProcess) {
-    assert!(
-        jormungandr.rest().fragments_statuses(ids).is_err(),
-        "{} - expected failure",
-        prefix
-    );
+    jormungandr
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_invalid_id(clarice_tx_id.to_string(), "invalid clarice tx");
 }
