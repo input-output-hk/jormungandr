@@ -2046,7 +2046,7 @@ dependencies = [
  "serde_yaml",
  "strum 0.20.0",
  "symmetric-cipher",
- "sysinfo 0.17.5",
+ "sysinfo 0.18.1",
  "tar",
  "thiserror",
  "tokio",
@@ -3628,9 +3628,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.17.5"
+version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9d811a7fd68bad355ff84f7d8ad58b33415bccdfce499f98a9ce30471888e05"
+checksum = "3899fa43ce1ab71db79fda2a3fdb119a07e25a006677d46033c9d9051c82f019"
 dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys",
