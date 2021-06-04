@@ -39,3 +39,6 @@
   - [Genesis block](./advanced/01_the_genesis_block.md)
   - [Starting a bft blockchain](./advanced/02_starting_bft_blockchain.md)
   - [Starting a genesis blockchain](./advanced/03_starting_genesis_praos_blockchain.md)
+
+- [Specs](./specs/introduction.md)
+  - [Network](./specs/network.md)
