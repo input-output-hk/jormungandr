@@ -336,7 +336,7 @@ jobs:
       - name: Produce action-slack-notify variables
         run: |
           status="${{ needs.publish_release.outputs.status }}"
-          release="${{ needs.create_release.outputs.release }}"
+          release="${{ needs.create_release.outputs.tag }}"
           if [ "$status" == "success" ]; then
             SLACK_COLOR="success"
             SLACK_MESSAGE=":rocket: Published release $release."
