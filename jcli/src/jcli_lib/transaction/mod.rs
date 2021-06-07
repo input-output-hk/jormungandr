@@ -91,7 +91,7 @@ pub enum Error {
         path: PathBuf,
     },
     #[error("could not process secret file '{0}'")]
-    SecretFileFailed(#[from] key_parser::Error),
+    SecretKeyReadFailed(#[from] key_parser::Error),
     /*
     SecretFileReadFailed { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not read secret file '{}'", path.display()) }},

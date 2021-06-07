@@ -2,7 +2,7 @@ use crate::jcli_lib::rest::RestArgs;
 use crate::jcli_lib::transaction::{common, Error};
 use crate::transaction::mk_witness::WitnessType;
 use crate::transaction::staging::Staging;
-use crate::utils::key_parser::read_ed25519_secret_key_from_file;
+use crate::utils::key_parser::{parse_ed25519_secret_key, read_ed25519_secret_key_from_file};
 use crate::utils::AccountId;
 use crate::{rest, transaction};
 use chain_addr::Kind;
@@ -66,7 +66,7 @@ pub struct MakeTransaction {
 
 impl MakeTransaction {
     pub fn exec(self) -> Result<(), Error> {
-        let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
+        let secret_key = read_secret_key(self.secret)?;
         let receiver_address = if let Some(address) = self.receiver {
             address
         } else {
@@ -116,6 +116,18 @@ fn create_receiver_secret_key_and_address(
     let sk = create_new_private_key()?;
     let address = create_receiver_address(&sk);
     Ok((sk, address))
+}
+
+fn read_secret_key(secret_key_path: Option<PathBuf>) -> Result<EitherEd25519SecretKey, Error> {
+    match secret_key_path {
+        Some(path) => read_ed25519_secret_key_from_file(&Some(path)),
+        None => {
+            let key =
+                rpassword::prompt_password_stdout("Introduce the bech32 format secret key:\n")?;
+            parse_ed25519_secret_key(&key)
+        }
+    }
+    .map_err(Error::SecretKeyReadFailed)
 }
 
 fn common_fee_from_settings(settings: &SettingsDto) -> CommonFees {
