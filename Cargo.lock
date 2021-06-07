@@ -1849,6 +1849,7 @@ dependencies = [
  "linked-hash-map",
  "lru",
  "nix",
+ "opentelemetry",
  "parity-multiaddr",
  "poldercast",
  "quickcheck",
@@ -1872,6 +1873,7 @@ dependencies = [
  "tracing-futures",
  "tracing-gelf",
  "tracing-journald",
+ "tracing-opentelemetry",
  "tracing-subscriber",
  "versionisator",
  "warp",
@@ -2520,6 +2522,23 @@ name = "opaque-debug"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
+
+[[package]]
+name = "opentelemetry"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "492848ff47f11b7f9de0443b404e2c5775f695e1af6b7076ca25f999581d547a"
+dependencies = [
+ "async-trait",
+ "crossbeam-channel",
+ "futures",
+ "js-sys",
+ "lazy_static",
+ "percent-encoding",
+ "pin-project",
+ "rand 0.8.3",
+ "thiserror",
+]
 
 [[package]]
 name = "os_info"
@@ -4035,6 +4054,19 @@ dependencies = [
  "lazy_static",
  "log",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-opentelemetry"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e2f4cb277b92a8ba1170b3b911056428ce2ef9993351baf5965bb0359a2e5963"
+dependencies = [
+ "opentelemetry",
+ "tracing",
+ "tracing-core",
+ "tracing-log",
+ "tracing-subscriber",
 ]
 
 [[package]]
