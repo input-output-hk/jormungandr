@@ -139,10 +139,10 @@ is stateless for
 * P2P Messages: see P2P messages section.
 
 The protobuf files describing these methods are available in the
-`proto` directory of `network-grpc` crate in the
-[rust-cardano][rust-cardano-gh] project repository.
+`proto` directory of `chain-network` crate in the
+[chain-libs][chain-libs-gh] project repository.
 
-[rust-cardano-gh]: https://github.com/input-output-hk/rust-cardano/
+[chain-libs-gh]: https://github.com/input-output-hk/chain-libs/
 
 ### Pseudocode chain sync algorithm
 
@@ -289,12 +289,9 @@ Implementing [PolderCast] provides a good support to handle churn, fast relaying
 and quick stabilisation of the network. The paper proposes 3 modules: Rings,
 [Vicinity] and [Cyclon].
 
-### Our addition: The 4th module
+### Our addition: The preferred nodes
 
-We propose to extend the number of modules with a 4th one, in order to increase
-trust in the self organisation of the topology proposed by [PolderCast]. This
-module will extend the accumulated views of the [PolderCast]'s modules (adding
-more nodes to be selectable by the different modules for gossiping or relaying).
+We propose to extend the number of modules with a 4th one. This module is static and entirely defined in the config file.
 
 This 4th module will provide the following features:
 
@@ -305,8 +302,39 @@ This 4th module will provide the following features:
     build a one to one trusted topology;
   * A direct application for this will be to build an inter-stake-pool
     communication layer;
-* Static / configured list of trusted parties (whitelisting/blacklisting) TBD
+* Static / configured list of trusted parties (automatically whitelisted for quarantine)
 * Metrics measurement related to stability TBD
+
+### Reports and Quarantine
+
+In order to facilitate the handling of unreachable nodes or of misbehaving ones
+we have a system of reports that handles the state of known peers.
+
+Following such reports, at the moment based only on connectivity status, peers may move into quarantine or other less restrictive impairements.
+
+In the current system, a peer can be in any of these 4 states:
+* Available: the peer is known to the current node and can be picked up by poldercast layers for gossip and propagation of messages. This is the state in which new peers joining the topology via gossip end up.
+* Trusted: the last handshake between the peer and this node was successfull. For these kind of nodes we are a little more forgiving with reports and failures.
+
+* Quarantined: the peer has (possibly several) failed handshake attempts. We will not attempt to contact it again for some time even if we receive new gossip.
+
+* Unknown: the peer is not known to the current node. 
+  > Actually, due to limitations of the poldercast library, this may mean that there are some traces of the peer in the profiles maintained by the current node but it cannot be picked up by poldercast layers for gossip or propagation. For all purposes but last resort connection attempts (see next paragraph), these two cases are essentially the same.
+
+
+Since a diagram is often easier to understand than a bunch of sentences, these are the transitions between states in the current implementation, with details about avoiding network partition removed (see next paragraph).
+
+![](./quarantine.png)
+
+
+### Avoid network partitions
+
+An important property of the p2p network is resilience to outages. We must avoid creating partitions in the network as much as possible.
+
+For this reason, we send a manual (i.e. not part of poldercast protocol) optimistic gossip message to all nodes that were reported  after the report expired. If this message fails to be delivered, no further action will be taken agains that peer to avoid cycling it back and forth from quarantine indefinitely. If instead the message is delivered correctly, we successfully prevented a possible partition :).
+
+Another measure in place is a sort of a last resort attempt: if the node did not receive any incoming gossip for the last X minutes (tweakable in the config file), we try to contact again any node that is not quarantined and for which we have any trace left in the system (this is where nodes that were artificially forgotten by the system come into play).
+
 
 ### Part to look into:
 

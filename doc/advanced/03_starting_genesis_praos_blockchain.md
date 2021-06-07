@@ -104,4 +104,6 @@ jormungandr --genesis-block block-0.bin --config config.yaml --secret poolsecret
 
 # Test script
 
-There is a script [here](https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap) that can be used to bootstrap a test node with a pre-set faucet and stake pool and can be used as an example.
+There is a script [here](https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap.py)
+that can be used to bootstrap a test node with a pre-set faucet and stake pool and can be used as an
+example.

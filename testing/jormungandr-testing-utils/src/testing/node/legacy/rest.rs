@@ -46,13 +46,11 @@ impl BackwardCompatibleRest {
     }
 
     pub fn disable_logger(&mut self) {
-        self.settings.enable_debug = false;
-        self.raw.update_settings(self.settings.clone());
+        self.raw.disable_logger();
     }
 
     pub fn enable_logger(&mut self) {
-        self.settings.enable_debug = true;
-        self.raw.update_settings(self.settings.clone());
+        self.raw.enable_logger();
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<String, reqwest::Error> {
@@ -150,7 +148,7 @@ impl BackwardCompatibleRest {
 
         let logs = logs
             .into_iter()
-            .map(|log| (log.fragment_id().clone().into_hash(), log))
+            .map(|log| ((*log.fragment_id()).into_hash(), log))
             .collect();
 
         Ok(logs)
@@ -166,7 +164,7 @@ impl BackwardCompatibleRest {
 
         let logs = logs
             .into_iter()
-            .map(|log| (log.fragment_id().clone().into_hash(), log))
+            .map(|log| ((*log.fragment_id()).into_hash(), log))
             .collect();
 
         Ok(logs)

@@ -123,6 +123,13 @@ pub struct P2pConfig {
     #[serde(default)]
     pub gossip_interval: Option<Duration>,
 
+    /// if no gossip has been received in the last interval, try to connect
+    /// to nodes that were previously known to this node.
+    ///
+    /// The default value is 5 min.
+    #[serde(default)]
+    pub network_stuck_check: Option<Duration>,
+
     /// The number of times to retry bootstrapping from trusted peers. The default
     /// value of None will result in the bootstrap process retrying indefinitely. A
     /// value of zero will skip bootstrap all together -- even if trusted peers are
@@ -165,6 +172,7 @@ impl Default for P2pConfig {
             layers: LayersConfig::default(),
             max_unreachable_nodes_to_connect_per_event: None,
             gossip_interval: None,
+            network_stuck_check: None,
             max_bootstrap_attempts: None,
         }
     }

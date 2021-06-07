@@ -1,6 +1,3 @@
-#[macro_use(error_chain, bail)]
-extern crate error_chain;
-
 pub mod introduction;
 pub mod legacy;
 pub mod node;
@@ -10,7 +7,6 @@ pub mod scenario;
 pub mod example_scenarios;
 pub mod interactive;
 pub mod report;
-pub mod slog;
 pub mod test;
 
 pub use jortestkit::console::style;

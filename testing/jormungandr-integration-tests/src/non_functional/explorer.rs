@@ -7,7 +7,7 @@ use crate::common::{
 
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{ActiveSlotCoefficient, KESUpdateSpeed},
+    interfaces::{ActiveSlotCoefficient, KesUpdateSpeed},
 };
 use jormungandr_testing_utils::{
     testing::{
@@ -33,11 +33,11 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_epoch_stability_depth(10)
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
-    let output_value = 1 as u64;
+    let output_value = 1_u64;
     let benchmark = benchmark_endurance("test_explorer_is_in_sync_with_node_for_15_minutes")
         .target(Duration::from_secs(900))
         .start();
@@ -139,7 +139,7 @@ pub fn explorer_load_test() {
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_epoch_stability_depth(10)
-            .with_kes_update_speed(KESUpdateSpeed::new(43200).unwrap()),
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
@@ -153,6 +153,7 @@ pub fn explorer_load_test() {
         100,
         Monitor::Progress(100),
         0,
+        1_000,
     );
     let stats = jortestkit::load::start_sync(request_gen, config, "Explorer load test");
     assert!((stats.calculate_passrate() as u32) > 95);

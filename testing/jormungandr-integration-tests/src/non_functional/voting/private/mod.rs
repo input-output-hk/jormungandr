@@ -68,15 +68,15 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
             },
         })
         .with_vote_start(BlockDate::from_epoch_slot_id(
-            quick_config.voting_timing()[0].into(),
+            quick_config.voting_timing()[0],
             0,
         ))
         .with_tally_start(BlockDate::from_epoch_slot_id(
-            quick_config.voting_timing()[1].into(),
+            quick_config.voting_timing()[1],
             0,
         ))
         .with_tally_end(BlockDate::from_epoch_slot_id(
-            quick_config.voting_timing()[2].into(),
+            quick_config.voting_timing()[2],
             0,
         ))
         .private()
@@ -93,7 +93,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
                 .map(|x| x.to_initial_fund(quick_config.initial_fund_per_wallet()))
                 .collect(),
         )
-        .with_committees(&[&committee.clone()])
+        .with_committees(&[&committee])
         .with_slots_per_epoch(quick_config.slots_in_epoch())
         .with_certs(vec![vote_plan_cert])
         .with_explorer()
@@ -104,7 +104,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
 
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
-        .config(config.clone())
+        .config(config)
         .start()
         .unwrap();
 
@@ -146,7 +146,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
 
     wait_for_epoch(
         quick_config.voting_timing()[1].into(),
-        jormungandr.explorer().clone(),
+        jormungandr.explorer(),
     );
 
     transaction_sender
@@ -155,10 +155,10 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
 
     wait_for_date(
         BlockDateLib::new(
-            quick_config.voting_timing()[1].into(),
-            (quick_config.slots_in_epoch() / 2).into(),
+            quick_config.voting_timing()[1],
+            quick_config.slots_in_epoch() / 2,
         ),
-        jormungandr.explorer().clone(),
+        jormungandr.explorer(),
     );
 
     let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
@@ -180,7 +180,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
 
     wait_for_epoch(
         quick_config.voting_timing()[2].into(),
-        jormungandr.explorer().clone(),
+        jormungandr.explorer(),
     );
     let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
 
@@ -238,15 +238,15 @@ pub fn adversary_private_vote_load_scenario(
             },
         })
         .with_vote_start(BlockDate::from_epoch_slot_id(
-            quick_config.voting_timing()[0].into(),
+            quick_config.voting_timing()[0],
             0,
         ))
         .with_tally_start(BlockDate::from_epoch_slot_id(
-            quick_config.voting_timing()[1].into(),
+            quick_config.voting_timing()[1],
             0,
         ))
         .with_tally_end(BlockDate::from_epoch_slot_id(
-            quick_config.voting_timing()[2].into(),
+            quick_config.voting_timing()[2],
             0,
         ))
         .private()
@@ -266,7 +266,7 @@ pub fn adversary_private_vote_load_scenario(
                 .map(|x| x.to_initial_fund(quick_config.initial_fund_per_wallet()))
                 .collect(),
         )
-        .with_committees(&[&committee.clone()])
+        .with_committees(&[&committee])
         .with_slots_per_epoch(quick_config.slots_in_epoch())
         .with_certs(vec![vote_plan_cert])
         .with_explorer()
@@ -277,7 +277,7 @@ pub fn adversary_private_vote_load_scenario(
 
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
-        .config(config.clone())
+        .config(config)
         .start()
         .unwrap();
 
@@ -340,7 +340,7 @@ pub fn adversary_private_vote_load_scenario(
 
     wait_for_epoch(
         quick_config.voting_timing()[1].into(),
-        jormungandr.explorer().clone(),
+        jormungandr.explorer(),
     );
 
     transaction_sender
@@ -349,10 +349,10 @@ pub fn adversary_private_vote_load_scenario(
 
     wait_for_date(
         BlockDateLib::new(
-            quick_config.voting_timing()[1].into(),
-            (quick_config.slots_in_epoch() / 2).into(),
+            quick_config.voting_timing()[1],
+            quick_config.slots_in_epoch() / 2,
         ),
-        jormungandr.explorer().clone(),
+        jormungandr.explorer(),
     );
 
     let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
@@ -374,7 +374,7 @@ pub fn adversary_private_vote_load_scenario(
 
     wait_for_epoch(
         quick_config.voting_timing()[2].into(),
-        jormungandr.explorer().clone(),
+        jormungandr.explorer(),
     );
     let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
 

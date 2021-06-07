@@ -31,7 +31,7 @@ fn test_connectivity_between_master_and_legacy_app(version: Version, temp_dir: &
 
     let trusted_node_config = ConfigurationBuilder::new()
         .with_trusted_peers(vec![leader_jormungandr.to_trusted_peer()])
-        .with_block_hash(leader_config.genesis_block_hash().clone())
+        .with_block_hash(leader_config.genesis_block_hash())
         .build(temp_dir);
 
     let trusted_jormungandr = Starter::new()
@@ -58,6 +58,7 @@ fn test_connectivity_between_master_and_legacy_app(version: Version, temp_dir: &
     assert!(
         super::check_transaction_was_processed(new_transaction, &receiver, 1, &leader_jormungandr)
             .is_ok(),
+        "{}",
         message
     );
 
@@ -139,7 +140,7 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
     // rollback node to legacy again
 
     let legacy_jormungandr = Starter::new()
-        .config(config.clone())
+        .config(config)
         .legacy(version)
         .start()
         .unwrap();

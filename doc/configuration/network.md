@@ -121,6 +121,10 @@ Use the CA certificate with `jcli`.
   changing the value will affect the bandwidth. The more often the node will
   gossip the more bandwidth the node will need. The less often the node gossips
   the less good the resilience to node churn. `[default: 10s]`
+- `network-stuck_check`: (optional) If no gossip has been received in the last interval,
+  try to connect to nodes that were previously known to this node.
+  This helps to rejoin the protocol in case there is a network outage and the node cannot reach
+  any other peer. `[default: 5min]`
 - `max_bootstrap_attempts`: (optional) number of times to retry bootstrapping from trusted peers.
   If not set, default behavior, the bootstrap process will keep retrying indefinitely, until completed successfully.
   If set to *0* (zero), the node will skip bootstrap all together -- *even if trusted peers are defined*.
@@ -151,8 +155,8 @@ automatically, so they cannot be quarantined.
 
 - `view_max`: this is the number of entries to show in the view each round
   the layer will **randomly** select up to `view_max` entries from the whole
-  preferred_list.peers list of entries. [default: 20]
-- `peers`: the list of peers to keep in the preferred list [default: EMPTY]
+  preferred_list.peers list of entries. \[default: 20\]
+- `peers`: the list of peers to keep in the preferred list \[default: EMPTY\]
 
 Also, the preferred list will never be quarantined or blacklisted, the node will
 attempt to connect to (up to `view_max` of) these nodes every time, even if some

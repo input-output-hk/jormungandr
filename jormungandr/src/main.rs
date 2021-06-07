@@ -3,8 +3,6 @@
 #![type_length_limit = "10000000"]
 
 #[macro_use]
-extern crate error_chain;
-#[macro_use]
 extern crate lazy_static;
 #[macro_use]
 extern crate serde_derive;
@@ -50,7 +48,6 @@ pub mod topology;
 pub mod utils;
 
 use stats_counter::StatsCounter;
-use tokio_compat_02::FutureExt;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_futures::Instrument;
 
@@ -632,7 +629,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
             let service_context = context.clone();
             let explorer = settings.explorer;
-            let server_handler = rest::start_rest_server(rest, explorer, context.clone()).compat();
+            let server_handler = rest::start_rest_server(rest, explorer, context.clone());
             services.spawn_future("rest", move |info| async move {
                 service_context.write().await.set_span(info.span().clone());
                 server_handler.await

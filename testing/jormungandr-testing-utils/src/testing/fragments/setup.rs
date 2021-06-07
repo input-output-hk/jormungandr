@@ -142,6 +142,13 @@ impl<'a> FragmentSenderSetup<'a, DummySyncNode> {
         builder.into()
     }
 
+    pub fn dump_into(path: PathBuf) -> Self {
+        let mut builder = FragmentSenderSetupBuilder::from(Self::def());
+        builder.fire_and_forget();
+        builder.dump_fragments_into(path);
+        builder.into()
+    }
+
     fn def() -> Self {
         Self::new()
     }

@@ -288,7 +288,7 @@ impl LegacyNodeController {
 
         let logs = logs
             .into_iter()
-            .map(|log| (log.fragment_id().clone().into_hash(), log))
+            .map(|log| ((*log.fragment_id()).into_hash(), log))
             .collect();
 
         Ok(logs)

@@ -1,11 +1,13 @@
 use super::FragmentNode;
 use crate::wallet::Wallet;
+use chain_core::property::Deserialize;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chrono::{DateTime, Utc};
 use jormungandr_lib::interfaces::Address;
 use std::io::Write;
 use std::{fs, path::PathBuf};
 use thiserror::Error;
+
 #[derive(Debug, Error)]
 pub enum FragmentExporterError {
     #[error("cannot create dump folder {0}")]
@@ -14,6 +16,8 @@ pub enum FragmentExporterError {
     CannotCreateDumpFile(PathBuf),
     #[error("cannot write fragment bin to file {0}")]
     CannotWriteFragmentToDumpFile(PathBuf),
+    #[error("io error")]
+    IoError(#[from] std::io::Error),
 }
 
 pub struct FragmentExporter {
@@ -26,6 +30,35 @@ impl FragmentExporter {
             .map_err(|_| FragmentExporterError::CannotCreateDumpFolder(dump_folder.clone()))?;
 
         Ok(Self { dump_folder })
+    }
+
+    pub fn read(&self) -> Result<Vec<Fragment>, FragmentExporterError> {
+        self.read_as_bytes()?
+            .iter()
+            .map(|bytes| Ok(Fragment::deserialize(bytes.as_ref()).unwrap()))
+            .collect()
+    }
+
+    pub fn read_as_bytes(&self) -> Result<Vec<Vec<u8>>, FragmentExporterError> {
+        let mut entries = fs::read_dir(&self.dump_folder)?
+            .map(|res| res.map(|e| e.path()))
+            .collect::<Result<Vec<_>, std::io::Error>>()?;
+        entries.sort();
+        // the order is platform dependant, let's sort again in time order
+        entries
+            .into_iter()
+            .filter(|path| {
+                let file_name = path.file_name().unwrap().to_str().unwrap();
+                file_name.contains("_from_")
+                    && file_name.contains("_to_")
+                    && file_name.ends_with(".txt")
+            })
+            .map(|path| {
+                let content = jortestkit::prelude::read_file(path);
+                let bytes = hex::decode(content.trim()).unwrap();
+                Ok(bytes)
+            })
+            .collect()
     }
 
     pub fn dump_to_file(
@@ -54,13 +87,20 @@ impl FragmentExporter {
         via: &dyn FragmentNode,
     ) -> String {
         let now: DateTime<Utc> = Utc::now();
+        let alias = {
+            if via.alias().is_empty() {
+                "jormungandr"
+            } else {
+                via.alias()
+            }
+        };
 
         format!(
             "{}_{}_from_{}_to_{}.txt",
-            now.format("%F_%H_%M_%S"),
+            now.format("%F_%H_%M_%S_%f"),
             self.format_id(fragment.hash()),
             self.format_address(sender.address()),
-            via.alias()
+            alias
         )
     }
 
@@ -80,8 +120,6 @@ impl FragmentExporter {
     }
 
     fn format_hash(&self, hash: String) -> String {
-        let start = hash.chars().next().unwrap();
-        let end = hash.chars().rev().next().unwrap();
-        format!("{}_{}", start, end)
+        hash
     }
 }

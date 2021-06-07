@@ -3,6 +3,8 @@ use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::interfaces::FragmentStatus;
 use std::time::Duration;
 
+use jortestkit::prelude::Wait;
+
 #[derive(custom_debug::Debug, thiserror::Error)]
 pub enum FragmentVerifierError {
     #[error("fragment sent to node: {alias} is not in block :({status:?})")]
@@ -29,6 +31,17 @@ pub enum FragmentVerifierError {
     },
     #[error("fragment node error")]
     FragmentNode(#[from] FragmentNodeError),
+    #[error("at least on rejected fragment error")]
+    AtLeastOneRejectedFragment {
+        fragment_id: FragmentId,
+        #[debug(skip)]
+        logs: Vec<String>,
+    },
+    #[error("timeout reached while waiting for all fragments in a block")]
+    TimeoutReachedWhileWaitingForAllFragmentsInBlock {
+        #[debug(skip)]
+        logs: Vec<String>,
+    },
 }
 
 impl FragmentVerifierError {
@@ -39,6 +52,8 @@ impl FragmentVerifierError {
             | FragmentIsPendingForTooLong { logs, .. }
             | FragmentNotInMemPoolLogs { logs, .. }
             | FragmentNode(FragmentNodeError::CannotSendFragment { logs, .. }) => Some(logs),
+            AtLeastOneRejectedFragment { logs, .. } => Some(logs),
+            TimeoutReachedWhileWaitingForAllFragmentsInBlock { logs } => Some(logs),
             FragmentNode(_) => None,
         };
         maybe_logs
@@ -52,6 +67,39 @@ impl FragmentVerifierError {
 pub struct FragmentVerifier;
 
 impl FragmentVerifier {
+    pub fn wait_until_all_processed<A: FragmentNode + ?Sized>(
+        &self,
+        wait: Wait,
+        node: &A,
+    ) -> Result<(), FragmentVerifierError> {
+        for _ in 0..wait.attempts() {
+            let fragment_logs = match node.fragment_logs() {
+                Err(_) => {
+                    std::thread::sleep(wait.sleep_duration());
+                    continue;
+                }
+                Ok(fragment_logs) => fragment_logs,
+            };
+
+            if let Some((id, _)) = fragment_logs.iter().find(|(_, x)| x.is_rejected()) {
+                return Err(FragmentVerifierError::AtLeastOneRejectedFragment {
+                    fragment_id: *id,
+                    logs: node.log_content(),
+                });
+            }
+
+            if fragment_logs.iter().all(|(_, x)| x.is_in_a_block()) {
+                return Ok(());
+            }
+            std::thread::sleep(wait.sleep_duration());
+        }
+        Err(
+            FragmentVerifierError::TimeoutReachedWhileWaitingForAllFragmentsInBlock {
+                logs: node.log_content(),
+            },
+        )
+    }
+
     pub fn wait_and_verify_all_are_in_block<A: FragmentNode + ?Sized>(
         &self,
         duration: Duration,

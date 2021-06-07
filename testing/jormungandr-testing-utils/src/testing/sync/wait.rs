@@ -94,10 +94,10 @@ impl From<SyncWaitParams> for Thresholds<Speed> {
             SyncWaitParams::ZeroWait => {
                 let duration = Duration::from_secs(0);
                 Thresholds::<Speed>::new(
-                    duration.clone().into(),
-                    duration.clone().into(),
-                    duration.clone().into(),
-                    duration.clone().into(),
+                    duration.into(),
+                    duration.into(),
+                    duration.into(),
+                    duration.into(),
                 )
             }
         }

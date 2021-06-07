@@ -77,7 +77,7 @@ Description of the fields:
     P2P service. This is the public address that will be distributed to other
     peers of the network that may find interest in participating to the
     blockchain dissemination with the node.
-  - `listen_address`: (optional) [multiaddr][multiaddr] specifies the address the node
+  - `listen`: (optional) _address_:_port_ to specifies the address the node
     will listen to to receive p2p connection. Can be left empty and the node will listen
     to whatever value was given to `public_address`.
   - `topics_of_interest`: The dissemination topics this node is interested to hear about:

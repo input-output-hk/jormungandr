@@ -19,7 +19,7 @@ pub fn accounts_funds_are_updated_after_transaction() {
             .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(3)
-            .with_linear_fees(fee.clone())
+            .with_linear_fees(fee)
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
@@ -65,10 +65,10 @@ pub fn accounts_funds_are_updated_after_transaction() {
         .v0()
         .account_stats(receiver.address().to_string(), &jormungandr.rest_uri());
 
-    let sender_value_before_u64: u64 = sender_value_before.clone().into();
-    let receiver_value_before_u64: u64 = receiver_value_before.clone().into();
+    let sender_value_before_u64: u64 = (*sender_value_before).into();
+    let receiver_value_before_u64: u64 = (*receiver_value_before).into();
 
-    let sender_last_reward: u64 = sender_account_state.last_rewards().reward().clone().into();
+    let sender_last_reward: u64 = (*sender_account_state.last_rewards().reward()).into();
 
     let sender_expected_value: Value =
         (sender_value_before_u64 - value_to_send - fee.constant - (fee.coefficient * 2)

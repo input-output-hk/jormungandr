@@ -68,6 +68,10 @@ impl Wallet {
         self.identifier().to_address(self.discrimination).into()
     }
 
+    pub fn set_counter(&mut self, value: u32) {
+        self.internal_counter = account::SpendingCounter::from(value);
+    }
+
     pub fn increment_counter(&mut self) {
         let v: u32 = self.internal_counter.into();
         self.internal_counter = account::SpendingCounter::from(v + 1);
@@ -95,7 +99,7 @@ impl Wallet {
         signing_data: &TransactionSignDataHash,
     ) -> Witness {
         Witness::new_account(
-            &block0_hash.clone().into_hash(),
+            &(*block0_hash).into_hash(),
             signing_data,
             self.internal_counter(),
             |d| self.signing_key().as_ref().sign(d),

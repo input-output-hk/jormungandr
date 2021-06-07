@@ -5,7 +5,7 @@ use tracing::{span, Level};
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::{Block, HeaderId},
-    blockchain::{Blockchain, ErrorKind as BlockchainError, Storage, Tip},
+    blockchain::{Blockchain, Error as BlockchainError, Storage, Tip},
     network,
     settings::start::Settings,
 };
@@ -160,9 +160,9 @@ pub async fn load_blockchain(
     );
 
     let main_branch = match blockchain.load_from_block0(block0.clone()).await {
-        Err(error) => match error.kind() {
+        Err(error) => match error {
             BlockchainError::Block0AlreadyInStorage => blockchain.load_from_storage(block0).await,
-            _ => Err(error),
+            error => Err(error),
         },
         Ok(branch) => Ok(branch),
     }?;

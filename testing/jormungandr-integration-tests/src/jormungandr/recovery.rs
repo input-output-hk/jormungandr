@@ -177,10 +177,12 @@ pub fn test_node_recovers_kill_signal() {
             |raw| raw.account_state(&account_receiver),
             Default::default(),
         )
-        .expect(&format!(
-            "timeout occured when pooling address endpoint. \nNode logs: {}",
-            jormungandr.log_content()
-        ));
+        .unwrap_or_else(|_| {
+            panic!(
+                "timeout occured when pooling address endpoint. \nNode logs: {}",
+                jormungandr.log_content()
+            )
+        });
 
     let snapshot_after = take_snapshot(&account_receiver, &jormungandr, new_utxo);
 

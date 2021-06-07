@@ -67,7 +67,7 @@ pub fn test_get_committee_id() {
 
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
-        .config(config.clone())
+        .config(config)
         .start()
         .unwrap();
 
@@ -99,13 +99,13 @@ pub fn test_get_initial_vote_plan() {
     let vote_plan_cert = vote_plan_cert(&wallets[0], &expected_vote_plan).into();
 
     let config = ConfigurationBuilder::new()
-        .with_committee_ids(expected_committee_ids.clone())
+        .with_committee_ids(expected_committee_ids)
         .with_certs(vec![vote_plan_cert])
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
-        .config(config.clone())
+        .config(config)
         .start()
         .unwrap();
 
@@ -166,7 +166,7 @@ pub fn test_vote_flow_bft() {
 
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
-        .config(config.clone())
+        .config(config)
         .start()
         .unwrap();
 
@@ -197,7 +197,7 @@ pub fn test_vote_flow_bft() {
         .parse::<u64>()
         .unwrap();
 
-    wait_for_epoch(1, jormungandr.explorer().clone());
+    wait_for_epoch(1, jormungandr.explorer());
 
     transaction_sender
         .send_vote_tally(
@@ -208,7 +208,7 @@ pub fn test_vote_flow_bft() {
         )
         .unwrap();
 
-    wait_for_epoch(2, jormungandr.explorer().clone());
+    wait_for_epoch(2, jormungandr.explorer());
 
     assert_first_proposal_has_votes(
         2 * initial_fund_per_wallet,
@@ -311,7 +311,7 @@ pub fn test_vote_flow_praos() {
         .send_vote_cast(&mut clarice, &vote_plan, 0, &no_choice, &jormungandr)
         .unwrap();
 
-    wait_for_epoch(1, jormungandr.explorer().clone());
+    wait_for_epoch(1, jormungandr.explorer());
 
     transaction_sender
         .send_vote_tally(
@@ -322,7 +322,7 @@ pub fn test_vote_flow_praos() {
         )
         .unwrap();
 
-    wait_for_epoch(3, jormungandr.explorer().clone());
+    wait_for_epoch(3, jormungandr.explorer());
 
     let rewards_after = jormungandr
         .explorer()

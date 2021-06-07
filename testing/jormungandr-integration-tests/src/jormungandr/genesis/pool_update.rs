@@ -21,7 +21,7 @@ pub fn update_pool_fees_is_not_allowed() {
     )
     .unwrap();
 
-    let stake_pool = stake_pools.iter().next().unwrap();
+    let stake_pool = stake_pools.get(0).unwrap();
 
     let mut new_stake_pool = stake_pool.clone();
     let mut stake_pool_info = new_stake_pool.info_mut();

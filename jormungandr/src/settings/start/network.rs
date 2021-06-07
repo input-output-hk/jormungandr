@@ -90,6 +90,8 @@ pub struct Configuration {
 
     pub gossip_interval: Duration,
 
+    pub network_stuck_check: Duration,
+
     pub max_bootstrap_attempts: Option<usize>,
 
     /// Whether to limit bootstrap to trusted peers (which increase their load / reduce their connectivities)

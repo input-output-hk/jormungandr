@@ -668,7 +668,7 @@ pub fn test_transaction_with_non_zero_linear_fees() {
             address: sender.address(),
             value: 100.into(),
         }])
-        .with_linear_fees(fee.clone())
+        .with_linear_fees(fee)
         .build(&temp_dir);
 
     let jormungandr = Starter::new()

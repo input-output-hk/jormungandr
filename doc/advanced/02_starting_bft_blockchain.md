@@ -125,4 +125,5 @@ jormungandr --genesis-block block-0.bin --config node.config --secret node_secre
 
 # Script
 
-Additionally, there is a script [here](https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap) that can be used to bootstrap a test node with bft consensus protocol.
+Additionally, there is a script [here](https://github.com/input-output-hk/jormungandr/blob/master/scripts/bootstrap.py)
+that can be used to bootstrap a test node with bft consensus protocol.

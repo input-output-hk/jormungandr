@@ -54,7 +54,7 @@ impl NodeConfigBuilder {
                 node_key_file: None,
                 trusted_peers: vec![],
                 public_address: grpc_public_address,
-                listen_address: None,
+                listen: None,
                 max_inbound_connections: None,
                 max_connections: None,
                 allow_private_addresses: true,
@@ -101,7 +101,7 @@ impl NodeConfigBuilder {
     }
 
     pub fn with_listen_address(&mut self, listen_address: String) -> &mut Self {
-        self.p2p.listen_address = Some(listen_address.parse().unwrap());
+        self.p2p.listen = Some(listen_address.parse().unwrap());
         self
     }
 
