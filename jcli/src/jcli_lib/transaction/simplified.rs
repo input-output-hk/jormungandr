@@ -168,7 +168,7 @@ pub fn make_transaction(
     // ask for user confirmation after adding fees
     if !force {
         println!(
-            "Total value to transfer (including fees): {}\n",
+            "Total value to transfer (including fees): {}",
             transfer_value
         );
         if !ask_yes_or_no(true).map_err(Error::UserInputError)? {
