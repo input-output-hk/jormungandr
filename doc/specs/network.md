@@ -318,7 +318,7 @@ In the current system, a peer can be in any of these 4 states:
 
 * Quarantined: the peer has (possibly several) failed handshake attempts. We will not attempt to contact it again for some time even if we receive new gossip.
 
-* Unknown: the peer is not known to the current node. 
+* Unknown: the peer is not known to the current node.
   > Actually, due to limitations of the poldercast library, this may mean that there are some traces of the peer in the profiles maintained by the current node but it cannot be picked up by poldercast layers for gossip or propagation. For all purposes but last resort connection attempts (see next paragraph), these two cases are essentially the same.
 
 
