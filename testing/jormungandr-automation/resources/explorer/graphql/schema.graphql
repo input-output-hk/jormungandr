@@ -166,7 +166,6 @@ type Block {
   previousBlock: Block!
   totalInput: Value!
   totalOutput: Value!
-  treasury: Treasury
   isConfirmed: Boolean!
   branches: [Branch!]!
 }
@@ -329,7 +328,7 @@ type Proposal {
 
   """
   get the vote options range
-
+  
   this is the available range of choices to make for the given
   proposal. all casted votes for this proposals ought to be in
   within the given range
@@ -447,12 +446,6 @@ type TransactionInput {
 type TransactionOutput {
   amount: Value!
   address: Address!
-}
-
-type Treasury {
-  rewards: Value!
-  treasury: Value!
-  treasuryTax: TaxType!
 }
 
 scalar Value
