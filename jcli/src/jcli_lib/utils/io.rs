@@ -69,6 +69,7 @@ pub fn read_yaml<D: DeserializeOwned>(path: &Option<impl AsRef<Path>>) -> Result
 pub fn ask_yes_or_no(with_output: bool) -> std::io::Result<bool> {
     if with_output {
         print!("Continue? Yes[y] or No[n]? ");
+        std::io::stdout().flush()?;
     }
     let mut buff = String::new();
     std::io::stdin().read_line(&mut buff)?;
