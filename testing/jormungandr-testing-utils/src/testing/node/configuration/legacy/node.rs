@@ -11,7 +11,7 @@ impl TestConfig for NodeConfig {
     }
 
     fn p2p_listen_address(&self) -> SocketAddr {
-        if let Some(address) = &self.p2p.listen_address {
+        if let Some(address) = &self.p2p.listen {
             *address
         } else {
             to_tcp_socket_addr(&self.p2p.public_address).unwrap()

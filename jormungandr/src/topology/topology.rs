@@ -2,7 +2,7 @@
 //!
 use super::{
     layers::{self, LayersConfig},
-    topic, Gossips, NodeId, Peer, PeerInfo, Quarantine,
+    topic, Gossips, NodeId, Peer, PeerInfo, ReportRecords,
 };
 
 use crate::settings::start::network::Configuration;
@@ -35,7 +35,7 @@ pub struct View {
 /// object holding the P2pTopology of the Node
 pub struct P2pTopology {
     topology: Topology,
-    quarantine: Quarantine,
+    quarantine: ReportRecords,
     key: keynesis::key::ed25519::SecretKey,
 }
 
@@ -103,7 +103,7 @@ impl P2pTopology {
         let addr = config.public_address.or(Some(*LOCAL_ADDR)).unwrap();
         let key = secret_key_into_keynesis(config.node_key.clone());
 
-        let quarantine = Quarantine::from_config(config.policy.clone());
+        let quarantine = ReportRecords::from_config(config.policy.clone());
         let custom_builder = CustomLayerBuilder::from(config.layers.clone());
         let mut topology = Topology::new_with(addr, &key, custom_builder);
         topology.subscribe_topic(topic::MESSAGES);
@@ -158,7 +158,14 @@ impl P2pTopology {
     // This may return nodes that are still quarantined but have been
     // forgotten by the underlying poldercast implementation.
     pub fn list_quarantined(&self) -> Vec<PeerInfo> {
-        self.quarantine.quarantined_nodes()
+        let ids = self.topology.peers().dirty();
+        // reported nodes also include reports against nodes that are not in the dirty pool
+        // and we should include those here
+        self.quarantine
+            .reported_nodes()
+            .into_iter()
+            .filter(|profile| ids.contains(profile.id.as_ref()))
+            .collect()
     }
 
     pub fn list_available(&self) -> impl Iterator<Item = Peer> + '_ {
@@ -192,17 +199,11 @@ impl P2pTopology {
     }
 
     /// register a strike against the given peer
+    #[instrument(skip(self), level = "debug")]
     pub fn report_node(&mut self, node_id: &NodeId) {
         if let Some(node) = self.topology.get(node_id.as_ref()).cloned() {
-            if self
-                .quarantine
-                .quarantine_node(Peer::from(node.gossip().clone()).into())
-            {
-                self.topology.remove_peer(node_id.as_ref());
-                // Trusted peers in poldercast requires to be demoted 2 times before
-                // moving to the dirty pool
-                self.topology.remove_peer(node_id.as_ref());
-            }
+            self.quarantine
+                .report_node(&mut self.topology, Peer::from(node.gossip().clone()));
         }
     }
 
@@ -212,9 +213,9 @@ impl P2pTopology {
         self.topology.update_profile_subscriptions(&self.key);
     }
 
-    pub fn lift_nodes_from_quarantine(&mut self) -> Vec<Peer> {
+    pub fn lift_reports(&mut self) -> Vec<Peer> {
         self.quarantine
-            .lift_from_quarantine()
+            .lift_reports()
             .into_iter()
             .filter_map(|node| {
                 let node = self.topology.peers().dirty().peek(node.id.as_ref()).cloned();
