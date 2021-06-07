@@ -6,6 +6,11 @@ on:
       - 'book.toml'
       - 'doc/**'
       - '!doc/api/**.yaml'
+  pull_request:
+    paths:
+      - 'book.toml'
+      - 'doc/**'
+      - '!doc/api/**.yaml'
 
 jobs:
   build-and-deploy:
