@@ -94,7 +94,7 @@ impl LegacyNodeConfigConverter {
             p2p: P2p {
                 trusted_peers,
                 public_address: source.p2p.public_address.clone(),
-                listen_address: None,
+                listen: None,
                 max_inbound_connections: None,
                 max_connections: None,
                 topics_of_interest: source
@@ -153,7 +153,7 @@ impl LegacyNodeConfigConverter {
             p2p: P2p {
                 trusted_peers,
                 public_address: source.p2p.public_address.clone(),
-                listen_address: None,
+                listen: None,
                 max_inbound_connections: None,
                 max_connections: None,
                 topics_of_interest: source

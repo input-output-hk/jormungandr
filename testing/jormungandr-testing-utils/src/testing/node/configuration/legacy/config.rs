@@ -19,7 +19,7 @@ pub struct P2p {
     /// the p2p discovery from.
     pub trusted_peers: Vec<TrustedPeer>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub listen_address: Option<SocketAddr>,
+    pub listen: Option<SocketAddr>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_connections: Option<u32>,
