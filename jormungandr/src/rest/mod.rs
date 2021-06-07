@@ -32,7 +32,16 @@ pub async fn start_rest_server(config: Rest, explorer_enabled: bool, context: Co
 
     let api = warp::path!("api" / ..)
         .and(v0::filter(context.clone()).or(v1::filter(context.clone())))
-        .with(warp::filters::trace::request());
+        .with(warp::filters::trace::trace(|info| {
+            tracing::span!(
+                tracing::Level::DEBUG,
+                "rest_api_request",
+                method = %info.method(),
+                path = %info.path(),
+                version = ?info.version(),
+                remote_addr = ?info.remote_addr(),
+            )
+        }));
     if explorer_enabled {
         let explorer = explorer::filter(context);
         setup_cors(api.or(explorer), config, stopper_rx).await;
