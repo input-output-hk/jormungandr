@@ -8,9 +8,8 @@ use jormungandr_automation::{
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
-use std::str::FromStr;
-use std::time::Duration;
-use thor::{StakePool, TransactionHash};
+use std::{process::Command, str::FromStr};
+use std::{process::Stdio, time::Duration};
 
 /// test checks if there is upto date schema
 /// prereq:
@@ -38,15 +37,12 @@ pub fn explorer_schema_diff_test() {
     std::process::Command::new(
         "../jormungandr-automation/resources/explorer/graphql/generate_schema.sh",
     )
-    .args(&[
-        jormungandr.explorer().uri(),
-        actual_schema_path
-            .path()
-            .as_os_str()
-            .to_str()
-            .unwrap()
-            .to_string(),
-    ])
+    .args(&[actual_schema_path
+        .path()
+        .as_os_str()
+        .to_str()
+        .unwrap()
+        .to_string()])
     .spawn()
     .unwrap()
     .wait()
@@ -67,6 +63,36 @@ pub fn explorer_sanity_test() {
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
+    let path = crate::common::configuration::get_explorer_app();
+
+    let block0_hash = jormungandr.rest().settings().unwrap().block0_hash;
+
+    let explorer_port = get_available_port();
+    let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
+
+    // TODO: encapsulate this
+    let _process = ExplorerProcess {
+        handler: Some(
+            Command::new(path)
+                .args(&[
+                    "--node",
+                    format!("http://{}", jormungandr.address().to_string()).as_ref(),
+                    "--binding-address",
+                    explorer_listen_address.as_ref(),
+                ])
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .expect("failed to execute explorer process"),
+        ),
+        logs_dir: jormungandr
+            .temp_dir
+            .as_ref()
+            .map(|tmp_dir| tmp_dir.path().into()),
+    };
+
+    let explorer: Explorer = Explorer::new(explorer_listen_address);
+
     let transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
@@ -81,8 +107,6 @@ pub fn explorer_sanity_test() {
         .fragment_sender(&jormungandr)
         .send(&transaction)
         .assert_in_block_with_wait(&wait);
-
-    let explorer = jormungandr.explorer();
 
     transaction_by_id(&explorer, fragment_id);
     blocks(&explorer, jormungandr.logger.get_created_blocks_hashes());
@@ -177,4 +201,35 @@ fn epoch(explorer: &Explorer) {
     let epoch = explorer.epoch(1, 100).unwrap();
 
     assert_eq!(epoch.data.unwrap().epoch.id, "1", "can't find epoch");
+}
+
+struct ExplorerProcess {
+    handler: Option<std::process::Child>,
+    logs_dir: Option<std::path::PathBuf>,
+}
+
+impl Drop for ExplorerProcess {
+    fn drop(&mut self) {
+        let output = if let Some(mut handler) = self.handler.take() {
+            let _ = handler.kill();
+            handler.wait_with_output().unwrap()
+        } else {
+            return;
+        };
+
+        if std::thread::panicking() {
+            if let Some(logs_dir) = &self.logs_dir {
+                println!(
+                    "persisting explorer logs after panic: {}",
+                    logs_dir.display()
+                );
+
+                std::fs::write(logs_dir.join("explorer.log"), output.stdout)
+                    .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
+
+                std::fs::write(logs_dir.join("explorer.err"), output.stderr)
+                    .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
+            }
+        }
+    }
 }

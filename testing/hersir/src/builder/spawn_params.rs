@@ -18,7 +18,6 @@ use std::path::PathBuf;
 pub struct SpawnParams {
     alias: NodeAlias,
     bootstrap_from_peers: Option<bool>,
-    explorer: Option<Explorer>,
     faketime: Option<FaketimeConfig>,
     gossip_interval: Option<Duration>,
     jormungandr: Option<PathBuf>,
@@ -68,7 +67,6 @@ impl SpawnParams {
             preferred_layer: None,
             public_address: None,
             skip_bootstrap: None,
-            topics_of_interest: None,
             trusted_peers: None,
             version: None,
             verbose: true,

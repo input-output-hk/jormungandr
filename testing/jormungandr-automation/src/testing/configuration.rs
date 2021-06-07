@@ -9,25 +9,25 @@ pub use crate::jormungandr::{
 /// Get jormungandr executable from current environment
 pub fn get_jormungandr_app() -> PathBuf {
     const JORMUNGANDR_NAME: &str = env!("JORMUNGANDR_NAME");
-    let mut path = get_working_directory();
-    path.push(JORMUNGANDR_NAME);
-    if cfg!(windows) {
-        path.set_extension("exe");
-    }
-    assert!(
-        path.is_file(),
-        "File does not exist: {:?}, pwd: {:?}",
-        path,
-        env::current_dir()
-    );
-    path
+    get_app_from_current_dir(JORMUNGANDR_NAME)
 }
 
 /// Get jcli executable from current environment
 pub fn get_jcli_app() -> PathBuf {
     const JOR_CLI_NAME: &str = env!("JOR_CLI_NAME");
+    get_app_from_current_dir(JOR_CLI_NAME)
+}
+
+/// Get explorer executable from current environment
+pub fn get_explorer_app() -> PathBuf {
+    const JOR_EXPLORER_NAME: &str = env!("JOR_EXPLORER_NAME");
+    get_app_from_current_dir(JOR_EXPLORER_NAME)
+}
+
+/// Get executable from current environment
+pub fn get_app_from_current_dir(app_name: &str) -> PathBuf {
     let mut path = get_working_directory();
-    path.push(JOR_CLI_NAME);
+    path.push(app_name);
     if cfg!(windows) {
         path.set_extension("exe");
     }
