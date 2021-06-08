@@ -8,7 +8,6 @@ use super::{Address, BlockDate, ExplorerAddress, Pool, Proposal, TaxType};
 
 // interface for grouping certificates as a graphl union
 #[derive(Union)]
-#[graphql(Context = Context)]
 pub enum Certificate {
     StakeDelegation(StakeDelegation),
     OwnerStakeDelegation(OwnerStakeDelegation),
