@@ -33,7 +33,7 @@ pub fn collect_reward() {
     )
     .unwrap();
 
-    time::wait_for_epoch(2, jormungandr.explorer());
+    time::wait_for_epoch(2, jormungandr.rest());
 
     let stake_pools_data: Vec<StakePoolStats> = stake_pools
         .iter()

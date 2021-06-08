@@ -26,7 +26,6 @@ pub fn test_mempool_pool_max_entries_limit() {
                 value: 100.into(),
             },
         ])
-        .with_explorer()
         .with_slot_duration(2)
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
@@ -89,7 +88,6 @@ pub fn test_mempool_pool_max_entries_equal_0() {
                 value: 100.into(),
             },
         ])
-        .with_explorer()
         .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 0.into(),
@@ -124,7 +122,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .unwrap()
         .assert_empty();
 
-    time::wait_for_date(BlockDate::new(0, 5), jormungandr.explorer());
+    time::wait_for_date(BlockDate::new(0, 5), jormungandr.rest());
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
 }
 
@@ -146,7 +144,6 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
                 value: 100.into(),
             },
         ])
-        .with_explorer()
         .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
@@ -209,7 +206,6 @@ pub fn test_mempool_log_max_entries_equals_0() {
                 value: 100.into(),
             },
         ])
-        .with_explorer()
         .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 0.into(),
@@ -244,7 +240,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .unwrap()
         .assert_empty();
 
-    time::wait_for_date(BlockDate::new(0, 5), jormungandr.explorer());
+    time::wait_for_date(BlockDate::new(0, 5), jormungandr.rest());
 
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
 }
@@ -267,7 +263,6 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
                 value: 100.into(),
             },
         ])
-        .with_explorer()
         .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 2.into(),
@@ -302,7 +297,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .unwrap()
         .assert_size(2);
 
-    time::wait_for_date(BlockDate::new(0, 10), jormungandr.explorer());
+    time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 2.into())
