@@ -205,9 +205,7 @@ impl BackwardCompatibleRest {
             .map(|x| MemPoolCheck::new(x.id()))
             .collect();
         let response = self.raw.send_fragment_batch(fragments, fail_fast)?;
-
         if response.status() != reqwest::StatusCode::OK {
-            println!("{:?}", response);
             return Err(RestError::NonSuccessErrorCode {
                 status: response.status(),
                 response: response.text().unwrap(),
@@ -216,6 +214,8 @@ impl BackwardCompatibleRest {
         }
 
         self.print_debug_response(&response);
+        println!("{:?}", response.text().unwrap());
+
         Ok(checks)
     }
 

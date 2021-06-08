@@ -1,6 +1,7 @@
 use crate::common::jormungandr::JormungandrProcess;
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
-use jormungandr_testing_utils::testing::node::assert_bad_request;
+use chain_core::property::Fragment;
+use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jormungandr_testing_utils::wallet::Wallet;
 use rstest::*;
 
@@ -33,9 +34,15 @@ pub fn fragment_already_in_log(world: (JormungandrProcess, Wallet, Wallet, Walle
         )
         .unwrap();
 
-    assert_bad_request(
-        jormungandr
-            .rest()
-            .send_fragment_batch(vec![alice_fragment.clone(), alice_fragment], false),
-    );
+    let response = jormungandr
+        .rest()
+        .raw()
+        .send_fragment_batch(vec![alice_fragment.clone(), alice_fragment.clone()], false)
+        .unwrap();
+
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    let summary: FragmentsProcessingSummary =
+        serde_json::from_str(&response.text().unwrap()).unwrap();
+    assert_eq!(summary.accepted, vec![alice_fragment.id()]);
+    assert_eq!(summary.rejected, vec![]);
 }
