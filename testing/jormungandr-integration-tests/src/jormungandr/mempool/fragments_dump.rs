@@ -55,7 +55,6 @@ pub fn dump_send_correct_fragments() {
         sender,
         receiver,
         jormungandr.to_remote(),
-        jormungandr.explorer(),
         time_era.slots_per_epoch(),
         2,
         2,
@@ -65,7 +64,7 @@ pub fn dump_send_correct_fragments() {
     fragment_generator.prepare(BlockDate::new(1, 0));
     let verifier = FragmentVerifier;
 
-    time::wait_for_epoch(1, jormungandr.explorer());
+    time::wait_for_epoch(1, jormungandr.rest());
 
     let wait = Wait::new(Duration::from_secs(1), 25);
     verifier

@@ -1,9 +1,8 @@
 mod fragment_log;
 
-pub use fragment_log::FragmentLogVerifier;
+pub use fragment_log::{assert_accepted_rejected, assert_bad_request, FragmentLogVerifier};
 
 use super::JormungandrRest;
-use crate::testing::node::rest::RestError;
 use crate::wallet::Wallet;
 use jormungandr_lib::interfaces::{AccountState, Value};
 
@@ -20,7 +19,7 @@ impl JormungandrStateVerifier {
         }
     }
 
-    pub fn fragment_logs(&self) -> Result<FragmentLogVerifier, RestError> {
+    pub fn fragment_logs(&self) -> FragmentLogVerifier {
         FragmentLogVerifier::new(self.rest.clone())
     }
 

@@ -1,41 +1,32 @@
-use crate::testing::node::explorer::Explorer;
+use super::JormungandrRest;
 use jormungandr_lib::interfaces::BlockDate;
+use std::str::FromStr;
 
-pub fn wait_for_epoch(epoch_id: u64, mut explorer: Explorer) {
-    explorer.enable_logs();
-    while explorer
-        .last_block()
-        .unwrap()
-        .data
-        .unwrap()
-        .tip
-        .block
-        .date
-        .epoch
-        .id
-        .parse::<u64>()
-        .unwrap()
-        < epoch_id
-    {
+pub fn wait_for_epoch(target_epoch_id: u32, mut rest: JormungandrRest) {
+    rest.enable_logger();
+
+    while get_current_date(&mut rest).epoch() < target_epoch_id {
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
 }
 
-pub fn wait_for_date(target_block_date: BlockDate, mut explorer: Explorer) {
-    explorer.enable_logs();
+pub fn wait_for_date(target_block_date: BlockDate, mut rest: JormungandrRest) {
+    rest.enable_logger();
 
-    loop {
-        let current_block_date = explorer.last_block().unwrap().data.unwrap().tip.block.date;
-
-        let epoch = current_block_date.epoch.id.parse::<u32>().unwrap();
-        let slot_id = current_block_date.slot.parse::<u32>().unwrap();
-
-        let current_block_date = BlockDate::new(epoch, slot_id);
-
-        if target_block_date <= current_block_date {
-            return;
-        }
-
+    while get_current_date(&mut rest) < target_block_date {
         std::thread::sleep(std::time::Duration::from_secs(1));
     }
+}
+
+fn get_current_date(rest: &mut JormungandrRest) -> BlockDate {
+    BlockDate::from_str(
+        rest.stats()
+            .unwrap()
+            .stats
+            .unwrap()
+            .last_block_date
+            .unwrap()
+            .as_ref(),
+    )
+    .unwrap()
 }

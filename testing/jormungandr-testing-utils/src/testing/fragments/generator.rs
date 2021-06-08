@@ -2,9 +2,10 @@ use super::{FragmentSender, FragmentSenderError, MemPoolCheck};
 use crate::testing::SyncNode;
 use crate::{
     stake_pool::StakePool,
-    testing::{node::Explorer, RemoteJormungandr, VotePlanBuilder},
+    testing::{RemoteJormungandr, VotePlanBuilder},
     wallet::Wallet,
 };
+use chain_core::property::FromStr;
 use chain_impl_mockchain::{
     certificate::{VotePlan, VoteTallyPayload},
     vote::Choice,
@@ -24,7 +25,6 @@ pub struct FragmentGenerator<'a, S: SyncNode + Send> {
     vote_plans_for_tally: Vec<VotePlan>,
     node: RemoteJormungandr,
     rand: OsRng,
-    explorer: Explorer,
     slots_per_epoch: u32,
     fragment_sender: FragmentSender<'a, S>,
     stake_pools_count: usize,
@@ -37,7 +37,6 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         sender: Wallet,
         receiver: Wallet,
         node: RemoteJormungandr,
-        explorer: Explorer,
         slots_per_epoch: u32,
         stake_pools_count: usize,
         vote_plans_for_tally_count: usize,
@@ -54,7 +53,6 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             vote_plans_for_tally: vec![],
             node,
             rand: OsRng,
-            explorer,
             slots_per_epoch,
             fragment_sender,
             stake_pools_count,
@@ -181,7 +179,18 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     .send_pool_retire(&mut self.sender, &stake_pool, &self.node)
             }
             7 => {
-                let block_date = self.explorer.current_time();
+                let block_date = BlockDate::from_str(
+                    self.node
+                        .rest()
+                        .stats()
+                        .unwrap()
+                        .stats
+                        .unwrap()
+                        .last_block_date
+                        .unwrap()
+                        .as_ref(),
+                )
+                .unwrap();
 
                 let time_era = TimeEra::new(
                     (block_date.slot() as u64).into(),

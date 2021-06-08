@@ -1,6 +1,7 @@
 pub use self::{
     adversary::{
         AdversaryFragmentSender, AdversaryFragmentSenderError, AdversaryFragmentSenderSetup,
+        FaultyTransactionBuilder,
     },
     export::{FragmentExporter, FragmentExporterError},
     generator::FragmentGenerator,

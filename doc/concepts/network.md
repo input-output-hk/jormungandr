@@ -92,7 +92,7 @@ free). These bi-directional connections are used to propagate events such as:
 
 In order to facilitate the handling of unreachable nodes or of misbehaving ones
 we have built a node policy tooling. Currently, we collect connectivity statuses
-for each node. The policy can then be tuned over the collected data to apply 
+for each node. The policy can then be tuned over the collected data to apply
 some parameters when connecting to a given node, as well as banning nodes from
 our topology.
 
@@ -123,7 +123,7 @@ Then the policy, based on the logged data associated to this node, may decide to
 this node in quarantine for a certain amount of time.
 
 Trusted nodes are the ones to which we were able to connect successfully.
-A connectivity report against those nodes will make them transition to the possible 
+A connectivity report against those nodes will make them transition to the possible
 contact level, while a successful connection attempt will promote them again to
 trusted.
 

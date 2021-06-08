@@ -197,7 +197,7 @@ pub fn test_vote_flow_bft() {
         .parse::<u64>()
         .unwrap();
 
-    wait_for_epoch(1, jormungandr.explorer());
+    wait_for_epoch(1, jormungandr.rest());
 
     transaction_sender
         .send_vote_tally(
@@ -208,7 +208,7 @@ pub fn test_vote_flow_bft() {
         )
         .unwrap();
 
-    wait_for_epoch(2, jormungandr.explorer());
+    wait_for_epoch(2, jormungandr.rest());
 
     assert_first_proposal_has_votes(
         2 * initial_fund_per_wallet,
@@ -311,7 +311,7 @@ pub fn test_vote_flow_praos() {
         .send_vote_cast(&mut clarice, &vote_plan, 0, &no_choice, &jormungandr)
         .unwrap();
 
-    wait_for_epoch(1, jormungandr.explorer());
+    wait_for_epoch(1, jormungandr.rest());
 
     transaction_sender
         .send_vote_tally(
@@ -322,7 +322,7 @@ pub fn test_vote_flow_praos() {
         )
         .unwrap();
 
-    wait_for_epoch(3, jormungandr.explorer());
+    wait_for_epoch(3, jormungandr.rest());
 
     let rewards_after = jormungandr
         .explorer()
@@ -439,7 +439,7 @@ pub fn jcli_e2e_flow() {
         .parse::<u64>()
         .unwrap();
 
-    time::wait_for_epoch(1, jormungandr.explorer());
+    time::wait_for_epoch(1, jormungandr.rest());
 
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
     let vote_cast = jcli
@@ -486,7 +486,7 @@ pub fn jcli_e2e_flow() {
         .send(&tx)
         .assert_in_block();
 
-    time::wait_for_epoch(2, jormungandr.explorer());
+    time::wait_for_epoch(2, jormungandr.rest());
 
     let vote_tally_cert = jcli.certificate().new_public_vote_tally(vote_plan_id);
 
@@ -504,7 +504,7 @@ pub fn jcli_e2e_flow() {
         .send(&tx)
         .assert_in_block();
 
-    time::wait_for_epoch(3, jormungandr.explorer());
+    time::wait_for_epoch(3, jormungandr.rest());
 
     assert!(jormungandr
         .rest()

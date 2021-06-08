@@ -45,7 +45,6 @@ pub fn fragment_load_test() {
         faucet,
         receiver,
         jormungandr.to_remote(),
-        jormungandr.explorer(),
         60,
         30,
         30,
@@ -67,7 +66,7 @@ pub fn fragment_load_test() {
     let wait = Wait::new(Duration::from_secs(1), 25);
     fragment_check.wait_until_all_processed(&wait).unwrap();
 
-    time::wait_for_epoch(1, jormungandr.explorer());
+    time::wait_for_epoch(1, jormungandr.rest());
 
     load::start_async(
         request_generator,

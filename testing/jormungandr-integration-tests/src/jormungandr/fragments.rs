@@ -48,7 +48,6 @@ pub fn send_all_fragments() {
         sender,
         receiver,
         jormungandr.to_remote(),
-        jormungandr.explorer(),
         time_era.slots_per_epoch(),
         30,
         30,
@@ -63,7 +62,7 @@ pub fn send_all_fragments() {
     let wait = Wait::new(Duration::from_secs(1), 25);
     fragment_check.wait_until_all_processed(&wait).unwrap();
 
-    time::wait_for_epoch(1, jormungandr.explorer());
+    time::wait_for_epoch(1, jormungandr.rest());
 
     let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
     let verifier = FragmentVerifier;
