@@ -117,7 +117,7 @@ impl FragmentVerifier {
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
         for check in checks {
-            let status = self.wait_fragment(duration, check, node)?;
+            let status = self.wait_fragment(duration, check, false, node)?;
             self.is_in_block(status, node)?;
         }
         Ok(())
@@ -129,7 +129,7 @@ impl FragmentVerifier {
         check: MemPoolCheck,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
-        let status = self.wait_fragment(duration, check, node)?;
+        let status = self.wait_fragment(duration, check, false, node)?;
         self.is_in_block(status, node)
     }
 
@@ -181,6 +181,7 @@ impl FragmentVerifier {
         &self,
         duration: Duration,
         check: MemPoolCheck,
+        exit_on_pending: bool,
         node: &A,
     ) -> Result<FragmentStatus, FragmentVerifierError> {
         let max_try = 50;
@@ -197,6 +198,7 @@ impl FragmentVerifier {
             match status {
                 FragmentStatus::Rejected { .. } => return Ok(status),
                 FragmentStatus::InABlock { .. } => return Ok(status),
+                FragmentStatus::Pending if exit_on_pending => return Ok(status),
                 _ => (),
             }
             std::thread::sleep(duration);

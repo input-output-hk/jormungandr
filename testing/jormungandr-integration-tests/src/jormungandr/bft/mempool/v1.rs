@@ -84,6 +84,16 @@ pub fn test_mempool_pool_max_entries_limit() {
             .send_fragment_batch(vec![first_transaction, second_transaction], false),
     );
 
+    // Wait until the fragment enters the mempool
+    FragmentVerifier
+        .wait_fragment(
+            Duration::from_millis(100),
+            mempools[0].clone(),
+            true,
+            &jormungandr,
+        )
+        .unwrap();
+
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
@@ -262,6 +272,16 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
             .send_fragment_batch(vec![first_transaction, second_transaction], false),
     );
 
+    // Wait until the fragment enters the mempool
+    FragmentVerifier
+        .wait_fragment(
+            Duration::from_millis(100),
+            mempools[0].clone(),
+            true,
+            &jormungandr,
+        )
+        .unwrap();
+
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
@@ -426,10 +446,20 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         )
         .unwrap();
 
-    fragment_sender
+    let mempools = fragment_sender
         .send_batch_fragments(
             vec![first_transaction, second_transaction],
             false,
+            &jormungandr,
+        )
+        .unwrap();
+
+    // Wait until the fragment enters the mempool
+    FragmentVerifier
+        .wait_fragment(
+            Duration::from_millis(100),
+            mempools[1].clone(),
+            true,
             &jormungandr,
         )
         .unwrap();

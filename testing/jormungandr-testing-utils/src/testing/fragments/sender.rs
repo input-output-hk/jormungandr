@@ -343,7 +343,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         node: &A,
     ) -> Result<(), FragmentSenderError> {
         let verifier = FragmentVerifier;
-        match verifier.wait_fragment(Duration::from_secs(2), check.clone(), node)? {
+        match verifier.wait_fragment(Duration::from_secs(2), check.clone(), false, node)? {
             FragmentStatus::Rejected { reason } => Err(FragmentSenderError::FragmentNotInBlock {
                 alias: FragmentNode::alias(node).to_string(),
                 reason,
