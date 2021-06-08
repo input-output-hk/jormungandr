@@ -1,9 +1,12 @@
 use crate::common::jormungandr::{ConfigurationBuilder, Starter};
 use crate::common::startup;
 use assert_fs::TempDir;
+use chain_core::property::Fragment;
 use jormungandr_lib::interfaces::BlockDate;
+use jormungandr_lib::interfaces::FragmentRejectionReason;
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::Mempool;
+use jormungandr_testing_utils::testing::node::assert_accepted_rejected;
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::{FragmentSenderSetup, FragmentVerifier};
 use std::time::Duration;
@@ -40,8 +43,6 @@ pub fn test_mempool_pool_max_entries_limit() {
         .start()
         .unwrap();
 
-    let fragment_sender = jormungandr.fragment_sender(FragmentSenderSetup::no_verify());
-
     let verifier = jormungandr
         .correct_state_verifier()
         .record_wallets_state(vec![&sender, &receiver]);
@@ -66,18 +67,26 @@ pub fn test_mempool_pool_max_entries_limit() {
         )
         .unwrap();
 
-    let mempools = fragment_sender
-        .send_batch_fragments(
-            vec![first_transaction, second_transaction],
-            false,
-            &jormungandr,
-        )
-        .unwrap();
+    let mempools = assert_accepted_rejected(
+        vec![first_transaction.id()],
+        vec![
+            (
+                second_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+            ),
+            (
+                second_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
+            ),
+        ],
+        jormungandr
+            .rest()
+            .send_fragment_batch(vec![first_transaction, second_transaction], false),
+    );
 
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_size(1)
         .assert_contains_only(mempools[0].fragment_id());
 
@@ -126,8 +135,6 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .correct_state_verifier()
         .record_wallets_state(vec![&sender, &receiver]);
 
-    let fragment_sender = jormungandr.fragment_sender(FragmentSenderSetup::no_verify());
-
     let first_transaction = sender
         .transaction_to(
             &jormungandr.genesis_block_hash(),
@@ -148,18 +155,34 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         )
         .unwrap();
 
-    fragment_sender
-        .send_batch_fragments(
-            vec![first_transaction, second_transaction],
-            false,
-            &jormungandr,
-        )
-        .unwrap();
+    assert_accepted_rejected(
+        vec![],
+        vec![
+            (
+                first_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+            ),
+            (
+                second_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+            ),
+            (
+                first_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
+            ),
+            (
+                second_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
+            ),
+        ],
+        jormungandr
+            .rest()
+            .send_fragment_batch(vec![first_transaction, second_transaction], false),
+    );
 
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_empty();
 
     time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
@@ -202,8 +225,6 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .correct_state_verifier()
         .record_wallets_state(vec![&sender, &receiver]);
 
-    let fragment_sender = jormungandr.fragment_sender(FragmentSenderSetup::no_verify());
-
     let first_transaction = sender
         .transaction_to(
             &jormungandr.genesis_block_hash(),
@@ -224,18 +245,26 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         )
         .unwrap();
 
-    let mempools = fragment_sender
-        .send_batch_fragments(
-            vec![first_transaction, second_transaction],
-            false,
-            &jormungandr,
-        )
-        .unwrap();
+    let mempools = assert_accepted_rejected(
+        vec![first_transaction.id()],
+        vec![
+            (
+                second_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+            ),
+            (
+                second_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
+            ),
+        ],
+        jormungandr
+            .rest()
+            .send_fragment_batch(vec![first_transaction, second_transaction], false),
+    );
 
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_size(1)
         .assert_contains_only(mempools[0].fragment_id());
 
@@ -284,8 +313,6 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .correct_state_verifier()
         .record_wallets_state(vec![&sender, &receiver]);
 
-    let fragment_sender = jormungandr.fragment_sender(FragmentSenderSetup::no_verify());
-
     let first_transaction = sender
         .transaction_to(
             &jormungandr.genesis_block_hash(),
@@ -306,18 +333,34 @@ pub fn test_mempool_log_max_entries_equals_0() {
         )
         .unwrap();
 
-    fragment_sender
-        .send_batch_fragments(
-            vec![first_transaction, second_transaction],
-            false,
-            &jormungandr,
-        )
-        .unwrap();
+    assert_accepted_rejected(
+        vec![],
+        vec![
+            (
+                first_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+            ),
+            (
+                second_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+            ),
+            (
+                first_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
+            ),
+            (
+                second_transaction.id(),
+                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
+            ),
+        ],
+        jormungandr
+            .rest()
+            .send_fragment_batch(vec![first_transaction, second_transaction], false),
+    );
 
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_empty();
 
     time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
@@ -394,7 +437,6 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_size(2);
 
     time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());

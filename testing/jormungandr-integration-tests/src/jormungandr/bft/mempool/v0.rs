@@ -57,7 +57,6 @@ pub fn test_mempool_pool_max_entries_limit() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_size(1)
         .assert_contains_only(mempool_check.fragment_id());
 
@@ -119,7 +118,6 @@ pub fn test_mempool_pool_max_entries_equal_0() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_empty();
 
     time::wait_for_date(BlockDate::new(0, 5), jormungandr.rest());
@@ -175,7 +173,6 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_size(1)
         .assert_contains_only(first_fragment.fragment_id());
 
@@ -237,7 +234,6 @@ pub fn test_mempool_log_max_entries_equals_0() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_empty();
 
     time::wait_for_date(BlockDate::new(0, 5), jormungandr.rest());
@@ -294,7 +290,6 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .unwrap()
         .assert_size(2);
 
     time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());

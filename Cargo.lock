@@ -1908,6 +1908,7 @@ dependencies = [
  "rand_core 0.6.2",
  "regex",
  "reqwest",
+ "rstest",
  "serde",
  "serde_derive",
  "serde_json",
@@ -3163,6 +3164,19 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi",
+]
+
+[[package]]
+name = "rstest"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "041bb0202c14f6a158bbbf086afb03d0c6e975c2dec7d4912f8061ed44f290af"
+dependencies = [
+ "cfg-if 1.0.0",
+ "proc-macro2 1.0.27",
+ "quote 1.0.9",
+ "rustc_version",
+ "syn 1.0.72",
 ]
 
 [[package]]

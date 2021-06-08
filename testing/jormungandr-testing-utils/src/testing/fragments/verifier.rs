@@ -1,9 +1,10 @@
 use crate::testing::fragments::node::{FragmentNode, FragmentNodeError, MemPoolCheck};
 use chain_impl_mockchain::fragment::FragmentId;
+use jormungandr_lib::interfaces::FragmentLog;
 use jormungandr_lib::interfaces::FragmentStatus;
-use std::time::Duration;
-
 use jortestkit::prelude::Wait;
+use std::collections::HashMap;
+use std::time::Duration;
 
 #[derive(custom_debug::Debug, thiserror::Error)]
 pub enum FragmentVerifierError {
@@ -14,7 +15,7 @@ pub enum FragmentVerifierError {
         #[debug(skip)]
         logs: Vec<String>,
     },
-    #[error("transaction already balanced")]
+    #[error("transaction is pending for too long")]
     FragmentIsPendingForTooLong {
         fragment_id: FragmentId,
         timeout: Duration,
@@ -22,6 +23,14 @@ pub enum FragmentVerifierError {
         #[debug(skip)]
         logs: Vec<String>,
     },
+    #[error("transactions are pending for too long")]
+    FragmentsArePendingForTooLong {
+        timeout: Duration,
+        alias: String,
+        #[debug(skip)]
+        logs: Vec<String>,
+    },
+
     #[error("fragment sent to node: {alias} is not in in fragment pool :({fragment_id})")]
     FragmentNotInMemPoolLogs {
         alias: String,
@@ -50,6 +59,7 @@ impl FragmentVerifierError {
         let maybe_logs = match self {
             FragmentNotInBlock { logs, .. }
             | FragmentIsPendingForTooLong { logs, .. }
+            | FragmentsArePendingForTooLong { logs, .. }
             | FragmentNotInMemPoolLogs { logs, .. }
             | FragmentNode(FragmentNodeError::CannotSendFragment { logs, .. }) => Some(logs),
             AtLeastOneRejectedFragment { logs, .. } => Some(logs),
@@ -194,6 +204,42 @@ impl FragmentVerifier {
 
         Err(FragmentVerifierError::FragmentIsPendingForTooLong {
             fragment_id: *check.fragment_id(),
+            timeout: Duration::from_secs(duration.as_secs() * max_try),
+            alias: node.alias().to_string(),
+            logs: node.log_content(),
+        })
+    }
+
+    pub fn wait_for_all_fragments<A: FragmentNode + ?Sized>(
+        &self,
+        duration: Duration,
+        node: &A,
+    ) -> Result<HashMap<FragmentId, FragmentLog>, FragmentVerifierError> {
+        let max_try = 50;
+        for _ in 0..max_try {
+            let status_result = node.fragment_logs();
+
+            if status_result.is_err() {
+                std::thread::sleep(duration);
+                continue;
+            }
+
+            let statuses = status_result.unwrap();
+
+            let any_rejected = statuses.iter().any(|(_, log)| {
+                !matches!(
+                    log.status(),
+                    FragmentStatus::Rejected { .. } | FragmentStatus::InABlock { .. }
+                )
+            });
+
+            if !any_rejected {
+                return Ok(statuses);
+            }
+            std::thread::sleep(duration);
+        }
+
+        Err(FragmentVerifierError::FragmentsArePendingForTooLong {
             timeout: Duration::from_secs(duration.as_secs() * max_try),
             alias: node.alias().to_string(),
             logs: node.log_content(),
