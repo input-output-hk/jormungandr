@@ -5,7 +5,7 @@ use super::{
     subscription, Channels, GlobalStateR,
 };
 use crate::blockcfg as app_data;
-use crate::intercom::{self, BlockMsg, ClientMsg, TopologyMsg};
+use crate::intercom::{self, BlockMsg, ClientMsg, RequestSink, TopologyMsg};
 use crate::topology::{self, Gossips};
 use crate::utils::async_msg::MessageBox;
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
@@ -116,6 +116,27 @@ fn serve_subscription<S: Stream>(sub: S) -> SubscriptionStream<S> {
     sub.map(Ok)
 }
 
+// extracted as an external function as a workaround for
+// https://github.com/dtolnay/async-trait/issues/144
+async fn join_streams<T, V, E, R>(
+    stream: PushStream<T>,
+    sink: RequestSink<<T as Decode>::Object>,
+    reply: V,
+) -> Result<(), Error>
+where
+    T: Decode,
+    E: Into<Error>,
+    V: Future<Output = Result<R, E>>,
+{
+    try_join!(
+        stream
+            .and_then(|header| async { header.decode() })
+            .forward(sink.sink_err_into()),
+        reply.err_into::<Error>(),
+    )?;
+    Ok(())
+}
+
 #[async_trait]
 impl BlockService for NodeService {
     type PullBlocksStream = ResponseStream<app_data::Block>;
@@ -221,13 +242,7 @@ impl BlockService for NodeService {
         send_message(block_box, BlockMsg::ChainHeaders(handle))
             .instrument(span)
             .await?;
-        try_join!(
-            stream
-                .and_then(|header| async { header.decode() })
-                .forward(sink.sink_err_into()),
-            reply.err_into(),
-        )?;
-        Ok(())
+        join_streams(stream, sink, reply).await
     }
 
     async fn upload_blocks(&self, stream: PushStream<Block>) -> Result<(), Error> {
@@ -238,13 +253,7 @@ impl BlockService for NodeService {
         send_message(block_box, BlockMsg::NetworkBlocks(handle))
             .instrument(span)
             .await?;
-        try_join!(
-            stream
-                .and_then(|block| async { block.decode() })
-                .forward(sink.sink_err_into()),
-            reply.err_into(),
-        )?;
-        Ok(())
+        join_streams(stream, sink, reply).await
     }
 
     async fn block_subscription(
