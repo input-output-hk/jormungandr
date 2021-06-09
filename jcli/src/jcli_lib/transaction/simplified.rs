@@ -84,12 +84,13 @@ impl MakeTransaction {
             self.force,
         )?;
 
-        transaction.store(&self.common.staging_file)?;
-
         if self.post {
             let fragment = transaction.fragment()?;
             let fragment_id = post_fragment(self.rest_args, fragment)?;
-            println!("{}", fragment_id);
+            println!("Posted fragment id: {}", fragment_id);
+        } else {
+            // if not posted make the transaction available as a file
+            transaction.store(&self.common.staging_file)?;
         }
 
         Ok(())
