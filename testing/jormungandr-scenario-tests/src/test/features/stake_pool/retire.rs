@@ -64,7 +64,7 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
 
     std::thread::sleep(std::time::Duration::from_secs(30));
 
-    let explorer = leader_1.rest();
+    let explorer = leader_1.explorer();
     let stake_pool_3 = controller.stake_pool(LEADER_3)?;
 
     let stake_pool_state_before =
