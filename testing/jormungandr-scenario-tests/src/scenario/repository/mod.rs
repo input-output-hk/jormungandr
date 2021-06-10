@@ -178,11 +178,7 @@ fn scenarios_repository() -> Vec<Scenario> {
         ),
         Scenario::new("interactive", interactive, vec![Tag::Interactive]),
         Scenario::new("example", scenario_2, vec![Tag::Example]),
-        Scenario::new(
-            "leader_restart",
-            leader_restart,
-            vec![Tag::Short, Tag::Unstable],
-        ),
+        Scenario::new("leader_restart", leader_restart, vec![Tag::Short]),
         Scenario::new(
             "passive_node_is_updated",
             passive_node_is_updated,
@@ -247,7 +243,7 @@ fn scenarios_repository() -> Vec<Scenario> {
         Scenario::new(
             "retire_stake_pool_explorer",
             retire_stake_pool_explorer,
-            vec![Tag::Short, Tag::Unstable],
+            vec![Tag::Short],
         ),
         Scenario::new(
             "current_node_legacy_fragment_propagation",
@@ -315,15 +311,11 @@ fn scenarios_repository() -> Vec<Scenario> {
             p2p_stats_test,
             vec![Tag::Short, Tag::Unstable],
         ),
-        Scenario::new(
-            "max_connections",
-            max_connections,
-            vec![Tag::Short, Tag::Unstable],
-        ),
+        Scenario::new("max_connections", max_connections, vec![Tag::Short]),
         Scenario::new(
             "passive_node_explorer",
             passive_node_explorer,
-            vec![Tag::Short, Tag::Unstable],
+            vec![Tag::Short],
         ),
         Scenario::new(
             "point_to_point_disruption_overlap",

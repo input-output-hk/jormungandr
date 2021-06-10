@@ -256,6 +256,10 @@ impl NodeController {
         Ok(hash)
     }
 
+    pub fn rest(&self) -> JormungandrRest {
+        self.rest_client.clone()
+    }
+
     pub fn blocks_to_tip(&self, from: HeaderId) -> Result<Vec<Block>> {
         self.grpc_client
             .pull_blocks_to_tip(from)
