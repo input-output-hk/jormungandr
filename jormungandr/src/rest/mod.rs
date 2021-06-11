@@ -33,14 +33,30 @@ pub async fn start_rest_server(config: Rest, explorer_enabled: bool, context: Co
     let api = warp::path!("api" / ..)
         .and(v0::filter(context.clone()).or(v1::filter(context.clone())))
         .with(warp::filters::trace::trace(|info| {
-            tracing::span!(
+            use http_zipkin::get_trace_context;
+            use tracing::field::Empty;
+            let span = tracing::span!(
                 tracing::Level::DEBUG,
                 "rest_api_request",
                 method = %info.method(),
-                path = %info.path(),
+                path = info.path(),
                 version = ?info.version(),
-                remote_addr = ?info.remote_addr(),
-            )
+                remote_addr = Empty,
+                trace_id = Empty,
+                span_id = Empty,
+                parent_span_id = Empty,
+            );
+            if let Some(remote_addr) = info.remote_addr() {
+                span.record("remote_addr", &remote_addr.to_string().as_str());
+            }
+            if let Some(trace_context) = get_trace_context(info.request_headers()) {
+                span.record("trace_id", &trace_context.trace_id().to_string().as_str());
+                span.record("span_id", &trace_context.span_id().to_string().as_str());
+                if let Some(parent_span_id) = trace_context.parent_id() {
+                    span.record("parent_span_id", &parent_span_id.to_string().as_str());
+                }
+            }
+            span
         }));
     if explorer_enabled {
         let explorer = explorer::filter(context);
