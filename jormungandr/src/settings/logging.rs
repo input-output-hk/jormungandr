@@ -70,6 +70,8 @@ pub enum LogOutput {
         backend: SocketAddr,
         log_id: String,
     },
+    #[cfg(feature = "telemetry")]
+    OpenTelemetry,
 }
 
 impl FromStr for LogFormat {
@@ -94,6 +96,8 @@ impl FromStr for LogOutput {
             "stderr" => Ok(LogOutput::Stderr),
             #[cfg(feature = "systemd")]
             "journald" => Ok(LogOutput::Journald),
+            #[cfg(feature = "telemetry")]
+            "opentelemetry" => Ok(LogOutput::OpenTelemetry),
             other => Err(format!("unknown log output '{}'", other)),
         }
     }
@@ -209,6 +213,17 @@ impl LogSettings {
                     .connect_tcp(backend)
                     .map_err(Error::Gelf)?;
                 tokio::spawn(task);
+                tracing_subscriber::registry()
+                    .with(self.config.level)
+                    .with(layer)
+                    .init();
+            }
+            #[cfg(feature = "telemetry")]
+            LogOutput::OpenTelemetry => {
+                use opentelemetry::sdk::export::trace::stdout;
+
+                let tracer = stdout::new_pipeline().install_simple();
+                let layer = tracing_opentelemetry::layer().with_tracer(tracer);
                 tracing_subscriber::registry()
                     .with(self.config.level)
                     .with(layer)
