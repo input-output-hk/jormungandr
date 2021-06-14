@@ -280,7 +280,12 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         node: &A,
     ) -> Result<(), AdversaryFragmentSenderError> {
         let verifier = FragmentVerifier;
-        match verifier.wait_fragment(Duration::from_secs(2), check.clone(), false, node)? {
+        match verifier.wait_fragment(
+            Duration::from_secs(2),
+            check.clone(),
+            Default::default(),
+            node,
+        )? {
             FragmentStatus::Rejected { .. } => Ok(()),
             FragmentStatus::InABlock { date, block } => {
                 Err(AdversaryFragmentSenderError::FragmentNotRejected {
