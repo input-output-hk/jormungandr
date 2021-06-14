@@ -366,6 +366,23 @@ pub async fn process_new_ref(
 
                 tip.update_ref(candidate).await;
             } else {
+                let common_ancestor = blockchain
+                    .storage()
+                    .find_common_ancestor(candidate_hash, tip_ref.hash())?;
+
+                let stream = blockchain
+                    .storage()
+                    .stream_from_to(common_ancestor, candidate_hash)?;
+                tokio::pin!(stream);
+
+                while let Some(block) = stream.next().await {
+                    let block = block.unwrap();
+                    let fragment_ids = block.fragments().map(|f| f.id()).collect();
+                    if let Some(ref mut tx_msg_box) = tx_msg_box {
+                        try_request_fragment_removal(tx_msg_box, fragment_ids, &block.header())?;
+                    }
+                }
+
                 tracing::info!(
                     "switching branch from {} to {}",
                     tip_ref.header().description(),
