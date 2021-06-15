@@ -375,6 +375,9 @@ pub async fn process_new_ref(
                     .stream_from_to(common_ancestor, candidate_hash)?;
                 tokio::pin!(stream);
 
+                // skip the first block as it is shared between the two branches
+                stream.next().await;
+
                 while let Some(block) = stream.next().await {
                     let block = block.unwrap();
                     let fragment_ids = block.fragments().map(|f| f.id()).collect();
