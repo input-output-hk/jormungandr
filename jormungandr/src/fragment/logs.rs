@@ -1,7 +1,7 @@
 use crate::fragment::FragmentId;
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{FragmentLog, FragmentOrigin, FragmentStatus},
+    interfaces::{BlockDate, FragmentLog, FragmentOrigin, FragmentStatus},
 };
 use lru::LruCache;
 use std::collections::HashMap;
@@ -105,5 +105,23 @@ impl Logs {
 
     pub fn logs(&self) -> impl Iterator<Item = &FragmentLog> {
         self.entries.iter().map(|(_, v)| v)
+    }
+
+    pub fn remove_logs_after_date(&mut self, target_date: BlockDate) {
+        let mut to_remove = Vec::new();
+        for log in self.logs() {
+            match log.status() {
+                FragmentStatus::InABlock { date, .. } | FragmentStatus::Rejected { date, .. } => {
+                    if date > &target_date {
+                        to_remove.push(*log.fragment_id());
+                    }
+                }
+                FragmentStatus::Pending => (),
+            }
+        }
+
+        for fragment in to_remove {
+            self.entries.pop(&fragment);
+        }
     }
 }

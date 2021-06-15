@@ -262,7 +262,6 @@ impl Storage {
         }))
     }
 
-    // This should be done better
     pub fn find_common_ancestor(
         &self,
         tip_1: HeaderHash,

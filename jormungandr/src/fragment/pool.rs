@@ -13,7 +13,7 @@ use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
 use jormungandr_lib::{
     interfaces::{
-        FragmentLog, FragmentOrigin, FragmentRejectionReason, FragmentStatus,
+        BlockDate, FragmentLog, FragmentOrigin, FragmentRejectionReason, FragmentStatus,
         FragmentsProcessingSummary, PersistentFragmentLog, RejectedFragmentInfo,
     },
     time::SecondsSinceUnixEpoch,
@@ -251,6 +251,11 @@ impl Pools {
                     .await
             }
         }
+    }
+
+    // Remove from logs fragments that were confirmed (or rejected) in a branch
+    pub fn prune_after_ledger_branch(&mut self, branch_date: BlockDate) {
+        self.logs.remove_logs_after_date(branch_date)
     }
 }
 

@@ -374,11 +374,14 @@ pub async fn process_new_ref(
                     .stream_from_to(common_ancestor, candidate_hash)?;
                 tokio::pin!(stream);
 
-                // skip the first block as it is shared between the two branches
-                stream.next().await;
+                // there is always at least one block in the stream
+                let ancestor = stream.next().await.unwrap()?;
+                if let Some(ref mut tx_msg_box) = tx_msg_box {
+                    tx_msg_box.try_send(TransactionMsg::BranchSwitch(ancestor.date().into()))?;
+                }
 
                 while let Some(block) = stream.next().await {
-                    let block = block.unwrap();
+                    let block = block?;
                     let fragment_ids = block.fragments().map(|f| f.id()).collect();
                     if let Some(ref mut tx_msg_box) = tx_msg_box {
                         try_request_fragment_removal(tx_msg_box, fragment_ids, &block.header())?;

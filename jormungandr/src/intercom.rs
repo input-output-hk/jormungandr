@@ -9,7 +9,7 @@ use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
 use chain_network::error as net_error;
 use jormungandr_lib::interfaces::{
-    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
+    BlockDate, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
 };
 use poldercast::layer::Selection;
 
@@ -509,6 +509,7 @@ pub enum TransactionMsg {
         reply_handle: ReplyHandle<FragmentsProcessingSummary>,
     },
     RemoveTransactions(Vec<FragmentId>, FragmentStatus),
+    BranchSwitch(BlockDate),
     GetLogs(ReplyHandle<Vec<FragmentLog>>),
     GetStatuses(
         Vec<FragmentId>,
