@@ -354,14 +354,13 @@ pub async fn process_new_ref(
                     .storage()
                     .put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
 
-                let block = blockchain.storage().get(candidate_hash)?;
-                if let Some(block) = block {
-                    let fragment_ids = block.fragments().map(|f| f.id()).collect();
-                    if let Some(ref mut tx_msg_box) = tx_msg_box {
-                        try_request_fragment_removal(tx_msg_box, fragment_ids, &block.header())?;
-                    }
-                } else {
-                    panic!();
+                // if we were able to put the main branch tag at the candidate hash
+                // it cannot happen that no block is found now
+                let block = blockchain.storage().get(candidate_hash)?.unwrap();
+
+                let fragment_ids = block.fragments().map(|f| f.id()).collect();
+                if let Some(ref mut tx_msg_box) = tx_msg_box {
+                    try_request_fragment_removal(tx_msg_box, fragment_ids, &block.header())?;
                 }
 
                 tip.update_ref(candidate).await;
