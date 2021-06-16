@@ -114,6 +114,9 @@ impl Logs {
                 FragmentStatus::InABlock { date, .. } | FragmentStatus::Rejected { date, .. } => {
                     if date > &target_date {
                         to_remove.push(*log.fragment_id());
+                    } else {
+                        // iterating in most-recently used order (i.e. most recently added to block)
+                        break;
                     }
                 }
                 FragmentStatus::Pending => (),
