@@ -17,9 +17,13 @@ pub fn test_leadership_logs_parent_hash_is_correct() {
         .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(10))
         .unwrap();
 
+    // Give the node some time to produce blocks
+    std::thread::sleep(Duration::from_secs(5));
+
     let leadership_logs = jcli.rest().v0().leadership_log(jormungandr.rest_uri());
 
-    for leadership in leadership_logs.iter().take(10) {
+    // leadership logs are fetched in reverse order (newest first)
+    for leadership in leadership_logs.iter().take(10).rev() {
         if let LeadershipLogStatus::Block {
             block,
             parent,
