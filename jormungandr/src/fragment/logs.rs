@@ -111,7 +111,7 @@ impl Logs {
         let mut to_remove = Vec::new();
         for log in self.logs() {
             match log.status() {
-                FragmentStatus::InABlock { date, .. } | FragmentStatus::Rejected { date, .. } => {
+                FragmentStatus::InABlock { .. } | FragmentStatus::Rejected { .. } => {
                     if date > &target_date {
                         to_remove.push(*log.fragment_id());
                     } else {

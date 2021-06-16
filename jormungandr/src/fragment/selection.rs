@@ -5,7 +5,7 @@ use crate::{
     fragment::FragmentId,
 };
 use chain_core::property::Fragment as _;
-use jormungandr_lib::interfaces::FragmentStatus;
+use jormungandr_lib::interfaces::{BlockDate, FragmentStatus};
 
 use async_trait::async_trait;
 use futures::prelude::*;
@@ -66,6 +66,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
     ) -> (Contents, ApplyBlockLedger) {
         use futures::future::{select, Either};
 
+        let date: BlockDate = ledger.block_date().into();
         let mut current_total_size = 0;
         let mut contents_builder = ContentsBuilder::new();
         let mut return_to_pool = Vec::new();
