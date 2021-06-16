@@ -8,7 +8,9 @@ use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::Mempool;
 use jormungandr_testing_utils::testing::node::assert_accepted_rejected;
 use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::{ExitStrategy, FragmentSenderSetup, FragmentVerifier};
+use jormungandr_testing_utils::testing::{
+    fragments::VerifyExitStrategy, FragmentSenderSetup, FragmentVerifier,
+};
 use std::time::Duration;
 
 #[test]
@@ -89,7 +91,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         .wait_fragment(
             Duration::from_millis(100),
             mempools[0].clone(),
-            ExitStrategy::OnPending,
+            VerifyExitStrategy::OnPending,
             &jormungandr,
         )
         .unwrap();
@@ -277,7 +279,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .wait_fragment(
             Duration::from_millis(100),
             mempools[0].clone(),
-            ExitStrategy::OnPending,
+            VerifyExitStrategy::OnPending,
             &jormungandr,
         )
         .unwrap();
@@ -459,7 +461,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .wait_fragment(
             Duration::from_millis(100),
             mempools[1].clone(),
-            ExitStrategy::OnPending,
+            VerifyExitStrategy::OnPending,
             &jormungandr,
         )
         .unwrap();
