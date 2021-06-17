@@ -1,6 +1,7 @@
 mod api;
 pub mod db;
 mod indexer;
+mod logging;
 mod settings;
 
 use crate::indexer::Indexer;
@@ -39,16 +40,26 @@ enum GlobalState {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::DEBUG)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).unwrap();
+    let (_guards, settings) = {
+        let mut settings = Settings::load()?;
+        let (guards, log_init_messages) = settings.log_settings.take().unwrap().init_log()?;
 
-    let settings = Settings::load()?;
+        let init_span = span!(Level::TRACE, "task", kind = "init");
+        let _enter = init_span.enter();
+        tracing::info!("Starting explorer");
 
-    let mut bootstrap_client = SubscriptionServiceClient::connect(settings.node.clone())
-        .await
-        .unwrap();
+        if let Some(msgs) = log_init_messages {
+            // if log settings were overriden, we will have an info
+            // message which we can unpack at this point.
+            for msg in &msgs {
+                tracing::info!("{}", msg);
+            }
+        }
+
+        (guards, settings)
+    };
+
+    let mut settings = Some(settings);
 
     let sync_stream = bootstrap_client
         .sync_multiverse(SyncMultiverseRequest { from: 0 })
