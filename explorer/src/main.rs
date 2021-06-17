@@ -260,8 +260,6 @@ async fn bootstrap(mut sync_stream: Streaming<chain_watch::Block>) -> Result<Exp
 
     tracing::info!("finish bootstrap process");
 
-    // the only way this unwrap can panic is if we don't get any blocks, I think, not even
-    // genesis.. which shouldn't happen
     db.ok_or(BootstrapError::EmptyStream).map_err(Into::into)
 }
 
