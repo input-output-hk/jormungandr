@@ -1,7 +1,9 @@
+mod adversary;
 mod all;
 mod tx_only;
 
 use crate::mjolnir_app::MjolnirError;
+pub use adversary::Adversary;
 pub use all::AllFragments;
 use structopt::StructOpt;
 pub use tx_only::TxOnly;
@@ -11,6 +13,8 @@ pub enum Standard {
     TxOnly(tx_only::TxOnly),
     /// Put load on endpoint using all supported fragment types
     All(all::AllFragments),
+    /// Put load on endpoint using invalid fragments
+    Adversary(adversary::Adversary),
 }
 
 impl Standard {
@@ -18,6 +22,7 @@ impl Standard {
         match self {
             Standard::TxOnly(tx_only_command) => tx_only_command.exec(),
             Standard::All(all_command) => all_command.exec(),
+            Standard::Adversary(adversary) => adversary.exec(),
         }
     }
 }

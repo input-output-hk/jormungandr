@@ -5,7 +5,7 @@ mod fragment;
 mod rest;
 
 pub use error::MjolnirError;
-
+use jortestkit::{load::Monitor, prelude::ProgressBarMode};
 use std::error::Error;
 use structopt::StructOpt;
 
@@ -66,5 +66,13 @@ impl MjolnirCommand {
             Rest(rest) => rest.exec()?,
         };
         Ok(())
+    }
+}
+
+pub fn build_monitor(progress_bar_mode: &ProgressBarMode) -> Monitor {
+    match progress_bar_mode {
+        ProgressBarMode::Monitor => Monitor::Progress(100),
+        ProgressBarMode::Standard => Monitor::Standard(100),
+        ProgressBarMode::None => Monitor::Disabled(10),
     }
 }

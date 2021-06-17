@@ -54,6 +54,10 @@ impl RemoteJormungandr {
     pub fn node_config(&self) -> &NodeConfig {
         self.node_config.as_ref().unwrap()
     }
+
+    pub fn clone_with_rest(&self) -> Self {
+        Self::new(self.rest.clone(), None, None, None, self.alias.clone())
+    }
 }
 
 impl SyncNode for RemoteJormungandr {
