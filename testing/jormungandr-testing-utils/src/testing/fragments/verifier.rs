@@ -117,7 +117,7 @@ impl FragmentVerifier {
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
         for check in checks {
-            let status = self.wait_fragment(duration, check, node)?;
+            let status = self.wait_fragment(duration, check, Default::default(), node)?;
             self.is_in_block(status, node)?;
         }
         Ok(())
@@ -129,7 +129,7 @@ impl FragmentVerifier {
         check: MemPoolCheck,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
-        let status = self.wait_fragment(duration, check, node)?;
+        let status = self.wait_fragment(duration, check, Default::default(), node)?;
         self.is_in_block(status, node)
     }
 
@@ -181,6 +181,7 @@ impl FragmentVerifier {
         &self,
         duration: Duration,
         check: MemPoolCheck,
+        exit_strategy: ExitStrategy,
         node: &A,
     ) -> Result<FragmentStatus, FragmentVerifierError> {
         let max_try = 50;
@@ -194,9 +195,10 @@ impl FragmentVerifier {
 
             let status = status_result.unwrap();
 
-            match status {
-                FragmentStatus::Rejected { .. } => return Ok(status),
-                FragmentStatus::InABlock { .. } => return Ok(status),
+            match (&status, exit_strategy) {
+                (FragmentStatus::Rejected { .. }, _) => return Ok(status),
+                (FragmentStatus::InABlock { .. }, _) => return Ok(status),
+                (FragmentStatus::Pending, ExitStrategy::OnPending) => return Ok(status),
                 _ => (),
             }
             std::thread::sleep(duration);
@@ -244,5 +246,19 @@ impl FragmentVerifier {
             alias: node.alias().to_string(),
             logs: node.log_content(),
         })
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum ExitStrategy {
+    /// Exit as soon as the fragment enters the mempool
+    OnPending,
+    /// Exit when the fragment has been processed (i.e. either Rejected or InABlock)
+    OnProcessed,
+}
+
+impl Default for ExitStrategy {
+    fn default() -> Self {
+        ExitStrategy::OnProcessed
     }
 }

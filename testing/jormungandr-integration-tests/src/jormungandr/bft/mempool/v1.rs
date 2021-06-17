@@ -8,7 +8,9 @@ use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::Mempool;
 use jormungandr_testing_utils::testing::node::assert_accepted_rejected;
 use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::{FragmentSenderSetup, FragmentVerifier};
+use jormungandr_testing_utils::testing::{
+    fragments::VerifyExitStrategy, FragmentSenderSetup, FragmentVerifier,
+};
 use std::time::Duration;
 
 #[test]
@@ -83,6 +85,16 @@ pub fn test_mempool_pool_max_entries_limit() {
             .rest()
             .send_fragment_batch(vec![first_transaction, second_transaction], false),
     );
+
+    // Wait until the fragment enters the mempool
+    FragmentVerifier
+        .wait_fragment(
+            Duration::from_millis(100),
+            mempools[0].clone(),
+            VerifyExitStrategy::OnPending,
+            &jormungandr,
+        )
+        .unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -262,6 +274,16 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
             .send_fragment_batch(vec![first_transaction, second_transaction], false),
     );
 
+    // Wait until the fragment enters the mempool
+    FragmentVerifier
+        .wait_fragment(
+            Duration::from_millis(100),
+            mempools[0].clone(),
+            VerifyExitStrategy::OnPending,
+            &jormungandr,
+        )
+        .unwrap();
+
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
@@ -426,10 +448,20 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         )
         .unwrap();
 
-    fragment_sender
+    let mempools = fragment_sender
         .send_batch_fragments(
             vec![first_transaction, second_transaction],
             false,
+            &jormungandr,
+        )
+        .unwrap();
+
+    // Wait until the fragment enters the mempool
+    FragmentVerifier
+        .wait_fragment(
+            Duration::from_millis(100),
+            mempools[1].clone(),
+            VerifyExitStrategy::OnPending,
             &jormungandr,
         )
         .unwrap();

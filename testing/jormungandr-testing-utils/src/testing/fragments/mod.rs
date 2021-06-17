@@ -12,7 +12,7 @@ pub use self::{
     setup::DummySyncNode,
     setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
     transaction::{transaction_to, transaction_to_many},
-    verifier::{FragmentVerifier, FragmentVerifierError},
+    verifier::{ExitStrategy as VerifyExitStrategy, FragmentVerifier, FragmentVerifierError},
 };
 use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::certificate::VoteTallyPayload;

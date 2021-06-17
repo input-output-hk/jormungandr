@@ -5,7 +5,9 @@ use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::Mempool;
 use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::{FragmentSenderSetup, FragmentVerifier};
+use jormungandr_testing_utils::testing::{
+    fragments::VerifyExitStrategy, FragmentSenderSetup, FragmentVerifier,
+};
 use std::time::Duration;
 
 #[test]
@@ -26,7 +28,7 @@ pub fn test_mempool_pool_max_entries_limit() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(2)
+        .with_slot_duration(5)
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
             log_max_entries: 100.into(),
@@ -52,6 +54,16 @@ pub fn test_mempool_pool_max_entries_limit() {
 
     fragment_sender
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
+        .unwrap();
+
+    // Wait until the fragment enters the mempool
+    FragmentVerifier
+        .wait_fragment(
+            Duration::from_millis(100),
+            mempool_check.clone(),
+            VerifyExitStrategy::OnPending,
+            &jormungandr,
+        )
         .unwrap();
 
     jormungandr
@@ -170,6 +182,16 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
         .unwrap();
 
+    // Wait until the fragment enters the mempool
+    FragmentVerifier
+        .wait_fragment(
+            Duration::from_millis(100),
+            first_fragment.clone(),
+            VerifyExitStrategy::OnPending,
+            &jormungandr,
+        )
+        .unwrap();
+
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
@@ -283,8 +305,18 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
         .unwrap();
 
-    fragment_sender
+    let second_transaction = fragment_sender
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
+        .unwrap();
+
+    // Wait until the fragment enters the mempool
+    FragmentVerifier
+        .wait_fragment(
+            Duration::from_millis(100),
+            second_transaction,
+            VerifyExitStrategy::OnPending,
+            &jormungandr,
+        )
         .unwrap();
 
     jormungandr
