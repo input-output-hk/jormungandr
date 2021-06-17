@@ -4,7 +4,7 @@ use chain_impl_mockchain::{
 };
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone)]
 pub enum ExplorerError {
     #[error("block {0} not found in explorer")]
     BlockNotFound(HeaderHash),

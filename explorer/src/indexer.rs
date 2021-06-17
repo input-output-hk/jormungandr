@@ -34,6 +34,8 @@ impl Indexer {
     }
 
     pub async fn apply_block(&self, block: Block) -> Result<(), IndexerError> {
+        tracing::info!("applying {}", block.header.id());
+
         // TODO: technically this could dispatch a task, as there is a possibility of applying
         // blocks (siblings) in parallel, but that is a mission for another day.  biggest concern
         // is that the we receive two consecutive blocks, if the first is really big and costly to
@@ -43,7 +45,7 @@ impl Indexer {
         let mut guard = self.tip_candidate.lock().await;
         if guard.map(|hash| hash == block.header.id()).unwrap_or(false) {
             let hash = guard.take().unwrap();
-            self.db.set_tip(hash).await;
+            self.set_tip(hash).await;
         }
 
         Ok(())
@@ -55,6 +57,8 @@ impl Indexer {
         if !successful {
             let mut guard = self.tip_candidate.lock().await;
             guard.replace(tip);
+        } else {
+            tracing::info!("tip set to {}", tip);
         }
     }
 }
