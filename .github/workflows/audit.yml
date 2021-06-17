@@ -3,6 +3,9 @@ on:
   push:
     paths:
       - Cargo.lock
+  pull_request:
+    paths:
+      - Cargo.lock
   schedule:
     - cron: '0 5 * * 0' # Weekly every Sunday 05:00 UTC
 jobs:

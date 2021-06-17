@@ -3,6 +3,9 @@ on:
   push:
     paths:
       - 'doc/api/*.yaml'
+  pull_request:
+    paths:
+      - 'doc/api/*.yaml'
 jobs:
   build:
     runs-on: ubuntu-latest
