@@ -606,6 +606,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "chain-watch"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=heterogeneous-client-api#51c061b37501319a408f5809cc55bb7a6e7f5069"
+dependencies = [
+ "prost",
+ "tonic",
+ "tonic-build",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1847,6 +1857,7 @@ dependencies = [
  "chain-storage",
  "chain-time",
  "chain-vote",
+ "chain-watch",
  "chrono",
  "futures",
  "hex",

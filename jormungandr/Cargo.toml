@@ -22,7 +22,7 @@ chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-
+chain-watch = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "heterogeneous-client-api" }
 arc-swap = "^1.1.0"
 async-trait = "0.1.50"
 async-graphql = "2.5.1"

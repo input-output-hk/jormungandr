@@ -1,4 +1,4 @@
-use crate::fragment::FragmentId;
+use crate::{fragment::FragmentId, intercom::NotifierMsg, utils::async_msg::MessageBox};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentLog, FragmentOrigin, FragmentStatus},
@@ -8,12 +8,14 @@ use std::collections::HashMap;
 
 pub struct Logs {
     entries: LruCache<Hash, FragmentLog>,
+    notifier: MessageBox<NotifierMsg>,
 }
 
 impl Logs {
-    pub fn new(max_entries: usize) -> Self {
+    pub fn new(max_entries: usize, notifier: MessageBox<NotifierMsg>) -> Self {
         Logs {
             entries: LruCache::new(max_entries),
+            notifier,
         }
     }
 
@@ -32,10 +34,17 @@ impl Logs {
     /// Returns true if fragment was registered
     pub fn insert(&mut self, log: FragmentLog) -> bool {
         let fragment_id = *log.fragment_id();
+
         if self.entries.contains(&fragment_id) {
             false
         } else {
-            self.entries.put(fragment_id, log);
+            self.entries.put(fragment_id, log.clone());
+
+            let _ = self.notifier.try_send(NotifierMsg::FragmentLog(
+                fragment_id.into_hash(),
+                log.status().clone(),
+            ));
+
             true
         }
     }
@@ -52,8 +61,12 @@ impl Logs {
         let fragment_id: Hash = fragment_id.into();
         match self.entries.get_mut(&fragment_id) {
             Some(entry) => {
-                if !entry.modify(status) {
+                if !entry.modify(status.clone()) {
                     tracing::debug!("the fragment log update was refused: cannot mark the fragment as invalid if it was already committed to a block");
+                } else {
+                    let _ = self
+                        .notifier
+                        .try_send(NotifierMsg::FragmentLog(fragment_id.into_hash(), status));
                 }
             }
             None => {
@@ -70,8 +83,14 @@ impl Logs {
                 // state transition.
                 let mut entry =
                     FragmentLog::new(fragment_id.clone().into_hash(), FragmentOrigin::Network);
-                entry.modify(status);
+                entry.modify(status.clone());
                 self.entries.put(fragment_id, entry);
+
+                // TODO: not sure about this, this could be outside the branches also, but that
+                // wouldn't cover the refused case above
+                let _ = self
+                    .notifier
+                    .try_send(NotifierMsg::FragmentLog(fragment_id.into_hash(), status));
             }
         }
     }
