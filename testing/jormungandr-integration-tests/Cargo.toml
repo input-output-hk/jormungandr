@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 tonic = "0.4"
-bech32 = "0.7"
+bech32 = "0.8"
 prost = "0.7"
 tokio = { version = "1.4", features = ["macros", "time"] }
 futures      = "0.3.14"
