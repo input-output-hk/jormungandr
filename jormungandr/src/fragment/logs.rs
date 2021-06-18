@@ -30,7 +30,8 @@ impl Logs {
     }
 
     /// Returns true if fragment was registered
-    pub fn insert(&mut self, log: FragmentLog) -> bool {
+    pub fn insert_pending(&mut self, log: FragmentLog) -> bool {
+        assert!(log.is_pending());
         let fragment_id = *log.fragment_id();
         if self.entries.contains(&fragment_id) {
             false
@@ -41,9 +42,9 @@ impl Logs {
     }
 
     /// Returns number of registered fragments
-    pub fn insert_all(&mut self, logs: impl IntoIterator<Item = FragmentLog>) -> usize {
+    pub fn insert_all_pending(&mut self, logs: impl IntoIterator<Item = FragmentLog>) -> usize {
         logs.into_iter()
-            .map(|log| self.insert(log))
+            .map(|log| self.insert_pending(log))
             .filter(|was_modified| *was_modified)
             .count()
     }

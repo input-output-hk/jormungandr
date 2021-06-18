@@ -167,7 +167,7 @@ impl Pools {
                 .iter()
                 .map(move |fragment| FragmentLog::new(fragment.id(), origin))
                 .collect();
-            self.logs.insert_all(fragment_logs);
+            self.logs.insert_all_pending(fragment_logs);
 
             for fragment in &new_fragments {
                 let id = fragment.id();
