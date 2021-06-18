@@ -159,6 +159,9 @@ impl Process {
                                     );
                                     reply_handle.reply_ok(statuses);
                                 }
+                                TransactionMsg::BranchSwitch(fork_date) => {
+                                    pool.prune_after_ledger_branch(fork_date);
+                                }
                                 TransactionMsg::SelectTransactions {
                                     pool_idx,
                                     ledger,

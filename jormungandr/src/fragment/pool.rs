@@ -13,7 +13,7 @@ use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
 use jormungandr_lib::{
     interfaces::{
-        FragmentLog, FragmentOrigin, FragmentRejectionReason, FragmentStatus,
+        BlockDate, FragmentLog, FragmentOrigin, FragmentRejectionReason, FragmentStatus,
         FragmentsProcessingSummary, PersistentFragmentLog, RejectedFragmentInfo,
     },
     time::SecondsSinceUnixEpoch,
@@ -167,7 +167,7 @@ impl Pools {
                 .iter()
                 .map(move |fragment| FragmentLog::new(fragment.id(), origin))
                 .collect();
-            self.logs.insert_all(fragment_logs);
+            self.logs.insert_all_pending(fragment_logs);
 
             for fragment in &new_fragments {
                 let id = fragment.id();
@@ -219,10 +219,17 @@ impl Pools {
     }
 
     pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
+        let date = if let FragmentStatus::InABlock { date, .. } = status {
+            date
+        } else {
+            panic!("expected status to be in block, found {:?}", status);
+        };
+
         for pool in &mut self.pools {
             pool.remove_all(fragment_ids.iter());
         }
-        self.logs.modify_all(fragment_ids, status);
+
+        self.logs.modify_all(fragment_ids, status, date);
     }
 
     pub async fn select(
@@ -251,6 +258,11 @@ impl Pools {
                     .await
             }
         }
+    }
+
+    // Remove from logs fragments that were confirmed (or rejected) in a branch
+    pub fn prune_after_ledger_branch(&mut self, branch_date: BlockDate) {
+        self.logs.remove_logs_after_date(branch_date)
     }
 }
 

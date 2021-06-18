@@ -5,7 +5,7 @@ use crate::{
     fragment::FragmentId,
 };
 use chain_core::property::Fragment as _;
-use jormungandr_lib::interfaces::FragmentStatus;
+use jormungandr_lib::interfaces::{BlockDate, FragmentStatus};
 
 use async_trait::async_trait;
 use futures::prelude::*;
@@ -66,6 +66,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
     ) -> (Contents, ApplyBlockLedger) {
         use futures::future::{select, Either};
 
+        let date: BlockDate = ledger.block_date().into();
         let mut current_total_size = 0;
         let mut contents_builder = ContentsBuilder::new();
         let mut return_to_pool = Vec::new();
@@ -86,7 +87,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                     fragment_size, ledger_params.block_content_max_size
                 );
                 tracing::debug!("{}", reason);
-                logs.modify(id, FragmentStatus::Rejected { reason });
+                logs.modify(id, FragmentStatus::Rejected { reason }, date);
                 continue;
             }
 
@@ -131,6 +132,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                                 FragmentStatus::Rejected {
                                     reason: reason.to_string(),
                                 },
+                                date,
                             );
                             break;
                         }
@@ -151,7 +153,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                         msg.push_str(&e.to_string());
                     }
                     tracing::debug!(?error, "fragment is rejected");
-                    logs.modify(id, FragmentStatus::Rejected { reason: msg })
+                    logs.modify(id, FragmentStatus::Rejected { reason: msg }, date)
                 }
             }
 

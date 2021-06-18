@@ -262,6 +262,22 @@ impl Storage {
         }))
     }
 
+    pub fn find_common_ancestor(
+        &self,
+        tip_1: HeaderHash,
+        tip_2: HeaderHash,
+    ) -> Result<HeaderHash, Error> {
+        HeaderHash::deserialize(
+            self.storage
+                .find_lowest_common_ancestor(tip_1.as_ref(), tip_2.as_ref())?
+                // No common ancestor means that we accepted blocks originating from two different block0
+                .unwrap()
+                .id()
+                .as_ref(),
+        )
+        .map_err(Error::Deserialize)
+    }
+
     pub fn gc(&self, threshold_depth: u32, main_branch_tip: &[u8]) -> Result<(), Error> {
         let _enter = self.span.enter();
         let main_info = self.storage.get_block_info(main_branch_tip)?;
