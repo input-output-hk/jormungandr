@@ -7,7 +7,7 @@ use lru::LruCache;
 use std::collections::HashMap;
 
 pub struct Logs {
-    entries: LruCache<Hash, FragmentLog>,
+    entries: LruCache<Hash, (FragmentLog, Option<BlockDate>)>,
 }
 
 impl Logs {
@@ -35,7 +35,7 @@ impl Logs {
         if self.entries.contains(&fragment_id) {
             false
         } else {
-            self.entries.put(fragment_id, log);
+            self.entries.put(fragment_id, (log, None));
             true
         }
     }
@@ -48,12 +48,19 @@ impl Logs {
             .count()
     }
 
-    pub fn modify(&mut self, fragment_id: FragmentId, status: FragmentStatus) {
+    pub fn modify(
+        &mut self,
+        fragment_id: FragmentId,
+        status: FragmentStatus,
+        ledger_date: BlockDate,
+    ) {
         let fragment_id: Hash = fragment_id.into();
         match self.entries.get_mut(&fragment_id) {
-            Some(entry) => {
+            Some((entry, date)) => {
                 if !entry.modify(status) {
                     tracing::debug!("the fragment log update was refused: cannot mark the fragment as invalid if it was already committed to a block");
+                } else {
+                    *date = Some(ledger_date);
                 }
             }
             None => {
@@ -68,10 +75,9 @@ impl Logs {
                 // Also, in this scenario we accept any provided FragmentStatus, since we do not
                 // actually know what the previous status was, and thus cannot execute the correct
                 // state transition.
-                let mut entry =
-                    FragmentLog::new(fragment_id.clone().into_hash(), FragmentOrigin::Network);
+                let mut entry = FragmentLog::new(fragment_id.into_hash(), FragmentOrigin::Network);
                 entry.modify(status);
-                self.entries.put(fragment_id, entry);
+                self.entries.put(fragment_id, (entry, Some(ledger_date)));
             }
         }
     }
@@ -80,9 +86,10 @@ impl Logs {
         &mut self,
         fragment_ids: impl IntoIterator<Item = FragmentId>,
         status: FragmentStatus,
+        ledger_date: BlockDate,
     ) {
         for fragment_id in fragment_ids {
-            self.modify(fragment_id, status.clone());
+            self.modify(fragment_id, status.clone(), ledger_date);
         }
     }
 
@@ -97,22 +104,23 @@ impl Logs {
                 let key: Hash = fragment_id.clone().into();
                 self.entries.peek(&key).map(|log| (fragment_id, log))
             })
-            .for_each(|(k, v)| {
-                result.insert(k, v);
+            .for_each(|(k, (log, _date))| {
+                result.insert(k, log);
             });
         result
     }
 
     pub fn logs(&self) -> impl Iterator<Item = &FragmentLog> {
-        self.entries.iter().map(|(_, v)| v)
+        self.entries.iter().map(|(_, (log, _date))| log)
     }
 
     pub fn remove_logs_after_date(&mut self, target_date: BlockDate) {
         let mut to_remove = Vec::new();
-        for log in self.logs() {
+        for (_, (log, date)) in self.entries.iter() {
             match log.status() {
                 FragmentStatus::InABlock { .. } | FragmentStatus::Rejected { .. } => {
-                    if date > &target_date {
+                    // date is always present for non pending statuses.
+                    if date.unwrap() > target_date {
                         to_remove.push(*log.fragment_id());
                     } else {
                         // iterating in most-recently used order (i.e. most recently added to block)
