@@ -315,7 +315,7 @@ pub async fn get_stake_distribution(
             pools: distribution
                 .to_pools
                 .iter()
-                .map(|(key, value)| (key.clone().into(), value.stake.total.clone().into()))
+                .map(|(key, value)| (key.clone().into(), value.stake.total.into()))
                 .collect(),
         };
         Ok(Some(StakeDistributionDto {
@@ -362,7 +362,7 @@ pub async fn get_stake_distribution_at(
                 pools: distribution
                     .to_pools
                     .iter()
-                    .map(|(key, value)| (key.clone().into(), value.stake.total.clone().into()))
+                    .map(|(key, value)| (key.clone().into(), value.stake.total.into()))
                     .collect(),
             };
 
