@@ -36,7 +36,7 @@ impl BlockDate {
     }
 
     pub fn shift_epoch(&self, epoch_shift: u32) -> Self {
-        let mut block_date: block::BlockDate = self.clone().into();
+        let mut block_date: block::BlockDate = (*self).into();
         for _ in 0..epoch_shift {
             block_date = block_date.next_epoch();
         }
@@ -44,7 +44,7 @@ impl BlockDate {
     }
 
     pub fn shift_slot(&self, slot_shift: u32, time_era: &TimeEra) -> Self {
-        let mut block_date: block::BlockDate = self.clone().into();
+        let mut block_date: block::BlockDate = (*self).into();
         for _ in 0..slot_shift {
             block_date = block_date.next(&time_era);
         }

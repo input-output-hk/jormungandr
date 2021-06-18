@@ -26,7 +26,7 @@ impl From<[u8; CommitteeId::COMMITTEE_ID_SIZE]> for CommitteeIdDef {
 
 impl CommitteeIdDef {
     /// returns the identifier encoded in hexadecimal string
-    pub fn to_hex(&self) -> String {
+    pub fn to_hex(self) -> String {
         hex::encode(self.0)
     }
 

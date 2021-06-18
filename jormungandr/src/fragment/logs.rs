@@ -68,8 +68,7 @@ impl Logs {
                 // Also, in this scenario we accept any provided FragmentStatus, since we do not
                 // actually know what the previous status was, and thus cannot execute the correct
                 // state transition.
-                let mut entry =
-                    FragmentLog::new(fragment_id.clone().into_hash(), FragmentOrigin::Network);
+                let mut entry = FragmentLog::new(fragment_id.into_hash(), FragmentOrigin::Network);
                 entry.modify(status);
                 self.entries.put(fragment_id, entry);
             }
@@ -94,7 +93,7 @@ impl Logs {
         fragment_ids
             .into_iter()
             .filter_map(|fragment_id| {
-                let key: Hash = fragment_id.clone().into();
+                let key: Hash = fragment_id.into();
                 self.entries.peek(&key).map(|log| (fragment_id, log))
             })
             .for_each(|(k, v)| {

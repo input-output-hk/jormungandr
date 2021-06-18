@@ -270,7 +270,7 @@ fn try_request_fragment_removal(
     header: &Header,
 ) -> Result<(), async_msg::TrySendError<TransactionMsg>> {
     let hash = header.hash().into();
-    let date = header.block_date().clone().into();
+    let date = header.block_date().into();
     let status = FragmentStatus::InABlock { date, block: hash };
     tx_msg_box.try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))
 }

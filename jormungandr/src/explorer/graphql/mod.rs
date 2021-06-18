@@ -494,14 +494,14 @@ impl Block {
     async fn fetch_explorer_block(&self, db: &ExplorerDb) -> FieldResult<Arc<ExplorerBlock>> {
         let mut contents = self.contents.lock().await;
         if let Some(block) = &*contents {
-            return Ok(Arc::clone(&block));
+            Ok(Arc::clone(&block))
         } else {
             let block = db.get_block(&self.hash).await.ok_or_else(|| {
                 ApiError::InternalError("Couldn't find block's contents in explorer".to_owned())
             })?;
 
             *contents = Some(Arc::clone(&block));
-            return Ok(block);
+            Ok(block)
         }
     }
 

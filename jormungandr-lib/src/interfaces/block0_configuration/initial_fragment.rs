@@ -116,7 +116,7 @@ fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDe
 
     let inits_iter = utxo_decl.addrs.iter().map(|(address, value)| LegacyUTxO {
         address: address.clone().into(),
-        value: value.clone().into(),
+        value: (*value).into(),
     });
     let inits: Vec<_> = inits_iter.collect();
     initials.push(Initial::LegacyFund(inits))
