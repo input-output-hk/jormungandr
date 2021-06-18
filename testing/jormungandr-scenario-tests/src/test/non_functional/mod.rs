@@ -1,3 +1,5 @@
+#[cfg(feature = "desync-tests")]
+pub mod desync;
 pub mod disruption;
 pub mod soak;
 

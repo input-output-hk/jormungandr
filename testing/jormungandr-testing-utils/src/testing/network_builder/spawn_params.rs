@@ -36,7 +36,9 @@ pub struct SpawnParams {
 
 #[derive(Clone)]
 pub struct FaketimeConfig {
+    /// Clock drift (1 = no drift, 2 = double speed)
     pub drift: f32,
+    /// Offset from the real clock in seconds
     pub offset: i32,
 }
 
