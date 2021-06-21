@@ -71,16 +71,10 @@ pub fn test_mempool_pool_max_entries_limit() {
 
     let mempools = assert_accepted_rejected(
         vec![first_transaction.id()],
-        vec![
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
-            ),
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
-            ),
-        ],
+        vec![(
+            second_transaction.id(),
+            FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+        )],
         jormungandr
             .rest()
             .send_fragment_batch(vec![first_transaction, second_transaction], false),
@@ -178,14 +172,6 @@ pub fn test_mempool_pool_max_entries_equal_0() {
                 second_transaction.id(),
                 FragmentRejectionReason::PoolOverflow { pool_number: 0 },
             ),
-            (
-                first_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
-            ),
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
-            ),
         ],
         jormungandr
             .rest()
@@ -259,16 +245,10 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
 
     let mempools = assert_accepted_rejected(
         vec![first_transaction.id()],
-        vec![
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
-            ),
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
-            ),
-        ],
+        vec![(
+            second_transaction.id(),
+            FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+        )],
         jormungandr
             .rest()
             .send_fragment_batch(vec![first_transaction, second_transaction], false),
@@ -365,14 +345,6 @@ pub fn test_mempool_log_max_entries_equals_0() {
             (
                 second_transaction.id(),
                 FragmentRejectionReason::PoolOverflow { pool_number: 0 },
-            ),
-            (
-                first_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
-            ),
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
             ),
         ],
         jormungandr
