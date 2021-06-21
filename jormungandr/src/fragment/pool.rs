@@ -45,7 +45,10 @@ impl Pools {
         network_msg_box: MessageBox<NetworkMsg>,
         persistent_log: Option<File>,
     ) -> Self {
-        let pools = (0..=n_pools)
+        // we need a pool even for passive nodes to be able to participate in
+        // the fragments dissemination protocol
+        let n_pools = std::cmp::max(1, n_pools);
+        let pools = (0..n_pools)
             .map(|_| internal::Pool::new(max_entries))
             .collect();
         Pools {
@@ -518,5 +521,25 @@ pub(super) mod internal {
             }
             assert!(pool.remove_oldest().is_none());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn correct_pools_number() {
+        let (fake_msgbox, _) = crate::async_msg::channel(1);
+        // a passive node still has 1 pool
+        let pools = Pools::new(0, 0, Logs::new(1), fake_msgbox.clone(), None);
+        assert_eq!(pools.pools.len(), 1);
+
+        // a leader node should have as many pools as leaders
+        let pools = Pools::new(0, 1, Logs::new(1), fake_msgbox.clone(), None);
+        assert_eq!(pools.pools.len(), 1);
+
+        let pools = Pools::new(0, 5, Logs::new(1), fake_msgbox, None);
+        assert_eq!(pools.pools.len(), 5);
     }
 }
