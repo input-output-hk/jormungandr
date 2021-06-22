@@ -2,6 +2,7 @@ use crate::{
     interfaces::{LinearFeeDef, ValueDef},
     time::SystemTime,
 };
+use chain_addr::Discrimination;
 use chain_impl_mockchain::block::Epoch;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::rewards::{CompoundingType, Limit, Parameters, Ratio, TaxType};
@@ -26,6 +27,8 @@ pub struct SettingsDto {
     pub treasury_tax: TaxType,
     #[serde(with = "ParametersDef")]
     pub reward_params: Parameters,
+    #[serde(with = "DiscriminationDef")]
+    pub discrimination: Discrimination,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -79,6 +82,13 @@ pub struct ParametersDef {
 pub enum CompoundingTypeDef {
     Linear,
     Halvening,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", remote = "Discrimination")]
+enum DiscriminationDef {
+    Test,
+    Production,
 }
 
 impl PartialEq<SettingsDto> for SettingsDto {
