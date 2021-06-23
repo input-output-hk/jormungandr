@@ -33,8 +33,8 @@ pub struct Schedule {
     current_slot_data: Vec<LeaderEvent>,
 }
 
-fn get_maximum_id<A>(leaders: &BTreeMap<LeaderId, A>) -> LeaderId {
-    leaders.keys().last().copied().unwrap_or_default()
+fn get_maximum_id<A>(leaders: &BTreeMap<LeaderId, A>) -> Option<LeaderId> {
+    leaders.keys().last().copied()
 }
 
 fn leader_identifier(leader: &Leader) -> String {
@@ -64,7 +64,9 @@ impl EnclaveLeadersWithCache {
         if let Some(leader_id) = self.added_leaders_cache.get(&identifier) {
             *leader_id
         } else {
-            let leader_id = get_maximum_id(&self.leaders).next();
+            let leader_id = get_maximum_id(&self.leaders)
+                .map(LeaderId::next)
+                .unwrap_or_default();
 
             self.added_leaders_cache.insert(identifier, leader_id);
             self.leaders.insert(leader_id, leader);
@@ -233,8 +235,7 @@ mod tests {
             genesis_leader: None,
         };
 
-        let init_leader_id = LeaderId::new();
-        let fst_id = init_leader_id.next();
+        let fst_id = LeaderId::new();
         let snd_id = fst_id.next();
 
         assert_eq!(enclave.add_leader(leader1).await, fst_id);
@@ -307,8 +308,7 @@ mod tests {
             }),
         };
 
-        let init_leader_id = LeaderId::new();
-        let fst_id = init_leader_id.next();
+        let fst_id = LeaderId::new();
         let snd_id = fst_id.next();
 
         assert_eq!(enclave.add_leader(leader1).await, fst_id);
