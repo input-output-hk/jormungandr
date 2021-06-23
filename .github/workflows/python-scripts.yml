@@ -1,6 +1,10 @@
 name: Python scripts linters
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+  pull_request:
 
 jobs:
   lint:

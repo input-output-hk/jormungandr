@@ -2,6 +2,8 @@ name: Build and publish docs
 
 on:
   push:
+    branches:
+      - master
     paths:
       - 'book.toml'
       - 'doc/**'
