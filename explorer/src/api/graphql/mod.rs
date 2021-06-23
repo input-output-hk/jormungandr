@@ -497,14 +497,14 @@ impl Block {
     async fn fetch_explorer_block(&self, db: &ExplorerDb) -> FieldResult<Arc<ExplorerBlock>> {
         let mut contents = self.contents.lock().await;
         if let Some(block) = &*contents {
-            return Ok(Arc::clone(&block));
+            Ok(Arc::clone(&block))
         } else {
             let block = db.get_block(&self.hash).await.ok_or_else(|| {
                 ApiError::InternalError("Couldn't find block's contents in explorer".to_owned())
             })?;
 
             *contents = Some(Arc::clone(&block));
-            return Ok(block);
+            Ok(block)
         }
     }
 
@@ -1373,14 +1373,14 @@ impl VotePlanStatus {
                     tally: proposal.tally.map(|tally| match tally {
                         ExplorerVoteTally::Public { results, options } => {
                             TallyStatus::Public(TallyPublicStatus {
-                                results: results.into_iter().map(Into::into).collect(),
+                                results: results.iter().map(Into::into).collect(),
                                 options: options.into(),
                             })
                         }
                         ExplorerVoteTally::Private { results, options } => {
                             TallyStatus::Private(TallyPrivateStatus {
                                 results: results
-                                    .map(|res| res.into_iter().map(Into::into).collect()),
+                                    .map(|res| res.iter().map(Into::into).collect()),
                                 options: options.into(),
                             })
                         }

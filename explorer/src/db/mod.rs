@@ -2,7 +2,10 @@ pub mod error;
 pub mod indexing;
 pub mod multiverse;
 pub mod persistent_sequence;
+mod tally;
 
+use crate::db::tally::compute_public_tally;
+use crate::db::tally::compute_private_tally;
 use self::error::{ExplorerError as Error, Result};
 use self::indexing::{
     Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
@@ -12,10 +15,12 @@ use self::indexing::{
 use self::persistent_sequence::PersistentSequence;
 use chain_core::property::Block as _;
 pub use multiverse::Ref;
-
 use chain_addr::Discrimination;
-use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::{block::HeaderId as HeaderHash, certificate::VotePlanId};
+use chain_impl_mockchain::{
+    block::HeaderId as HeaderHash,
+    certificate::VotePlanId,
+    stake::{Stake, StakeControl},
+};
 use chain_impl_mockchain::{
     block::{Block, ChainLength, Epoch},
     certificate::{Certificate, PoolId},
@@ -23,6 +28,7 @@ use chain_impl_mockchain::{
     config::ConfigParam,
     fragment::{ConfigParams, Fragment, FragmentId},
 };
+use chain_impl_mockchain::{fee::LinearFee, vote::PayloadType};
 use futures::prelude::*;
 use multiverse::Multiverse;
 use std::convert::Infallible;
@@ -83,6 +89,7 @@ pub struct State {
     stake_pool_data: StakePool,
     stake_pool_blocks: StakePoolBlocks,
     vote_plans: VotePlans,
+    stake_control: StakeControl,
 }
 
 #[derive(Clone)]
@@ -123,7 +130,8 @@ impl ExplorerDb {
         let addresses = apply_block_to_addresses(Addresses::new(), &block);
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(StakePool::new(), StakePoolBlocks::new(), &block);
-        let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &block);
+        let stake_control = apply_block_to_stake_control(StakeControl::new(), &block);
+        let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &block, &stake_control);
 
         let initial_state = State {
             transactions,
@@ -134,6 +142,7 @@ impl ExplorerDb {
             stake_pool_data,
             stake_pool_blocks,
             vote_plans,
+            stake_control,
         };
 
         let block0_id = block0.id();
@@ -181,6 +190,7 @@ impl ExplorerDb {
             stake_pool_data,
             stake_pool_blocks,
             vote_plans,
+            stake_control,
         } = previous_state.state().clone();
 
         let explorer_block = ExplorerBlock::resolve_from(
@@ -193,6 +203,8 @@ impl ExplorerDb {
         );
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(stake_pool_data, stake_pool_blocks, &explorer_block);
+
+        let stake_control = apply_block_to_stake_control(stake_control, &explorer_block);
 
         let state_ref = multiverse
             .insert(
@@ -207,7 +219,12 @@ impl ExplorerDb {
                     chain_lengths: apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
                     stake_pool_data,
                     stake_pool_blocks,
-                    vote_plans: apply_block_to_vote_plans(vote_plans, &explorer_block),
+                    vote_plans: apply_block_to_vote_plans(
+                        vote_plans,
+                        &explorer_block,
+                        &stake_control,
+                    ),
+                    stake_control,
                 },
             )
             .await;
@@ -568,7 +585,11 @@ fn apply_block_to_stake_pools(
     (data, blocks)
 }
 
-fn apply_block_to_vote_plans(mut vote_plans: VotePlans, block: &ExplorerBlock) -> VotePlans {
+fn apply_block_to_vote_plans(
+    mut vote_plans: VotePlans,
+    block: &ExplorerBlock,
+    stake: &StakeControl,
+) -> VotePlans {
     for tx in block.transactions.values() {
         if let Some(cert) = &tx.certificate {
             vote_plans = match cert {
@@ -655,15 +676,76 @@ fn apply_block_to_vote_plans(mut vote_plans: VotePlans, block: &ExplorerBlock) -
                             .unwrap(),
                     }
                 }
-                Certificate::VoteTally(_vote_tally) => {
-                    unimplemented!("this may require access to the node's Tip");
-                }
+                Certificate::VoteTally(vote_tally) => vote_plans
+                    .update(vote_tally.id(), |vote_plan| {
+                        let proposals = vote_plan
+                            .proposals
+                            .clone()
+                            .into_iter()
+                            .map(|mut proposal| {
+                                proposal.tally = Some(match vote_tally.tally_type() {
+                                    PayloadType::Public => compute_public_tally(&proposal, stake),
+                                    PayloadType::Private => compute_private_tally(&proposal),
+                                });
+                                proposal
+                            })
+                            .collect();
+                        let vote_plan = ExplorerVotePlan {
+                            proposals,
+                            ..(**vote_plan).clone()
+                        };
+                        Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
+                    })
+                    .unwrap(),
                 _ => vote_plans,
             }
         }
     }
 
     vote_plans
+}
+
+fn apply_block_to_stake_control(
+    mut stake_control: StakeControl,
+    block: &ExplorerBlock,
+) -> StakeControl {
+    for (_id, tx) in block.transactions.iter() {
+        // TODO: there is a bit of code duplication here (maybe?)
+
+        for input in tx.inputs() {
+            let indexing::ExplorerInput { address, value } = input;
+            let address = match address {
+                ExplorerAddress::Old(_) => continue,
+                ExplorerAddress::New(address) => address,
+            };
+
+            match address.kind() {
+                chain_addr::Kind::Group(_, id) | chain_addr::Kind::Account(id) => {
+                    stake_control =
+                        stake_control.remove_from(id.clone().into(), Stake::from_value(*value));
+                }
+                _ => continue,
+            }
+        }
+
+        for output in tx.outputs() {
+            let indexing::ExplorerOutput { address, value } = output;
+            let address = match address {
+                ExplorerAddress::Old(_) => continue,
+                ExplorerAddress::New(address) => address,
+            };
+
+            match address.kind() {
+                chain_addr::Kind::Group(_, id) | chain_addr::Kind::Account(id) => {
+                    stake_control =
+                        stake_control.add_to(id.clone().into(), Stake::from_value(*value));
+                }
+                _ => continue,
+            }
+        }
+    }
+
+    stake_control
 }
 
 impl BlockchainConfig {

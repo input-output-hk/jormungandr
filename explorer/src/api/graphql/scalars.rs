@@ -388,9 +388,9 @@ impl From<chain_impl_mockchain::certificate::ExternalProposalId> for ExternalPro
     }
 }
 
-impl From<vote::Weight> for Weight {
-    fn from(w: vote::Weight) -> Self {
-        Self(format!("{}", w))
+impl<T: std::borrow::Borrow<vote::Weight>> From<T> for Weight {
+    fn from(w: T) -> Self {
+        Self(format!("{}", w.borrow()))
     }
 }
 

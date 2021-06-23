@@ -3,6 +3,7 @@ use cardano_legacy_address::Addr as OldAddress;
 use chain_addr::{Address, Discrimination};
 use chain_core::property::{Block as _, Fragment as _};
 use chain_impl_mockchain::{
+    account::Identifier,
     block::{Block, Proof},
     certificate::{
         Certificate, ExternalProposalId, PoolId, PoolRegistration, PoolRetirement, VotePlanId,
@@ -131,7 +132,7 @@ pub struct ExplorerVoteProposal {
 #[derive(Clone)]
 pub enum ExplorerVoteTally {
     Public {
-        results: Vec<Weight>,
+        results: Box<[Weight]>,
         options: Options,
     },
     Private {
@@ -444,5 +445,17 @@ impl ExplorerTransaction {
 
     pub fn outputs(&self) -> &Vec<ExplorerOutput> {
         &self.outputs
+    }
+}
+
+impl ExplorerAddress {
+    pub fn to_single_account(&self) -> Option<Identifier> {
+        match self {
+            ExplorerAddress::New(address) => match address.kind() {
+                chain_addr::Kind::Single(key) => Some(key.clone().into()),
+                _ => None,
+            },
+            ExplorerAddress::Old(_) => None,
+        }
     }
 }
