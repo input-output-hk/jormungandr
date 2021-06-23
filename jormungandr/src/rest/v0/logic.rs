@@ -399,6 +399,7 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
         slots_per_epoch,
         treasury_tax: current_params.treasury_tax,
         reward_params: current_params.reward_params.clone(),
+        discrimination: static_params.discrimination,
     })
 }
 
