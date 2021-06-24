@@ -1,5 +1,44 @@
 # Change Log
 
+## Upcoming release 0.12.0
+
+**New features:**
+
+- Persistent fragment logs, optionally enabled to record all fragments received
+  by the node and accepted into the mempool. These logs can be used for
+  verification of the blockchain result, forensics, and possibly to compute
+  the vote tally from the received fragments off-chain as a backup counting
+  method.
+- `scripts/bootstrap.py`, a cross-platform Python script to replace tje older
+  collection of outdated shell scripts.
+
+**Changes:**
+
+- Updated the Poldercast implementation to use poldercast 1.2
+  and reworked quarantine rules to improve network stability.
+- The log configuration only deals with a single output backend.
+  It's no longer possible to configure multiple log outputs.
+- Changed the p2p listening address and port configuration:
+  the field name is `listen` and the value format is _addr_`:`_port_.
+- The fragment log REST API provides more elaborate information on fragment
+  status, including the rejection reason.
+- The REST API endpoints for submitting fragments return an error status code
+  if the fragments are rejected by the node, rather than being admitted to the
+  mempool and propagated across the network.
+- Added logging to track REST requests, including possible OpenZipkin/B3
+  tracing information from the HTTP headers.
+
+**Bugs fixed:**
+
+- Use voteplan ID as the CRS for private voting protocol to prevent use of
+  compromised CRS values.
+- Ignore an unworkably small value of `log_max_entries` in the configuration.
+  The minimum is `pool_max_entries * n_pools`.
+
+## Releases 0.10.x - 0.11.x
+
+**TODO:** fill in with a summary of changes.
+
 ## [v0.9.3](https://github.com/input-output-hk/jormungandr/tree/v0.9.3) (2020-09-24)
 
 Rolled in recent fixes, testing improvements, and dependency updates for the Catalyst project
