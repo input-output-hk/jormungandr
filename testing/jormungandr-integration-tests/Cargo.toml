@@ -1,6 +1,6 @@
 [package]
 name = "jormungandr-integration-tests"
-version = "0.11.3-dev"
+version = "0.12.0-dev"
 authors = [ "dev@iohk.io" ]
 edition = "2018"
 
