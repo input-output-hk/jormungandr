@@ -1,6 +1,6 @@
 [package]
 name = "jormungandr-testing-utils"
-version = "0.11.1"
+version = "0.11.3-dev"
 authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
 edition = "2018"
 
