@@ -440,35 +440,3 @@ pub struct CliSettings {
     #[structopt(long = "log-output", parse(try_from_str))]
     pub log_output: Option<LogOutput>,
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn cli_has_priority() {
-        let cli = CliSettings::from_iter(vec![
-            "example",
-            "--log-level",
-            &LevelFilter::TRACE.to_string(),
-        ]);
-
-        let file: FileSettings = serde_yaml::from_str(
-            r#"
-            level: info
-            output:
-                file:
-                    output.log
-            "#,
-        )
-        .unwrap();
-
-        let settings = LogSettings::new(&cli, Some(file));
-
-        assert_eq!(settings.config.level, LevelFilter::TRACE);
-        assert_eq!(settings.config.output, LogOutput::File("output.log".into()));
-        assert_eq!(settings.config.format, DEFAULT_LOG_FORMAT);
-
-        let (_guards, _log_info) = settings.init_log().unwrap();
-    }
-}
