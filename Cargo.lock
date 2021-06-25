@@ -1859,6 +1859,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "linked-hash-map",
+ "log-lib",
  "lru",
  "nix",
  "parity-multiaddr",

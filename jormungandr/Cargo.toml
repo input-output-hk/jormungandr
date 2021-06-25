@@ -34,6 +34,7 @@ chrono = "0.4"
 futures = "0.3.14"
 hex = "0.4"
 jormungandr-lib = { path = "../jormungandr-lib" }
+log-lib = { path = "../log-lib" }
 keynesis = "1.1"
 lazy_static = "1.4"
 linked-hash-map = "0.5"
@@ -88,5 +89,5 @@ with-bench = []
 codegen-rustfmt = ["chain-network/codegen-rustfmt"]
 integration-test = []
 soak-test = []
-systemd = ["tracing-journald"]
-gelf = ["tracing-gelf"]
+systemd = ["log-lib/tracing-journald"]
+gelf = ["log-lib/tracing-gelf"]
