@@ -32,7 +32,18 @@
 
                 ulimit -n 1024
 
+                nodeConfig="$NOMAD_TASK_DIR/node-config.json"
+                runConfig="$NOMAD_TASK_DIR/running.json"
+                runYaml="$NOMAD_TASK_DIR/running.yaml"
+                name="jormungandr"
+
                 chmod u+rwx -R "$NOMAD_TASK_DIR" || true
+
+                function convert () {
+                  chmod u+rwx -R "$NOMAD_TASK_DIR" || true
+                  cp "$nodeConfig" "$runConfig"
+                  remarshal --if json --of yaml "$runConfig" > "$runYaml"
+                }
 
                 if [ "$RESET" = "true" ]; then
                   echo "RESET is given, will start from scratch..."
@@ -52,13 +63,29 @@
 
                 set +x
                 echo "waiting for $REQUIRED_PEER_COUNT peers"
-                until [ "$(yq -e -r '.p2p.trusted_peers | length' < "/local/config.yaml" || echo 0)" -ge $REQUIRED_PEER_COUNT ]; do
+                until [ "$(jq -e -r '.p2p.trusted_peers | length' < "$nodeConfig" || echo 0)" -ge $REQUIRED_PEER_COUNT ]; do
                   sleep 1
                 done
                 set -x
 
-                cp /local/config.yaml /local/running.yaml
-                exec jormungandr "$@"
+                convert
+
+                if [ -n "$PRIVATE" ]; then
+                  echo "Running with node with secrets..."
+                  exec jormungandr \
+                    --storage "$STORAGE_DIR" \
+                    --config "$NOMAD_TASK_DIR/running.yaml" \
+                    --genesis-block $NOMAD_TASK_DIR/block0.bin/block0.bin \
+                    --secret $NOMAD_SECRETS_DIR/bft-secret.yaml \
+                    "$@" || true
+                else
+                  echo "Running with follower node..."
+                  exec jormungandr \
+                    --storage "$STORAGE_DIR" \
+                    --config "$NOMAD_TASK_DIR/running.yaml" \
+                    --genesis-block $NOMAD_TASK_DIR/block0.bin/block0.bin \
+                    "$@" || true
+                fi
               '';
             in final.symlinkJoin {
               name = "entrypoint";
@@ -75,8 +102,8 @@
                 gnugrep
                 gnused
                 htop
+                jormungandr
                 jq
-                yq
                 lsof
                 netcat
                 procps
@@ -89,13 +116,15 @@
                 tree
                 utillinux
                 vim
+                yq
               ];
             };
           };
 
       packages = { jormungandr, jcli, jormungandr-entrypoint }@pkgs: pkgs;
 
-      devShell = { mkShell, rustc, cargo, pkg-config, openssl, protobuf, rustfmt }:
+      devShell =
+        { mkShell, rustc, cargo, pkg-config, openssl, protobuf, rustfmt }:
         mkShell {
           PROTOC = "${protobuf}/bin/protoc";
           PROTOC_INCLUDE = "${protobuf}/include";
