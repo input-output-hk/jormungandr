@@ -87,13 +87,7 @@ pub fn bft_forks(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         std::thread::sleep(std::time::Duration::from_secs(5));
     }
 
-    let account_value: u64 = leader_1
-        .rest()
-        .account_state(&alice)
-        .unwrap()
-        .value()
-        .clone()
-        .into();
+    let account_value: u64 = (*leader_1.rest().account_state(&alice).unwrap().value()).into();
     assert!(
         account_value < starting_funds - transaction_amount * n_transactions,
         "found {}",
