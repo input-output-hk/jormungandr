@@ -31,7 +31,6 @@ pub fn assert_node_stats(
     peer_available_cnt: usize,
     peer_quarantined_cnt: usize,
     peer_total_cnt: usize,
-    peer_unreachable_cnt: usize,
     info: &str,
 ) -> Result<()> {
     node.log_stats();
