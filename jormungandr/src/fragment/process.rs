@@ -1,7 +1,7 @@
 use crate::{
     fragment::{Logs, Pools},
     intercom::{NetworkMsg, TransactionMsg},
-    stats_counter::StatsCounter,
+    metrics::{Metrics, MetricsBackend},
     utils::{
         async_msg::{MessageBox, MessageQueue},
         task::TokioServiceInfo,
@@ -51,7 +51,7 @@ impl Process {
         self,
         n_pools: usize,
         service_info: TokioServiceInfo,
-        stats_counter: StatsCounter,
+        stats_counter: Metrics,
         mut input: MessageQueue<TransactionMsg>,
         persistent_log_dir: Option<P>,
     ) -> Result<(), Error> {

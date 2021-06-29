@@ -52,11 +52,6 @@ pub fn assert_node_stats(
         &stats.peer_total_cnt,
         &format!("{}: peer_total_cnt, Node {}", info, node.alias()),
     )?;
-    utils::assert_equals(
-        &peer_unreachable_cnt,
-        &stats.peer_unreachable_cnt,
-        &format!("{}: peer_unreachable_cnt, Node {}", info, node.alias()),
-    )?;
 
     Ok(())
 }

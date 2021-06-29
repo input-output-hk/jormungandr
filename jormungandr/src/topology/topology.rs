@@ -2,9 +2,11 @@
 //!
 use super::{
     layers::{self, LayersConfig},
+    quarantine::ReportNodeResult,
     topic, Gossips, NodeId, Peer, PeerInfo, ReportRecords,
 };
 
+use crate::metrics::{Metrics, MetricsBackend};
 use crate::settings::start::network::Configuration;
 use chain_crypto::Ed25519;
 use jormungandr_lib::crypto::key::SigningKey;
@@ -37,6 +39,7 @@ pub struct P2pTopology {
     topology: Topology,
     quarantine: ReportRecords,
     key: keynesis::key::ed25519::SecretKey,
+    stats_counter: Metrics,
 }
 
 struct CustomLayerBuilder {
@@ -99,7 +102,7 @@ impl LayerBuilder for CustomLayerBuilder {
 }
 
 impl P2pTopology {
-    pub fn new(config: &Configuration) -> Self {
+    pub fn new(config: &Configuration, stats_counter: Metrics) -> Self {
         let addr = config.public_address.or(Some(*LOCAL_ADDR)).unwrap();
         let key = secret_key_into_keynesis(config.node_key.clone());
 
@@ -112,6 +115,7 @@ impl P2pTopology {
             topology,
             quarantine,
             key,
+            stats_counter,
         }
     }
 
@@ -151,6 +155,7 @@ impl P2pTopology {
             tracing::trace!(node = %peer.address(), "received peer from gossip");
             if self.topology.add_peer(peer) {
                 self.quarantine.record_new_gossip(&peer_id);
+                self.stats_counter.add_peer_available_cnt(1);
             }
         }
     }
@@ -202,8 +207,15 @@ impl P2pTopology {
     #[instrument(skip(self), level = "debug")]
     pub fn report_node(&mut self, node_id: &NodeId) {
         if let Some(node) = self.topology.get(node_id.as_ref()).cloned() {
-            self.quarantine
+            let result = self
+                .quarantine
                 .report_node(&mut self.topology, Peer::from(node.gossip().clone()));
+            if let ReportNodeResult::Quarantine | ReportNodeResult::Trusted = result {
+                self.stats_counter.sub_peer_available_cnt(1);
+            }
+            if let ReportNodeResult::Quarantine = result {
+                self.stats_counter.add_peer_quarantined_cnt(1);
+            }
         }
     }
 
@@ -226,6 +238,7 @@ impl P2pTopology {
                 if let Some(node) = &node {
                     tracing::debug!(node = %node.address(), id=?node.id(), "lifting node from quarantine");
                     self.topology.promote_peer(&node.id());
+                    self.stats_counter.sub_peer_quarantined_cnt(1);
                 }
                 node.map(|node| Peer::from(node.gossip().clone()))
             })
