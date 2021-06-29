@@ -35,6 +35,22 @@ pub struct Prometheus {
 
 impl Prometheus {
     pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn http_response(&self) -> Result<impl warp::Reply, warp::Rejection> {
+        let encoder = TextEncoder::new();
+        let metric_families = self.registry.gather();
+        let mut buffer = Vec::new();
+        encoder.encode(&metric_families, &mut buffer).unwrap();
+        Ok(warp::http::Response::builder()
+            .header("content-type", encoder.format_type())
+            .body(buffer))
+    }
+}
+
+impl Default for Prometheus {
+    fn default() -> Self {
         let registry = Registry::new();
 
         let tx_recv_cnt = IntCounter::new("txRecvCnt", "txRecvCnt").unwrap();
@@ -115,16 +131,6 @@ impl Prometheus {
             block_time,
             block_hash,
         }
-    }
-
-    pub fn http_response(&self) -> Result<impl warp::Reply, warp::Rejection> {
-        let encoder = TextEncoder::new();
-        let metric_families = self.registry.gather();
-        let mut buffer = Vec::new();
-        encoder.encode(&metric_families, &mut buffer).unwrap();
-        Ok(warp::http::Response::builder()
-            .header("content-type", encoder.format_type())
-            .body(buffer))
     }
 }
 

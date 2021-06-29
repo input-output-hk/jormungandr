@@ -39,16 +39,7 @@ struct BlockCounters {
 
 impl SimpleCounter {
     pub fn new() -> Self {
-        Self {
-            tx_recv_cnt: Default::default(),
-            block_recv_cnt: Default::default(),
-            slot_start_time: Default::default(),
-            peers_connected_cnt: Default::default(),
-            peers_quarantined_cnt: Default::default(),
-            peers_available_cnt: Default::default(),
-            tip_block: Default::default(),
-            start_time: Instant::now(),
-        }
+        Default::default()
     }
 
     pub fn get_stats(&self) -> NodeStats {
@@ -82,6 +73,21 @@ impl SimpleCounter {
             peer_total_cnt,
             tx_recv_cnt: self.tx_recv_cnt.load(Ordering::Relaxed).try_into().unwrap(),
             uptime: Some(self.start_time.elapsed().as_secs()),
+        }
+    }
+}
+
+impl Default for SimpleCounter {
+    fn default() -> Self {
+        Self {
+            tx_recv_cnt: Default::default(),
+            block_recv_cnt: Default::default(),
+            slot_start_time: Default::default(),
+            peers_connected_cnt: Default::default(),
+            peers_quarantined_cnt: Default::default(),
+            peers_available_cnt: Default::default(),
+            tip_block: Default::default(),
+            start_time: Instant::now(),
         }
     }
 }
