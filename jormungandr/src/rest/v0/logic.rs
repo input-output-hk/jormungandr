@@ -23,17 +23,15 @@ use chain_crypto::{
 };
 use chain_impl_mockchain::{
     account::{AccountAlg, Identifier},
-    block::Block as ChainBlock,
     fragment::{Fragment, FragmentId},
     key::Hash,
     leadership::{Leader, LeadershipConsensus},
-    transaction::Transaction,
-    value::{Value, ValueError},
+    value::ValueError,
 };
 use jormungandr_lib::{
     interfaces::{
         AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
-        FragmentsProcessingSummary, LeadershipLog, NodeStats, NodeStatsDto, PeerStats,
+        FragmentsProcessingSummary, LeadershipLog, NodeStatsDto, PeerStats,
         Rewards as StakePoolRewards, SettingsDto, StakeDistribution, StakeDistributionDto,
         StakePoolStats, TaxTypeSerde, TransactionOutput, VotePlanStatus,
     },
@@ -158,104 +156,13 @@ pub async fn get_tip(context: &Context) -> Result<String, Error> {
 }
 
 pub async fn get_stats_counter(context: &Context) -> Result<NodeStatsDto, Error> {
-    let stats = create_stats(&context).await?;
+    let ctx = context.try_full()?;
+    let stats = ctx.stats_counter.get_stats();
     Ok(NodeStatsDto {
         version: env!("SIMPLE_VERSION").to_string(),
         state: context.node_state().clone(),
-        stats,
+        stats: Some(stats),
     })
-}
-
-async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
-    let (tip, blockchain, full_context) = match (
-        context.blockchain_tip(),
-        context.blockchain(),
-        context.try_full(),
-    ) {
-        (Ok(tip), Ok(blockchain), Ok(full_context)) => (tip, blockchain, full_context),
-        _ => return Ok(None),
-    };
-
-    let tip = tip.get_ref().await;
-
-    let mut block_tx_count = 0u64;
-    let mut block_input_sum = Value::zero();
-    let mut block_fee_sum = Value::zero();
-
-    let mut header_block = full_context.stats_counter.get_tip_block();
-
-    // In case we do not have a cached block in the stats_counter we can retrieve it from the
-    // storage, this should happen just once.
-    if header_block.is_none() {
-        let block: Option<ChainBlock> = blockchain.storage().get(tip.hash()).unwrap_or(None);
-
-        // Update block if found
-        if let Some(block) = block {
-            full_context.stats_counter.set_tip_block(Arc::new(block));
-        };
-
-        header_block = full_context.stats_counter.get_tip_block();
-    }
-
-    header_block
-        .as_ref()
-        .as_ref()
-        .ok_or(Error::TipBlockNotFound)?
-        .contents
-        .iter()
-        .try_for_each::<_, Result<(), ValueError>>(|fragment| {
-            fn totals<T>(t: &Transaction<T>) -> Result<(Value, Value), ValueError> {
-                Ok((t.total_input()?, t.total_output()?))
-            }
-
-            let (total_input, total_output) = match &fragment {
-                Fragment::Transaction(tx) => totals(tx),
-                Fragment::OwnerStakeDelegation(tx) => totals(tx),
-                Fragment::StakeDelegation(tx) => totals(tx),
-                Fragment::PoolRegistration(tx) => totals(tx),
-                Fragment::PoolRetirement(tx) => totals(tx),
-                Fragment::PoolUpdate(tx) => totals(tx),
-                Fragment::VotePlan(tx) => totals(tx),
-                Fragment::VoteCast(tx) => totals(tx),
-                Fragment::VoteTally(tx) => totals(tx),
-                Fragment::EncryptedVoteTally(tx) => totals(tx),
-                Fragment::Initial(_)
-                | Fragment::OldUtxoDeclaration(_)
-                | Fragment::UpdateProposal(_)
-                | Fragment::UpdateVote(_) => return Ok(()),
-            }?;
-            block_tx_count += 1;
-            block_input_sum = (block_input_sum + total_input)?;
-            let fee = (total_input - total_output).unwrap_or_else(|_| Value::zero());
-            block_fee_sum = (block_fee_sum + fee)?;
-            Ok(())
-        })?;
-
-    let peer_available_cnt = get_network_p2p_view(&context).await?.len();
-    let peer_quarantined_cnt = get_network_p2p_quarantined(&context).await?.len();
-    let peer_total_cnt = peer_available_cnt + peer_quarantined_cnt;
-    let tip_header = tip.header();
-    let stats = &full_context.stats_counter;
-    let node_stats = NodeStats {
-        block_recv_cnt: stats.block_recv_cnt(),
-        last_block_content_size: tip_header.block_content_size(),
-        last_block_date: tip_header.block_date().to_string().into(),
-        last_block_fees: block_fee_sum.0,
-        last_block_hash: tip_header.hash().to_string().into(),
-        last_block_height: tip_header.chain_length().to_string().into(),
-        last_block_sum: block_input_sum.0,
-        last_block_time: SystemTime::from(tip.time()).into(),
-        last_block_tx: block_tx_count,
-        last_received_block_time: stats.slot_start_time().map(SystemTime::from),
-        peer_available_cnt,
-        peer_connected_cnt: stats.peer_connected_cnt(),
-        peer_quarantined_cnt,
-        peer_total_cnt,
-        peer_unreachable_cnt: 0, // FIXME
-        tx_recv_cnt: stats.tx_recv_cnt(),
-        uptime: stats.uptime_sec().into(),
-    };
-    Ok(Some(node_stats))
 }
 
 pub async fn get_block_id(context: &Context, block_id_hex: &str) -> Result<Option<Vec<u8>>, Error> {
@@ -389,7 +296,8 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
         block0_time: SystemTime::from_secs_since_epoch(static_params.block0_start_time.0),
         curr_slot_start_time: full_context
             .stats_counter
-            .slot_start_time()
+            .get_stats()
+            .last_block_time
             .map(SystemTime::from),
         consensus_version: consensus_version.to_string(),
         fees,

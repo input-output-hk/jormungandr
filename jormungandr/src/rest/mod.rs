@@ -2,6 +2,7 @@
 
 pub mod context;
 pub mod explorer;
+mod prometheus;
 pub mod v0;
 mod v1;
 
@@ -57,7 +58,8 @@ pub async fn start_rest_server(config: Rest, explorer_enabled: bool, context: Co
                 }
             }
             span
-        }));
+        }))
+        .or(prometheus::filter(context.clone()));
     if explorer_enabled {
         let explorer = explorer::filter(context);
         setup_cors(api.or(explorer), config, stopper_rx).await;

@@ -11,6 +11,7 @@ use crate::{
     blockcfg::{HeaderHash, Leader},
     blockchain::Blockchain,
     diagnostic::Diagnostic,
+    metrics::MetricsBackend,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -36,18 +37,17 @@ pub mod fragment;
 pub mod intercom;
 pub mod leadership;
 pub mod log;
+pub mod metrics;
 pub mod network;
 pub mod rest;
 pub mod secure;
 pub mod settings;
 pub mod start_up;
 pub mod state;
-mod stats_counter;
 pub mod stuck_notifier;
 pub mod topology;
 pub mod utils;
 
-use stats_counter::StatsCounter;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_futures::Instrument;
 
@@ -102,7 +102,19 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let leadership_logs =
         leadership::Logs::new(bootstrapped_node.settings.leadership.logs_capacity);
 
-    let stats_counter = StatsCounter::default();
+    let simple_metrics_counter = Arc::new(crate::metrics::backends::SimpleCounter::new());
+    let prometheus_metric = Arc::new(crate::metrics::backends::Prometheus::new());
+    let stats_counter = {
+        let backends: Vec<Arc<dyn crate::metrics::MetricsBackend + Send + Sync + 'static>> =
+            vec![simple_metrics_counter.clone(), prometheus_metric.clone()];
+        crate::metrics::Metrics::new(backends)
+    };
+
+    {
+        let block_ref = services.block_on_task("get_tip_block", |_| blockchain_tip.get_ref());
+        let block = blockchain.storage().get(block_ref.hash()).unwrap().unwrap();
+        stats_counter.set_tip_block(&block, &block_ref);
+    }
 
     let explorer = {
         if bootstrapped_node.settings.explorer {
@@ -195,6 +207,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             network_msgbox: network_msgbox.clone(),
             initial_peers: bootstrapped_node.initial_peers,
             topology_queue,
+            stats_counter: stats_counter.clone(),
         };
 
         services.spawn_future("topology", move |_| topology::start(task_data));
@@ -267,7 +280,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     }
 
     {
-        let stats_counter = stats_counter.clone();
         let process = fragment::Process::new(
             bootstrapped_node.settings.mempool.pool_max_entries.into(),
             bootstrapped_node.settings.mempool.log_max_entries.into(),
@@ -292,7 +304,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     if let Some(rest_context) = bootstrapped_node.rest_context {
         let full_context = rest::FullContext {
-            stats_counter,
+            stats_counter: simple_metrics_counter,
             network_task: network_msgbox,
             transaction_task: fragment_msgbox,
             topology_task: topology_msgbox,
@@ -300,6 +312,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             enclave,
             network_state,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
+            prometheus: prometheus_metric,
         };
         block_on(async {
             let mut rest_context = rest_context.write().await;
