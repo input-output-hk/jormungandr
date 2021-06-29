@@ -1,12 +1,15 @@
 use crate::metrics::MetricsBackend;
 
+use chain_impl_mockchain::block::BlockContentHash;
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::transaction::Transaction;
 use chain_impl_mockchain::value::{Value, ValueError};
 
 use std::convert::TryInto;
+use std::sync::Arc;
 use std::time::SystemTime;
 
+use arc_swap::ArcSwapOption;
 use prometheus::core::{AtomicU64, GenericGauge};
 use prometheus::{Encoder, IntCounter, Registry, TextEncoder};
 
@@ -31,6 +34,8 @@ pub struct Prometheus {
     block_chain_length: UIntGauge,
     block_time: UIntGauge,
     block_hash: Vec<UIntGauge>,
+
+    block_hash_value: ArcSwapOption<BlockContentHash>,
 }
 
 impl Prometheus {
@@ -39,6 +44,16 @@ impl Prometheus {
     }
 
     pub fn http_response(&self) -> Result<impl warp::Reply, warp::Rejection> {
+        if let Some(block_hash) = self.block_hash_value.load_full() {
+            let block_hash_bytes = block_hash.as_bytes();
+            for i in 0..4 {
+                let mut value_bytes = [0u8; 8];
+                value_bytes.copy_from_slice(&block_hash_bytes[(8 * i)..(8 * (i + 1))]);
+                let value = u64::from_le_bytes(value_bytes);
+                self.block_hash[i].set(value);
+            }
+        }
+
         let encoder = TextEncoder::new();
         let metric_families = self.registry.gather();
         let mut buffer = Vec::new();
@@ -130,6 +145,7 @@ impl Default for Prometheus {
             block_chain_length,
             block_time,
             block_hash,
+            block_hash_value: Default::default(),
         }
     }
 }
@@ -243,12 +259,6 @@ impl MetricsBackend for Prometheus {
         );
 
         let block_hash = block.header.hash();
-        let block_hash_bytes = block_hash.as_bytes();
-        for i in 0..4 {
-            let mut value_bytes = [0u8; 8];
-            value_bytes.copy_from_slice(&block_hash_bytes[(8 * i)..(8 * (i + 1))]);
-            let value = u64::from_le_bytes(value_bytes);
-            self.block_hash[i].set(value);
-        }
+        self.block_hash_value.store(Some(Arc::new(block_hash)));
     }
 }
