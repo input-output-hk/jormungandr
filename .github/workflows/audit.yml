@@ -1,6 +1,11 @@
 name: Security audit
 on:
   push:
+    branches:
+      - master
+    paths:
+      - Cargo.lock
+  pull_request:
     paths:
       - Cargo.lock
   schedule:
