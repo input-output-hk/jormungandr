@@ -52,6 +52,9 @@ impl Prometheus {
                 let value = u64::from_le_bytes(value_bytes);
                 self.block_hash[i].set(value);
             }
+            // reset to None because we do not want to trigger these computations for the same block
+            // hash value once again
+            self.block_hash_value.store(None);
         }
 
         let encoder = TextEncoder::new();
