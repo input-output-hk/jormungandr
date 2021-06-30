@@ -210,7 +210,7 @@ impl P2pTopology {
             let result = self
                 .quarantine
                 .report_node(&mut self.topology, Peer::from(node.gossip().clone()));
-            if let ReportNodeResult::Quarantine | ReportNodeResult::Trusted = result {
+            if let ReportNodeResult::Quarantine | ReportNodeResult::SoftReport = result {
                 self.stats_counter.sub_peer_available_cnt(1);
             }
             if let ReportNodeResult::Quarantine = result {

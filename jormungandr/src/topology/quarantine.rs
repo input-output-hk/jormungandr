@@ -32,7 +32,7 @@ struct ReportRecord {
 pub enum ReportNodeResult {
     Ok,
     Quarantine,
-    Trusted,
+    SoftReport,
 }
 
 /// Forgive nodes we demoted after some time
@@ -90,7 +90,7 @@ impl ReportRecords {
             // demote a peer all the way down to dirty in case of a serious violation.
             topology.remove_peer(peer_info.id.as_ref());
 
-            let mut result = ReportNodeResult::Trusted;
+            let mut result = ReportNodeResult::SoftReport;
 
             // Not all reports will quarantine a node (which is, put it in the dirty pool). For example,
             // a connectivity issue reported against a trusted peer will only demote it once, thus putting
