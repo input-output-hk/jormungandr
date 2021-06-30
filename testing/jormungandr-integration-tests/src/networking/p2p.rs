@@ -4,9 +4,7 @@ use crate::common::{
 };
 
 use jormungandr_lib::{
-    interfaces::{
-        Explorer, PeerRecord, Policy, PreferredListConfig, TopicsOfInterest, TrustedPeer,
-    },
+    interfaces::{PeerRecord, Policy, PreferredListConfig, TopicsOfInterest, TrustedPeer},
     time::Duration,
 };
 use jormungandr_testing_utils::testing::network_builder::SpawnParams;
@@ -130,9 +128,6 @@ pub fn node_whitelist_itself() {
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
             wallet("delegated2").with(1_000_000).delegated_to(SERVER),
         ])
-        .custom_config(vec![
-            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
-        ])
         .build()
         .unwrap();
 
@@ -161,9 +156,6 @@ pub fn node_does_not_quarantine_whitelisted_node() {
         .initials(vec![
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
             wallet("delegated2").with(1_000_000).delegated_to(SERVER),
-        ])
-        .custom_config(vec![
-            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
         ])
         .build()
         .unwrap();
@@ -208,9 +200,6 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
             wallet("delegated2").with(1_000_000).delegated_to(SERVER),
         ])
-        .custom_config(vec![
-            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
-        ])
         .build()
         .unwrap();
 
@@ -246,9 +235,6 @@ pub fn node_does_not_quarantine_trusted_node() {
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
             wallet("delegated2").with(1_000_000).delegated_to(SERVER),
         ])
-        .custom_config(vec![
-            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
-        ])
         .build()
         .unwrap();
 
@@ -273,9 +259,6 @@ pub fn node_trust_itself() {
         .initials(vec![
             wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
             wallet("delegated2").with(1_000_000).delegated_to(SERVER),
-        ])
-        .custom_config(vec![
-            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
         ])
         .build()
         .unwrap();

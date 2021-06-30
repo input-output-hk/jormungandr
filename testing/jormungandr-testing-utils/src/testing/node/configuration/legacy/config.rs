@@ -1,6 +1,6 @@
 #![allow(deprecated)]
 use jormungandr_lib::interfaces::{
-    Explorer, LayersConfig, LogEntry, LogOutput, Mempool, Policy, Rest, TopicsOfInterest,
+    LayersConfig, LogEntry, LogOutput, Mempool, Policy, Rest, TopicsOfInterest,
 };
 use multiaddr::Multiaddr;
 use serde::{Deserialize, Serialize};
@@ -69,7 +69,6 @@ pub struct NodeConfig {
     pub rest: Rest,
     pub p2p: P2p,
     pub log: Option<Log>,
-    pub explorer: Explorer,
     pub mempool: Option<Mempool>,
     pub bootstrap_from_trusted_peers: Option<bool>,
     pub skip_bootstrap: Option<bool>,

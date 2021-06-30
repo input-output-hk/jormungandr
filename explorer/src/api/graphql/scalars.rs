@@ -1,12 +1,15 @@
 use super::error::ApiError;
-use crate::blockcfg;
 use async_graphql::{Enum, InputValueError, InputValueResult, Scalar, ScalarType, SimpleObject};
 use chain_crypto::bech32::Bech32;
-use chain_impl_mockchain::vote;
+use chain_impl_mockchain::{
+    block::{ChainLength as InternalChainLength, Epoch, SlotId},
+    value::Value as InternalValue,
+    vote,
+};
 use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone)]
-pub struct EpochNumber(pub blockcfg::Epoch);
+pub struct EpochNumber(pub Epoch);
 
 #[Scalar]
 impl ScalarType for EpochNumber {
@@ -26,7 +29,7 @@ impl ScalarType for EpochNumber {
 }
 
 #[derive(Clone)]
-pub struct Slot(pub blockcfg::SlotId);
+pub struct Slot(pub SlotId);
 
 #[Scalar]
 impl ScalarType for Slot {
@@ -46,7 +49,7 @@ impl ScalarType for Slot {
 }
 
 #[derive(Clone)]
-pub struct ChainLength(pub blockcfg::ChainLength);
+pub struct ChainLength(pub InternalChainLength);
 
 #[Scalar]
 /// Custom scalar type that represents a block's position in the blockchain.
@@ -54,12 +57,12 @@ pub struct ChainLength(pub blockcfg::ChainLength);
 impl ScalarType for ChainLength {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         match &value {
-            async_graphql::Value::String(string) => Ok(ChainLength(blockcfg::ChainLength::from(
+            async_graphql::Value::String(string) => Ok(ChainLength(InternalChainLength::from(
                 string.parse::<u32>()?,
             ))),
 
             async_graphql::Value::Number(number) if number.is_i64() => Ok(ChainLength(
-                blockcfg::ChainLength::from(u32::try_from(number.as_i64().unwrap())?),
+                InternalChainLength::from(u32::try_from(number.as_i64().unwrap())?),
             )),
             _ => Err(InputValueError::expected_type(value)),
         }
@@ -87,13 +90,13 @@ impl ScalarType for PoolId {
     }
 }
 
-pub struct Value(pub blockcfg::Value);
+pub struct Value(pub InternalValue);
 
 #[Scalar]
 impl ScalarType for Value {
     fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
         if let async_graphql::Value::String(value) = &value {
-            Ok(value.parse::<u64>().map(blockcfg::Value).map(Value)?)
+            Ok(value.parse::<u64>().map(InternalValue).map(Value)?)
         } else {
             Err(InputValueError::expected_type(value))
         }
@@ -361,21 +364,21 @@ impl From<u64> for IndexCursor {
     }
 }
 
-impl From<blockcfg::ChainLength> for IndexCursor {
-    fn from(length: blockcfg::ChainLength) -> IndexCursor {
+impl From<InternalChainLength> for IndexCursor {
+    fn from(length: InternalChainLength) -> IndexCursor {
         IndexCursor(u32::from(length).to_string())
     }
 }
 
-impl TryFrom<IndexCursor> for blockcfg::ChainLength {
+impl TryFrom<IndexCursor> for InternalChainLength {
     type Error = ApiError;
-    fn try_from(c: IndexCursor) -> Result<blockcfg::ChainLength, Self::Error> {
+    fn try_from(c: IndexCursor) -> Result<InternalChainLength, Self::Error> {
         let inner: u32 = c.0.parse().map_err(|_| {
             ApiError::InvalidCursor(
                 "block's pagination cursor is greater than maximum ChainLength".to_owned(),
             )
         })?;
-        Ok(blockcfg::ChainLength::from(inner))
+        Ok(InternalChainLength::from(inner))
     }
 }
 
@@ -385,9 +388,9 @@ impl From<chain_impl_mockchain::certificate::ExternalProposalId> for ExternalPro
     }
 }
 
-impl From<vote::Weight> for Weight {
-    fn from(w: vote::Weight) -> Self {
-        Self(format!("{}", w))
+impl<T: std::borrow::Borrow<vote::Weight>> From<T> for Weight {
+    fn from(w: T) -> Self {
+        Self(format!("{}", w.borrow()))
     }
 }
 
@@ -411,6 +414,6 @@ impl From<u64> for VoteStatusCount {
 
 impl From<u64> for Value {
     fn from(number: u64) -> Value {
-        Value(blockcfg::Value(number))
+        Value(InternalValue(number))
     }
 }

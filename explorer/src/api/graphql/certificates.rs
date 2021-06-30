@@ -1,15 +1,13 @@
-use super::error::ApiError;
+use super::{error::ApiError, extract_context};
 use async_graphql::{Context, FieldResult, Object, Union};
 use chain_impl_mockchain::certificate;
 use std::convert::TryFrom;
 
 use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
 use super::{Address, BlockDate, ExplorerAddress, Pool, Proposal, TaxType};
-use crate::rest::explorer::EContext as RestContext;
 
 // interface for grouping certificates as a graphl union
 #[derive(Union)]
-#[graphql(Context = Context)]
 pub enum Certificate {
     StakeDelegation(StakeDelegation),
     OwnerStakeDelegation(OwnerStakeDelegation),
@@ -45,14 +43,7 @@ pub struct EncryptedVoteTally(certificate::EncryptedVoteTally);
 impl StakeDelegation {
     // FIXME: Maybe a new Account type would be better?
     pub async fn account(&self, context: &Context<'_>) -> FieldResult<Address> {
-        let discrimination = context
-            .data_unchecked::<RestContext>()
-            .get()
-            .await
-            .unwrap()
-            .db
-            .blockchain_config
-            .discrimination;
+        let discrimination = extract_context(context).db.blockchain_config.discrimination;
         self.0
             .account_id
             .to_single_account()
@@ -115,14 +106,7 @@ impl PoolRegistration {
     /// Reward account
     pub async fn reward_account(&self, context: &Context<'_>) -> Option<Address> {
         use chain_impl_mockchain::transaction::AccountIdentifier;
-        let discrimination = context
-            .data_unchecked::<RestContext>()
-            .get()
-            .await
-            .unwrap()
-            .db
-            .blockchain_config
-            .discrimination;
+        let discrimination = extract_context(context).db.blockchain_config.discrimination;
 
         // FIXME: Move this transformation to a point earlier
 

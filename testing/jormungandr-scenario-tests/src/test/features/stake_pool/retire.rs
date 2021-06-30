@@ -3,7 +3,6 @@ use crate::{
     test::{utils, Result},
     Context, ScenarioResult,
 };
-use jormungandr_lib::interfaces::Explorer;
 use rand_chacha::ChaChaRng;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
@@ -39,13 +38,8 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader_1 = controller.spawn_node_custom(
-        controller
-            .new_spawn_params(LEADER_1)
-            .leader()
-            .in_memory()
-            .explorer(Explorer { enabled: true }),
-    )?;
+    let leader_1 =
+        controller.spawn_node_custom(controller.new_spawn_params(LEADER_1).leader().in_memory())?;
     leader_1.wait_for_bootstrap()?;
 
     let leader_2 =

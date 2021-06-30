@@ -42,7 +42,7 @@ pub enum Status {
 pub struct JormungandrProcess {
     pub child: Child,
     pub logger: JormungandrLogger,
-    temp_dir: Option<TempDir>,
+    pub temp_dir: Option<TempDir>,
     alias: String,
     p2p_public_address: Multiaddr,
     rest_socket_addr: SocketAddr,

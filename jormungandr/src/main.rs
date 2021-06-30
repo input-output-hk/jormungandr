@@ -31,7 +31,6 @@ pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
 pub mod diagnostic;
-pub mod explorer;
 pub mod fragment;
 pub mod intercom;
 pub mod leadership;
@@ -65,7 +64,6 @@ pub struct BootstrappedNode {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
-    explorer_db: Option<explorer::ExplorerDb>,
     rest_context: Option<rest::ContextLock>,
     services: Services,
     initial_peers: Vec<topology::Peer>,
@@ -75,7 +73,6 @@ pub struct BootstrappedNode {
 const BLOCK_TASK_QUEUE_LEN: usize = 32;
 const FRAGMENT_TASK_QUEUE_LEN: usize = 1024;
 const NETWORK_TASK_QUEUE_LEN: usize = 64;
-const EXPLORER_TASK_QUEUE_LEN: usize = 32;
 const CLIENT_TASK_QUEUE_LEN: usize = 32;
 const TOPOLOGY_TASK_QUEUE_LEN: usize = 32;
 const NOTIFIER_TASK_QUEUE_LEN: usize = 32;
@@ -106,28 +103,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
     let stats_counter = StatsCounter::default();
 
-    let explorer = {
-        if bootstrapped_node.settings.explorer {
-            let explorer_db = bootstrapped_node
-                .explorer_db
-                .expect("explorer db to be bootstrapped");
-
-            let explorer = explorer::Explorer::new(explorer_db);
-
-            // Context to give to the rest api
-            let context = explorer.clone();
-
-            let (explorer_msgbox, explorer_queue) = async_msg::channel(EXPLORER_TASK_QUEUE_LEN);
-
-            services.spawn_future("explorer", move |info| async move {
-                explorer.start(info, explorer_queue).await
-            });
-            Some((explorer_msgbox, context))
-        } else {
-            None
-        }
-    };
-
     let (notifier_msgbox, notifier) = {
         let (msgbox, queue) = async_msg::channel(NOTIFIER_TASK_QUEUE_LEN);
 
@@ -149,7 +124,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let blockchain_tip = blockchain_tip.clone();
         let network_msgbox = network_msgbox.clone();
         let fragment_msgbox = fragment_msgbox.clone();
-        let explorer_msgbox = explorer.as_ref().map(|(msg_box, _context)| msg_box.clone());
         let notifier_msgbox = notifier_msgbox.clone();
         // TODO: we should get this value from the configuration
         let block_cache_ttl: Duration = Duration::from_secs(120);
@@ -161,7 +135,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 stats_counter,
                 network_msgbox,
                 fragment_msgbox,
-                explorer_msgbox,
                 notifier_msgbox,
                 garbage_collection_interval: block_cache_ttl,
             };
@@ -321,7 +294,6 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             leadership_logs,
             enclave,
             network_state,
-            explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
         };
         block_on(async {
             let mut rest_context = rest_context.write().await;
@@ -384,7 +356,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         blockchain,
         blockchain_tip,
         block0_hash,
-        explorer_db,
         rest_context,
         settings,
         initial_peers,
@@ -404,7 +375,6 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         blockchain,
         blockchain_tip,
         block0_hash,
-        explorer_db,
         rest_context,
         services,
         initial_peers,
@@ -416,7 +386,6 @@ struct BootstrapData {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
-    explorer_db: Option<explorer::ExplorerDb>,
     rest_context: Option<rest::ContextLock>,
     settings: Settings,
     initial_peers: Vec<topology::Peer>,
@@ -442,8 +411,6 @@ async fn bootstrap_internal(
     }
 
     let block0_hash = block0.header.hash();
-
-    let block0_explorer = block0.clone();
 
     let cache_capacity = 102_400;
 
@@ -497,17 +464,6 @@ async fn bootstrap_internal(
         }
     };
 
-    let explorer_db = if settings.explorer {
-        futures::select! {
-            explorer_result = explorer::ExplorerDb::bootstrap(block0_explorer, &blockchain, blockchain_tip.clone()).fuse() => {
-                Some(explorer_result?)
-            },
-            _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),
-        }
-    } else {
-        None
-    };
-
     if let Some(context) = &rest_context {
         let mut context = context.write().await;
         context.remove_bootstrap_stopper();
@@ -517,7 +473,6 @@ async fn bootstrap_internal(
         block0_hash,
         blockchain,
         blockchain_tip,
-        explorer_db,
         rest_context,
         settings,
         initial_peers: network_res
@@ -650,8 +605,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let context = Arc::new(RwLock::new(context));
 
             let service_context = context.clone();
-            let explorer = settings.explorer;
-            let server_handler = rest::start_rest_server(rest, explorer, context.clone());
+            let server_handler = rest::start_rest_server(rest, context.clone());
             services.spawn_future("rest", move |info| async move {
                 service_context.write().await.set_span(info.span().clone());
                 server_handler.await

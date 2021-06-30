@@ -1,6 +1,5 @@
 use jormungandr_lib::interfaces::{
-    Explorer, LayersConfig, Mempool, NodeConfig, Policy, PreferredListConfig, TopicsOfInterest,
-    TrustedPeer,
+    LayersConfig, Mempool, NodeConfig, Policy, PreferredListConfig, TopicsOfInterest, TrustedPeer,
 };
 use multiaddr::Multiaddr;
 use std::net::SocketAddr;
@@ -13,7 +12,6 @@ use std::path::PathBuf;
 #[derive(Clone)]
 pub struct SpawnParams {
     pub topics_of_interest: Option<TopicsOfInterest>,
-    pub explorer: Option<Explorer>,
     pub mempool: Option<Mempool>,
     pub policy: Option<Policy>,
     pub jormungandr: Option<PathBuf>,
@@ -37,7 +35,6 @@ impl SpawnParams {
     pub fn new(alias: &str) -> Self {
         Self {
             topics_of_interest: None,
-            explorer: None,
             mempool: None,
             policy: None,
             jormungandr: None,
@@ -110,11 +107,6 @@ impl SpawnParams {
 
     pub fn max_inbound_connections(&mut self, max_inbound_connections: u32) -> &mut Self {
         self.max_inbound_connections = Some(max_inbound_connections);
-        self
-    }
-
-    pub fn explorer(&mut self, explorer: Explorer) -> &mut Self {
-        self.explorer = Some(explorer);
         self
     }
 
@@ -197,10 +189,6 @@ impl SpawnParams {
                     topics_of_interest: Some(topics_of_interest.clone()),
                 });
             }
-        }
-
-        if let Some(explorer) = &self.explorer {
-            node_config.explorer = explorer.clone();
         }
 
         if let Some(mempool) = &self.mempool {

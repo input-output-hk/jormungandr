@@ -6,7 +6,7 @@ pub use crate::testing::node::configuration::{
 };
 use crate::testing::{decompress, CachedReleases, GitHubApiBuilder, Release};
 pub use jormungandr_lib::interfaces::{
-    Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
+    Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
 };
 use jortestkit::file;
 

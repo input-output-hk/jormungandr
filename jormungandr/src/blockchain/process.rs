@@ -7,9 +7,7 @@ use super::{
 use crate::{
     blockcfg::{Block, FragmentId, Header, HeaderHash},
     blockchain::Checkpoints,
-    intercom::{
-        self, BlockMsg, ExplorerMsg, NetworkMsg, NotifierMsg, PropagateMsg, TransactionMsg,
-    },
+    intercom::{self, BlockMsg, NetworkMsg, NotifierMsg, PropagateMsg, TransactionMsg},
     network::p2p::Address,
     stats_counter::StatsCounter,
     utils::{
@@ -59,7 +57,6 @@ pub struct Process {
     pub stats_counter: StatsCounter,
     pub network_msgbox: MessageBox<NetworkMsg>,
     pub fragment_msgbox: MessageBox<TransactionMsg>,
-    pub explorer_msgbox: Option<MessageBox<ExplorerMsg>>,
     pub notifier_msgbox: MessageBox<NotifierMsg>,
     pub garbage_collection_interval: Duration,
 }
@@ -94,7 +91,6 @@ impl Process {
         let blockchain = self.blockchain.clone();
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
-        let explorer_msg_box = self.explorer_msgbox.clone();
         let event_notifier_msg_box = self.notifier_msgbox.clone();
         let tx_msg_box = self.fragment_msgbox.clone();
         let stats_counter = self.stats_counter.clone();
@@ -120,7 +116,6 @@ impl Process {
                         blockchain_tip,
                         tx_msg_box,
                         network_msg_box,
-                        explorer_msg_box,
                         event_notifier_msg_box,
                         leadership_block,
                         stats_counter,
@@ -167,7 +162,6 @@ impl Process {
                         blockchain_tip,
                         tx_msg_box,
                         network_msg_box,
-                        explorer_msg_box,
                         event_notifier_msg_box,
                         get_next_block_scheduler,
                         handle,
@@ -198,21 +192,13 @@ impl Process {
     fn start_branch_reprocessing(&self, info: &TokioServiceInfo) {
         let tip = self.blockchain_tip.clone();
         let blockchain = self.blockchain.clone();
-        let explorer = self.explorer_msgbox.clone();
 
         let notifier = self.notifier_msgbox.clone();
 
         info.run_periodic_fallible(
             "branch reprocessing",
             BRANCH_REPROCESSING_INTERVAL,
-            move || {
-                reprocess_tip(
-                    blockchain.clone(),
-                    tip.clone(),
-                    explorer.clone(),
-                    notifier.clone(),
-                )
-            },
+            move || reprocess_tip(blockchain.clone(), tip.clone(), notifier.clone()),
         )
     }
 
@@ -296,7 +282,6 @@ fn try_request_fragment_removal(
 async fn reprocess_tip(
     mut blockchain: Blockchain,
     tip: Tip,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     notifier_msg_box: MessageBox<NotifierMsg>,
 ) -> Result<(), Error> {
     let branches: Vec<Arc<Ref>> = blockchain.branches().branches().await;
@@ -313,7 +298,6 @@ async fn reprocess_tip(
             &mut blockchain,
             tip.clone(),
             Arc::clone(other),
-            explorer_msg_box.clone(),
             Some(notifier_msg_box.clone()),
         )
         .await?
@@ -335,7 +319,6 @@ pub async fn process_new_ref(
     blockchain: &mut Blockchain,
     mut tip: Tip,
     candidate: Arc<Ref>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     notifier_msg_box: Option<MessageBox<NotifierMsg>>,
 ) -> Result<(), Error> {
     let candidate_hash = candidate.hash();
@@ -377,15 +360,6 @@ pub async fn process_new_ref(
                 tip.swap(branch).await;
             }
 
-            if let Some(mut msg_box) = explorer_msg_box {
-                msg_box
-                    .send(ExplorerMsg::NewTip(candidate_hash))
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!("cannot send new tip to explorer: {}", err)
-                    })
-            }
-
             if let Some(mut msg_box) = notifier_msg_box {
                 msg_box
                     .send(NotifierMsg::NewTip(candidate_hash))
@@ -405,20 +379,12 @@ async fn process_and_propagate_new_ref(
     tip: Tip,
     new_block_ref: Arc<Ref>,
     mut network_msg_box: MessageBox<NetworkMsg>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     notifier_msg_box: MessageBox<NotifierMsg>,
 ) -> chain::Result<()> {
     let header = new_block_ref.header().clone();
     tracing::debug!("processing the new block and propagating");
 
-    process_new_ref(
-        blockchain,
-        tip,
-        new_block_ref,
-        explorer_msg_box,
-        Some(notifier_msg_box),
-    )
-    .await?;
+    process_new_ref(blockchain, tip, new_block_ref, Some(notifier_msg_box)).await?;
 
     tracing::debug!("propagating block to the network");
 
@@ -435,7 +401,6 @@ async fn process_leadership_block(
     blockchain_tip: Tip,
     mut tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     mut notifier_msg_box: MessageBox<crate::notifier::Message>,
     leadership_block: LeadershipBlock,
     stats_counter: StatsCounter,
@@ -453,7 +418,6 @@ async fn process_leadership_block(
         blockchain_tip,
         Arc::clone(&new_block_ref),
         network_msg_box,
-        explorer_msg_box.clone(),
         notifier_msg_box.clone(),
     )
     .await?;
@@ -469,10 +433,6 @@ async fn process_leadership_block(
             "Cannot propagate block to blockchain event notifier: {}",
             err
         )
-    }
-
-    if let Some(mut msg_box) = explorer_msg_box {
-        msg_box.send(ExplorerMsg::NewBlock(block)).await?;
     }
 
     Ok(())
@@ -544,7 +504,6 @@ async fn process_network_blocks(
     blockchain_tip: Tip,
     mut tx_msg_box: MessageBox<TransactionMsg>,
     network_msg_box: MessageBox<NetworkMsg>,
-    mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     mut notifier_msg_box: MessageBox<NotifierMsg>,
     mut get_next_block_scheduler: GetNextBlockScheduler,
     handle: intercom::RequestStreamHandle<Block, ()>,
@@ -563,7 +522,6 @@ async fn process_network_blocks(
                     &blockchain,
                     block.clone(),
                     &mut tx_msg_box,
-                    explorer_msg_box.as_mut(),
                     &mut notifier_msg_box,
                     &mut get_next_block_scheduler,
                 )
@@ -602,7 +560,6 @@ async fn process_network_blocks(
                 blockchain_tip,
                 Arc::clone(&new_block_ref),
                 network_msg_box,
-                explorer_msg_box,
                 notifier_msg_box,
             )
             .await?;
@@ -621,7 +578,6 @@ async fn process_network_block(
     blockchain: &Blockchain,
     block: Block,
     tx_msg_box: &mut MessageBox<TransactionMsg>,
-    explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
     event_notifier_msg_box: &mut MessageBox<NotifierMsg>,
     get_next_block_scheduler: &mut GetNextBlockScheduler,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
@@ -658,7 +614,6 @@ async fn process_network_block(
                 parent_ref,
                 block,
                 tx_msg_box,
-                explorer_msg_box,
                 event_notifier_msg_box,
             )
             .await;
@@ -672,10 +627,8 @@ async fn check_and_apply_block(
     parent_ref: Arc<Ref>,
     block: Block,
     tx_msg_box: &mut MessageBox<TransactionMsg>,
-    explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
     event_notifier_msg_box: &mut MessageBox<NotifierMsg>,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
-    let explorer_enabled = explorer_msg_box.is_some();
     let post_checked = blockchain
         .post_check_header(block.header(), parent_ref, CheckHeaderProof::Enabled)
         .await?;
@@ -687,11 +640,7 @@ async fn check_and_apply_block(
         date = %header.block_date(),
         "applying block to storage"
     );
-    let mut block_for_explorer = if explorer_enabled {
-        Some(block.clone())
-    } else {
-        None
-    };
+
     let block_for_subscribers = block.clone();
 
     let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
@@ -709,11 +658,6 @@ async fn check_and_apply_block(
         try_request_fragment_removal(tx_msg_box, fragment_ids, header).unwrap_or_else(
             |err| tracing::error!(reason = %err, "cannot remove fragments from pool"),
         );
-        if let Some(msg_box) = explorer_msg_box {
-            msg_box
-                .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
-                .unwrap_or_else(|err| tracing::error!("cannot add block to explorer: {}", err));
-        }
 
         event_notifier_msg_box
             .try_send(NotifierMsg::NewBlock(block_for_subscribers))

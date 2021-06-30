@@ -83,7 +83,6 @@ pub fn jcli_e2e_flow_private_vote() {
     let vote_plan_cert = jcli.certificate().new_vote_plan(vote_plan_json.path());
 
     let config = ConfigurationBuilder::new()
-        .with_explorer()
         .with_funds(vec![
             alice.to_initial_fund(wallet_initial_funds),
             bob.to_initial_fund(wallet_initial_funds),
@@ -119,19 +118,7 @@ pub fn jcli_e2e_flow_private_vote() {
 
     alice.confirm_transaction();
 
-    let rewards_before = jormungandr
-        .explorer()
-        .last_block()
-        .unwrap()
-        .data
-        .unwrap()
-        .tip
-        .block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
+    let rewards_before: u64 = unimplemented!("treasury query not supported by external explorer");
 
     time::wait_for_epoch(1, jormungandr.rest());
 
@@ -271,19 +258,7 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(3, jormungandr.rest());
 
-    let rewards_after = jormungandr
-        .explorer()
-        .last_block()
-        .unwrap()
-        .data
-        .unwrap()
-        .tip
-        .block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
+    let rewards_after: u64 = unimplemented!("treasury query not supported by external explorer");
 
     // We want to make sure that our small rewards increase is reflexed in current rewards amount
     assert!(

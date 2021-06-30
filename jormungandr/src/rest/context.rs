@@ -145,5 +145,4 @@ pub struct FullContext {
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,
     pub network_state: NetworkStateR,
-    pub explorer: Option<crate::explorer::Explorer>,
 }

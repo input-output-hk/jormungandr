@@ -1,5 +1,8 @@
-use crate::blockcfg::{ChainLength, HeaderHash, Multiverse as MultiverseData};
-use chain_impl_mockchain::multiverse;
+use chain_impl_mockchain::{
+    block::{ChainLength, HeaderId as HeaderHash},
+    multiverse,
+};
+use multiverse::Multiverse as MultiverseData;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -10,7 +13,7 @@ pub struct Multiverse {
     inner: Arc<RwLock<Inner>>,
 }
 
-pub(super) type Ref = multiverse::Ref<State>;
+pub type Ref = multiverse::Ref<State>;
 
 struct Inner {
     multiverse: MultiverseData<State>,

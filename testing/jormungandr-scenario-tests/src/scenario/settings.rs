@@ -12,8 +12,7 @@ use jormungandr_lib::crypto::{account::Identifier, key::SigningKey};
 use jormungandr_lib::interfaces::try_initials_vec_from_messages;
 use jormungandr_lib::{
     interfaces::{
-        Explorer, LayersConfig, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
-        TopicsOfInterest,
+        LayersConfig, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest, TopicsOfInterest,
     },
     time::Duration,
 };
@@ -301,7 +300,6 @@ impl Prepare for NodeConfig {
             storage: None,
             log: None,
             mempool: Some(Mempool::prepare(context)),
-            explorer: Explorer::prepare(context),
             bootstrap_from_trusted_peers: None,
             skip_bootstrap: None,
         }
@@ -327,15 +325,6 @@ impl Prepare for Mempool {
         RNG: RngCore,
     {
         Mempool::default()
-    }
-}
-
-impl Prepare for Explorer {
-    fn prepare<RNG>(_context: &mut Context<RNG>) -> Self
-    where
-        RNG: RngCore,
-    {
-        Explorer { enabled: false }
     }
 }
 

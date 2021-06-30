@@ -52,7 +52,6 @@ pub struct Settings {
     pub mempool: Mempool,
     pub rewards_report_all: bool,
     pub leadership: Leadership,
-    pub explorer: bool,
     pub no_blockchain_updates_warning_interval: std::time::Duration,
     pub block_hard_deadline: u32,
 }
@@ -196,13 +195,6 @@ impl RawSettings {
             (None, Some(hash)) => Block0Info::Hash(*hash),
         };
 
-        let explorer = command_arguments.explorer_enabled
-            || config.as_ref().map_or(false, |cfg| {
-                cfg.explorer
-                    .as_ref()
-                    .map_or(false, |settings| settings.enabled)
-            });
-
         Ok(Settings {
             storage,
             block_0,
@@ -216,7 +208,6 @@ impl RawSettings {
             leadership: config
                 .as_ref()
                 .map_or(Leadership::default(), |cfg| cfg.leadership.clone()),
-            explorer,
             no_blockchain_updates_warning_interval: config
                 .as_ref()
                 .and_then(|config| config.no_blockchain_updates_warning_interval)

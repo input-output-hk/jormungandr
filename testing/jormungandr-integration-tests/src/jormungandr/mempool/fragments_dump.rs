@@ -32,7 +32,6 @@ pub fn dump_send_correct_fragments() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_slot_duration(1)
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
@@ -92,7 +91,6 @@ pub fn dump_send_invalid_fragments() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_slot_duration(1)
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
@@ -140,7 +138,6 @@ pub fn non_existing_folder() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_slot_duration(1)
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
@@ -192,7 +189,6 @@ pub fn fragment_which_reached_mempool_should_be_persisted() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_slot_duration(3)
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1usize.into(),
                 log_max_entries: 1000usize.into(),
@@ -231,7 +227,6 @@ pub fn fragment_which_is_not_in_fragment_log_should_be_persisted() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_slot_duration(3)
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1000usize.into(),
                 log_max_entries: 1usize.into(),
@@ -270,7 +265,6 @@ pub fn pending_fragment_should_be_persisted() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(5)
             .with_slot_duration(60)
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 10usize.into(),
                 log_max_entries: 10usize.into(),
@@ -314,7 +308,6 @@ pub fn node_should_pickup_log_after_restart() {
     let config = ConfigurationBuilder::new()
         .with_slots_per_epoch(60)
         .with_slot_duration(3)
-        .with_explorer()
         .with_mempool(Mempool {
             pool_max_entries: 1usize.into(),
             log_max_entries: 1000usize.into(),

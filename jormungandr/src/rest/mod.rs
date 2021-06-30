@@ -1,7 +1,6 @@
 //! REST API of the node
 
 pub mod context;
-pub mod explorer;
 pub mod v0;
 mod v1;
 
@@ -22,7 +21,7 @@ impl ServerStopper {
     }
 }
 
-pub async fn start_rest_server(config: Rest, explorer_enabled: bool, context: ContextLock) {
+pub async fn start_rest_server(config: Rest, context: ContextLock) {
     let (stopper_tx, stopper_rx) = mpsc::channel::<()>(0);
     let stopper_rx = stopper_rx.into_future().map(|_| ());
     context
@@ -42,12 +41,8 @@ pub async fn start_rest_server(config: Rest, explorer_enabled: bool, context: Co
                 remote_addr = ?info.remote_addr(),
             )
         }));
-    if explorer_enabled {
-        let explorer = explorer::filter(context);
-        setup_cors(api.or(explorer), config, stopper_rx).await;
-    } else {
-        setup_cors(api, config, stopper_rx).await;
-    }
+
+    setup_cors(api, config, stopper_rx).await;
 }
 
 async fn setup_cors<App>(

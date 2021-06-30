@@ -108,7 +108,6 @@ impl LegacyNodeConfigConverter {
                 public_id: None,
             },
             mempool: source.mempool.clone(),
-            explorer: source.explorer.clone(),
             bootstrap_from_trusted_peers: source.bootstrap_from_trusted_peers,
             skip_bootstrap: source.skip_bootstrap,
         }
@@ -167,7 +166,6 @@ impl LegacyNodeConfigConverter {
                 public_id: None,
             },
             mempool: source.mempool.clone(),
-            explorer: source.explorer.clone(),
             bootstrap_from_trusted_peers: source.bootstrap_from_trusted_peers,
             skip_bootstrap: source.skip_bootstrap,
         }

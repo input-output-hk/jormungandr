@@ -2,7 +2,7 @@
 
 use jormungandr_lib::{
     interfaces::{
-        Explorer, LayersConfig, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls, TopicsOfInterest,
+        LayersConfig, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls, TopicsOfInterest,
         TrustedPeer,
     },
     time::Duration,
@@ -17,7 +17,6 @@ pub struct NodeConfigBuilder {
     pub rest: Rest,
     pub p2p: P2p,
     pub mempool: Option<Mempool>,
-    pub explorer: Explorer,
 }
 
 const DEFAULT_HOST: &str = "127.0.0.1";
@@ -71,13 +70,7 @@ impl NodeConfigBuilder {
                 }),
             },
             mempool: Some(Mempool::default()),
-            explorer: Explorer { enabled: false },
         }
-    }
-
-    pub fn with_explorer(&mut self) -> &mut Self {
-        self.explorer.enabled = true;
-        self
     }
 
     pub fn with_policy(&mut self, policy: Policy) -> &mut Self {
@@ -127,7 +120,6 @@ impl NodeConfigBuilder {
             rest: self.rest.clone(),
             p2p: self.p2p.clone(),
             mempool: self.mempool.clone(),
-            explorer: self.explorer.clone(),
             bootstrap_from_trusted_peers: Some(!self.p2p.trusted_peers.is_empty()),
             skip_bootstrap: Some(self.p2p.trusted_peers.is_empty()),
         }

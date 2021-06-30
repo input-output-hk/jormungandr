@@ -3,7 +3,6 @@ pub type Slot = String;
 pub type ChainLength = String;
 pub type PoolId = String;
 pub type Value = String;
-pub type NonZero = String;
 pub type VotePlanId = String;
 
 use graphql_client::GraphQLQuery;

@@ -4,7 +4,6 @@ use crate::{
     Context, ScenarioResult,
 };
 use function_name::named;
-use jormungandr_lib::interfaces::Explorer;
 use rand_chacha::ChaChaRng;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
@@ -52,13 +51,8 @@ pub fn passive_node_explorer(mut context: Context<ChaChaRng>) -> Result<Scenario
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader_3.wait_for_bootstrap()?;
 
-    let passive = controller.spawn_node_custom(
-        controller
-            .new_spawn_params(PASSIVE)
-            .passive()
-            .in_memory()
-            .explorer(Explorer { enabled: true }),
-    )?;
+    let passive =
+        controller.spawn_node_custom(controller.new_spawn_params(PASSIVE).passive().in_memory())?;
     passive.wait_for_bootstrap()?;
 
     let mut alice = controller.wallet("alice")?;

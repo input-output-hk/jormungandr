@@ -36,8 +36,6 @@ pub struct Config {
     #[serde(default)]
     pub http_fetch_block0_service: Vec<String>,
 
-    pub explorer: Option<Explorer>,
-
     /// the time interval with no blockchain updates after which alerts are thrown
     #[serde(default)]
     pub no_blockchain_updates_warning_interval: Option<Duration>,
@@ -149,12 +147,6 @@ pub struct Leadership {
     /// the least recently used log will be erased from the logs for a new one
     /// to be inserted.
     pub logs_capacity: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct Explorer {
-    pub enabled: bool,
 }
 
 impl Default for P2pConfig {

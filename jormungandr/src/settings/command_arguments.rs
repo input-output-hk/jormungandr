@@ -46,10 +46,6 @@ pub struct StartArguments {
     #[structopt(long = "genesis-block-hash", parse(try_from_str))]
     pub block_0_hash: Option<HeaderHash>,
 
-    /// Start the explorer task and enable associated query endpoints.
-    #[structopt(long = "enable-explorer")]
-    pub explorer_enabled: bool,
-
     /// The address to listen from and accept connection from. This is the
     /// public address that will be distributed to other peers of the network.
     #[structopt(long = "public-address")]

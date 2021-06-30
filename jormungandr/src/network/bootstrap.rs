@@ -271,7 +271,6 @@ where
                         branch.clone(),
                         parent_tip.clone(),
                         None,
-                        None,
                     )
                     .await
                     {
@@ -284,7 +283,7 @@ where
     }
 
     if let Some(parent_tip) = maybe_parent_tip {
-        blockchain::process_new_ref(&mut blockchain, branch, parent_tip, None, None)
+        blockchain::process_new_ref(&mut blockchain, branch, parent_tip, None)
             .await
             .map_err(Error::ChainSelectionFailed)
     } else {
