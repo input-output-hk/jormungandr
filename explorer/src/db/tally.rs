@@ -1,13 +1,20 @@
-use chain_impl_mockchain::stake::StakeControl;
+use chain_impl_mockchain::{certificate::DecryptedPrivateTallyProposal, stake::StakeControl};
 
 use super::indexing::ExplorerVoteProposal;
 use crate::db::indexing::{ExplorerVote, ExplorerVoteTally};
 
-pub fn compute_private_tally(proposal: &ExplorerVoteProposal) -> ExplorerVoteTally {
-    tracing::warn!("private tally triggered but it is not implemented");
+pub fn compute_private_tally(
+    proposal: &ExplorerVoteProposal,
+    tally: &DecryptedPrivateTallyProposal,
+) -> ExplorerVoteTally {
+    let mut results = vec![0u64; proposal.options.choice_range().end as usize];
+
+    for (choice, &weight) in tally.tally_result.iter().enumerate() {
+        results[choice] = results[choice].saturating_add(weight);
+    }
 
     ExplorerVoteTally::Private {
-        results: None,
+        results: Some(results.drain(..).map(u64::into).collect()),
         options: proposal.options.clone(),
     }
 }
@@ -38,7 +45,7 @@ pub fn compute_public_tally(
     }
 
     ExplorerVoteTally::Public {
-        results: results.drain(..).map(u64::into).collect(),
+        results: results.into_iter().map(u64::into).collect(),
         options: proposal.options.clone(),
     }
 }

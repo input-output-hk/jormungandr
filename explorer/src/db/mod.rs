@@ -4,8 +4,6 @@ pub mod multiverse;
 pub mod persistent_sequence;
 mod tally;
 
-use crate::db::tally::compute_public_tally;
-use crate::db::tally::compute_private_tally;
 use self::error::{ExplorerError as Error, Result};
 use self::indexing::{
     Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
@@ -13,9 +11,10 @@ use self::indexing::{
     StakePoolData, Transactions, VotePlans,
 };
 use self::persistent_sequence::PersistentSequence;
-use chain_core::property::Block as _;
-pub use multiverse::Ref;
+use crate::db::tally::compute_private_tally;
+use crate::db::tally::compute_public_tally;
 use chain_addr::Discrimination;
+use chain_core::property::Block as _;
 use chain_impl_mockchain::{
     block::HeaderId as HeaderHash,
     certificate::VotePlanId,
@@ -31,6 +30,7 @@ use chain_impl_mockchain::{
 use chain_impl_mockchain::{fee::LinearFee, vote::PayloadType};
 use futures::prelude::*;
 use multiverse::Multiverse;
+pub use multiverse::Ref;
 use std::convert::Infallible;
 use std::sync::{
     atomic::{AtomicU32, Ordering},
@@ -676,27 +676,35 @@ fn apply_block_to_vote_plans(
                             .unwrap(),
                     }
                 }
-                Certificate::VoteTally(vote_tally) => vote_plans
-                    .update(vote_tally.id(), |vote_plan| {
-                        let proposals = vote_plan
-                            .proposals
-                            .clone()
-                            .into_iter()
-                            .map(|mut proposal| {
-                                proposal.tally = Some(match vote_tally.tally_type() {
-                                    PayloadType::Public => compute_public_tally(&proposal, stake),
-                                    PayloadType::Private => compute_private_tally(&proposal),
-                                });
-                                proposal
-                            })
-                            .collect();
-                        let vote_plan = ExplorerVotePlan {
-                            proposals,
-                            ..(**vote_plan).clone()
-                        };
-                        Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
-                    })
-                    .unwrap(),
+                Certificate::VoteTally(vote_tally) => {
+                    let decrypted_tally = vote_tally.tally_decrypted().unwrap();
+                    vote_plans
+                        .update(vote_tally.id(), |vote_plan| {
+                            let proposals = vote_plan
+                                .proposals
+                                .clone()
+                                .into_iter()
+                                .zip(decrypted_tally.iter())
+                                .map(|(mut proposal, decrypted_tally)| {
+                                    proposal.tally = Some(match vote_tally.tally_type() {
+                                        PayloadType::Public => {
+                                            compute_public_tally(&proposal, stake)
+                                        }
+                                        PayloadType::Private => {
+                                            compute_private_tally(&proposal, decrypted_tally)
+                                        }
+                                    });
+                                    proposal
+                                })
+                                .collect();
+                            let vote_plan = ExplorerVotePlan {
+                                proposals,
+                                ..(**vote_plan).clone()
+                            };
+                            Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
+                        })
+                        .unwrap()
+                }
                 _ => vote_plans,
             }
         }
