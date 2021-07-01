@@ -425,7 +425,7 @@ dependencies = [
  "cbor_event",
  "chain-ser",
  "cryptoxide",
- "ed25519-bip32 0.4.0",
+ "ed25519-bip32",
 ]
 
 [[package]]
@@ -490,7 +490,7 @@ dependencies = [
  "cryptoxide",
  "curve25519-dalek-ng",
  "digest 0.9.0",
- "ed25519-bip32 0.4.0",
+ "ed25519-bip32",
  "ed25519-dalek",
  "generic-array 0.14.4",
  "hex",
@@ -515,7 +515,7 @@ dependencies = [
  "chain-test-utils",
  "chain-time",
  "chain-vote",
- "ed25519-bip32 0.4.0",
+ "ed25519-bip32",
  "hex",
  "imhamt",
  "lazy_static",
@@ -1043,15 +1043,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8d0860415b12243916284c67a9be413e044ee6668247b99ba26d94b2bc06c8f6"
 dependencies = [
  "signature",
-]
-
-[[package]]
-name = "ed25519-bip32"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8827180a2b511141fbe49141e50b31a8d542465e0fb572f81f36feea2addfe92"
-dependencies = [
- "cryptoxide",
 ]
 
 [[package]]
@@ -1821,7 +1812,7 @@ dependencies = [
  "chain-time",
  "chain-vote",
  "clap",
- "ed25519-bip32 0.3.2",
+ "ed25519-bip32",
  "gtmpl",
  "hex",
  "jormungandr-lib",
@@ -1960,7 +1951,7 @@ dependencies = [
  "chain-vote",
  "chrono",
  "eccoxide",
- "ed25519-bip32 0.3.2",
+ "ed25519-bip32",
  "hex",
  "http",
  "humantime",

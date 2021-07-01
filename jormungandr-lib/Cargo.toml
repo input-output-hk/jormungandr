@@ -39,6 +39,6 @@ rand07 = { package = "rand", version = "0.7" }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-ed25519-bip32 = "0.3"
+ed25519-bip32 = "0.4"
 serde_yaml = "0.8"
 serde_json = "1.0"
