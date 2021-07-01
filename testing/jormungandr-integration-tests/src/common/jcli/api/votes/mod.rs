@@ -27,10 +27,10 @@ impl Votes {
         Crs::new(self.votes_command.crs())
     }
 
-    pub fn encrypting_vote_key<S: Into<String>>(self, member_key: S) -> String {
-        let output_file = NamedTempFile::new("encrypted_vote_key.tmp").unwrap();
+    pub fn election_public_key<S: Into<String>>(self, member_key: S) -> String {
+        let output_file = NamedTempFile::new("election_public_key.tmp").unwrap();
         self.votes_command
-            .encrypting_vote_key(member_key, output_file.path())
+            .election_public_key(member_key, output_file.path())
             .build()
             .assert()
             .success();

@@ -8,8 +8,11 @@ use chain_impl_mockchain::{
     vote::VotePlanStatus,
 };
 use chain_vote::{
-    committee::ElectionPublicKey, Crs, EncryptingVoteKey, MemberCommunicationKey,
-    MemberCommunicationPublicKey, MemberPublicKey, MemberState, OpeningVoteKey,
+    committee::{
+        ElectionPublicKey, MemberCommunicationKey, MemberCommunicationPublicKey, MemberPublicKey,
+        MemberState,
+    },
+    tally::{Crs, OpeningVoteKey},
 };
 use jormungandr_lib::crypto::account::Identifier;
 use rand_core::{CryptoRng, RngCore};
@@ -121,7 +124,7 @@ pub fn encrypting_key_from_base32(key: &str) -> Result<ElectionPublicKey, Error>
         });
     }
     let key_bin = Vec::<u8>::from_base32(&data)?;
-    chain_vote::EncryptingVoteKey::from_bytes(&key_bin).ok_or(Error::VoteEncryptingKey)
+    chain_vote::ElectionPublicKey::from_bytes(&key_bin).ok_or(Error::VoteEncryptingKey)
 }
 
 impl fmt::Debug for PrivateVoteCommitteeData {
@@ -196,8 +199,8 @@ impl PrivateVoteCommitteeDataManager {
         self.data.get(identifier)
     }
 
-    pub fn encrypting_vote_key(&self) -> EncryptingVoteKey {
-        chain_vote::EncryptingVoteKey::from_participants(&self.member_public_keys())
+    pub fn encrypting_vote_key(&self) -> ElectionPublicKey {
+        chain_vote::ElectionPublicKey::from_participants(&self.member_public_keys())
     }
 
     pub fn members(&self) -> Vec<PrivateVoteCommitteeData> {
@@ -250,11 +253,18 @@ impl PrivateVoteCommitteeDataManager {
                     .members()
                     .iter()
                     .map(|member| member.member_secret_key())
-                    .map(|secret_key| encrypted_tally.finish(&secret_key).1)
+                    .map(|secret_key| {
+                        encrypted_tally.partial_decrypt(&mut rand::thread_rng(), &secret_key)
+                    })
                     .collect::<Vec<_>>();
-                let tally_state = encrypted_tally.state();
-                let tally =
-                    chain_vote::tally(max_votes, &tally_state, &decrypt_shares, &table).unwrap();
+                let tally = encrypted_tally
+                    .validate_partial_decryptions(
+                        &vote_plan_status.committee_public_keys,
+                        &decrypt_shares,
+                    )
+                    .unwrap()
+                    .decrypt_tally(max_votes, &table)
+                    .unwrap();
                 DecryptedPrivateTallyProposal {
                     decrypt_shares: decrypt_shares.into_boxed_slice(),
                     tally_result: tally.votes.into_boxed_slice(),

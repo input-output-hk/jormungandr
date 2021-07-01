@@ -1,9 +1,9 @@
 use std::process::Command;
-pub struct EncryptingVoteKeyCommand {
+pub struct ElectionPublicKeyCommand {
     command: Command,
 }
 
-impl EncryptingVoteKeyCommand {
+impl ElectionPublicKeyCommand {
     pub fn new(command: Command) -> Self {
         Self { command }
     }

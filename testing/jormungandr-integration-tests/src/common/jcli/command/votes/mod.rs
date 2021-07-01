@@ -5,12 +5,12 @@ use std::process::Command;
 
 pub mod committee;
 mod crs;
-mod encrypting_vote_key;
+mod election_public_key;
 mod tally;
 
 pub use committee::CommitteeCommand;
 pub use crs::CrsCommand;
-pub use encrypting_vote_key::EncryptingVoteKeyCommand;
+pub use election_public_key::ElectionPublicKeyCommand;
 pub use tally::TallyCommand;
 
 #[derive(Debug)]
@@ -33,13 +33,13 @@ impl VotesCommand {
         CommitteeCommand::new(self.command)
     }
 
-    pub fn encrypting_vote_key<S: Into<String>, P: AsRef<Path>>(
+    pub fn election_public_key<S: Into<String>, P: AsRef<Path>>(
         mut self,
         member_key: S,
         output_file: P,
     ) -> Self {
         self.command
-            .arg("encrypting-key")
+            .arg("election-key")
             .arg(&output_file.as_ref())
             .arg("--keys")
             .arg(member_key.into());
