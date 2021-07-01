@@ -219,7 +219,7 @@ impl FragmentBuilder {
         let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
 
         let encrypting_key =
-            chain_vote::EncryptingVoteKey::from_participants(vote_plan.committee_public_keys());
+            chain_vote::ElectionPublicKey::from_participants(vote_plan.committee_public_keys());
 
         let options = vote_plan
             .proposals()

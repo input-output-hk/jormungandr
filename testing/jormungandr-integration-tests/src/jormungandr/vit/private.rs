@@ -54,7 +54,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .committee()
         .member_key()
         .to_public(member_sk.clone());
-    let encrypting_vote_key = jcli.votes().encrypting_vote_key(member_pk.clone());
+    let encrypting_vote_key = jcli.votes().election_public_key(member_pk.clone());
 
     let member_sk_file = NamedTempFile::new("member.sk").unwrap();
     member_sk_file.write_str(&member_sk).unwrap();
