@@ -307,7 +307,7 @@ p2p:
   trusted_peers: []
   public_address: "/ip4/{rest_host}/tcp/8299"
 """.format(
-    storage=storage, rest_listen=rest_listen, rest_host=REST_HOST
+    storage=storage.as_posix(), rest_listen=rest_listen, rest_host=REST_HOST
 )
 
 config_yaml_path = Path(config_path / "config.yaml")
