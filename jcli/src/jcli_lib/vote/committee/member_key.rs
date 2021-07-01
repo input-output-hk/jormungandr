@@ -1,7 +1,8 @@
 use crate::jcli_lib::vote::{Error, OutputFile, Seed};
 use bech32::{FromBase32, ToBase32};
-use chain_vote::encryption::PublicKey;
-use chain_vote::{MemberCommunicationPublicKey, MemberState};
+use chain_vote::committee::{
+    MemberCommunicationPublicKey, MemberPublicKey, MemberSecretKey, MemberState,
+};
 use rand::rngs::OsRng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -117,12 +118,11 @@ impl ToPublic {
             return Err(Error::InvalidSecretKey);
         }
 
-        let key = chain_vote::encryption::SecretKey::from_bytes(
+        let pk: MemberPublicKey = MemberSecretKey::from_bytes(
             &Vec::<u8>::from_base32(&key).map_err(|_| Error::InvalidSecretKey)?,
         )
-        .ok_or(Error::InvalidSecretKey)?;
-
-        let pk = chain_vote::encryption::Keypair::from_secretkey(key).public_key;
+        .ok_or(Error::InvalidSecretKey)?
+        .to_public();
 
         let mut output = self.output_file.open()?;
         let key = bech32::encode(
@@ -152,7 +152,8 @@ fn parse_member_communication_key(key: &str) -> Result<MemberCommunicationPublic
         return Err(Error::InvalidPublicKey);
     }
 
-    let pk = PublicKey::from_bytes(&Vec::<u8>::from_base32(&raw_key).map_err(Error::Bech32)?)
-        .ok_or(Error::InvalidPublicKey)?;
-    Ok(MemberCommunicationPublicKey::from_public_key(pk))
+    MemberCommunicationPublicKey::from_bytes(
+        &Vec::<u8>::from_base32(&raw_key).map_err(Error::Bech32)?,
+    )
+    .ok_or(Error::InvalidPublicKey)
 }

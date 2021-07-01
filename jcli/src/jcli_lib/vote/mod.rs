@@ -3,7 +3,7 @@ use crate::jcli_lib::utils::vote::{SharesError, VotePlanError};
 
 pub mod bech32_constants;
 mod committee;
-mod encrypting_vote_key;
+mod election_public_key;
 mod tally;
 
 use structopt::StructOpt;
@@ -45,7 +45,7 @@ pub enum Error {
     #[error("expected encrypted private tally, found {found}")]
     PrivateTallyExpected { found: &'static str },
     #[error(transparent)]
-    TallyError(#[from] chain_vote::TallyError),
+    TallyError(#[from] chain_vote::tally::TallyError),
     #[error(transparent)]
     FormatError(#[from] crate::jcli_lib::utils::output_format::Error),
     #[error(transparent)]
@@ -61,8 +61,8 @@ pub enum Error {
 pub enum Vote {
     /// Create committee member keys
     Committee(committee::Committee),
-    /// Build an encryption key from committee member keys
-    EncryptingKey(encrypting_vote_key::EncryptingVoteKey),
+    /// Build the election public key from committee member keys
+    ElectionKey(election_public_key::ElectionPublicKey),
     /// Perform decryption of private voting tally
     Tally(tally::Tally),
 }
@@ -71,7 +71,7 @@ impl Vote {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             Vote::Committee(cmd) => cmd.exec(),
-            Vote::EncryptingKey(cmd) => cmd.exec(),
+            Vote::ElectionKey(cmd) => cmd.exec(),
             Vote::Tally(cmd) => cmd.exec(),
         }
     }

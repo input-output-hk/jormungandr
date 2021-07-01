@@ -88,7 +88,7 @@ impl PrivateVoteCast {
         }
         let key_bin = Vec::<u8>::from_base32(&data)?;
         let key =
-            chain_vote::EncryptingVoteKey::from_bytes(&key_bin).ok_or(Error::VoteEncryptingKey)?;
+            chain_vote::ElectionPublicKey::from_bytes(&key_bin).ok_or(Error::VoteEncryptingKey)?;
 
         let vote = chain_vote::Vote::new(self.options, self.choice as usize);
         let crs = chain_vote::Crs::from_hash(self.vote_plan_id.as_ref());

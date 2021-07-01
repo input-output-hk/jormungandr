@@ -74,12 +74,11 @@ impl ToPublic {
             return Err(Error::InvalidSecretKey);
         }
 
-        let key = chain_vote::encryption::SecretKey::from_bytes(
+        let pk = MemberCommunicationKey::from_bytes(
             &Vec::<u8>::from_base32(&bytes).map_err(|_| Error::InvalidSecretKey)?,
         )
-        .ok_or(Error::InvalidSecretKey)?;
-
-        let kp = chain_vote::encryption::Keypair::from_secretkey(key);
+        .ok_or(Error::InvalidSecretKey)?
+        .to_public();
 
         let mut output = self.output_file.open()?;
         writeln!(
@@ -87,7 +86,7 @@ impl ToPublic {
             "{}",
             bech32::encode(
                 crate::jcli_lib::vote::bech32_constants::COMMUNICATION_PK_HRP,
-                kp.public_key.to_bytes().to_base32()
+                pk.to_bytes().to_base32()
             )
             .map_err(Error::Bech32)?
         )?;
