@@ -5,7 +5,7 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct EncryptingVoteKey {
+pub struct ElectionPublicKey {
     /// Keys of all committee members
     #[structopt(
         parse(try_from_str = parse_member_key),
@@ -19,10 +19,10 @@ pub struct EncryptingVoteKey {
     output_file: OutputFile,
 }
 
-impl EncryptingVoteKey {
+impl ElectionPublicKey {
     pub fn exec(&self) -> Result<(), Error> {
         let election_public_key =
-            chain_vote::EncryptingVoteKey::from_participants(&self.member_keys);
+            chain_vote::ElectionPublicKey::from_participants(&self.member_keys);
 
         let mut output = self.output_file.open()?;
         writeln!(
@@ -45,10 +45,9 @@ fn parse_member_key(key: &str) -> Result<chain_vote::committee::MemberPublicKey,
             if hrp != crate::jcli_lib::vote::bech32_constants::MEMBER_PK_HRP {
                 return Err(Error::InvalidPublicKey);
             }
-            chain_vote::encryption::PublicKey::from_bytes(
+            chain_vote::committee::MemberPublicKey::from_bytes(
                 &Vec::<u8>::from_base32(&raw_key).map_err(|_| Error::InvalidPublicKey)?,
             )
             .ok_or(Error::InvalidPublicKey)
         })
-        .map(chain_vote::committee::MemberPublicKey::from)
 }
