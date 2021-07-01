@@ -31,6 +31,15 @@ pub struct SpawnParams {
     pub bootstrap_from_peers: Option<bool>,
     pub skip_bootstrap: Option<bool>,
     pub node_key_file: Option<PathBuf>,
+    pub faketime: Option<FaketimeConfig>,
+}
+
+#[derive(Clone)]
+pub struct FaketimeConfig {
+    /// Clock drift (1 = no drift, 2 = double speed)
+    pub drift: f32,
+    /// Offset from the real clock in seconds
+    pub offset: i32,
 }
 
 impl SpawnParams {
@@ -55,6 +64,7 @@ impl SpawnParams {
             skip_bootstrap: None,
             node_key_file: None,
             persistent_fragment_log: None,
+            faketime: None,
         }
     }
 
@@ -180,6 +190,11 @@ impl SpawnParams {
 
     pub fn node_key_file(&mut self, node_key_file: PathBuf) -> &mut Self {
         self.node_key_file = Some(node_key_file);
+        self
+    }
+
+    pub fn faketime(&mut self, faketime: FaketimeConfig) -> &mut Self {
+        self.faketime = Some(faketime);
         self
     }
 

@@ -424,6 +424,9 @@ impl Controller {
             .block0(block0_setting)
             .working_dir(self.node_dir(&params.get_alias()).path())
             .peristence_mode(params.get_persistence_mode());
+        if let Some(faketime) = params.faketime.take() {
+            spawn_builder.faketime(faketime);
+        }
         let node = spawn_builder.build()?;
 
         Ok(node.controller())

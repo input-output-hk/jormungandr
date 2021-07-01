@@ -11,6 +11,8 @@ pub enum Tag {
     All,
     Interactive,
     Example,
+    /// Requires libfaketime to be installed in the host machine
+    Desync,
 }
 
 pub fn parse_tag_from_str(tag: &str) -> Result<Tag> {
@@ -23,6 +25,7 @@ pub fn parse_tag_from_str(tag: &str) -> Result<Tag> {
         "unstable" => Ok(Tag::Unstable),
         "interactive" => Ok(Tag::Interactive),
         "example" => Ok(Tag::Example),
+        "desync" => Ok(Tag::Desync),
         _ => Ok(Tag::All),
     }
 }
