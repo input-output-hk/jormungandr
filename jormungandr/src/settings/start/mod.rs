@@ -53,6 +53,7 @@ pub struct Settings {
     pub rewards_report_all: bool,
     pub leadership: Leadership,
     pub explorer: bool,
+    #[cfg(feature = "prometheus-metrics")]
     pub prometheus: bool,
     pub no_blockchain_updates_warning_interval: std::time::Duration,
     pub block_hard_deadline: u32,
@@ -204,6 +205,7 @@ impl RawSettings {
                     .map_or(false, |settings| settings.enabled)
             });
 
+        #[cfg(feature = "prometheus-metrics")]
         let prometheus = command_arguments.prometheus_enabled
             || config.as_ref().map_or(false, |cfg| {
                 cfg.prometheus
@@ -225,6 +227,7 @@ impl RawSettings {
                 .as_ref()
                 .map_or(Leadership::default(), |cfg| cfg.leadership.clone()),
             explorer,
+            #[cfg(feature = "prometheus-metrics")]
             prometheus,
             no_blockchain_updates_warning_interval: config
                 .as_ref()

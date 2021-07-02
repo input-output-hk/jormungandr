@@ -51,6 +51,7 @@ pub struct StartArguments {
     pub explorer_enabled: bool,
 
     /// Enable the Prometheus metrics exporter.
+    #[cfg(feature = "prometheus-metrics")]
     #[structopt(long = "enable-prometheus")]
     pub prometheus_enabled: bool,
 

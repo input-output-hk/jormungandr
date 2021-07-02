@@ -102,22 +102,23 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let leadership_logs =
         leadership::Logs::new(bootstrapped_node.settings.leadership.logs_capacity);
 
+    let metrics_builder = crate::metrics::Metrics::builder();
+
     let simple_metrics_counter = Arc::new(crate::metrics::backends::SimpleCounter::new());
+    let metrics_builder = metrics_builder.add_backend(simple_metrics_counter.clone());
 
-    let prometheus_metric = if bootstrapped_node.settings.prometheus {
-        Some(Arc::new(crate::metrics::backends::Prometheus::new()))
+    #[cfg(feature = "prometheus-metrics")]
+    let (prometheus_metric, metrics_builder) = if bootstrapped_node.settings.prometheus {
+        let prometheus = Arc::new(crate::metrics::backends::Prometheus::new());
+        (
+            Some(prometheus.clone()),
+            metrics_builder.add_backend(prometheus),
+        )
     } else {
-        None
+        (None, metrics_builder)
     };
 
-    let stats_counter = {
-        let mut backends: Vec<Arc<dyn crate::metrics::MetricsBackend + Send + Sync + 'static>> =
-            vec![simple_metrics_counter.clone()];
-        if let Some(prometheus) = &prometheus_metric {
-            backends.push(prometheus.clone());
-        }
-        crate::metrics::Metrics::new(backends)
-    };
+    let stats_counter = metrics_builder.build();
 
     {
         let block_ref = services.block_on_task("get_tip_block", |_| blockchain_tip.get_ref());
@@ -321,6 +322,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             enclave,
             network_state,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
+            #[cfg(feature = "prometheus-metrics")]
             prometheus: prometheus_metric,
         };
         block_on(async {
@@ -655,6 +657,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
                 tls: rest.tls,
                 cors: rest.cors,
                 enable_explorer: settings.explorer,
+                #[cfg(feature = "prometheus-metrics")]
                 enable_prometheus: settings.prometheus,
             };
             let server_handler = rest::start_rest_server(rest, context.clone());

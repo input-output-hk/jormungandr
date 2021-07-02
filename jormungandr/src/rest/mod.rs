@@ -2,6 +2,7 @@
 
 pub mod context;
 pub mod explorer;
+#[cfg(feature = "prometheus-metrics")]
 mod prometheus;
 pub mod v0;
 mod v1;
@@ -19,6 +20,7 @@ pub struct Config {
     pub tls: Option<Tls>,
     pub cors: Option<Cors>,
     pub enable_explorer: bool,
+    #[cfg(feature = "prometheus-metrics")]
     pub enable_prometheus: bool,
 }
 
@@ -66,12 +68,12 @@ pub async fn start_rest_server(config: Config, context: ContextLock) {
                 }
             }
             span
-        }))
-        .or(prometheus::filter(context.clone()));
+        }));
 
     setup_prometheus(api, config, context, stopper_rx).await;
 }
 
+#[cfg(feature = "prometheus-metrics")]
 async fn setup_prometheus<App>(
     app: App,
     config: Config,
@@ -87,6 +89,19 @@ async fn setup_prometheus<App>(
     } else {
         setup_explorer(app, config, context, shutdown_signal).await;
     }
+}
+
+#[cfg(not(feature = "prometheus-metrics"))]
+async fn setup_prometheus<App>(
+    app: App,
+    config: Config,
+    context: ContextLock,
+    shutdown_signal: impl Future<Output = ()> + Send + 'static,
+) where
+    App: Filter<Error = warp::Rejection> + Clone + Send + Sync + 'static,
+    App::Extract: warp::Reply,
+{
+    setup_explorer(app, config, context, shutdown_signal).await;
 }
 
 async fn setup_explorer<App>(
