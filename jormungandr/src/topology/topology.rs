@@ -2,7 +2,7 @@
 //!
 use super::{
     layers::{self, LayersConfig},
-    quarantine::ReportNodeResult,
+    quarantine::ReportNodeStatus,
     topic, Gossips, NodeId, Peer, PeerInfo, ReportRecords,
 };
 
@@ -210,10 +210,10 @@ impl P2pTopology {
             let result = self
                 .quarantine
                 .report_node(&mut self.topology, Peer::from(node.gossip().clone()));
-            if let ReportNodeResult::Quarantine | ReportNodeResult::SoftReport = result {
+            if let ReportNodeStatus::Quarantine | ReportNodeStatus::SoftReport = result {
                 self.stats_counter.sub_peer_available_cnt(1);
             }
-            if let ReportNodeResult::Quarantine = result {
+            if let ReportNodeStatus::Quarantine = result {
                 self.stats_counter.add_peer_quarantined_cnt(1);
             }
         }
