@@ -103,10 +103,19 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         leadership::Logs::new(bootstrapped_node.settings.leadership.logs_capacity);
 
     let simple_metrics_counter = Arc::new(crate::metrics::backends::SimpleCounter::new());
-    let prometheus_metric = Arc::new(crate::metrics::backends::Prometheus::new());
+
+    let prometheus_metric = if bootstrapped_node.settings.prometheus {
+        Some(Arc::new(crate::metrics::backends::Prometheus::new()))
+    } else {
+        None
+    };
+
     let stats_counter = {
-        let backends: Vec<Arc<dyn crate::metrics::MetricsBackend + Send + Sync + 'static>> =
-            vec![simple_metrics_counter.clone(), prometheus_metric.clone()];
+        let mut backends: Vec<Arc<dyn crate::metrics::MetricsBackend + Send + Sync + 'static>> =
+            vec![simple_metrics_counter.clone()];
+        if let Some(prometheus) = &prometheus_metric {
+            backends.push(prometheus.clone());
+        }
         crate::metrics::Metrics::new(backends)
     };
 
@@ -641,8 +650,14 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let context = Arc::new(RwLock::new(context));
 
             let service_context = context.clone();
-            let explorer = settings.explorer;
-            let server_handler = rest::start_rest_server(rest, explorer, context.clone());
+            let rest = rest::Config {
+                listen: rest.listen,
+                tls: rest.tls,
+                cors: rest.cors,
+                enable_explorer: settings.explorer,
+                enable_prometheus: settings.prometheus,
+            };
+            let server_handler = rest::start_rest_server(rest, context.clone());
             services.spawn_future("rest", move |info| async move {
                 service_context.write().await.set_span(info.span().clone());
                 server_handler.await
