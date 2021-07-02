@@ -5,7 +5,6 @@ use crate::{
     diagnostic::Diagnostic,
     intercom::{NetworkMsg, TopologyMsg, TransactionMsg},
     leadership::Logs as LeadershipLogs,
-    metrics::backends::Prometheus,
     metrics::backends::SimpleCounter,
     network::GlobalStateR as NetworkStateR,
     rest::ServerStopper,
@@ -149,5 +148,6 @@ pub struct FullContext {
     pub enclave: Enclave,
     pub network_state: NetworkStateR,
     pub explorer: Option<crate::explorer::Explorer>,
-    pub prometheus: Option<Arc<Prometheus>>,
+    #[cfg(feature = "prometheus-metrics")]
+    pub prometheus: Option<Arc<crate::metrics::backends::Prometheus>>,
 }

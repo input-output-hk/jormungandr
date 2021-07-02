@@ -38,6 +38,7 @@ pub struct Config {
 
     pub explorer: Option<Explorer>,
 
+    #[cfg(feature = "prometheus-metrics")]
     pub prometheus: Option<Prometheus>,
 
     /// the time interval with no blockchain updates after which alerts are thrown

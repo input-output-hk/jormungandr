@@ -26,8 +26,26 @@ pub struct Metrics {
 }
 
 impl Metrics {
-    pub fn new(backends: Vec<Arc<dyn MetricsBackend + Send + Sync + 'static>>) -> Self {
-        Self { backends }
+    pub fn builder() -> MetricsBuilder {
+        MetricsBuilder::default()
+    }
+}
+
+#[derive(Default)]
+pub struct MetricsBuilder {
+    backends: Vec<Arc<dyn MetricsBackend + Send + Sync + 'static>>,
+}
+
+impl MetricsBuilder {
+    pub fn add_backend(mut self, backend: Arc<dyn MetricsBackend + Send + Sync + 'static>) -> Self {
+        self.backends.push(backend);
+        self
+    }
+
+    pub fn build(self) -> Metrics {
+        Metrics {
+            backends: self.backends,
+        }
     }
 }
 
