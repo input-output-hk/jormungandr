@@ -29,7 +29,7 @@ struct ReportRecord {
     report_time: Instant,
 }
 
-pub enum ReportNodeResult {
+pub enum ReportNodeStatus {
     Ok,
     Quarantine,
     SoftReport,
@@ -72,17 +72,17 @@ impl ReportRecords {
         &mut self,
         topology: &mut poldercast::Topology,
         node: Peer,
-    ) -> ReportNodeResult {
+    ) -> ReportNodeStatus {
         if self.report_whitelist.contains(&node.address()) {
             tracing::debug!(
                 node = %node.address(),
                 id=?node.id(),
                 "quarantine whitelists prevents this node from being reported",
             );
-            ReportNodeResult::Ok
+            ReportNodeStatus::Ok
         } else if self.report_grace.contains(&node.id()) {
             tracing::trace!(node = %node.address(), id=?node.id(), "not reporting node in grace list");
-            ReportNodeResult::Ok
+            ReportNodeStatus::Ok
         } else {
             let mut peer_info = PeerInfo::from(node);
             tracing::debug!(node = %peer_info.address, id=?peer_info.id, ?self.report_duration, "reporting node");
@@ -90,7 +90,7 @@ impl ReportRecords {
             // demote a peer all the way down to dirty in case of a serious violation.
             topology.remove_peer(peer_info.id.as_ref());
 
-            let mut result = ReportNodeResult::SoftReport;
+            let mut result = ReportNodeStatus::SoftReport;
 
             // Not all reports will quarantine a node (which is, put it in the dirty pool). For example,
             // a connectivity issue reported against a trusted peer will only demote it once, thus putting
@@ -103,7 +103,7 @@ impl ReportRecords {
             if topology.peers().dirty().contains(peer_info.id.as_ref()) {
                 peer_info.quarantined = Some(SystemTime::now().into());
                 tracing::debug!(node = %peer_info.address, id=?peer_info.id, "node has been quarantined");
-                result = ReportNodeResult::Quarantine;
+                result = ReportNodeStatus::Quarantine;
             }
 
             self.report_records.put(
