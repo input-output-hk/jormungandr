@@ -11,6 +11,10 @@ pub fn filter(
         .and_then(|context: ContextLock| async move {
             let context = context.read().await;
             let full_context = context.try_full().map_err(warp::reject::custom)?;
-            full_context.prometheus.http_response()
+            full_context
+                .prometheus
+                .as_ref()
+                .expect("Prometheus metrics exporter not set in API context!")
+                .http_response()
         })
 }
