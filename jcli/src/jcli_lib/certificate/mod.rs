@@ -97,8 +97,8 @@ pub enum Error {
     VotePlanConfig(#[source] serde_yaml::Error),
     #[error("invalid base64 encoded bytes")]
     Base64(#[source] base64::DecodeError),
-    #[error("invalid vote encrypting key")]
-    VoteEncryptingKey,
+    #[error("invalid election public key")]
+    ElectionPublicKey,
     #[error("invalid bech32 public key, expected {expected} hrp got {actual}")]
     InvalidBech32Key { expected: String, actual: String },
     #[error("invalid shares JSON representation")]

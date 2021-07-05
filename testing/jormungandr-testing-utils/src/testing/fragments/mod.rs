@@ -218,7 +218,7 @@ impl FragmentBuilder {
     ) -> Fragment {
         let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
 
-        let encrypting_key =
+        let election_key =
             chain_vote::ElectionPublicKey::from_participants(vote_plan.committee_public_keys());
 
         let options = vote_plan
@@ -238,7 +238,7 @@ impl FragmentBuilder {
         let vote = chain_vote::Vote::new(length as usize, choice as usize);
         let crs = chain_vote::Crs::from_hash(vote_plan.to_id().as_ref());
         let (encrypted_vote, proof) =
-            chain_impl_mockchain::vote::encrypt_vote(&mut rng, &crs, &encrypting_key, vote);
+            chain_impl_mockchain::vote::encrypt_vote(&mut rng, &crs, &election_key, vote);
 
         let vote_cast = VoteCast::new(
             vote_plan.to_id(),

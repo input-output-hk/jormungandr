@@ -58,8 +58,8 @@ pub enum WalletError {
     FragmentError(#[from] FragmentBuilderError),
     #[error("Invalid data")]
     InvalidBech32(#[from] bech32::Error),
-    #[error("invalid vote encrypting key")]
-    VoteEncryptingKey,
+    #[error("invalid electin public key")]
+    ElectionPublicKey,
     #[error("invalid bech32 public key, expected {expected} hrp got {actual}")]
     InvalidBech32Key { expected: String, actual: String },
 }

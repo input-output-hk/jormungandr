@@ -116,7 +116,7 @@ impl CertificateCommand {
         options_size: usize,
         proposal_idx: usize,
         vote_plan_id: String,
-        encrypting_key_path: P,
+        election_key_path: P,
     ) -> Self {
         self.command
             .arg("new")
@@ -131,7 +131,7 @@ impl CertificateCommand {
             .arg("--options-size")
             .arg(options_size.to_string())
             .arg("--key-path")
-            .arg(encrypting_key_path.as_ref());
+            .arg(election_key_path.as_ref());
         self
     }
 
