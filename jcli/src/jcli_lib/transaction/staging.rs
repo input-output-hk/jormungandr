@@ -124,9 +124,7 @@ impl Staging {
             Kind::Account(key) => {
                 UnspecifiedAccountIdentifier::from_single_account(key.clone().into())
             }
-            Kind::Multisig(key) => {
-                UnspecifiedAccountIdentifier::from_multi_account(key.clone().into())
-            }
+            Kind::Multisig(key) => UnspecifiedAccountIdentifier::from_multi_account((*key).into()),
             Kind::Single(_) => return Err(Error::AccountAddressSingle),
             Kind::Group(_, _) => return Err(Error::AccountAddressGroup),
             Kind::Script(_) => return Err(Error::AccountAddressScript),
