@@ -1,17 +1,21 @@
 use crate::mjolnir_app::build_monitor;
 use crate::mjolnir_app::MjolnirError;
 use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_testing_utils::testing::{
+    fragments::AdversaryFragmentGenerator, AdversaryFragmentSender, AdversaryFragmentSenderSetup,
+    FragmentSender, FragmentStatusProvider,
+};
 use jormungandr_testing_utils::{
-    testing::{fragments::TransactionGenerator, FragmentSenderSetup, RemoteJormungandrBuilder},
+    testing::{FragmentSenderSetup, RemoteJormungandrBuilder},
     wallet::Wallet,
 };
-use jortestkit::load::Configuration;
 use jortestkit::prelude::parse_progress_bar_mode_from_str;
-use jortestkit::prelude::ProgressBarMode;
+use jortestkit::{load::Configuration, prelude::ProgressBarMode};
+
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
-pub struct TxOnly {
+pub struct AllAdversary {
     /// Number of threads
     #[structopt(short = "c", long = "count", default_value = "3")]
     pub count: usize,
@@ -48,9 +52,9 @@ pub struct TxOnly {
     faucet_spending_counter: u32,
 }
 
-impl TxOnly {
+impl AllAdversary {
     pub fn exec(&self) -> Result<(), MjolnirError> {
-        let title = "standard load only transactions";
+        let title = "adversary load transactions";
         let mut faucet = Wallet::import_account(
             self.faucet_key_file.clone(),
             Some(self.faucet_spending_counter),
@@ -64,15 +68,23 @@ impl TxOnly {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
-        let mut generator = TransactionGenerator::new(
-            FragmentSenderSetup::no_verify(),
-            remote_jormungandr,
+        let transaction_sender =
+            FragmentSender::new(block0_hash, fees, FragmentSenderSetup::no_verify());
+
+        let adversary_transaction_sender = AdversaryFragmentSender::new(
             block0_hash,
             fees,
+            AdversaryFragmentSenderSetup::no_verify(),
+        );
+
+        let mut generator = AdversaryFragmentGenerator::new(
+            remote_jormungandr.clone_with_rest(),
+            transaction_sender,
+            adversary_transaction_sender,
         );
         generator.fill_from_faucet(&mut faucet);
 
-        let config = Configuration::duration(
+        let adversary_noise_config = Configuration::duration(
             self.count,
             std::time::Duration::from_secs(self.duration),
             self.pace,
@@ -80,8 +92,16 @@ impl TxOnly {
             30,
             1,
         );
-        let stats = jortestkit::load::start_sync(generator, config, title);
-        stats.print_summary(title);
+
+        let noise_stats = jortestkit::load::start_background_async(
+            generator,
+            FragmentStatusProvider::new(remote_jormungandr),
+            adversary_noise_config,
+            "noise fragments",
+        )
+        .stats();
+
+        noise_stats.print_summary(title);
         Ok(())
     }
 }

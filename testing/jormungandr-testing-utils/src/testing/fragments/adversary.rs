@@ -137,6 +137,14 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         }
     }
 
+    pub fn block0_hash(&self) -> Hash {
+        self.block0_hash
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.fees
+    }
+
     pub fn send_random_faulty_transaction<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,

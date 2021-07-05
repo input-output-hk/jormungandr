@@ -1,17 +1,22 @@
 use crate::mjolnir_app::build_monitor;
 use crate::mjolnir_app::MjolnirError;
 use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_testing_utils::testing::block0::get_block;
+use jormungandr_testing_utils::testing::block0::Block0ConfigurationExtension;
+use jormungandr_testing_utils::testing::{
+    AdversaryVoteCastsGenerator, FragmentSender, FragmentStatusProvider,
+};
 use jormungandr_testing_utils::{
-    testing::{fragments::TransactionGenerator, FragmentSenderSetup, RemoteJormungandrBuilder},
+    testing::{FragmentSenderSetup, RemoteJormungandrBuilder},
     wallet::Wallet,
 };
-use jortestkit::load::Configuration;
 use jortestkit::prelude::parse_progress_bar_mode_from_str;
-use jortestkit::prelude::ProgressBarMode;
+use jortestkit::{load::Configuration, prelude::ProgressBarMode};
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
+
 #[derive(StructOpt, Debug)]
-pub struct TxOnly {
+pub struct VotesOnly {
     /// Number of threads
     #[structopt(short = "c", long = "count", default_value = "3")]
     pub count: usize,
@@ -46,15 +51,21 @@ pub struct TxOnly {
 
     #[structopt(long = "spending-counter", short = "s")]
     faucet_spending_counter: u32,
+
+    #[structopt(long = "block-path", short = "b")]
+    block0_path: String,
 }
 
-impl TxOnly {
+impl VotesOnly {
     pub fn exec(&self) -> Result<(), MjolnirError> {
-        let title = "standard load only transactions";
-        let mut faucet = Wallet::import_account(
+        let title = "adversary load transactions";
+        let faucet = Wallet::import_account(
             self.faucet_key_file.clone(),
             Some(self.faucet_spending_counter),
         );
+        let block0 = get_block(&self.block0_path)?;
+        let vote_plans = block0.vote_plans();
+
         let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
         builder.with_rest(self.endpoint.parse().unwrap());
         let remote_jormungandr = builder.build();
@@ -64,15 +75,17 @@ impl TxOnly {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
-        let mut generator = TransactionGenerator::new(
-            FragmentSenderSetup::no_verify(),
-            remote_jormungandr,
-            block0_hash,
-            fees,
-        );
-        generator.fill_from_faucet(&mut faucet);
+        let transaction_sender =
+            FragmentSender::new(block0_hash, fees, FragmentSenderSetup::no_verify());
 
-        let config = Configuration::duration(
+        let generator = AdversaryVoteCastsGenerator::new(
+            faucet,
+            vote_plans,
+            remote_jormungandr.clone_with_rest(),
+            transaction_sender,
+        );
+
+        let adversary_noise_config = Configuration::duration(
             self.count,
             std::time::Duration::from_secs(self.duration),
             self.pace,
@@ -80,8 +93,16 @@ impl TxOnly {
             30,
             1,
         );
-        let stats = jortestkit::load::start_sync(generator, config, title);
-        stats.print_summary(title);
+
+        let noise_stats = jortestkit::load::start_background_async(
+            generator,
+            FragmentStatusProvider::new(remote_jormungandr),
+            adversary_noise_config,
+            "noise fragments",
+        )
+        .stats();
+
+        noise_stats.print_summary(title);
         Ok(())
     }
 }

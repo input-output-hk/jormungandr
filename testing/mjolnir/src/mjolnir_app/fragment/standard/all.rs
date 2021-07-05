@@ -1,3 +1,4 @@
+use crate::mjolnir_app::build_monitor;
 use crate::mjolnir_app::MjolnirError;
 use jormungandr_integration_tests::common::startup;
 use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
@@ -9,10 +10,7 @@ use jormungandr_testing_utils::{
     wallet::Wallet,
 };
 use jortestkit::prelude::parse_progress_bar_mode_from_str;
-use jortestkit::{
-    load::{Configuration, Monitor},
-    prelude::ProgressBarMode,
-};
+use jortestkit::{load::Configuration, prelude::ProgressBarMode};
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
@@ -116,7 +114,7 @@ impl AllFragments {
             self.count,
             std::time::Duration::from_secs(self.duration),
             self.pace,
-            self.build_monitor(),
+            build_monitor(&self.progress_bar_mode),
             30,
             1,
         );
@@ -130,13 +128,5 @@ impl AllFragments {
         stats.print_summary(title);
 
         Ok(())
-    }
-
-    fn build_monitor(&self) -> Monitor {
-        match self.progress_bar_mode {
-            ProgressBarMode::Monitor => Monitor::Progress(100),
-            ProgressBarMode::Standard => Monitor::Standard(100),
-            ProgressBarMode::None => Monitor::Disabled(10),
-        }
     }
 }
