@@ -28,7 +28,9 @@ pub fn test_mempool_pool_max_entries_limit() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(5)
+        // Use a long slot time to avoid producing a block
+        // before both test requests has been sent
+        .with_slot_duration(15)
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
             log_max_entries: 100.into(),
@@ -154,7 +156,9 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
+        // Use a long slot time to avoid producing a block
+        // before both test requests has been sent
+        .with_slot_duration(15)
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
             log_max_entries: 1.into(),
