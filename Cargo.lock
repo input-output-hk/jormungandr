@@ -495,7 +495,7 @@ dependencies = [
  "generic-array 0.14.4",
  "hex",
  "quickcheck",
- "rand 0.8.3",
+ "rand 0.8.4",
  "rand_core 0.6.2",
  "sha2",
  "typed-bytes",
@@ -594,7 +594,7 @@ dependencies = [
  "chain-core",
  "cryptoxide",
  "eccoxide",
- "rand 0.8.3",
+ "rand 0.8.4",
  "rand_core 0.6.2",
  "rayon",
  "thiserror",
@@ -1809,7 +1809,7 @@ dependencies = [
  "hex",
  "jormungandr-lib",
  "predicates",
- "rand 0.8.3",
+ "rand 0.8.4",
  "rand_chacha 0.3.0",
  "rayon",
  "reqwest",
@@ -1858,7 +1858,7 @@ dependencies = [
  "poldercast",
  "quickcheck",
  "quickcheck_macros",
- "rand 0.8.3",
+ "rand 0.8.4",
  "rand_chacha 0.3.0",
  "reqwest",
  "serde",
@@ -1909,7 +1909,7 @@ dependencies = [
  "poldercast",
  "predicates",
  "prost",
- "rand 0.8.3",
+ "rand 0.8.4",
  "rand_chacha 0.3.0",
  "rand_core 0.6.2",
  "regex",
@@ -1951,7 +1951,7 @@ dependencies = [
  "quickcheck",
  "quickcheck_macros",
  "rand 0.7.3",
- "rand 0.8.3",
+ "rand 0.8.4",
  "rand_chacha 0.3.0",
  "rand_core 0.6.2",
  "serde",
@@ -1987,7 +1987,7 @@ dependencies = [
  "lazy_static",
  "parity-multiaddr",
  "poldercast",
- "rand 0.8.3",
+ "rand 0.8.4",
  "rand_chacha 0.3.0",
  "rand_core 0.6.2",
  "regex",
@@ -2040,7 +2040,7 @@ dependencies = [
  "prost",
  "qrcodegen",
  "quircs",
- "rand 0.8.3",
+ "rand 0.8.4",
  "rand_chacha 0.3.0",
  "rand_core 0.6.2",
  "regex",
@@ -2992,9 +2992,9 @@ dependencies = [
 
 [[package]]
 name = "rand"
-version = "0.8.3"
+version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ef9e7e66b4468674bfcb0c81af8b7fa0bb154fa9f28eb840da5c447baeb8d7e"
+checksum = "2e7573632e6454cf6b99d7aac4ccca54be06da05aca2ef7423d22d27d4d4bcd8"
 dependencies = [
  "libc",
  "rand_chacha 0.3.0",
@@ -3604,7 +3604,7 @@ version = "0.5.0"
 source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#22fe22574019feea774832b61f9f5ef65ca9173f"
 dependencies = [
  "cryptoxide",
- "rand 0.8.3",
+ "rand 0.8.4",
  "thiserror",
 ]
 
@@ -3692,7 +3692,7 @@ checksum = "dac1c663cfc93810f88aed9b8941d48cabf856a1b111c29a40439018d870eb22"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
- "rand 0.8.3",
+ "rand 0.8.4",
  "redox_syscall",
  "remove_dir_all",
  "winapi",
@@ -3954,7 +3954,7 @@ dependencies = [
  "futures-util",
  "indexmap",
  "pin-project",
- "rand 0.8.3",
+ "rand 0.8.4",
  "slab",
  "tokio",
  "tokio-stream",
@@ -4125,7 +4125,7 @@ dependencies = [
  "httparse",
  "input_buffer",
  "log",
- "rand 0.8.3",
+ "rand 0.8.4",
  "sha-1 0.9.6",
  "url",
  "utf-8",
@@ -4583,7 +4583,7 @@ dependencies = [
  "lazycell",
  "log",
  "pin-project-lite",
- "rand 0.8.3",
+ "rand 0.8.4",
  "zipkin-types",
 ]
 
