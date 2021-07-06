@@ -26,8 +26,8 @@ try becoming slot leader, must be in range 0 exclusive and 1 inclusive.
 
 ## The initial certificates
 
-In the `initial_certs` field you will set the initial certificate. This is important
-to declare the stake pool and delegate stake to them. Otherwise no block will be ever
+In the `initial_certs` field you will set the initial certificate. It is important
+to declare the stake pool and delegate stake to them. Otherwise no block will ever be
 created.
 
 Remember that in this array the **order** matters:
@@ -37,7 +37,7 @@ In order to delegate your stake, you need a stake pool to already exist, so the 
 ### Stake pool registration
 
 Now you can register a stake pool.
-Follow the instruction in [registering stake pool guide](../stake_pool/registering_stake_pool.md).
+Follow the instructions in [registering stake pool guide](../stake_pool/registering_stake_pool.md).
 
 The _owner key_ (the key you sign the stake pool registration certificate) is the secret
 key associated to a previously registered stake key.
@@ -58,7 +58,7 @@ ta1sjx4j3jwel94g0cgwzq9au7h6m8f5q3qnyh0gfnryl3xan6qnmjse3k2uv062mzj34eacjnxthxqv
 ```
 
 You will notice that addresses with delegation are longer (about twice longer) than
-address without delegation.
+addresses without delegation.
 
 For example, the most minimal setting you may have is:
 
@@ -81,7 +81,7 @@ initial_funds:
 
 ### Starting the node
 
-Now, for starting the node and be able to generate new blocks, you have to put your pool's private keys and id in a file and start the node with the `--secret filename` parameter.
+Now, to start the node and be able to generate new blocks, you have to put your pool's private keys and id in a file and start the node with the `--secret filename` parameter.
 
 ---
 
