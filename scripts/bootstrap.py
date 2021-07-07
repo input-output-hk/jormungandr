@@ -158,7 +158,7 @@ fixed_secret_key, fixed_public_key, fixed_address = make_key_and_address(
     "Ed25519Extended"
 )
 leader_secret_key, leader_public_key = make_key("Ed25519")
-vrf_secret_key, vrf_public_key = make_key("Curve25519_2HashDH")
+vrf_secret_key, vrf_public_key = make_key("RistrettoGroup2HashDh")
 kes_secret_key, kes_public_key = make_key("SumEd25519_12")
 
 stake_key_secret = faucet_secret_key

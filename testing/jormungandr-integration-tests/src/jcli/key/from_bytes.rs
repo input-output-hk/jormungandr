@@ -9,7 +9,7 @@ pub fn test_key_from_bytes_ed25519() {
 
 #[test]
 pub fn test_key_from_bytes_curve25519_2hashdh() {
-    transform_key_to_bytes_and_back("Curve25519_2HashDH");
+    transform_key_to_bytes_and_back("RistrettoGroup2HashDh");
 }
 
 #[test]
