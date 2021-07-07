@@ -147,7 +147,7 @@ the preferred list or the bottle in the sea.
 
 #### Preferred list
 
-this is a special list that allows to connect multiple nodes together without relying
+This is a special list that allows to connect multiple nodes together without relying
 on the auto peer discovery. All entries in the preferred list are also whitelisted
 automatically, so they cannot be quarantined.
 
@@ -186,24 +186,24 @@ You can generate a public id with **openssl**, for example: `openssl rand -hex 2
 
 ### `topics_of_interest`
 
-This is optional an optional value to set. The default is:
+This is an optional value to set. The default is:
 
 ```yaml
 messages: low
 blocks: normal
 ```
 
-These value makes sense for most of the users that are not running stake pools or
+These values make sense for most of the users that are not running stake pools or
 that are not even publicly reachable.
 
-However for a publicly reachable node, the recommended setting would be:
+However for a publicly reachable node, the recommended settings would be:
 
 ```yaml
 messages: normal
 blocks: normal
 ```
 
-and for a stake pool
+and for a stake pool:
 
 ```yaml
 messages: high

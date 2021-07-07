@@ -47,7 +47,7 @@ jcli certificate new stake-pool-retirement \
 
 where:
 
-- `output-file`                 - *optional*, write the output of to the given file
+- `output-file`                 - *optional*, write the output to the given file
                                   or print it to the standard output if not defined.
 - `--retirement-time`           - is the number of seconds since the start in order
                                   to make the stake pool retire. `0` means as soon as possible.

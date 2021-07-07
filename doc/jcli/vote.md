@@ -142,7 +142,7 @@ First, we need to retrieve vote plans info:
 ```shell
 jcli rest v0 vote active plans > active_plans.json
 ```
-If there is more than one vote plan in the this file, we also need to provide the id of the vote plan we are interested in to following commands. We can get the id of the first vote plan with:
+If there is more than one vote plan in the file, we also need to provide the id of the vote plan we are interested in to following commands. We can get the id of the first vote plan with:
 ```shell
 ...
 vote_plan_id=$(cat active_plans.json |jq '.[0].id')

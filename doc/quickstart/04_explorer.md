@@ -4,7 +4,7 @@ The node can be configured to work as a explorer. This consumes more resources, 
 
 ## Configuration
 
-There is two ways of enabling the explorer api. It can either be done by passing the `--enable-explorer` flag on the start arguemnts or by the config file:
+There are two ways of enabling the explorer api. It can either be done by passing the `--enable-explorer` flag on the start arguments or by the config file:
 
 ``` yaml
 explorer:

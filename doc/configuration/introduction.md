@@ -8,7 +8,7 @@ It covers the network, logging and storage parameters.
 This is an common example of a Jörmungandr node configuration file typically named `node-config.yaml`, however your's will vary depending on your needs.
 Additionally, this configuration has been tested on a *specific Jörmungandr version* and may change with newer versions.
 It's important to keep in mind that the `trusted_peers` portion of this configuration will be different for each Cardano blockchain network.
-If you're trying to connect this node to a specific network, you need to know it's genesis block hash, and it's associated list of trusted peers.
+If you're trying to connect this node to a specific network, you need to know its genesis block hash, and its associated list of trusted peers.
 
 Example Configuration - 1:
 
@@ -100,7 +100,7 @@ Starting the node `jormungandr` with the command line option `--rewards-report-a
 collect a thorough report of all the reward distribution. It can then be accessed via the
 REST endpoints `/api/v0/rewards/history/1` or `/api/v0/rewards/epoch/10`.
 
-**this is not a recommended settings as it may take memory and may trigger some latency**.
+**this is not a recommended setting as it may take memory and may trigger some latency**.
 
 ### Handling of time-consuming transactions
 
@@ -112,5 +112,5 @@ be changed by adjusting the `block_hard_deadline` setting.
 If you want to record the reward distributions in a directory it is possible to set
 the environment variable: `JORMUNGANDR_REWARD_DUMP_DIRECTORY=/PATH/TO/DIR/TO/WRITE/REWARD`.
 
-If an error occur while dumping the reward, the node will **panic** with an appropriate
+If an error occurs while dumping the reward, the node will **panic** with an appropriate
 error message.

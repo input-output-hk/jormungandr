@@ -63,9 +63,9 @@ The options are:
 
 - `--output <output>`               - write the info in the given file or print it to the standard output
 
-- `--staging <staging-file>`        - place where the transaction is going to be save during its staging phase.
+- `--staging <staging-file>`        - place where the transaction is going to be saved during its staging phase.
                                       If a file is given, the transaction will be read from this file and modification will be written into this same file.
-                                      If no file is given, the transaction will be read from the standard input and will be rendered in the standard output
+                                      If no file is given, the transaction will be read from the standard input and will be rendered in the standard output.
 
 YAML printed on success
 
@@ -125,7 +125,7 @@ jcli transaction new --staging tx
 
 ## Add input
 
-For the input, we need to reference the uxto with the **UTXO's transaction ID** and **UTXO'S output index** fields and we need to specify how much coins are there with the **associated value** field.
+For the input, we need to reference the utxo with the **UTXO's transaction ID** and **UTXO'S output index** fields and we need to specify how many coins there are with the **associated value** field.
 
 ### Example - UTXO address as Input
 
