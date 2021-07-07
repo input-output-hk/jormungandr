@@ -8,7 +8,7 @@ There are multiple type of key for multiple use cases.
 |    `Ed25519Bip32`    | Related to the HDWallet, Ed25519 Extended with chain code for derivation |
 |  `Ed25519Extended`   | Related to `Ed25519Bip32` without the chain code                         |
 |   `SumEd25519_12`    | For stake pool, necessary for the KES                                    |
-| `Curve25519_2HashDH` | For stake pool, necessary for the VRF                                    |
+| `EllipticCurve2hashDh` | For stake pool, necessary for the VRF                                    |
 
 There is a command line parameter to generate this keys:
 

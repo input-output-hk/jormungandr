@@ -31,7 +31,7 @@ pub fn test_ed25519extended_key_generation() {
 #[test]
 pub fn test_curve25519_2hashdh_key_generation() {
     let jcli: JCli = Default::default();
-    let generated_key = jcli.key().generate("Curve25519_2HashDH");
+    let generated_key = jcli.key().generate("EllipticCurve2hashDh");
     assert_ne!(generated_key, "", "generated key is empty");
 }
 

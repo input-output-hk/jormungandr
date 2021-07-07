@@ -1,6 +1,6 @@
 use crate::common::{jcli::JCli, startup::create_new_key_pair};
 
-use chain_crypto::{Curve25519_2HashDh, Ed25519, SumEd25519_12};
+use chain_crypto::{Ed25519, EllipticCurve2hashDh, SumEd25519_12};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
@@ -10,7 +10,7 @@ pub fn test_create_and_sign_new_stake_delegation() {
     let jcli: JCli = Default::default();
     let owner = create_new_key_pair::<Ed25519>();
     let kes = create_new_key_pair::<SumEd25519_12>();
-    let vrf = create_new_key_pair::<Curve25519_2HashDh>();
+    let vrf = create_new_key_pair::<EllipticCurve2hashDh>();
 
     let certificate = jcli.certificate().new_stake_pool_registration(
         &kes.identifier().to_bech32_str(),

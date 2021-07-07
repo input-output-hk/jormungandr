@@ -1,4 +1,4 @@
-use chain_crypto::{Blake2b256, Curve25519_2HashDh, Ed25519, PublicKey, SumEd25519_12};
+use chain_crypto::{Blake2b256, Ed25519, EllipticCurve2hashDh, PublicKey, SumEd25519_12};
 use chain_impl_mockchain::leadership::{BftLeader, GenesisLeader};
 use jormungandr_lib::crypto::{
     hash::Hash,
@@ -22,7 +22,7 @@ pub struct Bft {
 pub struct GenesisPraos {
     node_id: Hash,
     sig_key: SigningKey<SumEd25519_12>,
-    vrf_key: SigningKey<Curve25519_2HashDh>,
+    vrf_key: SigningKey<EllipticCurve2hashDh>,
 }
 
 /// the genesis praos setting
@@ -30,7 +30,7 @@ pub struct GenesisPraos {
 #[derive(Clone, Deserialize)]
 pub struct GenesisPraosPublic {
     sig_key: Identifier<SumEd25519_12>,
-    vrf_key: Identifier<Curve25519_2HashDh>,
+    vrf_key: Identifier<EllipticCurve2hashDh>,
 }
 
 #[derive(Clone, Deserialize)]

@@ -21,7 +21,7 @@ To generate your [**VRF**] Key pairs, we will utilise [`jcli`](../jcli/introduct
 [here](../jcli/key.md):
 
 ```sh
-jcli key generate --type=Curve25519_2HashDH stake_pool_vrf.prv
+jcli key generate --type=EllipticCurve2hashDhH stake_pool_vrf.prv
 ```
 
 `stake_pool_vrf.prv` file now contains the VRF private key.
