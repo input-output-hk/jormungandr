@@ -1,5 +1,7 @@
 use crate::jcli_lib::rest::{Error, RestArgs};
 use crate::jcli_lib::utils::OutputFormat;
+use jormungandr_lib::interfaces::SettingsDto;
+
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -20,9 +22,14 @@ impl Settings {
             args,
             output_format,
         } = self;
-        let response = args.client()?.get(&["v0", "settings"]).execute()?.json()?;
-        let formatted = output_format.format_json(response)?;
+        let settings = request_settings(args)?;
+        let formatted = output_format.format_json(serde_json::to_value(&settings)?)?;
         println!("{}", formatted);
         Ok(())
     }
+}
+
+pub fn request_settings(args: RestArgs) -> Result<SettingsDto, Error> {
+    serde_json::from_str(&(args.client()?.get(&["v0", "settings"]).execute()?.text()?))
+        .map_err(Error::SerdeError)
 }

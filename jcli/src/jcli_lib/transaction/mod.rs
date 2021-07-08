@@ -1,15 +1,16 @@
-mod add_account;
+pub mod add_account;
 mod add_certificate;
 mod add_input;
-mod add_output;
+pub mod add_output;
 mod add_witness;
 mod auth;
 mod common;
-mod finalize;
+pub mod finalize;
 mod info;
 mod mk_witness;
-mod new;
+pub mod new;
 mod seal;
+mod simplified;
 mod staging;
 
 use self::staging::StagingKind;
@@ -17,6 +18,7 @@ use crate::jcli_lib::{
     certificate,
     utils::{key_parser, output_format},
 };
+use crate::{block, rest, utils};
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
 use std::path::PathBuf;
@@ -62,6 +64,8 @@ pub enum Transaction {
     Auth(auth::Auth),
     /// get the message format out of a sealed transaction
     ToMessage(common::CommonTransaction),
+    /// send a transaction from one account to another (simplified method)
+    MakeTransaction(simplified::MakeTransaction),
 }
 
 type StaticStr = &'static str;
@@ -87,7 +91,7 @@ pub enum Error {
         path: PathBuf,
     },
     #[error("could not process secret file '{0}'")]
-    SecretFileFailed(#[from] key_parser::Error),
+    SecretKeyReadFailed(#[from] key_parser::Error),
     /*
     SecretFileReadFailed { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not read secret file '{}'", path.display()) }},
@@ -187,6 +191,27 @@ pub enum Error {
     TxWithOwnerStakeDelegationHasUtxoInput,
     #[error("transaction has owner stake delegation, but has outputs")]
     TxWithOwnerStakeDelegationHasOutputs,
+
+    #[error(transparent)]
+    Block0Error(#[from] block::Error),
+
+    #[error(transparent)]
+    AccountIdError(#[from] utils::account_id::Error),
+
+    #[error(transparent)]
+    RestError(#[from] rest::Error),
+
+    #[error("could not generate random key")]
+    RandError(#[from] rand::Error),
+
+    #[error("invalid block0 header hash")]
+    InvalidBlock0HeaderHash,
+
+    #[error("canceled by user")]
+    CancelByUser,
+
+    #[error("error requesting user input")]
+    UserInputError(#[from] std::io::Error),
 }
 
 /*
@@ -215,6 +240,7 @@ impl Transaction {
             Transaction::MakeWitness(mk_witness) => mk_witness.exec(),
             Transaction::Auth(auth) => auth.exec(),
             Transaction::ToMessage(common) => display_message(common),
+            Transaction::MakeTransaction(send) => send.exec(),
         }
     }
 }

@@ -7,7 +7,8 @@ use crate::jcli_lib::{
     transaction::Error,
     utils::io,
 };
-use chain_addr::Address;
+use chain_addr::{Address, Kind};
+use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
 use chain_impl_mockchain::{
     self as chain,
     certificate::{Certificate, CertificatePayload, PoolSignature, SignedCertificate},
@@ -111,6 +112,28 @@ impl Staging {
 
         self.outputs.push(output.into());
 
+        Ok(())
+    }
+
+    pub fn add_account(
+        &mut self,
+        account: interfaces::Address,
+        value: interfaces::Value,
+    ) -> Result<(), Error> {
+        let account_id = match Address::from(account).kind() {
+            Kind::Account(key) => {
+                UnspecifiedAccountIdentifier::from_single_account(key.clone().into())
+            }
+            Kind::Multisig(key) => UnspecifiedAccountIdentifier::from_multi_account((*key).into()),
+            Kind::Single(_) => return Err(Error::AccountAddressSingle),
+            Kind::Group(_, _) => return Err(Error::AccountAddressGroup),
+            Kind::Script(_) => return Err(Error::AccountAddressScript),
+        };
+
+        self.add_input(interfaces::TransactionInput {
+            input: interfaces::TransactionInputType::Account(account_id.into()),
+            value,
+        })?;
         Ok(())
     }
 

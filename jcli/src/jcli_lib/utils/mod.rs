@@ -1,5 +1,4 @@
-mod account_id;
-
+pub mod account_id;
 pub mod io;
 pub mod key_parser;
 pub mod output_file;

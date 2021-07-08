@@ -1,8 +1,8 @@
 mod config;
-mod v0;
+pub mod v0;
 
 use crate::jcli_lib::utils::{io::ReadYamlError, output_format};
-use config::RestArgs;
+pub use config::RestArgs;
 use hex::FromHexError;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -29,6 +29,8 @@ pub enum Error {
     InputHexMalformed(#[from] FromHexError),
     #[error("error when trying to perform an HTTP request")]
     RequestError(#[from] config::Error),
+    #[error("error loading data from response")]
+    SerdeError(#[from] serde_json::Error),
 }
 
 impl From<ReadYamlError> for Error {

@@ -279,6 +279,34 @@ impl Transaction {
         self.command.seal(staging_file).build().assert().success();
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub fn make_transaction(
+        self,
+        host: String,
+        sender: jormungandr_lib::interfaces::Address,
+        receiver: Option<jormungandr_lib::interfaces::Address>,
+        value: jormungandr_lib::interfaces::Value,
+        block0_hash: String,
+        secret: impl AsRef<Path>,
+        staging_file: impl AsRef<Path>,
+        post: bool,
+    ) {
+        self.command
+            .make_transaction(
+                host,
+                sender,
+                receiver,
+                value,
+                block0_hash,
+                secret,
+                staging_file,
+                post,
+            )
+            .build()
+            .assert()
+            .success();
+    }
+
     pub fn convert_to_message<P: AsRef<Path>>(self, staging_file: P) -> String {
         self.command
             .to_message(staging_file)

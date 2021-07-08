@@ -1819,6 +1819,7 @@ dependencies = [
  "rand_chacha 0.3.1",
  "rayon",
  "reqwest",
+ "rpassword",
  "serde",
  "serde_derive",
  "serde_json",
@@ -3195,6 +3196,16 @@ dependencies = [
  "spin 0.5.2",
  "untrusted",
  "web-sys",
+ "winapi",
+]
+
+[[package]]
+name = "rpassword"
+version = "5.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffc936cf8a7ea60c58f030fd36a612a48f440610214dc54bc36431f9ea0c3efb"
+dependencies = [
+ "libc",
  "winapi",
 ]
 
