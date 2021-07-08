@@ -40,7 +40,6 @@ mod tests {
     use super::*;
 
     #[test]
-    #[ignore]
     fn encode_decode() {
         const PASSWORD: &[u8] = &[1, 2, 3, 4];
         let sk = SecretKey::generate(rand::thread_rng());
