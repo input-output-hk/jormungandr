@@ -76,9 +76,9 @@ jcli = args.jcli
 jormungandr = args.jormungandr
 
 if shutil.which(jormungandr) is None:
-    raise RuntimeError("{} not found".format(jormungandr))
+    raise RuntimeError(f"{jormungandr} not found")
 if shutil.which(jcli) is None:
-    raise RuntimeError("{} not found".format(jcli))
+    raise RuntimeError(f"{jcli} not found")
 
 config_path = Path(args.config_path)
 secret_path = Path(args.secret_path)
@@ -92,9 +92,7 @@ try:
             shutil.rmtree(storage)
         else:
             print(
-                "error: directory {} contains blocks.sqlite already, use --overwrite to overwrite".format(
-                    str(storage)
-                )
+                f"error: directory {storage} contains blocks.sqlite already, use --overwrite to overwrite"
             )
             sys.exit(1)
 except FileNotFoundError:
@@ -114,7 +112,7 @@ else:
 
 def make_key(key_type: str) -> Tuple[str, str]:
     secret = subprocess.run(
-        [jcli, "key", "generate", "--type={}".format(key_type)],
+        [jcli, "key", "generate", f"--type={key_type}"],
         capture_output=True,
         check=True,
     ).stdout
@@ -221,12 +219,12 @@ stake_delegation2_unsigned = subprocess.run(
 ).stdout
 stake_delegation2 = sign_certificate(stake_delegation2_unsigned, fixed_secret_key)
 
-genesis_yaml = """\
+genesis_yaml = f"""\
 blockchain_configuration:
-  block0_date: {date}
+  block0_date: {int(time.time())}
   discrimination: test
-  slots_per_epoch: {slots_per_epoch}
-  slot_duration: {slot_duration}
+  slots_per_epoch: {args.slots_per_epoch}
+  slot_duration: {args.slot_duration}
   epoch_stability_depth: 10
   consensus_genesis_praos_active_slot_coeff: 0.1
   consensus_leader_ids:
@@ -251,64 +249,45 @@ blockchain_configuration:
 initial:
   - fund:
       - address: {faucet_address}
-        value: {initial_funds}
+        value: {INITIAL_FUNDS}
       - address: {fixed_address}
-        value: {initial_funds}
-  - cert: {stake_pool_certificate}
-  - cert: {stake_delegation1}
-  - cert: {stake_delegation2}
-""".format(
-    date=int(time.time()),
-    slots_per_epoch=args.slots_per_epoch,
-    slot_duration=args.slot_duration,
-    leader_public_key=leader_public_key,
-    consensus=consensus,
-    faucet_address=faucet_address,
-    fixed_address=fixed_address,
-    stake_pool_certificate=stake_pool_certificate.decode("utf-8").strip(),
-    stake_delegation1=stake_delegation1.decode("utf-8").strip(),
-    stake_delegation2=stake_delegation2.decode("utf-8").strip(),
-    initial_funds=INITIAL_FUNDS,
-)
+        value: {INITIAL_FUNDS}
+  - cert: {stake_pool_certificate.decode("utf-8").strip()}
+  - cert: {stake_delegation1.decode("utf-8").strip()}
+  - cert: {stake_delegation2.decode("utf-8").strip()}
+"""
 
 genesis_yaml_path = Path(config_path / "genesis.yaml")
 
 with open(genesis_yaml_path, "w") as genesis_file:
     genesis_file.write(genesis_yaml)
 
-pool_secret1_yaml = """\
+pool_secret1_yaml = f"""\
 genesis:
   sig_key: {kes_secret_key}
   vrf_key: {vrf_secret_key}
   node_id: {stake_pool_id}
 bft:
   signing_key: {leader_secret_key}
-""".format(
-    kes_secret_key=kes_secret_key,
-    vrf_secret_key=vrf_secret_key,
-    stake_pool_id=stake_pool_id,
-    leader_secret_key=leader_secret_key,
-)
+"""
 
 pool_secret_path = Path(secret_path / "pool-secret1.yaml")
 
 with open(pool_secret_path, "w") as pool_secret1_file:
     pool_secret1_file.write(pool_secret1_yaml)
 
-rest_listen = "{}:{}".format(REST_HOST, args.rest_port)
+rest_listen = f"{REST_HOST}:{args.rest_port}"
 
-config_yaml = """\
-storage: "{storage}"
+config_yaml = f"""\
+storage: "{storage.as_posix()}"
 
 rest:
   listen: "{rest_listen}"
 
 p2p:
   trusted_peers: []
-  public_address: "/ip4/{rest_host}/tcp/8299"
-""".format(
-    storage=storage.as_posix(), rest_listen=rest_listen, rest_host=REST_HOST
-)
+  public_address: "/ip4/{REST_HOST}/tcp/8299"
+"""
 
 config_yaml_path = Path(config_path / "config.yaml")
 
@@ -333,12 +312,7 @@ subprocess.run(
 if args.startup_script:
     with open(Path(Path(os.getcwd() / "start-jormungandr.sh")), "w") as startup_script:
         startup_script.write(
-            "{jormungandr} --genesis-block {genesis_path} --config {config_path} --secret {secret_path}".format(
-                jormungandr=jormungandr,
-                genesis_path=block0_path,
-                config_path=config_yaml_path,
-                secret_path=pool_secret_path,
-            )
+            f"{jormungandr} --genesis-block {block0_path} --config {config_yaml_path} --secret {pool_secret_path}"
         )
 
 jcli_version = (
@@ -352,56 +326,36 @@ jormungandr_version = (
     .strip()
 )
 
+rest_url = f"http://{rest_listen}/api"
+
 print(
-    """\
+    f"""\
 ########################################################
-* Consensus       : {red}{consensus}{white}
-* REST Port       : {red}{rest_port}{white}
-* Slot duration   : {red}{slot_duration}{white}
-* Slots per epoch : {red}{slots_per_epoch}{white}
-
-########################################################
-
-* CLI  version: {green}{jcli_version}{white}
-* NODE version: {green}{jormungandr_version}{white}
+* Consensus       : {color_red}{consensus}{color_white}
+* REST Port       : {color_red}{args.rest_port}{color_white}
+* Slot duration   : {color_red}{args.slot_duration}{color_white}
+* Slots per epoch : {color_red}{args.slots_per_epoch}{color_white}
 
 ########################################################
 
-faucet_account: {green}{faucet_address}{white}
-  * public: {blue}{faucet_public_key}{white}
-  * secret: {red}{faucet_secret_key}{white}
-  * amount: {green}{faucet_amount}{white}
+* CLI  version: {color_green}{jcli_version}{color_white}
+* NODE version: {color_green}{jormungandr_version}{color_white}
 
-pool_id: {green}{stake_pool_id}{white}
+########################################################
+
+faucet_account: {color_green}{faucet_address}{color_white}
+  * public: {color_blue}{faucet_public_key}{color_white}
+  * secret: {color_red}{faucet_secret_key}{color_white}
+  * amount: {color_green}{INITIAL_FUNDS}{color_white}
+
+pool_id: {color_green}{stake_pool_id}{color_white}
 
 To start the node:
-  {jormungandr} --genesis-block {genesis_path} --config {config_path} --secret {secret_path}
+  {jormungandr} --genesis-block {block0_path} --config {config_yaml_path} --secret {pool_secret_path}
 
 To connect using CLI REST:
   {jcli} rest v0 <CMD> --host {rest_url}
 For example:
   {jcli} rest v0 node stats get --host {rest_url}
-""".format(
-        consensus=consensus,
-        rest_port=args.rest_port,
-        slot_duration=args.slot_duration,
-        slots_per_epoch=args.slots_per_epoch,
-        jcli_version=jcli_version,
-        jormungandr_version=jormungandr_version,
-        faucet_address=faucet_address,
-        faucet_public_key=faucet_public_key,
-        faucet_secret_key=faucet_secret_key,
-        faucet_amount=INITIAL_FUNDS,
-        stake_pool_id=stake_pool_id,
-        jormungandr=jormungandr,
-        genesis_path=block0_path,
-        config_path=config_yaml_path,
-        secret_path=pool_secret_path,
-        jcli=jcli,
-        rest_url=rest_listen,
-        red=color_red,
-        white=color_white,
-        green=color_green,
-        blue=color_blue,
-    )
+"""
 )
