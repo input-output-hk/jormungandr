@@ -8,7 +8,7 @@ pub use settings::RestSettings;
 
 use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_lib::interfaces::FragmentStatus;
+use jormungandr_lib::interfaces::{Address, FragmentStatus, VotePlanId};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
@@ -228,6 +228,15 @@ impl JormungandrRest {
 
     pub fn vote_plan_statuses(&self) -> Result<Vec<VotePlanStatus>, RestError> {
         serde_json::from_str(&self.inner.vote_plan_statuses()?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn vote_plan_account_info(
+        &self,
+        vote_plan_id: VotePlanId,
+        address: Address,
+    ) -> Result<Vec<u8>, RestError> {
+        serde_json::from_str(&self.inner.vote_plan_account_info(vote_plan_id, address)?)
             .map_err(RestError::CannotDeserialize)
     }
 }

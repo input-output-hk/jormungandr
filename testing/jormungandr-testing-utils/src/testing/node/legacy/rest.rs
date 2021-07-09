@@ -7,7 +7,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_lib::interfaces::FragmentStatus;
+use jormungandr_lib::interfaces::{Address, FragmentStatus, VotePlanId};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
 use reqwest::blocking::Response;
 use std::collections::HashMap;
@@ -219,5 +219,15 @@ impl BackwardCompatibleRest {
 
     pub fn vote_plan_statuses(&self) -> Result<String, reqwest::Error> {
         self.raw().vote_plan_statuses()?.text()
+    }
+
+    pub fn vote_plan_account_info(
+        &self,
+        vote_plan_id: VotePlanId,
+        address: Address,
+    ) -> Result<String, reqwest::Error> {
+        self.raw()
+            .vote_plan_account_info(vote_plan_id, address)?
+            .text()
     }
 }

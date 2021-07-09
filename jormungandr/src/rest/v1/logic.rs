@@ -7,9 +7,10 @@ use chain_crypto::{digest::Error as DigestError, hash::Error as HashError, Publi
 use chain_impl_mockchain::{fragment::FragmentId, value::ValueError};
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 use jormungandr_lib::interfaces::{
-    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch, FragmentsProcessingSummary,
+    Address, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch,
+    FragmentsProcessingSummary, VotePlanId,
 };
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, convert::TryInto, str::FromStr};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
 
@@ -38,6 +39,8 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
     #[error("Could not process all fragments")]
     Fragments(FragmentsProcessingSummary),
+    #[error("Unexpected address type")]
+    UnexpectAddressType,
 }
 
 pub async fn get_fragment_statuses<'a>(
@@ -107,6 +110,52 @@ pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Er
                 Error::MsgSendError(e)
             })?;
         reply_future.await.map_err(Into::into)
+    }
+    .instrument(span)
+    .await
+}
+
+pub async fn get_account_votes(
+    context: &Context,
+    vote_plan_id: VotePlanId,
+    address: Address,
+) -> Result<Option<Vec<u8>>, Error> {
+    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes", request = "get_account_votes");
+
+    let address: chain_addr::Address = address.into();
+    let identifier = match address.kind() {
+        chain_addr::Kind::Account(pubkey) => {
+            let account_id = chain_impl_mockchain::account::Identifier::from(pubkey.clone());
+            chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
+                account_id,
+            )
+        }
+        _ => return Err(Error::UnexpectAddressType),
+    };
+
+    let vote_plan_id: chain_crypto::digest::DigestOf<_, _> = vote_plan_id.into_digest().into();
+
+    async move {
+        let maybe_vote_plan = context
+            .blockchain_tip()?
+            .get_ref()
+            .await
+            .ledger()
+            .active_vote_plans()
+            .into_iter()
+            .find(|x| x.id == vote_plan_id);
+        let vote_plan = match maybe_vote_plan {
+            Some(vote_plan) => vote_plan,
+            None => return Ok(None),
+        };
+        let result = vote_plan
+            .proposals
+            .into_iter()
+            .enumerate()
+            .filter(|(_, x)| x.votes.contains_key(&identifier))
+            .map(|(i, _)| i.try_into().unwrap())
+            .collect();
+        Ok(Some(result))
     }
     .instrument(span)
     .await
