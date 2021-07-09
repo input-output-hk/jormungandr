@@ -6,7 +6,7 @@ use std::{collections::VecDeque, pin::Pin, time::Duration};
 use thiserror::Error;
 use tokio::sync::mpsc::{
     self,
-    error::{RecvError, TrySendError},
+    error::TrySendError,
     Receiver, Sender,
 };
 use tokio_util::time::delay_queue::{DelayQueue, Key};
@@ -15,8 +15,6 @@ use tokio_util::time::delay_queue::{DelayQueue, Key};
 pub enum Error {
     #[error("failed to send a command: {0}")]
     CommandSend(&'static str),
-    #[error("failed to receive a command")]
-    CommandReceive(#[from] RecvError),
     #[error("command queue closed")]
     CommandQueueClosed,
     #[error("timer error")]
