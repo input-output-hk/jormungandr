@@ -338,20 +338,20 @@ jobs:
           status="${{ needs.publish_release.outputs.status }}"
           release="${{ needs.create_release.outputs.tag }}"
           if [ "$status" == "success" ]; then
-            SLACK_COLOR="success"
+            SLACK_STATUS="success"
             SLACK_MESSAGE=":rocket: Published release $release."
           else
-            SLACK_COLOR="failure"
+            SLACK_STATUS="failure"
             SLACK_MESSAGE=":x: Release $release *FAILED*."
           fi
           cat <<EOF >> $GITHUB_ENV
-          SLACK_COLOR=$SLACK_COLOR
+          SLACK_STATUS=$SLACK_STATUS
           SLACK_MESSAGE=$SLACK_MESSAGE
           EOF
 
       - name: Send notification
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
-          SLACK_COLOR: ${{ env.SLACK_COLOR  }}
-          SLACK_MESSAGE: ${{ env.SLACK_MESSAGE  }}
+        uses: eugene-babichenko/slack-notifier@v1
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK }}
+          status: ${{ env.SLACK_STATUS  }}
+          text: ${{ env.SLACK_MESSAGE  }}
