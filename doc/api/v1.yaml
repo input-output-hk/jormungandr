@@ -270,7 +270,8 @@ paths:
             application/json:
               schema:
                 type: array
-                items: integer
+                items:
+                  type: integer
         '404':
           description: The requested vote plan does not exist or is not active.
 
