@@ -420,7 +420,7 @@ dependencies = [
 [[package]]
 name = "cardano-legacy-address"
 version = "0.1.1"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
  "cbor_event",
  "chain-ser",
@@ -464,7 +464,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "chain-addr"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
  "bech32",
  "chain-core",
@@ -476,7 +476,7 @@ dependencies = [
 [[package]]
 name = "chain-core"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
  "chain-ser",
 ]
@@ -484,7 +484,7 @@ dependencies = [
 [[package]]
 name = "chain-crypto"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
  "bech32",
  "cryptoxide",
@@ -497,6 +497,7 @@ dependencies = [
  "quickcheck",
  "rand 0.8.4",
  "rand_core 0.6.3",
+ "rayon",
  "sha2",
  "typed-bytes",
 ]
@@ -504,7 +505,7 @@ dependencies = [
 [[package]]
 name = "chain-impl-mockchain"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
  "cardano-legacy-address",
  "chain-addr",
@@ -520,6 +521,7 @@ dependencies = [
  "lazy_static",
  "quickcheck",
  "quickcheck_macros",
+ "rand 0.8.4",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "rayon",
@@ -533,28 +535,29 @@ dependencies = [
 [[package]]
 name = "chain-network"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
  "async-trait",
  "chain-crypto",
  "futures",
+ "http-body",
  "pin-project",
- "prost",
+ "prost 0.8.0",
  "rand_core 0.6.3",
  "thiserror",
- "tonic",
- "tonic-build",
+ "tonic 0.5.0",
+ "tonic-build 0.5.0",
 ]
 
 [[package]]
 name = "chain-ser"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 
 [[package]]
 name = "chain-storage"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
  "criterion",
  "data-pile",
@@ -567,7 +570,7 @@ dependencies = [
 [[package]]
 name = "chain-test-utils"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
  "chain-core",
  "quickcheck",
@@ -577,7 +580,7 @@ dependencies = [
 [[package]]
 name = "chain-time"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
  "cfg-if 1.0.0",
  "chain-core",
@@ -589,11 +592,12 @@ dependencies = [
 [[package]]
 name = "chain-vote"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
+ "cfg-if 1.0.0",
  "chain-core",
+ "chain-crypto",
  "cryptoxide",
- "eccoxide",
  "rand 0.8.4",
  "rand_core 0.6.3",
  "rayon",
@@ -1045,9 +1049,9 @@ dependencies = [
 
 [[package]]
 name = "ed25519-bip32"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8827180a2b511141fbe49141e50b31a8d542465e0fb572f81f36feea2addfe92"
+checksum = "6c091ed784fcf257830c75851d6c88fd5991f98d2f3fa9ed23c3f6bac4eec3cc"
 dependencies = [
  "cryptoxide",
 ]
@@ -1663,6 +1667,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "hyper-timeout"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbb958482e8c7be4bc3cf272a766a2b0bf1a6755e7a6ae777f017a31d11b13b1"
+dependencies = [
+ "hyper",
+ "pin-project-lite",
+ "tokio",
+ "tokio-io-timeout",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1719,7 +1735,7 @@ dependencies = [
 [[package]]
 name = "imhamt"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 dependencies = [
  "thiserror",
 ]
@@ -1878,7 +1894,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-util",
- "tonic",
+ "tonic 0.4.3",
  "tracing",
  "tracing-appender",
  "tracing-futures",
@@ -1915,7 +1931,7 @@ dependencies = [
  "parity-multiaddr",
  "poldercast",
  "predicates 2.0.0",
- "prost",
+ "prost 0.7.0",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
@@ -1929,7 +1945,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
- "tonic",
+ "tonic 0.4.3",
  "url",
  "yaml-rust",
 ]
@@ -2044,7 +2060,7 @@ dependencies = [
  "os_info 3.0.6",
  "parity-multiaddr",
  "poldercast",
- "prost",
+ "prost 0.7.0",
  "qrcodegen",
  "quircs",
  "rand 0.8.4",
@@ -2064,8 +2080,8 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
- "tonic",
- "tonic-build",
+ "tonic 0.4.3",
+ "tonic-build 0.4.2",
  "tracing",
  "tracing-subscriber",
  "typed-bytes",
@@ -2891,7 +2907,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e6984d2f1a23009bd270b8bb56d0926810a3d483f59c987d77969e9d8e840b2"
 dependencies = [
  "bytes",
- "prost-derive",
+ "prost-derive 0.7.0",
+]
+
+[[package]]
+name = "prost"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de5e2533f59d08fcf364fd374ebda0692a70bd6d7e66ef97f306f45c6c5d8020"
+dependencies = [
+ "bytes",
+ "prost-derive 0.8.0",
 ]
 
 [[package]]
@@ -2906,8 +2932,26 @@ dependencies = [
  "log",
  "multimap",
  "petgraph",
- "prost",
- "prost-types",
+ "prost 0.7.0",
+ "prost-types 0.7.0",
+ "tempfile",
+ "which",
+]
+
+[[package]]
+name = "prost-build"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "355f634b43cdd80724ee7848f95770e7e70eefa6dcf14fea676216573b8fd603"
+dependencies = [
+ "bytes",
+ "heck",
+ "itertools 0.10.0",
+ "log",
+ "multimap",
+ "petgraph",
+ "prost 0.8.0",
+ "prost-types 0.8.0",
  "tempfile",
  "which",
 ]
@@ -2926,13 +2970,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "prost-derive"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "600d2f334aa05acb02a755e217ef1ab6dea4d51b58b7846588b747edec04efba"
+dependencies = [
+ "anyhow",
+ "itertools 0.10.0",
+ "proc-macro2 1.0.27",
+ "quote 1.0.9",
+ "syn 1.0.72",
+]
+
+[[package]]
 name = "prost-types"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b518d7cdd93dab1d1122cf07fa9a60771836c668dde9d9e2a139f957f0d9f1bb"
 dependencies = [
  "bytes",
- "prost",
+ "prost 0.7.0",
+]
+
+[[package]]
+name = "prost-types"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "603bbd6394701d13f3f25aada59c7de9d35a6a5887cfc156181234a44002771b"
+dependencies = [
+ "bytes",
+ "prost 0.8.0",
 ]
 
 [[package]]
@@ -3523,7 +3590,7 @@ dependencies = [
 [[package]]
 name = "sparse-array"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 
 [[package]]
 name = "spin"
@@ -3865,6 +3932,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-io-timeout"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90c49f106be240de154571dd31fbe48acb10ba6c6dd6f6517ad603abffa42de9"
+dependencies = [
+ "pin-project-lite",
+ "tokio",
+]
+
+[[package]]
 name = "tokio-macros"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3953,12 +4030,43 @@ dependencies = [
  "hyper",
  "percent-encoding",
  "pin-project",
- "prost",
- "prost-derive",
+ "prost 0.7.0",
+ "prost-derive 0.7.0",
  "tokio",
  "tokio-stream",
  "tokio-util",
  "tower",
+ "tower-service",
+ "tracing",
+ "tracing-futures",
+]
+
+[[package]]
+name = "tonic"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b584f064fdfc50017ec39162d5aebce49912f1eb16fd128e04b7f4ce4907c7e5"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "base64 0.13.0",
+ "bytes",
+ "futures-core",
+ "futures-util",
+ "h2",
+ "http",
+ "http-body",
+ "hyper",
+ "hyper-timeout",
+ "percent-encoding",
+ "pin-project",
+ "prost 0.8.0",
+ "prost-derive 0.8.0",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tower",
+ "tower-layer",
  "tower-service",
  "tracing",
  "tracing-futures",
@@ -3971,7 +4079,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c695de27302f4697191dda1c7178131a8cb805463dda02864acb80fe1322fdcf"
 dependencies = [
  "proc-macro2 1.0.27",
- "prost-build",
+ "prost-build 0.7.0",
+ "quote 1.0.9",
+ "syn 1.0.72",
+]
+
+[[package]]
+name = "tonic-build"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db9a497663a9a779693ef67b6e6aef8345b3d3ff8d50ef92eae6c88cb1e386"
+dependencies = [
+ "proc-macro2 1.0.27",
+ "prost-build 0.8.0",
  "quote 1.0.9",
  "syn 1.0.72",
 ]
@@ -4185,7 +4305,7 @@ dependencies = [
 [[package]]
 name = "typed-bytes"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8b051298e4dd74ed7314f10b81a341439e7e219d"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#11f9e245489de9884d44d11d48bf5dfce7381a10"
 
 [[package]]
 name = "typenum"
