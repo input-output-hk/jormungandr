@@ -40,7 +40,7 @@ pub enum Error {
     #[error("Could not process all fragments")]
     Fragments(FragmentsProcessingSummary),
     #[error("Unexpected address type")]
-    UnexpectAddressType,
+    UnexpectedAddressType,
 }
 
 pub async fn get_fragment_statuses<'a>(
@@ -130,7 +130,7 @@ pub async fn get_account_votes(
                 account_id,
             )
         }
-        _ => return Err(Error::UnexpectAddressType),
+        _ => return Err(Error::UnexpectedAddressType),
     };
 
     let vote_plan_id: chain_crypto::digest::DigestOf<_, _> = vote_plan_id.into_digest().into();
