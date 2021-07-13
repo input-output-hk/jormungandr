@@ -1,10 +1,11 @@
+use super::hash;
 use chain_crypto::{Ed25519Extended, SecretKey, SecretKeyError};
 use image::{DynamicImage, ImageBuffer, Luma};
 use qrcodegen::{QrCode, QrCodeEcc};
 use std::fs::File;
 use std::io::{self, prelude::*};
 use std::path::Path;
-use symmetric_cipher::{decrypt, encrypt, Error as SymmetricCipherError};
+use symmetric_cipher::Error as SymmetricCipherError;
 use thiserror::Error;
 
 const MODULE_SIZE: i32 = 8;
@@ -26,6 +27,8 @@ pub enum KeyQrCodeError {
     QrDecodeError(#[from] QrDecodeError),
     #[error("failed to decode hex")]
     HexDecodeError(#[from] hex::FromHexError),
+    #[error("failed to decode hex")]
+    QrCodeHashError(#[from] super::hash::Error),
 }
 
 #[derive(Error, Debug)]
@@ -40,14 +43,7 @@ pub enum QrDecodeError {
 
 impl KeyQrCode {
     pub fn generate(key: SecretKey<Ed25519Extended>, password: &[u8]) -> Self {
-        let secret = key.leak_secret();
-        let rng = rand::thread_rng();
-        // this won't fail because we already know it's an ed25519extended key,
-        // so it is safe to unwrap
-        let enc = encrypt(password, secret.as_ref(), rng).unwrap();
-        // Using binary would make the QR codes more compact and probably less
-        // prone to scanning errors.
-        let enc_hex = hex::encode(enc);
+        let enc_hex = hash::generate(key, password);
         let inner = QrCode::encode_text(&enc_hex, QrCodeEcc::High).unwrap();
 
         KeyQrCode { inner }
@@ -108,9 +104,7 @@ impl KeyQrCode {
                 // TODO: I actually don't know if this can fail
                 let h = std::str::from_utf8(&decoded.payload)
                     .map_err(|_| QrDecodeError::NonUtf8Payload)?;
-                let encrypted_bytes = hex::decode(h)?;
-                let key = decrypt(password, &encrypted_bytes)?;
-                Ok(SecretKey::from_binary(&key)?)
+                hash::decode(h, password).map_err(Into::into)
             })
             .collect()
     }
