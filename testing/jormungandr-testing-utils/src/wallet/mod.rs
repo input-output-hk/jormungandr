@@ -8,9 +8,22 @@ pub use committee::{
 };
 
 use crate::{
-    qr_code::KeyQrCode,
+    qr_code::{generate, KeyQrCode},
     stake_pool::StakePool,
     testing::{FragmentBuilder, FragmentBuilderError},
+};
+use chain_addr::Discrimination;
+use chain_crypto::{Ed25519, Signature};
+pub use chain_impl_mockchain::{
+    account::SpendingCounter,
+    block::Block,
+    certificate::{PoolId, SignedCertificate},
+    chaintypes::ConsensusVersion,
+    fee::LinearFee,
+    fragment::Fragment,
+    header::HeaderId,
+    milli::Milli,
+    transaction::{Input, TransactionBindingAuthData, UnspecifiedAccountIdentifier},
 };
 use chain_impl_mockchain::{
     certificate::{VotePlan, VoteTallyPayload},
@@ -28,21 +41,8 @@ use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
     interfaces::{Address, CommitteeIdDef, Initial, InitialUTxO, Value},
 };
-
-use chain_addr::Discrimination;
-use chain_crypto::{Ed25519, Signature};
-pub use chain_impl_mockchain::{
-    account::SpendingCounter,
-    block::Block,
-    certificate::{PoolId, SignedCertificate},
-    chaintypes::ConsensusVersion,
-    fee::LinearFee,
-    fragment::Fragment,
-    header::HeaderId,
-    milli::Milli,
-    transaction::{Input, TransactionBindingAuthData, UnspecifiedAccountIdentifier},
-};
 use rand_core::{CryptoRng, RngCore};
+use std::io::Write;
 use std::{fs::File, path::Path};
 use thiserror::Error;
 
@@ -174,6 +174,32 @@ impl Wallet {
         };
 
         qr.to_img().save(path).unwrap();
+    }
+
+    pub fn save_qr_code_hash<P: AsRef<Path>>(
+        &self,
+        path: P,
+        password: &[u8],
+    ) -> std::io::Result<()> {
+        let qr = match self {
+            Wallet::Account(account) => {
+                let secret_key = match account.signing_key().as_ref() {
+                    EitherEd25519SecretKey::Extended(secret_key) => secret_key,
+                    EitherEd25519SecretKey::Normal(_) => panic!("unsupported secret key type"),
+                };
+                generate(secret_key.clone(), password)
+            }
+            Wallet::UTxO(utxo) => {
+                generate(utxo.last_signing_key().clone().into_secret_key(), password)
+            }
+            Wallet::Delegation(delegation) => generate(
+                delegation.last_signing_key().clone().into_secret_key(),
+                password,
+            ),
+        };
+
+        let mut file = File::create(path).unwrap();
+        writeln!(file, "{}", qr)
     }
 
     pub fn save_to_path<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
