@@ -100,7 +100,11 @@ status: sealed      # transaction status, can be "balancing", "finalizing", "sea
 # Examples
 
 The following example focuses on using an utxo as input, the few differences when transfering from an account will be pointed out when necessary.
-There is also a script [here](https://github.com/input-output-hk/jormungandr/blob/master/scripts/send-transaction) to send a transaction from a faucet account to a specific address which could be used as a reference.
+Also, the simplified `make-transaction` command in  `jcli`  covers all this process. For more information run:
+
+```sh
+jcli transaction make-transaction --help
+```
 
 Let's use the following utxo as input and transfer 50 lovelaces to the destination address
 
