@@ -1,5 +1,5 @@
 use chain_core::property::FromStr;
-use chain_crypto::{Curve25519_2HashDh, Ed25519, SumEd25519_12};
+use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
 use jormungandr_lib::{
     crypto::{hash::Hash, key::SigningKey},
     interfaces::{Bft, GenesisPraos, NodeSecret},
@@ -37,7 +37,7 @@ impl SecretModelFactory {
 
     pub fn genesis(
         signing_key: SigningKey<SumEd25519_12>,
-        vrf_key: SigningKey<Curve25519_2HashDh>,
+        vrf_key: SigningKey<RistrettoGroup2HashDh>,
         node_id: &str,
     ) -> NodeSecret {
         NodeSecret {

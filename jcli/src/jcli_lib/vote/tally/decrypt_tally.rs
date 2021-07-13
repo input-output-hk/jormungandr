@@ -1,5 +1,5 @@
 use super::Error;
-use crate::jcli_lib::utils::vote;
+use crate::jcli_lib::utils::vote::{self, SharesError};
 use crate::jcli_lib::utils::OutputFormat;
 use chain_vote::EncryptedTally;
 use jormungandr_lib::crypto::hash::Hash;
@@ -77,6 +77,7 @@ impl TallyVotePlanWithAllShares {
             }
         }
         let table = chain_vote::TallyOptimizationTable::generate(max_stake);
+        let committee_member_keys = vote_plan.committee_member_keys.clone();
 
         vote_plan.proposals = vote_plan
             .proposals
@@ -84,10 +85,12 @@ impl TallyVotePlanWithAllShares {
             .zip(encrypted_tallies.into_par_iter())
             .zip(shares.into_par_iter())
             .map(|((mut proposal, encrypted_tally), shares)| {
-                let state = EncryptedTally::from_bytes(&encrypted_tally)
-                    .ok_or(Error::EncryptedTallyRead)?
-                    .state();
-                let decrypted = chain_vote::tally(max_stake, &state, &shares, &table)?;
+                let encrypted_tally = EncryptedTally::from_bytes(&encrypted_tally)
+                    .ok_or(Error::EncryptedTallyRead)?;
+                let decrypted = encrypted_tally
+                    .validate_partial_decryptions(&committee_member_keys, &shares)
+                    .map_err(SharesError::ValidationFailed)?
+                    .decrypt_tally(max_stake, &table)?;
                 proposal.tally = Some(Tally::Private {
                     state: PrivateTallyState::Decrypted {
                         result: decrypted.into(),

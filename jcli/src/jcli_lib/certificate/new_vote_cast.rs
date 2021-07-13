@@ -48,7 +48,7 @@ pub struct PrivateVoteCast {
 
     /// key to encrypt the vote with
     #[structopt(long = "key-path")]
-    encrypting_key_path: Option<PathBuf>,
+    election_key_path: Option<PathBuf>,
 
     /// write the output to the given file or print it to the standard output if not defined
     #[structopt(long = "output")]
@@ -77,7 +77,7 @@ impl PublicVoteCast {
 impl PrivateVoteCast {
     pub fn exec(self) -> Result<(), Error> {
         let mut rng = rand_chacha::ChaChaRng::from_entropy();
-        let key_line = utils::io::read_line(&self.encrypting_key_path)?;
+        let key_line = utils::io::read_line(&self.election_key_path)?;
         let (hrp, data) = bech32::decode(&key_line).map_err(Error::InvalidBech32)?;
         if hrp != crate::jcli_lib::vote::bech32_constants::ENCRYPTING_VOTE_PK_HRP {
             return Err(Error::InvalidBech32Key {
@@ -88,7 +88,7 @@ impl PrivateVoteCast {
         }
         let key_bin = Vec::<u8>::from_base32(&data)?;
         let key =
-            chain_vote::EncryptingVoteKey::from_bytes(&key_bin).ok_or(Error::VoteEncryptingKey)?;
+            chain_vote::ElectionPublicKey::from_bytes(&key_bin).ok_or(Error::ElectionPublicKey)?;
 
         let vote = chain_vote::Vote::new(self.options, self.choice as usize);
         let crs = chain_vote::Crs::from_hash(self.vote_plan_id.as_ref());

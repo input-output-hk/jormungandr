@@ -44,11 +44,11 @@ jcli votes committee member-key to-public --input ./member.sk ./member.pk
 ```
 
 
-#### Vote encrypting key
+#### Election public key
 This key (*public*) is the key **every vote** should be encrypted with.
 
 ```shell
-jcli votes encrypting-key --keys mpk1 mpk2 mpk3 > ./vote.pk
+jcli votes election-key --keys mpk1 mpk2 mpk3 > ./vote.pk
 ```
 
 Notice that we can always rebuild this key with the committee member public keys found

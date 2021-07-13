@@ -87,10 +87,10 @@ impl Certificate {
         proposal_idx: usize,
         choice: Choice,
         option_size: usize,
-        encrypting_key: P,
+        election_key: P,
     ) -> String {
         let key_path = NamedTempFile::new("key_path").unwrap();
-        key_path.write_str(&encrypting_key.into()).unwrap();
+        key_path.write_str(&election_key.into()).unwrap();
 
         self.command
             .private_vote_cast(

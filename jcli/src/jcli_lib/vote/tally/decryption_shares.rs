@@ -2,7 +2,7 @@ use super::Error;
 use crate::jcli_lib::utils::io;
 use crate::jcli_lib::utils::vote::{self, MemberVotePlanShares, VotePlanDecryptShares};
 use bech32::FromBase32;
-use chain_vote::{EncryptedTally, OpeningVoteKey};
+use chain_vote::tally::{EncryptedTally, OpeningVoteKey};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
 use std::convert::TryFrom;
@@ -75,7 +75,7 @@ impl TallyGenerateVotePlanDecryptionShares {
                 }) => {
                     let encrypted_tally =
                         EncryptedTally::from_bytes(&encrypted_tally.into_bytes())?;
-                    Some(encrypted_tally.finish(&decryption_key).1)
+                    Some(encrypted_tally.partial_decrypt(&mut rand::thread_rng(), &decryption_key))
                 }
                 _ => None,
             })

@@ -70,6 +70,8 @@ pub enum SharesError {
     InsufficientShares,
     #[error("invalid binary share data")]
     InvalidBinaryShare,
+    #[error("decryption share is not valid")]
+    ValidationFailed(#[from] chain_vote::tally::DecryptionError),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
