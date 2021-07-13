@@ -10,9 +10,17 @@ on:
       - Cargo.lock
   schedule:
     - cron: '0 5 * * 0' # Weekly every Sunday 05:00 UTC
+
 jobs:
   security_audit:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/jormungandr-rust-ci:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      volumes:
+        - cargo-registry-index:/usr/local/cargo/registry/index
     steps:
       - uses: actions/checkout@v2
 
@@ -28,12 +36,9 @@ jobs:
       - name: Cache cargo registry index
         uses: actions/cache@v2
         with:
-          path: ~/.cargo/registry/index
+          path: /usr/local/cargo/registry/index
           key: cargo-index-${{ steps.ls-crates-io-index.outputs.head }}
           restore-keys: |
             cargo-index-
 
-      # FIXME switch back to actions-rs/audit-check when the fix is merged
-      - uses: eugene-babichenko/audit-check@dont-override-cargo-lock
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: cargo audit
