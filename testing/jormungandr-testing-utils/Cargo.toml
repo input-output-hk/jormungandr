@@ -56,7 +56,7 @@ symmetric-cipher = { git = "https://github.com/input-output-hk/chain-wallet-libs
 qrcodegen = "1.6"
 quircs = "0.10.0"
 image = "0.23.12"
-strum = { version = "0.20", features = ["derive"] }
+strum = { version = "0.21", features = ["derive"] }
 tracing-subscriber = "0.2"
 tracing = "0.1"
 netstat2 = "0.9"
