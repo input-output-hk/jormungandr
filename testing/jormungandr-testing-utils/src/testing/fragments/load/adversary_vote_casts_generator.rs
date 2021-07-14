@@ -8,9 +8,10 @@ use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::testing::VoteTestGen;
 use chain_impl_mockchain::vote::PayloadType;
 use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
-use jortestkit::load::{RequestFailure, RequestGenerator};
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
+use std::time::Instant;
 
 pub struct AdversaryVoteCastsGenerator<'a, S: SyncNode + Send> {
     voter: Wallet,
@@ -143,12 +144,19 @@ impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
     }
 }
 
-impl<'a, S: SyncNode + Send> RequestGenerator for AdversaryVoteCastsGenerator<'a, S> {
-    fn next(
-        &mut self,
-    ) -> Result<Vec<Option<jortestkit::load::Id>>, jortestkit::load::RequestFailure> {
+impl<'a, S: SyncNode + Send + Sync> RequestGenerator for AdversaryVoteCastsGenerator<'a, S> {
+    fn next(&mut self) -> Result<Request, RequestFailure> {
+        let start = Instant::now();
         self.send()
-            .map(|x| vec![Some(x.fragment_id().to_string())])
+            .map(|x| Request {
+                ids: vec![Some(x.fragment_id().to_string())],
+                duration: start.elapsed(),
+            })
             .map_err(|err| RequestFailure::General(err.to_string()))
+    }
+
+    fn split(self) -> (Self, Option<Self>) {
+        // TODO: implement real splitting
+        (self, None)
     }
 }

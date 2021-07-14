@@ -6,8 +6,9 @@ use crate::wallet::LinearFee;
 use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::crypto::hash::Hash;
-use jortestkit::load::{Id, RequestFailure, RequestGenerator};
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
+use std::time::Instant;
 
 pub struct TransactionGenerator<'a, S: SyncNode + Send> {
     wallets: Vec<Wallet>,
@@ -87,9 +88,17 @@ impl<'a, S: SyncNode + Send> TransactionGenerator<'a, S> {
     }
 }
 
-impl<S: SyncNode + Send> RequestGenerator for TransactionGenerator<'_, S> {
-    fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
-        self.send_transaction()
-            .map(|fragment_id| vec![Some(fragment_id.to_string())])
+impl<S: SyncNode + Send + Sync> RequestGenerator for TransactionGenerator<'_, S> {
+    fn next(&mut self) -> Result<Request, RequestFailure> {
+        let start = Instant::now();
+        self.send_transaction().map(|fragment_id| Request {
+            ids: vec![Some(fragment_id.to_string())],
+            duration: start.elapsed(),
+        })
+    }
+
+    fn split(self) -> (Self, Option<Self>) {
+        // TODO: implement real splitting
+        (self, None)
     }
 }

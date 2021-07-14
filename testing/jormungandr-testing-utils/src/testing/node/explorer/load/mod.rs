@@ -1,10 +1,11 @@
 use crate::testing::node::Explorer;
 use crate::testing::node::ExplorerError;
-use jortestkit::load::Id;
+use jortestkit::load::Request;
 use jortestkit::load::RequestFailure;
 use jortestkit::load::RequestGenerator;
 use rand::RngCore;
 use rand_core::OsRng;
+use std::time::Instant;
 
 #[derive(Clone)]
 pub struct ExplorerRequestGen {
@@ -63,7 +64,8 @@ impl ExplorerRequestGen {
 }
 
 impl RequestGenerator for ExplorerRequestGen {
-    fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
+    fn next(&mut self) -> Result<Request, RequestFailure> {
+        let start = Instant::now();
         let result = match self.next_usize() % 7 {
             0 => {
                 let limit = self.next_usize_in_range(1, 10) as i64;
@@ -145,6 +147,13 @@ impl RequestGenerator for ExplorerRequestGen {
             }
             _ => unreachable!(),
         };
-        result.map(|()| vec![None])
+        result.map(|()| Request {
+            ids: vec![None],
+            duration: start.elapsed(),
+        })
+    }
+
+    fn split(self) -> (Self, Option<Self>) {
+        (self.clone(), Some(self))
     }
 }

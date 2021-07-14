@@ -12,10 +12,11 @@ use chain_impl_mockchain::{
 };
 use chain_time::TimeEra;
 use jormungandr_lib::interfaces::BlockDate;
-use jortestkit::load::{RequestFailure, RequestGenerator};
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
 use std::iter;
+use std::time::Instant;
 
 pub struct FragmentGenerator<'a, S: SyncNode + Send> {
     sender: Wallet,
@@ -228,12 +229,18 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
     }
 }
 
-impl<'a, S: SyncNode + Send> RequestGenerator for FragmentGenerator<'a, S> {
-    fn next(
-        &mut self,
-    ) -> Result<Vec<Option<jortestkit::load::Id>>, jortestkit::load::RequestFailure> {
+impl<'a, S: SyncNode + Send + Sync> RequestGenerator for FragmentGenerator<'a, S> {
+    fn next(&mut self) -> Result<Request, RequestFailure> {
+        let start = Instant::now();
         self.send_random()
-            .map(|x| vec![Some(x.fragment_id().to_string())])
+            .map(|x| Request {
+                ids: vec![Some(x.fragment_id().to_string())],
+                duration: start.elapsed(),
+            })
             .map_err(|err| RequestFailure::General(err.to_string()))
+    }
+
+    fn split(self) -> (Self, Option<Self>) {
+        (self, None)
     }
 }

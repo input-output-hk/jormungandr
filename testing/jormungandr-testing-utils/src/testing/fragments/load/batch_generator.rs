@@ -6,8 +6,9 @@ use crate::wallet::LinearFee;
 use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::crypto::hash::Hash;
-use jortestkit::load::{Id, RequestFailure, RequestGenerator};
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
+use std::time::Instant;
 
 pub struct BatchFragmentGenerator<'a, S: SyncNode + Send> {
     wallets: Vec<Wallet>,
@@ -108,22 +109,29 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
         Ok(transactions)
     }
 
-    pub fn send_batch(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
+    pub fn send_batch(&mut self) -> Result<Request, RequestFailure> {
         let transactions = self.generate_batch_transaction()?;
+        let start = Instant::now();
         self.fragment_sender
             .send_batch_fragments(transactions, false, &self.jormungandr)
-            .map(|checks| {
-                checks
+            .map(|checks| Request {
+                ids: checks
                     .iter()
                     .map(|x| Some(x.fragment_id().to_string()))
-                    .collect()
+                    .collect(),
+                duration: start.elapsed(),
             })
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))
     }
 }
 
-impl<S: SyncNode + Send> RequestGenerator for BatchFragmentGenerator<'_, S> {
-    fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
+impl<S: SyncNode + Send + Sync> RequestGenerator for BatchFragmentGenerator<'_, S> {
+    fn next(&mut self) -> Result<Request, RequestFailure> {
         self.send_batch()
+    }
+
+    fn split(self) -> (Self, Option<Self>) {
+        // TODO: implement real splitting
+        (self, None)
     }
 }
