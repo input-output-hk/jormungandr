@@ -88,7 +88,7 @@ impl<'a, S: SyncNode + Send> TransactionGenerator<'a, S> {
     }
 }
 
-impl<S: SyncNode + Send + Sync> RequestGenerator for TransactionGenerator<'_, S> {
+impl<S: SyncNode + Send + Sync + Clone> RequestGenerator for TransactionGenerator<'_, S> {
     fn next(&mut self) -> Result<Request, RequestFailure> {
         let start = Instant::now();
         self.send_transaction().map(|fragment_id| Request {
@@ -97,8 +97,20 @@ impl<S: SyncNode + Send + Sync> RequestGenerator for TransactionGenerator<'_, S>
         })
     }
 
-    fn split(self) -> (Self, Option<Self>) {
-        // TODO: implement real splitting
-        (self, None)
+    fn split(mut self) -> (Self, Option<Self>) {
+        let wallets_len = self.wallets.len();
+        // there needs to be at least one receiver and one sender in each half
+        if wallets_len <= 4 {
+            return (self, None);
+        }
+        let wallets = self.wallets.split_off(wallets_len / 2);
+        let other = Self {
+            wallets,
+            jormungandr: self.jormungandr.clone_with_rest(),
+            fragment_sender: self.fragment_sender.clone(),
+            rand: OsRng,
+            split_marker: 1,
+        };
+        (self, Some(other))
     }
 }

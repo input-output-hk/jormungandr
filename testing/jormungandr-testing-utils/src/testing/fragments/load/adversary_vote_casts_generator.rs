@@ -144,7 +144,9 @@ impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
     }
 }
 
-impl<'a, S: SyncNode + Send + Sync> RequestGenerator for AdversaryVoteCastsGenerator<'a, S> {
+impl<'a, S: SyncNode + Send + Sync + Clone> RequestGenerator
+    for AdversaryVoteCastsGenerator<'a, S>
+{
     fn next(&mut self) -> Result<Request, RequestFailure> {
         let start = Instant::now();
         self.send()
@@ -156,7 +158,7 @@ impl<'a, S: SyncNode + Send + Sync> RequestGenerator for AdversaryVoteCastsGener
     }
 
     fn split(self) -> (Self, Option<Self>) {
-        // TODO: implement real splitting
+        // infinite splitting is known to trigger a bug in rayon
         (self, None)
     }
 }

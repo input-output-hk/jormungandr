@@ -88,7 +88,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentGenerator<'a, S> {
     }
 }
 
-impl<'a, S: SyncNode + Send + Sync> RequestGenerator for AdversaryFragmentGenerator<'a, S> {
+impl<'a, S: SyncNode + Send + Sync + Clone> RequestGenerator for AdversaryFragmentGenerator<'a, S> {
     fn next(&mut self) -> Result<Request, RequestFailure> {
         let start = Instant::now();
         self.send_transaction().map(|fragment_id| Request {
@@ -98,7 +98,7 @@ impl<'a, S: SyncNode + Send + Sync> RequestGenerator for AdversaryFragmentGenera
     }
 
     fn split(self) -> (Self, Option<Self>) {
-        // TODO: implement real splitting
+        // infinite splitting is known to trigger a bug in rayon
         (self, None)
     }
 }

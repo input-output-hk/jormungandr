@@ -36,10 +36,7 @@ impl<'a, S: SyncNode + Send> VoteCastsGenerator<'a, S> {
     }
 
     pub fn send(&mut self) -> Result<MemPoolCheck, FragmentSenderError> {
-        self.send_marker += 1;
-        if self.send_marker >= self.voters.len() - 1 {
-            self.send_marker = 1;
-        }
+        self.send_marker = (self.send_marker + 1) % self.voters.len();
 
         let mut voter = self.voters.get_mut(self.send_marker).unwrap();
 
@@ -56,7 +53,7 @@ impl<'a, S: SyncNode + Send> VoteCastsGenerator<'a, S> {
     }
 }
 
-impl<'a, S: SyncNode + Send + Sync> RequestGenerator for VoteCastsGenerator<'a, S> {
+impl<'a, S: SyncNode + Send + Sync + Clone> RequestGenerator for VoteCastsGenerator<'a, S> {
     fn next(&mut self) -> Result<Request, RequestFailure> {
         let start = Instant::now();
         self.send()
@@ -67,8 +64,20 @@ impl<'a, S: SyncNode + Send + Sync> RequestGenerator for VoteCastsGenerator<'a, 
             .map_err(|err| RequestFailure::General(err.to_string()))
     }
 
-    fn split(self) -> (Self, Option<Self>) {
-        // TODO: implement real splitting
-        (self, None)
+    fn split(mut self) -> (Self, Option<Self>) {
+        let wallets_len = self.voters.len();
+        if wallets_len <= 1 {
+            return (self, None);
+        }
+        let voters = self.voters.split_off(wallets_len / 2);
+        let other = Self {
+            voters,
+            vote_plan: self.vote_plan.clone(),
+            node: self.node.clone_with_rest(),
+            fragment_sender: self.fragment_sender.clone(),
+            rand: OsRng,
+            send_marker: 1,
+        };
+        (self, Some(other))
     }
 }
