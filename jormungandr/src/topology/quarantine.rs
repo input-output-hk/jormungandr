@@ -29,6 +29,12 @@ struct ReportRecord {
     report_time: Instant,
 }
 
+pub enum ReportNodeStatus {
+    Ok,
+    Quarantine,
+    SoftReport,
+}
+
 /// Forgive nodes we demoted after some time
 pub struct ReportRecords {
     /// A report will be lifted after 'report_duration'
@@ -62,23 +68,29 @@ impl ReportRecords {
     }
 
     /// Returns whether the node has been quarantined or not.
-    pub fn report_node(&mut self, topology: &mut poldercast::Topology, node: Peer) -> bool {
+    pub fn report_node(
+        &mut self,
+        topology: &mut poldercast::Topology,
+        node: Peer,
+    ) -> ReportNodeStatus {
         if self.report_whitelist.contains(&node.address()) {
             tracing::debug!(
                 node = %node.address(),
                 id=?node.id(),
                 "quarantine whitelists prevents this node from being reported",
             );
-            false
+            ReportNodeStatus::Ok
         } else if self.report_grace.contains(&node.id()) {
             tracing::trace!(node = %node.address(), id=?node.id(), "not reporting node in grace list");
-            false
+            ReportNodeStatus::Ok
         } else {
             let mut peer_info = PeerInfo::from(node);
             tracing::debug!(node = %peer_info.address, id=?peer_info.id, ?self.report_duration, "reporting node");
             // If we'll handle report reasons other that a connectivity issue in the future, we may want to
             // demote a peer all the way down to dirty in case of a serious violation.
             topology.remove_peer(peer_info.id.as_ref());
+
+            let mut result = ReportNodeStatus::SoftReport;
 
             // Not all reports will quarantine a node (which is, put it in the dirty pool). For example,
             // a connectivity issue reported against a trusted peer will only demote it once, thus putting
@@ -91,6 +103,7 @@ impl ReportRecords {
             if topology.peers().dirty().contains(peer_info.id.as_ref()) {
                 peer_info.quarantined = Some(SystemTime::now().into());
                 tracing::debug!(node = %peer_info.address, id=?peer_info.id, "node has been quarantined");
+                result = ReportNodeStatus::Quarantine;
             }
 
             self.report_records.put(
@@ -101,7 +114,7 @@ impl ReportRecords {
                 },
             );
 
-            true
+            result
         }
     }
 

@@ -76,6 +76,7 @@ use self::p2p::comm::Peers;
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TopologyMsg, TransactionMsg};
+use crate::metrics::{Metrics, MetricsBackend};
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::topology::{self, NodeId};
 use crate::utils::async_msg::{MessageBox, MessageQueue};
@@ -90,11 +91,11 @@ use std::error;
 use std::fmt;
 use std::iter::FromIterator;
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 pub use self::bootstrap::Error as BootstrapError;
-use crate::stats_counter::StatsCounter;
 
 #[derive(Debug)]
 pub struct ListenError {
@@ -151,10 +152,12 @@ impl Clone for Channels {
 pub struct GlobalState {
     block0_hash: HeaderHash,
     config: Configuration,
-    stats_counter: StatsCounter,
+    stats_counter: Metrics,
     peers: Peers,
     keypair: NodeKeyPair,
     span: Span,
+
+    connected_count: AtomicUsize,
 }
 
 pub type GlobalStateR = Arc<GlobalState>;
@@ -164,7 +167,7 @@ impl GlobalState {
     pub fn new(
         block0_hash: HeaderHash,
         config: Configuration,
-        stats_counter: StatsCounter,
+        stats_counter: Metrics,
         span: Span,
     ) -> Self {
         let peers = Peers::new(
@@ -185,6 +188,7 @@ impl GlobalState {
             peers,
             keypair,
             span,
+            connected_count: AtomicUsize::new(0),
         }
     }
 
@@ -205,21 +209,22 @@ impl GlobalState {
 
     fn inc_client_count(&self) {
         self.stats_counter.add_peer_connected_cnt(1);
+        self.connected_count.fetch_sub(1, Ordering::Relaxed);
     }
 
     fn dec_client_count(&self) {
-        let prev_count = self.stats_counter.sub_peer_connected_cnt(1);
-        assert!(prev_count != 0);
+        self.stats_counter.sub_peer_connected_cnt(1);
+        self.connected_count.fetch_sub(1, Ordering::Relaxed);
     }
 
     fn client_count(&self) -> usize {
-        self.stats_counter.peer_connected_cnt()
+        self.connected_count.load(Ordering::Relaxed)
     }
 
     // How many client connections to bump when a new one is about to be
     // established
     fn num_clients_to_bump(&self) -> usize {
-        let count = self.stats_counter.peer_connected_cnt().saturating_add(1);
+        let count = self.client_count().saturating_add(1);
         if count > self.config.max_inbound_connections {
             count - self.config.max_inbound_connections
         } else {

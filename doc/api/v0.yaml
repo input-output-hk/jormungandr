@@ -708,7 +708,6 @@ paths:
                   - version
                   - peerAvailableCnt
                   - peerQuarantinedCnt
-                  - peerUnreachableCnt
                   - peerTotalCnt
                   - nodeId
                 properties:
@@ -759,10 +758,6 @@ paths:
                     minimum: 0
                   peerQuarantinedCnt:
                     description: Number of nodes that have been quarantined
-                    type: integer
-                    minimum: 0
-                  peerUnreachableCnt:
-                    description: Number of nodes that are connected to ours but that are not publicly reachable
                     type: integer
                     minimum: 0
                   peerTotalCnt:

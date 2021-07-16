@@ -8,8 +8,8 @@ use crate::{
     blockcfg::{Block, FragmentId, Header, HeaderHash},
     blockchain::Checkpoints,
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
+    metrics::{Metrics, MetricsBackend},
     network::p2p::Address,
-    stats_counter::StatsCounter,
     utils::{
         async_msg::{self, MessageBox, MessageQueue},
         fire_forget_scheduler::{
@@ -54,7 +54,7 @@ const GET_NEXT_BLOCK_SCHEDULER_CONFIG: FireForgetSchedulerConfig = FireForgetSch
 pub struct Process {
     pub blockchain: Blockchain,
     pub blockchain_tip: Tip,
-    pub stats_counter: StatsCounter,
+    pub stats_counter: Metrics,
     pub network_msgbox: MessageBox<NetworkMsg>,
     pub fragment_msgbox: MessageBox<TransactionMsg>,
     pub explorer_msgbox: Option<MessageBox<ExplorerMsg>>,
@@ -452,7 +452,7 @@ async fn process_leadership_block(
     network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     leadership_block: LeadershipBlock,
-    stats_counter: StatsCounter,
+    stats_counter: Metrics,
 ) -> chain::Result<()> {
     let block = leadership_block.block.clone();
     let new_block_ref = process_leadership_block_inner(&mut blockchain, leadership_block).await?;
@@ -468,7 +468,7 @@ async fn process_leadership_block(
     .await?;
 
     // Track block as new new tip block
-    stats_counter.set_tip_block(Arc::new(block.clone()));
+    stats_counter.set_tip_block(&block, &new_block_ref);
 
     if let Some(mut msg_box) = explorer_msg_box {
         msg_box.send(ExplorerMsg::NewBlock(block)).await?;
@@ -546,7 +546,7 @@ async fn process_network_blocks(
     mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     mut get_next_block_scheduler: GetNextBlockScheduler,
     handle: intercom::RequestStreamHandle<Block, ()>,
-    stats_counter: StatsCounter,
+    stats_counter: Metrics,
 ) -> Result<(), Error> {
     let (mut stream, reply) = handle.into_stream_and_reply();
     let mut candidate = None;
@@ -605,7 +605,7 @@ async fn process_network_blocks(
 
             // Add block if found
             if let Some(b) = latest_block {
-                stats_counter.set_tip_block(b);
+                stats_counter.set_tip_block(&b, &new_block_ref);
             };
             Ok(())
         }

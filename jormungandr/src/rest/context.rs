@@ -5,10 +5,10 @@ use crate::{
     diagnostic::Diagnostic,
     intercom::{NetworkMsg, TopologyMsg, TransactionMsg},
     leadership::Logs as LeadershipLogs,
+    metrics::backends::SimpleCounter,
     network::GlobalStateR as NetworkStateR,
     rest::ServerStopper,
     secure::enclave::Enclave,
-    stats_counter::StatsCounter,
     utils::async_msg::MessageBox,
 };
 use jormungandr_lib::interfaces::NodeState;
@@ -45,6 +45,8 @@ pub enum Error {
     #[error("Diagnostic data not set in REST context")]
     Diagnostic,
 }
+
+impl warp::reject::Reject for Error {}
 
 impl Default for Context {
     fn default() -> Self {
@@ -138,7 +140,7 @@ impl Context {
 }
 
 pub struct FullContext {
-    pub stats_counter: StatsCounter,
+    pub stats_counter: Arc<SimpleCounter>,
     pub network_task: MessageBox<NetworkMsg>,
     pub topology_task: MessageBox<TopologyMsg>,
     pub transaction_task: MessageBox<TransactionMsg>,
@@ -146,4 +148,6 @@ pub struct FullContext {
     pub enclave: Enclave,
     pub network_state: NetworkStateR,
     pub explorer: Option<crate::explorer::Explorer>,
+    #[cfg(feature = "prometheus-metrics")]
+    pub prometheus: Option<Arc<crate::metrics::backends::Prometheus>>,
 }

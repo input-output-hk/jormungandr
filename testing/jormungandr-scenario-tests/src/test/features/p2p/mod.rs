@@ -31,7 +31,6 @@ pub fn assert_node_stats(
     peer_available_cnt: usize,
     peer_quarantined_cnt: usize,
     peer_total_cnt: usize,
-    peer_unreachable_cnt: usize,
     info: &str,
 ) -> Result<()> {
     node.log_stats();
@@ -51,11 +50,6 @@ pub fn assert_node_stats(
         &peer_total_cnt,
         &stats.peer_total_cnt,
         &format!("{}: peer_total_cnt, Node {}", info, node.alias()),
-    )?;
-    utils::assert_equals(
-        &peer_unreachable_cnt,
-        &stats.peer_unreachable_cnt,
-        &format!("{}: peer_unreachable_cnt, Node {}", info, node.alias()),
     )?;
 
     Ok(())
