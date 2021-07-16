@@ -1,7 +1,8 @@
 use super::{JormungandrRest, RestError};
-use jortestkit::load::{Id, RequestFailure, RequestGenerator};
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
+use std::time::Instant;
 
 #[derive(Clone)]
 pub struct RestRequestGen {
@@ -55,7 +56,8 @@ impl RestRequestGen {
 }
 
 impl RequestGenerator for RestRequestGen {
-    fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
+    fn next(&mut self) -> Result<Request, RequestFailure> {
+        let start = Instant::now();
         match self.next_usize() % 10 {
             0 => {
                 self.rest_client.p2p_available().map_err(|e| {
@@ -109,6 +111,13 @@ impl RequestGenerator for RestRequestGen {
             }
             _ => unreachable!(),
         }
-        Ok(vec![None])
+        Ok(Request {
+            ids: vec![None],
+            duration: start.elapsed(),
+        })
+    }
+
+    fn split(self) -> (Self, Option<Self>) {
+        (self.clone(), Some(self))
     }
 }

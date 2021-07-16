@@ -62,6 +62,7 @@ impl AdversaryFragmentSenderError {
     }
 }
 
+#[derive(Clone)]
 pub struct AdversaryFragmentSenderSetup<'a, A: SyncNode + Send> {
     pub verify: bool,
     pub sync_nodes: Vec<&'a A>,
@@ -118,6 +119,7 @@ impl<'a> AdversaryFragmentSenderSetup<'a, DummySyncNode> {
 
 use super::DummySyncNode;
 
+#[derive(Clone)]
 pub struct AdversaryFragmentSender<'a, S: SyncNode + Send> {
     block0_hash: Hash,
     fees: LinearFee,

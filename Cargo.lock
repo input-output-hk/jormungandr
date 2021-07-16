@@ -2079,7 +2079,7 @@ dependencies = [
 [[package]]
 name = "jortestkit"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#fb2a9b1fad40be3d842a7fcbab6a8485b80aa78c"
+source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#50bce3125a6ba520e238d210e7636819a54e4477"
 dependencies = [
  "assert_fs",
  "base64",
@@ -2101,6 +2101,7 @@ dependencies = [
  "rand 0.8.4",
  "rand_chacha 0.3.1",
  "rand_core 0.5.1",
+ "rayon",
  "reqwest",
  "semver 1.0.3",
  "serde",

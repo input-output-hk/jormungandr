@@ -8,9 +8,12 @@ use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::testing::VoteTestGen;
 use chain_impl_mockchain::vote::PayloadType;
 use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
-use jortestkit::load::{RequestFailure, RequestGenerator};
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
+use std::time::Instant;
+
+const DEFAULT_MAX_SPLITS: usize = 7; // equals to 128 splits, will likely not reach that value but it's there just to prevent a stack overflow
 
 pub struct AdversaryVoteCastsGenerator<'a, S: SyncNode + Send> {
     voter: Wallet,
@@ -19,6 +22,7 @@ pub struct AdversaryVoteCastsGenerator<'a, S: SyncNode + Send> {
     node: RemoteJormungandr,
     rand: OsRng,
     fragment_sender: FragmentSender<'a, S>,
+    max_splits: usize,
 }
 
 impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
@@ -38,6 +42,7 @@ impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
             node,
             rand: OsRng,
             fragment_sender,
+            max_splits: DEFAULT_MAX_SPLITS,
         }
     }
 
@@ -143,12 +148,37 @@ impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
     }
 }
 
-impl<'a, S: SyncNode + Send> RequestGenerator for AdversaryVoteCastsGenerator<'a, S> {
-    fn next(
-        &mut self,
-    ) -> Result<Vec<Option<jortestkit::load::Id>>, jortestkit::load::RequestFailure> {
+impl<'a, S: SyncNode + Send + Sync + Clone> RequestGenerator
+    for AdversaryVoteCastsGenerator<'a, S>
+{
+    fn next(&mut self) -> Result<Request, RequestFailure> {
+        let start = Instant::now();
         self.send()
-            .map(|x| vec![Some(x.fragment_id().to_string())])
+            .map(|x| Request {
+                ids: vec![Some(x.fragment_id().to_string())],
+                duration: start.elapsed(),
+            })
             .map_err(|err| RequestFailure::General(err.to_string()))
+    }
+
+    fn split(mut self) -> (Self, Option<Self>) {
+        // Since no transaction will ever be accepted we could split as many times as we want
+        // but that may trigger a bug in rayon so we artificially limit it
+        if self.max_splits == 0 {
+            return (self, None);
+        }
+
+        self.max_splits -= 1;
+
+        let other = Self {
+            voter: self.voter.clone(),
+            vote_plans: self.vote_plans.clone(),
+            voting_privacy: self.voting_privacy,
+            node: self.node.clone_with_rest(),
+            rand: OsRng,
+            fragment_sender: self.fragment_sender.clone(),
+            max_splits: self.max_splits,
+        };
+        (self, Some(other))
     }
 }

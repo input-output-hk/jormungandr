@@ -5,8 +5,11 @@ use crate::testing::RemoteJormungandr;
 use crate::testing::SyncNode;
 use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::FragmentId;
-use jortestkit::load::{Id, RequestFailure, RequestGenerator};
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
+use std::time::Instant;
+
+const DEFAULT_MAX_SPLITS: usize = 7; // equals to 128 splits, will likely not reach that value but it's there just to prevent a stack overflow
 
 pub struct AdversaryFragmentGenerator<'a, S: SyncNode + Send> {
     wallets: Vec<Wallet>,
@@ -15,6 +18,7 @@ pub struct AdversaryFragmentGenerator<'a, S: SyncNode + Send> {
     adversary_fragment_sender: AdversaryFragmentSender<'a, S>,
     rand: OsRng,
     split_marker: usize,
+    max_splits: usize, // avoid infinite splitting
 }
 
 impl<'a, S: SyncNode + Send> AdversaryFragmentGenerator<'a, S> {
@@ -30,6 +34,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentGenerator<'a, S> {
             rand: OsRng,
             jormungandr,
             split_marker: 0,
+            max_splits: DEFAULT_MAX_SPLITS,
         }
     }
 
@@ -87,9 +92,33 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentGenerator<'a, S> {
     }
 }
 
-impl<'a, S: SyncNode + Send> RequestGenerator for AdversaryFragmentGenerator<'a, S> {
-    fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
-        self.send_transaction()
-            .map(|fragment_id| vec![Some(fragment_id.to_string())])
+impl<'a, S: SyncNode + Send + Sync + Clone> RequestGenerator for AdversaryFragmentGenerator<'a, S> {
+    fn next(&mut self) -> Result<Request, RequestFailure> {
+        let start = Instant::now();
+        self.send_transaction().map(|fragment_id| Request {
+            ids: vec![Some(fragment_id.to_string())],
+            duration: start.elapsed(),
+        })
+    }
+
+    fn split(mut self) -> (Self, Option<Self>) {
+        // Since no transaction will ever be accepted we could split as many times as we want
+        // but that may trigger a bug in rayon so we artificially limit it
+        if self.max_splits == 0 {
+            return (self, None);
+        }
+
+        self.max_splits -= 1;
+
+        let other = Self {
+            wallets: self.wallets.clone(),
+            jormungandr: self.jormungandr.clone_with_rest(),
+            fragment_sender: self.fragment_sender.clone(),
+            adversary_fragment_sender: self.adversary_fragment_sender.clone(),
+            rand: OsRng,
+            split_marker: 1,
+            max_splits: self.max_splits,
+        };
+        (self, Some(other))
     }
 }
