@@ -146,24 +146,14 @@ impl Module {
         }
     }
 
-    /// this function compute when the next epoch will start, next epoch
-    /// from the local system time point of view. Meaning this is not the
-    /// epoch of the current tip
-    fn next_epoch_time(&self) -> Result<SystemTime, LeadershipError> {
-        let current_position = self.current_slot_position()?;
-        let epoch = Epoch(current_position.epoch.0 + 1);
-        let slot = EpochSlotOffset(0);
-
-        Ok(self.slot_time(epoch, slot))
+    fn epoch_time(&self, epoch: Epoch) -> Result<SystemTime, LeadershipError> {
+        Ok(self.slot_time(epoch, EpochSlotOffset(0)))
     }
 
-    fn next_epoch_instant(&self) -> Result<Instant, LeadershipError> {
-        let next_epoch_time = self.next_epoch_time()?;
+    fn epoch_instant(&self, epoch: Epoch) -> Result<Instant, LeadershipError> {
+        let epoch_time = self.epoch_time(epoch)?;
 
-        match next_epoch_time
-            .as_ref()
-            .duration_since(SystemTime::now().into())
-        {
+        match epoch_time.as_ref().duration_since(SystemTime::now().into()) {
             Err(err) => {
                 // only possible if `next_epoch_time` is earlier than now. I.e. if the next
                 // epoch is in the past.
@@ -262,7 +252,7 @@ impl Module {
                 // wait for the next epoch
 
                 tracing::debug!("no item scheduled, waiting for next epoch");
-                self.next_epoch_instant()
+                self.epoch_instant(Epoch(self.schedule.as_ref().unwrap().epoch().0 + 1))
             }
             Some(event) => {
                 let span = tracing::span!(

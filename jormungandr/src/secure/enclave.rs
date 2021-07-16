@@ -3,6 +3,7 @@ use crate::blockcfg::{
     HeaderSetConsensusSignature,
 };
 use chain_impl_mockchain::leadership::{Leader, LeaderOutput, Leadership};
+use chain_time::Epoch;
 use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
@@ -207,6 +208,10 @@ impl Schedule {
     pub async fn peek(&mut self) -> Option<&LeaderEvent> {
         self.fill().await;
         self.current_slot_data.last()
+    }
+
+    pub fn epoch(&self) -> Epoch {
+        Epoch(self.leadership.epoch())
     }
 }
 
