@@ -13,6 +13,8 @@ use rand::RngCore;
 use rand_core::OsRng;
 use std::time::Instant;
 
+const DEFAULT_MAX_SPLITS: usize = 7; // equals to 128 splits, will likely not reach that value but it's there just to prevent a stack overflow
+
 pub struct AdversaryVoteCastsGenerator<'a, S: SyncNode + Send> {
     voter: Wallet,
     vote_plans: Vec<VotePlan>,
@@ -20,6 +22,7 @@ pub struct AdversaryVoteCastsGenerator<'a, S: SyncNode + Send> {
     node: RemoteJormungandr,
     rand: OsRng,
     fragment_sender: FragmentSender<'a, S>,
+    max_splits: usize,
 }
 
 impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
@@ -39,6 +42,7 @@ impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
             node,
             rand: OsRng,
             fragment_sender,
+            max_splits: DEFAULT_MAX_SPLITS,
         }
     }
 
@@ -157,8 +161,24 @@ impl<'a, S: SyncNode + Send + Sync + Clone> RequestGenerator
             .map_err(|err| RequestFailure::General(err.to_string()))
     }
 
-    fn split(self) -> (Self, Option<Self>) {
-        // infinite splitting is known to trigger a bug in rayon
-        (self, None)
+    fn split(mut self) -> (Self, Option<Self>) {
+        // Since no transaction will ever be accepted we could split as many times as we want
+        // but that may trigger a bug in rayon so we artificially limit it
+        if self.max_splits == 0 {
+            return (self, None);
+        }
+
+        self.max_splits -= 1;
+
+        let other = Self {
+            voter: self.voter.clone(),
+            vote_plans: self.vote_plans.clone(),
+            voting_privacy: self.voting_privacy,
+            node: self.node.clone_with_rest(),
+            rand: OsRng,
+            fragment_sender: self.fragment_sender.clone(),
+            max_splits: self.max_splits,
+        };
+        (self, Some(other))
     }
 }

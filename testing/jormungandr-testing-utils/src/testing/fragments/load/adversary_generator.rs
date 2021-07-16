@@ -9,6 +9,8 @@ use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
 use std::time::Instant;
 
+const DEFAULT_MAX_SPLITS: usize = 7; // equals to 128 splits, will likely not reach that value but it's there just to prevent a stack overflow
+
 pub struct AdversaryFragmentGenerator<'a, S: SyncNode + Send> {
     wallets: Vec<Wallet>,
     jormungandr: RemoteJormungandr,
@@ -16,6 +18,7 @@ pub struct AdversaryFragmentGenerator<'a, S: SyncNode + Send> {
     adversary_fragment_sender: AdversaryFragmentSender<'a, S>,
     rand: OsRng,
     split_marker: usize,
+    max_splits: usize, // avoid infinite splitting
 }
 
 impl<'a, S: SyncNode + Send> AdversaryFragmentGenerator<'a, S> {
@@ -31,6 +34,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentGenerator<'a, S> {
             rand: OsRng,
             jormungandr,
             split_marker: 0,
+            max_splits: DEFAULT_MAX_SPLITS,
         }
     }
 
@@ -97,8 +101,24 @@ impl<'a, S: SyncNode + Send + Sync + Clone> RequestGenerator for AdversaryFragme
         })
     }
 
-    fn split(self) -> (Self, Option<Self>) {
-        // infinite splitting is known to trigger a bug in rayon
-        (self, None)
+    fn split(mut self) -> (Self, Option<Self>) {
+        // Since no transaction will ever be accepted we could split as many times as we want
+        // but that may trigger a bug in rayon so we artificially limit it
+        if self.max_splits == 0 {
+            return (self, None);
+        }
+
+        self.max_splits -= 1;
+
+        let other = Self {
+            wallets: self.wallets.clone(),
+            jormungandr: self.jormungandr.clone_with_rest(),
+            fragment_sender: self.fragment_sender.clone(),
+            adversary_fragment_sender: self.adversary_fragment_sender.clone(),
+            rand: OsRng,
+            split_marker: 1,
+            max_splits: self.max_splits,
+        };
+        (self, Some(other))
     }
 }
