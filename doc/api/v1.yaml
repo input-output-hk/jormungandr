@@ -115,7 +115,7 @@ paths:
                 {
                   '68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968': 'Pending',
                 }
-  /api/v0/fragments/logs:
+  /api/v1/fragments/logs:
     get:
       description: Gets logs from node message pool
       operationId: FragmentLogs
