@@ -1,17 +1,86 @@
+//! Opinionated log setup library for applications
+//!
+//! Example:
+//!
+//! ```
+//! use log_lib::*;
+//! use tracing::level_filters::LevelFilter;
+//! use structopt::StructOpt;
+//! use tracing::{ span, Level };
+//!
+//! // CliSettings::from_args in a real application
+//! let cli = CliSettings::from_iter([
+//!     "example",
+//!     "--log-level",
+//!     "trace",
+//! ]);
+//!
+//! let file: FileSettings = serde_yaml::from_str(
+//!     r#"
+//!     level: info
+//!     format: json
+//!     "#,
+//! )
+//! .unwrap();
+//!
+//! let settings = LogSettings::new(&cli, Some(file));
+//!
+//! let (_guards, log_info) = settings.init_log().unwrap();
+//!
+//! let init_span = span!(Level::TRACE, "example", kind = "init");
+//! let _enter = init_span.enter();
+//!
+//! if let Some(msgs) = log_info {
+//!     // if log settings were overriden, we will have an info
+//!     // message which we can unpack at this point.
+//!     for msg in &msgs {
+//!         tracing::info!("{}", msg);
+//!     }
+//! }
+//! ```
+
 use std::fmt::{self, Display};
 use std::fs;
 use std::io;
 #[cfg(feature = "gelf")]
 use std::net::SocketAddr;
-use std::path::PathBuf;
 use std::str::FromStr;
-
 use tracing::level_filters::LevelFilter;
-use tracing_appender::non_blocking::WorkerGuard;
-
 use tracing::subscriber::SetGlobalDefaultError;
+use tracing_appender::non_blocking::WorkerGuard;
 #[allow(unused_imports)]
 use tracing_subscriber::layer::SubscriberExt;
+
+use lazy_static::lazy_static;
+use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
+use std::path::PathBuf;
+use structopt::StructOpt;
+
+const DEFAULT_FILTER_LEVEL: LevelFilter = LevelFilter::TRACE;
+const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Default;
+const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
+const DEFAULT_LOG_SETTINGS_ENTRY: LogSettingsEntry = LogSettingsEntry {
+    level: DEFAULT_FILTER_LEVEL,
+    format: DEFAULT_LOG_FORMAT,
+    output: DEFAULT_LOG_OUTPUT,
+};
+
+lazy_static! {
+    static ref LOG_FILTER_LEVEL_POSSIBLE_VALUES: Vec<&'static str> = {
+        [
+            tracing::metadata::LevelFilter::OFF,
+            tracing::metadata::LevelFilter::TRACE,
+            tracing::metadata::LevelFilter::DEBUG,
+            tracing::metadata::LevelFilter::INFO,
+            tracing::metadata::LevelFilter::WARN,
+            tracing::metadata::LevelFilter::ERROR,
+        ]
+        .iter()
+        .map(|name| name.to_string().to_ascii_lowercase())
+        .map(|name| &*Box::leak(name.into_boxed_str()))
+        .collect()
+    };
+}
 
 pub struct LogSettings {
     pub config: LogSettingsEntry,
@@ -100,6 +169,66 @@ impl FromStr for LogOutput {
 }
 
 impl LogSettings {
+    pub fn new(command_line: &CliSettings, file: Option<FileSettings>) -> LogSettings {
+        // Start with default config
+        let mut log_config = DEFAULT_LOG_SETTINGS_ENTRY;
+        let mut info_msgs: Vec<String> = Vec::new();
+
+        //  Read log settings from the config file path.
+        if let Some(cfg) = file.as_ref() {
+            if let Some(level) = cfg.level {
+                log_config.level = level;
+            }
+            if let Some(format) = cfg.format {
+                log_config.format = format;
+            }
+            if let Some(output) = &cfg.output {
+                log_config.output = output.clone();
+            }
+        }
+
+        // If the command line specifies log arguments, they override everything
+        // else.
+        if let Some(output) = &command_line.log_output {
+            if &log_config.output != output {
+                info_msgs.push(format!(
+                    "log output overriden from command line: {:?} replaced with {:?}",
+                    log_config.output, output
+                ));
+            }
+            log_config.output = output.clone();
+        }
+        if let Some(level) = command_line.log_level {
+            if log_config.level != level {
+                info_msgs.push(format!(
+                    "log level overriden from command line: {:?} replaced with {:?}",
+                    log_config.level, level
+                ));
+            }
+            log_config.level = level;
+        }
+        if let Some(format) = command_line.log_format {
+            if log_config.format != format {
+                info_msgs.push(format!(
+                    "log format overriden from command line: {:?} replaced with {:?}",
+                    log_config.format, format
+                ));
+            }
+            log_config.format = format;
+        }
+
+        let log_info_msg: LogInfoMsg = if info_msgs.is_empty() {
+            None
+        } else {
+            Some(info_msgs)
+        };
+
+        LogSettings {
+            config: log_config,
+            msgs: log_info_msg,
+        }
+    }
+
     pub fn init_log(self) -> Result<(Vec<WorkerGuard>, LogInfoMsg), Error> {
         use tracing_subscriber::prelude::*;
 
@@ -248,4 +377,66 @@ pub enum Error {
     Gelf(tracing_gelf::BuilderError),
     #[error("failed to set global subscriber")]
     SetGlobalSubscriberError(#[source] SetGlobalDefaultError),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct FileSettings {
+    #[serde(with = "filter_level_opt_serde")]
+    pub level: Option<LevelFilter>,
+    pub format: Option<LogFormat>,
+    pub output: Option<LogOutput>,
+}
+
+mod filter_level_opt_serde {
+    use super::*;
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(
+        deserializer: D,
+    ) -> Result<Option<LevelFilter>, D::Error> {
+        Option::<String>::deserialize(deserializer)?
+            .map(|variant| {
+                variant.parse().map_err(|_| {
+                    D::Error::unknown_variant(&variant, &**LOG_FILTER_LEVEL_POSSIBLE_VALUES)
+                })
+            })
+            .transpose()
+    }
+
+    pub fn serialize<S: Serializer>(
+        data: &Option<LevelFilter>,
+        serializer: S,
+    ) -> Result<S::Ok, S::Error> {
+        data.map(|level| level.to_string()).serialize(serializer)
+    }
+}
+
+fn log_level_parse(level: &str) -> Result<LevelFilter, String> {
+    level
+        .parse()
+        .map_err(|_| format!("Unknown log level value: '{}'", level))
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "config")]
+pub struct CliSettings {
+    /// Set log messages minimum severity. If not configured anywhere, defaults to "info".
+    #[structopt(
+        long = "log-level",
+        parse(try_from_str = log_level_parse),
+        possible_values = &LOG_FILTER_LEVEL_POSSIBLE_VALUES
+    )]
+    pub log_level: Option<LevelFilter>,
+
+    /// Set format of the log emitted. Can be "json" or "plain".
+    /// If not configured anywhere, defaults to "plain".
+    #[structopt(long = "log-format", parse(try_from_str))]
+    pub log_format: Option<LogFormat>,
+
+    /// Set format of the log emitted. Can be "stdout", "stderr",
+    /// "syslog" (Unix only) or "journald"
+    /// (linux with systemd only, must be enabled during compilation).
+    /// If not configured anywhere, defaults to "stderr".
+    #[structopt(long = "log-output", parse(try_from_str))]
+    pub log_output: Option<LogOutput>,
 }

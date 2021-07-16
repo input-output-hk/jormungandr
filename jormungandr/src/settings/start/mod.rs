@@ -3,28 +3,19 @@ pub mod network;
 
 use self::config::{Config, Leadership};
 use self::network::{Protocol, TrustedPeer};
-use crate::settings::logging::{LogFormat, LogInfoMsg, LogOutput, LogSettings, LogSettingsEntry};
 use crate::settings::{command_arguments::*, Block0Info};
 use crate::topology::layers::{self, LayersConfig, PreferredListConfig, RingsConfig};
 use chain_crypto::Ed25519;
 use jormungandr_lib::crypto::key::SigningKey;
 pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Tls};
 use jormungandr_lib::multiaddr;
+use log_lib::LogSettings;
 use std::convert::TryFrom;
 use std::{fs::File, path::PathBuf};
 use thiserror::Error;
-use tracing::level_filters::LevelFilter;
 
-const DEFAULT_FILTER_LEVEL: LevelFilter = LevelFilter::TRACE;
-const DEFAULT_LOG_FORMAT: LogFormat = LogFormat::Default;
-const DEFAULT_LOG_OUTPUT: LogOutput = LogOutput::Stderr;
 const DEFAULT_NO_BLOCKCHAIN_UPDATES_WARNING_INTERVAL: u64 = 1800; // 30 min
 const DEFAULT_BLOCK_HARD_DEADLINE: u32 = 50;
-const DEFAULT_LOG_SETTINGS_ENTRY: LogSettingsEntry = LogSettingsEntry {
-    level: DEFAULT_FILTER_LEVEL,
-    format: DEFAULT_LOG_FORMAT,
-    output: DEFAULT_LOG_OUTPUT,
-};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -76,62 +67,10 @@ impl RawSettings {
     }
 
     pub fn log_settings(&self) -> LogSettings {
-        // Start with default config
-        let mut log_config = DEFAULT_LOG_SETTINGS_ENTRY;
-        let mut info_msgs: Vec<String> = Vec::new();
-
-        //  Read log settings from the config file path.
-        if let Some(cfg) = self.config.as_ref().and_then(|cfg| cfg.log.as_ref()) {
-            if let Some(level) = cfg.level {
-                log_config.level = level;
-            }
-            if let Some(format) = cfg.format {
-                log_config.format = format;
-            }
-            if let Some(output) = &cfg.output {
-                log_config.output = output.clone();
-            }
-        }
-
-        // If the command line specifies log arguments, they override everything
-        // else.
-        if let Some(output) = &self.command_line.log_output {
-            if &log_config.output != output {
-                info_msgs.push(format!(
-                    "log output overriden from command line: {:?} replaced with {:?}",
-                    log_config.output, output
-                ));
-            }
-            log_config.output = output.clone();
-        }
-        if let Some(level) = self.command_line.log_level {
-            if log_config.level != level {
-                info_msgs.push(format!(
-                    "log level overriden from command line: {:?} replaced with {:?}",
-                    log_config.level, level
-                ));
-            }
-            log_config.level = level;
-        }
-        if let Some(format) = self.command_line.log_format {
-            if log_config.format != format {
-                info_msgs.push(format!(
-                    "log format overriden from command line: {:?} replaced with {:?}",
-                    log_config.format, format
-                ));
-            }
-            log_config.format = format;
-        }
-
-        let log_info_msg: LogInfoMsg = if info_msgs.is_empty() {
-            None
-        } else {
-            Some(info_msgs)
-        };
-        LogSettings {
-            config: log_config,
-            msgs: log_info_msg,
-        }
+        LogSettings::new(
+            &self.command_line.log,
+            self.config.as_ref().and_then(|config| config.log.clone()),
+        )
     }
 
     fn rest_config(&self) -> Option<Rest> {

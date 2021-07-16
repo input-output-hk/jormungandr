@@ -1,14 +1,10 @@
-use crate::settings::{start::config::TrustedPeer, LOG_FILTER_LEVEL_POSSIBLE_VALUES};
+use crate::blockcfg::HeaderHash;
+use crate::settings::start::config::TrustedPeer;
+use log_lib::CliSettings;
 use multiaddr::Multiaddr;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use tracing::level_filters::LevelFilter;
-
-use crate::{
-    blockcfg::HeaderHash,
-    settings::logging::{LogFormat, LogOutput},
-};
 
 fn trusted_peer_from_json(json: &str) -> Result<TrustedPeer, serde_json::Error> {
     serde_json::from_str(json)
@@ -76,25 +72,8 @@ pub struct RestArguments {
     setting = structopt::clap::AppSettings::ColoredHelp
 )]
 pub struct CommandLine {
-    /// Set log messages minimum severity. If not configured anywhere, defaults to "info".
-    #[structopt(
-        long = "log-level",
-        parse(try_from_str = log_level_parse),
-        possible_values = &LOG_FILTER_LEVEL_POSSIBLE_VALUES
-    )]
-    pub log_level: Option<LevelFilter>,
-
-    /// Set format of the log emitted. Can be "json" or "plain".
-    /// If not configured anywhere, defaults to "plain".
-    #[structopt(long = "log-format", parse(try_from_str))]
-    pub log_format: Option<LogFormat>,
-
-    /// Set format of the log emitted. Can be "stdout", "stderr",
-    /// "syslog" (Unix only) or "journald"
-    /// (linux with systemd only, must be enabled during compilation).
-    /// If not configured anywhere, defaults to "stderr".
-    #[structopt(long = "log-output", parse(try_from_str))]
-    pub log_output: Option<LogOutput>,
+    #[structopt(flatten)]
+    pub log: CliSettings,
 
     /// report all the rewards in the reward distribution history
     ///
@@ -133,10 +112,4 @@ impl CommandLine {
     pub fn load() -> Self {
         Self::from_args()
     }
-}
-
-fn log_level_parse(level: &str) -> Result<LevelFilter, String> {
-    level
-        .parse()
-        .map_err(|_| format!("Unknown log level value: '{}'", level))
 }

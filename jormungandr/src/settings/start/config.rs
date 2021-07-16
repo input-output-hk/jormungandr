@@ -1,15 +1,10 @@
-use crate::{
-    network::p2p::Address,
-    settings::logging::{LogFormat, LogOutput},
-    settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
-    topology::QuarantineConfig,
-};
+use crate::{network::p2p::Address, topology::QuarantineConfig};
 pub use jormungandr_lib::interfaces::{Cors, LayersConfig, Rest, Tls, TrustedPeer};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
+use log_lib::FileSettings;
 use multiaddr::Multiaddr;
-use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
-use tracing::level_filters::LevelFilter;
+use serde::{Deserialize, Serialize};
 
 use std::path::PathBuf;
 
@@ -19,7 +14,7 @@ pub struct Config {
     #[serde(default)]
     pub secret_files: Vec<PathBuf>,
     pub storage: Option<PathBuf>,
-    pub log: Option<ConfigLogSettings>,
+    pub log: Option<FileSettings>,
 
     /// setting of the mempool, fragment logs and related data
     #[serde(default)]
@@ -49,15 +44,6 @@ pub struct Config {
     pub skip_bootstrap: bool,
 
     pub block_hard_deadline: Option<u32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(deny_unknown_fields)]
-pub struct ConfigLogSettings {
-    #[serde(with = "filter_level_opt_serde")]
-    pub level: Option<LevelFilter>,
-    pub format: Option<LogFormat>,
-    pub output: Option<LogOutput>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -183,28 +169,5 @@ impl Default for Leadership {
         Leadership {
             logs_capacity: 1_024,
         }
-    }
-}
-
-mod filter_level_opt_serde {
-    use super::*;
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<Option<LevelFilter>, D::Error> {
-        Option::<String>::deserialize(deserializer)?
-            .map(|variant| {
-                variant.parse().map_err(|_| {
-                    D::Error::unknown_variant(&variant, &**LOG_FILTER_LEVEL_POSSIBLE_VALUES)
-                })
-            })
-            .transpose()
-    }
-
-    pub fn serialize<S: Serializer>(
-        data: &Option<LevelFilter>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        data.map(|level| level.to_string()).serialize(serializer)
     }
 }

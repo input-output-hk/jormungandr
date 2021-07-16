@@ -1862,6 +1862,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "linked-hash-map",
+ "log-lib",
  "lru",
  "nix",
  "parity-multiaddr",
@@ -2195,6 +2196,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if 1.0.0",
+]
+
+[[package]]
+name = "log-lib"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "serde_with",
+ "serde_yaml",
+ "structopt",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tracing",
+ "tracing-appender",
+ "tracing-futures",
+ "tracing-gelf",
+ "tracing-journald",
+ "tracing-subscriber",
 ]
 
 [[package]]

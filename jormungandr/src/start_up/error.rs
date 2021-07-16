@@ -3,7 +3,7 @@ use crate::{
     blockchain::StorageError,
     diagnostic::DiagnosticError,
     explorer, network, secure,
-    settings::{self, logging},
+    settings::{self},
 };
 use std::io;
 use thiserror::Error;
@@ -19,7 +19,7 @@ pub enum ErrorKind {
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("Unable to initialize the logger")]
-    LoggingInitializationError(#[from] logging::Error),
+    LoggingInitializationError(#[from] log_lib::Error),
     #[error("Error in the overall configuration of the node")]
     ConfigurationError(#[from] settings::Error),
     #[error("I/O Error with {reason}")]
