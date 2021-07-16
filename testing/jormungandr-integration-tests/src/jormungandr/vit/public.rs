@@ -199,6 +199,21 @@ pub fn test_vote_flow_bft() {
 
     wait_for_epoch(1, jormungandr.rest());
 
+    assert_eq!(
+        vec![0],
+        jormungandr
+            .rest()
+            .vote_plan_account_info(vote_plan.to_id().into(), alice.address())
+            .unwrap()
+    );
+    assert_eq!(
+        vec![0],
+        jormungandr
+            .rest()
+            .vote_plan_account_info(vote_plan.to_id().into(), bob.address())
+            .unwrap()
+    );
+
     transaction_sender
         .send_vote_tally(
             &mut clarice,
@@ -312,6 +327,28 @@ pub fn test_vote_flow_praos() {
         .unwrap();
 
     wait_for_epoch(1, jormungandr.rest());
+
+    assert_eq!(
+        vec![0],
+        jormungandr
+            .rest()
+            .vote_plan_account_info(vote_plan.to_id().into(), alice.address())
+            .unwrap()
+    );
+    assert_eq!(
+        vec![0],
+        jormungandr
+            .rest()
+            .vote_plan_account_info(vote_plan.to_id().into(), bob.address())
+            .unwrap()
+    );
+    assert_eq!(
+        vec![0],
+        jormungandr
+            .rest()
+            .vote_plan_account_info(vote_plan.to_id().into(), clarice.address())
+            .unwrap()
+    );
 
     transaction_sender
         .send_vote_tally(

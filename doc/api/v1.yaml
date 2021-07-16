@@ -12,6 +12,7 @@ servers:
 
 tags:
   - name: fragment
+  - name: vote
 
 paths:
   /api/v1/fragments:
@@ -240,6 +241,39 @@ paths:
                           },
                       },
                     ]
+
+  /api/v1/votes/plan/{votePlanId}/account-votes/{address}:
+    get:
+      description: Get numbers of proposals within a vote plan a given user have voted for.
+      operationId: AccountVotes
+      tags:
+        - vote
+      parameters:
+        - in: path
+          name: votePlanId
+          required: true
+          description: The ID of the vote plan to query.
+          schema:
+            type: string
+            pattern: '[0-9a-f]+'
+        - in: path
+          name: address
+          required: true
+          description: The address of the account to get the information from.
+          schema:
+            type: string
+            pattern: '[0-9a-f]+'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+        '404':
+          description: The requested vote plan does not exist or is not active.
 
 components:
   schemas:
