@@ -180,6 +180,22 @@ mod test {
         assert_eq!(date.to_string(), "12.928")
     }
 
+    #[test]
+    fn deserialize_structured_json() {
+        let json = r#"{
+            "epoch": 12,
+            "slot_id": 928
+        }"#;
+        let decoded: BlockDate = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            decoded,
+            BlockDate(block::BlockDate {
+                epoch: 12,
+                slot_id: 928,
+            })
+        );
+    }
+
     quickcheck! {
         fn display_and_from_str(date: BlockDate) -> TestResult {
             let encoded = date.to_string();
