@@ -2,22 +2,24 @@ use crate::{
     crypto::hash::Hash,
     interfaces::{blockdate::BlockDateDef, stake::Stake, value::ValueDef},
 };
-use bech32::{FromBase32, ToBase32};
 use chain_impl_mockchain::{
     certificate::{ExternalProposalId, Proposal, Proposals, VoteAction, VotePlan},
     header::BlockDate,
     ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
     value::Value,
-    vote::{self, Options},
+    vote::{self, Choice, Options, Weight},
 };
 use chain_vote::MemberPublicKey;
-use core::ops::Range;
+
+use bech32::{FromBase32, ToBase32};
 use serde::de::Visitor;
 use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
 use std::convert::TryInto;
-use std::str;
-use vote::{Choice, Weight};
+use std::fmt;
+use std::ops::Range;
+use std::str::{self, FromStr};
 
 /// Serializable wrapper for the payload type enum.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -28,6 +30,31 @@ pub struct PayloadType(#[serde(with = "PayloadTypeDef")] pub vote::PayloadType);
 enum PayloadTypeDef {
     Public,
     Private,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("Invalid payload type, expected \"public\" or \"private\".")]
+pub struct PayloadTypeFromStrError;
+
+impl FromStr for PayloadType {
+    type Err = PayloadTypeFromStrError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "public" => Ok(PayloadType(vote::PayloadType::Public)),
+            "private" => Ok(PayloadType(vote::PayloadType::Private)),
+            _ => Err(PayloadTypeFromStrError),
+        }
+    }
+}
+
+impl fmt::Display for PayloadType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let s = match self.0 {
+            vote::PayloadType::Public => "public",
+            vote::PayloadType::Private => "private",
+        };
+        s.fmt(f)
+    }
 }
 
 struct SerdeMemberPublicKey(chain_vote::MemberPublicKey);
