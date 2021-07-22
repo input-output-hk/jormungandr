@@ -155,7 +155,7 @@ impl Module {
 
         match epoch_time.as_ref().duration_since(SystemTime::now().into()) {
             Err(err) => {
-                // only possible if `next_epoch_time` is earlier than now. I.e. if the next
+                // only possible if `epoch_time` is earlier than now. I.e. if the next
                 // epoch is in the past.
 
                 unreachable!(
