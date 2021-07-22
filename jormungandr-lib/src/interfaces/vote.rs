@@ -8,7 +8,7 @@ use chain_impl_mockchain::{
     header::BlockDate,
     ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
     value::Value,
-    vote::{self, Options, PayloadType},
+    vote::{self, Options},
 };
 use chain_vote::MemberPublicKey;
 use core::ops::Range;
@@ -19,8 +19,12 @@ use std::convert::TryInto;
 use std::str;
 use vote::{Choice, Weight};
 
+/// Serializable wrapper for the payload type enum.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct PayloadType(#[serde(with = "PayloadTypeDef")] pub vote::PayloadType);
+
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
-#[serde(remote = "PayloadType", rename_all = "snake_case")]
+#[serde(remote = "vote::PayloadType", rename_all = "snake_case")]
 enum PayloadTypeDef {
     Public,
     Private,
@@ -141,7 +145,7 @@ fn committee_keys(v: &VotePlan) -> Vec<chain_vote::MemberPublicKey> {
 #[serde(remote = "VotePlan")]
 pub struct VotePlanDef {
     #[serde(with = "PayloadTypeDef", getter = "VotePlan::payload_type")]
-    payload_type: PayloadType,
+    payload_type: vote::PayloadType,
     #[serde(with = "BlockDateDef", getter = "VotePlan::vote_start")]
     vote_start: BlockDate,
     #[serde(with = "BlockDateDef", getter = "VotePlan::vote_end")]
@@ -418,7 +422,7 @@ pub type VotePlanId = Hash;
 pub struct VotePlanStatus {
     pub id: VotePlanId,
     #[serde(with = "PayloadTypeDef")]
-    pub payload: PayloadType,
+    pub payload: vote::PayloadType,
     #[serde(with = "BlockDateDef")]
     pub vote_start: BlockDate,
     #[serde(with = "BlockDateDef")]
@@ -779,7 +783,7 @@ mod test {
             bd,
             bd,
             proposals,
-            PayloadType::Private,
+            vote::PayloadType::Private,
             vec![member_key],
         ));
 
