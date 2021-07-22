@@ -1,10 +1,9 @@
 use crate::{
     crypto::hash::Hash,
-    interfaces::{blockdate::BlockDateDef, stake::Stake, value::ValueDef},
+    interfaces::{blockdate::BlockDate, stake::Stake, value::ValueDef},
 };
 use chain_impl_mockchain::{
-    certificate::{ExternalProposalId, Proposal, Proposals, VoteAction, VotePlan},
-    header::BlockDate,
+    certificate::{self, ExternalProposalId, Proposal, Proposals, VoteAction},
     ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
     value::Value,
     vote::{self, Choice, Options, Weight},
@@ -54,6 +53,18 @@ impl fmt::Display for PayloadType {
             vote::PayloadType::Private => "private",
         };
         s.fmt(f)
+    }
+}
+
+impl From<vote::PayloadType> for PayloadType {
+    fn from(src: vote::PayloadType) -> Self {
+        PayloadType(src)
+    }
+}
+
+impl From<PayloadType> for vote::PayloadType {
+    fn from(src: PayloadType) -> Self {
+        src.0
     }
 }
 
@@ -164,28 +175,15 @@ impl Serialize for SerdeMemberPublicKey {
     }
 }
 
-fn committee_keys(v: &VotePlan) -> Vec<chain_vote::MemberPublicKey> {
-    v.committee_public_keys().to_vec()
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(remote = "VotePlan")]
-pub struct VotePlanDef {
-    #[serde(with = "PayloadTypeDef", getter = "VotePlan::payload_type")]
-    payload_type: vote::PayloadType,
-    #[serde(with = "BlockDateDef", getter = "VotePlan::vote_start")]
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
+pub struct VotePlan {
+    payload_type: PayloadType,
     vote_start: BlockDate,
-    #[serde(with = "BlockDateDef", getter = "VotePlan::vote_end")]
     vote_end: BlockDate,
-    #[serde(with = "BlockDateDef", getter = "VotePlan::committee_end")]
     committee_end: BlockDate,
-    #[serde(with = "serde_proposals", getter = "VotePlan::proposals")]
+    #[serde(with = "serde_proposals")]
     proposals: Proposals,
-    #[serde(
-        with = "serde_committee_member_public_keys",
-        getter = "committee_keys",
-        default = "Vec::new"
-    )]
+    #[serde(with = "serde_committee_member_public_keys", default = "Vec::new")]
     committee_member_public_keys: Vec<chain_vote::MemberPublicKey>,
 }
 
@@ -234,14 +232,27 @@ enum TreasuryGovernanceActionDef {
     NoOp,
 }
 
-impl From<VotePlanDef> for VotePlan {
-    fn from(vpd: VotePlanDef) -> Self {
-        Self::new(
-            vpd.vote_start,
-            vpd.vote_end,
-            vpd.committee_end,
+impl From<certificate::VotePlan> for VotePlan {
+    fn from(vp: certificate::VotePlan) -> Self {
+        VotePlan {
+            vote_start: vp.vote_start().into(),
+            vote_end: vp.vote_end().into(),
+            committee_end: vp.committee_end().into(),
+            proposals: vp.proposals().clone(),
+            payload_type: vp.payload_type().into(),
+            committee_member_public_keys: vp.committee_public_keys().to_vec(),
+        }
+    }
+}
+
+impl From<VotePlan> for certificate::VotePlan {
+    fn from(vpd: VotePlan) -> Self {
+        certificate::VotePlan::new(
+            vpd.vote_start.into(),
+            vpd.vote_end.into(),
+            vpd.committee_end.into(),
             vpd.proposals,
-            vpd.payload_type,
+            vpd.payload_type.into(),
             vpd.committee_member_public_keys,
         )
     }
@@ -450,11 +461,8 @@ pub struct VotePlanStatus {
     pub id: VotePlanId,
     #[serde(with = "PayloadTypeDef")]
     pub payload: vote::PayloadType,
-    #[serde(with = "BlockDateDef")]
     pub vote_start: BlockDate,
-    #[serde(with = "BlockDateDef")]
     pub vote_end: BlockDate,
-    #[serde(with = "BlockDateDef")]
     pub committee_end: BlockDate,
     #[serde(with = "serde_committee_member_public_keys")]
     pub committee_member_keys: Vec<MemberPublicKey>,
@@ -730,9 +738,9 @@ impl From<vote::VotePlanStatus> for VotePlanStatus {
     fn from(this: vote::VotePlanStatus) -> Self {
         Self {
             id: this.id.into(),
-            vote_start: this.vote_start,
-            vote_end: this.vote_end,
-            committee_end: this.committee_end,
+            vote_start: this.vote_start.into(),
+            vote_end: this.vote_end.into(),
+            committee_end: this.committee_end.into(),
             payload: this.payload,
             committee_member_keys: this.committee_public_keys,
             proposals: this.proposals.into_iter().map(|p| p.into()).collect(),
@@ -744,9 +752,9 @@ impl From<VotePlanStatus> for vote::VotePlanStatus {
     fn from(vote_plan_status: VotePlanStatus) -> vote::VotePlanStatus {
         vote::VotePlanStatus {
             id: vote_plan_status.id.into(),
-            vote_start: vote_plan_status.vote_start,
-            vote_end: vote_plan_status.vote_end,
-            committee_end: vote_plan_status.committee_end,
+            vote_start: vote_plan_status.vote_start.into(),
+            vote_end: vote_plan_status.vote_end.into(),
+            committee_end: vote_plan_status.committee_end.into(),
             payload: vote_plan_status.payload,
             committee_public_keys: vote_plan_status.committee_member_keys,
             proposals: vote_plan_status
@@ -764,7 +772,7 @@ mod test {
     use crate::interfaces::vote::{serde_committee_member_public_keys, SerdeMemberPublicKey};
     use bech32::ToBase32;
     use chain_impl_mockchain::block::BlockDate;
-    use chain_impl_mockchain::certificate::VotePlan;
+    use chain_impl_mockchain::certificate;
     use rand_chacha::rand_core::SeedableRng;
 
     #[test]
@@ -790,9 +798,6 @@ mod test {
 
     #[test]
     fn test_deserialize_vote_plan_def() {
-        #[derive(Serialize, Deserialize, Eq, PartialEq, Debug)]
-        struct Helper(#[serde(with = "VotePlanDef")] VotePlan);
-
         let mut rng = rand_chacha::ChaChaRng::from_entropy();
         let crs = chain_vote::Crs::from_hash("Dummy shared string".as_bytes());
         let comm_key = chain_vote::MemberCommunicationKey::new(&mut rng);
@@ -800,19 +805,22 @@ mod test {
         let member_key =
             chain_vote::MemberState::new(&mut rng, 1, &crs, &[comm_key.to_public()], 0)
                 .public_key();
-        let bd = "42.12".parse::<BlockDate>().unwrap();
+        let start = "42.12".parse::<BlockDate>().unwrap();
+        let end = "42.13".parse::<BlockDate>().unwrap();
+        let tally = "42.14".parse::<BlockDate>().unwrap();
         let id = ExternalProposalId::from([0; 32]);
         let prop = Proposal::new(id, Options::new_length(1).unwrap(), VoteAction::OffChain);
         let mut proposals = Proposals::new();
         let _ = proposals.push(prop);
-        let vote_plan = Helper(VotePlan::new(
-            bd,
-            bd,
-            bd,
+        let vote_plan: VotePlan = certificate::VotePlan::new(
+            start,
+            end,
+            tally,
             proposals,
             vote::PayloadType::Private,
             vec![member_key],
-        ));
+        )
+        .into();
 
         let a = serde_json::to_string(&vote_plan).unwrap();
         assert_eq!(vote_plan, serde_json::from_str(&a).unwrap());
