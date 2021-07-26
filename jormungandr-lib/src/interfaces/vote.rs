@@ -22,7 +22,7 @@ use std::str::{self, FromStr};
 
 /// Serializable wrapper for the payload type enum.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct PayloadType(#[serde(with = "PayloadTypeDef")] pub vote::PayloadType);
+pub struct VotePrivacy(#[serde(with = "PayloadTypeDef")] pub vote::PayloadType);
 
 #[derive(Copy, Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[serde(remote = "vote::PayloadType", rename_all = "snake_case")]
@@ -32,21 +32,21 @@ enum PayloadTypeDef {
 }
 
 #[derive(Debug, thiserror::Error)]
-#[error("Invalid payload type, expected \"public\" or \"private\".")]
-pub struct PayloadTypeFromStrError;
+#[error("Invalid vote privacy, expected \"public\" or \"private\".")]
+pub struct VotePrivacyFromStrError;
 
-impl FromStr for PayloadType {
-    type Err = PayloadTypeFromStrError;
+impl FromStr for VotePrivacy {
+    type Err = VotePrivacyFromStrError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "public" => Ok(PayloadType(vote::PayloadType::Public)),
-            "private" => Ok(PayloadType(vote::PayloadType::Private)),
-            _ => Err(PayloadTypeFromStrError),
+            "public" => Ok(VotePrivacy(vote::PayloadType::Public)),
+            "private" => Ok(VotePrivacy(vote::PayloadType::Private)),
+            _ => Err(VotePrivacyFromStrError),
         }
     }
 }
 
-impl fmt::Display for PayloadType {
+impl fmt::Display for VotePrivacy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self.0 {
             vote::PayloadType::Public => "public",
@@ -56,14 +56,14 @@ impl fmt::Display for PayloadType {
     }
 }
 
-impl From<vote::PayloadType> for PayloadType {
+impl From<vote::PayloadType> for VotePrivacy {
     fn from(src: vote::PayloadType) -> Self {
-        PayloadType(src)
+        VotePrivacy(src)
     }
 }
 
-impl From<PayloadType> for vote::PayloadType {
-    fn from(src: PayloadType) -> Self {
+impl From<VotePrivacy> for vote::PayloadType {
+    fn from(src: VotePrivacy) -> Self {
         src.0
     }
 }
@@ -177,7 +177,7 @@ impl Serialize for SerdeMemberPublicKey {
 
 #[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
 pub struct VotePlan {
-    payload_type: PayloadType,
+    payload_type: VotePrivacy,
     vote_start: BlockDate,
     vote_end: BlockDate,
     committee_end: BlockDate,
@@ -580,7 +580,7 @@ pub enum PrivateTallyState {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum Payload {
+pub enum VotePayload {
     Public {
         choice: u8,
     },
@@ -601,7 +601,7 @@ pub struct VoteProposalStatus {
     pub votes_cast: usize,
 }
 
-impl From<vote::Payload> for Payload {
+impl From<vote::Payload> for VotePayload {
     fn from(this: vote::Payload) -> Self {
         match this {
             vote::Payload::Public { choice } => Self::Public {
@@ -618,11 +618,11 @@ impl From<vote::Payload> for Payload {
     }
 }
 
-impl Payload {
+impl VotePayload {
     pub fn choice(&self) -> Option<u8> {
         match self {
-            Payload::Public { choice } => Some(*choice),
-            Payload::Private { .. } => None,
+            VotePayload::Public { choice } => Some(*choice),
+            VotePayload::Private { .. } => None,
         }
     }
 }
