@@ -73,6 +73,6 @@ pub use self::transaction_witness::TransactionWitness;
 pub use self::utxo_info::{UTxOInfo, UTxOOutputInfo};
 pub use self::value::{Value, ValueDef};
 pub use self::vote::{
-    serde_base64_bytes, Payload, PrivateTallyState, Tally, TallyResult, VotePlanDef, VotePlanId,
+    serde_base64_bytes, Payload, PrivateTallyState, Tally, TallyResult, VotePlan, VotePlanId,
     VotePlanStatus, VoteProposalStatus, MEMBER_PUBLIC_KEY_BECH32_HRP,
 };

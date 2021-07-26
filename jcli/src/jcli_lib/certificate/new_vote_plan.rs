@@ -3,11 +3,10 @@ use crate::jcli_lib::{
     utils::io,
 };
 use chain_impl_mockchain::{
-    certificate::{Certificate, VotePlan},
+    certificate::{self, Certificate},
     vote::PayloadType,
 };
-use jormungandr_lib::interfaces::VotePlanDef;
-use serde::Deserialize;
+use jormungandr_lib::interfaces::VotePlan;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -26,10 +25,7 @@ pub struct VotePlanRegistration {
     pub output: Option<PathBuf>,
 }
 
-#[derive(Deserialize)]
-struct VotePlanConfiguration(#[serde(with = "VotePlanDef")] VotePlan);
-
-fn validate_voteplan(voteplan: &VotePlan) -> Result<(), Error> {
+fn validate_voteplan(voteplan: &certificate::VotePlan) -> Result<(), Error> {
     // if voteplan is private committee member keys should be filled
     match voteplan.payload_type() {
         PayloadType::Public => {}
@@ -45,10 +41,11 @@ fn validate_voteplan(voteplan: &VotePlan) -> Result<(), Error> {
 impl VotePlanRegistration {
     pub fn exec(self) -> Result<(), Error> {
         let configuration = io::open_file_read(&self.input)?;
-        let vote_plan_certificate: VotePlanConfiguration =
+        let vpc: VotePlan =
             serde_yaml::from_reader(configuration).map_err(Error::VotePlanConfig)?;
-        validate_voteplan(&vote_plan_certificate.0)?;
-        let cert = Certificate::VotePlan(vote_plan_certificate.0);
+        let vpc: certificate::VotePlan = vpc.into();
+        validate_voteplan(&vpc)?;
+        let cert = Certificate::VotePlan(vpc);
         write_cert(self.output.as_deref(), cert.into())
     }
 }

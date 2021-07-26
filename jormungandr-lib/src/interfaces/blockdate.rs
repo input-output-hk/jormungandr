@@ -109,9 +109,36 @@ impl<'de> Deserialize<'de> for BlockDate {
     where
         D: Deserializer<'de>,
     {
+        use serde::de::{self, MapAccess, Visitor};
+
+        struct StringOrStruct;
+        impl<'de> Visitor<'de> for StringOrStruct {
+            type Value = BlockDate;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("string or map")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<BlockDate, E>
+            where
+                E: de::Error,
+            {
+                let bd = BlockDate::from_str(value).map_err(E::custom)?;
+                Ok(bd)
+            }
+
+            fn visit_map<M>(self, map: M) -> Result<BlockDate, M::Error>
+            where
+                M: MapAccess<'de>,
+            {
+                let d = de::value::MapAccessDeserializer::new(map);
+                let bd = BlockDateStructural::deserialize(d)?;
+                Ok(BlockDate(bd))
+            }
+        }
+
         if deserializer.is_human_readable() {
-            let s = String::deserialize(deserializer)?;
-            BlockDate::from_str(&s).map_err(<D::Error as serde::de::Error>::custom)
+            deserializer.deserialize_any(StringOrStruct)
         } else {
             let (epoch, slot_id): (u32, u32) = Deserialize::deserialize(deserializer)?;
             Ok(BlockDate(block::BlockDate { epoch, slot_id }))
@@ -119,10 +146,9 @@ impl<'de> Deserialize<'de> for BlockDate {
     }
 }
 
-/// This type implements serde::{Serialize, Deserialize} for the remote block:BlockDate
 #[derive(Serialize, Deserialize)]
 #[serde(remote = "chain_impl_mockchain::block::BlockDate")]
-pub struct BlockDateDef {
+struct BlockDateStructural {
     pub epoch: u32,
     pub slot_id: u32,
 }
@@ -152,6 +178,22 @@ mod test {
         });
 
         assert_eq!(date.to_string(), "12.928")
+    }
+
+    #[test]
+    fn deserialize_structured_json() {
+        let json = r#"{
+            "epoch": 12,
+            "slot_id": 928
+        }"#;
+        let decoded: BlockDate = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            decoded,
+            BlockDate(block::BlockDate {
+                epoch: 12,
+                slot_id: 928,
+            })
+        );
     }
 
     quickcheck! {
