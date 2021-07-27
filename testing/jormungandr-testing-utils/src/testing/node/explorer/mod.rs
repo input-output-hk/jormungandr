@@ -6,7 +6,6 @@ use self::{
         AllVotePlans, BlocksByChainLength, Epoch, LastBlock, Settings, StakePool, TransactionById,
     },
 };
-use chain_impl_mockchain::block::BlockDate as LibBlockDate;
 use graphql_client::GraphQLQuery;
 use graphql_client::*;
 use jormungandr_lib::crypto::hash::Hash;
@@ -17,6 +16,10 @@ mod client;
 // do not respect the naming convention
 #[allow(clippy::upper_case_acronyms)]
 mod data;
+mod wrappers;
+
+pub use wrappers::LastBlockResponse;
+
 pub mod load;
 use data::PoolId;
 use jortestkit::file;
@@ -108,13 +111,13 @@ impl Explorer {
         Ok(response_body)
     }
 
-    pub fn last_block(&self) -> Result<Response<last_block::ResponseData>, ExplorerError> {
+    pub fn last_block(&self) -> Result<LastBlockResponse, ExplorerError> {
         let query = LastBlock::build_query(last_block::Variables);
         self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
-        Ok(response_body)
+        Ok(LastBlockResponse::new(response_body))
     }
 
     pub fn blocks_at_chain_length(
@@ -196,13 +199,7 @@ impl Explorer {
     }
 
     pub fn current_time(&self) -> BlockDate {
-        let date = self.last_block().unwrap().data.unwrap().tip.block.date;
-
-        let block_date = LibBlockDate {
-            epoch: date.epoch.id.parse().unwrap(),
-            slot_id: date.slot.parse().unwrap(),
-        };
-        BlockDate::from(block_date)
+        self.last_block().unwrap().block_date()
     }
 
     fn print_log<T: std::fmt::Debug>(&self, response: &Response<T>) {
