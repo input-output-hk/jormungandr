@@ -1,3 +1,4 @@
+pub mod asserts;
 pub mod block0;
 pub mod fragments;
 pub mod network_builder;
@@ -13,9 +14,10 @@ pub use fragments::{
     signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, AdversaryFragmentGenerator,
     AdversaryFragmentSender, AdversaryFragmentSenderError, AdversaryFragmentSenderSetup,
     AdversaryVoteCastsGenerator, BatchFragmentGenerator, DummySyncNode, FragmentBuilder,
-    FragmentBuilderError, FragmentGenerator, FragmentNode, FragmentNodeError, FragmentSender,
-    FragmentSenderError, FragmentSenderSetup, FragmentSenderSetupBuilder, FragmentStatusProvider,
-    FragmentVerifier, FragmentVerifierError, MemPoolCheck, VerifyStrategy, VoteCastsGenerator,
+    FragmentBuilderError, FragmentChainSender, FragmentGenerator, FragmentNode, FragmentNodeError,
+    FragmentSender, FragmentSenderError, FragmentSenderSetup, FragmentSenderSetupBuilder,
+    FragmentStatusProvider, FragmentVerifier, FragmentVerifierError, MemPoolCheck, VerifyStrategy,
+    VoteCastsGenerator,
 };
 pub use jortestkit::archive::decompress;
 pub use jortestkit::github::{CachedReleases, GitHubApiBuilder, GitHubApiError, Release};

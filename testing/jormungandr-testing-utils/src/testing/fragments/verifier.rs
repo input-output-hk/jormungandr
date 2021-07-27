@@ -15,6 +15,13 @@ pub enum FragmentVerifierError {
         #[debug(skip)]
         logs: Vec<String>,
     },
+    #[error("fragment sent to node: {alias} is not rejected :({status:?})")]
+    FragmentNotRejected {
+        alias: String,
+        status: FragmentStatus,
+        #[debug(skip)]
+        logs: Vec<String>,
+    },
     #[error("transaction is pending for too long")]
     FragmentIsPendingForTooLong {
         fragment_id: FragmentId,
@@ -61,6 +68,7 @@ impl FragmentVerifierError {
             | FragmentIsPendingForTooLong { logs, .. }
             | FragmentsArePendingForTooLong { logs, .. }
             | FragmentNotInMemPoolLogs { logs, .. }
+            | FragmentNotRejected { logs, .. }
             | FragmentNode(FragmentNodeError::CannotSendFragment { logs, .. }) => Some(logs),
             AtLeastOneRejectedFragment { logs, .. } => Some(logs),
             TimeoutReachedWhileWaitingForAllFragmentsInBlock { logs } => Some(logs),
@@ -133,6 +141,16 @@ impl FragmentVerifier {
         self.is_in_block(status, node)
     }
 
+    pub fn wait_and_verify_is_rejected<A: FragmentNode + ?Sized>(
+        &self,
+        duration: Duration,
+        check: MemPoolCheck,
+        node: &A,
+    ) -> Result<(), FragmentVerifierError> {
+        let status = self.wait_fragment(duration, check, Default::default(), node)?;
+        self.is_rejected(status, node)
+    }
+
     pub fn is_in_block<A: FragmentNode + ?Sized>(
         &self,
         status: FragmentStatus,
@@ -140,6 +158,21 @@ impl FragmentVerifier {
     ) -> Result<(), FragmentVerifierError> {
         if !status.is_in_a_block() {
             return Err(FragmentVerifierError::FragmentNotInBlock {
+                alias: node.alias().to_string(),
+                status,
+                logs: node.log_content(),
+            });
+        }
+        Ok(())
+    }
+
+    pub fn is_rejected<A: FragmentNode + ?Sized>(
+        &self,
+        status: FragmentStatus,
+        node: &A,
+    ) -> Result<(), FragmentVerifierError> {
+        if !status.is_rejected() {
+            return Err(FragmentVerifierError::FragmentNotRejected {
                 alias: node.alias().to_string(),
                 status,
                 logs: node.log_content(),

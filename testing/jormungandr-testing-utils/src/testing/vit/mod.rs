@@ -1,9 +1,11 @@
 mod builder;
+mod vote_cast_register;
 
 use bech32::ToBase32;
 pub use builder::VotePlanBuilder;
 use chain_impl_mockchain::certificate::VotePlan;
 use chain_impl_mockchain::vote::PayloadType;
+pub use vote_cast_register::VoteCastCounter;
 
 pub trait VotePlanExtension {
     fn as_json(&self) -> json::JsonValue;
