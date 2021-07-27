@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use chain_impl_mockchain::certificate::VotePlanId;
 use std::collections::HashMap;
 use std::iter;
