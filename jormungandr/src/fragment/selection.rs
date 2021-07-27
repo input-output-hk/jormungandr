@@ -142,6 +142,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
 
             match result {
                 Ok(ledger_new) => {
+                    current_total_size = total_size;
                     contents_builder.push(fragment);
                     ledger = ledger_new;
                     tracing::debug!("successfully applied and committed the fragment");
@@ -156,8 +157,6 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                     logs.modify(id, FragmentStatus::Rejected { reason: msg }, date)
                 }
             }
-
-            current_total_size = total_size;
 
             if total_size == ledger_params.block_content_max_size {
                 break;
