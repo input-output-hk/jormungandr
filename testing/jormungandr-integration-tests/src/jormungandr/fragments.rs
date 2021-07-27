@@ -51,6 +51,7 @@ pub fn send_all_fragments() {
         time_era.slots_per_epoch(),
         30,
         30,
+        30,
         fragment_sender,
     );
 

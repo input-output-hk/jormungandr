@@ -58,6 +58,7 @@ pub fn dump_send_correct_fragments() {
         time_era.slots_per_epoch(),
         2,
         2,
+        2,
         fragment_sender,
     );
 

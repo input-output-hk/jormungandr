@@ -1,4 +1,5 @@
 use super::{FragmentSender, FragmentSenderError, MemPoolCheck};
+use crate::testing::vit::VoteCastCounter;
 use crate::testing::SyncNode;
 use crate::{
     stake_pool::StakePool,
@@ -22,14 +23,16 @@ pub struct FragmentGenerator<'a, S: SyncNode + Send> {
     sender: Wallet,
     receiver: Wallet,
     active_stake_pools: Vec<StakePool>,
-    vote_plan_for_casting: Option<VotePlan>,
+    vote_plans_for_casting: Vec<VotePlan>,
     vote_plans_for_tally: Vec<VotePlan>,
     node: RemoteJormungandr,
     rand: OsRng,
+    vote_cast_register: Option<VoteCastCounter>,
     slots_per_epoch: u32,
     fragment_sender: FragmentSender<'a, S>,
     stake_pools_count: usize,
     vote_plans_for_tally_count: usize,
+    vote_plans_for_casting_count: usize,
 }
 
 impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
@@ -41,8 +44,10 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         slots_per_epoch: u32,
         stake_pools_count: usize,
         vote_plans_for_tally_count: usize,
+        vote_plans_for_casting_count: usize,
         fragment_sender: FragmentSender<'a, S>,
     ) -> Self {
+        assert!(vote_plans_for_casting_count > 1);
         assert!(stake_pools_count > 1);
         assert!(vote_plans_for_tally_count > 1);
 
@@ -50,14 +55,16 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             sender,
             receiver,
             active_stake_pools: vec![],
-            vote_plan_for_casting: None,
+            vote_plans_for_casting: vec![],
             vote_plans_for_tally: vec![],
             node,
+            vote_cast_register: None,
             rand: OsRng,
             slots_per_epoch,
             fragment_sender,
             stake_pools_count,
             vote_plans_for_tally_count,
+            vote_plans_for_casting_count,
         }
     }
 
@@ -68,25 +75,37 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
     pub fn prepare(&mut self, start_block_date: BlockDate) {
         let time_era = start_block_date.time_era(self.slots_per_epoch);
 
-        let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&self.sender)))
+        let sender = self.sender.clone();
+
+        let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&sender)))
             .take(self.stake_pools_count)
+            .map(|stake_pool| {
+                self.fragment_sender
+                    .send_pool_registration(&mut self.sender, &stake_pool, &self.node)
+                    .unwrap();
+                stake_pool
+            })
             .collect();
 
-        for stake_pool in stake_pools.iter() {
+        let votes_plan_for_casting: Vec<VotePlan> = iter::from_fn(|| {
+            Some(
+                VotePlanBuilder::new()
+                    .proposals_count(256)
+                    .with_vote_start(start_block_date.into())
+                    .with_tally_start(start_block_date.shift_epoch(5).into())
+                    .with_tally_end(start_block_date.shift_epoch(6).into())
+                    .build(),
+            )
+        })
+        .take(self.vote_plans_for_casting_count)
+        .map(|vote_plan| {
             self.fragment_sender
-                .send_pool_registration(&mut self.sender, stake_pool, &self.node)
+                .send_vote_plan(&mut self.sender, vote_plan, &self.node)
                 .unwrap();
-        }
+            vote_plan
+        })
+        .collect();
 
-        let vote_plan_for_casting: VotePlan = VotePlanBuilder::new()
-            .with_vote_start(start_block_date.into())
-            .with_tally_start(start_block_date.shift_epoch(5).into())
-            .with_tally_end(start_block_date.shift_epoch(6).into())
-            .build();
-
-        self.fragment_sender
-            .send_vote_plan(&mut self.sender, &vote_plan_for_casting, &self.node)
-            .unwrap();
         let vote_plans_for_tally: Vec<VotePlan> = iter::from_fn(|| {
             Some(
                 VotePlanBuilder::new()
@@ -97,16 +116,24 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             )
         })
         .take(self.vote_plans_for_tally_count)
-        .collect();
-
-        for vote_plan in vote_plans_for_tally.iter() {
+        .map(|vote_plan| {
             self.fragment_sender
                 .send_vote_plan(&mut self.sender, vote_plan, &self.node)
                 .unwrap();
-        }
-        self.vote_plan_for_casting = Some(vote_plan_for_casting);
+            vote_plan
+        })
+        .collect();
+
+        self.vote_plans_for_casting = votes_plan_for_casting;
         self.vote_plans_for_tally = vote_plans_for_tally;
         self.active_stake_pools = stake_pools;
+        self.vote_cast_register = Some(VoteCastCounter::new(
+            1,
+            self.vote_plans_for_casting
+                .iter()
+                .map(|x| (x.to_id(), 255u8))
+                .collect(),
+        ));
     }
 
     pub fn send_random(&mut self) -> Result<MemPoolCheck, FragmentSenderError> {
@@ -206,16 +233,31 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                 self.fragment_sender
                     .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
             }
-            8 => self.fragment_sender.send_vote_cast(
-                &mut self.sender,
-                self.vote_plan_for_casting.as_ref().unwrap(),
-                0,
-                &Choice::new(1),
-                &self.node,
-            ),
+            8 => {
+                let vote_cast_register = self
+                    .vote_cast_register
+                    .as_mut()
+                    .expect("please run 'prepare' method before running load");
+                let wallet_idx = 0;
+                let wallet_votes_to_cast = vote_cast_register.advance_single(wallet_idx).unwrap();
+                let votes_to_cast = wallet_votes_to_cast.next(wallet_idx);
+                let vote_plan = self
+                    .vote_plans_for_casting
+                    .iter()
+                    .find(|x| x.to_id() == votes_to_cast.id())
+                    .unwrap();
+
+                self.fragment_sender.send_vote_cast(
+                    &mut self.sender,
+                    &vote_plan,
+                    votes_to_cast.range().start as u8,
+                    &Choice::new(1),
+                    &self.node,
+                )
+            }
             9 => {
                 let index = self.rand.next_u32() as usize % self.vote_plans_for_tally.len();
-                let vote_plan = self.vote_plans_for_tally.remove(index);
+                let vote_plan = self.vote_plans_for_tally.get(index).unwrap();
 
                 self.fragment_sender.send_vote_tally(
                     &mut self.sender,
