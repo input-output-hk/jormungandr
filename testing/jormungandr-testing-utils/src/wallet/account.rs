@@ -77,6 +77,11 @@ impl Wallet {
         self.internal_counter = account::SpendingCounter::from(v + 1);
     }
 
+    pub fn decrement_counter(&mut self) {
+        let v: u32 = self.internal_counter.into();
+        self.internal_counter = account::SpendingCounter::from(v - 1);
+    }
+
     pub fn internal_counter(&self) -> account::SpendingCounter {
         self.internal_counter
     }
