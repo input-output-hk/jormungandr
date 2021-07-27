@@ -9,12 +9,12 @@ use crate::{
 };
 
 use std::collections::HashMap;
-use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
+use tokio::fs::{self, File};
 
 use chrono::{Duration, DurationRound, Utc};
-use futures::future;
+use futures::{future, TryFutureExt};
 use thiserror::Error;
 use tokio_stream::StreamExt;
 use tracing::{span, Level};
@@ -67,7 +67,7 @@ impl Process {
             }
         }
 
-        fn open_log_file(dir: &Path) -> Result<File, Error> {
+        async fn open_log_file(dir: &Path) -> Result<File, Error> {
             let mut path: PathBuf = dir.into();
             if !path.exists() {
                 std::fs::create_dir_all(dir).map_err(Error::PersistentLog)?;
@@ -81,6 +81,7 @@ impl Process {
                 .read(false)
                 .open(path)
                 .map_err(Error::PersistentLog)
+                .await
         }
 
         let min_logs_size = n_pools * self.pool_max_entries;
@@ -97,7 +98,7 @@ impl Process {
             let persistent_log = match &persistent_log_dir {
                 None => None,
                 Some(dir) => {
-                    let file = open_log_file(dir.as_ref())?;
+                    let file = open_log_file(dir.as_ref()).await?;
                     Some(file)
                 }
             };
@@ -187,9 +188,9 @@ impl Process {
                         }
                     }
                     _ = &mut wakeup => {
-                        pool.close_persistent_log();
+                        pool.close_persistent_log().await;
                         let dir = persistent_log_dir.as_ref().unwrap();
-                        let file = open_log_file(dir.as_ref())?;
+                        let file = open_log_file(dir.as_ref()).await?;
                         pool.set_persistent_log(file);
                         wakeup = Box::pin(hourly_wakeup(true));
                     }

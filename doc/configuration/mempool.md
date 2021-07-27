@@ -24,3 +24,6 @@ mempool:
 A persistent log is a collection of records comprised of a UNIX timestamp of when a fragment was
 registereed by the mempool followed by the hex-encoded fragment body. This log is a line-delimited
 JSON stream.
+
+Keep in mind that enabling persistent logs could result in impaired performance of the node if disk
+operations are slow. Consider using a reasonably fast ssd for best results.
