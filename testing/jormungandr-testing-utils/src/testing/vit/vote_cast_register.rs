@@ -335,7 +335,7 @@ mod tests {
         assert_eq!(
             vote_plan_vote_cast_position.advance_batch(limit),
             VotesToCast {
-                id: vote_plan_id.clone(),
+                id: vote_plan_id,
                 range: 11..255
             }
         );
@@ -381,7 +381,7 @@ mod tests {
             votes_to_cast,
             vec![
                 VotesToCast {
-                    id: vote_plan_id_1.clone(),
+                    id: vote_plan_id_1,
                     range: 1..255
                 },
                 VotesToCast {
@@ -398,7 +398,7 @@ mod tests {
         assert_eq!(
             vote_plan_vote_cast_position.advance_batch(90).unwrap(),
             vec![VotesToCast {
-                id: vote_plan_id_2.clone(),
+                id: vote_plan_id_2,
                 range: 46..120
             }]
         );
@@ -493,7 +493,7 @@ mod tests {
             0,
             vec![
                 VotesToCast {
-                    id: vote_plan_id_1.clone(),
+                    id: vote_plan_id_1,
                     range: 50..70,
                 },
                 VotesToCast {
@@ -512,7 +512,7 @@ mod tests {
         expected_wallet_cast.add(
             0,
             vec![VotesToCast {
-                id: vote_plan_id_2.clone(),
+                id: vote_plan_id_2,
                 range: 30..40,
             }],
         );

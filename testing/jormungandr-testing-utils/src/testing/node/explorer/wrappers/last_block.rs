@@ -28,6 +28,10 @@ impl LastBlockResponse {
             .unwrap()
     }
 
+    pub fn block(&self) -> &last_block::LastBlockTipBlock {
+        &self.data.data.as_ref().unwrap().tip.block
+    }
+
     pub fn block_date(&self) -> BlockDate {
         let date = &self.data.data.as_ref().unwrap().tip.block.date;
 

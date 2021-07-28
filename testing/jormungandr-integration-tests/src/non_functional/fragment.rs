@@ -48,6 +48,7 @@ pub fn fragment_load_test() {
         60,
         30,
         30,
+        30,
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),
