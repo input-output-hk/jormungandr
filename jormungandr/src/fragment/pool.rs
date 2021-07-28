@@ -18,7 +18,7 @@ use jormungandr_lib::{
     },
     time::SecondsSinceUnixEpoch,
 };
-use std::collections::HashSet;
+use std::collections::HashMap;
 use thiserror::Error;
 
 use std::fs::File;
@@ -156,7 +156,7 @@ impl Pools {
             }
         }
 
-        let mut accepted = HashSet::new();
+        let mut accepted_fragments = HashMap::new();
 
         for (pool_number, pool) in self.pools.iter_mut().enumerate() {
             let span = tracing::trace_span!("pool_insert_fragment", pool_number=?pool_number);
@@ -172,10 +172,10 @@ impl Pools {
                 .collect();
             self.logs.insert_all_pending(fragment_logs);
 
-            for fragment in &new_fragments {
+            for fragment in new_fragments {
                 let id = fragment.id();
                 tracing::debug!(fragment_id=?id, "inserted fragment to the pool");
-                accepted.insert(id);
+                accepted_fragments.insert(id, fragment);
             }
 
             for fragment in fragments {
@@ -188,12 +188,9 @@ impl Pools {
             }
         }
 
-        let accepted = accepted.into_iter().collect();
+        let (accepted, fragments) = accepted_fragments.into_iter().unzip();
 
-        (
-            filtered_fragments,
-            FragmentsProcessingSummary { accepted, rejected },
-        )
+        (fragments, FragmentsProcessingSummary { accepted, rejected })
     }
 
     /// Returns number of registered fragments. Setting `fail_fast` to `true` will force this
@@ -213,9 +210,9 @@ impl Pools {
         for fragment in filtered_fragments.into_iter() {
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
             network_msg_box
-                .send(fragment_msg)
-                .await
-                .map_err(Error::CannotPropagate)?;
+                // do not block the current process if network queue is full
+                .try_send(fragment_msg)
+                .map_err(|e| Error::CannotPropagate(e.into_send_error()))?;
         }
 
         Ok(summary)
