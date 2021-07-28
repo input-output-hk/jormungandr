@@ -404,8 +404,7 @@ pub async fn process_new_ref(
 
             if let Some(mut msg_box) = explorer_msg_box {
                 msg_box
-                    .send(ExplorerMsg::NewTip(candidate_hash))
-                    .await
+                    .try_send(ExplorerMsg::NewTip(candidate_hash))
                     .unwrap_or_else(|err| {
                         tracing::error!("cannot send new tip to explorer: {}", err)
                     });
@@ -438,8 +437,8 @@ async fn process_and_propagate_new_ref(
     tracing::debug!("propagating block to the network");
 
     network_msg_box
-        .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
-        .await?;
+        .try_send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+        .unwrap_or_else(|err| tracing::error!("cannot send new block to the network: {}", err));
 
     Ok(())
 }
@@ -471,7 +470,9 @@ async fn process_leadership_block(
     stats_counter.set_tip_block(Arc::new(block.clone()));
 
     if let Some(mut msg_box) = explorer_msg_box {
-        msg_box.send(ExplorerMsg::NewBlock(block)).await?;
+        msg_box
+            .try_send(ExplorerMsg::NewBlock(block))
+            .unwrap_or_else(|err| tracing::error!("cannot send new block to explorer: {}", err));
     }
 
     Ok(())
@@ -727,10 +728,8 @@ async fn process_chain_headers(
 
             if !header_ids.is_empty() {
                 network_msg_box
-                    .send(NetworkMsg::GetBlocks(header_ids))
-                    .await
-                    .map_err(|_| tracing::error!("cannot request blocks from network"))
-                    .map(|_| ())
+                    .try_send(NetworkMsg::GetBlocks(header_ids))
+                    .map_err(|e| tracing::error!("cannot request blocks from network, {}", e))
                     .unwrap();
 
                 reply.reply_ok(())

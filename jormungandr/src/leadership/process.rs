@@ -15,7 +15,7 @@ use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
     Epoch, Slot,
 };
-use futures::{future::TryFutureExt, sink::SinkExt};
+use futures::future::TryFutureExt;
 use jormungandr_lib::{
     interfaces::{EnclaveLeaderId, LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
@@ -584,9 +584,8 @@ impl Module {
                         leadership,
                     };
                     sender
-                        .send(BlockMsg::LeadershipBlock(leadership_block))
-                        .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
-                        .await?;
+                        .try_send(BlockMsg::LeadershipBlock(leadership_block))
+                        .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)?;
                     event_logs
                         .set_status(LeadershipLogStatus::Block {
                             block: id.into(),

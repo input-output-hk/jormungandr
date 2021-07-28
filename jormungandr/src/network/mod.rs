@@ -349,7 +349,8 @@ where
     Fut: Future<Output = Result<(), E>>,
 {
     let (reply_handle, reply_future) = crate::intercom::unary_reply();
-    mbox.send(TopologyMsg::View(sel, reply_handle)).await?;
+    mbox.try_send(TopologyMsg::View(sel, reply_handle))
+        .map_err(|e| e.into_send_error())?;
     let peers = reply_future.await.map(|view| view.peers)?;
 
     // FIXME: this is a workaround because we need to know also the id of the nodes that failed to connect,
@@ -493,8 +494,7 @@ fn connect_and_propagate(
                 if !benign {
                     channels
                         .topology_box
-                        .send(TopologyMsg::DemotePeer(node_id))
-                        .await
+                        .try_send(TopologyMsg::DemotePeer(node_id))
                         .unwrap_or_else(|e| {
                             tracing::error!("Error sending message to topology task: {}", e)
                         });
@@ -510,8 +510,7 @@ fn connect_and_propagate(
 
                 channels
                     .topology_box
-                    .send(TopologyMsg::PromotePeer(node_id))
-                    .await
+                    .try_send(TopologyMsg::PromotePeer(node_id))
                     .unwrap_or_else(|e| {
                         tracing::error!("Error sending message to topology task: {}", e)
                     });

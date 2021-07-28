@@ -10,7 +10,6 @@ use crate::{
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
 use futures::channel::mpsc::SendError;
-use futures::sink::SinkExt;
 use jormungandr_lib::{
     interfaces::{
         BlockDate, FragmentLog, FragmentOrigin, FragmentRejectionReason, FragmentStatus,
