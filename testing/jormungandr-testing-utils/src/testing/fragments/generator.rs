@@ -1,5 +1,6 @@
 use super::{FragmentSender, FragmentSenderError, MemPoolCheck};
 use crate::testing::vit::VoteCastCounter;
+use crate::testing::FragmentVerifier;
 use crate::testing::SyncNode;
 use crate::{
     stake_pool::StakePool,
@@ -17,6 +18,7 @@ use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
 use std::iter;
+use std::time::Duration;
 use std::time::Instant;
 
 pub struct FragmentGenerator<'a, S: SyncNode + Send> {
@@ -80,9 +82,15 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&sender)))
             .take(self.stake_pools_count)
             .map(|stake_pool| {
-                self.fragment_sender
+                let fragment = self
+                    .fragment_sender
                     .send_pool_registration(&mut self.sender, &stake_pool, &self.node)
                     .unwrap();
+
+                FragmentVerifier
+                    .wait_and_verify_is_in_block(Duration::from_secs(2), fragment, &self.node)
+                    .unwrap();
+
                 stake_pool
             })
             .collect();
@@ -99,9 +107,15 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         })
         .take(self.vote_plans_for_casting_count)
         .map(|vote_plan| {
-            self.fragment_sender
+            let fragment = self
+                .fragment_sender
                 .send_vote_plan(&mut self.sender, vote_plan, &self.node)
                 .unwrap();
+
+            FragmentVerifier
+                .wait_and_verify_is_in_block(Duration::from_secs(2), fragment, &self.node)
+                .unwrap();
+
             vote_plan
         })
         .collect();
@@ -117,9 +131,15 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         })
         .take(self.vote_plans_for_tally_count)
         .map(|vote_plan| {
-            self.fragment_sender
+            let fragment = self
+                .fragment_sender
                 .send_vote_plan(&mut self.sender, vote_plan, &self.node)
                 .unwrap();
+
+            FragmentVerifier
+                .wait_and_verify_is_in_block(Duration::from_secs(2), fragment, &self.node)
+                .unwrap();
+
             vote_plan
         })
         .collect();
@@ -131,7 +151,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             1,
             self.vote_plans_for_casting
                 .iter()
-                .map(|x| (x.to_id(), 255u8))
+                .map(|x| (x.to_id(), x.proposals().len() as u8))
                 .collect(),
         ));
     }
@@ -238,6 +258,8 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     .vote_cast_register
                     .as_mut()
                     .expect("please run 'prepare' method before running load");
+
+                // wallet_idx is always 0 because we are using only one wallet
                 let wallet_idx = 0;
                 let wallet_votes_to_cast = vote_cast_register.advance_single(wallet_idx).unwrap();
                 let votes_to_cast = wallet_votes_to_cast.next(wallet_idx);

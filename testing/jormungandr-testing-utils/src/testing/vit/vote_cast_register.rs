@@ -69,16 +69,12 @@ impl WalletVoteCastPosition {
         }
     }
 
-    pub fn has_next(&self) -> bool {
-        !self.is_drained()
-    }
-
     pub fn is_drained(&self) -> bool {
         self.register.iter().all(|x| x.is_drained())
     }
 
-    pub fn advance_single_unsafe(&mut self) -> Result<Vec<VotesToCast>, Error> {
-        self.advance_batch_unsafe(1)
+    pub fn advance_single_force(&mut self) -> Result<Vec<VotesToCast>, Error> {
+        self.advance_batch_force(1)
     }
 
     pub fn can_send_next_batch(&self, requested_batch_size: usize) -> bool {
@@ -89,7 +85,7 @@ impl WalletVoteCastPosition {
         self.register.iter().map(|x| x.available_to_send()).sum()
     }
 
-    pub fn advance_batch_unsafe(
+    pub fn advance_batch_force(
         &mut self,
         mut requested_batch_size: usize,
     ) -> Result<Vec<VotesToCast>, Error> {
@@ -109,7 +105,7 @@ impl WalletVoteCastPosition {
 
             let batch_size = std::cmp::min(requested_batch_size, vote_plan.available_to_send());
             requested_batch_size -= batch_size;
-            votes_to_cast.push(vote_plan.advance_batch_unsafe(batch_size)?);
+            votes_to_cast.push(vote_plan.advance_batch_force(batch_size)?);
         }
 
         Ok(votes_to_cast)
@@ -154,10 +150,7 @@ impl VotePlanVoteCastPosition {
     }
 
     pub fn is_drained(&self) -> bool {
-        !self.has_next()
-    }
-    pub fn has_next(&self) -> bool {
-        self.can_send_next_batch(1)
+        !self.can_send_next_batch(1)
     }
 
     pub fn can_send_next_batch(&self, requested_batch_size: usize) -> bool {
@@ -168,10 +161,10 @@ impl VotePlanVoteCastPosition {
         (self.limit - self.current).into()
     }
 
-    pub fn advance_single_unsafe(&mut self) -> Result<VotesToCast, Error> {
-        self.advance_batch_unsafe(1)
+    pub fn advance_single_force(&mut self) -> Result<VotesToCast, Error> {
+        self.advance_batch_force(1)
     }
-    pub fn advance_batch_unsafe(
+    pub fn advance_batch_force(
         &mut self,
         requested_batch_size: usize,
     ) -> Result<VotesToCast, Error> {
@@ -195,7 +188,7 @@ impl VotePlanVoteCastPosition {
 
     pub fn advance_batch(&mut self, requested_batch_size: usize) -> VotesToCast {
         let batch_size = std::cmp::min(self.available_to_send(), requested_batch_size);
-        self.advance_batch_unsafe(batch_size).unwrap()
+        self.advance_batch_force(batch_size).unwrap()
     }
 }
 
@@ -301,14 +294,11 @@ mod tests {
 
         assert_eq!(vote_plan_id, vote_plan_vote_cast_position.id());
         assert!(!vote_plan_vote_cast_position.is_drained());
-        assert!(vote_plan_vote_cast_position.has_next());
         assert!(vote_plan_vote_cast_position.can_send_next_batch(1));
         assert!(vote_plan_vote_cast_position.can_send_next_batch(limit));
         assert_eq!(limit, vote_plan_vote_cast_position.available_to_send());
 
-        let votes_to_cast = vote_plan_vote_cast_position
-            .advance_single_unsafe()
-            .unwrap();
+        let votes_to_cast = vote_plan_vote_cast_position.advance_single_force().unwrap();
         assert_eq!(
             votes_to_cast,
             VotesToCast {
@@ -318,7 +308,7 @@ mod tests {
         );
 
         let votes_to_cast = vote_plan_vote_cast_position
-            .advance_batch_unsafe(10)
+            .advance_batch_force(10)
             .unwrap();
         assert_eq!(
             votes_to_cast,
@@ -329,7 +319,7 @@ mod tests {
         );
 
         assert!(vote_plan_vote_cast_position
-            .advance_batch_unsafe(limit)
+            .advance_batch_force(limit)
             .is_err());
 
         assert_eq!(
@@ -341,7 +331,6 @@ mod tests {
         );
 
         assert!(vote_plan_vote_cast_position.is_drained());
-        assert!(!vote_plan_vote_cast_position.has_next());
         assert!(!vote_plan_vote_cast_position.can_send_next_batch(1));
         assert_eq!(0, vote_plan_vote_cast_position.available_to_send());
     }
@@ -359,13 +348,10 @@ mod tests {
         ]);
 
         assert!(!vote_plan_vote_cast_position.is_drained());
-        assert!(vote_plan_vote_cast_position.has_next());
         assert!(vote_plan_vote_cast_position.can_send_next_batch(1));
         assert!(vote_plan_vote_cast_position.can_send_next_batch(limit_1 + limit_2 - 1));
 
-        let votes_to_cast = vote_plan_vote_cast_position
-            .advance_single_unsafe()
-            .unwrap();
+        let votes_to_cast = vote_plan_vote_cast_position.advance_single_force().unwrap();
         assert_eq!(
             votes_to_cast,
             vec![VotesToCast {
@@ -375,7 +361,7 @@ mod tests {
         );
 
         let votes_to_cast = vote_plan_vote_cast_position
-            .advance_batch_unsafe(300)
+            .advance_batch_force(300)
             .unwrap();
         assert_eq!(
             votes_to_cast,
@@ -392,7 +378,7 @@ mod tests {
         );
 
         assert!(vote_plan_vote_cast_position
-            .advance_batch_unsafe(300)
+            .advance_batch_force(300)
             .is_err());
 
         assert_eq!(
@@ -404,7 +390,6 @@ mod tests {
         );
 
         assert!(vote_plan_vote_cast_position.is_drained());
-        assert!(!vote_plan_vote_cast_position.has_next());
         assert!(!vote_plan_vote_cast_position.can_send_next_batch(1));
         assert_eq!(0, vote_plan_vote_cast_position.available_to_send());
     }
