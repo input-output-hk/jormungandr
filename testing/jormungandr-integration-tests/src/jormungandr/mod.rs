@@ -3,6 +3,7 @@ pub mod explorer;
 pub mod fragments;
 pub mod genesis;
 pub mod grpc;
+mod leadership;
 pub mod legacy;
 pub mod mempool;
 pub mod recovery;
