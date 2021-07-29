@@ -239,18 +239,26 @@ impl Pools {
         Ok(FragmentsProcessingSummary { accepted, rejected })
     }
 
-    pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
+    /// returns the number of updated transactions
+    pub fn remove_added_to_block(
+        &mut self,
+        fragment_ids: Vec<FragmentId>,
+        status: FragmentStatus,
+    ) -> usize {
         let date = if let FragmentStatus::InABlock { date, .. } = status {
             date
         } else {
             panic!("expected status to be in block, found {:?}", status);
         };
 
+        let mut updated = <HashSet<&FragmentId>>::new();
         for pool in &mut self.pools {
-            pool.remove_all(fragment_ids.iter());
+            updated.extend(pool.remove_all(fragment_ids.iter()));
         }
+        let updated_num = updated.len();
 
         self.logs.modify_all(fragment_ids, status, date);
+        updated_num
     }
 
     pub async fn select(
@@ -286,7 +294,8 @@ impl Pools {
         self.logs.remove_logs_after_date(branch_date)
     }
 
-    pub fn remove_expired_txs(&mut self, block_date: BlockDate) {
+    /// return the number of removed transactions
+    pub fn remove_expired_txs(&mut self, block_date: BlockDate) -> usize {
         if self.last_block_date < block_date {
             self.last_block_date = block_date;
         }
@@ -297,6 +306,7 @@ impl Pools {
                 fragment_ids.insert(id);
             }
         }
+        let removed_num = fragment_ids.len();
         self.logs.modify_all(
             fragment_ids,
             FragmentStatus::Rejected {
@@ -304,6 +314,8 @@ impl Pools {
             },
             block_date.into(),
         );
+
+        removed_num
     }
 }
 
@@ -562,13 +574,23 @@ pub(super) mod internal {
                 .collect()
         }
 
-        pub fn remove_all<'a>(&mut self, fragment_ids: impl IntoIterator<Item = &'a FragmentId>) {
-            for fragment_id in fragment_ids {
-                let maybe_fragment = self.entries.remove(fragment_id);
-                if let Some(fragment) = maybe_fragment {
-                    self.timeout_queue_remove(&fragment);
-                }
-            }
+        /// returns the ids of updated fragments
+        pub fn remove_all<'a>(
+            &mut self,
+            fragment_ids: impl IntoIterator<Item = &'a FragmentId>,
+        ) -> Vec<&'a FragmentId> {
+            fragment_ids
+                .into_iter()
+                .filter(|id| {
+                    let maybe_fragment = self.entries.remove(id);
+                    if let Some(fragment) = maybe_fragment {
+                        self.timeout_queue_remove(&fragment);
+                        true
+                    } else {
+                        false
+                    }
+                })
+                .collect::<Vec<_>>()
         }
 
         pub fn remove_oldest(&mut self) -> Option<Fragment> {

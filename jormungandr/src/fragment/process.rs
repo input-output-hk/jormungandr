@@ -132,12 +132,13 @@ impl Process {
                                     let stats_counter = stats_counter.clone();
 
                                     let summary = pool
-                            .insert_and_propagate_all(origin, fragments, fail_fast)
-                            .await?;
+                                        .insert_and_propagate_all(origin, fragments, fail_fast)
+                                        .await?;
 
-                        stats_counter.add_tx_recv_cnt(summary.accepted.len());
+                                    stats_counter.add_tx_recv_cnt(summary.accepted.len());
+                                    stats_counter.add_pending_transactions_cnt(summary.accepted.len());
 
-                        reply_handle.reply_ok(summary);
+                                    reply_handle.reply_ok(summary);
                                 }
                                 TransactionMsg::RemoveTransactions(fragment_ids, status, block_date) => {
                                     tracing::debug!(
@@ -145,8 +146,9 @@ impl Process {
                                         status,
                                         fragment_ids
                                     );
-                                    pool.remove_added_to_block(fragment_ids, status);
-                                    pool.remove_expired_txs(block_date);
+                                    let mut removed = pool.remove_added_to_block(fragment_ids, status);
+                                    removed += pool.remove_expired_txs(block_date);
+                                    stats_counter.sub_pending_transactions_cnt(removed);
                                 }
                                 TransactionMsg::GetLogs(reply_handle) => {
                                     let logs = pool.logs().logs().cloned().collect();

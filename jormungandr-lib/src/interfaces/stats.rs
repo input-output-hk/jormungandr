@@ -14,6 +14,7 @@ pub struct NodeStatsDto {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct NodeStats {
     pub block_recv_cnt: u64,
+    pub pending_transactions_cnt: usize,
     pub last_block_content_size: u32,
     pub last_block_date: Option<String>,
     pub last_block_fees: u64,
