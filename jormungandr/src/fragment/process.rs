@@ -131,12 +131,13 @@ impl Process {
                                     let stats_counter = stats_counter.clone();
 
                                     let summary = pool
-                            .insert_and_propagate_all(origin, fragments, fail_fast)
-                            .await?;
+                                        .insert_and_propagate_all(origin, fragments, fail_fast)
+                                        .await?;
 
-                        stats_counter.add_tx_recv_cnt(summary.accepted.len());
+                                    stats_counter.add_tx_recv_cnt(summary.accepted.len());
+                                    stats_counter.add_pending_transactions_cnt(summary.accepted.len());
 
-                        reply_handle.reply_ok(summary);
+                                    reply_handle.reply_ok(summary);
                                 }
                                 TransactionMsg::RemoveTransactions(fragment_ids, status) => {
                                     tracing::debug!(
@@ -178,6 +179,7 @@ impl Process {
                                             hard_deadline_future,
                                         )
                                         .await;
+                                    stats_counter.sub_pending_transactions_cnt(contents.0.iter_slice().len());
                                     reply_handle.reply_ok(contents);
                                 }
                             }

@@ -18,6 +18,7 @@ use arc_swap::ArcSwapOption;
 pub struct SimpleCounter {
     tx_recv_cnt: AtomicUsize,
     block_recv_cnt: AtomicUsize,
+    pending_transactions_cnt: AtomicUsize,
     slot_start_time: AtomicU64,
     peers_connected_cnt: AtomicUsize,
     peers_quarantined_cnt: AtomicUsize,
@@ -56,6 +57,7 @@ impl SimpleCounter {
                 .load(Ordering::Relaxed)
                 .try_into()
                 .unwrap(),
+            pending_transactions_cnt: self.pending_transactions_cnt.load(Ordering::Relaxed),
             last_block_content_size: block_data.map(|bd| bd.content_size).unwrap_or_default(),
             last_block_date: block_data.map(|bd| bd.date.clone()),
             last_block_fees: block_data.map(|bd| bd.block_fee_sum).unwrap_or_default(),
@@ -82,6 +84,7 @@ impl Default for SimpleCounter {
         Self {
             tx_recv_cnt: Default::default(),
             block_recv_cnt: Default::default(),
+            pending_transactions_cnt: Default::default(),
             slot_start_time: Default::default(),
             peers_connected_cnt: Default::default(),
             peers_quarantined_cnt: Default::default(),
@@ -99,6 +102,16 @@ impl MetricsBackend for SimpleCounter {
 
     fn add_block_recv_cnt(&self, count: usize) {
         self.block_recv_cnt.fetch_add(count, Ordering::SeqCst);
+    }
+
+    fn add_pending_transactions_cnt(&self, count: usize) {
+        self.pending_transactions_cnt
+            .fetch_add(count, Ordering::SeqCst);
+    }
+
+    fn sub_pending_transactions_cnt(&self, count: usize) {
+        self.pending_transactions_cnt
+            .fetch_sub(count, Ordering::SeqCst);
     }
 
     fn add_peer_connected_cnt(&self, count: usize) {
