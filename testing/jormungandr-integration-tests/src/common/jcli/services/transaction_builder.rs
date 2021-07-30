@@ -55,13 +55,13 @@ impl TransactionBuilder {
         TransactionBuilder::new(self.jcli, self.genesis_hash)
             .new_transaction()
             .add_input(
-                &utxo.transaction_id(),
+                utxo.transaction_id(),
                 utxo.index_in_transaction(),
                 &input_amount.to_string(),
             )
             .add_output(&receiver.address().to_string(), output_amount)
             .finalize()
-            .seal_with_witness_for_address(&sender)
+            .seal_with_witness_for_address(sender)
             .to_message()
     }
 
@@ -79,7 +79,7 @@ impl TransactionBuilder {
             .add_input(transaction_id, transaction_index, &input_amount.to_string())
             .add_output(&receiver.address().to_string(), output_amount)
             .finalize()
-            .seal_with_witness_for_address(&sender)
+            .seal_with_witness_for_address(sender)
             .to_message()
     }
 
@@ -116,7 +116,7 @@ impl TransactionBuilder {
 
     pub fn add_input_from_utxo_with_value(&mut self, utxo: &UTxOInfo, amount: Value) -> &mut Self {
         self.add_input(
-            &utxo.transaction_id(),
+            utxo.transaction_id(),
             utxo.index_in_transaction(),
             &amount.to_string(),
         );
@@ -125,7 +125,7 @@ impl TransactionBuilder {
 
     pub fn add_input_from_utxo(&mut self, utxo: &UTxOInfo) -> &mut Self {
         self.add_input(
-            &utxo.transaction_id(),
+            utxo.transaction_id(),
             utxo.index_in_transaction(),
             &utxo.associated_fund().to_string(),
         );
@@ -141,7 +141,7 @@ impl TransactionBuilder {
 
     pub fn add_account(&mut self, account_addr: &str, amount: &Value) -> &mut Self {
         self.jcli.transaction().add_account(
-            &account_addr,
+            account_addr,
             &amount.to_string(),
             self.staging_file().path(),
         );
@@ -155,7 +155,7 @@ impl TransactionBuilder {
         expected_msg: &str,
     ) -> &mut Self {
         self.jcli.transaction().add_account_expect_fail(
-            &account_addr,
+            account_addr,
             amount,
             self.staging_file().path(),
             expected_msg,
@@ -182,7 +182,7 @@ impl TransactionBuilder {
     pub fn finalize_with_fee(&mut self, address: &str, linear_fee: &LinearFee) -> &mut Self {
         self.jcli
             .transaction()
-            .finalize_with_fee(address, &linear_fee, self.staging_file().path());
+            .finalize_with_fee(address, linear_fee, self.staging_file().path());
         self
     }
 
@@ -200,14 +200,14 @@ impl TransactionBuilder {
     }
 
     pub fn make_and_add_witness_default(&mut self, wallet: &Wallet) -> &mut Self {
-        let witness = self.create_witness_from_wallet(&wallet);
+        let witness = self.create_witness_from_wallet(wallet);
         self.make_witness(&witness);
         self.add_witness(&witness);
         self
     }
 
     pub fn seal_with_witness_for_address(&mut self, wallet: &Wallet) -> &mut Self {
-        let witness = self.create_witness_from_wallet(&wallet);
+        let witness = self.create_witness_from_wallet(wallet);
         self.seal_with_witness(&witness);
         self
     }
@@ -218,14 +218,14 @@ impl TransactionBuilder {
         transaction_type: &str,
         spending_key: Option<u32>,
     ) -> &mut Self {
-        let witness = self.create_witness_from_key(&private_key, &transaction_type, spending_key);
+        let witness = self.create_witness_from_key(private_key, transaction_type, spending_key);
         self.seal_with_witness(&witness);
         self
     }
 
     pub fn seal_with_witness(&mut self, witness: &Witness) -> &mut Self {
-        self.make_witness(&witness);
-        self.add_witness(&witness);
+        self.make_witness(witness);
+        self.add_witness(witness);
         self.seal();
         self
     }
@@ -246,17 +246,15 @@ impl TransactionBuilder {
         match wallet {
             Wallet::Account(account) => self.create_witness_from_key(
                 &account.signing_key().to_bech32_str(),
-                &"account",
+                "account",
                 Some(account.internal_counter().into()),
             ),
-            Wallet::UTxO(utxo) => self.create_witness_from_key(
-                &utxo.last_signing_key().to_bech32_str(),
-                &"utxo",
-                None,
-            ),
+            Wallet::UTxO(utxo) => {
+                self.create_witness_from_key(&utxo.last_signing_key().to_bech32_str(), "utxo", None)
+            }
             Wallet::Delegation(delegation) => self.create_witness_from_key(
                 &delegation.last_signing_key().to_bech32_str(),
-                &"utxo",
+                "utxo",
                 None,
             ),
         }
@@ -273,7 +271,7 @@ impl TransactionBuilder {
             &self.staging_dir,
             &self.genesis_hash,
             &transaction_id,
-            &addr_type,
+            addr_type,
             private_key,
             spending_key,
         )
@@ -281,7 +279,7 @@ impl TransactionBuilder {
 
     pub fn create_witness_default(&self, addr_type: &str, spending_key: Option<u32>) -> Witness {
         let private_key = self.jcli.key().generate_default();
-        self.create_witness_from_key(&private_key, &addr_type, spending_key)
+        self.create_witness_from_key(&private_key, addr_type, spending_key)
     }
 
     pub fn add_witness_expect_fail(&mut self, witness: &Witness, expected_part: &str) {
@@ -323,7 +321,7 @@ impl TransactionBuilder {
     pub fn info(&self, format: &str) -> String {
         self.jcli
             .transaction()
-            .info(&format, self.staging_file().path())
+            .info(format, self.staging_file().path())
     }
 
     pub fn fragment_id(&self) -> Hash {

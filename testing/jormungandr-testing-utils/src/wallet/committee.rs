@@ -116,7 +116,7 @@ impl ElectionPublicKeyExtension for ElectionPublicKey {
 }
 
 pub fn election_key_from_base32(key: &str) -> Result<ElectionPublicKey, Error> {
-    let (hrp, data) = bech32::decode(&key).map_err(Error::InvalidBech32)?;
+    let (hrp, data) = bech32::decode(key).map_err(Error::InvalidBech32)?;
     if hrp != ENCRYPTING_VOTE_PK_HRP {
         return Err(Error::InvalidBech32Key {
             expected: ENCRYPTING_VOTE_PK_HRP.to_string(),

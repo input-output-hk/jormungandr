@@ -198,7 +198,7 @@ mod test {
         const VALUE: u8 = 15;
         const DURATION_STR: &str = "---\n15s";
 
-        let decoded: SlotDuration = serde_yaml::from_str(&DURATION_STR).unwrap();
+        let decoded: SlotDuration = serde_yaml::from_str(DURATION_STR).unwrap();
 
         assert_eq!(decoded.0, VALUE)
     }

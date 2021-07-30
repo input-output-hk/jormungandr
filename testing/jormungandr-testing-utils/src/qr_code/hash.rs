@@ -12,7 +12,7 @@ pub enum Error {
     #[error("invalid secret key")]
     SecretKey(#[from] SecretKeyError),
     #[error("failed to decode hex")]
-    HexDecodeError(#[from] hex::FromHexError),
+    HexDecode(#[from] hex::FromHexError),
 }
 
 pub fn generate(key: SecretKey<Ed25519Extended>, password: &[u8]) -> String {

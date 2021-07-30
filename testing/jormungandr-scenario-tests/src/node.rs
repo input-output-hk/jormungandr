@@ -541,7 +541,7 @@ impl Node {
         context: &'a Context<R>,
         node_settings: &'a mut NodeSetting,
     ) -> SpawnBuilder<'a, R, Node> {
-        SpawnBuilder::new(&context, node_settings)
+        SpawnBuilder::new(context, node_settings)
     }
 
     pub fn progress_bar(&self) -> &ProgressBarController {

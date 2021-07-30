@@ -896,7 +896,7 @@ pub fn new_epoch_leadership_from(
                 let (ledger, rewards_info) = ledger
                     .distribute_rewards(
                         distribution,
-                        &parent.epoch_ledger_parameters(),
+                        parent.epoch_ledger_parameters(),
                         reward_info_dist,
                     )
                     .expect("Distribution of rewards will not overflow");

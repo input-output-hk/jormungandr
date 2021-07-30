@@ -70,7 +70,7 @@ impl UserInteractionController {
         vote_plan_alias: &str,
         node_alias: &str,
     ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
-        let committee_address = self.controller.wallet(&committee_alias)?.address();
+        let committee_address = self.controller.wallet(committee_alias)?.address();
         let vote_plan_def = self.controller.vote_plan(vote_plan_alias)?;
 
         let mut temp_wallets = self.wallets_mut().clone();
@@ -114,7 +114,7 @@ impl UserInteractionController {
         proposal_index: usize,
         choice: u8,
     ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
-        let address = self.controller.wallet(&wallet_alias)?.address();
+        let address = self.controller.wallet(wallet_alias)?.address();
         let vote_plan_def = self.controller.vote_plan(vote_plan_alias)?;
 
         let mut temp_wallets = self.wallets_mut().clone();
@@ -161,8 +161,8 @@ impl UserInteractionController {
         node_alias: &str,
         value: Value,
     ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
-        let from_address = self.controller.wallet(&from_str)?.address();
-        let to_address = self.controller.wallet(&to_str)?.address();
+        let from_address = self.controller.wallet(from_str)?.address();
+        let to_address = self.controller.wallet(to_str)?.address();
 
         let to = self
             .wallets()

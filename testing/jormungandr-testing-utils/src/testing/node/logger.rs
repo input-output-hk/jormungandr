@@ -67,7 +67,7 @@ impl fmt::Display for LogEntry {
         if let Some(spans) = &self.spans {
             for span in spans {
                 let span_name = span.get("name").cloned().unwrap_or_default();
-                write!(f, "{}{{{}}}: ", span_name, flatten_fields(&span, "name"))?;
+                write!(f, "{}{{{}}}: ", span_name, flatten_fields(span, "name"))?;
             }
         }
         write!(f, " {}: ", self.target)?;
@@ -153,7 +153,7 @@ impl LogEntry {
     pub fn block_date(&self) -> Option<BlockDate> {
         self.fields
             .get("block_date")
-            .map(|block| block::BlockDate::from_str(&block).unwrap().into())
+            .map(|block| block::BlockDate::from_str(block).unwrap().into())
     }
 
     pub fn is_later_than(&self, reference_time: &SystemTime) -> bool {
@@ -264,14 +264,14 @@ impl JormungandrLogger {
 
     pub fn get_created_blocks_hashes(&self) -> Vec<Hash> {
         self.filter_entries_with_block_creation()
-            .map(|item| Hash::from_str(&item.span.unwrap().get("hash").unwrap()).unwrap())
+            .map(|item| Hash::from_str(item.span.unwrap().get("hash").unwrap()).unwrap())
             .collect()
     }
 
     pub fn get_created_blocks_hashes_after(&self, reference_time: SystemTime) -> Vec<Hash> {
         self.filter_entries_with_block_creation()
             .filter(|item| item.is_later_than(&reference_time))
-            .map(|item| Hash::from_str(&item.span.unwrap().get("hash").unwrap()).unwrap())
+            .map(|item| Hash::from_str(item.span.unwrap().get("hash").unwrap()).unwrap())
             .collect()
     }
 
@@ -327,7 +327,7 @@ impl JormungandrLogger {
                 .collect()
         }
 
-        let mut value: Value = serde_json::from_str(&line).unwrap();
+        let mut value: Value = serde_json::from_str(line).unwrap();
         value["fields"] = stringify_map(&value, "fields");
         if value.get("span").is_some() {
             value["span"] = stringify_map(&value, "span");

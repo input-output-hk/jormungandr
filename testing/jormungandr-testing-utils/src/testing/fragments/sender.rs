@@ -293,7 +293,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, &wallet2, node, value)?;
+            self.send_transaction(&mut wallet1, wallet2, node, value)?;
         }
         Ok(())
     }
@@ -312,7 +312,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, &wallet2, node, value)?;
+            self.send_transaction(&mut wallet1, wallet2, node, value)?;
             std::thread::sleep(duration);
         }
         Ok(())
@@ -331,8 +331,8 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, &wallet2, node, value)?;
-            self.send_transaction(&mut wallet2, &wallet1, node, value)?;
+            self.send_transaction(&mut wallet1, wallet2, node, value)?;
+            self.send_transaction(&mut wallet2, wallet1, node, value)?;
         }
         Ok(())
     }

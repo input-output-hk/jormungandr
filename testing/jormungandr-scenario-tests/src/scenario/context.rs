@@ -146,7 +146,7 @@ impl<RNG: RngCore> Context<RNG> {
     /// retrieve the original seed of the pseudo random generator
     #[inline]
     pub fn seed(&self) -> &Seed {
-        &self.rng.seed()
+        self.rng.seed()
     }
 
     pub fn progress_bar_mode(&self) -> ProgressBarMode {

@@ -349,7 +349,7 @@ impl ConfigurationBuilder {
         };
 
         fn write_secret(secret: &NodeSecret, output_file: ChildPath) -> PathBuf {
-            configuration::write_secret(&secret, &output_file);
+            configuration::write_secret(secret, &output_file);
             output_file.path().to_path_buf()
         }
 

@@ -201,7 +201,7 @@ pub fn test_legacy_node_all_fragments() {
 
     // 6. send pool update certificate
 
-    startup::sleep_till_next_epoch(1, &jormungandr.block0_configuration());
+    startup::sleep_till_next_epoch(1, jormungandr.block0_configuration());
     fragment = first_stake_pool_owner
         .issue_pool_update_cert(
             &jormungandr.genesis_block_hash(),

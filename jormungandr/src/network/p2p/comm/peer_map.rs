@@ -95,7 +95,7 @@ impl PeerMap {
     }
 
     pub fn refresh_peer(&mut self, id: &Address) -> Option<&mut PeerStats> {
-        self.map.get_refresh(&id).map(|data| &mut data.stats)
+        self.map.get_refresh(id).map(|data| &mut data.stats)
     }
 
     pub fn peer_comms(&mut self, id: &Address) -> Option<&mut PeerComms> {

@@ -111,7 +111,7 @@ pub(crate) fn committee_vote_tally_sign(
     let id = private_key.to_public().as_ref().try_into().unwrap();
 
     let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
-        private_key.sign_slice(&d.0)
+        private_key.sign_slice(d.0)
     });
 
     let proof = match vote_tally.tally_type() {
@@ -135,7 +135,7 @@ pub(crate) fn committee_encrypted_vote_tally_sign(
     let id = private_key.to_public().as_ref().try_into().unwrap();
 
     let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
-        private_key.sign_slice(&d.0)
+        private_key.sign_slice(d.0)
     });
 
     let proof = EncryptedVoteTallyProof { id, signature };
@@ -157,7 +157,7 @@ pub(crate) fn committee_vote_plan_sign(
     let id = private_key.to_public().as_ref().try_into().unwrap();
 
     let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
-        private_key.sign_slice(&d.0)
+        private_key.sign_slice(d.0)
     });
 
     let proof = VotePlanProof { id, signature };
@@ -191,7 +191,7 @@ pub(crate) fn stake_delegation_account_binding_sign(
     }
 
     let sig = AccountBindingSignature::new_single(&builder.get_auth_data(), |d| {
-        private_key.sign_slice(&d.0)
+        private_key.sign_slice(d.0)
     });
 
     Ok(SignedCertificate::StakeDelegation(delegation, sig))
@@ -238,7 +238,7 @@ where
 
     let mut sigs = Vec::new();
     for (i, key) in keys.iter() {
-        let sig = SingleAccountBindingSignature::new(&auth_data, |d| key.sign_slice(&d.0));
+        let sig = SingleAccountBindingSignature::new(&auth_data, |d| key.sign_slice(d.0));
         sigs.push((*i, sig))
     }
     let sig = PoolOwnersSigned { signatures: sigs };

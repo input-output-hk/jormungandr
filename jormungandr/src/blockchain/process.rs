@@ -298,7 +298,7 @@ async fn reprocess_tip(
 
     let others = branches
         .iter()
-        .filter(|r| !Arc::ptr_eq(&r, &tip_as_ref))
+        .filter(|r| !Arc::ptr_eq(r, &tip_as_ref))
         .collect::<Vec<_>>();
 
     for other in others {

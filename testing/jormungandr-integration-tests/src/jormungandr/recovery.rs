@@ -64,11 +64,11 @@ pub fn do_simple_transaction(
         .add_output(&account_receiver.address().to_string(), TX_VALUE.into())
         .add_output(&utxo_receiver.address().to_string(), TX_VALUE.into())
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_for_address(sender)
         .to_message();
     let tx_id = tx.fragment_id();
 
-    jcli.fragment_sender(&jormungandr)
+    jcli.fragment_sender(jormungandr)
         .send(&transaction_message)
         .assert_in_block();
 

@@ -66,7 +66,7 @@ impl Transaction {
         staging_file: P,
     ) {
         self.add_input(
-            &utxo.transaction_id(),
+            utxo.transaction_id(),
             utxo.index_in_transaction(),
             &amount.to_string(),
             staging_file,
@@ -75,7 +75,7 @@ impl Transaction {
 
     pub fn add_input_from_utxo<P: AsRef<Path>>(self, utxo: &UTxOInfo, staging_file: P) {
         self.add_input(
-            &utxo.transaction_id(),
+            utxo.transaction_id(),
             utxo.index_in_transaction(),
             &utxo.associated_fund().to_string(),
             staging_file,
@@ -92,7 +92,7 @@ impl Transaction {
 
     pub fn add_account<P: AsRef<Path>>(self, account_addr: &str, amount: &str, staging_file: P) {
         self.command
-            .add_account(&account_addr, amount, staging_file)
+            .add_account(account_addr, amount, staging_file)
             .build()
             .assert()
             .success();
@@ -123,7 +123,7 @@ impl Transaction {
 
     pub fn add_output<P: AsRef<Path>>(self, addr: &str, amount: Value, staging_file: P) {
         self.command
-            .add_output(&addr, &amount.to_string(), staging_file)
+            .add_output(addr, &amount.to_string(), staging_file)
             .build()
             .assert()
             .success();
@@ -144,7 +144,7 @@ impl Transaction {
         staging_file: P,
     ) {
         self.command
-            .finalize_with_fee(&address, &linear_fee, staging_file)
+            .finalize_with_fee(address, linear_fee, staging_file)
             .build()
             .assert()
             .success();
@@ -210,7 +210,7 @@ impl Transaction {
                 staging_dir,
                 genesis_hash,
                 &account.signing_key().to_bech32_str(),
-                &"account",
+                "account",
                 Some(account.internal_counter().into()),
                 staging_file,
             ),
@@ -218,7 +218,7 @@ impl Transaction {
                 staging_dir,
                 genesis_hash,
                 &utxo.last_signing_key().to_bech32_str(),
-                &"utxo",
+                "utxo",
                 None,
                 staging_file,
             ),
@@ -226,7 +226,7 @@ impl Transaction {
                 staging_dir,
                 genesis_hash,
                 &delegation.last_signing_key().to_bech32_str(),
-                &"utxo",
+                "utxo",
                 None,
                 staging_file,
             ),
@@ -247,7 +247,7 @@ impl Transaction {
             staging_dir,
             &genesis_hash,
             &transaction_id,
-            &addr_type,
+            addr_type,
             private_key,
             spending_key,
         )

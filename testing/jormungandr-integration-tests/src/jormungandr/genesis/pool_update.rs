@@ -28,13 +28,13 @@ pub fn update_pool_fees_is_not_allowed() {
     stake_pool_info.rewards = TaxType::zero();
 
     // 6. send pool update certificate
-    startup::sleep_till_next_epoch(1, &jormungandr.block0_configuration());
+    startup::sleep_till_next_epoch(1, jormungandr.block0_configuration());
 
     let transaction = stake_pool_owner
         .issue_pool_update_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            &stake_pool,
+            stake_pool,
             &new_stake_pool,
         )
         .unwrap()

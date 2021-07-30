@@ -186,7 +186,7 @@ impl Schedule {
             let leaders = &self.enclave.leaders_data.read().await.leaders;
             let date = self.leadership.date_at_slot(self.current_slot);
             for (id, leader) in leaders {
-                match self.leadership.is_leader_for_date(&leader, date) {
+                match self.leadership.is_leader_for_date(leader, date) {
                     LeaderOutput::None => (),
                     leader_output => self.current_slot_data.push(LeaderEvent {
                         id: *id,

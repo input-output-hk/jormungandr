@@ -44,7 +44,7 @@ impl SpawnPassiveNode {
             LeadershipMode::Passive,
             self.storage,
             &self.alias,
-            self.legacy.as_ref().map(|x| Version::parse(&x).unwrap()),
+            self.legacy.as_ref().map(|x| Version::parse(x).unwrap()),
             self.wait,
         )
     }
@@ -145,7 +145,7 @@ impl SpawnLeaderNode {
             LeadershipMode::Leader,
             self.storage,
             &self.alias,
-            self.legacy.as_ref().map(|x| Version::parse(&x).unwrap()),
+            self.legacy.as_ref().map(|x| Version::parse(x).unwrap()),
             self.wait,
         )
     }

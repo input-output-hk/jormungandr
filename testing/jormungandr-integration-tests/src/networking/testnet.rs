@@ -142,12 +142,12 @@ impl TestnetConfig {
 
 fn create_actor_account(private_key: &str, jormungandr: &JormungandrProcess) -> Wallet {
     let jcli: JCli = Default::default();
-    let actor_account = Wallet::from_existing_account(&private_key, None);
+    let actor_account = Wallet::from_existing_account(private_key, None);
     let account_state = jcli
         .rest()
         .v0()
         .account_stats(actor_account.address().to_string(), jormungandr.rest_uri());
-    Wallet::from_existing_account(&private_key, Some(account_state.counter()))
+    Wallet::from_existing_account(private_key, Some(account_state.counter()))
 }
 
 fn bootstrap_current(testnet_config: TestnetConfig, network_alias: &str) {
@@ -283,7 +283,7 @@ pub fn itn_bootstrap_current() {
 fn get_legacy_app(temp_dir: &TempDir) -> (PathBuf, Version) {
     let releases = download_last_n_releases(1);
     let last_release = releases.get(0).unwrap();
-    let jormungandr = get_jormungandr_bin(&last_release, temp_dir);
+    let jormungandr = get_jormungandr_bin(last_release, temp_dir);
     (jormungandr, last_release.version())
 }
 

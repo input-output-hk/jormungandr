@@ -164,7 +164,7 @@ impl RawSettings {
             config,
         } = self;
         let command_arguments = &command_line.start_arguments;
-        let network = generate_network(&command_arguments, &config)?;
+        let network = generate_network(command_arguments, &config)?;
 
         let storage = match (
             command_arguments.storage.as_ref(),

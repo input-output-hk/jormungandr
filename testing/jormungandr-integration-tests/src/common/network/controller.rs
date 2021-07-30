@@ -120,7 +120,7 @@ impl Controller {
         spawn_params: &SpawnParams,
         expected_msg: &str,
     ) -> Result<(), ControllerError> {
-        let mut starter = self.make_starter_for(&spawn_params)?;
+        let mut starter = self.make_starter_for(spawn_params)?;
         starter.start_with_fail_in_logs(expected_msg)?;
         Ok(())
     }
@@ -129,7 +129,7 @@ impl Controller {
         &mut self,
         spawn_params: &SpawnParams,
     ) -> Result<JormungandrProcess, ControllerError> {
-        let mut starter = self.make_starter_for(&spawn_params)?;
+        let mut starter = self.make_starter_for(spawn_params)?;
         let process = starter.start()?;
         Ok(process)
     }

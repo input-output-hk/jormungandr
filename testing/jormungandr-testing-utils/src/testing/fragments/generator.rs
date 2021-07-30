@@ -74,7 +74,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
 
         for stake_pool in stake_pools.iter() {
             self.fragment_sender
-                .send_pool_registration(&mut self.sender, &stake_pool, &self.node)
+                .send_pool_registration(&mut self.sender, stake_pool, &self.node)
                 .unwrap();
         }
 
@@ -101,7 +101,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
 
         for vote_plan in vote_plans_for_tally.iter() {
             self.fragment_sender
-                .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
+                .send_vote_plan(&mut self.sender, vote_plan, &self.node)
                 .unwrap();
         }
         self.vote_plan_for_casting = Some(vote_plan_for_casting);

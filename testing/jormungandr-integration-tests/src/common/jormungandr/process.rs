@@ -93,7 +93,7 @@ impl JormungandrProcess {
                     log_content: self.logger.get_log_content(),
                 });
             }
-            match self.status(&verification_mode) {
+            match self.status(verification_mode) {
                 Status::Running => {
                     println!("jormungandr is up");
                     return Ok(());

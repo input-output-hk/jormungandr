@@ -342,7 +342,7 @@ impl fmt::Display for Certificate {
 impl FromStr for Certificate {
     type Err = CertificateFromStrError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Certificate::from_bech32(&s)?)
+        Ok(Certificate::from_bech32(s)?)
     }
 }
 

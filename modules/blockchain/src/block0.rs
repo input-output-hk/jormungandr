@@ -15,6 +15,7 @@ pub enum Block0Error {
 }
 
 #[derive(Debug, Error)]
+#[allow(clippy::enum_variant_names)]
 pub enum Block0Malformed {
     #[error("missing its initial settings")]
     NoInitialSettings,
@@ -49,7 +50,7 @@ pub fn start_time(block0: &Block) -> Result<SystemTime, Block0Error> {
 fn initial(block0: &Block) -> Result<&ConfigParams, Block0Malformed> {
     for fragment in block0.fragments() {
         if let Fragment::Initial(init) = fragment {
-            return Ok(&init);
+            return Ok(init);
         }
     }
     Err(Block0Malformed::NoInitialSettings)

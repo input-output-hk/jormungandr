@@ -43,7 +43,7 @@ pub fn measure_single_transaction_propagation_speed<A: SyncNode + FragmentNode +
     let node = leaders.iter().next().unwrap();
     let check = controller.fragment_sender().send_transaction(
         &mut wallet1,
-        &wallet2,
+        wallet2,
         *node,
         1_000.into(),
     )?;

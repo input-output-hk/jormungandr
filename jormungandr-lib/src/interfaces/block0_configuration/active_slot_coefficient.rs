@@ -231,7 +231,7 @@ mod test {
         const VALUE: Milli = Milli::from_millis(220);
         const ACTIVE_SLOT_STR: &str = "---\n\"0.220\"";
 
-        let decoded: ActiveSlotCoefficient = serde_yaml::from_str(&ACTIVE_SLOT_STR).unwrap();
+        let decoded: ActiveSlotCoefficient = serde_yaml::from_str(ACTIVE_SLOT_STR).unwrap();
 
         assert_eq!(decoded.0, VALUE)
     }
