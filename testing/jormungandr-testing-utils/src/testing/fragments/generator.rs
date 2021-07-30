@@ -262,7 +262,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                 // wallet_idx is always 0 because we are using only one wallet
                 let wallet_idx = 0;
                 let wallet_votes_to_cast = vote_cast_register.advance_single(wallet_idx).unwrap();
-                let votes_to_cast = wallet_votes_to_cast.next(wallet_idx);
+                let votes_to_cast = wallet_votes_to_cast.get(0).unwrap();
                 let vote_plan = self
                     .vote_plans_for_casting
                     .iter()

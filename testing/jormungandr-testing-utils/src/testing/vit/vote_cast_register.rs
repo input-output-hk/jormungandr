@@ -1,16 +1,23 @@
 #![allow(dead_code)]
 
-use chain_impl_mockchain::certificate::VotePlanId;
-use std::collections::HashMap;
+use chain_impl_mockchain::certificate::{VotePlan, VotePlanId};
 use std::iter;
 use std::ops::Range;
 use thiserror::Error;
 
+#[derive(Clone)]
 pub struct VoteCastCounter {
     register: Vec<WalletVoteCastPosition>,
 }
 
 impl VoteCastCounter {
+    pub fn from_vote_plan(wallet_count: usize, vote_plan: &VotePlan) -> Self {
+        Self::new(
+            wallet_count,
+            vec![(vote_plan.to_id(), vote_plan.proposals().len() as u8)],
+        )
+    }
+
     pub fn new(wallet_count: usize, vote_plans: Vec<(VotePlanId, u8)>) -> Self {
         Self {
             register: iter::from_fn(|| Some(WalletVoteCastPosition::new(vote_plans.clone())))
@@ -27,34 +34,27 @@ impl VoteCastCounter {
         self.available_to_send() == 0
     }
 
-    pub fn advance_single(&mut self, wallet_idx: usize) -> Result<WalletVotesToCast, Error> {
+    pub fn advance_single(&mut self, wallet_idx: usize) -> Result<Vec<VotesToCast>, Error> {
         self.advance_batch(1, wallet_idx)
     }
 
     pub fn advance_batch(
         &mut self,
-        mut requested_batch_size: usize,
+        requested_batch_size: usize,
         wallet_idx: usize,
-    ) -> Result<WalletVotesToCast, Error> {
-        let mut wallet_votes_to_cast = WalletVotesToCast::new();
-
+    ) -> Result<Vec<VotesToCast>, Error> {
         let vote_plan = self.register.get_mut(wallet_idx).unwrap();
-
         let votes_to_cast = vote_plan.advance_batch(requested_batch_size).map_err(|_| {
             Error::NoMoreRequestsToSentForLoad {
                 wallet_idx,
                 requested_batch_size,
             }
         })?;
-        votes_to_cast.iter().for_each(|votes_to_cast| {
-            requested_batch_size -= votes_to_cast.range.end - votes_to_cast.range.start
-        });
-        wallet_votes_to_cast.add(wallet_idx, votes_to_cast);
-
-        Ok(wallet_votes_to_cast)
+        Ok(votes_to_cast)
     }
 }
 
+#[derive(Clone)]
 pub struct WalletVoteCastPosition {
     register: Vec<VotePlanVoteCastPosition>,
 }
@@ -129,7 +129,7 @@ impl WalletVoteCastPosition {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VotePlanVoteCastPosition {
     id: VotePlanId,
     limit: u8,
@@ -214,46 +214,9 @@ impl VotesToCast {
     pub fn range(&self) -> Range<usize> {
         self.range.clone()
     }
-}
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct WalletVotesToCast {
-    votes: HashMap<usize, Vec<VotesToCast>>,
-}
-
-impl WalletVotesToCast {
-    pub fn new() -> Self {
-        Self {
-            votes: HashMap::new(),
-        }
-    }
-
-    pub fn add(&mut self, idx: usize, mut votes_to_cast: Vec<VotesToCast>) {
-        if let Some(votes) = self.votes.get_mut(&idx) {
-            votes.append(&mut votes_to_cast);
-            return;
-        }
-
-        self.votes.insert(idx, votes_to_cast);
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.count() != 0
-    }
-
-    pub fn count(&self) -> usize {
-        self.votes
-            .iter()
-            .fold(0, |_, (_, votes)| votes.iter().map(|y| y.count()).sum())
-    }
-
-    pub fn votes(&self) -> HashMap<usize, Vec<VotesToCast>> {
-        self.votes.clone()
-    }
-
-    pub fn next(&self, id: usize) -> VotesToCast {
-        let votes = self.votes.get(&id).unwrap();
-        votes.iter().next().unwrap().clone()
+    pub fn first(&self) -> u8 {
+        self.range.start as u8
     }
 }
 
@@ -419,7 +382,7 @@ mod tests {
         for i in 0..wallets {
             for j in 0..375 {
                 println!("{}{}", i, j);
-                let mut expected = WalletVotesToCast::new();
+                let mut expected = Vec::new();
                 let expected_id = {
                     if j < limit_1 {
                         vote_plan_id_1.clone()
@@ -427,13 +390,10 @@ mod tests {
                         vote_plan_id_2.clone()
                     }
                 };
-                expected.add(
-                    i,
-                    vec![VotesToCast {
-                        id: expected_id,
-                        range: j % limit_1..j % limit_1 + 1,
-                    }],
-                );
+                expected.push(VotesToCast {
+                    id: expected_id,
+                    range: j % limit_1..j % limit_1 + 1,
+                });
                 assert_eq!(vote_cast_counter.advance_single(i).unwrap(), expected);
             }
         }
@@ -459,21 +419,18 @@ mod tests {
             ],
         );
 
-        let mut expected_wallet_cast = WalletVotesToCast::new();
-        expected_wallet_cast.add(
-            0,
-            vec![VotesToCast {
-                id: vote_plan_id_1.clone(),
-                range: 0..50,
-            }],
-        );
+        let mut expected_wallet_cast = Vec::new();
+        expected_wallet_cast.push(VotesToCast {
+            id: vote_plan_id_1.clone(),
+            range: 0..50,
+        });
 
         assert_eq!(
             vote_cast_counter.advance_batch(50, 0).unwrap(),
             expected_wallet_cast
         );
 
-        let mut expected_wallet_cast = WalletVotesToCast::new();
+        let mut expected_wallet_cast = Vec::new();
         expected_wallet_cast.add(
             0,
             vec![
@@ -493,14 +450,11 @@ mod tests {
             expected_wallet_cast
         );
 
-        let mut expected_wallet_cast = WalletVotesToCast::new();
-        expected_wallet_cast.add(
-            0,
-            vec![VotesToCast {
-                id: vote_plan_id_2,
-                range: 30..40,
-            }],
-        );
+        let mut expected_wallet_cast = Vec::new();
+        expected_wallet_cast.push(VotesToCast {
+            id: vote_plan_id_2,
+            range: 30..40,
+        });
 
         assert_eq!(
             vote_cast_counter.advance_batch(50, 0).unwrap(),
