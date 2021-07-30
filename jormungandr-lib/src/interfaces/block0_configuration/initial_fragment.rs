@@ -125,9 +125,9 @@ fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDe
 impl<'a> From<&'a Initial> for Fragment {
     fn from(initial: &'a Initial) -> Fragment {
         match initial {
-            Initial::Fund(utxo) => pack_utxo_in_message(&utxo),
-            Initial::Cert(cert) => pack_certificate_in_empty_tx_fragment(&cert),
-            Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(&utxo),
+            Initial::Fund(utxo) => pack_utxo_in_message(utxo),
+            Initial::Cert(cert) => pack_certificate_in_empty_tx_fragment(cert),
+            Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(utxo),
         }
     }
 }

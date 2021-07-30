@@ -46,8 +46,8 @@ impl JormungandrStateVerifier {
         to: &Wallet,
         value: Value,
     ) -> Result<(), StateVerifierError> {
-        self.wallet_lost_value(&from, value)?;
-        self.wallet_gain_value(&to, value)?;
+        self.wallet_lost_value(from, value)?;
+        self.wallet_gain_value(to, value)?;
         Ok(())
     }
 

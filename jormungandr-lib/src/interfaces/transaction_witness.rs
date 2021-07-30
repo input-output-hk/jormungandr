@@ -26,7 +26,7 @@ impl TransactionWitness {
 
         let bytes = self.as_ref().serialize_as_vec().unwrap();
 
-        bech32::encode(&HRP, bytes.to_base32()).unwrap()
+        bech32::encode(HRP, bytes.to_base32()).unwrap()
     }
 
     pub fn from_bech32_str(s: &str) -> Result<Self, TransactionWitnessFromStrError> {

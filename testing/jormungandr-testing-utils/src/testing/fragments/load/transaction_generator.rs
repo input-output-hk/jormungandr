@@ -82,7 +82,7 @@ impl<'a, S: SyncNode + Send> TransactionGenerator<'a, S> {
         let reciever = recievers.get(0).unwrap();
 
         self.fragment_sender
-            .send_transaction(&mut sender, &reciever, &self.jormungandr, 1.into())
+            .send_transaction(&mut sender, reciever, &self.jormungandr, 1.into())
             .map(|x| *x.fragment_id())
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))
     }

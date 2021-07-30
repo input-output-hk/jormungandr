@@ -173,7 +173,7 @@ impl Dotifier {
 "###
         )?;
         for node in settings.network_settings.nodes.values() {
-            let label = self.dot_node_label(&node);
+            let label = self.dot_node_label(node);
             writeln!(&mut w, "    {}", &label)?;
 
             for trusted_peer in node.node_topology.trusted_peers() {
@@ -190,7 +190,7 @@ impl Dotifier {
 
         for wallet in settings.network_settings.wallets.values() {
             let template = wallet.template();
-            let label = self.dot_wallet_label(&template);
+            let label = self.dot_wallet_label(template);
             writeln!(&mut w, "  {}", &label)?;
 
             if let Some(node) = template.delegate() {

@@ -27,7 +27,7 @@ pub fn build_genesis_block(
     temp_dir: &impl PathChild,
 ) -> PathBuf {
     let config_file = temp_dir.child("genesis.yaml");
-    write_block0_config(&block0_config, &config_file);
+    write_block0_config(block0_config, &config_file);
     let output_block_file = temp_dir.child("block-0.bin");
     let jcli: JCli = Default::default();
     jcli.genesis()
@@ -74,7 +74,7 @@ pub fn start_stake_pool(
 
     let stake_pool_registration_certs: Vec<SignedCertificate> = stake_pools
         .iter()
-        .map(|x| signed_stake_pool_cert(&x).into())
+        .map(|x| signed_stake_pool_cert(x).into())
         .collect();
     let stake_pool_owner_delegation_certs: Vec<SignedCertificate> = stake_pools
         .iter()

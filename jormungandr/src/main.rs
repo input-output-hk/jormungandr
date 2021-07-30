@@ -225,7 +225,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             let secret = secure::NodeSecret::load_from_file(secret_path.as_path())?;
             if let (Some(leaders), Some(leader)) = (&bft_leaders, secret.bft()) {
                 let public_key = &leader.sig_key.to_public();
-                if !leaders.contains(&public_key) {
+                if !leaders.contains(public_key) {
                     tracing::warn!(
                         "node was started with a BFT secret key but the corresponding \
                         public key {} is not listed among consensus leaders",

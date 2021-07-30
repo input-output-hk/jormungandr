@@ -158,7 +158,7 @@ pub async fn get_tip(context: &Context) -> Result<String, Error> {
 }
 
 pub async fn get_stats_counter(context: &Context) -> Result<NodeStatsDto, Error> {
-    let stats = create_stats(&context).await?;
+    let stats = create_stats(context).await?;
     Ok(NodeStatsDto {
         version: env!("SIMPLE_VERSION").to_string(),
         state: context.node_state().clone(),
@@ -231,8 +231,8 @@ async fn create_stats(context: &Context) -> Result<Option<NodeStats>, Error> {
             Ok(())
         })?;
 
-    let peer_available_cnt = get_network_p2p_view(&context).await?.len();
-    let peer_quarantined_cnt = get_network_p2p_quarantined(&context).await?.len();
+    let peer_available_cnt = get_network_p2p_view(context).await?.len();
+    let peer_quarantined_cnt = get_network_p2p_quarantined(context).await?.len();
     let peer_total_cnt = peer_available_cnt + peer_quarantined_cnt;
     let tip_header = tip.header();
     let stats = &full_context.stats_counter;
@@ -262,7 +262,7 @@ pub async fn get_block_id(context: &Context, block_id_hex: &str) -> Result<Optio
     context
         .blockchain()?
         .storage()
-        .get(parse_block_hash(&block_id_hex)?)?
+        .get(parse_block_hash(block_id_hex)?)?
         .map(|b| b.serialize_as_vec().map_err(Error::Serialize))
         .transpose()
 }
@@ -273,7 +273,7 @@ pub async fn get_block_next_id(
     count: usize,
 ) -> Result<Option<Vec<u8>>, Error> {
     let blockchain = context.blockchain()?;
-    let block_id = parse_block_hash(&block_id_hex)?;
+    let block_id = parse_block_hash(block_id_hex)?;
     let tip = context.blockchain_tip()?.get_ref().await;
     let maybe_stream = blockchain
         .storage()

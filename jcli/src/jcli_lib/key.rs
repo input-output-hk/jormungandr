@@ -329,7 +329,7 @@ impl Verify {
         A: SigningAlgorithm,
         <A as AsymmetricKey>::PubAlg: VerificationAlgorithm,
     {
-        let public = A::PubAlg::public_from_binary(&public_bytes)?;
+        let public = A::PubAlg::public_from_binary(public_bytes)?;
         let (hrp, data) = read_bech32(&self.signature)?;
         if hrp != A::PubAlg::SIGNATURE_BECH32_HRP {
             return Err(Error::UnexpectedBech32SignHrp {
@@ -377,7 +377,7 @@ impl Derive {
             }
         }
 
-        let child_key_bech32 = bech32::encode(&hrp, child_key)?;
+        let child_key_bech32 = bech32::encode(hrp, child_key)?;
         let mut output = self.child_key.open()?;
         writeln!(output, "{}", child_key_bech32)?;
         Ok(())

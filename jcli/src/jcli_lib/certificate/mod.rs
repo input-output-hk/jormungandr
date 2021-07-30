@@ -257,7 +257,7 @@ fn read_cert(input: Option<&Path>) -> Result<interfaces::Certificate, Error> {
     use std::str::FromStr as _;
 
     let cert_str = read_input(input)?;
-    let cert = interfaces::Certificate::from_str(&cert_str.trim_end())?;
+    let cert = interfaces::Certificate::from_str(cert_str.trim_end())?;
     Ok(cert)
 }
 

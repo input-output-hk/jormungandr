@@ -84,7 +84,7 @@ impl Block0DataSource for Block {
 fn initial(block: &Block) -> Result<&ConfigParams, Block0Malformed> {
     for fragment in block.fragments() {
         if let Fragment::Initial(init) = fragment {
-            return Ok(&init);
+            return Ok(init);
         }
     }
     Err(Block0Malformed::NoInitialSettings)

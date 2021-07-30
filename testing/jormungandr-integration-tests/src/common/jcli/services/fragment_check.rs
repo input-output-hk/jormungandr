@@ -44,7 +44,7 @@ impl<'a> FragmentCheck<'a> {
     pub fn assert_rejected(self, expected_reason: &str) {
         let wait: Wait = Default::default();
         self.wait_until_processed(&wait).unwrap();
-        self.assert_log_shows_rejected(&expected_reason);
+        self.assert_log_shows_rejected(expected_reason);
     }
 
     pub fn wait_until_processed(&self, wait: &Wait) -> Result<FragmentId, Error> {

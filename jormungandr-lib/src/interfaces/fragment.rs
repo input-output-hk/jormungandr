@@ -30,7 +30,7 @@ impl FragmentDef {
     where
         S: Serializer,
     {
-        serialize_fragment(&fragment, serializer)
+        serialize_fragment(fragment, serializer)
     }
 }
 

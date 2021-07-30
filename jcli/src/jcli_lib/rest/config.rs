@@ -60,11 +60,11 @@ pub enum Error {
     #[error("node rejected request because of invalid parameters")]
     InvalidParams(#[source] reqwest::Error),
     #[error("node internal error")]
-    InternalError(#[source] reqwest::Error),
+    Internal(#[source] reqwest::Error),
     #[error("redirecting error while connecting with node")]
     Redirecton(#[source] reqwest::Error),
     #[error("communication with node failed in unexpected way")]
-    UnexpectedError(#[source] reqwest::Error),
+    Unexpected(#[source] reqwest::Error),
 }
 
 impl RestArgs {
@@ -203,14 +203,14 @@ impl RestRequestBuilder {
                     if status.is_client_error() {
                         Error::InvalidParams(e)
                     } else if status.is_server_error() {
-                        Error::InternalError(e)
+                        Error::Internal(e)
                     } else if status.is_redirection() {
                         Error::Redirecton(e)
                     } else {
-                        Error::UnexpectedError(e)
+                        Error::Unexpected(e)
                     }
                 } else {
-                    Error::UnexpectedError(e)
+                    Error::Unexpected(e)
                 }
             })?;
 

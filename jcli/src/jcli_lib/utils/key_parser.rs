@@ -64,9 +64,9 @@ pub fn read_ed25519_secret_key_from_file<P: AsRef<Path>>(
 }
 
 pub fn parse_ed25519_secret_key(bech32_str: &str) -> Result<EitherEd25519SecretKey, Error> {
-    match SecretKey::try_from_bech32_str(&bech32_str) {
+    match SecretKey::try_from_bech32_str(bech32_str) {
         Ok(sk) => Ok(EitherEd25519SecretKey::Extended(sk)),
-        Err(_) => SecretKey::try_from_bech32_str(&bech32_str)
+        Err(_) => SecretKey::try_from_bech32_str(bech32_str)
             .map(EitherEd25519SecretKey::Normal)
             .map_err(Error::SecretKeyMalformed),
     }

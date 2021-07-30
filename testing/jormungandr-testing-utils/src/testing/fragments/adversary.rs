@@ -260,7 +260,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         self.send_faulty_transactions_with_iteration_delay(
             n,
             &mut wallet1,
-            &wallet2,
+            wallet2,
             node,
             std::time::Duration::from_secs(0),
         )
@@ -278,7 +278,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
     ) -> Result<Vec<MemPoolCheck>, AdversaryFragmentSenderError> {
         let mut mem_checks = Vec::new();
         for _ in 0..n {
-            mem_checks.push(self.send_random_faulty_transaction(&mut wallet1, &wallet2, node)?);
+            mem_checks.push(self.send_random_faulty_transaction(&mut wallet1, wallet2, node)?);
             std::thread::sleep(duration);
         }
         Ok(mem_checks)

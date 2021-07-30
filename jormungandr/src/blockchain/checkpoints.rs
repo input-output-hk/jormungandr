@@ -25,7 +25,7 @@ impl Checkpoints {
 
             for _ in 0..ignore_prev {
                 if let Some(prev_epoch) = current_ref.last_ref_previous_epoch() {
-                    current_ref = Arc::clone(&prev_epoch);
+                    current_ref = Arc::clone(prev_epoch);
                 } else {
                     break;
                 }

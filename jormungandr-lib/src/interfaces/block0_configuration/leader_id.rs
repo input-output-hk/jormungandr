@@ -108,7 +108,7 @@ mod test {
         const STR: &str =
             "---\n\"ed25519_pk1evu9kfx9tztez708nac569hcp0xwkvekxpwc7m8ztxu44tmq4gws3yayej\"";
 
-        let _: ConsensusLeaderId = serde_yaml::from_str(&STR).unwrap();
+        let _: ConsensusLeaderId = serde_yaml::from_str(STR).unwrap();
     }
 
     quickcheck! {

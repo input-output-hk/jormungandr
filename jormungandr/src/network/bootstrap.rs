@@ -59,7 +59,7 @@ const MAX_BOOTSTRAP_PEERS: u32 = 32;
 pub async fn peers_from_trusted_peer(peer: &Peer) -> Result<Vec<topology::Peer>, Error> {
     tracing::info!("getting peers from bootstrap peer {}", peer.connection);
 
-    let mut client = grpc::connect(&peer).await.map_err(Error::Connect)?;
+    let mut client = grpc::connect(peer).await.map_err(Error::Connect)?;
     let gossip = client
         .peers(MAX_BOOTSTRAP_PEERS)
         .await
@@ -99,7 +99,7 @@ pub async fn bootstrap_from_peer(
 
     tracing::debug!("connecting to bootstrap peer {}", peer.connection);
 
-    let mut client = with_cancellation_token(grpc::connect(&peer).boxed(), &cancellation_token)
+    let mut client = with_cancellation_token(grpc::connect(peer).boxed(), &cancellation_token)
         .await?
         .map_err(Error::Connect)?;
 

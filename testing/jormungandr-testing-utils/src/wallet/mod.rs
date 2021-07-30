@@ -225,7 +225,7 @@ impl Wallet {
 
     pub fn sign_slice(&self, data: &[u8]) -> Signature<TransactionBindingAuthDataPhantom, Ed25519> {
         match self {
-            Wallet::Account(account) => account.signing_key().as_ref().sign_slice(&data),
+            Wallet::Account(account) => account.signing_key().as_ref().sign_slice(data),
             _ => unimplemented!(),
         }
     }
@@ -307,7 +307,7 @@ impl Wallet {
     }
 
     pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> Initial {
-        FragmentBuilder::full_delegation_cert_for_block0(&self, pool_id)
+        FragmentBuilder::full_delegation_cert_for_block0(self, pool_id)
     }
 
     pub fn transaction_to(
@@ -318,7 +318,7 @@ impl Wallet {
         value: Value,
     ) -> Result<Fragment, WalletError> {
         FragmentBuilder::new(block0_hash, fees)
-            .transaction(&self, address, value)
+            .transaction(self, address, value)
             .map_err(WalletError::FragmentError)
     }
 
@@ -330,7 +330,7 @@ impl Wallet {
         value: Value,
     ) -> Result<Fragment, WalletError> {
         FragmentBuilder::new(block0_hash, fees)
-            .transaction_to_many(&self, address, value)
+            .transaction_to_many(self, address, value)
             .map_err(WalletError::FragmentError)
     }
 
@@ -340,7 +340,7 @@ impl Wallet {
         fees: &LinearFee,
         stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_retire(vec![&self], stake_pool))
+        Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_retire(vec![self], stake_pool))
     }
 
     pub fn issue_pool_registration_cert(
@@ -349,7 +349,7 @@ impl Wallet {
         fees: &LinearFee,
         stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_registration(&self, stake_pool))
+        Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_registration(self, stake_pool))
     }
 
     pub fn issue_pool_update_cert(
@@ -360,7 +360,7 @@ impl Wallet {
         update_stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
         Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_update(
-            vec![&self],
+            vec![self],
             stake_pool,
             update_stake_pool,
         ))
@@ -372,7 +372,7 @@ impl Wallet {
         fees: &LinearFee,
         stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).delegation(&self, stake_pool))
+        Ok(FragmentBuilder::new(block0_hash, fees).delegation(self, stake_pool))
     }
 
     pub fn issue_owner_delegation_cert(
@@ -381,7 +381,7 @@ impl Wallet {
         fees: &LinearFee,
         stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).owner_delegation(&self, stake_pool))
+        Ok(FragmentBuilder::new(block0_hash, fees).owner_delegation(self, stake_pool))
     }
 
     pub fn issue_split_delegation_cert(
@@ -390,7 +390,7 @@ impl Wallet {
         fees: &LinearFee,
         distribution: Vec<(&StakePool, u8)>,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).delegation_to_many(&self, distribution))
+        Ok(FragmentBuilder::new(block0_hash, fees).delegation_to_many(self, distribution))
     }
 
     pub fn remove_delegation_cert(
@@ -398,7 +398,7 @@ impl Wallet {
         block0_hash: &Hash,
         fees: &LinearFee,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).delegation_remove(&self))
+        Ok(FragmentBuilder::new(block0_hash, fees).delegation_remove(self))
     }
 
     pub fn issue_vote_plan_cert(
@@ -407,7 +407,7 @@ impl Wallet {
         fees: &LinearFee,
         vote_plan: &VotePlan,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).vote_plan(&self, vote_plan))
+        Ok(FragmentBuilder::new(block0_hash, fees).vote_plan(self, vote_plan))
     }
 
     pub fn issue_vote_cast_cert(
@@ -423,12 +423,12 @@ impl Wallet {
                 block0_hash,
                 fees,
             )
-            .public_vote_cast(&self, vote_plan, proposal_index, choice)),
+            .public_vote_cast(self, vote_plan, proposal_index, choice)),
             chain_impl_mockchain::vote::PayloadType::Private => Ok(FragmentBuilder::new(
                 block0_hash,
                 fees,
             )
-            .private_vote_cast(&self, vote_plan, proposal_index, choice)),
+            .private_vote_cast(self, vote_plan, proposal_index, choice)),
         }
     }
 
@@ -438,7 +438,7 @@ impl Wallet {
         fees: &LinearFee,
         vote_plan: &VotePlan,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).encrypted_tally(&self, vote_plan))
+        Ok(FragmentBuilder::new(block0_hash, fees).encrypted_tally(self, vote_plan))
     }
 
     pub fn issue_vote_tally_cert(
@@ -448,7 +448,7 @@ impl Wallet {
         vote_plan: &VotePlan,
         tally_type: VoteTallyPayload,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).vote_tally(&self, vote_plan, tally_type))
+        Ok(FragmentBuilder::new(block0_hash, fees).vote_tally(self, vote_plan, tally_type))
     }
 
     pub fn to_committee_id(&self) -> CommitteeIdDef {

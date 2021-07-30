@@ -274,7 +274,7 @@ impl RawRest {
         F: Fn(&RawRest) -> Result<Response, reqwest::Error>,
     {
         loop {
-            let response = action(&self);
+            let response = action(self);
             println!("Waiting for 200... {:?}", response);
             if let Ok(response) = response {
                 if response.status().is_success() {

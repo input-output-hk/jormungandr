@@ -55,7 +55,7 @@ impl Multiverse {
 
     pub(super) async fn get_ref(&self, hash: &HeaderHash) -> Option<multiverse::Ref<State>> {
         let guard = self.inner.read().await;
-        guard.multiverse.get_ref(&hash)
+        guard.multiverse.get_ref(hash)
     }
 
     /// run the garbage collection of the multiverse

@@ -18,15 +18,15 @@ use tracing_futures::Instrument;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    ContextError(#[from] crate::rest::context::Error),
+    Context(#[from] crate::rest::context::Error),
     #[error(transparent)]
     PublicKey(#[from] PublicKeyFromStrError),
     #[error(transparent)]
-    IntercomError(#[from] intercom::Error),
+    Intercom(#[from] intercom::Error),
     #[error(transparent)]
-    TxMsgSendError(#[from] TrySendError<TransactionMsg>),
+    TxMsgSend(#[from] TrySendError<TransactionMsg>),
     #[error(transparent)]
-    MsgSendError(#[from] SendError),
+    MsgSend(#[from] SendError),
     #[error("Block value calculation error")]
     Value(#[from] ValueError),
     #[error(transparent)]
@@ -59,7 +59,7 @@ pub async fn get_fragment_statuses<'a>(
             .await
             .map_err(|e| {
                 tracing::debug!(reason = %e, "error getting message statuses");
-                Error::MsgSendError(e)
+                Error::MsgSend(e)
             })?;
         reply_future
             .await
@@ -107,7 +107,7 @@ pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Er
             .await
             .map_err(|e| {
                 tracing::debug!(reason = %e, "error getting fragment logs");
-                Error::MsgSendError(e)
+                Error::MsgSend(e)
             })?;
         reply_future.await.map_err(Into::into)
     }

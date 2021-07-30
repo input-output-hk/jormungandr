@@ -72,7 +72,7 @@ impl FragmentExporter {
         let mut file = fs::File::create(&file_path)
             .map_err(|_| FragmentExporterError::CannotCreateDumpFile(file_path))?;
 
-        file.write_all(&self.format_fragment(fragment).as_bytes())
+        file.write_all(self.format_fragment(fragment).as_bytes())
             .map_err(|_| {
                 FragmentExporterError::CannotWriteFragmentToDumpFile(self.dump_folder.clone())
             })?;

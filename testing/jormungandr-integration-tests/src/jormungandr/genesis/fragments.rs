@@ -119,7 +119,7 @@ pub fn test_all_fragments() {
     let mut stake_pool_info = new_stake_pool.info_mut();
     stake_pool_info.serial = 100u128;
 
-    startup::sleep_till_next_epoch(1, &jormungandr.block0_configuration());
+    startup::sleep_till_next_epoch(1, jormungandr.block0_configuration());
 
     transaction_sender
         .send_pool_update(

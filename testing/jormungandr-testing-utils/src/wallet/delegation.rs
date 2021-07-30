@@ -55,7 +55,7 @@ impl Wallet {
     }
 
     pub fn delegation(&self, i: usize) -> &AccountIdentifier {
-        &self.delegations.get(i).unwrap()
+        self.delegations.get(i).unwrap()
     }
 
     pub fn address(&self) -> Address {

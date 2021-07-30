@@ -149,9 +149,9 @@ pub fn create_new_stake_pool(
         .to_message();
 
     account.confirm_transaction();
-    jcli.fragment_sender(&jormungandr)
+    jcli.fragment_sender(jormungandr)
         .send(&transaction)
-        .assert_in_block_with_wait(&wait);
+        .assert_in_block_with_wait(wait);
 
     let stake_pool_id = jcli
         .certificate()
@@ -203,16 +203,16 @@ pub fn delegate_stake(
         .to_message();
 
     account.confirm_transaction();
-    jcli.fragment_sender(&jormungandr)
+    jcli.fragment_sender(jormungandr)
         .send(&transaction)
-        .assert_in_block_with_wait(&wait);
+        .assert_in_block_with_wait(wait);
 
     let account_state_after_delegation = jcli
         .rest()
         .v0()
         .account_stats(account.address().to_string(), jormungandr.rest_uri());
 
-    let stake_pool_id_hash = Hash::from_str(&stake_pool_id).unwrap();
+    let stake_pool_id_hash = Hash::from_str(stake_pool_id).unwrap();
     assert!(
         account_state_after_delegation
             .delegation()
@@ -238,7 +238,7 @@ pub fn retire_stake_pool(
         .write_str(&account.signing_key_to_string())
         .unwrap();
 
-    let retirement_cert = jcli.certificate().new_stake_pool_retirement(&stake_pool_id);
+    let retirement_cert = jcli.certificate().new_stake_pool_retirement(stake_pool_id);
 
     let settings = jcli.rest().v0().settings(jormungandr.rest_uri());
     let fees: LinearFee = settings.fees;
@@ -251,21 +251,21 @@ pub fn retire_stake_pool(
         .add_account(&account.address().to_string(), &fee_value)
         .add_certificate(&retirement_cert)
         .finalize_with_fee(&account.address().to_string(), &fees)
-        .seal_with_witness_for_address(&account)
+        .seal_with_witness_for_address(account)
         .add_auth(owner_stake_key.path())
         .to_message();
 
     account.confirm_transaction();
-    jcli.fragment_sender(&jormungandr)
+    jcli.fragment_sender(jormungandr)
         .send(&transaction)
-        .assert_in_block_with_wait(&wait);
+        .assert_in_block_with_wait(wait);
 
     let account_state_after_stake_pool_retire = jcli
         .rest()
         .v0()
         .account_stats(account.address().to_string(), jormungandr.rest_uri());
 
-    let stake_pool_id_hash = Hash::from_str(&stake_pool_id).unwrap();
+    let stake_pool_id_hash = Hash::from_str(stake_pool_id).unwrap();
 
     assert!(
         account_state_after_stake_pool_retire

@@ -108,7 +108,7 @@ impl ScenariosRepository {
             }
             suite_result.push(self.run_single_scenario(
                 &scenario_to_run.name(),
-                &available_scenarios,
+                available_scenarios,
                 &mut context,
             ));
         }

@@ -82,7 +82,7 @@ pub fn send_transaction_and_ensure_block_was_produced(
     let block_tip_before_transaction = jcli.rest().v0().tip(&jormungandr.rest_uri());
     let block_counter_before_transaction = jormungandr.logger.get_created_blocks_counter();
 
-    jcli.fragment_sender(&jormungandr)
+    jcli.fragment_sender(jormungandr)
         .send_many(transation_messages)
         .wait_until_all_processed(&Default::default())
         .map_err(NodeStuckError::InternalJcliError)?;
@@ -113,9 +113,9 @@ pub fn check_transaction_was_processed(
     value: u64,
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
-    send_transaction_and_ensure_block_was_produced(&[transaction], &jormungandr)?;
+    send_transaction_and_ensure_block_was_produced(&[transaction], jormungandr)?;
 
-    check_funds_transferred_to(&receiver.address().to_string(), value.into(), &jormungandr)?;
+    check_funds_transferred_to(&receiver.address().to_string(), value.into(), jormungandr)?;
 
     jormungandr
         .check_no_errors_in_log()

@@ -166,7 +166,7 @@ where
         E: DeserializerError,
     {
         use chain_crypto::bech32::Error as Bech32Error;
-        match Self::Value::try_from_bech32_str(&v) {
+        match Self::Value::try_from_bech32_str(v) {
             Err(Bech32Error::DataInvalid(err)) => Err(E::custom(format!("Invalid data: {}", err))),
             Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
                 "Invalid prefix: expected {} but was {}",
@@ -207,7 +207,7 @@ where
         E: DeserializerError,
     {
         use chain_crypto::bech32::Error as Bech32Error;
-        match Self::Value::try_from_bech32_str(&v) {
+        match Self::Value::try_from_bech32_str(v) {
             Err(Bech32Error::DataInvalid(err)) => Err(E::custom(format!("Invalid data: {}", err))),
             Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
                 "Invalid prefix: expected {} but was {}",
@@ -251,7 +251,7 @@ where
         E: DeserializerError,
     {
         use chain_crypto::bech32::Error as Bech32Error;
-        match Self::Value::try_from_bech32_str(&v) {
+        match Self::Value::try_from_bech32_str(v) {
             Err(Bech32Error::DataInvalid(err)) => Err(E::custom(format!("Invalid data: {}", err))),
             Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
                 "Invalid prefix: expected {} but was {}",

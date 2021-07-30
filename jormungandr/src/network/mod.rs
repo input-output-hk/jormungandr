@@ -721,7 +721,7 @@ pub async fn fetch_block(
 
     let span = span!(Level::TRACE, "fetch_block", block = %hash.to_string());
     async {
-        for address in trusted_peers_shuffled(&config) {
+        for address in trusted_peers_shuffled(config) {
             let peer_span = span!(Level::TRACE, "peer_address", address = %address.to_string());
             let peer = Peer::new(address);
             match grpc::fetch_block(&peer, hash)

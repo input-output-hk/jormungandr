@@ -147,7 +147,7 @@ impl ControllerBuilder {
             let file = std::fs::File::create(&path.join("initial_setup.dot"))?;
 
             let dotifier = Dotifier;
-            dotifier.dottify(&settings, file)?;
+            dotifier.dottify(settings, file)?;
 
             for wallet in settings.network_settings.wallets.values() {
                 wallet.save_to(path)?;

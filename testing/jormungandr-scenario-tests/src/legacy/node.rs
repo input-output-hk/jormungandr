@@ -303,7 +303,7 @@ impl LegacyNodeController {
         for _ in 0..max_try {
             let logs = self.fragment_logs()?;
 
-            if let Some(log) = logs.get(&check.fragment_id()) {
+            if let Some(log) = logs.get(check.fragment_id()) {
                 use jormungandr_lib::interfaces::FragmentStatus::*;
                 let status = log.status().clone();
                 match log.status() {
@@ -534,7 +534,7 @@ impl LegacyNode {
         context: &'a Context<R>,
         node_settings: &'a mut NodeSetting,
     ) -> SpawnBuilder<'a, R, LegacyNode> {
-        SpawnBuilder::new(&context, node_settings)
+        SpawnBuilder::new(context, node_settings)
     }
     pub fn capture_logs(&mut self) {
         let stderr = self.process.stderr.take().unwrap();

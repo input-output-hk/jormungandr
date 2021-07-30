@@ -55,27 +55,27 @@ pub fn test_key_with_seed_generation() {
     let correct_seed = "73855612722627931e20c850f8ad53eb04c615c7601a95747be073dcada3e135";
     let generated_key = jcli
         .key()
-        .generate_with_seed("Ed25519Extended", &correct_seed);
+        .generate_with_seed("Ed25519Extended", correct_seed);
     assert_ne!(generated_key, "", "generated key is empty");
 }
 
 #[test]
 pub fn test_key_with_too_short_seed_generation() {
     let too_short_seed = "73855612722627931e20c850f8ad53eb04c615c7601a95747be073dcadaa";
-    test_key_invalid_seed_length(&too_short_seed);
+    test_key_invalid_seed_length(too_short_seed);
 }
 
 #[test]
 pub fn test_key_with_too_long_seed_generation() {
     let too_long_seed = "73855612722627931e20c850f8ad53eb04c615c7601a95747be073dcada0234212";
-    test_key_invalid_seed_length(&too_long_seed);
+    test_key_invalid_seed_length(too_long_seed);
 }
 
 fn test_key_invalid_seed_length(seed: &str) {
     let jcli: JCli = Default::default();
     jcli.key().generate_with_seed_expect_fail(
         "Ed25519Extended",
-        &seed,
+        seed,
         "invalid seed length, expected 32 bytes but received",
     );
 }
@@ -86,7 +86,7 @@ pub fn test_key_with_seed_with_unknown_symbol_generation() {
     let incorrect_seed = "73855612722627931e20c850f8ad53eb04c615c7601a95747be073dcay";
     jcli.key().generate_with_seed_expect_fail(
         "Ed25519Extended",
-        &incorrect_seed,
+        incorrect_seed,
         "invalid Hexadecimal",
     );
 }

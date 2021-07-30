@@ -136,7 +136,7 @@ impl FragmentBuilder {
         let mut inner_distribution: Vec<(&StakePoolLib, u8)> = Vec::new();
 
         for (inner_stake_pool, (_, factor)) in inner_stake_pools.iter().zip(distribution) {
-            inner_distribution.push((&inner_stake_pool, factor));
+            inner_distribution.push((inner_stake_pool, factor));
         }
 
         self.fragment_factory()

@@ -86,7 +86,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentGenerator<'a, S> {
         let reciever = recievers.get(0).unwrap();
 
         self.adversary_fragment_sender
-            .send_random_faulty_transaction(&mut sender, &reciever, &self.jormungandr)
+            .send_random_faulty_transaction(&mut sender, reciever, &self.jormungandr)
             .map(|x| *x.fragment_id())
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))
     }
