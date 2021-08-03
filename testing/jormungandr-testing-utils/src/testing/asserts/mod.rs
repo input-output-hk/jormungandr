@@ -14,7 +14,7 @@ pub trait VotePlanStatusAssert {
 impl VotePlanStatusAssert for Vec<VotePlanStatus> {
     fn assert_all_proposals_are_tallied(&self) {
         for vote_plan_status in self.iter() {
-            self.assert_all_proposals_in_voteplan_are_tallied(&vote_plan_status);
+            self.assert_all_proposals_in_voteplan_are_tallied(vote_plan_status);
         }
     }
 

@@ -109,7 +109,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         .map(|vote_plan| {
             let fragment = self
                 .fragment_sender
-                .send_vote_plan(&mut self.sender, vote_plan, &self.node)
+                .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
                 .unwrap();
 
             FragmentVerifier
@@ -133,7 +133,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         .map(|vote_plan| {
             let fragment = self
                 .fragment_sender
-                .send_vote_plan(&mut self.sender, vote_plan, &self.node)
+                .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
                 .unwrap();
 
             FragmentVerifier
@@ -271,7 +271,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
 
                 self.fragment_sender.send_vote_cast(
                     &mut self.sender,
-                    &vote_plan,
+                    vote_plan,
                     votes_to_cast.range().start as u8,
                     &Choice::new(1),
                     &self.node,
@@ -283,7 +283,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
 
                 self.fragment_sender.send_vote_tally(
                     &mut self.sender,
-                    &vote_plan,
+                    vote_plan,
                     &self.node,
                     VoteTallyPayload::Public,
                 )

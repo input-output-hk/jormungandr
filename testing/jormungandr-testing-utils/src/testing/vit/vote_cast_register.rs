@@ -45,7 +45,7 @@ impl VoteCastCounter {
     ) -> Result<Vec<VotesToCast>, Error> {
         let vote_plan = self.register.get_mut(wallet_idx).unwrap();
         let votes_to_cast = vote_plan.advance_batch(requested_batch_size).map_err(|_| {
-            Error::NoMoreRequestsToSentForLoad {
+            Error::LoadCannotSendAnyMoreRequests {
                 wallet_idx,
                 requested_batch_size,
             }
@@ -169,7 +169,7 @@ impl VotePlanVoteCastPosition {
         requested_batch_size: usize,
     ) -> Result<VotesToCast, Error> {
         if !self.can_send_next_batch(requested_batch_size) {
-            return Err(Error::NoMoreRequestsToSent {
+            return Err(Error::VotePlanIsDrainedFromVotes {
                 requested_batch_size,
                 available_to_send: self.available_to_send(),
             });
@@ -230,14 +230,14 @@ pub enum Error {
         available_to_send: usize,
     },
     #[error("no more requests to run requested: {requested_batch_size}, wallet_idx: {wallet_idx}")]
-    NoMoreRequestsToSentForLoad {
+    LoadCannotSendAnyMoreRequests {
         wallet_idx: usize,
         requested_batch_size: usize,
     },
     #[error(
         "no more requests to run requested: {requested_batch_size}, available: {available_to_send}"
     )]
-    NoMoreRequestsToSent {
+    VotePlanIsDrainedFromVotes {
         requested_batch_size: usize,
         available_to_send: usize,
     },
@@ -419,42 +419,36 @@ mod tests {
             ],
         );
 
-        let mut expected_wallet_cast = Vec::new();
-        expected_wallet_cast.push(VotesToCast {
+        let expected_wallet_cast = vec![VotesToCast {
             id: vote_plan_id_1.clone(),
             range: 0..50,
-        });
+        }];
 
         assert_eq!(
             vote_cast_counter.advance_batch(50, 0).unwrap(),
             expected_wallet_cast
         );
 
-        let mut expected_wallet_cast = Vec::new();
-        expected_wallet_cast.add(
-            0,
-            vec![
-                VotesToCast {
-                    id: vote_plan_id_1,
-                    range: 50..70,
-                },
-                VotesToCast {
-                    id: vote_plan_id_2.clone(),
-                    range: 0..30,
-                },
-            ],
-        );
+        let expected_wallet_cast = vec![
+            VotesToCast {
+                id: vote_plan_id_1,
+                range: 50..70,
+            },
+            VotesToCast {
+                id: vote_plan_id_2.clone(),
+                range: 0..30,
+            },
+        ];
 
         assert_eq!(
             vote_cast_counter.advance_batch(50, 0).unwrap(),
             expected_wallet_cast
         );
 
-        let mut expected_wallet_cast = Vec::new();
-        expected_wallet_cast.push(VotesToCast {
+        let expected_wallet_cast = vec![VotesToCast {
             id: vote_plan_id_2,
             range: 30..40,
-        });
+        }];
 
         assert_eq!(
             vote_cast_counter.advance_batch(50, 0).unwrap(),
