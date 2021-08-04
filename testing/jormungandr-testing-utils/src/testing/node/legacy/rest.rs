@@ -210,10 +210,7 @@ impl BackwardCompatibleRest {
                 checks,
             });
         }
-
         self.print_debug_response(&response);
-        println!("{:?}", response.text().unwrap());
-
         Ok(checks)
     }
 
