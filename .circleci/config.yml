@@ -100,6 +100,9 @@ commands:
           command: |
             cargo build -p jormungandr-scenario-tests --bin jormungandr-scenario-tests << parameters.mode >> << parameters.cargo_behavior >>
       - run:
+          name: Build tests on all features
+          command: cargo test --all-features --no-run
+      - run:
           name: Run tests
           environment:
             RUST_BACKTRACE: 1
