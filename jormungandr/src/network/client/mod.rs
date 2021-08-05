@@ -23,7 +23,7 @@ use chain_network::data::block::{BlockEvent, BlockIds, ChainPullRequest};
 
 use futures::prelude::*;
 use futures::ready;
-use tracing::{instrument, span, Level, Span};
+use tracing::{instrument, Span};
 use tracing_futures::Instrument;
 
 use std::pin::Pin;
