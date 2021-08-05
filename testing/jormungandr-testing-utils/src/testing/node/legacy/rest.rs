@@ -31,30 +31,30 @@ impl BackwardCompatibleRest {
         &self.raw
     }
 
-    pub fn settings(&self) -> &RestSettings {
-        &self.raw.settings()
+    pub fn rest_settings(&self) -> &RestSettings {
+        self.raw.rest_settings()
     }
 
     fn print_response_text(&self, text: &str) {
-        if self.settings().enable_debug {
+        if self.rest_settings().enable_debug {
             println!("Response: {}", text);
         }
     }
 
     fn print_debug_response(&self, response: &Response) {
-        if self.settings().enable_debug {
+        if self.rest_settings().enable_debug {
             println!("Response: {:?}", response);
         }
     }
 
     pub fn disable_logger(&mut self) {
         self.raw.disable_logger();
-        self.raw.settings_mut().enable_debug = false;
+        self.raw.rest_settings_mut().enable_debug = false;
     }
 
     pub fn enable_logger(&mut self) {
         self.raw.enable_logger();
-        self.raw.settings_mut().enable_debug = true;
+        self.raw.rest_settings_mut().enable_debug = true;
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<String, reqwest::Error> {
@@ -223,7 +223,7 @@ impl BackwardCompatibleRest {
     }
 
     pub fn set_origin<S: Into<String>>(&mut self, origin: S) {
-        self.raw.settings_mut().cors = Some(origin.into());
+        self.raw.rest_settings_mut().cors = Some(origin.into());
     }
 
     pub fn vote_plan_account_info(

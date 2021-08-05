@@ -330,31 +330,6 @@ impl Controller {
         }
     }
 
-    /// iapyx wallet is a mock mobile wallet
-    /// it uses some production code while handling wallet operation
-    // therefore controller has separate method to build such wallet
-    pub fn iapyx_wallet(
-        &self,
-        mnemonics: &str,
-        wallet_proxy: &WalletProxyController,
-    ) -> Result<iapyx::Controller> {
-        let settings = RestSettings {
-            use_https_for_post: false,
-            enable_debug: true,
-            certificate: None,
-            cors: None,
-        };
-
-        let backend = WalletBackend::new_from_addresses(
-            wallet_proxy.settings().address(),
-            wallet_proxy.settings().base_address().to_string(),
-            wallet_proxy.settings().base_address().to_string(),
-            settings,
-        );
-
-        Ok(iapyx::Controller::recover_with_backend(backend, mnemonics, &[]).unwrap())
-    }
-
     pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
         let mut spawn_params = SpawnParams::new(node_alias);
         spawn_params.node_key_file(self.node_dir(node_alias).path().into());
