@@ -47,10 +47,12 @@ impl BackwardCompatibleRest {
 
     pub fn disable_logger(&mut self) {
         self.raw.disable_logger();
+        self.settings.enable_debug = false;
     }
 
     pub fn enable_logger(&mut self) {
         self.raw.enable_logger();
+        self.settings.enable_debug = true;
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<String, reqwest::Error> {
@@ -203,6 +205,7 @@ impl BackwardCompatibleRest {
             .map(|x| MemPoolCheck::new(x.id()))
             .collect();
         let response = self.raw.send_fragment_batch(fragments, fail_fast)?;
+        self.print_debug_response(&response);
         if response.status() != reqwest::StatusCode::OK {
             return Err(RestError::NonSuccessErrorCode {
                 status: response.status(),
@@ -210,7 +213,6 @@ impl BackwardCompatibleRest {
                 checks,
             });
         }
-        self.print_debug_response(&response);
         Ok(checks)
     }
 
