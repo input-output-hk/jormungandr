@@ -184,6 +184,12 @@ impl JormungandrProcess {
         JormungandrRest::new(self.rest_uri())
     }
 
+    pub fn rest_debug(&self) -> JormungandrRest {
+        let mut rest = JormungandrRest::new(self.rest_uri());
+        rest.enable_logger();
+        rest
+    }
+
     pub fn secure_rest<P: AsRef<Path>>(&self, cert: P) -> JormungandrRest {
         JormungandrRest::new_with_cert(self.rest_uri(), cert)
     }
