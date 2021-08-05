@@ -1451,21 +1451,26 @@ dependencies = [
 
 [[package]]
 name = "gtmpl"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8bc64bdceb2909623131a62d470e809c32f86b8329d82f8d31d9971349cb00a"
+checksum = "1155260abe7fda8790f287b9f1800e3293f97ac7bd7f5df1c6c3f753773d8760"
 dependencies = [
+ "anyhow",
  "gtmpl_value",
- "itertools",
  "lazy_static",
  "percent-encoding",
+ "thiserror",
 ]
 
 [[package]]
 name = "gtmpl_value"
-version = "0.4.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8995bd73dd9ff926fdfe2b146e3e571d4b488488844561c9628cf7a736d973de"
+checksum = "1d61bf6605eabca491ef6db6ed194e0aa82900ccc8bdea4c56ac277102152dd5"
+dependencies = [
+ "anyhow",
+ "thiserror",
+]
 
 [[package]]
 name = "h2"
