@@ -299,6 +299,13 @@ impl Wallet {
         }
     }
 
+    pub fn decrement_counter(&mut self) {
+        match self {
+            Wallet::Account(account) => account.decrement_counter(),
+            _ => unimplemented!(),
+        }
+    }
+
     pub fn stake_key(&self) -> Option<UnspecifiedAccountIdentifier> {
         match &self {
             Wallet::Account(account) => Some(account.stake_key()),

@@ -31,6 +31,7 @@ pub fn dump_send_correct_fragments() {
         vec![&sender, &receiver],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
+            .with_block_content_max_size(10000)
             .with_slot_duration(1)
             .with_explorer()
             .with_mempool(Mempool {
@@ -56,6 +57,7 @@ pub fn dump_send_correct_fragments() {
         receiver,
         jormungandr.to_remote(),
         time_era.slots_per_epoch(),
+        2,
         2,
         2,
         fragment_sender,

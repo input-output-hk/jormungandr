@@ -3,6 +3,7 @@ pub use self::{
         AdversaryFragmentSender, AdversaryFragmentSenderError, AdversaryFragmentSenderSetup,
         FaultyTransactionBuilder,
     },
+    chain_sender::FragmentChainSender,
     export::{FragmentExporter, FragmentExporterError},
     generator::FragmentGenerator,
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
@@ -39,6 +40,7 @@ use rand_core::SeedableRng;
 use thiserror::Error;
 
 mod adversary;
+mod chain_sender;
 mod export;
 mod generator;
 mod initial_certificates;

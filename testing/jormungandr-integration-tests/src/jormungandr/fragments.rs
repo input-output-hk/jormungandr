@@ -23,7 +23,8 @@ pub fn send_all_fragments() {
         &[receiver.clone()],
         ConfigurationBuilder::new()
             .with_block0_consensus(ConsensusType::GenesisPraos)
-            .with_slots_per_epoch(60)
+            .with_slots_per_epoch(20)
+            .with_block_content_max_size(10000)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(3)
             .with_linear_fees(LinearFee::new(1, 1, 1))
@@ -49,8 +50,9 @@ pub fn send_all_fragments() {
         receiver,
         jormungandr.to_remote(),
         time_era.slots_per_epoch(),
-        30,
-        30,
+        2,
+        2,
+        2,
         fragment_sender,
     );
 
@@ -65,6 +67,8 @@ pub fn send_all_fragments() {
     time::wait_for_epoch(1, jormungandr.rest());
 
     let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
+
+    println!("{:?}", mem_checks);
     let verifier = FragmentVerifier;
     verifier
         .wait_and_verify_all_are_in_block(Duration::from_secs(2), mem_checks, &jormungandr)

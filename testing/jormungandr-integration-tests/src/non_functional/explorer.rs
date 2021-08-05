@@ -102,19 +102,15 @@ fn check_explorer_and_rest_are_in_sync(
     let block_tip = Hash::from_str(&jcli.rest().v0().tip(&jormungandr.rest_uri())).unwrap();
 
     let explorer = jormungandr.explorer();
-    let block = explorer
+    let last_block = explorer
         .last_block()
-        .map_err(NodeStuckError::InternalExplorerError)?
-        .data
-        .unwrap()
-        .tip
-        .block;
+        .map_err(NodeStuckError::InternalExplorerError)?;
 
-    if block_tip == Hash::from_str(&block.id).unwrap() {
+    if block_tip == Hash::from_str(&last_block.block().id).unwrap() {
         Ok(())
     } else {
         Err(NodeStuckError::ExplorerTipIsOutOfSync {
-            actual: Hash::from_str(&block.id).unwrap(),
+            actual: Hash::from_str(&last_block.block().id).unwrap(),
             expected: block_tip,
             logs: jormungandr.logger.get_log_content(),
         })

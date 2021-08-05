@@ -2,6 +2,7 @@ use crate::common::startup::start_stake_pool;
 use crate::common::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
+    startup,
 };
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
@@ -11,6 +12,7 @@ use chain_core::property::BlockDate;
 use chain_impl_mockchain::{
     certificate::{VoteAction, VoteTallyPayload},
     chaintypes::ConsensusType,
+    fee::LinearFee,
     ledger::governance::TreasuryGovernanceAction,
     milli::Milli,
     testing::VoteTestGen,
@@ -23,6 +25,7 @@ use jormungandr_lib::{
         ActiveSlotCoefficient, CommitteeIdDef, FeesGoTo, KesUpdateSpeed, Tally, VotePlanStatus,
     },
 };
+use jormungandr_testing_utils::testing::asserts::VotePlanStatusAssert;
 use jormungandr_testing_utils::testing::VotePlanExtension;
 use jormungandr_testing_utils::{
     testing::{
@@ -33,6 +36,7 @@ use jormungandr_testing_utils::{
 };
 use rand::rngs::OsRng;
 use rand_core::{CryptoRng, RngCore};
+use std::time::Duration;
 
 const TEST_COMMITTEE_SIZE: usize = 3;
 
@@ -183,19 +187,7 @@ pub fn test_vote_flow_bft() {
         .send_vote_cast(&mut bob, &vote_plan, 0, &favorable_choice, &jormungandr)
         .unwrap();
 
-    let rewards_before = jormungandr
-        .explorer()
-        .last_block()
-        .unwrap()
-        .data
-        .unwrap()
-        .tip
-        .block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
+    let rewards_before = jormungandr.explorer().last_block().unwrap().rewards();
 
     wait_for_epoch(1, jormungandr.rest());
 
@@ -230,19 +222,7 @@ pub fn test_vote_flow_bft() {
         jormungandr.rest().vote_plan_statuses().unwrap(),
     );
 
-    let rewards_after = jormungandr
-        .explorer()
-        .last_block()
-        .unwrap()
-        .data
-        .unwrap()
-        .tip
-        .block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
+    let rewards_after = jormungandr.explorer().last_block().unwrap().rewards();
 
     assert!(
         rewards_after == (rewards_before + rewards_increase),
@@ -361,19 +341,7 @@ pub fn test_vote_flow_praos() {
 
     wait_for_epoch(3, jormungandr.rest());
 
-    let rewards_after = jormungandr
-        .explorer()
-        .last_block()
-        .unwrap()
-        .data
-        .unwrap()
-        .tip
-        .block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
+    let rewards_after = jormungandr.explorer().last_block().unwrap().rewards();
 
     // We want to make sure that our small rewards increase is reflexed in current rewards amount
     assert!(
@@ -462,19 +430,7 @@ pub fn jcli_e2e_flow() {
 
     alice.confirm_transaction();
 
-    let rewards_before = jormungandr
-        .explorer()
-        .last_block()
-        .unwrap()
-        .data
-        .unwrap()
-        .tip
-        .block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
+    let rewards_before = jormungandr.explorer().last_block().unwrap().rewards();
 
     time::wait_for_epoch(1, jormungandr.rest());
 
@@ -554,6 +510,7 @@ pub fn jcli_e2e_flow() {
         .unwrap()
         .tally
         .is_some());
+
     assert_eq!(
         jormungandr
             .rest()
@@ -568,23 +525,126 @@ pub fn jcli_e2e_flow() {
         3
     );
 
-    let rewards_after = jormungandr
-        .explorer()
-        .last_block()
-        .unwrap()
-        .data
-        .unwrap()
-        .tip
-        .block
-        .treasury
-        .unwrap()
-        .rewards
-        .parse::<u64>()
-        .unwrap();
+    let rewards_after = jormungandr.explorer().last_block().unwrap().rewards();
 
     // We want to make sure that our small rewards increase is reflexed in current rewards amount
     assert!(
         rewards_after == rewards_before + rewards_increase,
         "Vote was unsuccessful"
+    );
+}
+
+#[test]
+pub fn duplicated_vote() {
+    let mut alice = startup::create_new_account_address();
+
+    let jormungandr = startup::start_bft(
+        vec![&alice],
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(20)
+            .with_slot_duration(3)
+            .with_linear_fees(LinearFee::new(0, 0, 0)),
+    )
+    .unwrap();
+
+    let alice_account_state = jormungandr.rest().account_state(&alice).unwrap();
+
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::OffChain)
+        .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .with_tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .with_tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .public()
+        .build();
+
+    jormungandr
+        .fragment_chain_sender(FragmentSenderSetup::no_verify())
+        .send_vote_plan(&mut alice, &vote_plan)
+        .unwrap()
+        .and_verify_is_in_block(Duration::from_secs(2))
+        .unwrap()
+        .then_wait_for_epoch(1)
+        .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(1))
+        .unwrap()
+        .and_verify_is_in_block(Duration::from_secs(2))
+        .unwrap()
+        .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(1))
+        .unwrap()
+        .and_verify_is_rejected(Duration::from_secs(2))
+        .unwrap()
+        .update_wallet(&mut alice, &|alice: &mut Wallet| alice.decrement_counter())
+        .then_wait_for_epoch(2)
+        .tally_vote(&mut alice, &vote_plan, VoteTallyPayload::Public)
+        .unwrap()
+        .and_verify_is_in_block(Duration::from_secs(2))
+        .unwrap();
+
+    let vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
+    vote_plans.assert_all_proposals_are_tallied();
+    vote_plans.assert_proposal_tally(
+        vote_plan.to_id().to_string(),
+        0,
+        vec![0, (*alice_account_state.value()).into(), 0],
+    );
+}
+
+#[test]
+pub fn non_duplicated_vote() {
+    let mut alice = startup::create_new_account_address();
+
+    let jormungandr = startup::start_bft(
+        vec![&alice],
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(20)
+            .with_slot_duration(3)
+            .with_linear_fees(LinearFee::new(0, 0, 0)),
+    )
+    .unwrap();
+
+    let alice_account_state = jormungandr.rest().account_state(&alice).unwrap();
+
+    let fragment_sender_chain = jormungandr.fragment_chain_sender(FragmentSenderSetup::no_verify());
+
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::OffChain)
+        .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .with_tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .with_tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .public()
+        .build();
+
+    fragment_sender_chain
+        .send_vote_plan(&mut alice, &vote_plan)
+        .unwrap()
+        .and_verify_is_in_block(Duration::from_secs(2))
+        .unwrap()
+        .then_wait_for_epoch(1)
+        .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(1))
+        .unwrap()
+        .and_verify_is_in_block(Duration::from_secs(2))
+        .unwrap()
+        .cast_vote(&mut alice, &vote_plan, 1, &Choice::new(1))
+        .unwrap()
+        .and_verify_is_in_block(Duration::from_secs(2))
+        .unwrap()
+        .then_wait_for_epoch(2)
+        .tally_vote(&mut alice, &vote_plan, VoteTallyPayload::Public)
+        .unwrap()
+        .and_verify_is_in_block(Duration::from_secs(2))
+        .unwrap();
+
+    let vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
+    vote_plans.assert_all_proposals_are_tallied();
+    vote_plans.assert_proposal_tally(
+        vote_plan.to_id().to_string(),
+        0,
+        vec![0, (*alice_account_state.value()).into(), 0],
+    );
+    vote_plans.assert_proposal_tally(
+        vote_plan.to_id().to_string(),
+        1,
+        vec![0, (*alice_account_state.value()).into(), 0],
     );
 }

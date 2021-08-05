@@ -1,6 +1,8 @@
 use crate::testing::SyncNode;
 use crate::{
-    testing::{FragmentSender, FragmentSenderError, MemPoolCheck, RemoteJormungandr},
+    testing::{
+        FragmentSender, FragmentSenderError, MemPoolCheck, RemoteJormungandr, VoteCastCounter,
+    },
     wallet::Wallet,
 };
 use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
@@ -16,6 +18,7 @@ pub struct VoteCastsGenerator<'a, S: SyncNode + Send> {
     rand: OsRng,
     fragment_sender: FragmentSender<'a, S>,
     send_marker: usize,
+    votes_register: VoteCastCounter,
 }
 
 impl<'a, S: SyncNode + Send> VoteCastsGenerator<'a, S> {
@@ -25,6 +28,8 @@ impl<'a, S: SyncNode + Send> VoteCastsGenerator<'a, S> {
         node: RemoteJormungandr,
         fragment_sender: FragmentSender<'a, S>,
     ) -> Self {
+        let votes_register = VoteCastCounter::from_vote_plan(voters.len(), &vote_plan);
+
         Self {
             voters,
             vote_plan,
@@ -32,6 +37,7 @@ impl<'a, S: SyncNode + Send> VoteCastsGenerator<'a, S> {
             rand: OsRng,
             fragment_sender,
             send_marker: 0,
+            votes_register,
         }
     }
 
@@ -39,14 +45,18 @@ impl<'a, S: SyncNode + Send> VoteCastsGenerator<'a, S> {
         self.send_marker = (self.send_marker + 1) % self.voters.len();
 
         let mut voter = self.voters.get_mut(self.send_marker).unwrap();
+        let vote_casts = self
+            .votes_register
+            .advance_single(self.send_marker)
+            .unwrap();
+        let vote_cast = vote_casts.get(0).unwrap();
 
         let choice = Choice::new((self.rand.next_u32() % 3) as u8);
-        let proposal_index = self.rand.next_u32() % (self.vote_plan.proposals().len() as u32);
 
         self.fragment_sender.send_vote_cast(
             &mut voter,
             &self.vote_plan,
-            proposal_index as u8,
+            vote_cast.first(),
             &choice,
             &self.node,
         )
@@ -77,6 +87,7 @@ impl<'a, S: SyncNode + Send + Sync + Clone> RequestGenerator for VoteCastsGenera
             fragment_sender: self.fragment_sender.clone(),
             rand: OsRng,
             send_marker: 1,
+            votes_register: self.votes_register.clone(),
         };
         (self, Some(other))
     }
