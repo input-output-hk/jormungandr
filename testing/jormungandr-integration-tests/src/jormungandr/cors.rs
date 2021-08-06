@@ -2,6 +2,7 @@ use crate::common::jormungandr::{ConfigurationBuilder, Starter};
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::Cors;
 use jormungandr_testing_utils::testing::node::JormungandrRest;
+use reqwest::StatusCode;
 
 #[test]
 pub fn cors_illegal_domain() -> Result<(), Box<dyn std::error::Error>> {
@@ -50,6 +51,7 @@ pub fn cors_malformed_domain_no_http() -> Result<(), Box<dyn std::error::Error>>
 }
 
 #[test]
+#[cfg(windows)]
 pub fn cors_ip_versus_domain() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new().unwrap();
 
@@ -65,7 +67,7 @@ pub fn cors_ip_versus_domain() -> Result<(), Box<dyn std::error::Error>> {
     let mut rest_client = jormungandr.rest();
     rest_client.set_origin("http://localhost");
 
-    println!("{:?}", rest_client.raw().stats()?.status());
+    assert_eq!(rest_client.raw().stats()?.status(), 403);
     Ok(())
 }
 
