@@ -38,7 +38,6 @@ pub fn test_correct_proposal_number_is_returned() {
         .with_slots_per_epoch(60)
         .with_certs(vec![vote_plan_cert])
         .with_explorer()
-        .with_slot_duration(1)
         .with_treasury(1_000.into())
         .build(&temp_dir);
 

@@ -35,7 +35,6 @@ pub fn dump_send_correct_fragments() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_block_content_max_size(10000)
-            .with_slot_duration(1)
             .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
@@ -101,7 +100,6 @@ pub fn dump_send_invalid_fragments() {
         vec![&sender, &receiver],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_slot_duration(1)
             .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
@@ -150,7 +148,6 @@ pub fn non_existing_folder() {
         vec![&sender, &receiver],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_slot_duration(1)
             .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
@@ -410,7 +407,6 @@ pub fn expired_fragment_should_be_rejected_by_leader_praos_node() {
         ConfigurationBuilder::new()
             .with_block_content_max_size(256) // This should only fit 1 transaction
             .with_slots_per_epoch(N_FRAGMENTS)
-            .with_slot_duration(1)
             .with_mempool(Mempool {
                 pool_max_entries: 1000.into(),
                 log_max_entries: 1000.into(),
@@ -457,7 +453,6 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
         ConfigurationBuilder::new()
             .with_block_content_max_size(256) // This should only fit 1 transaction
             .with_slots_per_epoch(N_FRAGMENTS)
-            .with_slot_duration(1)
             .with_mempool(Mempool {
                 pool_max_entries: 1000.into(),
                 log_max_entries: 1000.into(),

@@ -9,7 +9,7 @@ use jormungandr_testing_utils::testing::{
 };
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
-const DEFAULT_SLOT_DURATION: u8 = 1;
+const DEFAULT_SLOT_DURATION: u8 = 2;
 const LOCALHOST: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 pub struct Config {
     addr: SocketAddr,

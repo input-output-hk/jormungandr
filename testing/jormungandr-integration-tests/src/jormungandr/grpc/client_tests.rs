@@ -264,7 +264,6 @@ pub fn upload_block_incompatible_protocol() {
 pub fn upload_block_nonexisting_stake_pool() {
     let setup = setup::client::bootstrap(
         ConfigurationBuilder::new()
-            .with_slot_duration(1)
             .with_block0_consensus(ConsensusVersion::GenesisPraos)
             .to_owned(),
     );

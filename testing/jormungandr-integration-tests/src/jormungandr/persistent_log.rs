@@ -20,15 +20,13 @@ fn rejected_fragments_have_no_log() {
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[receiver.clone()],
-        ConfigurationBuilder::new()
-            .with_slot_duration(1)
-            .with_mempool(Mempool {
-                pool_max_entries: 1_000.into(),
-                log_max_entries: 1_000.into(),
-                persistent_log: Some(PersistentLog {
-                    dir: log_path.path().to_path_buf(),
-                }),
+        ConfigurationBuilder::new().with_mempool(Mempool {
+            pool_max_entries: 1_000.into(),
+            log_max_entries: 1_000.into(),
+            persistent_log: Some(PersistentLog {
+                dir: log_path.path().to_path_buf(),
             }),
+        }),
     )
     .unwrap();
 
