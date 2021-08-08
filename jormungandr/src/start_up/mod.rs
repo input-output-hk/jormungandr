@@ -165,7 +165,8 @@ pub async fn load_blockchain(
             error => Err(error),
         },
         Ok(branch) => Ok(branch),
-    }?;
+    }
+    .map_err(Box::new)?;
     let tip = Tip::new(main_branch);
     let tip_ref = tip.get_ref().await;
     tracing::info!(
