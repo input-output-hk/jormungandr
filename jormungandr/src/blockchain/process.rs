@@ -191,11 +191,11 @@ impl Process {
         });
 
         while let Some(input) = input.next().await {
-            self.handle_input(input);
+            self.handle_input(input).await;
         }
     }
 
-    fn handle_input(&mut self, input: BlockMsg) {
+    async fn handle_input(&mut self, input: BlockMsg) {
         let blockchain = self.blockchain.clone();
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
@@ -227,6 +227,7 @@ impl Process {
                     )
                     .instrument(span.clone()),
                 );
+                tokio::task::yield_now().await;
             }
             BlockMsg::AnnouncedBlock(header, node_id) => {
                 let span = span!(
