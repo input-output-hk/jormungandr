@@ -194,9 +194,8 @@ impl JormungandrLogger {
             // we are reading from logs produced by the node, if they are not valid there is something wrong
             let entry = Self::try_parse_line_as_entry(&line).unwrap();
             // Filter out logs produced by other libraries
-            if entry.target.starts_with("jormungandr") {
-                collected.push(entry);
-            }
+
+            collected.push(entry);
             // Stop reading if the are more recent messages available, otherwise
             // we risk that a very active process could result in endless collection
             // of its output
