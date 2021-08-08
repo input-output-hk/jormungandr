@@ -49,6 +49,7 @@ pub struct ConfigurationBuilder {
     leader_key_pair: Option<KeyPair<Ed25519>>,
     discrimination: Discrimination,
     tx_max_expiry_epochs: Option<u8>,
+    log_level: String,
 }
 
 impl Default for ConfigurationBuilder {
@@ -83,6 +84,7 @@ impl ConfigurationBuilder {
             total_reward_supply: None,
             discrimination: Discrimination::Test,
             tx_max_expiry_epochs: None,
+            log_level: "trace".into(),
         }
     }
 
@@ -213,12 +215,17 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_log_path(&mut self, path: PathBuf) -> &mut Self {
+    pub fn with_log_path(&mut self, path: PathBuf, level: String) -> &mut Self {
         self.with_log(Log(LogEntry {
             format: "json".to_string(),
-            level: "debug".to_string(),
+            level,
             output: LogOutput::File(path),
         }))
+    }
+
+    pub fn with_log_level(&mut self, level: String) -> &mut Self {
+        self.log_level = level;
+        self
     }
 
     pub fn without_log(&mut self) -> &mut Self {
@@ -309,7 +316,7 @@ impl ConfigurationBuilder {
             (None, true) => {
                 let path = default_log_file();
                 node_config.log = Some(Log(LogEntry {
-                    level: "trace".to_string(),
+                    level: self.log_level.clone(),
                     format: "json".to_string(),
                     output: LogOutput::Stdout,
                 }));
