@@ -1,5 +1,6 @@
 mod config;
 pub mod v0;
+pub mod v1;
 
 use crate::jcli_lib::utils::{io::ReadYamlError, output_format};
 pub use config::RestArgs;
@@ -13,6 +14,8 @@ use thiserror::Error;
 pub enum Rest {
     /// API version 0
     V0(v0::V0),
+    /// API version 1
+    V1(v1::V1),
 }
 
 #[derive(Debug, Error)]
@@ -46,6 +49,7 @@ impl Rest {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             Rest::V0(v0) => v0.exec(),
+            Rest::V1(v1) => v1.exec(),
         }
     }
 }
