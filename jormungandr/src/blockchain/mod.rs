@@ -1,3 +1,4 @@
+mod bootstrap;
 mod branch;
 mod candidate;
 mod chain;
@@ -25,6 +26,7 @@ mod chunk_sizes {
 // Re-exports
 
 pub use self::{
+    bootstrap::{bootstrap_from_stream, Error as BootstrapError},
     branch::Branch,
     chain::{
         new_epoch_leadership_from, Blockchain, CheckHeaderProof, EpochLeadership, Error,
@@ -33,7 +35,7 @@ pub use self::{
     chain_selection::{compare_against, ComparisonResult},
     checkpoints::Checkpoints,
     multiverse::Multiverse,
-    process::{process_new_ref, Process},
+    process::{start, TaskData},
     reference::Ref,
     storage::{Error as StorageError, Storage},
     tip::Tip,
