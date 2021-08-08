@@ -212,7 +212,14 @@ impl ExplorerDb {
         let addresses = apply_block_to_addresses(Addresses::new(), &block);
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(StakePool::new(), StakePoolBlocks::new(), &block);
-        let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &blockchain_tip, &block);
+        let block_id = block0.header.hash();
+
+        let block_ref = blockchain
+            .get_ref(block_id)
+            .await
+            .map_err(Box::new)?
+            .ok_or(Error::BlockNotFound(block_id))?;
+        let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &block_ref, &block);
 
         let initial_state = State {
             transactions,
@@ -321,6 +328,14 @@ impl ExplorerDb {
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(stake_pool_data, stake_pool_blocks, &explorer_block);
 
+        let block_ref = self
+            .blockchain()
+            .get_ref(block_id)
+            .await
+            .map_err(Box::new)?
+            .ok_or(Error::BlockNotFound(block_id))?;
+        let vote_plans = apply_block_to_vote_plans(vote_plans, &block_ref, &explorer_block);
+
         let state_ref = multiverse
             .insert(
                 chain_length,
@@ -334,15 +349,10 @@ impl ExplorerDb {
                     chain_lengths: apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
                     stake_pool_data,
                     stake_pool_blocks,
-                    vote_plans: apply_block_to_vote_plans(
-                        vote_plans,
-                        &self.blockchain_tip,
-                        &explorer_block,
-                    ),
+                    vote_plans,
                 },
             )
             .await;
-
         Ok(state_ref)
     }
 
@@ -705,7 +715,7 @@ fn apply_block_to_stake_pools(
 
 fn apply_block_to_vote_plans(
     mut vote_plans: VotePlans,
-    blockchain_tip: &blockchain::Tip,
+    block_ref: &Arc<blockchain::Ref>,
     block: &ExplorerBlock,
 ) -> VotePlans {
     for tx in block.transactions.values() {
@@ -798,17 +808,16 @@ fn apply_block_to_vote_plans(
                     use chain_impl_mockchain::vote::PayloadType;
                     vote_plans
                         .update(vote_tally.id(), |vote_plan| {
-                            let proposals_from_state =
-                                futures::executor::block_on(blockchain_tip.get_ref())
-                                    .active_vote_plans()
-                                    .into_iter()
-                                    .find_map(|vps| {
-                                        if vps.id != vote_plan.id {
-                                            return None;
-                                        }
-                                        Some(vps.proposals)
-                                    })
-                                    .unwrap();
+                            let proposals_from_state = block_ref
+                                .active_vote_plans()
+                                .into_iter()
+                                .find_map(|vps| {
+                                    if vps.id != vote_plan.id {
+                                        return None;
+                                    }
+                                    Some(vps.proposals)
+                                })
+                                .unwrap();
                             let proposals = vote_plan
                                 .proposals
                                 .clone()

@@ -1,5 +1,5 @@
 use crate::blockcfg::HeaderHash;
-use crate::{blockchain::StorageError, intercom};
+use crate::{blockchain::Error as ChainError, blockchain::StorageError, intercom};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -18,6 +18,8 @@ pub enum ExplorerError {
     BootstrapError(String),
     #[error("storage error")]
     StorageError(#[from] StorageError),
+    #[error("blockchain error")]
+    ChainError(#[from] Box<ChainError>),
     #[error("streaming error")]
     StreamingError(#[from] intercom::Error),
 }
