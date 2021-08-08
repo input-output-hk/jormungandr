@@ -12,6 +12,7 @@ use chain_core::property::{Block as _, Fragment as _, HasHeader as _};
 use jormungandr_lib::interfaces::FragmentStatus;
 use std::sync::Arc;
 use tokio::time::MissedTickBehavior;
+use tracing::instrument;
 
 use futures::prelude::*;
 
@@ -184,6 +185,7 @@ impl TipUpdater {
     /// this function will re-process the tip against the different branches
     /// this is because a branch may have become more interesting with time
     /// moving forward and branches may have been dismissed
+    #[instrument(level = "debug", skip(self))]
     async fn reprocess_tip(&mut self) -> Result<(), Error> {
         let branches: Vec<Arc<Ref>> = self.blockchain.branches().branches().await;
         let tip_as_ref = self.tip.get_ref().await;
