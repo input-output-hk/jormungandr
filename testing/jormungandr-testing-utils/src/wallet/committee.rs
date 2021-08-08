@@ -1,8 +1,6 @@
-use super::WalletError as Error;
 use crate::testing::network_builder::WalletAlias;
 use assert_fs::fixture::{ChildPath, PathChild};
-use bech32::FromBase32;
-use bech32::ToBase32;
+use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::{
     certificate::{DecryptedPrivateTally, DecryptedPrivateTallyProposal},
     vote::VotePlanStatus,
@@ -20,10 +18,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
 use std::io::Write;
-
-pub const COMMUNICATION_SK_HRP: &str = "vcommsk";
-pub const MEMBER_SK_HRP: &str = "membersk";
-pub const ENCRYPTING_VOTE_PK_HRP: &str = "votepk";
 
 #[derive(Clone)]
 pub struct PrivateVoteCommitteeData {
@@ -77,54 +71,14 @@ impl PrivateVoteCommitteeData {
         let path = directory.child("communication_key.sk");
         let mut file = File::create(path.path()).unwrap();
 
-        writeln!(
-            file,
-            "{}",
-            bech32::encode(
-                COMMUNICATION_SK_HRP,
-                self.communication_key.to_bytes().to_base32()
-            )
-            .unwrap()
-        )
-        .unwrap()
+        writeln!(file, "{}", self.communication_key.to_bech32_str()).unwrap()
     }
 
     fn write_member_secret_key(&self, directory: &ChildPath) {
         let path = directory.child("member_secret_key.sk");
         let mut file = File::create(path.path()).unwrap();
-        writeln!(
-            file,
-            "{}",
-            bech32::encode(
-                MEMBER_SK_HRP,
-                self.member_secret_key().to_bytes().to_base32()
-            )
-            .unwrap()
-        )
-        .unwrap()
+        writeln!(file, "{}", self.member_secret_key().to_bech32_str()).unwrap()
     }
-}
-
-pub trait ElectionPublicKeyExtension {
-    fn to_base32(&self) -> Result<String, bech32::Error>;
-}
-
-impl ElectionPublicKeyExtension for ElectionPublicKey {
-    fn to_base32(&self) -> Result<String, bech32::Error> {
-        bech32::encode(ENCRYPTING_VOTE_PK_HRP, self.to_bytes().to_base32())
-    }
-}
-
-pub fn election_key_from_base32(key: &str) -> Result<ElectionPublicKey, Error> {
-    let (hrp, data) = bech32::decode(key).map_err(Error::InvalidBech32)?;
-    if hrp != ENCRYPTING_VOTE_PK_HRP {
-        return Err(Error::InvalidBech32Key {
-            expected: ENCRYPTING_VOTE_PK_HRP.to_string(),
-            actual: hrp,
-        });
-    }
-    let key_bin = Vec::<u8>::from_base32(&data)?;
-    chain_vote::ElectionPublicKey::from_bytes(&key_bin).ok_or(Error::ElectionPublicKey)
 }
 
 impl fmt::Debug for PrivateVoteCommitteeData {
@@ -220,7 +174,7 @@ impl PrivateVoteCommitteeDataManager {
     fn write_election_public_key(&self, directory: &ChildPath) {
         let path = directory.child("election_public_key.sk");
         let mut file = File::create(path.path()).unwrap();
-        writeln!(file, "{}", self.election_public_key().to_base32().unwrap()).unwrap()
+        writeln!(file, "{}", self.election_public_key().to_bech32_str()).unwrap()
     }
 
     pub fn member_public_keys(&self) -> Vec<MemberPublicKey> {
