@@ -42,7 +42,7 @@ pub enum Error {
     #[error("Storage error")]
     StorageError(#[from] StorageError),
     #[error("Error while loading the legacy blockchain state")]
-    Blockchain(#[from] blockchain::Error),
+    Blockchain(#[from] Box<blockchain::Error>),
     #[error("Error in the genesis-block")]
     Block0(#[from] blockcfg::Block0Error),
     #[error("Error fetching the genesis block from the network")]
