@@ -57,7 +57,6 @@ pub struct ExplorerDb {
     longest_chain_tip: Tip,
     pub blockchain_config: BlockchainConfig,
     blockchain: Blockchain,
-    blockchain_tip: blockchain::Tip,
     stable_store: StableIndex,
     tip_broadcast: tokio::sync::broadcast::Sender<(HeaderHash, multiverse::Ref)>,
 }
@@ -177,11 +176,7 @@ impl ExplorerDb {
     /// Apply all the blocks in the [block0, MAIN_BRANCH_TAG], also extract the static
     /// Blockchain settings from the Block0 (Discrimination)
     /// This function is only called once on the node's bootstrap phase
-    pub async fn bootstrap(
-        block0: Block,
-        blockchain: &Blockchain,
-        blockchain_tip: blockchain::Tip,
-    ) -> Result<Self> {
+    pub async fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
                 .contents
@@ -252,7 +247,6 @@ impl ExplorerDb {
             longest_chain_tip: Tip::new(hash),
             blockchain_config,
             blockchain: blockchain.clone(),
-            blockchain_tip,
             stable_store: StableIndex {
                 confirmed_block_chain_length: Arc::new(AtomicU32::default()),
             },
