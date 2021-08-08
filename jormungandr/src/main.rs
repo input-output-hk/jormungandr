@@ -500,7 +500,7 @@ async fn bootstrap_internal(
 
     let explorer_db = if settings.explorer {
         futures::select! {
-            explorer_result = explorer::ExplorerDb::bootstrap(block0_explorer, &blockchain, blockchain_tip.clone()).fuse() => {
+            explorer_result = explorer::ExplorerDb::bootstrap(block0_explorer, &blockchain).fuse() => {
                 Some(explorer_result?)
             },
             _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),
