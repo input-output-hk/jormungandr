@@ -52,10 +52,10 @@ See Internal documentation for more details: doc/internal_design.md
 use super::{branch::Branches, reference_cache::RefCache};
 use crate::{
     blockcfg::{
-        Block, Block0Error, BlockDate, ChainLength, Epoch, EpochRewardsInfo, Header, HeaderHash,
-        Leadership, Ledger, LedgerParameters, RewardsInfoParameters,
+        Block, Block0Error, BlockDate, ChainLength, Epoch, EpochRewardsInfo, Header, HeaderDesc,
+        HeaderHash, Leadership, Ledger, LedgerParameters, RewardsInfoParameters,
     },
-    blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage, StorageError},
+    blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage, StorageError, Tip},
 };
 use chain_core::property::HasHeader;
 use chain_impl_mockchain::{leadership::Verification, ledger};
@@ -686,7 +686,7 @@ impl Blockchain {
     /// * the block0 does build a valid `Ledger`: `Error::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
-    pub async fn load_from_block0(&self, block0: Block) -> Result<Branch> {
+    pub async fn load_from_block0(&self, block0: Block) -> Result<Tip> {
         use chain_core::property::Block;
 
         let block0_id = block0.id();
@@ -701,7 +701,41 @@ impl Blockchain {
 
         self.storage.put_block(&block0)?;
         self.storage.put_tag(MAIN_BRANCH_TAG, block0_id)?;
-        Ok(block0_branch)
+        Ok(Tip::new(block0_branch))
+    }
+
+    pub(super) async fn handle_stream_block(
+        &self,
+        block: Block,
+        check_header: CheckHeaderProof,
+    ) -> Result<Arc<Ref>> {
+        let header = block.header.clone();
+
+        let pre_checked_header: PreCheckedHeader = self.pre_check_header(header, true).await?;
+
+        let new_ref = match pre_checked_header {
+            PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
+                let post_checked = self
+                    .post_check_header(header, parent_ref, check_header)
+                    .await?;
+
+                let applied = self.apply_and_store_block(post_checked, block).await?;
+                Ok(applied.cached_ref())
+            }
+            PreCheckedHeader::AlreadyPresent {
+                cached_reference: Some(block_ref),
+                ..
+            } => Ok(block_ref),
+            PreCheckedHeader::AlreadyPresent {
+                cached_reference: None,
+                ..
+            } => unreachable!("block ref was force loaded"),
+            PreCheckedHeader::MissingParent { header } => {
+                Err(Error::MissingParentBlock(header.block_parent_hash()))
+            }
+        }?;
+
+        Ok(new_ref)
     }
 
     /// returns a future that will propagate the initial states and leadership
@@ -718,7 +752,7 @@ impl Blockchain {
     /// * the block0 does build a valid `Ledger`: `Error::Block0InitialLedgerError`;
     /// * other errors while interacting with the storage (IO errors)
     ///
-    pub async fn load_from_storage(&self, block0: Block) -> Result<Branch> {
+    pub async fn load_from_storage(&self, block0: Block) -> Result<Tip> {
         let block0_id = block0.header.hash();
         let already_exist = self.storage.block_exists(block0_id)?;
 
@@ -734,70 +768,36 @@ impl Blockchain {
             return Err(Error::NoTag(MAIN_BRANCH_TAG.to_owned()));
         };
 
-        let block0_branch = self.apply_block0(&block0).await?;
+        let mut branch = self.apply_block0(&block0).await?;
+        let mut reporter = StreamReporter::new(|stream_info| {
+            let elapsed = stream_info
+                .last_reported
+                .elapsed()
+                .expect("time went backward");
+            tracing::info!(
+                "loading from storage, currently at {} processing={:?} ({:?} per block) ...",
+                stream_info.last_block_description.as_ref().unwrap(),
+                elapsed,
+                elapsed / PROCESS_LOGGING_DISTANCE as u32,
+            )
+        });
 
         let mut block_stream = self
             .storage
             .stream_from_to(block0_id, head_hash)
             .map(Box::pin)?;
 
-        let mut branch = block0_branch;
-        let mut count = 0u64;
-
-        let mut block_processing = std::time::Duration::from_secs(0);
-
         while let Some(r) = block_stream.next().await {
             let block = r?;
-
-            let header = block.header.clone();
-
-            const PROCESS_LOGGING_DISTANCE: u64 = 2500;
-            if count % PROCESS_LOGGING_DISTANCE == 0 {
-                tracing::info!(
-                    "loading from storage, currently at {} processing={:?} ({:?} per block) ...",
-                    header.description(),
-                    block_processing,
-                    block_processing / PROCESS_LOGGING_DISTANCE as u32,
-                );
-                block_processing = std::time::Duration::from_secs(0);
-            }
-
-            let block_process_start = std::time::SystemTime::now();
-
-            let pre_checked_header: PreCheckedHeader = self.pre_check_header(header, true).await?;
-
-            let post_checked_header = match pre_checked_header {
-                PreCheckedHeader::HeaderWithCache { header, parent_ref } => {
-                    self.post_check_header(header, parent_ref, CheckHeaderProof::SkipFromStorage)
-                        .await?
-                }
-                PreCheckedHeader::AlreadyPresent {
-                    header,
-                    cached_reference: _cached_reference,
-                } => unreachable!(
-                    "block already present, this should not happen. {:#?}",
-                    header
-                ),
-                PreCheckedHeader::MissingParent { header } => {
-                    return Err(Error::MissingParentBlock(header.block_parent_hash()))
-                }
-            };
-
-            let new_ledger = self.apply_block_dry_run(&post_checked_header, &block)?;
-            let new_ref = self
-                .apply_block_finalize(post_checked_header, new_ledger)
+            reporter.append_block(&block);
+            branch
+                .update_ref(
+                    self.handle_stream_block(block, CheckHeaderProof::SkipFromStorage)
+                        .await?,
+                )
                 .await;
-
-            count += 1;
-            let _: Arc<Ref> = branch.update_ref(new_ref).await;
-
-            let block_process_end = std::time::SystemTime::now();
-            let duration = block_process_end
-                .duration_since(block_process_start)
-                .unwrap_or_else(|_| std::time::Duration::from_secs(0));
-            block_processing += duration;
         }
-        Ok(branch)
+        Ok(Tip::new(branch))
     }
 
     pub async fn get_checkpoints(&self, branch: &Branch) -> Checkpoints {
@@ -941,6 +941,53 @@ pub fn new_epoch_leadership_from(
             rewards_info: parent_epoch_rewards_info,
             time_frame: parent_time_frame,
             previous_state: parent.last_ref_previous_epoch().map(Arc::clone),
+        }
+    }
+}
+
+pub struct StreamReporter<R> {
+    stream_info: StreamInfo,
+    report: R,
+}
+
+pub struct StreamInfo {
+    pub start: std::time::SystemTime,
+    pub last_reported: std::time::SystemTime,
+    pub last_bytes_received: u64,
+    pub bytes_received: u64,
+    pub block_received: u64,
+    pub last_block_description: Option<HeaderDesc>,
+}
+
+const PROCESS_LOGGING_DISTANCE: u64 = 2500;
+
+impl<R: Fn(&StreamInfo)> StreamReporter<R> {
+    pub fn new(report: R) -> Self {
+        let now = std::time::SystemTime::now();
+        let lbd: Option<HeaderDesc> = None;
+        StreamReporter {
+            stream_info: StreamInfo {
+                start: now,
+                last_reported: now,
+                last_bytes_received: 0,
+                bytes_received: 0,
+                block_received: 0,
+                last_block_description: lbd,
+            },
+            report,
+        }
+    }
+
+    pub fn append_block(&mut self, b: &Block) {
+        use chain_core::property::Serialize;
+        self.stream_info.bytes_received += b.serialize_as_vec().unwrap().len() as u64; // TODO sad serialization back
+        self.stream_info.block_received += 1;
+        self.stream_info.last_block_description = Some(b.header.description());
+
+        if self.stream_info.block_received % PROCESS_LOGGING_DISTANCE == 0 {
+            (self.report)(&self.stream_info);
+            self.stream_info.last_reported = std::time::SystemTime::now();
+            self.stream_info.last_bytes_received = self.stream_info.bytes_received;
         }
     }
 }

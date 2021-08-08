@@ -159,7 +159,7 @@ pub async fn load_blockchain(
         rewards_report_all,
     );
 
-    let main_branch = match blockchain.load_from_block0(block0.clone()).await {
+    let tip = match blockchain.load_from_block0(block0.clone()).await {
         Err(error) => match error {
             BlockchainError::Block0AlreadyInStorage => blockchain.load_from_storage(block0).await,
             error => Err(error),
@@ -167,7 +167,6 @@ pub async fn load_blockchain(
         Ok(branch) => Ok(branch),
     }
     .map_err(Box::new)?;
-    let tip = Tip::new(main_branch);
     let tip_ref = tip.get_ref().await;
     tracing::info!(
         "Loaded from storage tip is : {}",

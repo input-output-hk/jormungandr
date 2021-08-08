@@ -208,7 +208,7 @@ pub struct Tip {
 }
 
 impl Tip {
-    pub fn new(branch: Branch) -> Self {
+    pub(super) fn new(branch: Branch) -> Self {
         Tip { branch }
     }
 
