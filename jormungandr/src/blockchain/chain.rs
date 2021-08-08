@@ -723,13 +723,8 @@ impl Blockchain {
                 Ok(applied.cached_ref())
             }
             PreCheckedHeader::AlreadyPresent {
-                cached_reference: Some(block_ref),
-                ..
-            } => Ok(block_ref),
-            PreCheckedHeader::AlreadyPresent {
-                cached_reference: None,
-                ..
-            } => unreachable!("block ref was force loaded"),
+                cached_reference, ..
+            } => Ok(cached_reference.expect("block ref was force loaded")),
             PreCheckedHeader::MissingParent { header } => {
                 Err(Error::MissingParentBlock(header.block_parent_hash()))
             }
