@@ -133,12 +133,16 @@ impl Storage {
             .map_err(Error::Serialize)?;
         let chain_length = block.header.chain_length().into();
         let block_info = BlockInfo::new(id, parent_id, chain_length);
-        self.storage
+        tracing::info!("before storage inner");
+        let res = self
+            .storage
             .put_block(
                 &block.serialize_as_vec().map_err(Error::Serialize)?[..],
                 block_info,
             )
-            .map_err(Into::into)
+            .map_err(Into::into);
+        tracing::info!("after storage inner");
+        res
     }
 
     /// Return values:
