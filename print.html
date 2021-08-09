@@ -766,7 +766,6 @@ p2p:
   allow_private_addresses: false
   max_connections: 256
   max_client_connections: 192
-  max_unreachable_nodes_to_connect_per_event: 20
   gossip_interval: 10s
   max_bootstrap_attempts: # Default is not set
   trusted_peers:
@@ -998,11 +997,6 @@ By default this list is empty, <code>[default: []]</code>.</li>
 </ul>
 </li>
 <li><code>layers</code>: (optional) set the settings for some of the poldercast custom layers (see below)</li>
-<li><code>max_unreachable_nodes_to_connect_per_event</code>: (optional) set the maximum number of unreachable nodes
-to contact at a time for every new notification.
-Every time a new propagation event is triggered, the node will select
-randomly a certain amount of unreachable nodes to connect to in addition
-to the one selected by other p2p topology layer <code>[default: 20]</code></li>
 <li><code>gossip_interval</code>: (optional) interval to start gossiping with new nodes,
 changing the value will affect the bandwidth. The more often the node will
 gossip the more bandwidth the node will need. The less often the node gossips
