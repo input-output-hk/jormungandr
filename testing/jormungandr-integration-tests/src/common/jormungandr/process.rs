@@ -129,13 +129,12 @@ impl JormungandrProcess {
         }
     }
 
-    fn status(&self, strategy: &StartupVerificationMode) -> Status {
+    fn check_startup_errors_in_logs(&self) -> Result<(), JormungandrError> {
         println!("startup {:?}", std::time::SystemTime::now());
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         if self.logger.contains_any_of(&port_occupied_msgs) {
             return Err(JormungandrError::PortAlreadyInUse);
         }
-        println!("logs {:?}", std::time::SystemTime::now());
 
         self.check_no_errors_in_log()
     }
