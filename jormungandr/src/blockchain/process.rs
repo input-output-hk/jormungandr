@@ -346,6 +346,7 @@ async fn process_leadership_block(
     if let Some(mut msg_box) = explorer_msg_box {
         msg_box.send(ExplorerMsg::NewBlock(block)).await?;
     }
+    tracing::info!("message sent");
     process_and_propagate_new_ref(Arc::clone(&new_block_ref), tip_update_mbox, network_msg_box)
         .await?;
 
@@ -356,6 +357,7 @@ async fn process_leadership_block_inner(
     blockchain: &mut Blockchain,
     leadership_block: LeadershipBlock,
 ) -> Result<Arc<Ref>, Error> {
+    tracing::info!("entered inner");
     let applied = blockchain
         .apply_and_store_leadership_block(leadership_block)
         .await?;

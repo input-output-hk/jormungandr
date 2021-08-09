@@ -545,13 +545,17 @@ impl Blockchain {
         block: Block,
         new_ledger: Ledger,
     ) -> Result<AppliedBlock> {
+        tracing::info!("before storage");
         let res = self.storage.put_block(&block);
+        tracing::info!("after storage");
 
         match res {
             Ok(()) | Err(StorageError::BlockAlreadyPresent) => {
+                tracing::info!("before finalize");
                 let block_ref = self
                     .apply_block_finalize(post_checked_header, new_ledger)
                     .await;
+                tracing::info!("after finalize");
 
                 match res {
                     Ok(()) => Ok(AppliedBlock::New(block_ref)),
@@ -611,7 +615,9 @@ impl Blockchain {
             epoch_rewards_info,
         };
 
+        tracing::info!("before rewards");
         self.apply_block_check_rewards(&post_checked_header, &new_ledger)?;
+        tracing::info!("after rewards");
         self.store_and_apply_block_finalize(post_checked_header, block, new_ledger)
             .await
     }
