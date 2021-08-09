@@ -1,4 +1,4 @@
-use crate::common::{data::witness::Witness, jcli::command::TransactionCommand};
+use crate::common::{jcli::command::TransactionCommand, witness::Witness};
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::TempDir;
 use chain_core::property::Deserialize;

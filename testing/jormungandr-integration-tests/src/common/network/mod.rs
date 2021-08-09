@@ -1,5 +1,5 @@
 mod builder;
 mod controller;
 
-pub use builder::{builder, wallet};
+pub use builder::{NetworkBuilder, WalletTemplateBuilder};
 pub use controller::{Controller, ControllerError};

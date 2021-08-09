@@ -1,6 +1,6 @@
 use crate::common::{
     jormungandr::JormungandrProcess,
-    network::{self, wallet},
+    network::{NetworkBuilder, WalletTemplateBuilder},
 };
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::interfaces::{
@@ -23,7 +23,7 @@ const LEADER: &str = "LEADER";
 // It is a macro because the builder is returned by reference.
 macro_rules! build_network {
     () => {
-        network::builder().blockchain_config(Blockchain::new(
+        NetworkBuilder::default().blockchain_config(Blockchain::new(
             ConsensusVersion::GenesisPraos,
             NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
             SlotDuration::new(5).expect("valid slot duration in seconds"),
@@ -39,8 +39,10 @@ pub fn passive_node_last_block_info() {
     let mut network_controller = build_network!()
         .single_trust_direction(PASSIVE, LEADER)
         .initials(vec![
-            wallet("alice").with(1_000_000).delegated_to(LEADER),
-            wallet("bob").with(1_000_000),
+            WalletTemplateBuilder::new("alice")
+                .with(1_000_000)
+                .delegated_to(LEADER),
+            WalletTemplateBuilder::new("bob").with(1_000_000),
         ])
         .build()
         .unwrap();
@@ -76,8 +78,10 @@ pub fn leader_node_last_block_info() {
     let mut network_controller = build_network!()
         .single_trust_direction(LEADER_CLIENT, LEADER)
         .initials(vec![
-            wallet("alice").with(1_000_000).delegated_to(LEADER),
-            wallet("bob").with(1_000_000),
+            WalletTemplateBuilder::new("alice")
+                .with(1_000_000)
+                .delegated_to(LEADER),
+            WalletTemplateBuilder::new("bob").with(1_000_000),
         ])
         .build()
         .unwrap();

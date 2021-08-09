@@ -95,7 +95,7 @@ pub fn stake_distribution() {
     );
 }
 
-pub fn assert_distribution(
+fn assert_distribution(
     unassigned: u64,
     dangling: u64,
     pool_stake: (Hash, u64),
