@@ -1,5 +1,5 @@
 use crate::{
-    blockcfg::{FragmentId, Header},
+    blockcfg::{FragmentId, Header, HeaderHash},
     blockchain::{
         chain_selection::{self, ComparisonResult},
         storage, Blockchain, Branch, Error, Ref, MAIN_BRANCH_TAG,
@@ -9,6 +9,7 @@ use crate::{
     utils::async_msg::{self, MessageBox, MessageQueue},
 };
 use chain_core::property::{Block as _, Fragment as _, HasHeader as _};
+use chain_impl_mockchain::block::Block;
 use jormungandr_lib::interfaces::FragmentStatus;
 use std::sync::Arc;
 use tokio::time::MissedTickBehavior;
@@ -64,6 +65,61 @@ impl TipUpdater {
         }
     }
 
+    async fn switch_tip_branch(
+        &mut self,
+        candidate: Arc<Ref>,
+        tip_hash: HeaderHash,
+    ) -> Result<(), Error> {
+        let storage = self.blockchain.storage();
+        let candidate_hash = candidate.hash();
+        let common_ancestor = storage.find_common_ancestor(candidate_hash, tip_hash)?;
+
+        let stream = storage.stream_from_to(common_ancestor, candidate_hash)?;
+        tokio::pin!(stream);
+
+        // there is always at least one block in the stream
+        let ancestor = stream.next().await.unwrap()?;
+        if let Some(ref mut mbox) = self.fragment_mbox {
+            mbox.try_send(TransactionMsg::BranchSwitch(ancestor.date().into()))?;
+        }
+
+        while let Some(block) = stream.next().await {
+            let block = block?;
+            let fragment_ids = block.fragments().map(|f| f.id()).collect();
+            self.try_request_fragment_removal(fragment_ids, &block.header())?;
+        }
+
+        self.blockchain
+            .storage()
+            .put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
+
+        let branch = self
+            .blockchain
+            .branches_mut()
+            .apply_or_create(candidate)
+            .await;
+        self.tip.swap(branch).await;
+        Ok(())
+    }
+
+    async fn update_current_branch_tip(
+        &mut self,
+        candidate: Arc<Ref>,
+        block: &Block,
+    ) -> Result<(), Error> {
+        let candidate_hash = candidate.hash();
+
+        self.blockchain
+            .storage()
+            .put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
+
+        let fragment_ids = block.fragments().map(|f| f.id()).collect();
+        self.try_request_fragment_removal(fragment_ids, &block.header())?;
+
+        self.tip.update_ref(candidate).await;
+        Ok(())
+    }
+
     /// process a new candidate block on top of the blockchain, this function may:
     ///
     /// * update the current tip if the candidate's parent is the current tip;
@@ -94,57 +150,22 @@ impl TipUpdater {
                     .await;
             }
             ComparisonResult::PreferCandidate => {
-                if tip_ref.hash() == candidate.block_parent_hash() {
+                let tip_hash = tip_ref.hash();
+                if tip_hash == candidate.block_parent_hash() {
                     tracing::info!(
-                        "update current branch tip: {} -> {}",
+                        "updating current branch tip: {} -> {}",
                         tip_ref.header().description(),
                         candidate.header().description(),
                     );
-
-                    storage.put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
-
-                    let fragment_ids = block.fragments().map(|f| f.id()).collect();
-                    self.try_request_fragment_removal(fragment_ids, &block.header())?;
-
-                    self.tip.update_ref(candidate.clone()).await;
+                    self.update_current_branch_tip(candidate.clone(), &block)
+                        .await?;
                 } else {
-                    let common_ancestor =
-                        storage.find_common_ancestor(candidate_hash, tip_ref.hash())?;
-
-                    let stream = self
-                        .blockchain
-                        .storage()
-                        .stream_from_to(common_ancestor, candidate_hash)?;
-                    tokio::pin!(stream);
-
-                    // there is always at least one block in the stream
-                    let ancestor = stream.next().await.unwrap()?;
-                    if let Some(ref mut mbox) = self.fragment_mbox {
-                        mbox.try_send(TransactionMsg::BranchSwitch(ancestor.date().into()))?;
-                    }
-
-                    while let Some(block) = stream.next().await {
-                        let block = block?;
-                        let fragment_ids = block.fragments().map(|f| f.id()).collect();
-                        self.try_request_fragment_removal(fragment_ids, &block.header())?;
-                    }
-
                     tracing::info!(
                         "switching branch from {} to {}",
                         tip_ref.header().description(),
                         candidate.header().description(),
                     );
-
-                    self.blockchain
-                        .storage()
-                        .put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
-
-                    let branch = self
-                        .blockchain
-                        .branches_mut()
-                        .apply_or_create(candidate.clone())
-                        .await;
-                    self.tip.swap(branch).await;
+                    self.switch_tip_branch(candidate.clone(), tip_hash).await?;
                 }
 
                 self.stats_counter.set_tip_block(&block, &candidate);
