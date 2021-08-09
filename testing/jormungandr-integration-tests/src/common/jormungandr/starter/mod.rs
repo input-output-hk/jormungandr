@@ -86,7 +86,7 @@ impl From<LeadershipMode> for FromGenesis {
 
 pub struct Starter {
     timeout: Duration,
-    jormungandr_app_path: PathBuf,
+    jormungandr_app_path: Option<PathBuf>,
     sleep: u64,
     role: Role,
     alias: String,
@@ -119,7 +119,7 @@ impl Starter {
             legacy: None,
             config: None,
             benchmark: None,
-            jormungandr_app_path: get_jormungandr_app(),
+            jormungandr_app_path: None,
         }
     }
 
@@ -129,7 +129,7 @@ impl Starter {
     }
 
     pub fn jormungandr_app(&mut self, path: PathBuf) -> &mut Self {
-        self.jormungandr_app_path = path;
+        self.jormungandr_app_path = Some(path);
         self
     }
 
@@ -329,7 +329,11 @@ where
     fn start_with_fail_in_stderr(self, expected_msg: &str) {
         get_command(
             &self.params,
-            &self.starter.jormungandr_app_path,
+            &self
+                .starter
+                .jormungandr_app_path
+                .clone()
+                .unwrap_or_else(get_jormungandr_app),
             self.starter.role,
             self.starter.from_genesis,
         )
@@ -353,7 +357,10 @@ where
 
         let mut command = get_command(
             &self.params,
-            self.starter.jormungandr_app_path.clone(),
+            self.starter
+                .jormungandr_app_path
+                .clone()
+                .unwrap_or_else(get_jormungandr_app),
             self.starter.role,
             self.starter.from_genesis,
         );
