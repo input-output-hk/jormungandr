@@ -341,7 +341,6 @@ fn generate_network(
             .unwrap_or(network::DEFAULT_MAX_INBOUND_CONNECTIONS),
         timeout: std::time::Duration::from_secs(15),
         allow_private_addresses: p2p.allow_private_addresses,
-        max_unreachable_nodes_to_connect_per_event: p2p.max_unreachable_nodes_to_connect_per_event,
         gossip_interval: p2p
             .gossip_interval
             .map(|d| d.into())
