@@ -86,8 +86,6 @@ pub struct Configuration {
     /// Whether to allow non-public IP addresses in gossip
     pub allow_private_addresses: bool,
 
-    pub max_unreachable_nodes_to_connect_per_event: Option<usize>,
-
     pub gossip_interval: Duration,
 
     pub network_stuck_check: Duration,
