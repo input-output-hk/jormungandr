@@ -21,7 +21,7 @@ impl VoteCommand {
             .arg(host.into())
             .arg("--account")
             .arg(account.into())
-            .arg("--voteplan-id")
+            .arg("--vote-plan-id")
             .arg(voteplan.into());
         self
     }

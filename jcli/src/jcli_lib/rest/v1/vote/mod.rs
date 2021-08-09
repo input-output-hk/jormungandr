@@ -18,7 +18,7 @@ pub struct AccountVotes {
     /// Id of the voteplan for which we want to list proposals
     /// the account voted for
     #[structopt(short, long)]
-    voteplan_id: String,
+    vote_plan_id: String,
 }
 
 #[derive(StructOpt)]
@@ -45,7 +45,7 @@ impl AccountVotes {
                 "v1",
                 "votes",
                 "plan",
-                &self.voteplan_id,
+                &self.vote_plan_id,
                 "account-votes",
                 &self.account,
             ])
