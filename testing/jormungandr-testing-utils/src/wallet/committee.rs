@@ -21,9 +21,9 @@ use std::fmt;
 use std::fs::File;
 use std::io::Write;
 
-pub const COMMUNICATION_SK_HRP: &str = "p256k1_vcommsk";
-pub const MEMBER_SK_HRP: &str = "p256k1_membersk";
-pub const ENCRYPTING_VOTE_PK_HRP: &str = "p256k1_votepk";
+pub const COMMUNICATION_SK_HRP: &str = "vcommsk";
+pub const MEMBER_SK_HRP: &str = "membersk";
+pub const ENCRYPTING_VOTE_PK_HRP: &str = "votepk";
 
 #[derive(Clone)]
 pub struct PrivateVoteCommitteeData {

@@ -70,7 +70,7 @@ impl From<VotePrivacy> for vote::PayloadType {
 
 struct SerdeMemberPublicKey(chain_vote::MemberPublicKey);
 
-pub const MEMBER_PUBLIC_KEY_BECH32_HRP: &str = "p256k1_memberpk";
+pub const MEMBER_PUBLIC_KEY_BECH32_HRP: &str = "memberpk";
 
 impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
@@ -784,7 +784,7 @@ mod test {
         let member_key =
             chain_vote::MemberState::new(&mut rng, 1, &crs, &[comm_key.to_public()], 0);
         let pk = member_key.public_key();
-        let pks = vec![bech32::encode("p256k1_memberpk", pk.to_bytes().to_base32()).unwrap()];
+        let pks = vec![bech32::encode("memberpk", pk.to_bytes().to_base32()).unwrap()];
         let json = serde_json::to_string(&pks).unwrap();
 
         let result: Vec<SerdeMemberPublicKey> = serde_json::from_str(&json).unwrap();
