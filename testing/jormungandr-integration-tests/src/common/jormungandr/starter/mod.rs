@@ -97,6 +97,7 @@ pub struct Starter {
     legacy: Option<Version>,
     config: Option<JormungandrParams>,
     benchmark: Option<SpeedBenchmarkDef>,
+    verbose: bool,
 }
 
 impl Default for Starter {
@@ -120,6 +121,7 @@ impl Starter {
             config: None,
             benchmark: None,
             jormungandr_app_path: None,
+            verbose: true,
         }
     }
 
@@ -188,6 +190,11 @@ impl Starter {
 
     pub fn temp_dir(&mut self, temp_dir: TempDir) -> &mut Self {
         self.temp_dir = Some(temp_dir);
+        self
+    }
+
+    pub fn verbose(&mut self, verbose: bool) -> &mut Self {
+        self.verbose = verbose;
         self
     }
 
@@ -301,6 +308,14 @@ impl<'a> ConfiguredStarter<'a, legacy::NodeConfig> {
     }
 }
 
+macro_rules! cond_println {
+    ($cond:expr, $($arg:tt)*) => {
+        if $cond {
+            println!($($arg)*);
+        }
+    };
+}
+
 impl<'a, Conf> ConfiguredStarter<'a, Conf>
 where
     Conf: TestConfig + Serialize + Debug,
@@ -345,15 +360,17 @@ where
     }
 
     fn start_process(&self) -> Child {
-        println!("Starting node");
-        println!(
+        let verbose = self.starter.verbose;
+        cond_println!(verbose, "Starting node");
+        cond_println!(
+            verbose,
             "Log file: {}",
             self.params.log_file_path().to_string_lossy()
         );
-        println!("Blockchain configuration:");
-        println!("{:#?}", self.params.block0_configuration());
-        println!("Node settings configuration:");
-        println!("{:#?}", self.params.node_config());
+        cond_println!(verbose, "Blockchain configuration:");
+        cond_println!(verbose, "{:#?}", self.params.block0_configuration());
+        cond_println!(verbose, "Node settings configuration:");
+        cond_println!(verbose, "{:#?}", self.params.node_config());
 
         let mut command = get_command(
             &self.params,
@@ -365,7 +382,8 @@ where
             self.starter.from_genesis,
         );
 
-        println!("Bootstrapping...");
+        cond_println!(verbose, "Running start command: {:?}", command);
+        cond_println!(verbose, "Bootstrapping...");
         command
             .spawn()
             .expect("failed to execute 'start jormungandr node'")
@@ -403,7 +421,8 @@ where
                     Err(StartupError::JormungandrError(JormungandrError::PortAlreadyInUse)),
                     OnFail::RetryUnlimitedOnPortOccupied,
                 ) => {
-                    println!(
+                    cond_println!(
+                        self.starter.verbose,
                         "Port already in use error detected. Retrying with different port... "
                     );
                     self.params.refresh_instance_params();
@@ -420,7 +439,8 @@ where
                     panic!("Jormungandr node cannot start due to error: {}", err);
                 }
                 (Err(err), _) => {
-                    println!(
+                    cond_println!(
+                        self.starter.verbose,
                         "Jormungandr failed to start due to error {}. Retrying... ",
                         err
                     );

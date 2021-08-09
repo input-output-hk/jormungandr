@@ -96,7 +96,6 @@ impl<'a> CommandBuilder<'a> {
         command.stderr(std::process::Stdio::piped());
         command.stdout(std::process::Stdio::piped());
 
-        println!("Running start jormungandr command: {:?}", &command);
         command
     }
 }
