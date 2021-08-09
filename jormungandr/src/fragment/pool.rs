@@ -150,7 +150,6 @@ impl Pool {
                         tracing::debug!("fragment is valid for too long");
                         continue;
                     }
-                    Err(_) => unreachable!(),
                 }
             }
 
