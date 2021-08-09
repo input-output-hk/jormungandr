@@ -31,7 +31,7 @@ type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, Address, ()>;
 
 const TIP_UPDATE_QUEUE_SIZE: usize = 5;
 
-const DEFAULT_TIMEOUT_PROCESS_LEADERSHIP: u64 = 5;
+const DEFAULT_TIMEOUT_PROCESS_LEADERSHIP: u64 = 1;
 const DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT: u64 = 5;
 const DEFAULT_TIMEOUT_PROCESS_BLOCKS: u64 = 60;
 const DEFAULT_TIMEOUT_PROCESS_HEADERS: u64 = 60;
@@ -191,11 +191,11 @@ impl Process {
         });
 
         while let Some(input) = input.next().await {
-            self.handle_input(input).await;
+            self.handle_input(input);
         }
     }
 
-    async fn handle_input(&mut self, input: BlockMsg) {
+    fn handle_input(&mut self, input: BlockMsg) {
         let blockchain = self.blockchain.clone();
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
@@ -227,7 +227,6 @@ impl Process {
                     )
                     .instrument(span.clone()),
                 );
-                tokio::task::yield_now().await;
             }
             BlockMsg::AnnouncedBlock(header, node_id) => {
                 let span = span!(
@@ -341,6 +340,7 @@ async fn process_leadership_block(
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
     leadership_block: LeadershipBlock,
 ) -> chain::Result<()> {
+    tracing::info!("task started");
     let block = leadership_block.block.clone();
     let new_block_ref = process_leadership_block_inner(&mut blockchain, leadership_block).await?;
     if let Some(mut msg_box) = explorer_msg_box {
