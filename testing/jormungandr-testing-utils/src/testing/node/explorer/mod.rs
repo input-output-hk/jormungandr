@@ -202,7 +202,17 @@ impl Explorer {
         self.last_block().unwrap().block_date()
     }
 
-    fn print_log<T: std::fmt::Debug>(&self, response: &Response<T>) {
+    pub fn run<T: Serialize>(
+        &self,
+        query: QueryBody<T>,
+    ) -> Result<reqwest::blocking::Response, ExplorerError> {
+        self.print_request(&query);
+        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        self.print_log(&response);
+        Ok(response)
+    }
+
+    fn print_log<T: std::fmt::Debug>(&self, response: &T) {
         if self.print_log {
             println!("Response: {:?}", &response);
         }
