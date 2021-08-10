@@ -360,29 +360,23 @@ fn gossip_interval() {
         .build()
         .unwrap();
 
-    let _server = network_controller
+    let server = network_controller
         .spawn_custom(
             network_controller
                 .spawn_params(SERVER)
-                .gossip_interval(Duration::new(INTERVAL_SECS, 0)),
-        )
-        .unwrap();
-
-    let client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
+                .gossip_interval(Duration::new(INTERVAL_SECS, 0))
                 .log_level(Level::TRACE),
         )
         .unwrap();
 
+    let _client = network_controller.spawn_and_wait(CLIENT);
+
     process_utils::sleep(10);
 
-    let log_timestamps: Vec<u64> = client
+    let log_timestamps: Vec<u64> = server
         .log_content()
         .into_iter()
-        .filter(|s| s.contains("accept_gossips"))
-        .skip(1)
+        .filter(|s| s.contains("sending gossip"))
         .map(|t| parse_timestamp(&t))
         .collect();
 
@@ -391,8 +385,9 @@ fn gossip_interval() {
     for log_timestamp in log_timestamps {
         match prev {
             None => prev = Some(log_timestamp),
-            Some(prev) => {
-                assert!(log_timestamp - prev >= INTERVAL_SECS);
+            Some(p) => {
+                assert!(log_timestamp - p >= INTERVAL_SECS);
+                prev = Some(log_timestamp);
             }
         }
     }
