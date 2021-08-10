@@ -2,7 +2,6 @@ use crate::common::jormungandr::{ConfigurationBuilder, Starter};
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::Cors;
 use jormungandr_testing_utils::testing::node::JormungandrRest;
-use reqwest::StatusCode;
 
 #[test]
 pub fn cors_illegal_domain() -> Result<(), Box<dyn std::error::Error>> {
