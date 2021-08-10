@@ -42,6 +42,8 @@ pub enum StartupError {
     JormungandrError(#[from] JormungandrError),
     #[error("expected message not found: {entry} in logs: {log_content}")]
     EntryNotFoundInLogs { entry: String, log_content: String },
+    #[error("too many failures while attempting to start jormungandr")]
+    TooManyAttempts,
 }
 
 const DEFAULT_SLEEP_BETWEEN_ATTEMPTS: u64 = 2;
@@ -449,7 +451,7 @@ where
             }
 
             if retry_counter < 0 {
-                panic!("Jormungandr node cannot start despites retry attempts. see logs for more details");
+                return Err(StartupError::TooManyAttempts);
             }
 
             self.temp_dir = jormungandr.steal_temp_dir();
