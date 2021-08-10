@@ -21,6 +21,8 @@
               (builtins.readFile (./. + "/${member}/Cargo.toml"))).package)
               name version;
             root = ./.;
+            cargoBuildOptions = default:
+              default ++ [ "--features" "prometheus-metrics" ];
             nativeBuildInputs = with final; [ pkg-config protobuf rustfmt ];
             buildInputs = with final; [ openssl ];
             PROTOC = "${final.protobuf}/bin/protoc";
