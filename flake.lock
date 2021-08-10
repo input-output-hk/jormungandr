@@ -7,15 +7,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1623927034,
-        "narHash": "sha256-sGxlmfp5eXL5sAMNqHSb04Zq6gPl+JeltIZ226OYN0w=",
-        "owner": "nmattia",
+        "lastModified": 1623558292,
+        "narHash": "sha256-YjyRflpvKzstN9Yy5pVOmreckcL1Fu6TGe8Tf8y9fm4=",
+        "owner": "yusdacra",
         "repo": "naersk",
-        "rev": "e09c320446c5c2516d430803f7b19f5833781337",
+        "rev": "f411315a2954bd60bdcba2bc0cff7f4b0012a12a",
         "type": "github"
       },
       "original": {
-        "owner": "nmattia",
+        "owner": "yusdacra",
+        "ref": "feat/cargolock-git-deps",
         "repo": "naersk",
         "type": "github"
       }

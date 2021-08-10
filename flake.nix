@@ -2,7 +2,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     utils.url = "github:kreisys/flake-utils";
-    naersk.url = "github:nmattia/naersk";
+    naersk.url = "github:yusdacra/naersk?ref=feat/cargolock-git-deps";
     naersk.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs = { self, nixpkgs, utils, naersk }:
