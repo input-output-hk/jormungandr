@@ -398,7 +398,7 @@ fn gossip_interval() {
     }
 }
 
-#[ignore = "long runner"]
+#[cfg(feature = "soak-non-functional")]
 #[test]
 fn network_stuck_check() {
     const INTERVAL_SECS: u64 = 90;
