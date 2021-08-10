@@ -59,20 +59,20 @@ impl JormungandrProcess {
         params: &JormungandrParams<Conf>,
         temp_dir: Option<TempDir>,
         alias: String,
-    ) -> Self {
+    ) -> Result<Self, StartupError> {
         let node_config = params.node_config();
         let stdout = child.stdout.take().unwrap();
-        JormungandrProcess {
+        Ok(JormungandrProcess {
             child,
             temp_dir,
             alias,
             logger: JormungandrLogger::new(stdout),
             p2p_public_address: node_config.p2p_public_address(),
             rest_socket_addr: node_config.rest_socket_addr(),
-            genesis_block_hash: Hash::from_str(params.genesis_block_hash()).unwrap(),
+            genesis_block_hash: Hash::from_str(params.genesis_block_hash())?,
             block0_configuration: params.block0_configuration().clone(),
             fees: params.fees(),
-        }
+        })
     }
 
     pub fn fragment_sender<'a, S: SyncNode + Send>(

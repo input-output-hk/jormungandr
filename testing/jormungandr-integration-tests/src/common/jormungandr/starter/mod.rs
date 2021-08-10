@@ -44,6 +44,8 @@ pub enum StartupError {
     EntryNotFoundInLogs { entry: String, log_content: String },
     #[error("too many failures while attempting to start jormungandr")]
     TooManyAttempts,
+    #[error("Block0 hash is not valid")]
+    InvalidBlock0Hash(#[from] chain_crypto::hash::Error),
 }
 
 const DEFAULT_SLEEP_BETWEEN_ATTEMPTS: u64 = 2;
@@ -243,9 +245,12 @@ impl Starter {
     pub fn start_async(&mut self) -> Result<JormungandrProcess, StartupError> {
         let (params, temp_dir) = self.build_configuration()?;
         if let Some(version) = self.legacy.as_ref() {
-            Ok(ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)?.start_async())
+            Ok(
+                ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)?
+                    .start_async()?,
+            )
         } else {
-            Ok(ConfiguredStarter::new(self, params, temp_dir).start_async())
+            Ok(ConfiguredStarter::new(self, params, temp_dir).start_async()?)
         }
     }
 
@@ -327,7 +332,7 @@ where
         let timeout = self.starter.timeout;
 
         let start = Instant::now();
-        let process = self.start_async();
+        let process = self.start_async()?;
 
         loop {
             if start.elapsed() > timeout {
@@ -391,7 +396,7 @@ where
             .expect("failed to execute 'start jormungandr node'")
     }
 
-    fn start_async(self) -> JormungandrProcess {
+    fn start_async(self) -> Result<JormungandrProcess, StartupError> {
         JormungandrProcess::from_config(
             self.start_process(),
             &self.params,
@@ -409,7 +414,7 @@ where
                 &self.params,
                 self.temp_dir.take(),
                 self.starter.alias.clone(),
-            );
+            )?;
             match (
                 jormungandr
                     .wait_for_bootstrap(&self.starter.verification_mode, self.starter.timeout),
