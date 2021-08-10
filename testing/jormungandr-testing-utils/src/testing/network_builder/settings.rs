@@ -225,7 +225,7 @@ impl Settings {
         blockchain_configuration.slots_per_epoch = *blockchain.slots_per_epoch();
         blockchain_configuration.slot_duration = *blockchain.slot_duration();
         blockchain_configuration.treasury = Some(1_000_000.into());
-        // TODO blockchain_configuration.linear_fees = ;
+        blockchain_configuration.block_content_max_size = *blockchain.block_content_max_size();
         blockchain_configuration.kes_update_speed = *blockchain.kes_update_speed();
         blockchain_configuration.consensus_genesis_praos_active_slot_coeff =
             ActiveSlotCoefficient::MAXIMUM;

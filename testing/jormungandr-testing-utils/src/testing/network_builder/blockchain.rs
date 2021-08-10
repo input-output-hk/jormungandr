@@ -4,7 +4,7 @@ pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::{fee::LinearFee, testing::scenario::template::VotePlanDef};
 use jormungandr_lib::interfaces::CommitteeIdDef;
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
+    ActiveSlotCoefficient, BlockContentMaxSize, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
 use std::collections::HashMap;
 
@@ -21,6 +21,7 @@ pub struct Blockchain {
     external_wallets: Vec<ExternalWalletTemplate>,
     wallets: HashMap<WalletAlias, WalletTemplate>,
     kes_update_speed: KesUpdateSpeed,
+    block_content_max_size: BlockContentMaxSize,
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
     linear_fee: LinearFee,
     discrimination: Discrimination,
@@ -49,6 +50,7 @@ impl Blockchain {
             consensus_genesis_praos_active_slot_coeff,
             linear_fee: LinearFee::new(1, 1, 1),
             discrimination: Discrimination::Test,
+            block_content_max_size: 102400.into(),
         }
     }
 
@@ -94,6 +96,14 @@ impl Blockchain {
 
     pub fn set_discrimination(&mut self, discrimination: Discrimination) {
         self.discrimination = discrimination;
+    }
+
+    pub fn set_block_content_max_size(&mut self, block_content_max_size: BlockContentMaxSize) {
+        self.block_content_max_size = block_content_max_size;
+    }
+
+    pub fn block_content_max_size(&self) -> &BlockContentMaxSize {
+        &self.block_content_max_size
     }
 
     pub fn vote_plan(&self, alias: &str) -> Option<VotePlanDef> {
