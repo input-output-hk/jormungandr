@@ -65,6 +65,7 @@ impl Block0ConfigurationBuilder {
                     epoch_rate: NonZeroU32::new(1).unwrap(),
                 }),
                 committees: Vec::new(),
+                tx_max_expiry_epochs: Some(100),
             },
             initial: vec![],
         }

@@ -10,6 +10,7 @@ mod info;
 mod mk_witness;
 pub mod new;
 mod seal;
+mod set_valid_until;
 mod simplified;
 mod staging;
 
@@ -41,6 +42,8 @@ pub enum Transaction {
     AddOutput(add_output::AddOutput),
     /// add output to the finalized transaction
     AddWitness(add_witness::AddWitness),
+    /// set a transaction expiration date
+    SetValidUntil(set_valid_until::SetValidUntil),
     /// set a certificate to the Transaction. If there is already
     /// an extra certificate in the transaction it will be replaced
     /// with the new one.
@@ -155,6 +158,10 @@ pub enum Error {
     TxKindToFinalizeInvalid { kind: StagingKind },
     #[error("cannot get message from transaction in {kind} state")]
     TxKindToGetMessageInvalid { kind: StagingKind },
+    #[error("cannot get witness data in {kind} state")]
+    TxKindToSignDataHashInvalid { kind: StagingKind },
+    #[error("cannot set expiration date in {kind} state")]
+    TxKindToSetValidityTimeInvalid { kind: StagingKind },
 
     #[error("too many witnesses in transaction to add another: {actual}, maximum is {max}")]
     TooManyWitnessesToAddWitness { actual: usize, max: usize },
@@ -212,6 +219,9 @@ pub enum Error {
 
     #[error("error requesting user input")]
     UserInputError(#[from] std::io::Error),
+
+    #[error("cannot finalize the payload without a validity end date set")]
+    CannotFinalizeWithoutValidUntil,
 }
 
 /*
@@ -241,6 +251,7 @@ impl Transaction {
             Transaction::Auth(auth) => auth.exec(),
             Transaction::ToMessage(common) => display_message(common),
             Transaction::MakeTransaction(send) => send.exec(),
+            Transaction::SetValidUntil(set_valid_until) => set_valid_until.exec(),
         }
     }
 }
@@ -251,7 +262,7 @@ fn display_id(common: common::CommonTransaction) -> Result<(), Error> {
 }
 
 fn display_data_for_witness(common: common::CommonTransaction) -> Result<(), Error> {
-    let id = common.load()?.transaction_sign_data_hash();
+    let id = common.load()?.transaction_sign_data_hash()?;
     println!("{}", id);
     Ok(())
 }

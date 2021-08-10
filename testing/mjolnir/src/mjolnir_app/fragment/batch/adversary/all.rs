@@ -1,5 +1,6 @@
 use crate::mjolnir_app::build_monitor;
 use crate::mjolnir_app::MjolnirError;
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::testing::{
     fragments::AdversaryFragmentGenerator, AdversaryFragmentSender, AdversaryFragmentSenderSetup,
@@ -68,12 +69,17 @@ impl AdversaryAll {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
-        let transaction_sender =
-            FragmentSender::new(block0_hash, fees, FragmentSenderSetup::no_verify());
+        let transaction_sender = FragmentSender::new(
+            block0_hash,
+            fees,
+            BlockDate::first(),
+            FragmentSenderSetup::no_verify(),
+        );
 
         let adversary_transaction_sender = AdversaryFragmentSender::new(
             block0_hash,
             fees,
+            BlockDate::first(),
             AdversaryFragmentSenderSetup::no_verify(),
         );
 

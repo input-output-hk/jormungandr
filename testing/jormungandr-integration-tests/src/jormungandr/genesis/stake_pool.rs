@@ -8,7 +8,7 @@ use chain_crypto::{RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{InitialUTxO, Ratio, TaxType, Value},
+    interfaces::{BlockDate, InitialUTxO, Ratio, TaxType, Value},
 };
 use jormungandr_testing_utils::{
     testing::{FragmentSender, FragmentSenderSetup},
@@ -36,6 +36,7 @@ pub fn more_than_one_stake_pool_in_app() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate::first(),
         FragmentSenderSetup::resend_3_times(),
     );
     fragment_sender
@@ -81,6 +82,7 @@ pub fn create_delegate_retire_stake_pool() {
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,
         config.genesis_block_hash(),
+        BlockDate::new(1, 0),
         &jormungandr,
         &Default::default(),
     );
@@ -88,6 +90,7 @@ pub fn create_delegate_retire_stake_pool() {
         &mut actor_account,
         &stake_pool_id,
         config.genesis_block_hash(),
+        BlockDate::new(1, 0),
         &jormungandr,
         &Default::default(),
     );
@@ -95,6 +98,7 @@ pub fn create_delegate_retire_stake_pool() {
         &stake_pool_id,
         &mut actor_account,
         config.genesis_block_hash(),
+        BlockDate::new(1, 0),
         &jormungandr,
         &Default::default(),
     );
@@ -103,6 +107,7 @@ pub fn create_delegate_retire_stake_pool() {
 pub fn create_new_stake_pool(
     account: &mut Wallet,
     genesis_block_hash: &str,
+    expiry_date: BlockDate,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) -> String {
@@ -143,6 +148,7 @@ pub fn create_new_stake_pool(
         .new_transaction()
         .add_account(&account.address().to_string(), &fee_value)
         .add_certificate(&stake_pool_certificate)
+        .set_expiry_date(expiry_date)
         .finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
         .add_auth(owner_stake_key.path())
@@ -172,6 +178,7 @@ pub fn delegate_stake(
     account: &mut Wallet,
     stake_pool_id: &str,
     genesis_block_hash: &str,
+    expiry_date: BlockDate,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) {
@@ -197,6 +204,7 @@ pub fn delegate_stake(
         .new_transaction()
         .add_account(&account.address().to_string(), &fee_value)
         .add_certificate(&stake_pool_delegation)
+        .set_expiry_date(expiry_date)
         .finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
         .add_auth(owner_stake_key.path())
@@ -227,6 +235,7 @@ pub fn retire_stake_pool(
     stake_pool_id: &str,
     account: &mut Wallet,
     genesis_block_hash: &str,
+    expiry_date: BlockDate,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) {
@@ -250,6 +259,7 @@ pub fn retire_stake_pool(
         .new_transaction()
         .add_account(&account.address().to_string(), &fee_value)
         .add_certificate(&retirement_cert)
+        .set_expiry_date(expiry_date)
         .finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
         .add_auth(owner_stake_key.path())

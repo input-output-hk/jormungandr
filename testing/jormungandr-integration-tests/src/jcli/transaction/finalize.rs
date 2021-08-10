@@ -1,5 +1,5 @@
 use crate::common::{jcli::JCli, startup};
-use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
 
 lazy_static! {
     static ref FAKE_INPUT_TRANSACTION_ID: Hash = {
@@ -23,5 +23,6 @@ pub fn test_unbalanced_output_utxo_transaction_is_not_finalized() {
         .new_transaction()
         .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, "100")
         .add_output(&receiver.address().to_string(), 150.into())
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize_expect_fail("not enough input for making transaction");
 }

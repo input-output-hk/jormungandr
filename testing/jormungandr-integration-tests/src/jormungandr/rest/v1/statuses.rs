@@ -23,6 +23,7 @@ fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
             bob.address(),
             100.into(),
         )
@@ -32,6 +33,7 @@ fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
             alice.address(),
             100.into(),
         )

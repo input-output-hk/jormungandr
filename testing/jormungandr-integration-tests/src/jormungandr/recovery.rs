@@ -4,7 +4,7 @@ use crate::common::{
     startup,
 };
 
-use jormungandr_lib::interfaces::{AccountState, InitialUTxO, SettingsDto, UTxOInfo};
+use jormungandr_lib::interfaces::{AccountState, BlockDate, InitialUTxO, SettingsDto, UTxOInfo};
 use jormungandr_testing_utils::testing::SyncNode;
 use jormungandr_testing_utils::wallet::Wallet;
 
@@ -63,6 +63,7 @@ pub fn do_simple_transaction(
         .add_input_from_utxo(utxo_sender)
         .add_output(&account_receiver.address().to_string(), TX_VALUE.into())
         .add_output(&utxo_receiver.address().to_string(), TX_VALUE.into())
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(sender)
         .to_message();

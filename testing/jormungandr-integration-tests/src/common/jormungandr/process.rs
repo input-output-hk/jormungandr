@@ -79,7 +79,12 @@ impl JormungandrProcess {
         &self,
         setup: FragmentSenderSetup<'a, S>,
     ) -> FragmentSender<'a, S> {
-        FragmentSender::new(self.genesis_block_hash(), self.fees(), setup)
+        FragmentSender::new(
+            self.genesis_block_hash(),
+            self.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
+            setup,
+        )
     }
 
     pub fn fragment_chain_sender<'a, S: SyncNode + Send>(
@@ -89,6 +94,7 @@ impl JormungandrProcess {
         FragmentChainSender::new(
             self.genesis_block_hash(),
             self.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
             setup,
             self.to_remote(),
         )

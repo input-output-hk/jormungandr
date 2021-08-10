@@ -33,6 +33,7 @@ fn world() -> (
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
             bob.address(),
             100.into(),
         )
@@ -42,6 +43,7 @@ fn world() -> (
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
             alice.address(),
             100.into(),
         )
@@ -50,6 +52,7 @@ fn world() -> (
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
             alice.address(),
             100.into(),
         )
@@ -59,13 +62,20 @@ fn world() -> (
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
             alice.address(),
             100.into(),
         )
         .unwrap();
 
-    let faulty_tx_builder =
-        FaultyTransactionBuilder::new(jormungandr.genesis_block_hash(), jormungandr.fees());
+    let faulty_tx_builder = FaultyTransactionBuilder::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+    );
     let early_invalid_fragment = faulty_tx_builder.unbalanced(&alice, &bob);
 
     (

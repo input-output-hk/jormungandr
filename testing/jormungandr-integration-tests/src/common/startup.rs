@@ -74,11 +74,30 @@ pub fn start_stake_pool(
 
     let stake_pool_registration_certs: Vec<SignedCertificate> = stake_pools
         .iter()
-        .map(|x| signed_stake_pool_cert(x).into())
+        .map(|x| {
+            signed_stake_pool_cert(
+                chain_impl_mockchain::block::BlockDate {
+                    epoch: 1,
+                    slot_id: 0,
+                },
+                x,
+            )
+            .into()
+        })
         .collect();
     let stake_pool_owner_delegation_certs: Vec<SignedCertificate> = stake_pools
         .iter()
-        .map(|x| signed_delegation_cert(x.owner(), x.id()).into())
+        .map(|x| {
+            signed_delegation_cert(
+                x.owner(),
+                chain_impl_mockchain::block::BlockDate {
+                    epoch: 1,
+                    slot_id: 0,
+                },
+                x.id(),
+            )
+            .into()
+        })
         .collect();
 
     let mut initial_certs = stake_pool_registration_certs;

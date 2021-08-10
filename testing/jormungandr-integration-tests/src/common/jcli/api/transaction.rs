@@ -5,7 +5,7 @@ use chain_core::property::Deserialize;
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{LegacyUTxO, UTxOInfo, Value},
+    interfaces::{BlockDate, LegacyUTxO, UTxOInfo, Value},
 };
 use jormungandr_testing_utils::testing::process::ProcessOutput;
 use jormungandr_testing_utils::wallet::Wallet;
@@ -287,6 +287,7 @@ impl Transaction {
         receiver: Option<jormungandr_lib::interfaces::Address>,
         value: jormungandr_lib::interfaces::Value,
         block0_hash: String,
+        expiry_date: BlockDate,
         secret: impl AsRef<Path>,
         staging_file: impl AsRef<Path>,
         post: bool,
@@ -298,6 +299,7 @@ impl Transaction {
                 receiver,
                 value,
                 block0_hash,
+                expiry_date,
                 secret,
                 staging_file,
                 post,
@@ -357,5 +359,13 @@ impl Transaction {
             .expect("Failed to parse message")
             .hash()
             .into()
+    }
+
+    pub fn set_expiry_date<P: AsRef<Path>>(self, expiry_date: BlockDate, staging_file: P) {
+        self.command
+            .set_expiry_date(&expiry_date.to_string(), staging_file)
+            .build()
+            .assert()
+            .success();
     }
 }

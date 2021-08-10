@@ -5,6 +5,7 @@ use assert_fs::fixture::ChildPath;
 use assert_fs::{prelude::*, TempDir};
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
+use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{LegacyUTxO, UTxOInfo, Value},
@@ -51,6 +52,7 @@ impl TransactionBuilder {
         sender: &Wallet,
         output_amount: Value,
         receiver: &Wallet,
+        expiry_date: BlockDate,
     ) -> String {
         TransactionBuilder::new(self.jcli, self.genesis_hash)
             .new_transaction()
@@ -60,6 +62,7 @@ impl TransactionBuilder {
                 &input_amount.to_string(),
             )
             .add_output(&receiver.address().to_string(), output_amount)
+            .set_expiry_date(expiry_date)
             .finalize()
             .seal_with_witness_for_address(sender)
             .to_message()
@@ -73,11 +76,13 @@ impl TransactionBuilder {
         sender: &Wallet,
         input_amount: Value,
         receiver: &Wallet,
+        expiry_date: BlockDate,
     ) -> String {
         TransactionBuilder::new(self.jcli, self.genesis_hash)
             .new_transaction()
             .add_input(transaction_id, transaction_index, &input_amount.to_string())
             .add_output(&receiver.address().to_string(), output_amount)
+            .set_expiry_date(expiry_date)
             .finalize()
             .seal_with_witness_for_address(sender)
             .to_message()
@@ -171,6 +176,13 @@ impl TransactionBuilder {
         self.jcli
             .transaction()
             .add_output(addr, amount, self.staging_file().path());
+        self
+    }
+
+    pub fn set_expiry_date(&mut self, expiry_date: BlockDate) -> &mut Self {
+        self.jcli
+            .transaction()
+            .set_expiry_date(expiry_date, self.staging_file().path());
         self
     }
 

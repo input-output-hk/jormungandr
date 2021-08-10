@@ -7,6 +7,7 @@ use crate::jcli_lib::{
     transaction::Error,
     utils::io,
 };
+use chain::transaction::SetValidity;
 use chain_addr::{Address, Kind};
 use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
 use chain_impl_mockchain::{
@@ -15,7 +16,7 @@ use chain_impl_mockchain::{
     fee::FeeAlgorithm,
     fragment::Fragment,
     transaction::{
-        self, Balance, InputOutputBuilder, Output, Payload, SetAuthData, SetIOs, Transaction,
+        self, Balance, InputOutputBuilder, Output, Payload, SetAuthData, Transaction,
         TransactionSignDataHash, TxBuilder, TxBuilderState,
     },
     value::{Value, ValueError},
@@ -39,6 +40,7 @@ pub struct Staging {
     kind: StagingKind,
     inputs: Vec<interfaces::TransactionInput>,
     outputs: Vec<interfaces::TransactionOutput>,
+    valid_until: Option<interfaces::BlockDate>,
     witnesses: Vec<interfaces::TransactionWitness>,
     extra: Option<interfaces::Certificate>,
     extra_authed: Option<interfaces::SignedCertificate>,
@@ -67,6 +69,7 @@ impl Staging {
             kind: StagingKind::Balancing,
             inputs: Vec::new(),
             outputs: Vec::new(),
+            valid_until: None,
             witnesses: Vec::new(),
             extra: None,
             extra_authed: None,
@@ -93,6 +96,16 @@ impl Staging {
             source: *source,
             path: io::path_to_path_buf(path),
         })
+    }
+
+    pub fn set_validity_time(&mut self, input: interfaces::BlockDate) -> Result<(), Error> {
+        if self.kind != StagingKind::Balancing {
+            return Err(Error::TxKindToSetValidityTimeInvalid { kind: self.kind });
+        }
+
+        self.valid_until = Some(input);
+
+        Ok(())
     }
 
     pub fn add_input(&mut self, input: interfaces::TransactionInput) -> Result<(), Error> {
@@ -260,6 +273,10 @@ impl Staging {
         FA: FeeAlgorithm,
         P: Payload,
     {
+        if self.valid_until.is_none() {
+            return Err(Error::CannotFinalizeWithoutValidUntil);
+        }
+
         let ios = self.get_inputs_outputs();
         let pdata = payload.payload_data();
         let (balance, added_outputs, _) =
@@ -368,7 +385,7 @@ impl Staging {
 
     fn builder_after_witness<P: Payload>(
         &self,
-        builder: TxBuilderState<SetIOs<P>>,
+        builder: TxBuilderState<SetValidity<P>>,
     ) -> Result<TxBuilderState<SetAuthData<P>>, Error> {
         if self.witnesses.len() != self.inputs.len() {
             return Err(Error::TxKindToFinalizeInvalid { kind: self.kind });
@@ -376,7 +393,12 @@ impl Staging {
 
         let ios = self.get_inputs_outputs().build();
         let witnesses: Vec<_> = self.witnesses.iter().map(|w| w.clone().into()).collect();
+        let valid_until = self
+            .valid_until
+            .expect("transaction validity time should be set at this point")
+            .into();
         Ok(builder
+            .set_expiry_date(valid_until)
             .set_ios(&ios.inputs, &ios.outputs)
             .set_witnesses(&witnesses))
     }
@@ -456,19 +478,28 @@ impl Staging {
 
     fn transaction_sign_data_hash_on<P>(
         &self,
-        builder: TxBuilderState<SetIOs<P>>,
+        builder: TxBuilderState<SetValidity<P>>,
     ) -> TransactionSignDataHash {
         let inputs: Vec<transaction::Input> =
             self.inputs.iter().map(|i| i.clone().into()).collect();
         let outputs: Vec<_> = self.outputs.iter().map(|o| o.clone().into()).collect();
+        let valid_until = self
+            .valid_until
+            .expect("transaction validity time should be set at this point")
+            .into();
         builder
+            .set_expiry_date(valid_until)
             .set_ios(&inputs, &outputs)
             .get_auth_data_for_witness()
             .hash()
     }
 
-    pub fn transaction_sign_data_hash(&self) -> TransactionSignDataHash {
-        match &self.extra {
+    pub fn transaction_sign_data_hash(&self) -> Result<TransactionSignDataHash, Error> {
+        if self.kind != StagingKind::Finalizing {
+            return Err(Error::TxKindToSignDataHashInvalid { kind: self.kind });
+        }
+
+        let res = match &self.extra {
             None => self.transaction_sign_data_hash_on(TxBuilder::new().set_nopayload()),
             Some(ref c) => match c.clone().into() {
                 Certificate::PoolRegistration(c) => {
@@ -499,7 +530,9 @@ impl Staging {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
             },
-        }
+        };
+
+        Ok(res)
     }
 
     /*

@@ -22,7 +22,8 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     crypto::key::KeyPair,
     interfaces::{
-        ActiveSlotCoefficient, CommitteeIdDef, FeesGoTo, KesUpdateSpeed, Tally, VotePlanStatus,
+        ActiveSlotCoefficient, BlockDate as BlockDateDto, CommitteeIdDef, FeesGoTo, KesUpdateSpeed,
+        Tally, VotePlanStatus,
     },
 };
 use jormungandr_testing_utils::testing::asserts::VotePlanStatusAssert;
@@ -100,7 +101,15 @@ pub fn test_get_initial_vote_plan() {
 
     let expected_vote_plan = VoteTestGen::vote_plan();
 
-    let vote_plan_cert = vote_plan_cert(&wallets[0], &expected_vote_plan).into();
+    let vote_plan_cert = vote_plan_cert(
+        &wallets[0],
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        &expected_vote_plan,
+    )
+    .into();
 
     let config = ConfigurationBuilder::new()
         .with_committee_ids(expected_committee_ids)
@@ -151,7 +160,15 @@ pub fn test_vote_flow_bft() {
         .public()
         .build();
 
-    let vote_plan_cert = vote_plan_cert(&alice, &vote_plan).into();
+    let vote_plan_cert = vote_plan_cert(
+        &alice,
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        &vote_plan,
+    )
+    .into();
     let wallets = [&alice, &bob, &clarice];
     let config = ConfigurationBuilder::new()
         .with_funds(
@@ -177,6 +194,7 @@ pub fn test_vote_flow_bft() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate::first(),
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -190,6 +208,11 @@ pub fn test_vote_flow_bft() {
     let rewards_before = jormungandr.explorer().last_block().unwrap().rewards();
 
     wait_for_epoch(1, jormungandr.rest());
+
+    let transaction_sender = transaction_sender.set_date(chain_impl_mockchain::block::BlockDate {
+        epoch: 2,
+        slot_id: 0,
+    });
 
     assert_eq!(
         vec![0],
@@ -271,7 +294,15 @@ pub fn test_vote_flow_praos() {
         .public()
         .build();
 
-    let vote_plan_cert = vote_plan_cert(&alice, &vote_plan).into();
+    let vote_plan_cert = vote_plan_cert(
+        &alice,
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        &vote_plan,
+    )
+    .into();
     let mut config = ConfigurationBuilder::new();
     config
         .with_committees(&[&alice, &bob, &clarice])
@@ -293,6 +324,7 @@ pub fn test_vote_flow_praos() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate::first(),
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -307,6 +339,11 @@ pub fn test_vote_flow_praos() {
         .unwrap();
 
     wait_for_epoch(1, jormungandr.rest());
+
+    let transaction_sender = transaction_sender.set_date(chain_impl_mockchain::block::BlockDate {
+        epoch: 2,
+        slot_id: 0,
+    });
 
     assert_eq!(
         vec![0],
@@ -419,6 +456,7 @@ pub fn jcli_e2e_flow() {
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&vote_plan_cert)
+        .set_expiry_date(BlockDateDto::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&alice)
         .add_auth(alice_sk.path())
@@ -444,6 +482,7 @@ pub fn jcli_e2e_flow() {
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&vote_cast)
+        .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
         .seal_with_witness_for_address(&alice)
         .to_message();
@@ -459,6 +498,7 @@ pub fn jcli_e2e_flow() {
         .new_transaction()
         .add_account(&bob.address().to_string(), &Value::zero().into())
         .add_certificate(&vote_cast)
+        .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
         .seal_with_witness_for_address(&bob)
         .to_message();
@@ -472,6 +512,7 @@ pub fn jcli_e2e_flow() {
         .new_transaction()
         .add_account(&clarice.address().to_string(), &Value::zero().into())
         .add_certificate(&vote_cast)
+        .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
         .seal_with_witness_for_address(&clarice)
         .to_message();
@@ -488,6 +529,7 @@ pub fn jcli_e2e_flow() {
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&vote_tally_cert)
+        .set_expiry_date(BlockDateDto::new(3, 0))
         .finalize()
         .seal_with_witness_for_address(&alice)
         .add_auth(alice_sk.path())

@@ -1,5 +1,6 @@
 use crate::mjolnir_app::build_monitor;
 use crate::mjolnir_app::MjolnirError;
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::testing::block0::get_block;
 use jormungandr_testing_utils::testing::block0::Block0ConfigurationExtension;
@@ -74,10 +75,15 @@ impl VotesOnly {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
-        let transaction_sender =
-            FragmentSender::new(block0_hash, fees, FragmentSenderSetup::no_verify());
+        let transaction_sender = FragmentSender::new(
+            block0_hash,
+            fees,
+            BlockDate::first(),
+            FragmentSenderSetup::no_verify(),
+        );
 
         let generator = AdversaryVoteCastsGenerator::new(
+            BlockDate::first(),
             faucet,
             vote_plans,
             remote_jormungandr.clone_with_rest(),

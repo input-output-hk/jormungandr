@@ -16,7 +16,7 @@ use chain_impl_mockchain::{
     ledger::governance::TreasuryGovernanceAction, value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
-use jormungandr_lib::interfaces::KesUpdateSpeed;
+use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, KesUpdateSpeed};
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::{VotePlanBuilder, VotePlanExtension};
 use jormungandr_testing_utils::wallet::Wallet;
@@ -109,6 +109,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&vote_plan_cert)
+        .set_expiry_date(BlockDateDto::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&alice)
         .add_auth(alice_sk.path())
@@ -146,6 +147,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&yes_vote_cast)
+        .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
         .seal_with_witness_for_address(&alice)
         .to_message();
@@ -161,6 +163,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .new_transaction()
         .add_account(&bob.address().to_string(), &Value::zero().into())
         .add_certificate(&yes_vote_cast)
+        .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
         .seal_with_witness_for_address(&bob)
         .to_message();
@@ -174,6 +177,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .new_transaction()
         .add_account(&clarice.address().to_string(), &Value::zero().into())
         .add_certificate(&no_vote_cast)
+        .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
         .seal_with_witness_for_address(&clarice)
         .to_message();
@@ -195,6 +199,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&encrypted_vote_tally_cert)
+        .set_expiry_date(BlockDateDto::new(3, 0))
         .finalize()
         .seal_with_witness_for_address(&alice)
         .add_auth(alice_sk.path())
@@ -249,6 +254,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&vote_tally_cert)
+        .set_expiry_date(BlockDateDto::new(3, 0))
         .finalize()
         .seal_with_witness_for_address(&alice)
         .add_auth(alice_sk.path())
@@ -353,6 +359,7 @@ pub fn jcli_private_vote_invalid_proof() {
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&vote_plan_cert)
+        .set_expiry_date(BlockDateDto::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&alice)
         .add_auth(alice_sk.path())
@@ -382,6 +389,7 @@ pub fn jcli_private_vote_invalid_proof() {
         .new_transaction()
         .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&encrypted_vote_tally_cert)
+        .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
         .seal_with_witness_for_address(&alice)
         .add_auth(alice_sk.path())
