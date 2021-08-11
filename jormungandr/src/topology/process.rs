@@ -90,6 +90,7 @@ impl Process {
                         if view.peers.is_empty() {
                             tracing::warn!("no peers to gossip with found, check your connection");
                         }
+                        tracing::trace!("gossiping with peers");
                         self.send_gossip_messages(view.peers)
                     }
                 _ = quarantine_check.tick() => {
@@ -115,7 +116,6 @@ impl Process {
     }
 
     fn send_gossip_messages(&mut self, peers: Vec<Peer>) {
-        tracing::trace!("sending gossip messages");
         for peer in peers {
             let gossip = self.topology.initiate_gossips(&peer.id());
             self.network_msgbox

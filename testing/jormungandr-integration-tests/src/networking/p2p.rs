@@ -377,7 +377,7 @@ fn gossip_interval() {
     let log_timestamps: Vec<u64> = server
         .log_content()
         .into_iter()
-        .filter(|s| s.contains("sending gossip"))
+        .filter(|s| s.contains("gossiping with peers"))
         .map(|t| parse_timestamp(&t))
         .collect();
 
