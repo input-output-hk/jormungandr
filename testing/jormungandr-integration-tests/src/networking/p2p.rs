@@ -344,6 +344,7 @@ pub fn node_put_itself_in_preffered_layers() {
 }
 
 #[test]
+/// Ensures intervals between gossip attempts respect the `gossip_interval` timing parameter
 fn gossip_interval() {
     const INTERVAL_SECS: u64 = 3;
 
@@ -395,6 +396,7 @@ fn gossip_interval() {
 
 #[cfg(feature = "soak-non-functional")]
 #[test]
+/// Ensures that consecutive network-stuck checks respect the `network_stuck_check` timing parameter
 fn network_stuck_check() {
     const INTERVAL_SECS: u64 = 90;
     let mut network_controller = NetworkBuilder::default()
@@ -438,6 +440,7 @@ fn network_stuck_check() {
 }
 
 #[test]
+/// Ensures that a node will only attempt to bootstrap `max_boostrap_attempts` times
 fn max_bootstrap_attempts() {
     const ATTEMPTS: usize = 3;
 
