@@ -89,8 +89,14 @@ impl Settings {
     }
 
     pub fn dump_private_vote_keys(&self, directory: ChildPath) {
-        for (vote_plan, data) in self.private_vote_plans.iter() {
-            let vote_plan_dir = directory.child(format!("{}_committees", vote_plan));
+        for (vote_plan_alias, data) in self.private_vote_plans.iter() {
+            let (_, vote_plan) = self
+                .network_settings
+                .vote_plans
+                .iter()
+                .find(|(alias, _)| *alias == vote_plan_alias)
+                .unwrap();
+            let vote_plan_dir = directory.child(format!("{}_committees", vote_plan.to_id()));
             data.write_to(vote_plan_dir).unwrap();
         }
     }
