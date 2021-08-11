@@ -3,7 +3,7 @@ use crate::intercom::{NetworkMsg, PropagateMsg, TopologyMsg};
 use crate::settings::start::network::Configuration;
 use crate::utils::async_msg::{MessageBox, MessageQueue};
 use std::time::Duration;
-use tokio::time::{Instant, Interval};
+use tokio::time::{Instant, Interval, MissedTickBehavior};
 use tokio_stream::StreamExt;
 
 pub const DEFAULT_NETWORK_STUCK_INTERVAL: Duration = Duration::from_secs(60 * 5); // 5 min
@@ -42,9 +42,12 @@ pub async fn start(task_data: TaskData) {
             .collect::<Vec<_>>(),
     ));
 
+    let mut gossip_interval = tokio::time::interval(config.gossip_interval);
+    gossip_interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
+
     let mut process = Process {
         input: topology_queue,
-        gossip_interval: tokio::time::interval(config.gossip_interval),
+        gossip_interval,
         network_stuck_check: config.network_stuck_check,
         network_msgbox,
         topology,
