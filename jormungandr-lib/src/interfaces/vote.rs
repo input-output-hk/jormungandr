@@ -456,7 +456,7 @@ mod serde_proposals {
 
 pub type VotePlanId = Hash;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct VotePlanStatus {
     pub id: VotePlanId,
     #[serde(with = "PayloadTypeDef")]
@@ -469,7 +469,7 @@ pub struct VotePlanStatus {
     pub proposals: Vec<VoteProposalStatus>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Tally {
     Public { result: TallyResult },
     Private { state: PrivateTallyState },
@@ -592,7 +592,7 @@ pub enum VotePayload {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct VoteProposalStatus {
     pub index: u8,
     pub proposal_id: Hash,
