@@ -278,9 +278,13 @@ fn try_request_fragment_removal(
     header: &Header,
 ) -> Result<(), async_msg::TrySendError<TransactionMsg>> {
     let hash = header.hash().into();
-    let date = header.block_date().into();
-    let status = FragmentStatus::InABlock { date, block: hash };
-    tx_msg_box.try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))
+    let date = header.block_date();
+    let status = FragmentStatus::InABlock {
+        date: date.clone().into(),
+        block: hash,
+    };
+    tx_msg_box.try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))?;
+    tx_msg_box.try_send(TransactionMsg::RemoveExpiredTransactions(date))
 }
 
 /// this function will re-process the tip against the different branches

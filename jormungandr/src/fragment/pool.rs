@@ -8,20 +8,21 @@ use crate::{
     utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::{fragment::Contents, transaction::Transaction};
+use chain_impl_mockchain::{block::BlockDate, fragment::Contents, transaction::Transaction};
 use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
 use jormungandr_lib::{
     interfaces::{
-        BlockDate, FragmentLog, FragmentOrigin, FragmentRejectionReason, FragmentStatus,
-        FragmentsProcessingSummary, PersistentFragmentLog, RejectedFragmentInfo,
+        BlockDate as BlockDateDto, FragmentLog, FragmentOrigin, FragmentRejectionReason,
+        FragmentStatus, FragmentsProcessingSummary, PersistentFragmentLog, RejectedFragmentInfo,
     },
     time::SecondsSinceUnixEpoch,
 };
-use std::collections::HashMap;
 use thiserror::Error;
 
+use std::collections::{HashMap, HashSet};
 use std::mem;
+
 use tokio::fs::File;
 use tokio::io::{AsyncWriteExt, BufWriter};
 
@@ -270,8 +271,25 @@ impl Pools {
     }
 
     // Remove from logs fragments that were confirmed (or rejected) in a branch
-    pub fn prune_after_ledger_branch(&mut self, branch_date: BlockDate) {
+    pub fn prune_after_ledger_branch(&mut self, branch_date: BlockDateDto) {
         self.logs.remove_logs_after_date(branch_date)
+    }
+
+    pub fn remove_expired_txs(&mut self, block_date: BlockDate) {
+        let mut fragment_ids = HashSet::new();
+        for pool in &mut self.pools {
+            let fragment_ids_update = pool.remove_expired_txs(block_date);
+            for id in fragment_ids_update {
+                fragment_ids.insert(id);
+            }
+        }
+        self.logs.modify_all(
+            fragment_ids,
+            FragmentStatus::Rejected {
+                reason: "fragment expired".to_string(),
+            },
+            block_date.into(),
+        );
     }
 }
 
@@ -305,7 +323,8 @@ pub(super) mod internal {
     use super::*;
 
     use std::{
-        collections::HashMap,
+        cmp::Ordering,
+        collections::{BTreeSet, HashMap},
         hash::{Hash, Hasher},
         ptr,
     };
@@ -441,8 +460,50 @@ pub(super) mod internal {
         }
     }
 
+    #[derive(Clone, PartialEq, Eq)]
+    struct TimeoutQueueItem {
+        valid_until: BlockDate,
+        id: FragmentId,
+    }
+
+    impl Ord for TimeoutQueueItem {
+        fn cmp(&self, other: &Self) -> Ordering {
+            let res = self.valid_until.cmp(&other.valid_until);
+            if res != Ordering::Equal {
+                return res;
+            }
+            self.id.cmp(&other.id)
+        }
+    }
+
+    impl PartialOrd for TimeoutQueueItem {
+        fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+            Some(self.cmp(other))
+        }
+    }
+
+    fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
+        match fragment {
+            Fragment::Initial(_) => None,
+            Fragment::OldUtxoDeclaration(_) => None,
+            Fragment::Transaction(tx) => Some(tx.as_slice().valid_until()),
+            Fragment::OwnerStakeDelegation(tx) => Some(tx.as_slice().valid_until()),
+            Fragment::StakeDelegation(tx) => Some(tx.as_slice().valid_until()),
+            Fragment::PoolRegistration(tx) => Some(tx.as_slice().valid_until()),
+            Fragment::PoolRetirement(tx) => Some(tx.as_slice().valid_until()),
+            Fragment::PoolUpdate(tx) => Some(tx.as_slice().valid_until()),
+            Fragment::UpdateProposal(_) => None,
+            Fragment::UpdateVote(_) => None,
+            Fragment::VotePlan(tx) => Some(tx.as_slice().valid_until()),
+            Fragment::VoteCast(tx) => Some(tx.as_slice().valid_until()),
+            Fragment::VoteTally(tx) => Some(tx.as_slice().valid_until()),
+            Fragment::EncryptedVoteTally(tx) => Some(tx.as_slice().valid_until()),
+        }
+    }
+
     pub struct Pool {
         entries: IndexedDeqeue<FragmentId, Fragment>,
+        timeout_queue: BTreeSet<TimeoutQueueItem>,
         max_entries: usize,
     }
 
@@ -450,6 +511,10 @@ pub(super) mod internal {
         pub fn new(max_entries: usize) -> Self {
             Pool {
                 entries: IndexedDeqeue::new(),
+                // Using BTreeSet is a nasty hack so that we are able to to efficiently remove items
+                // out of their order in a queue. BinaryHeap does not allow that and even if it did,
+                // the worst case complexity of removal of a non-root element would be O(n).
+                timeout_queue: BTreeSet::new(),
                 max_entries,
             }
         }
@@ -462,13 +527,14 @@ pub(super) mod internal {
             let max_fragments = self.max_entries - self.entries.len();
             fragments
                 .into_iter()
-                .filter(|fragment| {
+                .filter_map(|fragment| {
                     let fragment_id = fragment.id();
                     if self.entries.contains(&fragment_id) {
-                        false
+                        None
                     } else {
+                        self.timeout_queue_insert(&fragment);
                         self.entries.push_front(fragment_id, fragment.clone());
-                        true
+                        Some(fragment)
                     }
                 })
                 .take(max_fragments)
@@ -477,18 +543,72 @@ pub(super) mod internal {
 
         pub fn remove_all<'a>(&mut self, fragment_ids: impl IntoIterator<Item = &'a FragmentId>) {
             for fragment_id in fragment_ids {
-                self.entries.remove(fragment_id);
+                let maybe_fragment = self.entries.remove(fragment_id);
+                if let Some(fragment) = maybe_fragment {
+                    self.timeout_queue_remove(&fragment);
+                }
             }
         }
 
         pub fn remove_oldest(&mut self) -> Option<Fragment> {
-            self.entries.pop_back().map(|(_, value)| value)
+            let fragment = self.entries.pop_back().map(|(_, value)| value)?;
+            self.timeout_queue_remove(&fragment);
+            Some(fragment)
         }
 
         pub fn return_to_pool(&mut self, fragments: impl IntoIterator<Item = Fragment>) {
             for fragment in fragments.into_iter() {
+                self.timeout_queue_insert(&fragment);
                 self.entries.push_back(fragment.id(), fragment);
             }
+        }
+
+        fn timeout_queue_insert(&mut self, fragment: &Fragment) {
+            if let Some(valid_until) = get_transaction_expiry_date(&fragment) {
+                let item = TimeoutQueueItem {
+                    valid_until,
+                    id: fragment.id(),
+                };
+                self.timeout_queue.insert(item);
+            }
+        }
+
+        fn timeout_queue_remove(&mut self, fragment: &Fragment) {
+            if let Some(valid_until) = get_transaction_expiry_date(&fragment) {
+                let item = TimeoutQueueItem {
+                    valid_until,
+                    id: fragment.id(),
+                };
+                self.timeout_queue.remove(&item);
+            }
+        }
+
+        pub fn remove_expired_txs(&mut self, block_date: BlockDate) -> Vec<FragmentId> {
+            let to_remove: Vec<_> = self
+                .timeout_queue
+                .iter()
+                .take_while(|x| x.valid_until < block_date)
+                .cloned()
+                .collect();
+            for item in &to_remove {
+                self.timeout_queue.remove(item);
+                self.entries.remove(&item.id);
+            }
+            to_remove.into_iter().map(|x| x.id).collect()
+            // TODO convert to something like this when .first() and .pop_first() are stabilized. This does not have unnecessary clones.
+            // https://github.com/rust-lang/rust/issues/62924
+            // loop {
+            //     if let Some(item) = self.timeout_queue.first() {
+            //         if item.valid_until < block_date {
+            //             break;
+            //         }
+            //     } else {
+            //         break;
+            //     }
+
+            //     let item = self.timeout_queue.pop_first().unwrap();
+            //     self.entries.remove(&item.id);
+            // }
         }
     }
 

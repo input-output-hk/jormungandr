@@ -509,6 +509,7 @@ pub enum TransactionMsg {
         reply_handle: ReplyHandle<FragmentsProcessingSummary>,
     },
     RemoveTransactions(Vec<FragmentId>, FragmentStatus),
+    RemoveExpiredTransactions(chain_impl_mockchain::block::BlockDate),
     BranchSwitch(BlockDate),
     GetLogs(ReplyHandle<Vec<FragmentLog>>),
     GetStatuses(
