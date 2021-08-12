@@ -512,8 +512,7 @@ pub(super) mod internal {
             Pool {
                 entries: IndexedDeqeue::new(),
                 // Using BTreeSet is a nasty hack so that we are able to to efficiently remove items
-                // out of their order in a queue. BinaryHeap does not allow that and even if it did,
-                // the worst case complexity of removal of a non-root element would be O(n).
+                // out of their order in a queue. BinaryHeap does not allow that.
                 timeout_queue: BTreeSet::new(),
                 max_entries,
             }
