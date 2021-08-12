@@ -400,6 +400,7 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
         treasury_tax: current_params.treasury_tax,
         reward_params: current_params.reward_params.clone(),
         discrimination: static_params.discrimination,
+        tx_max_expiry_epochs: ledger.settings().transaction_max_expiry_epochs,
     })
 }
 
