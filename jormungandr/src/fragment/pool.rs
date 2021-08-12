@@ -18,7 +18,7 @@ use jormungandr_lib::{
     },
     time::SecondsSinceUnixEpoch,
 };
-use std::collections::HashSet;
+use std::collections::HashMap;
 use thiserror::Error;
 
 use std::fs::File;
@@ -79,12 +79,16 @@ impl Pools {
         }
     }
 
-    fn filter_fragments(
+    /// Returns number of registered fragments. Setting `fail_fast` to `true` will force this
+    /// method to reject all fragments after the first invalid fragments was met.
+    pub async fn insert_and_propagate_all(
         &mut self,
         origin: FragmentOrigin,
         fragments: Vec<Fragment>,
         fail_fast: bool,
-    ) -> (Vec<Fragment>, FragmentsProcessingSummary) {
+    ) -> Result<FragmentsProcessingSummary, Error> {
+        tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
+
         use bincode::Options;
 
         let mut filtered_fragments = Vec::new();
@@ -156,7 +160,7 @@ impl Pools {
             }
         }
 
-        let mut accepted = HashSet::new();
+        let mut accepted_fragments = HashMap::new();
 
         for (pool_number, pool) in self.pools.iter_mut().enumerate() {
             let span = tracing::trace_span!("pool_insert_fragment", pool_number=?pool_number);
@@ -172,10 +176,10 @@ impl Pools {
                 .collect();
             self.logs.insert_all_pending(fragment_logs);
 
-            for fragment in &new_fragments {
+            for fragment in new_fragments {
                 let id = fragment.id();
                 tracing::debug!(fragment_id=?id, "inserted fragment to the pool");
-                accepted.insert(id);
+                accepted_fragments.insert(id, fragment);
             }
 
             for fragment in fragments {
@@ -188,37 +192,19 @@ impl Pools {
             }
         }
 
-        let accepted = accepted.into_iter().collect();
-
-        (
-            filtered_fragments,
-            FragmentsProcessingSummary { accepted, rejected },
-        )
-    }
-
-    /// Returns number of registered fragments. Setting `fail_fast` to `true` will force this
-    /// method to reject all fragments after the first invalid fragments was met.
-    pub async fn insert_and_propagate_all(
-        &mut self,
-        origin: FragmentOrigin,
-        fragments: Vec<Fragment>,
-        fail_fast: bool,
-    ) -> Result<FragmentsProcessingSummary, Error> {
-        tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
-
-        let (filtered_fragments, summary) = self.filter_fragments(origin, fragments, fail_fast);
-
+        let mut accepted = Vec::with_capacity(accepted_fragments.len());
         let mut network_msg_box = self.network_msg_box.clone();
 
-        for fragment in filtered_fragments.into_iter() {
+        for (id, fragment) in accepted_fragments.into_iter() {
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
             network_msg_box
                 .send(fragment_msg)
                 .await
                 .map_err(Error::CannotPropagate)?;
+            accepted.push(id);
         }
 
-        Ok(summary)
+        Ok(FragmentsProcessingSummary { accepted, rejected })
     }
 
     pub fn remove_added_to_block(&mut self, fragment_ids: Vec<FragmentId>, status: FragmentStatus) {
