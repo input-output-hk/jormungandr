@@ -21,14 +21,21 @@ use jormungandr_lib::{
 use std::collections::HashMap;
 use thiserror::Error;
 
-use std::fs::File;
 use std::mem;
+use tokio::fs::File;
+use tokio::io::{AsyncWriteExt, BufWriter};
+
+// It's a pretty big buffer, but common cloud based storage solutions (like EBS or GlusterFS) benefits from
+// this and it's currently flushed after every request, so the possibility of losing fragments due to a crash
+// should be minimal.
+// Its main purpose is to avoid unnecessary flushing while processing a single batch of fragments.
+const DEFAULT_BUF_SIZE: usize = 128 * 1024; // 128 KiB
 
 pub struct Pools {
     logs: Logs,
     pools: Vec<internal::Pool>,
     network_msg_box: MessageBox<NetworkMsg>,
-    persistent_log: Option<File>,
+    persistent_log: Option<BufWriter<File>>,
 }
 
 #[derive(Debug, Error)]
@@ -55,7 +62,8 @@ impl Pools {
             logs,
             pools,
             network_msg_box,
-            persistent_log,
+            persistent_log: persistent_log
+                .map(|file| BufWriter::with_capacity(DEFAULT_BUF_SIZE, file)),
         }
     }
 
@@ -66,15 +74,18 @@ impl Pools {
     /// Sets the persistent log to a file.
     /// The file must be opened for writing.
     pub fn set_persistent_log(&mut self, file: File) {
-        self.persistent_log = Some(file);
+        self.persistent_log = Some(BufWriter::with_capacity(DEFAULT_BUF_SIZE, file));
     }
 
     /// Synchronizes the persistent log file contents and metadata
     /// to the file system and closes the file.
-    pub fn close_persistent_log(&mut self) {
-        if let Some(file) = mem::replace(&mut self.persistent_log, None) {
-            if let Err(e) = file.sync_all() {
-                tracing::error!(error = %e, "failed to sync persistent log file");
+    pub async fn close_persistent_log(&mut self) {
+        if let Some(mut persistent_log) = mem::replace(&mut self.persistent_log, None) {
+            if let Err(error) = persistent_log.flush().await {
+                tracing::error!(%error, "failed to flush persistent log");
+            }
+            if let Err(error) = persistent_log.into_inner().sync_all().await {
+                tracing::error!(%error, "failed to sync persistent log file");
             }
         }
     }
@@ -127,7 +138,7 @@ impl Pools {
                 continue;
             }
 
-            if let Some(mut persistent_log) = self.persistent_log.as_mut() {
+            if let Some(persistent_log) = self.persistent_log.as_mut() {
                 let entry = PersistentFragmentLog {
                     time: SecondsSinceUnixEpoch::now(),
                     fragment: fragment.clone(),
@@ -135,7 +146,9 @@ impl Pools {
                 // this must be sufficient: the PersistentFragmentLog format is using byte array
                 // for serialization so we do not expect any problems during deserialization
                 let codec = bincode::DefaultOptions::new().with_fixint_encoding();
-                if let Err(err) = codec.serialize_into(&mut persistent_log, &entry) {
+                let serialized = codec.serialize(&entry).unwrap();
+
+                if let Err(err) = persistent_log.write_all(&serialized).await {
                     tracing::error!(err = %err, "failed to write persistent fragment log entry");
                 }
             }
@@ -143,6 +156,13 @@ impl Pools {
             tracing::debug!("including fragment to the pool");
 
             filtered_fragments.push(fragment);
+        }
+
+        // flush every request to minimize possibility of losing fragments at the expense of non optimal performance
+        if let Some(persistent_log) = self.persistent_log.as_mut() {
+            if let Err(error) = persistent_log.flush().await {
+                tracing::error!(%error, "failed to flush persistent logs");
+            }
         }
 
         if fail_fast {
