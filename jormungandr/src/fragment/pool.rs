@@ -37,6 +37,7 @@ pub struct Pools {
     pools: Vec<internal::Pool>,
     network_msg_box: MessageBox<NetworkMsg>,
     persistent_log: Option<BufWriter<File>>,
+    last_block_date: BlockDate,
 }
 
 #[derive(Debug, Error)]
@@ -65,6 +66,7 @@ impl Pools {
             network_msg_box,
             persistent_log: persistent_log
                 .map(|file| BufWriter::with_capacity(DEFAULT_BUF_SIZE, file)),
+            last_block_date: BlockDate::first(),
         }
     }
 
@@ -120,6 +122,15 @@ impl Pools {
                     reason: FragmentRejectionReason::FragmentAlreadyInLog,
                 });
                 tracing::debug!("fragment is already logged");
+                continue;
+            }
+
+            if check_fragment_expired(&fragment, self.last_block_date) {
+                rejected.push(RejectedFragmentInfo {
+                    id,
+                    reason: FragmentRejectionReason::FragmentExpired,
+                });
+                tracing::debug!("fragment is expired at the time of receiving");
                 continue;
             }
 
@@ -276,6 +287,9 @@ impl Pools {
     }
 
     pub fn remove_expired_txs(&mut self, block_date: BlockDate) {
+        if self.last_block_date < block_date {
+            self.last_block_date = block_date;
+        }
         let mut fragment_ids = HashSet::new();
         for pool in &mut self.pools {
             let fragment_ids_update = pool.remove_expired_txs(block_date);
@@ -317,6 +331,33 @@ fn is_fragment_valid(fragment: &Fragment) -> bool {
 
 fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
     tx.verify_possibly_balanced().is_ok()
+}
+
+fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
+    match fragment {
+        Fragment::Initial(_) => None,
+        Fragment::OldUtxoDeclaration(_) => None,
+        Fragment::Transaction(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::OwnerStakeDelegation(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::StakeDelegation(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::PoolRegistration(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::PoolRetirement(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::PoolUpdate(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::UpdateProposal(_) => None,
+        Fragment::UpdateVote(_) => None,
+        Fragment::VotePlan(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::VoteCast(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::VoteTally(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::EncryptedVoteTally(tx) => Some(tx.as_slice().valid_until()),
+    }
+}
+
+fn check_fragment_expired(fragment: &Fragment, block_date: BlockDate) -> bool {
+    if let Some(valid_until) = get_transaction_expiry_date(fragment) {
+        valid_until < block_date
+    } else {
+        false
+    }
 }
 
 pub(super) mod internal {
@@ -479,25 +520,6 @@ pub(super) mod internal {
     impl PartialOrd for TimeoutQueueItem {
         fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
             Some(self.cmp(other))
-        }
-    }
-
-    fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
-        match fragment {
-            Fragment::Initial(_) => None,
-            Fragment::OldUtxoDeclaration(_) => None,
-            Fragment::Transaction(tx) => Some(tx.as_slice().valid_until()),
-            Fragment::OwnerStakeDelegation(tx) => Some(tx.as_slice().valid_until()),
-            Fragment::StakeDelegation(tx) => Some(tx.as_slice().valid_until()),
-            Fragment::PoolRegistration(tx) => Some(tx.as_slice().valid_until()),
-            Fragment::PoolRetirement(tx) => Some(tx.as_slice().valid_until()),
-            Fragment::PoolUpdate(tx) => Some(tx.as_slice().valid_until()),
-            Fragment::UpdateProposal(_) => None,
-            Fragment::UpdateVote(_) => None,
-            Fragment::VotePlan(tx) => Some(tx.as_slice().valid_until()),
-            Fragment::VoteCast(tx) => Some(tx.as_slice().valid_until()),
-            Fragment::VoteTally(tx) => Some(tx.as_slice().valid_until()),
-            Fragment::EncryptedVoteTally(tx) => Some(tx.as_slice().valid_until()),
         }
     }
 
