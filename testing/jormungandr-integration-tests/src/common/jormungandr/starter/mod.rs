@@ -42,6 +42,10 @@ pub enum StartupError {
     JormungandrError(#[from] JormungandrError),
     #[error("expected message not found: {entry} in logs: {log_content}")]
     EntryNotFoundInLogs { entry: String, log_content: String },
+    #[error("too many failures while attempting to start jormungandr")]
+    TooManyAttempts,
+    #[error("Block0 hash is not valid")]
+    InvalidBlock0Hash(#[from] chain_crypto::hash::Error),
 }
 
 const DEFAULT_SLEEP_BETWEEN_ATTEMPTS: u64 = 2;
@@ -86,7 +90,7 @@ impl From<LeadershipMode> for FromGenesis {
 
 pub struct Starter {
     timeout: Duration,
-    jormungandr_app_path: PathBuf,
+    jormungandr_app_path: Option<PathBuf>,
     sleep: u64,
     role: Role,
     alias: String,
@@ -97,6 +101,7 @@ pub struct Starter {
     legacy: Option<Version>,
     config: Option<JormungandrParams>,
     benchmark: Option<SpeedBenchmarkDef>,
+    verbose: bool,
 }
 
 impl Default for Starter {
@@ -119,7 +124,8 @@ impl Starter {
             legacy: None,
             config: None,
             benchmark: None,
-            jormungandr_app_path: get_jormungandr_app(),
+            jormungandr_app_path: None,
+            verbose: true,
         }
     }
 
@@ -129,7 +135,7 @@ impl Starter {
     }
 
     pub fn jormungandr_app(&mut self, path: PathBuf) -> &mut Self {
-        self.jormungandr_app_path = path;
+        self.jormungandr_app_path = Some(path);
         self
     }
 
@@ -191,6 +197,11 @@ impl Starter {
         self
     }
 
+    pub fn verbose(&mut self, verbose: bool) -> &mut Self {
+        self.verbose = verbose;
+        self
+    }
+
     fn build_configuration(
         &mut self,
     ) -> Result<(JormungandrParams, Option<TempDir>), StartupError> {
@@ -234,9 +245,12 @@ impl Starter {
     pub fn start_async(&mut self) -> Result<JormungandrProcess, StartupError> {
         let (params, temp_dir) = self.build_configuration()?;
         if let Some(version) = self.legacy.as_ref() {
-            Ok(ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)?.start_async())
+            Ok(
+                ConfiguredStarter::legacy(self, version.clone(), params, temp_dir)?
+                    .start_async()?,
+            )
         } else {
-            Ok(ConfiguredStarter::new(self, params, temp_dir).start_async())
+            Ok(ConfiguredStarter::new(self, params, temp_dir).start_async()?)
         }
     }
 
@@ -301,6 +315,14 @@ impl<'a> ConfiguredStarter<'a, legacy::NodeConfig> {
     }
 }
 
+macro_rules! cond_println {
+    ($cond:expr, $($arg:tt)*) => {
+        if $cond {
+            println!($($arg)*);
+        }
+    };
+}
+
 impl<'a, Conf> ConfiguredStarter<'a, Conf>
 where
     Conf: TestConfig + Serialize + Debug,
@@ -310,7 +332,7 @@ where
         let timeout = self.starter.timeout;
 
         let start = Instant::now();
-        let process = self.start_async();
+        let process = self.start_async()?;
 
         loop {
             if start.elapsed() > timeout {
@@ -329,7 +351,11 @@ where
     fn start_with_fail_in_stderr(self, expected_msg: &str) {
         get_command(
             &self.params,
-            &self.starter.jormungandr_app_path,
+            &self
+                .starter
+                .jormungandr_app_path
+                .clone()
+                .unwrap_or_else(get_jormungandr_app),
             self.starter.role,
             self.starter.from_genesis,
         )
@@ -341,30 +367,36 @@ where
     }
 
     fn start_process(&self) -> Child {
-        println!("Starting node");
-        println!(
+        let verbose = self.starter.verbose;
+        cond_println!(verbose, "Starting node");
+        cond_println!(
+            verbose,
             "Log file: {}",
             self.params.log_file_path().to_string_lossy()
         );
-        println!("Blockchain configuration:");
-        println!("{:#?}", self.params.block0_configuration());
-        println!("Node settings configuration:");
-        println!("{:#?}", self.params.node_config());
+        cond_println!(verbose, "Blockchain configuration:");
+        cond_println!(verbose, "{:#?}", self.params.block0_configuration());
+        cond_println!(verbose, "Node settings configuration:");
+        cond_println!(verbose, "{:#?}", self.params.node_config());
 
         let mut command = get_command(
             &self.params,
-            self.starter.jormungandr_app_path.clone(),
+            self.starter
+                .jormungandr_app_path
+                .clone()
+                .unwrap_or_else(get_jormungandr_app),
             self.starter.role,
             self.starter.from_genesis,
         );
 
-        println!("Bootstrapping...");
+        cond_println!(verbose, "Running start command: {:?}", command);
+        cond_println!(verbose, "Bootstrapping...");
         command
             .spawn()
             .expect("failed to execute 'start jormungandr node'")
     }
 
-    fn start_async(self) -> JormungandrProcess {
+    fn start_async(self) -> Result<JormungandrProcess, StartupError> {
         JormungandrProcess::from_config(
             self.start_process(),
             &self.params,
@@ -382,7 +414,7 @@ where
                 &self.params,
                 self.temp_dir.take(),
                 self.starter.alias.clone(),
-            );
+            )?;
             match (
                 jormungandr
                     .wait_for_bootstrap(&self.starter.verification_mode, self.starter.timeout),
@@ -396,7 +428,8 @@ where
                     Err(StartupError::JormungandrError(JormungandrError::PortAlreadyInUse)),
                     OnFail::RetryUnlimitedOnPortOccupied,
                 ) => {
-                    println!(
+                    cond_println!(
+                        self.starter.verbose,
                         "Port already in use error detected. Retrying with different port... "
                     );
                     self.params.refresh_instance_params();
@@ -413,7 +446,8 @@ where
                     panic!("Jormungandr node cannot start due to error: {}", err);
                 }
                 (Err(err), _) => {
-                    println!(
+                    cond_println!(
+                        self.starter.verbose,
                         "Jormungandr failed to start due to error {}. Retrying... ",
                         err
                     );
@@ -422,7 +456,7 @@ where
             }
 
             if retry_counter < 0 {
-                panic!("Jormungandr node cannot start despites retry attempts. see logs for more details");
+                return Err(StartupError::TooManyAttempts);
             }
 
             self.temp_dir = jormungandr.steal_temp_dir();
