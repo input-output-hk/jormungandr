@@ -10,7 +10,7 @@ mod info;
 mod mk_witness;
 pub mod new;
 mod seal;
-mod set_valid_until;
+mod set_expiry_date;
 mod simplified;
 mod staging;
 
@@ -43,7 +43,7 @@ pub enum Transaction {
     /// add output to the finalized transaction
     AddWitness(add_witness::AddWitness),
     /// set a transaction expiration date
-    SetValidUntil(set_valid_until::SetValidUntil),
+    SetExpiryDate(set_expiry_date::SetExpiryDate),
     /// set a certificate to the Transaction. If there is already
     /// an extra certificate in the transaction it will be replaced
     /// with the new one.
@@ -251,7 +251,7 @@ impl Transaction {
             Transaction::Auth(auth) => auth.exec(),
             Transaction::ToMessage(common) => display_message(common),
             Transaction::MakeTransaction(send) => send.exec(),
-            Transaction::SetValidUntil(set_valid_until) => set_valid_until.exec(),
+            Transaction::SetExpiryDate(set_expiry_date) => set_expiry_date.exec(),
         }
     }
 }

@@ -98,7 +98,7 @@ impl Staging {
         })
     }
 
-    pub fn set_validity_time(&mut self, input: interfaces::BlockDate) -> Result<(), Error> {
+    pub fn set_expiry_date(&mut self, input: interfaces::BlockDate) -> Result<(), Error> {
         if self.kind != StagingKind::Balancing {
             return Err(Error::TxKindToSetValidityTimeInvalid { kind: self.kind });
         }

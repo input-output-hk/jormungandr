@@ -203,7 +203,7 @@ pub fn make_transaction(
         value: value.into(),
     })?;
 
-    transaction.set_validity_time(valid_until)?;
+    transaction.set_expiry_date(valid_until)?;
 
     // finalize
     transaction::finalize::finalize(fee, change, &mut transaction)?;

@@ -4,7 +4,7 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct SetValidUntil {
+pub struct SetExpiryDate {
     #[structopt(flatten)]
     pub common: common::CommonTransaction,
 
@@ -13,10 +13,10 @@ pub struct SetValidUntil {
     pub valid_until: interfaces::BlockDate,
 }
 
-impl SetValidUntil {
+impl SetExpiryDate {
     pub fn exec(self) -> Result<(), Error> {
         let mut transaction = self.common.load()?;
-        transaction.set_validity_time(self.valid_until)?;
+        transaction.set_expiry_date(self.valid_until)?;
         self.common.store(&transaction)
     }
 }
