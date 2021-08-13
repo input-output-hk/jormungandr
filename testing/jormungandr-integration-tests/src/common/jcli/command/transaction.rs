@@ -226,7 +226,7 @@ impl TransactionCommand {
 
     pub fn set_expiry_date<P: AsRef<Path>>(mut self, expiry_date: &str, staging_file: P) -> Self {
         self.command
-            .arg("set-valid-until")
+            .arg("set-expiry-date")
             .arg(expiry_date)
             .arg("--staging")
             .arg(staging_file.as_ref());
