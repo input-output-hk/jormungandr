@@ -1087,6 +1087,8 @@ specifying the directory name where log files are stored.</li>
 <p>A persistent log is a collection of records comprised of a UNIX timestamp of when a fragment was
 registereed by the mempool followed by the hex-encoded fragment body. This log is a line-delimited
 JSON stream.</p>
+<p>Keep in mind that enabling persistent logs could result in impaired performance of the node if disk
+operations are slow. Consider using a reasonably fast ssd for best results.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="leadership-1"><a class="header" href="#leadership-1">Leadership</a></h1>
 <p>The <code>leadership</code> field in your node config file is not mandatory, by default it is set
 as follow:</p>
@@ -3255,7 +3257,7 @@ the remote node is a specific stake owner/gatherer.</li>
 change the links and to relay messages are all handled by <a href="https://hal.inria.fr/hal-01555561/document">PolderCast</a>.
 Implementing <a href="https://hal.inria.fr/hal-01555561/document">PolderCast</a> provides a good support to handle churn, fast relaying
 and quick stabilisation of the network. The paper proposes 3 modules: Rings,
-<a href="https://www.cs.vu.nl/%7Espyros/papers/Thesis-Voulgaris.pdf">Vicinity</a> and <a href="https://link.springer.com/article/10.1007/s10922-005-4441-x">Cyclon</a>.</p>
+<a href="https://research.vu.nl/en/publications/epidemic-based-self-organization-in-peer-to-peer-systems">Vicinity</a> and <a href="https://link.springer.com/article/10.1007/s10922-005-4441-x">Cyclon</a>.</p>
 <h3 id="our-addition-the-preferred-nodes"><a class="header" href="#our-addition-the-preferred-nodes">Our addition: The preferred nodes</a></h3>
 <p>We propose to extend the number of modules with a 4th one. This module is static and entirely defined in the config file.</p>
 <p>This 4th module will provide the following features:</p>
@@ -3371,7 +3373,7 @@ this adversary model.</p>
 <li>Node do not share their links, they share a limited number of gossips based
 on what a node believe the recipient node might be interested in;</li>
 <li>While some links can be guessed (those of the Rings module for example), some
-are too arbitrary (<a href="https://www.cs.vu.nl/%7Espyros/papers/Thesis-Voulgaris.pdf">Vicinity</a> or <a href="https://link.springer.com/article/10.1007/s10922-005-4441-x">Cyclon</a>) to determined the original sender
+are too arbitrary (<a href="https://research.vu.nl/en/publications/epidemic-based-self-organization-in-peer-to-peer-systems">Vicinity</a> or <a href="https://link.springer.com/article/10.1007/s10922-005-4441-x">Cyclon</a>) to determined the original sender
 of a transaction;</li>
 </ul>
 <h1 id="man-in-the-middle"><a class="header" href="#man-in-the-middle">Man in the middle</a></h1>
