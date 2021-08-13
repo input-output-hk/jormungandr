@@ -9,7 +9,7 @@ pub struct SetExpiryDate {
     pub common: common::CommonTransaction,
 
     /// the slot this transaction should be valid until, for example 3.14
-    #[structopt(name = "VALID_UNTIL")]
+    #[structopt(name = "BLOCKDATE")]
     pub valid_until: interfaces::BlockDate,
 }
 
