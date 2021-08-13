@@ -440,6 +440,6 @@ Considering the perfect network, it allow to calculate how many sequential hops,
 
 [proto]: ../../../proto
 [PolderCast]: https://hal.inria.fr/hal-01555561/document
-[Vicinity]: https://www.cs.vu.nl/~spyros/papers/Thesis-Voulgaris.pdf
+[Vicinity]: https://research.vu.nl/en/publications/epidemic-based-self-organization-in-peer-to-peer-systems
 [Cyclon]: https://link.springer.com/article/10.1007/s10922-005-4441-x
 [Dandelion]: https://arxiv.org/abs/1701.04439
