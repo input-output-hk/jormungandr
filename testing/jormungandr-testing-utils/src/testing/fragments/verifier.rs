@@ -86,7 +86,6 @@ pub struct FragmentVerifier;
 
 impl FragmentVerifier {
     pub fn wait_until_all_processed<A: FragmentNode + ?Sized>(
-        &self,
         wait: Wait,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
@@ -119,40 +118,36 @@ impl FragmentVerifier {
     }
 
     pub fn wait_and_verify_all_are_in_block<A: FragmentNode + ?Sized>(
-        &self,
         duration: Duration,
         checks: Vec<MemPoolCheck>,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
         for check in checks {
-            let status = self.wait_fragment(duration, check, Default::default(), node)?;
-            self.is_in_block(status, node)?;
+            let status = Self::wait_fragment(duration, check, Default::default(), node)?;
+            Self::is_in_block(status, node)?;
         }
         Ok(())
     }
 
     pub fn wait_and_verify_is_in_block<A: FragmentNode + ?Sized>(
-        &self,
         duration: Duration,
         check: MemPoolCheck,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
-        let status = self.wait_fragment(duration, check, Default::default(), node)?;
-        self.is_in_block(status, node)
+        let status = Self::wait_fragment(duration, check, Default::default(), node)?;
+        Self::is_in_block(status, node)
     }
 
     pub fn wait_and_verify_is_rejected<A: FragmentNode + ?Sized>(
-        &self,
         duration: Duration,
         check: MemPoolCheck,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
-        let status = self.wait_fragment(duration, check, Default::default(), node)?;
-        self.is_rejected(status, node)
+        let status = Self::wait_fragment(duration, check, Default::default(), node)?;
+        Self::is_rejected(status, node)
     }
 
     pub fn is_in_block<A: FragmentNode + ?Sized>(
-        &self,
         status: FragmentStatus,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
@@ -167,7 +162,6 @@ impl FragmentVerifier {
     }
 
     pub fn is_rejected<A: FragmentNode + ?Sized>(
-        &self,
         status: FragmentStatus,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
@@ -182,7 +176,6 @@ impl FragmentVerifier {
     }
 
     pub fn fragment_status<A: FragmentNode + ?Sized>(
-        &self,
         check: MemPoolCheck,
         node: &A,
     ) -> Result<FragmentStatus, FragmentVerifierError> {
@@ -211,7 +204,6 @@ impl FragmentVerifier {
     }
 
     pub fn wait_fragment<A: FragmentNode + ?Sized>(
-        &self,
         duration: Duration,
         check: MemPoolCheck,
         exit_strategy: ExitStrategy,
@@ -219,7 +211,7 @@ impl FragmentVerifier {
     ) -> Result<FragmentStatus, FragmentVerifierError> {
         let max_try = 50;
         for _ in 0..max_try {
-            let status_result = self.fragment_status(check.clone(), node);
+            let status_result = Self::fragment_status(check.clone(), node);
 
             if status_result.is_err() {
                 std::thread::sleep(duration);
@@ -246,7 +238,6 @@ impl FragmentVerifier {
     }
 
     pub fn wait_for_all_fragments<A: FragmentNode + ?Sized>(
-        &self,
         duration: Duration,
         node: &A,
     ) -> Result<HashMap<FragmentId, FragmentLog>, FragmentVerifierError> {

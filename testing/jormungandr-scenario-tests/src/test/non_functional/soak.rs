@@ -106,7 +106,6 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let now = SystemTime::now();
 
     let fragment_sender = controller.fragment_sender();
-    let fragment_verifier = FragmentVerifier;
 
     loop {
         let check1 =
@@ -124,13 +123,13 @@ pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         let check7 =
             fragment_sender.send_transaction(&mut wallet7, &wallet6, &leader7, 1_000.into())?;
 
-        fragment_verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check1, &leader1)?;
-        fragment_verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check2, &leader2)?;
-        fragment_verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check3, &leader3)?;
-        fragment_verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check4, &leader4)?;
-        fragment_verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check5, &leader5)?;
-        fragment_verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check6, &leader6)?;
-        fragment_verifier.wait_and_verify_is_in_block(Duration::from_secs(2), check7, &leader7)?;
+        FragmentVerifier::wait_and_verify_is_in_block(Duration::from_secs(2), check1, &leader1)?;
+        FragmentVerifier::wait_and_verify_is_in_block(Duration::from_secs(2), check2, &leader2)?;
+        FragmentVerifier::wait_and_verify_is_in_block(Duration::from_secs(2), check3, &leader3)?;
+        FragmentVerifier::wait_and_verify_is_in_block(Duration::from_secs(2), check4, &leader4)?;
+        FragmentVerifier::wait_and_verify_is_in_block(Duration::from_secs(2), check5, &leader5)?;
+        FragmentVerifier::wait_and_verify_is_in_block(Duration::from_secs(2), check6, &leader6)?;
+        FragmentVerifier::wait_and_verify_is_in_block(Duration::from_secs(2), check7, &leader7)?;
 
         wallet1.confirm_transaction();
         wallet2.confirm_transaction();

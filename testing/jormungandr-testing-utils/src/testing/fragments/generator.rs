@@ -87,9 +87,12 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     .send_pool_registration(&mut self.sender, &stake_pool, &self.node)
                     .unwrap();
 
-                FragmentVerifier
-                    .wait_and_verify_is_in_block(Duration::from_secs(2), fragment, &self.node)
-                    .unwrap();
+                FragmentVerifier::wait_and_verify_is_in_block(
+                    Duration::from_secs(2),
+                    fragment,
+                    &self.node,
+                )
+                .unwrap();
 
                 stake_pool
             })
@@ -112,9 +115,12 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                 .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
                 .unwrap();
 
-            FragmentVerifier
-                .wait_and_verify_is_in_block(Duration::from_secs(2), fragment, &self.node)
-                .unwrap();
+            FragmentVerifier::wait_and_verify_is_in_block(
+                Duration::from_secs(2),
+                fragment,
+                &self.node,
+            )
+            .unwrap();
 
             vote_plan
         })
@@ -136,9 +142,12 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                 .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
                 .unwrap();
 
-            FragmentVerifier
-                .wait_and_verify_is_in_block(Duration::from_secs(2), fragment, &self.node)
-                .unwrap();
+            FragmentVerifier::wait_and_verify_is_in_block(
+                Duration::from_secs(2),
+                fragment,
+                &self.node,
+            )
+            .unwrap();
 
             vote_plan
         })
