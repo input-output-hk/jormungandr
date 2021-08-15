@@ -64,19 +64,19 @@ pub fn dump_send_correct_fragments() {
     );
 
     fragment_generator.prepare(BlockDate::new(1, 0));
-    let verifier = FragmentVerifier;
 
     time::wait_for_epoch(1, jormungandr.rest());
 
     let wait = Wait::new(Duration::from_secs(1), 25);
-    verifier
-        .wait_until_all_processed(wait, &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_until_all_processed(wait, &jormungandr).unwrap();
 
     let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
-    verifier
-        .wait_and_verify_all_are_in_block(Duration::from_secs(2), mem_checks, &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_and_verify_all_are_in_block(
+        Duration::from_secs(2),
+        mem_checks,
+        &jormungandr,
+    )
+    .unwrap();
 
     assert_all_fragment_are_persisted(dump_folder.path(), persistent_log_path.path());
 }

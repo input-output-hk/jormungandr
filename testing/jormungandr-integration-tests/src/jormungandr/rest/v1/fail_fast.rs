@@ -99,10 +99,7 @@ pub fn fail_fast_on_all_valid(
         )
         .unwrap();
 
-    let verifier = FragmentVerifier;
-    verifier
-        .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_for_all_fragments(Duration::from_secs(5), &jormungandr).unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -131,10 +128,7 @@ pub fn fail_fast_off_all_valid(
         )
         .unwrap();
 
-    let verifier = FragmentVerifier;
-    verifier
-        .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_for_all_fragments(Duration::from_secs(5), &jormungandr).unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -159,10 +153,7 @@ pub fn fail_fast_on_first_invalid(
         true,
     ));
 
-    let verifier = FragmentVerifier;
-    verifier
-        .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_for_all_fragments(Duration::from_secs(5), &jormungandr).unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -191,10 +182,7 @@ pub fn fail_fast_on_first_late_invalid(
         )
         .unwrap();
 
-    let verifier = FragmentVerifier;
-    verifier
-        .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_for_all_fragments(Duration::from_secs(5), &jormungandr).unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -221,10 +209,7 @@ pub fn fail_fast_off_first_invalid(
         true,
     ));
 
-    let verifier = FragmentVerifier;
-    verifier
-        .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_for_all_fragments(Duration::from_secs(5), &jormungandr).unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -251,10 +236,7 @@ pub fn fail_fast_off_invalid_in_middle(
         false,
     ));
 
-    let verifier = FragmentVerifier;
-    verifier
-        .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_for_all_fragments(Duration::from_secs(5), &jormungandr).unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -281,10 +263,7 @@ pub fn fail_fast_on_invalid_in_middle(
         true,
     ));
 
-    let verifier = FragmentVerifier;
-    verifier
-        .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_for_all_fragments(Duration::from_secs(5), &jormungandr).unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -310,10 +289,7 @@ pub fn fail_fast_on_last_invalid(
         true,
     ));
 
-    let verifier = FragmentVerifier;
-    verifier
-        .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_for_all_fragments(Duration::from_secs(5), &jormungandr).unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -340,10 +316,7 @@ pub fn fail_fast_off_last_invalid(
         false,
     ));
 
-    let verifier = FragmentVerifier;
-    verifier
-        .wait_for_all_fragments(Duration::from_secs(5), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_for_all_fragments(Duration::from_secs(5), &jormungandr).unwrap();
 
     jormungandr
         .correct_state_verifier()

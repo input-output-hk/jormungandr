@@ -69,8 +69,10 @@ pub fn send_all_fragments() {
     let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
 
     println!("{:?}", mem_checks);
-    let verifier = FragmentVerifier;
-    verifier
-        .wait_and_verify_all_are_in_block(Duration::from_secs(2), mem_checks, &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_and_verify_all_are_in_block(
+        Duration::from_secs(2),
+        mem_checks,
+        &jormungandr,
+    )
+    .unwrap();
 }
