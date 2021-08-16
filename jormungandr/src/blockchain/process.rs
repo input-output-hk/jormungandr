@@ -280,7 +280,7 @@ fn try_request_fragment_removal(
     let hash = header.hash().into();
     let date = header.block_date();
     let status = FragmentStatus::InABlock {
-        date: date.clone().into(),
+        date: date.into(),
         block: hash,
     };
     tx_msg_box.try_send(TransactionMsg::RemoveTransactions(

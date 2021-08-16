@@ -548,14 +548,14 @@ pub(super) mod internal {
             let max_fragments = self.max_entries - self.entries.len();
             fragments
                 .into_iter()
-                .filter_map(|fragment| {
+                .filter(|fragment| {
                     let fragment_id = fragment.id();
                     if self.entries.contains(&fragment_id) {
-                        None
+                        false
                     } else {
-                        self.timeout_queue_insert(&fragment);
+                        self.timeout_queue_insert(fragment);
                         self.entries.push_front(fragment_id, fragment.clone());
-                        Some(fragment)
+                        true
                     }
                 })
                 .take(max_fragments)
@@ -585,7 +585,7 @@ pub(super) mod internal {
         }
 
         fn timeout_queue_insert(&mut self, fragment: &Fragment) {
-            if let Some(valid_until) = get_transaction_expiry_date(&fragment) {
+            if let Some(valid_until) = get_transaction_expiry_date(fragment) {
                 let item = TimeoutQueueItem {
                     valid_until,
                     id: fragment.id(),
@@ -595,7 +595,7 @@ pub(super) mod internal {
         }
 
         fn timeout_queue_remove(&mut self, fragment: &Fragment) {
-            if let Some(valid_until) = get_transaction_expiry_date(&fragment) {
+            if let Some(valid_until) = get_transaction_expiry_date(fragment) {
                 let item = TimeoutQueueItem {
                     valid_until,
                     id: fragment.id(),
