@@ -29,13 +29,13 @@ pub enum ControllerError {
     #[error("wallet not found {0}")]
     WalletNotFound(String),
     #[error("io error")]
-    IoError(#[from] std::io::Error),
+    IO(#[from] std::io::Error),
     #[error("fixture filesystem error")]
     FsFixture(#[from] FixtureError),
     #[error("serialization error")]
-    SerializationError(#[from] serde_yaml::Error),
+    Serialization(#[from] serde_yaml::Error),
     #[error("node startup error")]
-    SpawnError(#[from] StartupError),
+    Spawn(#[from] StartupError),
 }
 
 pub struct Controller {
@@ -151,7 +151,10 @@ impl Controller {
         let log_file_path = dir.child("node.log").path().to_path_buf();
         config.log = Some(Log(LogEntry {
             format: "json".into(),
-            level: "debug".into(),
+            level: spawn_params
+                .log_level
+                .map(|l| l.to_string())
+                .unwrap_or_else(|| String::from("debug")),
             output: LogOutput::Stdout,
         }));
 

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::common::{data::witness::Witness, jcli::JCli};
+use crate::common::{jcli::JCli, witness::Witness};
 use assert_fs::fixture::ChildPath;
 use assert_fs::{prelude::*, TempDir};
 use chain_core::property::Deserialize;

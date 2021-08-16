@@ -1,16 +1,16 @@
 use crate::common::{
     jormungandr::process::JormungandrProcess,
-    network::{self, wallet},
+    network::{NetworkBuilder, WalletTemplateBuilder},
 };
 
 use jormungandr_lib::{
-    interfaces::{
-        Explorer, PeerRecord, Policy, PreferredListConfig, TopicsOfInterest, TrustedPeer,
-    },
+    interfaces::{PeerRecord, Policy, PreferredListConfig, TrustedPeer},
     time::Duration,
 };
-use jormungandr_testing_utils::testing::network_builder::SpawnParams;
+use jormungandr_testing_utils::testing::FragmentNode;
 use jortestkit::process as process_utils;
+use tracing::Level;
+
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
 
@@ -124,14 +124,15 @@ pub fn assert_node_stats(
 
 #[test]
 pub fn node_whitelist_itself() {
-    let mut network_controller = network::builder()
+    let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
-            wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
-            wallet("delegated2").with(1_000_000).delegated_to(SERVER),
-        ])
-        .custom_config(vec![
-            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
+            WalletTemplateBuilder::new("delegated1")
+                .with(1_000_000)
+                .delegated_to(CLIENT),
+            WalletTemplateBuilder::new("delegated2")
+                .with(1_000_000)
+                .delegated_to(SERVER),
         ])
         .build()
         .unwrap();
@@ -156,14 +157,15 @@ pub fn node_whitelist_itself() {
 
 #[test]
 pub fn node_does_not_quarantine_whitelisted_node() {
-    let mut network_controller = network::builder()
+    let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
-            wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
-            wallet("delegated2").with(1_000_000).delegated_to(SERVER),
-        ])
-        .custom_config(vec![
-            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
+            WalletTemplateBuilder::new("delegated1")
+                .with(1_000_000)
+                .delegated_to(CLIENT),
+            WalletTemplateBuilder::new("delegated2")
+                .with(1_000_000)
+                .delegated_to(SERVER),
         ])
         .build()
         .unwrap();
@@ -202,14 +204,15 @@ pub fn node_does_not_quarantine_whitelisted_node() {
 
 #[test]
 pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
-    let mut network_controller = network::builder()
+    let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
-            wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
-            wallet("delegated2").with(1_000_000).delegated_to(SERVER),
-        ])
-        .custom_config(vec![
-            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
+            WalletTemplateBuilder::new("delegated1")
+                .with(1_000_000)
+                .delegated_to(CLIENT),
+            WalletTemplateBuilder::new("delegated2")
+                .with(1_000_000)
+                .delegated_to(SERVER),
         ])
         .build()
         .unwrap();
@@ -240,14 +243,15 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
 
 #[test]
 pub fn node_does_not_quarantine_trusted_node() {
-    let mut network_controller = network::builder()
+    let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
-            wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
-            wallet("delegated2").with(1_000_000).delegated_to(SERVER),
-        ])
-        .custom_config(vec![
-            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
+            WalletTemplateBuilder::new("delegated1")
+                .with(1_000_000)
+                .delegated_to(CLIENT),
+            WalletTemplateBuilder::new("delegated2")
+                .with(1_000_000)
+                .delegated_to(SERVER),
         ])
         .build()
         .unwrap();
@@ -268,14 +272,15 @@ pub fn node_does_not_quarantine_trusted_node() {
 
 #[test]
 pub fn node_trust_itself() {
-    let mut network_controller = network::builder()
+    let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
-            wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
-            wallet("delegated2").with(1_000_000).delegated_to(SERVER),
-        ])
-        .custom_config(vec![
-            SpawnParams::new(CLIENT).explorer(Explorer { enabled: true })
+            WalletTemplateBuilder::new("delegated1")
+                .with(1_000_000)
+                .delegated_to(CLIENT),
+            WalletTemplateBuilder::new("delegated2")
+                .with(1_000_000)
+                .delegated_to(SERVER),
         ])
         .build()
         .unwrap();
@@ -301,11 +306,15 @@ pub fn node_trust_itself() {
 #[test]
 #[ignore]
 pub fn node_put_itself_in_preffered_layers() {
-    let mut network_controller = network::builder()
+    let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
-            wallet("delegated1").with(1_000_000).delegated_to(CLIENT),
-            wallet("delegated2").with(1_000_000).delegated_to(SERVER),
+            WalletTemplateBuilder::new("delegated1")
+                .with(1_000_000)
+                .delegated_to(CLIENT),
+            WalletTemplateBuilder::new("delegated2")
+                .with(1_000_000)
+                .delegated_to(SERVER),
         ])
         .build()
         .unwrap();
@@ -334,63 +343,154 @@ pub fn node_put_itself_in_preffered_layers() {
         .is_ok());
 }
 
-#[ignore]
 #[test]
-pub fn topic_of_interest_influences_node_sync_ability() {
-    let fast_client_alias = "FAST_CLIENT";
-    let slow_client_alias = "SLOW_CLIENT";
+/// Ensures intervals between gossip attempts respect the `gossip_interval` timing parameter
+fn gossip_interval() {
+    const INTERVAL_SECS: u64 = 3;
 
-    let high_topic_of_interests = TopicsOfInterest {
-        messages: "high".to_owned(),
-        blocks: "high".to_owned(),
-    };
-
-    let low_topic_of_interests = TopicsOfInterest {
-        messages: "low".to_owned(),
-        blocks: "low".to_owned(),
-    };
-
-    let mut network_controller = network::builder()
-        .star_topology(SERVER, vec![fast_client_alias, slow_client_alias])
+    let mut network_controller = NetworkBuilder::default()
+        .single_trust_direction(CLIENT, SERVER)
         .initials(vec![
-            wallet("delegated0").with(1_000_000).delegated_to(SERVER),
-            wallet("delegated1")
+            WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(fast_client_alias),
-            wallet("delegated2")
+                .delegated_to(CLIENT),
+            WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(slow_client_alias),
-        ])
-        .custom_config(vec![
-            SpawnParams::new(fast_client_alias).topics_of_interest(high_topic_of_interests),
-            SpawnParams::new(slow_client_alias).topics_of_interest(low_topic_of_interests),
+                .delegated_to(SERVER),
         ])
         .build()
         .unwrap();
 
-    let _server = network_controller.spawn_and_wait(SERVER);
-    let fast_client = network_controller.spawn_and_wait(fast_client_alias);
-    let slow_client = network_controller.spawn_and_wait(fast_client_alias);
+    let server = network_controller
+        .spawn_custom(
+            network_controller
+                .spawn_params(SERVER)
+                .gossip_interval(Duration::new(INTERVAL_SECS, 0))
+                .log_level(Level::TRACE),
+        )
+        .unwrap();
 
-    process_utils::sleep(30);
+    let _client = network_controller.spawn_and_wait(CLIENT);
 
-    let fast_client_block_recv_cnt = fast_client
-        .rest()
-        .stats()
-        .unwrap()
-        .stats
-        .unwrap()
-        .block_recv_cnt;
-    let slow_client_block_recv_cnt = slow_client
-        .rest()
-        .stats()
-        .unwrap()
-        .stats
-        .unwrap()
-        .block_recv_cnt;
+    process_utils::sleep(10);
 
-    assert!(
-        fast_client_block_recv_cnt > slow_client_block_recv_cnt,
-        "node with high block topic of interest should have more recieved blocks"
+    let log_timestamps: Vec<u64> = server
+        .log_content()
+        .into_iter()
+        .filter(|s| s.contains("gossiping with peers"))
+        .map(|t| parse_timestamp(&t))
+        .collect();
+
+    let mut prev = None;
+
+    for log_timestamp in log_timestamps {
+        match prev {
+            None => prev = Some(log_timestamp),
+            Some(p) => {
+                assert!(log_timestamp - p >= INTERVAL_SECS);
+                prev = Some(log_timestamp);
+            }
+        }
+    }
+}
+
+#[cfg(feature = "soak-non-functional")]
+#[test]
+/// Ensures that consecutive network-stuck checks respect the `network_stuck_check` timing parameter
+fn network_stuck_check() {
+    const INTERVAL_SECS: u64 = 90;
+    let mut network_controller = NetworkBuilder::default()
+        .single_trust_direction(CLIENT, SERVER)
+        .build()
+        .unwrap();
+
+    let server = network_controller.spawn_and_wait(SERVER);
+
+    let client = network_controller
+        .spawn_custom(
+            network_controller
+                .spawn_params(CLIENT)
+                .log_level(Level::TRACE)
+                .gossip_interval(Duration::new(5, 0))
+                .network_stuck_check(Duration::new(INTERVAL_SECS, 0)),
+        )
+        .unwrap();
+
+    server.stop();
+
+    process_utils::sleep(10 * INTERVAL_SECS);
+
+    let log_timestamps: Vec<u64> = client
+        .log_content()
+        .into_iter()
+        .filter(|s| s.contains("p2p network have been too quiet for some time"))
+        .map(|t| parse_timestamp(&t))
+        .collect();
+
+    let mut prev = None;
+
+    for log_timestamp in log_timestamps {
+        match prev {
+            None => prev = Some(log_timestamp),
+            Some(prev) => {
+                assert!(log_timestamp - prev >= INTERVAL_SECS);
+            }
+        }
+    }
+}
+
+#[test]
+/// Ensures that a node will only attempt to bootstrap `max_boostrap_attempts` times
+fn max_bootstrap_attempts() {
+    const ATTEMPTS: usize = 3;
+
+    let mut network_controller = NetworkBuilder::default()
+        .single_trust_direction(CLIENT, SERVER)
+        .build()
+        .unwrap();
+
+    let client = network_controller
+        .spawn_custom(
+            network_controller
+                .spawn_params(CLIENT)
+                .max_bootstrap_attempts(ATTEMPTS)
+                .log_level(Level::TRACE),
+        )
+        .unwrap();
+
+    process_utils::sleep(5);
+
+    assert_eq!(
+        client
+            .log_content()
+            .into_iter()
+            .filter(|l| l.contains("bootstrap attempt #"))
+            .count(),
+        ATTEMPTS
     );
+}
+
+fn parse_timestamp(log: &str) -> u64 {
+    let re = regex::Regex::new("([0-9]+):([0-9]+):([0-9]+)").unwrap();
+
+    let captures = re.captures(log).unwrap();
+
+    let mut seconds = 0;
+
+    for i in 1..=3 {
+        seconds +=
+            captures.get(i).unwrap().as_str().parse::<u64>().unwrap() * 60_u64.pow(3 - i as u32);
+    }
+
+    seconds
+}
+
+#[test]
+fn log_parser() {
+    assert_eq!(parse_timestamp("00:00:00"), 0);
+    assert_eq!(parse_timestamp("00:00:42"), 42);
+    assert_eq!(parse_timestamp("00:01:13"), 60 + 13);
+    assert_eq!(parse_timestamp("00:45:12"), 45 * 60 + 12);
+    assert_eq!(parse_timestamp("01:34:02"), 3600 + 34 * 60 + 2);
+    assert_eq!(parse_timestamp("10:02:31"), 10 * 3600 + 2 * 60 + 31);
 }

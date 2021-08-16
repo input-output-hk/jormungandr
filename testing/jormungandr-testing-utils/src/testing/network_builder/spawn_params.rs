@@ -2,8 +2,10 @@ use jormungandr_lib::interfaces::{
     Explorer, LayersConfig, Mempool, NodeConfig, Policy, PreferredListConfig, TopicsOfInterest,
     TrustedPeer,
 };
+use jormungandr_lib::time::Duration;
 use multiaddr::Multiaddr;
 use std::net::SocketAddr;
+use tracing::Level;
 
 use super::{LeadershipMode, PersistenceMode};
 use crate::testing::node::Version;
@@ -32,6 +34,10 @@ pub struct SpawnParams {
     pub skip_bootstrap: Option<bool>,
     pub node_key_file: Option<PathBuf>,
     pub faketime: Option<FaketimeConfig>,
+    pub gossip_interval: Option<Duration>,
+    pub log_level: Option<Level>,
+    pub max_bootstrap_attempts: Option<usize>,
+    pub network_stuck_check: Option<Duration>,
 }
 
 #[derive(Clone)]
@@ -65,6 +71,10 @@ impl SpawnParams {
             node_key_file: None,
             persistent_fragment_log: None,
             faketime: None,
+            gossip_interval: None,
+            log_level: None,
+            max_bootstrap_attempts: None,
+            network_stuck_check: None,
         }
     }
 
@@ -198,6 +208,26 @@ impl SpawnParams {
         self
     }
 
+    pub fn gossip_interval(&mut self, duration: Duration) -> &mut Self {
+        self.gossip_interval = Some(duration);
+        self
+    }
+
+    pub fn log_level(&mut self, level: Level) -> &mut Self {
+        self.log_level = Some(level);
+        self
+    }
+
+    pub fn max_bootstrap_attempts(&mut self, attempts: usize) -> &mut Self {
+        self.max_bootstrap_attempts = Some(attempts);
+        self
+    }
+
+    pub fn network_stuck_check(&mut self, duration: Duration) -> &mut Self {
+        self.network_stuck_check = Some(duration);
+        self
+    }
+
     pub fn get_jormungandr(&self) -> &Option<PathBuf> {
         &self.jormungandr
     }
@@ -267,6 +297,18 @@ impl SpawnParams {
 
         if let Some(node_key_file) = &self.node_key_file {
             node_config.p2p.node_key_file = Some(node_key_file.clone());
+        }
+
+        if self.gossip_interval.is_some() {
+            node_config.p2p.gossip_interval = self.gossip_interval;
+        }
+
+        if let Some(max_bootstrap_attempts) = self.max_bootstrap_attempts {
+            node_config.p2p.max_bootstrap_attempts = Some(max_bootstrap_attempts);
+        }
+
+        if let Some(network_stuck_check) = self.network_stuck_check {
+            node_config.p2p.network_stuck_check = Some(network_stuck_check);
         }
     }
 }

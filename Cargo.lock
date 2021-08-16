@@ -1927,6 +1927,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tonic",
+ "tracing",
  "url",
  "yaml-rust",
 ]

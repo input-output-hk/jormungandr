@@ -116,6 +116,15 @@ pub struct P2p {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub layers: Option<LayersConfig>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gossip_interval: Option<Duration>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_bootstrap_attempts: Option<usize>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub network_stuck_check: Option<Duration>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

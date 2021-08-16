@@ -363,6 +363,9 @@ impl Prepare for P2p {
                 topics_of_interest: Some(TopicsOfInterest::prepare(context)),
             }),
             node_key_file: None,
+            gossip_interval: None,
+            max_bootstrap_attempts: None,
+            network_stuck_check: None,
         }
     }
 }

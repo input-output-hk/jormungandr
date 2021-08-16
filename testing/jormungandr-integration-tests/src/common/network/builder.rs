@@ -8,8 +8,8 @@ use jormungandr_lib::interfaces::{
 };
 use jormungandr_testing_utils::testing::{
     network_builder::{
-        Blockchain, Node, NodeAlias, NodeSetting, Random, Seed, Settings, SpawnParams,
-        TopologyBuilder, WalletAlias, WalletTemplate,
+        Blockchain, Node, NodeAlias, NodeSetting, Random, Seed, Settings, TopologyBuilder,
+        WalletAlias, WalletTemplate,
     },
     NodeConfigBuilder,
 };
@@ -21,7 +21,6 @@ pub struct NetworkBuilder {
     topology_builder: TopologyBuilder,
     blockchain: Option<Blockchain>,
     wallets: Vec<WalletTemplate>,
-    configs: Vec<SpawnParams>,
 }
 
 impl NetworkBuilder {
@@ -43,11 +42,6 @@ impl NetworkBuilder {
 
     pub fn blockchain_config(&mut self, config: Blockchain) -> &mut Self {
         self.blockchain = Some(config);
-        self
-    }
-
-    pub fn custom_config(&mut self, spawn_params: Vec<&mut SpawnParams>) -> &mut Self {
-        self.configs = spawn_params.iter().map(|x| (**x).clone()).collect();
         self
     }
 
@@ -96,19 +90,20 @@ impl NetworkBuilder {
     }
 }
 
-pub fn builder() -> NetworkBuilder {
-    NetworkBuilder {
-        blockchain: Some(Blockchain::new(
-            ConsensusVersion::GenesisPraos,
-            NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
-            SlotDuration::new(2).expect("valid slot duration in seconds"),
-            KesUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
-            ActiveSlotCoefficient::new(Milli::from_millis(999))
-                .expect("active slot coefficient in millis"),
-        )),
-        topology_builder: TopologyBuilder::new(),
-        wallets: Vec::new(),
-        configs: Vec::new(),
+impl Default for NetworkBuilder {
+    fn default() -> Self {
+        Self {
+            blockchain: Some(Blockchain::new(
+                ConsensusVersion::GenesisPraos,
+                NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
+                SlotDuration::new(2).expect("valid slot duration in seconds"),
+                KesUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
+                ActiveSlotCoefficient::new(Milli::from_millis(999))
+                    .expect("active slot coefficient in millis"),
+            )),
+            topology_builder: TopologyBuilder::new(),
+            wallets: Vec::new(),
+        }
     }
 }
 
@@ -121,6 +116,16 @@ pub struct WalletTemplateBuilder {
 }
 
 impl WalletTemplateBuilder {
+    pub fn new(alias: &str) -> Self {
+        Self {
+            alias: alias.to_string(),
+            value: 0u64,
+            wallet_template: None,
+            node_alias: None,
+            discrimination: Discrimination::Test,
+        }
+    }
+
     pub fn with(&mut self, value: u64) -> &mut Self {
         self.value = value;
         self
@@ -141,15 +146,5 @@ impl WalletTemplateBuilder {
             WalletTemplate::new_account(self.alias.clone(), Value(self.value), self.discrimination);
         *wallet.delegate_mut() = self.node_alias.clone();
         wallet
-    }
-}
-
-pub fn wallet(alias: &str) -> WalletTemplateBuilder {
-    WalletTemplateBuilder {
-        alias: alias.to_string(),
-        value: 0u64,
-        wallet_template: None,
-        node_alias: None,
-        discrimination: Discrimination::Test,
     }
 }
