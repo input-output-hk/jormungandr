@@ -21,7 +21,7 @@ use crate::{
         },
         legacy,
         network::{
-            bft::bft_cascade,
+            bft::{bft_cascade, bft_passive_propagation},
             real::{real_bft_network, real_praos_network},
             topology::scenarios::*,
         },
@@ -330,6 +330,11 @@ fn scenarios_repository() -> Vec<Scenario> {
         Scenario::new("real_praos_network", real_praos_network, vec![Tag::Long]),
         Scenario::new("real_bft_network", real_bft_network, vec![Tag::Long]),
         Scenario::new("bft_cascade", bft_cascade, vec![Tag::Short]),
+        Scenario::new(
+            "bft_passive_propagation",
+            bft_passive_propagation,
+            vec![Tag::Short],
+        ),
         Scenario::new("mesh_disruption", mesh_disruption, vec![Tag::Short]),
         Scenario::new(
             "newest_node_enters_legacy_network",

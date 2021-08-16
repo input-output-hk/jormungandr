@@ -289,8 +289,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         check: &MemPoolCheck,
         node: &A,
     ) -> Result<(), AdversaryFragmentSenderError> {
-        let verifier = FragmentVerifier;
-        match verifier.wait_fragment(
+        match FragmentVerifier::wait_fragment(
             Duration::from_secs(2),
             check.clone(),
             Default::default(),

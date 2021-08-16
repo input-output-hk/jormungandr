@@ -59,14 +59,13 @@ pub fn test_mempool_pool_max_entries_limit() {
         .unwrap();
 
     // Wait until the fragment enters the mempool
-    FragmentVerifier
-        .wait_fragment(
-            Duration::from_millis(100),
-            mempool_check.clone(),
-            VerifyExitStrategy::OnPending,
-            &jormungandr,
-        )
-        .unwrap();
+    FragmentVerifier::wait_fragment(
+        Duration::from_millis(100),
+        mempool_check.clone(),
+        VerifyExitStrategy::OnPending,
+        &jormungandr,
+    )
+    .unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -74,9 +73,12 @@ pub fn test_mempool_pool_max_entries_limit() {
         .assert_size(1)
         .assert_contains_only(mempool_check.fragment_id());
 
-    FragmentVerifier
-        .wait_and_verify_is_in_block(Duration::from_secs(2), mempool_check, &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_and_verify_is_in_block(
+        Duration::from_secs(2),
+        mempool_check,
+        &jormungandr,
+    )
+    .unwrap();
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 1.into())
@@ -187,14 +189,13 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .unwrap();
 
     // Wait until the fragment enters the mempool
-    FragmentVerifier
-        .wait_fragment(
-            Duration::from_millis(100),
-            first_fragment.clone(),
-            VerifyExitStrategy::OnPending,
-            &jormungandr,
-        )
-        .unwrap();
+    FragmentVerifier::wait_fragment(
+        Duration::from_millis(100),
+        first_fragment.clone(),
+        VerifyExitStrategy::OnPending,
+        &jormungandr,
+    )
+    .unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -202,9 +203,12 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .assert_size(1)
         .assert_contains_only(first_fragment.fragment_id());
 
-    FragmentVerifier
-        .wait_and_verify_is_in_block(Duration::from_secs(15), first_fragment, &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_and_verify_is_in_block(
+        Duration::from_secs(15),
+        first_fragment,
+        &jormungandr,
+    )
+    .unwrap();
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 1.into())
@@ -314,14 +318,13 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .unwrap();
 
     // Wait until the fragment enters the mempool
-    FragmentVerifier
-        .wait_fragment(
-            Duration::from_millis(100),
-            second_transaction,
-            VerifyExitStrategy::OnPending,
-            &jormungandr,
-        )
-        .unwrap();
+    FragmentVerifier::wait_fragment(
+        Duration::from_millis(100),
+        second_transaction,
+        VerifyExitStrategy::OnPending,
+        &jormungandr,
+    )
+    .unwrap();
 
     jormungandr
         .correct_state_verifier()

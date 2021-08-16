@@ -47,7 +47,7 @@ impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
         self,
         duration: std::time::Duration,
     ) -> Result<Self, FragmentChainSenderError> {
-        FragmentVerifier.wait_and_verify_is_in_block(
+        FragmentVerifier::wait_and_verify_is_in_block(
             duration,
             self.get_last_mempool_check()?,
             &self.node,
@@ -87,7 +87,7 @@ impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
         self,
         duration: std::time::Duration,
     ) -> Result<Self, FragmentChainSenderError> {
-        FragmentVerifier.wait_and_verify_is_rejected(
+        FragmentVerifier::wait_and_verify_is_rejected(
             duration,
             self.get_last_mempool_check()?,
             &self.node,
