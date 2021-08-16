@@ -103,15 +103,15 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
         .send(&first_transaction)
         .assert_in_block();
 
-    let second_transaction = jcli.transaction_builder(block0_hash).build_transaction(
-        &first_transaction_id.into(),
-        0,
-        100.into(),
-        &middle_man,
-        100.into(),
-        &receiver,
-        BlockDate::new(1, 0),
-    );
+    let second_transaction = jcli
+        .transaction_builder(block0_hash)
+        .new_transaction()
+        .add_input(&first_transaction_id.into(), 0, &100.to_string())
+        .add_output(&receiver.address().to_string(), 100.into())
+        .set_expiry_date(BlockDate::new(1, 0))
+        .finalize()
+        .seal_with_witness_for_address(&receiver)
+        .to_message();
     jcli.fragment_sender(&jormungandr)
         .send(&second_transaction)
         .assert_in_block();
@@ -597,15 +597,15 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
         .start()
         .unwrap();
     let block0_hash = jcli.genesis().hash(&config.genesis_block_path());
-    let transaction_message = jcli.transaction_builder(block0_hash).build_transaction(
-        &FAKE_INPUT_TRANSACTION_ID,
-        0,
-        100.into(),
-        &receiver,
-        100.into(),
-        &sender,
-        BlockDate::new(1, 0),
-    );
+    let transaction_message = jcli
+        .transaction_builder(block0_hash)
+        .new_transaction()
+        .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, &100.to_string())
+        .add_output(&receiver.address().to_string(), 100.into())
+        .set_expiry_date(BlockDate::new(1, 0))
+        .finalize()
+        .seal_with_witness_for_address(&sender)
+        .to_message();
 
     jcli.fragment_sender(&jormungandr)
         .send(&transaction_message)

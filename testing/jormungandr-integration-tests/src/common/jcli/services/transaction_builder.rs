@@ -68,26 +68,6 @@ impl TransactionBuilder {
             .to_message()
     }
 
-    pub fn build_transaction(
-        self,
-        transaction_id: &Hash,
-        transaction_index: u8,
-        output_amount: Value,
-        sender: &Wallet,
-        input_amount: Value,
-        receiver: &Wallet,
-        expiry_date: BlockDate,
-    ) -> String {
-        TransactionBuilder::new(self.jcli, self.genesis_hash)
-            .new_transaction()
-            .add_input(transaction_id, transaction_index, &input_amount.to_string())
-            .add_output(&receiver.address().to_string(), output_amount)
-            .set_expiry_date(expiry_date)
-            .finalize()
-            .seal_with_witness_for_address(sender)
-            .to_message()
-    }
-
     pub fn new_transaction(&mut self) -> &mut Self {
         self.jcli
             .transaction()
