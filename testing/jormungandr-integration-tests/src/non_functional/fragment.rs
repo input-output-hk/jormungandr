@@ -1,6 +1,7 @@
 use crate::common::jormungandr::ConfigurationBuilder;
 use crate::common::startup;
-use jormungandr_lib::interfaces::BlockDate;
+use chain_impl_mockchain::block::BlockDate;
+use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
 use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
 use jormungandr_testing_utils::testing::node::time;
@@ -52,6 +53,7 @@ pub fn fragment_load_test() {
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),
+            BlockDate::first(),
             FragmentSenderSetup::no_verify(),
         ),
     );
@@ -59,7 +61,7 @@ pub fn fragment_load_test() {
     use crate::common::jcli::FragmentsCheck;
     use crate::common::jcli::JCli;
 
-    request_generator.prepare(BlockDate::new(0, 19));
+    request_generator.prepare(BlockDateDto::new(0, 19));
 
     let jcli: JCli = Default::default();
 
@@ -109,6 +111,7 @@ pub fn fragment_batch_load_test() {
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        BlockDate::first(),
         10,
     );
     request_generator.fill_from_faucet(&mut faucet);
@@ -153,6 +156,7 @@ pub fn transaction_load_test() {
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        BlockDate::first(),
     );
     request_generator.fill_from_faucet(&mut faucet);
 

@@ -5,6 +5,7 @@ use crate::common::{
 };
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_testing_utils::{
     testing::{node::download_last_n_releases, FragmentSender},
@@ -45,6 +46,7 @@ fn test_connectivity_between_master_and_legacy_app(version: Version, temp_dir: &
         .transaction_to(
             &leader_jormungandr.genesis_block_hash(),
             &leader_jormungandr.fees(),
+            BlockDate::first(),
             receiver.address(),
             1.into(),
         )
@@ -109,6 +111,7 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
     let fragment_sender = FragmentSender::new(
         legacy_jormungandr.genesis_block_hash(),
         legacy_jormungandr.fees(),
+        BlockDate::first(),
         Default::default(),
     );
 
@@ -148,6 +151,7 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
     let fragment_sender = FragmentSender::new(
         legacy_jormungandr.genesis_block_hash(),
         legacy_jormungandr.fees(),
+        BlockDate::first(),
         Default::default(),
     );
 
