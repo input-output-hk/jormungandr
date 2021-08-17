@@ -194,7 +194,10 @@ pub fn test_vote_flow_bft() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first(),
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -324,7 +327,10 @@ pub fn test_vote_flow_praos() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first(),
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
         FragmentSenderSetup::resend_3_times(),
     );
 

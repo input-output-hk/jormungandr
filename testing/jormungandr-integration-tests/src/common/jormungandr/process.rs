@@ -94,7 +94,10 @@ impl JormungandrProcess {
         FragmentChainSender::new(
             self.genesis_block_hash(),
             self.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
             setup,
             self.to_remote(),
         )

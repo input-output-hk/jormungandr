@@ -7,7 +7,6 @@ use crate::jcli_lib::{
     transaction::Error,
     utils::io,
 };
-use chain::transaction::SetValidity;
 use chain_addr::{Address, Kind};
 use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
 use chain_impl_mockchain::{
@@ -16,7 +15,7 @@ use chain_impl_mockchain::{
     fee::FeeAlgorithm,
     fragment::Fragment,
     transaction::{
-        self, Balance, InputOutputBuilder, Output, Payload, SetAuthData, Transaction,
+        self, Balance, InputOutputBuilder, Output, Payload, SetAuthData, SetTtl, Transaction,
         TransactionSignDataHash, TxBuilder, TxBuilderState,
     },
     value::{Value, ValueError},
@@ -385,7 +384,7 @@ impl Staging {
 
     fn builder_after_witness<P: Payload>(
         &self,
-        builder: TxBuilderState<SetValidity<P>>,
+        builder: TxBuilderState<SetTtl<P>>,
     ) -> Result<TxBuilderState<SetAuthData<P>>, Error> {
         if self.witnesses.len() != self.inputs.len() {
             return Err(Error::TxKindToFinalizeInvalid { kind: self.kind });
@@ -478,7 +477,7 @@ impl Staging {
 
     fn transaction_sign_data_hash_on<P>(
         &self,
-        builder: TxBuilderState<SetValidity<P>>,
+        builder: TxBuilderState<SetTtl<P>>,
     ) -> TransactionSignDataHash {
         let inputs: Vec<transaction::Input> =
             self.inputs.iter().map(|i| i.clone().into()).collect();

@@ -68,7 +68,7 @@ impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
         let slot_id = self.sender.date().slot_id;
         Self {
             sender: self.sender.set_date(BlockDate {
-                epoch: span,
+                epoch: span + 1,
                 slot_id,
             }),
             ..self
