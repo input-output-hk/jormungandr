@@ -69,7 +69,8 @@ impl Prometheus {
 
 impl Default for Prometheus {
     fn default() -> Self {
-        let registry = Registry::new();
+        let registry = Registry::new_custom(Some("jormungandr_".to_string()), None)
+            .expect("failed to create the Prometheus registry");
 
         let tx_recv_cnt = IntCounter::new("txRecvCnt", "txRecvCnt").unwrap();
         registry.register(Box::new(tx_recv_cnt.clone())).unwrap();
