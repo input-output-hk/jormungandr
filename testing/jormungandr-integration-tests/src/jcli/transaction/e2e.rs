@@ -110,7 +110,7 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
         .add_output(&receiver.address().to_string(), 100.into())
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&receiver)
+        .seal_with_witness_for_address(&middle_man)
         .to_message();
     jcli.fragment_sender(&jormungandr)
         .send(&second_transaction)
