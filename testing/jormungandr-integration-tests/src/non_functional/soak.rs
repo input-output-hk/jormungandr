@@ -45,7 +45,7 @@ pub fn test_blocks_are_being_created_for_7_hours() {
             .transaction_to(
                 &jormungandr.genesis_block_hash(),
                 &jormungandr.fees(),
-                BlockDate::first(),
+                BlockDate::first().next_epoch(),
                 receiver.address(),
                 1.into(),
             )

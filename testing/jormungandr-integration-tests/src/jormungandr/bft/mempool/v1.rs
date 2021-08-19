@@ -53,7 +53,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -65,7 +65,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -149,7 +149,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -161,7 +161,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -233,7 +233,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -245,7 +245,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -329,7 +329,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -341,7 +341,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -416,7 +416,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -428,7 +428,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )

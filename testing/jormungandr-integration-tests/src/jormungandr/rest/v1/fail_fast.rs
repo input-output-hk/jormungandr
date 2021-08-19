@@ -33,7 +33,7 @@ fn world() -> (
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             bob.address(),
             100.into(),
         )
@@ -43,7 +43,7 @@ fn world() -> (
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             alice.address(),
             100.into(),
         )
@@ -52,7 +52,7 @@ fn world() -> (
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             alice.address(),
             100.into(),
         )
@@ -62,7 +62,7 @@ fn world() -> (
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             alice.address(),
             100.into(),
         )

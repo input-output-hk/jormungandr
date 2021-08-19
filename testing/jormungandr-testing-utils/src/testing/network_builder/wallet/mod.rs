@@ -72,8 +72,8 @@ impl Wallet {
         self.inner.stake_key()
     }
 
-    pub fn delegation_cert_for_block0(&self, date: BlockDate, pool_id: PoolId) -> Initial {
-        self.inner.delegation_cert_for_block0(date, pool_id)
+    pub fn delegation_cert_for_block0(&self, valid_until: BlockDate, pool_id: PoolId) -> Initial {
+        self.inner.delegation_cert_for_block0(valid_until, pool_id)
     }
 
     pub fn template(&self) -> &WalletTemplate {
@@ -95,12 +95,12 @@ impl Wallet {
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
-        date: BlockDate,
+        valid_until: BlockDate,
         address: Address,
         value: Value,
     ) -> Result<Fragment, WalletError> {
         self.inner
-            .transaction_to(block0_hash, fees, date, address, value)
+            .transaction_to(block0_hash, fees, valid_until, address, value)
     }
 }
 

@@ -171,7 +171,7 @@ pub fn test_all_adversary_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first(),
+        chain_impl_mockchain::block::BlockDate::first().next_epoch(),
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -198,7 +198,7 @@ pub fn test_all_adversary_fragments() {
         .unwrap();
     adversary_sender
         .send_faulty_full_delegation(
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             &mut full_delegator,
             initial_stake_pool.id(),
             &jormungandr,

@@ -60,7 +60,7 @@ pub trait FragmentNode {
     ) -> Result<Vec<MemPoolCheck>, FragmentNodeError>;
     fn log_pending_fragment(&self, fragment_id: FragmentId);
     fn log_rejected_fragment(&self, fragment_id: FragmentId, reason: String);
-    fn log_in_block_fragment(&self, fragment_id: FragmentId, date: BlockDate, block: Hash);
+    fn log_in_block_fragment(&self, fragment_id: FragmentId, valid_until: BlockDate, block: Hash);
     fn log_content(&self) -> Vec<String>;
 }
 

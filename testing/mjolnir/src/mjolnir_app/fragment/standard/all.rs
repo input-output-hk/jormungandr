@@ -80,7 +80,7 @@ impl AllFragments {
         let fragment_sender = FragmentSender::new(
             block0_hash,
             fees,
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             FragmentSenderSetup::no_verify(),
         );
 

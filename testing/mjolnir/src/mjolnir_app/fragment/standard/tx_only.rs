@@ -70,7 +70,7 @@ impl TxOnly {
             remote_jormungandr,
             block0_hash,
             fees,
-            BlockDate::first(),
+            BlockDate::first().next_epoch(),
         );
         generator.fill_from_faucet(&mut faucet);
 

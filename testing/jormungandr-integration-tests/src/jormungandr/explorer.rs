@@ -71,7 +71,7 @@ pub fn explorer_sanity_test() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             1_000.into(),
         )

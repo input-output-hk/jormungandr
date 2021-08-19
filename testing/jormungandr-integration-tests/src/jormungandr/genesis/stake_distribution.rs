@@ -50,7 +50,7 @@ pub fn stake_distribution() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             stake_pool_owner_1.address(),
             transaction_amount.into(),
         )

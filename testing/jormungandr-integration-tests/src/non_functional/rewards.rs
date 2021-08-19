@@ -52,7 +52,7 @@ pub fn collect_reward_for_15_minutes() {
             .transaction_to(
                 &jormungandr.genesis_block_hash(),
                 &jormungandr.fees(),
-                BlockDate::first(),
+                BlockDate::first().next_epoch(),
                 receiver.address(),
                 10.into(),
             )

@@ -69,7 +69,7 @@ impl TxOnly {
             remote_jormungandr,
             block0_hash,
             fees,
-            BlockDate::first(),
+            BlockDate::first().next_epoch(),
             10,
         );
         request_gen.fill_from_faucet(&mut faucet);

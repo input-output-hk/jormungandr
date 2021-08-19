@@ -302,7 +302,7 @@ pub fn pending_fragment_should_be_persisted() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first(),
+        chain_impl_mockchain::block::BlockDate::first().next_epoch(),
         FragmentSenderSetup::dump_into(dump_folder.path().to_path_buf()),
     );
 

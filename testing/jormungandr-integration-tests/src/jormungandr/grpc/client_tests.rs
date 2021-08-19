@@ -314,7 +314,7 @@ pub fn get_fragments() {
         .transaction_to(
             &setup.server.genesis_block_hash(),
             &setup.server.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             output_value.into(),
         )
