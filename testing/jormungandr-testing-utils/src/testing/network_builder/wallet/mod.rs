@@ -6,7 +6,7 @@ use crate::wallet::{
     account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner, WalletError,
 };
 use chain_impl_mockchain::{
-    certificate::PoolId, fee::LinearFee, fragment::Fragment,
+    block::BlockDate, certificate::PoolId, fee::LinearFee, fragment::Fragment,
     transaction::UnspecifiedAccountIdentifier, vote::CommitteeId,
 };
 use jormungandr_lib::{
@@ -72,8 +72,8 @@ impl Wallet {
         self.inner.stake_key()
     }
 
-    pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> Initial {
-        self.inner.delegation_cert_for_block0(pool_id)
+    pub fn delegation_cert_for_block0(&self, date: BlockDate, pool_id: PoolId) -> Initial {
+        self.inner.delegation_cert_for_block0(date, pool_id)
     }
 
     pub fn template(&self) -> &WalletTemplate {
@@ -95,10 +95,12 @@ impl Wallet {
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        date: BlockDate,
         address: Address,
         value: Value,
     ) -> Result<Fragment, WalletError> {
-        self.inner.transaction_to(block0_hash, fees, address, value)
+        self.inner
+            .transaction_to(block0_hash, fees, date, address, value)
     }
 }
 

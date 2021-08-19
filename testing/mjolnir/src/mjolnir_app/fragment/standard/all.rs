@@ -77,8 +77,12 @@ impl AllFragments {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
-        let fragment_sender =
-            FragmentSender::new(block0_hash, fees, FragmentSenderSetup::no_verify());
+        let fragment_sender = FragmentSender::new(
+            block0_hash,
+            fees,
+            chain_impl_mockchain::block::BlockDate::first(),
+            FragmentSenderSetup::no_verify(),
+        );
 
         let mut generator = FragmentGenerator::new(
             faucet,

@@ -139,13 +139,14 @@ impl Process {
 
                         reply_handle.reply_ok(summary);
                                 }
-                                TransactionMsg::RemoveTransactions(fragment_ids, status) => {
+                                TransactionMsg::RemoveTransactions(fragment_ids, status, block_date) => {
                                     tracing::debug!(
                                         "removing fragments added to block {:?}: {:?}",
                                         status,
                                         fragment_ids
                                     );
                                     pool.remove_added_to_block(fragment_ids, status);
+                                    pool.remove_expired_txs(block_date);
                                 }
                                 TransactionMsg::GetLogs(reply_handle) => {
                                     let logs = pool.logs().logs().cloned().collect();

@@ -29,6 +29,7 @@ pub fn fragment_already_in_log(world: (JormungandrProcess, Wallet, Wallet, Walle
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
             bob.address(),
             100.into(),
         )

@@ -1,6 +1,7 @@
 use crate::common::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jormungandr_testing_utils::testing::{
     benchmark_consumption, benchmark_endurance, ResourcesUsage,
@@ -51,6 +52,7 @@ pub fn collect_reward_for_15_minutes() {
             .transaction_to(
                 &jormungandr.genesis_block_hash(),
                 &jormungandr.fees(),
+                BlockDate::first(),
                 receiver.address(),
                 10.into(),
             )

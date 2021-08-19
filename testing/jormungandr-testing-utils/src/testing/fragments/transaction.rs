@@ -1,6 +1,7 @@
 use super::FragmentBuilderError;
 use crate::wallet::Wallet;
 use chain_impl_mockchain::{
+    block::BlockDate,
     fee::{FeeAlgorithm, LinearFee},
     fragment::Fragment,
     transaction::{InputOutputBuilder, TxBuilder},
@@ -13,16 +14,18 @@ use jormungandr_lib::{
 pub fn transaction_to(
     block0_hash: &Hash,
     fees: &LinearFee,
+    expiry_date: BlockDate,
     from: &Wallet,
     address: Address,
     value: Value,
 ) -> Result<Fragment, FragmentBuilderError> {
-    transaction_to_many(block0_hash, fees, from, &[address], value)
+    transaction_to_many(block0_hash, fees, expiry_date, from, &[address], value)
 }
 
 pub fn transaction_to_many(
     block0_hash: &Hash,
     fees: &LinearFee,
+    expiry_date: BlockDate,
     from: &Wallet,
     addresses: &[Address],
     value: Value,
@@ -44,6 +47,7 @@ pub fn transaction_to_many(
     let ios = iobuilder.build();
     let txbuilder = TxBuilder::new()
         .set_nopayload()
+        .set_expiry_date(expiry_date)
         .set_ios(&ios.inputs, &ios.outputs);
 
     let sign_data = txbuilder.get_auth_data_for_witness().hash();

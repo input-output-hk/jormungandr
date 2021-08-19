@@ -1,5 +1,6 @@
 use crate::interfaces::{Address, OldAddress, SignedCertificate, Value};
 use chain_impl_mockchain::{
+    block::BlockDate,
     certificate,
     fragment::Fragment,
     legacy::UtxoDeclaration,
@@ -142,8 +143,11 @@ fn pack_utxo_in_message(v: &[InitialUTxO]) -> Fragment {
         panic!("cannot create a singular transaction fragment with more than 254 outputs ({} requested). spread outputs to another fragment", outputs.len())
     }
 
+    let valid_until = BlockDate::first();
+
     let tx = TxBuilder::new()
         .set_nopayload()
+        .set_expiry_date(valid_until)
         .set_ios(&[], &outputs[..])
         .set_witnesses(&[])
         .set_payload_auth(&());

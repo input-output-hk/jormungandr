@@ -40,6 +40,10 @@ pub fn send_all_fragments() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 10,
+            slot_id: 0,
+        },
         FragmentSenderSetup::no_verify(),
     );
 

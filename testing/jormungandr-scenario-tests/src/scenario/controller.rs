@@ -10,6 +10,7 @@ use crate::{
 };
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
+use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::certificate::{VoteAction, VotePlan};
 use chain_impl_mockchain::header::HeaderId;
 use chain_impl_mockchain::ledger::governance::{
@@ -491,6 +492,7 @@ impl Controller {
                 .block0
                 .blockchain_configuration
                 .linear_fees,
+            BlockDate::first(),
             builder.build(),
         )
     }

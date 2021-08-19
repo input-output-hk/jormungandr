@@ -839,6 +839,7 @@ paths:
                   - slotsPerEpoch
                   - rewardParams
                   - treasuryTax
+                  - txMaxExpiryEpochs
                 properties:
                   block0Hash:
                     description: Hex-encoded hash of block0
@@ -992,6 +993,9 @@ paths:
                         type: integer
                         minimum: 1
                         nullable: true
+                  txMaxExpiryEpochs:
+                    description: The maximum number of epochs a transaction can reside in the mempool
+                    type: integer
               examples:
                 genesis_praos:
                   value:

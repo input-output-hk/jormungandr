@@ -194,6 +194,7 @@ impl TransactionCommand {
         receiver: Option<jormungandr_lib::interfaces::Address>,
         value: jormungandr_lib::interfaces::Value,
         block0_hash: String,
+        expiry_date: jormungandr_lib::interfaces::BlockDate,
         secret: impl AsRef<Path>,
         staging_file: impl AsRef<Path>,
         post: bool,
@@ -208,6 +209,8 @@ impl TransactionCommand {
             .arg(host)
             .arg("--block0-hash")
             .arg(block0_hash)
+            .arg("--valid-until")
+            .arg(&expiry_date.to_string())
             .arg("--force");
 
         if post {
@@ -218,6 +221,15 @@ impl TransactionCommand {
         };
 
         self.command.arg(sender.to_string()).arg(value.to_string());
+        self
+    }
+
+    pub fn set_expiry_date<P: AsRef<Path>>(mut self, expiry_date: &str, staging_file: P) -> Self {
+        self.command
+            .arg("set-expiry-date")
+            .arg(expiry_date)
+            .arg("--staging")
+            .arg(staging_file.as_ref());
         self
     }
 

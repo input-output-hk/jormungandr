@@ -29,6 +29,7 @@ pub struct SettingsDto {
     pub reward_params: Parameters,
     #[serde(with = "DiscriminationDef")]
     pub discrimination: Discrimination,
+    pub tx_max_expiry_epochs: u8,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

@@ -36,6 +36,10 @@ pub fn test_all_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 10,
+            slot_id: 0,
+        },
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -167,12 +171,17 @@ pub fn test_all_adversary_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate::first(),
         FragmentSenderSetup::resend_3_times(),
     );
 
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
         AdversaryFragmentSenderSetup::no_verify(),
     );
     let verifier = jormungandr
@@ -188,7 +197,12 @@ pub fn test_all_adversary_fragments() {
         )
         .unwrap();
     adversary_sender
-        .send_faulty_full_delegation(&mut full_delegator, initial_stake_pool.id(), &jormungandr)
+        .send_faulty_full_delegation(
+            chain_impl_mockchain::block::BlockDate::first(),
+            &mut full_delegator,
+            initial_stake_pool.id(),
+            &jormungandr,
+        )
         .unwrap();
     transaction_sender
         .send_transaction(

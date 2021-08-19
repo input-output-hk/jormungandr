@@ -4,7 +4,10 @@ use crate::common::{
     startup,
 };
 
-use jormungandr_lib::{crypto::hash::Hash, interfaces::InitialUTxO};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{BlockDate, InitialUTxO},
+};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
@@ -54,6 +57,7 @@ pub fn two_nodes_communication() {
             &sender,
             *utxo.associated_fund(),
             &reciever,
+            BlockDate::new(1, 0),
         );
 
     // Allow the nodes to exchange gossip info before sending

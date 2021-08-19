@@ -32,6 +32,10 @@ pub fn update_pool_fees_is_not_allowed() {
 
     let transaction = stake_pool_owner
         .issue_pool_update_cert(
+            chain_impl_mockchain::block::BlockDate {
+                epoch: 3,
+                slot_id: 0,
+            },
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
             stake_pool,

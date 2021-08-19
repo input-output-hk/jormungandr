@@ -10,8 +10,7 @@ use crate::{
 };
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
-use jormungandr_lib::interfaces::Log;
-use jormungandr_lib::interfaces::{LogEntry, LogOutput, TrustedPeer};
+use jormungandr_lib::interfaces::{BlockDate, Log, LogEntry, LogOutput, TrustedPeer};
 use jormungandr_testing_utils::{
     testing::node::{
         download_last_n_releases, get_jormungandr_bin, storage_loading_benchmark_from_log,
@@ -334,14 +333,21 @@ fn e2e_stake_pool(testnet_config: TestnetConfig) {
         .sleep_between_tries(120)
         .build();
 
+    let tx_expiry_date = BlockDate::new(1, 0);
     //register stake pool
-    let stake_pool_id =
-        create_new_stake_pool(&mut actor_account, &block0_hash, &jormungandr, &long_wait);
+    let stake_pool_id = create_new_stake_pool(
+        &mut actor_account,
+        &block0_hash,
+        tx_expiry_date,
+        &jormungandr,
+        &long_wait,
+    );
 
     delegate_stake(
         &mut actor_account,
         &stake_pool_id,
         &block0_hash,
+        tx_expiry_date,
         &jormungandr,
         &long_wait,
     );
@@ -349,6 +355,7 @@ fn e2e_stake_pool(testnet_config: TestnetConfig) {
         &stake_pool_id,
         &mut actor_account,
         &block0_hash,
+        tx_expiry_date,
         &jormungandr,
         &long_wait,
     );

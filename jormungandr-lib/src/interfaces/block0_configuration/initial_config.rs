@@ -96,6 +96,10 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     pub epoch_stability_depth: EpochStabilityDepth,
 
+    /// set the maximum number of epochs a transaction can reside in the mempool
+    #[serde(default)]
+    pub tx_max_expiry_epochs: Option<u8>,
+
     /// Fees go to settings, the default being `rewards`.
     ///
     #[serde(default)]
@@ -191,6 +195,7 @@ impl BlockchainConfiguration {
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
             block_content_max_size: BlockContentMaxSize::default(),
             epoch_stability_depth: EpochStabilityDepth::default(),
+            tx_max_expiry_epochs: None,
             fees_go_to: None,
             treasury: None,
             treasury_parameters: None,
@@ -226,6 +231,7 @@ impl BlockchainConfiguration {
         let mut fees_go_to = None;
         let mut reward_constraints = RewardConstraints::default();
         let mut committees = Vec::new();
+        let mut tx_max_expiry_epochs = None;
 
         for param in params.iter().cloned() {
             match param {
@@ -307,6 +313,9 @@ impl BlockchainConfiguration {
                 ConfigParam::RemoveCommitteeId(_committee_id) => {
                     panic!("attempt to remove a committee in the block0")
                 }
+                ConfigParam::TransactionMaxExpiryEpochs(value) => tx_max_expiry_epochs
+                    .replace(value)
+                    .map(|_| "tx_max_expiry_epochs"),
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
@@ -347,6 +356,7 @@ impl BlockchainConfiguration {
             reward_parameters,
             reward_constraints,
             committees,
+            tx_max_expiry_epochs,
         })
     }
 
@@ -370,6 +380,7 @@ impl BlockchainConfiguration {
             reward_parameters,
             reward_constraints,
             committees,
+            tx_max_expiry_epochs,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -436,6 +447,12 @@ impl BlockchainConfiguration {
                 pool_participation_capping.min,
                 pool_participation_capping.max,
             )));
+        }
+
+        if let Some(tx_max_expiry_epochs) = tx_max_expiry_epochs {
+            params.push(ConfigParam::TransactionMaxExpiryEpochs(
+                tx_max_expiry_epochs,
+            ));
         }
 
         let params = consensus_leader_ids
@@ -526,6 +543,7 @@ mod test {
                 committees: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
                     .take(counter_committee)
                     .collect(),
+                tx_max_expiry_epochs: Arbitrary::arbitrary(g),
             }
         }
     }

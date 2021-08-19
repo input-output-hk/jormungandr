@@ -13,6 +13,7 @@ pub enum FragmentRejectionReason {
     FragmentInvalid,
     PreviousFragmentInvalid,
     PoolOverflow { pool_number: usize },
+    FragmentExpired,
 }
 
 /// Information about a fragment rejected by the mempool. This is different from being rejected by

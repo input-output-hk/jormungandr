@@ -60,7 +60,15 @@ pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
         .public()
         .build();
 
-    let vote_plan_cert = vote_plan_cert(&committee, &vote_plan).into();
+    let vote_plan_cert = vote_plan_cert(
+        &committee,
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        &vote_plan,
+    )
+    .into();
 
     let config = ConfigurationBuilder::new()
         .with_fund(committee.to_initial_fund(quick_config.initial_fund_per_wallet()))
@@ -87,6 +95,7 @@ pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate::first(),
         FragmentSenderSetup::no_verify(),
     );
 
@@ -187,7 +196,15 @@ pub fn adversary_public_vote_load_scenario(
         ))
         .build();
 
-    let vote_plan_cert = vote_plan_cert(&committee, &vote_plan).into();
+    let vote_plan_cert = vote_plan_cert(
+        &committee,
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        &vote_plan,
+    )
+    .into();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
@@ -218,12 +235,17 @@ pub fn adversary_public_vote_load_scenario(
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate::first(),
         FragmentSenderSetup::no_verify(),
     );
 
     let adversary_transaction_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
         AdversaryFragmentSenderSetup::no_verify(),
     );
 

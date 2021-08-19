@@ -44,6 +44,7 @@ pub fn accounts_funds_are_updated_after_transaction() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
             receiver.address(),
             value_to_send.into(),
         )

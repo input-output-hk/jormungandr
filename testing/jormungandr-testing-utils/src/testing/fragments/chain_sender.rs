@@ -8,6 +8,7 @@ use crate::testing::MemPoolCheck;
 use crate::testing::RemoteJormungandr;
 use crate::testing::SyncNode;
 use crate::wallet::Wallet;
+use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::certificate::VotePlan;
 use chain_impl_mockchain::certificate::VoteTallyPayload;
 use chain_impl_mockchain::fee::LinearFee;
@@ -24,11 +25,12 @@ impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
     pub fn new(
         block0_hash: Hash,
         fees: LinearFee,
+        date: BlockDate,
         setup: FragmentSenderSetup<'a, S>,
         node: RemoteJormungandr,
     ) -> Self {
         Self {
-            sender: FragmentSender::new(block0_hash, fees, setup),
+            sender: FragmentSender::new(block0_hash, fees, date, setup),
             node,
             last_mempool_check: None,
         }
@@ -63,7 +65,14 @@ impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
 
     pub fn then_wait_for_epoch(self, span: u32) -> Self {
         time::wait_for_epoch(span, self.node.rest().clone());
-        self
+        let slot_id = self.sender.date().slot_id;
+        Self {
+            sender: self.sender.set_date(BlockDate {
+                epoch: span + 1,
+                slot_id,
+            }),
+            ..self
+        }
     }
 
     pub fn cast_vote(

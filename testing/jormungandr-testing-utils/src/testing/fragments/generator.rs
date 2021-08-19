@@ -13,7 +13,7 @@ use chain_impl_mockchain::{
     vote::Choice,
 };
 use chain_time::TimeEra;
-use jormungandr_lib::interfaces::BlockDate;
+use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
@@ -74,7 +74,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         self.active_stake_pools.clone()
     }
 
-    pub fn prepare(&mut self, start_block_date: BlockDate) {
+    pub fn prepare(&mut self, start_block_date: BlockDateDto) {
         let time_era = start_block_date.time_era(self.slots_per_epoch);
 
         let sender = self.sender.clone();
@@ -236,7 +236,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     .send_pool_retire(&mut self.sender, &stake_pool, &self.node)
             }
             7 => {
-                let block_date = BlockDate::from_str(
+                let block_date = BlockDateDto::from_str(
                     self.node
                         .rest()
                         .stats()

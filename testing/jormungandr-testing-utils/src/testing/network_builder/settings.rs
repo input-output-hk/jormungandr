@@ -5,6 +5,7 @@ use crate::testing::network_builder::{
 };
 use crate::{stake_pool::StakePool, testing::signed_stake_pool_cert, wallet::Wallet as WalletLib};
 use chain_crypto::Ed25519;
+use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::{certificate::VotePlan, chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::{
     crypto::key::SigningKey,
@@ -283,9 +284,9 @@ impl Settings {
                             },
                         });
 
-                        self.block0
-                            .initial
-                            .push(Initial::Cert(signed_stake_pool_cert(&stake_pool).into()));
+                        self.block0.initial.push(Initial::Cert(
+                            signed_stake_pool_cert(BlockDate::first(), &stake_pool).into(),
+                        ));
 
                         self.stake_pools
                             .insert(delegation.clone(), stake_pool.clone());
@@ -301,7 +302,8 @@ impl Settings {
 
                 // 2. create delegation certificate for the wallet stake key
                 // and add it to the block0.initial array
-                let delegation_certificate = wallet.delegation_cert_for_block0(stake_pool_id);
+                let delegation_certificate =
+                    wallet.delegation_cert_for_block0(BlockDate::first(), stake_pool_id);
 
                 self.block0.initial.push(delegation_certificate);
             }

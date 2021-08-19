@@ -1,5 +1,6 @@
 use crate::mjolnir_app::build_monitor;
 use crate::mjolnir_app::MjolnirError;
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
     testing::{fragments::TransactionGenerator, FragmentSenderSetup, RemoteJormungandrBuilder},
@@ -69,6 +70,7 @@ impl TxOnly {
             remote_jormungandr,
             block0_hash,
             fees,
+            BlockDate::first(),
         );
         generator.fill_from_faucet(&mut faucet);
 

@@ -41,6 +41,9 @@ pub struct MakeTransaction {
     #[structopt(long)]
     pub block0_hash: String,
 
+    #[structopt(long)]
+    pub valid_until: interfaces::BlockDate,
+
     /// the file path to the file to read the signing key from.
     /// If omitted it will be read from the standard input.
     #[structopt(long)]
@@ -79,6 +82,7 @@ impl MakeTransaction {
             secret_key,
             self.value,
             &self.block0_hash,
+            self.valid_until,
             self.rest_args.clone(),
             self.change,
             self.force,
@@ -167,6 +171,7 @@ pub fn make_transaction(
     secret_key: EitherEd25519SecretKey,
     value: interfaces::Value,
     block0_hash: &str,
+    valid_until: interfaces::BlockDate,
     rest_args: RestArgs,
     change: Option<interfaces::Address>,
     force: bool,
@@ -198,13 +203,15 @@ pub fn make_transaction(
         value: value.into(),
     })?;
 
+    transaction.set_expiry_date(valid_until)?;
+
     // finalize
     transaction::finalize::finalize(fee, change, &mut transaction)?;
 
     // get transaction and block0 ids
     let block0_hash = chain_impl_mockchain::chaintypes::HeaderId::from_str(block0_hash)
         .map_err(|_| Error::InvalidBlock0HeaderHash)?;
-    let transaction_sign_data_hash = transaction.transaction_sign_data_hash();
+    let transaction_sign_data_hash = transaction.transaction_sign_data_hash()?;
 
     // get spending counter
     let account_state = rest::v0::account::request_account_information(

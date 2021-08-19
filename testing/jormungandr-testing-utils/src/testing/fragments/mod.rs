@@ -16,7 +16,7 @@ pub use self::{
     verifier::{ExitStrategy as VerifyExitStrategy, FragmentVerifier, FragmentVerifierError},
 };
 use crate::{stake_pool::StakePool, wallet::Wallet};
-use chain_impl_mockchain::certificate::VoteTallyPayload;
+use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload};
 use chain_impl_mockchain::{
     certificate::{EncryptedVoteTally, PoolId, VoteCast, VotePlan, VoteTally},
     fee::LinearFee,
@@ -67,13 +67,15 @@ pub enum FragmentBuilderError {
 pub struct FragmentBuilder {
     block0_hash: Hash,
     fees: LinearFee,
+    date: BlockDate,
 }
 
 impl FragmentBuilder {
-    pub fn new(block0_hash: &Hash, fees: &LinearFee) -> Self {
+    pub fn new(block0_hash: &Hash, fees: &LinearFee, date: BlockDate) -> Self {
         Self {
             block0_hash: *block0_hash,
             fees: *fees,
+            date,
         }
     }
 
@@ -87,7 +89,18 @@ impl FragmentBuilder {
         address: Address,
         value: Value,
     ) -> Result<Fragment, FragmentBuilderError> {
-        transaction_to(&self.block0_hash, &self.fees, from, address, value)
+        let expiry_date = BlockDate {
+            epoch: self.date.epoch + 1,
+            slot_id: self.date.slot_id,
+        };
+        transaction_to(
+            &self.block0_hash,
+            &self.fees,
+            expiry_date,
+            from,
+            address,
+            value,
+        )
     }
 
     pub fn transaction_to_many(
@@ -96,28 +109,51 @@ impl FragmentBuilder {
         addresses: &[Address],
         value: Value,
     ) -> Result<Fragment, FragmentBuilderError> {
-        transaction_to_many(&self.block0_hash, &self.fees, from, addresses, value)
+        let expiry_date = BlockDate {
+            epoch: self.date.epoch + 1,
+            slot_id: self.date.slot_id,
+        };
+        transaction_to_many(
+            &self.block0_hash,
+            &self.fees,
+            expiry_date,
+            from,
+            addresses,
+            value,
+        )
     }
 
-    pub fn full_delegation_cert_for_block0(wallet: &Wallet, pool_id: PoolId) -> Initial {
-        Initial::Cert(signed_delegation_cert(wallet, pool_id).into())
+    pub fn full_delegation_cert_for_block0(
+        date: BlockDate,
+        wallet: &Wallet,
+        pool_id: PoolId,
+    ) -> Initial {
+        let expiry_date = BlockDate {
+            epoch: date.epoch + 1,
+            slot_id: date.slot_id,
+        };
+        Initial::Cert(signed_delegation_cert(wallet, expiry_date, pool_id).into())
     }
 
     pub fn stake_pool_registration(&self, funder: &Wallet, stake_pool: &StakePool) -> Fragment {
         let inner_wallet = funder.clone().into();
-        self.fragment_factory()
-            .stake_pool_registration(&inner_wallet, &stake_pool.clone().into())
+        self.fragment_factory().stake_pool_registration(
+            self.date,
+            &inner_wallet,
+            &stake_pool.clone().into(),
+        )
     }
 
     pub fn delegation(&self, from: &Wallet, stake_pool: &StakePool) -> Fragment {
         let inner_wallet = from.clone().into();
         self.fragment_factory()
-            .delegation(&inner_wallet, &stake_pool.clone().into())
+            .delegation(self.date, &inner_wallet, &stake_pool.clone().into())
     }
 
     pub fn delegation_remove(&self, from: &Wallet) -> Fragment {
         let inner_wallet = from.clone().into();
-        self.fragment_factory().delegation_remove(&inner_wallet)
+        self.fragment_factory()
+            .delegation_remove(self.date, &inner_wallet)
     }
 
     pub fn delegation_to_many(
@@ -141,14 +177,20 @@ impl FragmentBuilder {
             inner_distribution.push((inner_stake_pool, factor));
         }
 
-        self.fragment_factory()
-            .delegation_to_many(&inner_wallet, &inner_distribution[..])
+        self.fragment_factory().delegation_to_many(
+            self.date,
+            &inner_wallet,
+            &inner_distribution[..],
+        )
     }
 
     pub fn owner_delegation(&self, from: &Wallet, stake_pool: &StakePool) -> Fragment {
         let inner_wallet = from.clone().into();
-        self.fragment_factory()
-            .owner_delegation(&inner_wallet, &stake_pool.clone().into())
+        self.fragment_factory().owner_delegation(
+            self.date,
+            &inner_wallet,
+            &stake_pool.clone().into(),
+        )
     }
 
     pub fn stake_pool_retire(&self, owners: Vec<&Wallet>, stake_pool: &StakePool) -> Fragment {
@@ -162,8 +204,11 @@ impl FragmentBuilder {
             .collect();
 
         let ref_inner_owners: Vec<&WalletLib> = inner_owners.iter().collect();
-        self.fragment_factory()
-            .stake_pool_retire(ref_inner_owners, &stake_pool.clone().into())
+        self.fragment_factory().stake_pool_retire(
+            self.date,
+            ref_inner_owners,
+            &stake_pool.clone().into(),
+        )
     }
 
     pub fn stake_pool_update(
@@ -183,6 +228,7 @@ impl FragmentBuilder {
 
         let ref_inner_owners: Vec<&WalletLib> = inner_owners.iter().collect();
         self.fragment_factory().stake_pool_update(
+            self.date,
             ref_inner_owners,
             &old_stake_pool.clone().into(),
             new_stake_pool.clone().into(),
@@ -192,7 +238,7 @@ impl FragmentBuilder {
     pub fn vote_plan(&self, wallet: &Wallet, vote_plan: &VotePlan) -> Fragment {
         let inner_wallet = wallet.clone().into();
         self.fragment_factory()
-            .vote_plan(&inner_wallet, vote_plan.clone())
+            .vote_plan(self.date, &inner_wallet, vote_plan.clone())
     }
 
     pub fn public_vote_cast(
@@ -208,7 +254,8 @@ impl FragmentBuilder {
             proposal_index as u8,
             Payload::public(*choice),
         );
-        self.fragment_factory().vote_cast(&inner_wallet, vote_cast)
+        self.fragment_factory()
+            .vote_cast(self.date, &inner_wallet, vote_cast)
     }
 
     pub fn private_vote_cast(
@@ -253,13 +300,17 @@ impl FragmentBuilder {
 
         let inner_wallet = wallet.clone().into();
 
-        self.fragment_factory().vote_cast(&inner_wallet, vote_cast)
+        self.fragment_factory()
+            .vote_cast(self.date, &inner_wallet, vote_cast)
     }
 
     pub fn encrypted_tally(&self, owner: &Wallet, vote_plan: &VotePlan) -> Fragment {
         let encrypted_tally = EncryptedVoteTally::new(vote_plan.to_id());
-        self.fragment_factory()
-            .vote_encrypted_tally(&owner.clone().into(), encrypted_tally)
+        self.fragment_factory().vote_encrypted_tally(
+            self.date,
+            &owner.clone().into(),
+            encrypted_tally,
+        )
     }
 
     pub fn vote_tally(
@@ -275,6 +326,6 @@ impl FragmentBuilder {
             VoteTallyPayload::Private { inner } => VoteTally::new_private(vote_plan.to_id(), inner),
         };
         self.fragment_factory()
-            .vote_tally(&inner_wallet, vote_tally)
+            .vote_tally(self.date, &inner_wallet, vote_tally)
     }
 }

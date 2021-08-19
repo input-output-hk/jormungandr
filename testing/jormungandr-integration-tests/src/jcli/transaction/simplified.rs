@@ -1,7 +1,7 @@
 use crate::common::jormungandr::ConfigurationBuilder;
 use crate::common::{jcli::JCli, jormungandr::starter::Starter, startup};
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::InitialUTxO;
+use jormungandr_lib::interfaces::{BlockDate, InitialUTxO};
 
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
@@ -46,6 +46,7 @@ pub fn test_make_test_transaction() {
         None,
         100.into(),
         block0_hash.to_string(),
+        BlockDate::new(1, 0),
         sk_file_path,
         staging_file,
         false,
@@ -92,6 +93,7 @@ pub fn test_make_transaction_to_receiver_account() {
         Some(receiver.address()),
         100.into(),
         block0_hash.to_string(),
+        BlockDate::new(1, 0),
         sk_file_path,
         staging_file,
         false,
@@ -139,6 +141,7 @@ pub fn test_make_transaction_to_receiver_account_with_fees() {
         Some(receiver.address()),
         100.into(),
         block0_hash.to_string(),
+        BlockDate::new(1, 0),
         sk_file_path,
         staging_file,
         false,
@@ -186,6 +189,7 @@ pub fn test_make_transaction_to_receiver_account_with_fees_and_post() {
         Some(receiver.address()),
         100.into(),
         block0_hash.to_string(),
+        BlockDate::new(1, 0),
         sk_file_path,
         staging_file,
         true,

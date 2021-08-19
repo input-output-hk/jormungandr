@@ -5,7 +5,7 @@ use crate::common::{
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{InitialUTxO, UTxOInfo},
+    interfaces::{BlockDate, InitialUTxO, UTxOInfo},
 };
 
 use chain_impl_mockchain::fee::LinearFee;
@@ -47,6 +47,7 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
         .new_transaction()
         .add_input_from_utxo(&utxo)
         .add_output(&receiver.address().to_string(), *utxo.associated_fund())
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize();
 
     let witness1 = transaction_builder.create_witness_default("utxo", None);
@@ -94,6 +95,7 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
             &sender,
             *utxo.associated_fund(),
             &middle_man,
+            BlockDate::new(1, 0),
         );
 
     let first_transaction_id = jcli
@@ -101,14 +103,15 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
         .send(&first_transaction)
         .assert_in_block();
 
-    let second_transaction = jcli.transaction_builder(block0_hash).build_transaction(
-        &first_transaction_id.into(),
-        0,
-        100.into(),
-        &middle_man,
-        100.into(),
-        &receiver,
-    );
+    let second_transaction = jcli
+        .transaction_builder(block0_hash)
+        .new_transaction()
+        .add_input(&first_transaction_id.into(), 0, &100.to_string())
+        .add_output(&receiver.address().to_string(), 100.into())
+        .set_expiry_date(BlockDate::new(1, 0))
+        .finalize()
+        .seal_with_witness_for_address(&middle_man)
+        .to_message();
     jcli.fragment_sender(&jormungandr)
         .send(&second_transaction)
         .assert_in_block();
@@ -144,6 +147,7 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
         .new_transaction()
         .add_input_from_utxo(&utxo)
         .add_output(&receiver.address().to_string(), *utxo.associated_fund())
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&sender)
         .to_message();
@@ -184,6 +188,7 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
         .new_transaction()
         .add_input_from_utxo(&utxo)
         .add_output(&receiver.address().to_string(), *utxo.associated_fund())
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&sender)
         .to_message();
@@ -238,6 +243,7 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
         .new_transaction()
         .add_input_from_utxo(&utxo)
         .add_output(&receiver.address().to_string(), transfer_amount)
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&sender)
         .to_message();
@@ -299,6 +305,7 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
         .new_transaction()
         .add_input_from_utxo(&utxo)
         .add_output(&receiver.address().to_string(), transfer_amount)
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&sender)
         .to_message();
@@ -336,6 +343,7 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
         .new_transaction()
         .add_input_from_utxo(&utxo)
         .add_output(&receiver.address().to_string(), transfer_amount)
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&sender)
         .to_message();
@@ -374,6 +382,7 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
         .new_transaction()
         .add_input_from_utxo(&utxo)
         .add_output(&receiver.address().to_string(), transfer_amount)
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&sender)
         .to_message();
@@ -410,6 +419,7 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
         .new_transaction()
         .add_input_from_utxo(&utxo)
         .add_output(&receiver.address().to_string(), *utxo.associated_fund())
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&sender)
         .to_message();
@@ -446,6 +456,7 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
         .new_transaction()
         .add_account(&sender.address().to_string(), &transfer_amount)
         .add_output(&receiver.address().to_string(), transfer_amount)
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&sender)
         .to_message();
@@ -482,6 +493,7 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
         .new_transaction()
         .add_account(&sender.address().to_string(), &transfer_amount)
         .add_output(&receiver.address().to_string(), transfer_amount)
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&sender)
         .to_message();
@@ -518,6 +530,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
         .new_transaction()
         .add_input_from_utxo(&utxo)
         .add_output(&receiver.address().to_string(), transfer_amount)
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
         .seal_with_witness_for_address(&sender)
         .to_message();
@@ -550,7 +563,14 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
     let utxo = config.block0_utxo_for_address(&sender);
     let transaction_message = jcli
         .transaction_builder(block0_hash)
-        .build_transaction_from_utxo(&utxo, 99.into(), &receiver, 99.into(), &sender);
+        .build_transaction_from_utxo(
+            &utxo,
+            99.into(),
+            &receiver,
+            99.into(),
+            &sender,
+            BlockDate::new(1, 0),
+        );
 
     jcli.fragment_sender(&jormungandr)
         .send(&transaction_message)
@@ -577,14 +597,15 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
         .start()
         .unwrap();
     let block0_hash = jcli.genesis().hash(&config.genesis_block_path());
-    let transaction_message = jcli.transaction_builder(block0_hash).build_transaction(
-        &FAKE_INPUT_TRANSACTION_ID,
-        0,
-        100.into(),
-        &receiver,
-        100.into(),
-        &sender,
-    );
+    let transaction_message = jcli
+        .transaction_builder(block0_hash)
+        .new_transaction()
+        .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, &100.to_string())
+        .add_output(&receiver.address().to_string(), 100.into())
+        .set_expiry_date(BlockDate::new(1, 0))
+        .finalize()
+        .seal_with_witness_for_address(&sender)
+        .to_message();
 
     jcli.fragment_sender(&jormungandr)
         .send(&transaction_message)
@@ -617,6 +638,7 @@ pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node()
         &sender,
         *utxo.associated_fund(),
         &sender,
+        BlockDate::new(1, 0),
     );
 
     jcli.fragment_sender(&jormungandr)
@@ -648,7 +670,14 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
 
     let transaction_message = jcli
         .transaction_builder(block0_hash)
-        .build_transaction_from_utxo(&utxo, 100.into(), &sender, 50.into(), &receiver);
+        .build_transaction_from_utxo(
+            &utxo,
+            100.into(),
+            &sender,
+            50.into(),
+            &receiver,
+            BlockDate::new(1, 0),
+        );
 
     jcli.fragment_sender(&jormungandr).send(&transaction_message).assert_rejected(
         "Failed to validate transaction balance: transaction value not balanced, has inputs sum 100 and outputs sum 50"
@@ -683,6 +712,7 @@ pub fn test_transaction_with_non_zero_linear_fees() {
         .new_transaction()
         .add_input_from_utxo(&utxo)
         .add_output(&receiver.address().to_string(), 50.into())
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize_with_fee(&sender.address().to_string(), &fee)
         .seal_with_witness_for_address(&sender)
         .to_message();
