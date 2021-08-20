@@ -37,7 +37,10 @@ pub fn test_all_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate {
+            epoch: 10,
+            slot_id: 0,
+        },
         FragmentSenderSetup::resend_3_times(),
     );
 

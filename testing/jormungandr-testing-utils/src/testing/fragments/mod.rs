@@ -120,11 +120,7 @@ impl FragmentBuilder {
         wallet: &Wallet,
         pool_id: PoolId,
     ) -> Initial {
-        let expiry_date = BlockDate {
-            epoch: valid_until.epoch + 1,
-            slot_id: valid_until.slot_id,
-        };
-        Initial::Cert(signed_delegation_cert(wallet, expiry_date, pool_id).into())
+        Initial::Cert(signed_delegation_cert(wallet, valid_until, pool_id).into())
     }
 
     pub fn stake_pool_registration(&self, funder: &Wallet, stake_pool: &StakePool) -> Fragment {
