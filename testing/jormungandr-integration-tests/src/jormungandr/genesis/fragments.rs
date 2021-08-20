@@ -7,6 +7,7 @@ use jormungandr_testing_utils::{
 };
 
 use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
+use chain_impl_mockchain::block::BlockDate;
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
@@ -36,10 +37,7 @@ pub fn test_all_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 10,
-            slot_id: 0,
-        },
+        BlockDate::first().next_epoch(),
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -171,17 +169,14 @@ pub fn test_all_adversary_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch(),
         FragmentSenderSetup::resend_3_times(),
     );
 
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
+        BlockDate::first().next_epoch(),
         AdversaryFragmentSenderSetup::no_verify(),
     );
     let verifier = jormungandr
@@ -198,7 +193,7 @@ pub fn test_all_adversary_fragments() {
         .unwrap();
     adversary_sender
         .send_faulty_full_delegation(
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             &mut full_delegator,
             initial_stake_pool.id(),
             &jormungandr,

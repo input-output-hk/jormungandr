@@ -22,6 +22,8 @@ use std::str::FromStr;
 
 #[test]
 pub fn more_than_one_stake_pool_in_app() {
+    use chain_impl_mockchain::block::BlockDate;
+
     let mut first_spo = startup::create_new_account_address();
     let second_spo = startup::create_new_account_address();
     let third_spo = startup::create_new_account_address();
@@ -36,7 +38,7 @@ pub fn more_than_one_stake_pool_in_app() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch(),
         FragmentSenderSetup::resend_3_times(),
     );
     fragment_sender

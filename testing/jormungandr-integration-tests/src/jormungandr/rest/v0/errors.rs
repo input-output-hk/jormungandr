@@ -1,6 +1,7 @@
 use crate::common::jormungandr::JormungandrProcess;
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
 use chain_core::property::Fragment;
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jormungandr_testing_utils::wallet::Wallet;
 use rstest::*;
@@ -29,7 +30,7 @@ pub fn fragment_already_in_log(world: (JormungandrProcess, Wallet, Wallet, Walle
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             bob.address(),
             100.into(),
         )

@@ -1,7 +1,7 @@
 use crate::common::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
-use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash},
     interfaces::{ActiveSlotCoefficient, Stake, StakeDistributionDto},
@@ -50,7 +50,7 @@ pub fn stake_distribution() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             stake_pool_owner_1.address(),
             transaction_amount.into(),
         )

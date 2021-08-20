@@ -1,7 +1,7 @@
 use crate::common::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
-use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, Mempool, Value};
 
 #[test]
@@ -44,7 +44,7 @@ pub fn accounts_funds_are_updated_after_transaction() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             value_to_send.into(),
         )

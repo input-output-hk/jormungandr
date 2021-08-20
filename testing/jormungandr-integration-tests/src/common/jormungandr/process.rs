@@ -2,7 +2,7 @@ use super::{starter::StartupError, JormungandrError};
 use crate::common::jcli::{JCli, JCliCommand};
 use ::multiaddr::Multiaddr;
 use assert_fs::TempDir;
-use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use chain_time::TimeEra;
 use fs_extra::dir::{move_dir, CopyOptions};
 use jormungandr_lib::{
@@ -82,7 +82,7 @@ impl JormungandrProcess {
         FragmentSender::new(
             self.genesis_block_hash(),
             self.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             setup,
         )
     }
@@ -94,10 +94,7 @@ impl JormungandrProcess {
         FragmentChainSender::new(
             self.genesis_block_hash(),
             self.fees(),
-            chain_impl_mockchain::block::BlockDate {
-                epoch: 1,
-                slot_id: 0,
-            },
+            BlockDate::first().next_epoch(),
             setup,
             self.to_remote(),
         )

@@ -6,6 +6,7 @@ use crate::common::{
 };
 use chain_impl_mockchain::{
     accounting::account::{DelegationRatio, DelegationType},
+    block::BlockDate,
     transaction::AccountIdentifier,
 };
 use jormungandr_testing_utils::{
@@ -54,7 +55,7 @@ pub fn test_legacy_node_all_fragments() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch(),
         Default::default(),
     );
 
@@ -63,7 +64,7 @@ pub fn test_legacy_node_all_fragments() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             second_stake_pool_owner.address(),
             1_000.into(),
         )
@@ -80,7 +81,7 @@ pub fn test_legacy_node_all_fragments() {
         .issue_pool_registration_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             &first_stake_pool,
         )
         .expect("cannot create pool registration fragment for first stake pool owner");
@@ -96,7 +97,7 @@ pub fn test_legacy_node_all_fragments() {
         .issue_pool_registration_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             &second_stake_pool,
         )
         .expect("cannot create pool registration fragment for second stake owner");
@@ -123,7 +124,7 @@ pub fn test_legacy_node_all_fragments() {
         .issue_owner_delegation_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             &first_stake_pool,
         )
         .unwrap();
@@ -148,7 +149,7 @@ pub fn test_legacy_node_all_fragments() {
         .issue_full_delegation_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             &first_stake_pool,
         )
         .expect("error while sending full delegation certificate");
@@ -172,7 +173,7 @@ pub fn test_legacy_node_all_fragments() {
         .issue_split_delegation_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             vec![(&first_stake_pool, 1u8), (&second_stake_pool, 1u8)],
         )
         .expect("error while sending split delegation certificate");
@@ -213,7 +214,7 @@ pub fn test_legacy_node_all_fragments() {
         .issue_pool_update_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             &first_stake_pool,
             &new_stake_pool,
         )
@@ -229,7 +230,7 @@ pub fn test_legacy_node_all_fragments() {
         .issue_pool_retire_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             &first_stake_pool,
         )
         .expect("error while sending stake pool retirement certificate");

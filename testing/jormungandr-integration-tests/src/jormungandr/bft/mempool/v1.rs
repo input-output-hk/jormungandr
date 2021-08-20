@@ -2,7 +2,8 @@ use crate::common::jormungandr::{ConfigurationBuilder, Starter};
 use crate::common::startup;
 use assert_fs::TempDir;
 use chain_core::property::Fragment;
-use jormungandr_lib::interfaces::BlockDate;
+use chain_impl_mockchain::block::BlockDate;
+use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
 use jormungandr_lib::interfaces::FragmentRejectionReason;
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::Mempool;
@@ -53,7 +54,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -65,7 +66,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -149,7 +150,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -161,7 +162,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -189,7 +190,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .fragment_logs()
         .assert_empty();
 
-    time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
+    time::wait_for_date(BlockDateDto::new(0, 10), jormungandr.rest());
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
 }
 
@@ -233,7 +234,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -245,7 +246,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -329,7 +330,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -341,7 +342,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -369,7 +370,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .fragment_logs()
         .assert_empty();
 
-    time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
+    time::wait_for_date(BlockDateDto::new(0, 10), jormungandr.rest());
 
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
 }
@@ -416,7 +417,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -428,7 +429,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -456,7 +457,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .fragment_logs()
         .assert_size(2);
 
-    time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
+    time::wait_for_date(BlockDateDto::new(0, 10), jormungandr.rest());
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 2.into())
