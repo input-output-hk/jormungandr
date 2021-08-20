@@ -1,5 +1,6 @@
 use super::{Gossip, Gossips, P2pTopology, Peer};
 use crate::intercom::{NetworkMsg, PropagateMsg, TopologyMsg};
+use crate::metrics::Metrics;
 use crate::settings::start::network::Configuration;
 use crate::utils::async_msg::{MessageBox, MessageQueue};
 use std::time::Duration;
@@ -23,6 +24,7 @@ pub struct TaskData {
     pub topology_queue: MessageQueue<TopologyMsg>,
     pub initial_peers: Vec<Peer>,
     pub config: Configuration,
+    pub stats_counter: Metrics,
 }
 
 pub async fn start(task_data: TaskData) {
@@ -31,9 +33,10 @@ pub async fn start(task_data: TaskData) {
         topology_queue,
         initial_peers,
         config,
+        stats_counter,
     } = task_data;
 
-    let mut topology = P2pTopology::new(&config);
+    let mut topology = P2pTopology::new(&config, stats_counter);
 
     topology.accept_gossips(Gossips::from(
         initial_peers

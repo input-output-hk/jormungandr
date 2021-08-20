@@ -38,6 +38,9 @@ pub struct Config {
 
     pub explorer: Option<Explorer>,
 
+    #[cfg(feature = "prometheus-metrics")]
+    pub prometheus: Option<Prometheus>,
+
     /// the time interval with no blockchain updates after which alerts are thrown
     #[serde(default)]
     pub no_blockchain_updates_warning_interval: Option<Duration>,
@@ -145,6 +148,12 @@ pub struct Leadership {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Explorer {
+    pub enabled: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Prometheus {
     pub enabled: bool,
 }
 

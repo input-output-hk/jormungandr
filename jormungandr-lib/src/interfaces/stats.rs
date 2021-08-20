@@ -27,7 +27,6 @@ pub struct NodeStats {
     pub peer_connected_cnt: usize,
     pub peer_quarantined_cnt: usize,
     pub peer_total_cnt: usize,
-    pub peer_unreachable_cnt: usize,
     pub tx_recv_cnt: u64,
     pub uptime: Option<u64>,
 }

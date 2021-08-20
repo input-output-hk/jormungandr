@@ -2,16 +2,27 @@
 
 pub mod context;
 pub mod explorer;
+#[cfg(feature = "prometheus-metrics")]
+mod prometheus;
 pub mod v0;
 mod v1;
 
 pub use self::context::{Context, ContextLock, FullContext};
 
-use jormungandr_lib::interfaces::{Rest, Tls};
+use jormungandr_lib::interfaces::{Cors, Tls};
 
 use futures::{channel::mpsc, prelude::*};
 use std::{error::Error, net::SocketAddr, time::Duration};
 use warp::Filter;
+
+pub struct Config {
+    pub listen: SocketAddr,
+    pub tls: Option<Tls>,
+    pub cors: Option<Cors>,
+    pub enable_explorer: bool,
+    #[cfg(feature = "prometheus-metrics")]
+    pub enable_prometheus: bool,
+}
 
 #[derive(Clone)]
 pub struct ServerStopper(mpsc::Sender<()>);
@@ -22,7 +33,7 @@ impl ServerStopper {
     }
 }
 
-pub async fn start_rest_server(config: Rest, explorer_enabled: bool, context: ContextLock) {
+pub async fn start_rest_server(config: Config, context: ContextLock) {
     let (stopper_tx, stopper_rx) = mpsc::channel::<()>(0);
     let stopper_rx = stopper_rx.into_future().map(|_| ());
     context
@@ -58,17 +69,61 @@ pub async fn start_rest_server(config: Rest, explorer_enabled: bool, context: Co
             }
             span
         }));
-    if explorer_enabled {
-        let explorer = explorer::filter(context);
-        setup_cors(api.or(explorer), config, stopper_rx).await;
+
+    setup_prometheus(api, config, context, stopper_rx).await;
+}
+
+#[cfg(feature = "prometheus-metrics")]
+async fn setup_prometheus<App>(
+    app: App,
+    config: Config,
+    context: ContextLock,
+    shutdown_signal: impl Future<Output = ()> + Send + 'static,
+) where
+    App: Filter<Error = warp::Rejection> + Clone + Send + Sync + 'static,
+    App::Extract: warp::Reply,
+{
+    if config.enable_prometheus {
+        let prometheus = prometheus::filter(context.clone());
+        setup_explorer(app.or(prometheus), config, context, shutdown_signal).await;
     } else {
-        setup_cors(api, config, stopper_rx).await;
+        setup_explorer(app, config, context, shutdown_signal).await;
+    }
+}
+
+#[cfg(not(feature = "prometheus-metrics"))]
+async fn setup_prometheus<App>(
+    app: App,
+    config: Config,
+    context: ContextLock,
+    shutdown_signal: impl Future<Output = ()> + Send + 'static,
+) where
+    App: Filter<Error = warp::Rejection> + Clone + Send + Sync + 'static,
+    App::Extract: warp::Reply,
+{
+    setup_explorer(app, config, context, shutdown_signal).await;
+}
+
+async fn setup_explorer<App>(
+    app: App,
+    config: Config,
+    context: ContextLock,
+    shutdown_signal: impl Future<Output = ()> + Send + 'static,
+) where
+    App: Filter<Error = warp::Rejection> + Clone + Send + Sync + 'static,
+    App::Extract: warp::Reply,
+{
+    if config.enable_explorer {
+        let explorer = explorer::filter(context);
+        setup_cors(app.or(explorer), config, shutdown_signal).await;
+    } else {
+        setup_cors(app, config, shutdown_signal).await;
     }
 }
 
 async fn setup_cors<App>(
     app: App,
-    config: Rest,
+    config: Config,
     shutdown_signal: impl Future<Output = ()> + Send + 'static,
 ) where
     App: Filter<Error = warp::Rejection> + Clone + Send + Sync + 'static,

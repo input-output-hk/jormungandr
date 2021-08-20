@@ -81,7 +81,6 @@ pub fn assert_node_stats(
     peer_available_cnt: usize,
     peer_quarantined_cnt: usize,
     peer_total_cnt: usize,
-    peer_unreachable_cnt: usize,
     info: &str,
 ) {
     node.log_stats();
@@ -110,13 +109,6 @@ pub fn assert_node_stats(
         peer_total_cnt,
         stats.peer_total_cnt,
         "{}: peer_total_cnt, Node {}",
-        info,
-        node.alias()
-    );
-    assert_eq!(
-        peer_unreachable_cnt,
-        stats.peer_unreachable_cnt,
-        "{}: peer_unreachable_cnt, Node {}",
         info,
         node.alias()
     );
@@ -198,7 +190,7 @@ pub fn node_does_not_quarantine_whitelisted_node() {
         )
         .unwrap();
 
-    assert_node_stats(&server, 1, 0, 1, 0, "after starting client");
+    assert_node_stats(&server, 1, 0, 1, "after starting client");
     assert_empty_quarantine(&server, "after starting client");
 }
 
@@ -237,7 +229,9 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
         )
         .unwrap();
 
-    assert_node_stats(&server, 0, 1, 1, 0, "after starting client");
+    process_utils::sleep(5);
+
+    assert_node_stats(&server, 0, 1, 1, "after starting client");
     assert_are_in_quarantine(&server, vec![&client], "after starting client");
 }
 
@@ -259,14 +253,16 @@ pub fn node_does_not_quarantine_trusted_node() {
     let server = network_controller.spawn_and_wait(SERVER);
     let client = network_controller.spawn_and_wait(CLIENT);
 
-    assert_node_stats(&server, 1, 0, 1, 0, "before stopping client");
+    process_utils::sleep(5);
+
+    assert_node_stats(&server, 1, 0, 1, "before stopping client");
     assert_empty_quarantine(&server, "before stopping client");
 
     client.shutdown();
     process_utils::sleep(20);
 
     // The server "forgets" the client but does not quarantine it
-    assert_node_stats(&server, 0, 0, 0, 0, "before restarting client");
+    assert_node_stats(&server, 0, 0, 0, "before restarting client");
     assert_empty_quarantine(&server, "before restarting client");
 }
 

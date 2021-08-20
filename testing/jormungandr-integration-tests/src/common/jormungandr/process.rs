@@ -171,14 +171,13 @@ impl JormungandrProcess {
                     .expect("failed to execute get_rest_stats command");
 
                 let output = output.try_as_single_node_yaml();
-                match output.ok().and_then(|x| x.get("uptime").cloned()) {
-                    Some(uptime)
-                        if uptime.parse::<i32>().unwrap_or_else(|_| {
-                            panic!("Cannot parse uptime {}", uptime.to_string())
-                        }) > 2 =>
-                    {
-                        Status::Running
-                    }
+                match output
+                    .ok()
+                    .as_ref()
+                    .and_then(|x| x.get("state"))
+                    .map(|x| x.as_str())
+                {
+                    Some("Running") => Status::Running,
                     _ => Status::Starting,
                 }
             }
