@@ -48,7 +48,7 @@ impl<'a> FragmentCheck<'a> {
         self.assert_log_shows_in_block()
     }
 
-    pub fn assert_rejected(self, expected_reason: &str) {
+    pub fn assert_rejected(&self, expected_reason: &str) {
         let wait: Wait = Default::default();
         self.wait_until_processed(&wait).unwrap();
         self.assert_log_shows_rejected(expected_reason);
@@ -133,7 +133,7 @@ impl<'a> FragmentCheck<'a> {
         self.id
     }
 
-    pub fn assert_log_shows_rejected(self, expected_msg: &str) {
+    pub fn assert_log_shows_rejected(&self, expected_msg: &str) {
         let fragments = self
             .jcli
             .rest()
@@ -164,7 +164,7 @@ impl<'a> FragmentCheck<'a> {
         }
     }
 
-    pub fn assert_rejected_summary(self) {
+    pub fn assert_rejected_summary(&self) {
         assert!(self.summary.rejected.iter().any(|i| i.id == self.id));
     }
 }

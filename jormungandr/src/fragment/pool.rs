@@ -683,7 +683,7 @@ pub(super) mod internal {
                     })
                     .set_ios(&[], &[])
                     .set_witnesses(&[])
-                    .set_payload_auth(&(())),
+                    .set_payload_auth(&()),
             );
 
             pool.insert_all([tx]);
