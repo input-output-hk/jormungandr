@@ -22,7 +22,6 @@ use crate::{
         legacy,
         network::{
             bft::{bft_cascade, bft_passive_propagation},
-            expiry::no_expired_transactions_propagated,
             real::{real_bft_network, real_praos_network},
             topology::scenarios::*,
         },
@@ -341,11 +340,6 @@ fn scenarios_repository() -> Vec<Scenario> {
             "newest_node_enters_legacy_network",
             legacy::newest_node_enters_legacy_network,
             vec![Tag::Short, Tag::Unstable],
-        ),
-        Scenario::new(
-            "no_expired_transactions_propagated",
-            no_expired_transactions_propagated,
-            vec![Tag::Short],
         ),
     ]
 }
