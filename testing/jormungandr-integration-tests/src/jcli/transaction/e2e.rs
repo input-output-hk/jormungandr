@@ -737,3 +737,60 @@ pub fn test_transaction_with_non_zero_linear_fees() {
         &rest_uri,
     );
 }
+
+#[test]
+fn test_cannot_create_transaction_without_expiration() {
+    let jcli: JCli = Default::default();
+    let temp_dir = TempDir::new().unwrap();
+
+    let sender = startup::create_new_utxo_address();
+    let receiver = startup::create_new_utxo_address();
+    let config = ConfigurationBuilder::new()
+        .with_funds(vec![InitialUTxO {
+            address: sender.address(),
+            value: 100.into(),
+        }])
+        .build(&temp_dir);
+    let utxo = config.block0_utxo_for_address(&sender);
+    let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
+    jcli.transaction_builder(block0_hash)
+        .new_transaction()
+        .add_input_from_utxo(&utxo)
+        .add_output(&receiver.address().to_string(), 50.into())
+        .finalize_expect_fail("cannot finalize the payload without a validity end date set");
+}
+
+#[test]
+fn test_different_transaction_expiry_yields_different_id() {
+    let jcli: JCli = Default::default();
+    let temp_dir = TempDir::new().unwrap();
+
+    let sender = startup::create_new_utxo_address();
+    let receiver = startup::create_new_utxo_address();
+    let config = ConfigurationBuilder::new()
+        .with_funds(vec![InitialUTxO {
+            address: sender.address(),
+            value: 100.into(),
+        }])
+        .build(&temp_dir);
+    let utxo = config.block0_utxo_for_address(&sender);
+    let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
+    let first_id = jcli
+        .transaction_builder(block0_hash)
+        .new_transaction()
+        .add_input_from_utxo(&utxo)
+        .add_output(&receiver.address().to_string(), 50.into())
+        .set_expiry_date(BlockDate::new(1, 0))
+        .finalize()
+        .transaction_id();
+    let second_id = jcli
+        .transaction_builder(block0_hash)
+        .new_transaction()
+        .add_input_from_utxo(&utxo)
+        .add_output(&receiver.address().to_string(), 50.into())
+        .set_expiry_date(BlockDate::new(2, 0))
+        .finalize()
+        .transaction_id();
+
+    assert_ne!(first_id, second_id);
+}

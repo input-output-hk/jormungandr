@@ -150,6 +150,21 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         self.send_fragment(from, fragment, via)
     }
 
+    pub fn send_transaction_with_validity<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        from: &mut Wallet,
+        to: &Wallet,
+        via: &A,
+        value: Value,
+        valid_until: BlockDate,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let address = to.address();
+        let fragment =
+            from.transaction_to(&self.block0_hash, &self.fees, valid_until, address, value)?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
     pub fn send_transaction_to_many<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,

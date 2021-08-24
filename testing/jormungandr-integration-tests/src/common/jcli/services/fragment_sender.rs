@@ -12,13 +12,22 @@ impl<'a> FragmentSender<'a> {
     }
 
     pub fn send(self, transaction: &'a str) -> FragmentCheck {
-        let id = self
+        let summary = self
             .jcli
             .rest()
             .v0()
             .message()
             .post(transaction, self.jormungandr.rest_uri());
-        FragmentCheck::new(self.jcli, self.jormungandr, id)
+
+        let id = if summary.accepted.len() == 1 {
+            summary.accepted[0]
+        } else if summary.rejected.len() == 1 {
+            summary.rejected[0].id
+        } else {
+            panic!("Single transaction was sent but multiple or no processing results found");
+        };
+
+        FragmentCheck::new(self.jcli, self.jormungandr, id, summary)
     }
 
     pub fn send_many(self, transactions: &'a [String]) -> FragmentsCheck {

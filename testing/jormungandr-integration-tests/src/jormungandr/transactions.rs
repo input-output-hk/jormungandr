@@ -1,8 +1,12 @@
 use crate::common::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+    jcli::JCli,
+    jormungandr::ConfigurationBuilder,
+    startup::{self},
+    transaction_utils::TransactionHash,
 };
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, Mempool, Value};
+use jormungandr_testing_utils::testing::node::time::wait_for_epoch;
 
 #[test]
 pub fn accounts_funds_are_updated_after_transaction() {
@@ -88,4 +92,125 @@ pub fn accounts_funds_are_updated_after_transaction() {
         receiver_expected_value, receiver_account_state_value,
         "receiver value after transaction"
     );
+}
+
+#[test]
+fn expired_transactions_rejected() {
+    let receiver = startup::create_new_account_address();
+    let mut sender = startup::create_new_account_address();
+
+    let (jormungandr, _) = startup::start_stake_pool(
+        &[sender.clone()],
+        &[receiver.clone()],
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(30)
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_slot_duration(1)
+            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_mempool(Mempool {
+                pool_max_entries: 1_000.into(),
+                log_max_entries: 1_000.into(),
+                persistent_log: None,
+            }),
+    )
+    .unwrap();
+
+    let jcli = JCli::default();
+
+    let valid_transaction = sender
+        .transaction_to(
+            &jormungandr.genesis_block_hash(),
+            &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
+            receiver.address(),
+            100.into(),
+        )
+        .unwrap()
+        .encode();
+
+    jcli.fragment_sender(&jormungandr)
+        .send(&valid_transaction)
+        .assert_in_block();
+
+    wait_for_epoch(2, jormungandr.rest());
+
+    let expired_transaction = sender
+        .transaction_to(
+            &jormungandr.genesis_block_hash(),
+            &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate::first(),
+            receiver.address(),
+            200.into(),
+        )
+        .unwrap()
+        .encode();
+
+    // The fragment is rejected before even entering the mempool so there's no fragment log for it.
+    // We therefore check the fragment processing summary instead.
+    jcli.fragment_sender(&jormungandr)
+        .send(&expired_transaction)
+        .assert_rejected_summary();
+}
+
+#[test]
+fn transactions_with_long_time_to_live_rejected() {
+    const MAX_EXPIRY_EPOCHS: u8 = 5;
+
+    let receiver = startup::create_new_account_address();
+    let mut sender = startup::create_new_account_address();
+
+    let (jormungandr, _) = startup::start_stake_pool(
+        &[sender.clone()],
+        &[receiver.clone()],
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(30)
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_slot_duration(1)
+            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_mempool(Mempool {
+                pool_max_entries: 1_000.into(),
+                log_max_entries: 1_000.into(),
+                persistent_log: None,
+            })
+            .with_tx_max_expiry_epochs(MAX_EXPIRY_EPOCHS),
+    )
+    .unwrap();
+
+    let jcli = JCli::default();
+
+    let valid_transaction = sender
+        .transaction_to(
+            &jormungandr.genesis_block_hash(),
+            &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate {
+                epoch: MAX_EXPIRY_EPOCHS as u32 - 1,
+                slot_id: 0,
+            },
+            receiver.address(),
+            100.into(),
+        )
+        .unwrap()
+        .encode();
+
+    jcli.fragment_sender(&jormungandr)
+        .send(&valid_transaction)
+        .assert_in_block();
+
+    let expired_transaction = sender
+        .transaction_to(
+            &jormungandr.genesis_block_hash(),
+            &jormungandr.fees(),
+            chain_impl_mockchain::block::BlockDate {
+                epoch: MAX_EXPIRY_EPOCHS as u32,
+                slot_id: 0,
+            },
+            receiver.address(),
+            200.into(),
+        )
+        .unwrap()
+        .encode();
+
+    jcli.fragment_sender(&jormungandr)
+        .send(&expired_transaction)
+        .assert_rejected("Transaction validity is too far in the future");
 }

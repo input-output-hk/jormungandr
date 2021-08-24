@@ -48,6 +48,7 @@ pub struct ConfigurationBuilder {
     committee_ids: Vec<CommitteeIdDef>,
     leader_key_pair: Option<KeyPair<Ed25519>>,
     discrimination: Discrimination,
+    tx_max_expiry_epochs: Option<u8>,
 }
 
 impl Default for ConfigurationBuilder {
@@ -81,6 +82,7 @@ impl ConfigurationBuilder {
             treasury: None,
             total_reward_supply: None,
             discrimination: Discrimination::Test,
+            tx_max_expiry_epochs: None,
         }
     }
 
@@ -286,6 +288,11 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_tx_max_expiry_epochs(&mut self, tx_max_expiry_epochs: u8) -> &mut Self {
+        self.tx_max_expiry_epochs = Some(tx_max_expiry_epochs);
+        self
+    }
+
     pub fn build(&self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
         let mut node_config = self.node_config_builder.build();
 
@@ -321,7 +328,15 @@ impl ConfigurationBuilder {
         initial.extend(self.funds.iter().cloned());
         initial.extend(self.certs.iter().cloned());
 
-        let block0_config = Block0ConfigurationBuilder::new()
+        let mut block0_config_builder = Block0ConfigurationBuilder::new();
+
+        if let Some(tx_max_expiry_epochs) = self.tx_max_expiry_epochs {
+            block0_config_builder = block0_config_builder
+                .with_tx_max_expiry_epochs(tx_max_expiry_epochs)
+                .to_owned();
+        }
+
+        let block0_config = block0_config_builder
             .with_discrimination(self.discrimination)
             .with_initial(initial)
             .with_leaders(leaders_ids)
