@@ -6,7 +6,7 @@ use crate::common::{
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{FragmentLog, FragmentStatus},
+    interfaces::{FragmentLog, FragmentStatus, FragmentsProcessingSummary},
 };
 use jortestkit::prelude::ProcessOutput;
 use jortestkit::process::{run_process_until_response_matches, Wait};
@@ -16,14 +16,21 @@ pub struct FragmentCheck<'a> {
     jcli: JCli,
     id: FragmentId,
     jormungandr: &'a JormungandrProcess,
+    summary: FragmentsProcessingSummary,
 }
 
 impl<'a> FragmentCheck<'a> {
-    pub fn new(jcli: JCli, jormungandr: &'a JormungandrProcess, id: FragmentId) -> Self {
+    pub fn new(
+        jcli: JCli,
+        jormungandr: &'a JormungandrProcess,
+        id: FragmentId,
+        summary: FragmentsProcessingSummary,
+    ) -> Self {
         Self {
             jcli,
             id,
             jormungandr,
+            summary,
         }
     }
 
@@ -41,7 +48,7 @@ impl<'a> FragmentCheck<'a> {
         self.assert_log_shows_in_block()
     }
 
-    pub fn assert_rejected(self, expected_reason: &str) {
+    pub fn assert_rejected(&self, expected_reason: &str) {
         let wait: Wait = Default::default();
         self.wait_until_processed(&wait).unwrap();
         self.assert_log_shows_rejected(expected_reason);
@@ -126,7 +133,7 @@ impl<'a> FragmentCheck<'a> {
         self.id
     }
 
-    pub fn assert_log_shows_rejected(self, expected_msg: &str) {
+    pub fn assert_log_shows_rejected(&self, expected_msg: &str) {
         let fragments = self
             .jcli
             .rest()
@@ -155,5 +162,9 @@ impl<'a> FragmentCheck<'a> {
                 self.jormungandr.logger.get_log_content()
             ),
         }
+    }
+
+    pub fn assert_rejected_summary(&self) {
+        assert!(self.summary.rejected.iter().any(|i| i.id == self.id));
     }
 }

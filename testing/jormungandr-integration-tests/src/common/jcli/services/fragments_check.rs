@@ -18,7 +18,7 @@ impl<'a> FragmentsCheck<'a> {
         Self { jcli, jormungandr }
     }
 
-    pub fn wait_until_in_block(self) -> Result<(), Error> {
+    pub fn wait_until_in_block(&self) -> Result<(), Error> {
         self.wait_until_all_processed(&Default::default())?;
         self.check_log_shows_in_block()
     }
@@ -57,7 +57,7 @@ impl<'a> FragmentsCheck<'a> {
         })
     }
 
-    pub fn check_log_shows_in_block(self) -> Result<(), Error> {
+    pub fn check_log_shows_in_block(&self) -> Result<(), Error> {
         let fragments = self
             .jcli
             .rest()

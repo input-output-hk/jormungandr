@@ -636,6 +636,7 @@ pub(super) mod internal {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use chain_impl_mockchain::transaction::TxBuilder;
         use quickcheck_macros::quickcheck;
 
         #[quickcheck]
@@ -667,6 +668,41 @@ pub(super) mod internal {
                 assert_eq!(expected, pool.remove_oldest().unwrap());
             }
             assert!(pool.remove_oldest().is_none());
+        }
+
+        #[test]
+        fn expired_transactions_are_removed() {
+            let mut pool = Pool::new(1);
+
+            let tx = Fragment::Transaction(
+                TxBuilder::new()
+                    .set_nopayload()
+                    .set_expiry_date(BlockDate {
+                        epoch: 0,
+                        slot_id: 1,
+                    })
+                    .set_ios(&[], &[])
+                    .set_witnesses(&[])
+                    .set_payload_auth(&()),
+            );
+
+            pool.insert_all([tx]);
+
+            assert_eq!(pool.entries.len(), 1, "Fragment should be in pool");
+
+            pool.remove_expired_txs(BlockDate {
+                epoch: 0,
+                slot_id: 1,
+            });
+
+            assert_eq!(pool.entries.len(), 1, "Fragment has not expired yet");
+
+            pool.remove_expired_txs(BlockDate {
+                epoch: 0,
+                slot_id: 2,
+            });
+
+            assert_eq!(pool.entries.len(), 0, "Expired fragment should be removed");
         }
     }
 }

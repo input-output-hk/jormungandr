@@ -160,6 +160,11 @@ impl Block0ConfigurationBuilder {
         self
     }
 
+    pub fn with_tx_max_expiry_epochs(&mut self, tx_max_expiry_epochs: u8) -> &mut Self {
+        self.blockchain_configuration.tx_max_expiry_epochs = Some(tx_max_expiry_epochs);
+        self
+    }
+
     fn default_initial() -> Vec<Initial> {
         let sk1: SecretKey<Ed25519Extended> =
             SecretKey::generate(&mut ChaChaRng::from_seed([1; 32]));
