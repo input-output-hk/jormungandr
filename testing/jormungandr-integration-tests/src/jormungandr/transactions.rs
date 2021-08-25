@@ -121,7 +121,7 @@ fn expired_transactions_rejected() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             100.into(),
         )
@@ -138,7 +138,7 @@ fn expired_transactions_rejected() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
             receiver.address(),
             200.into(),
         )
@@ -183,7 +183,7 @@ fn transactions_with_long_time_to_live_rejected() {
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
             chain_impl_mockchain::block::BlockDate {
-                epoch: MAX_EXPIRY_EPOCHS as u32 - 1,
+                epoch: MAX_EXPIRY_EPOCHS as u32,
                 slot_id: 0,
             },
             receiver.address(),
@@ -201,7 +201,7 @@ fn transactions_with_long_time_to_live_rejected() {
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
             chain_impl_mockchain::block::BlockDate {
-                epoch: MAX_EXPIRY_EPOCHS as u32,
+                epoch: MAX_EXPIRY_EPOCHS as u32 + 1,
                 slot_id: 0,
             },
             receiver.address(),
