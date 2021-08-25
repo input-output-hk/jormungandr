@@ -10,7 +10,7 @@ use chain_impl_mockchain::{
 
 pub fn signed_delegation_cert(
     wallet: &Wallet,
-    expiry_date: BlockDate,
+    valid_until: BlockDate,
     pool_id: PoolId,
 ) -> SignedCertificate {
     let stake_delegation = StakeDelegation {
@@ -19,7 +19,7 @@ pub fn signed_delegation_cert(
     };
     let txb = TxBuilder::new()
         .set_payload(&stake_delegation)
-        .set_expiry_date(expiry_date)
+        .set_expiry_date(valid_until)
         .set_ios(&[], &[])
         .set_witnesses(&[]);
     let auth_data = txb.get_auth_data();
@@ -28,11 +28,11 @@ pub fn signed_delegation_cert(
     SignedCertificate::StakeDelegation(stake_delegation, sig)
 }
 
-pub fn signed_stake_pool_cert(expiry_date: BlockDate, stake_pool: &StakePool) -> SignedCertificate {
+pub fn signed_stake_pool_cert(valid_until: BlockDate, stake_pool: &StakePool) -> SignedCertificate {
     let owner = stake_pool.owner().clone();
     let txb = TxBuilder::new()
         .set_payload(&stake_pool.info())
-        .set_expiry_date(expiry_date)
+        .set_expiry_date(valid_until)
         .set_ios(&[], &[])
         .set_witnesses(&[]);
 
@@ -47,12 +47,12 @@ pub fn signed_stake_pool_cert(expiry_date: BlockDate, stake_pool: &StakePool) ->
 
 pub fn vote_plan_cert(
     wallet: &Wallet,
-    expiry_date: BlockDate,
+    valid_until: BlockDate,
     vote_plan: &VotePlan,
 ) -> SignedCertificate {
     let txb = TxBuilder::new()
         .set_payload(vote_plan)
-        .set_expiry_date(expiry_date)
+        .set_expiry_date(valid_until)
         .set_ios(&[], &[])
         .set_witnesses(&[]);
 

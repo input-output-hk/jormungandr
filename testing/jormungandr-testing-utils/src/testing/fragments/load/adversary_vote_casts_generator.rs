@@ -17,7 +17,7 @@ use std::time::Instant;
 const DEFAULT_MAX_SPLITS: usize = 7; // equals to 128 splits, will likely not reach that value but it's there just to prevent a stack overflow
 
 pub struct AdversaryVoteCastsGenerator<'a, S: SyncNode + Send> {
-    date: BlockDate,
+    valid_until: BlockDate,
     voter: Wallet,
     vote_plans: Vec<VotePlan>,
     voting_privacy: PayloadType,
@@ -30,7 +30,7 @@ pub struct AdversaryVoteCastsGenerator<'a, S: SyncNode + Send> {
 impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
     #[allow(dead_code)]
     pub fn new(
-        date: BlockDate,
+        valid_until: BlockDate,
         voter: Wallet,
         vote_plans: Vec<VotePlan>,
         node: RemoteJormungandr,
@@ -39,7 +39,7 @@ impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
         let voting_privacy = vote_plans.get(0).unwrap().payload_type();
 
         Self {
-            date,
+            valid_until,
             voter,
             vote_plans,
             voting_privacy,
@@ -68,9 +68,9 @@ impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
         let fees = self.fragment_sender.fees();
 
         match self.voting_privacy {
-            PayloadType::Public => FragmentBuilder::new(&block0_hash, &fees, self.date)
+            PayloadType::Public => FragmentBuilder::new(&block0_hash, &fees, self.valid_until)
                 .public_vote_cast(&self.voter, &vote_plan, 0, &Choice::new(0)),
-            PayloadType::Private => FragmentBuilder::new(&block0_hash, &fees, self.date)
+            PayloadType::Private => FragmentBuilder::new(&block0_hash, &fees, self.valid_until)
                 .private_vote_cast(&self.voter, &vote_plan, 0, &Choice::new(0)),
         }
     }
@@ -85,9 +85,9 @@ impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
         let fees = self.fragment_sender.fees();
 
         match self.voting_privacy {
-            PayloadType::Public => FragmentBuilder::new(&block0_hash, &fees, self.date)
+            PayloadType::Public => FragmentBuilder::new(&block0_hash, &fees, self.valid_until)
                 .public_vote_cast(&self.voter, vote_plan, 255, &Choice::new(0)),
-            PayloadType::Private => FragmentBuilder::new(&block0_hash, &fees, self.date)
+            PayloadType::Private => FragmentBuilder::new(&block0_hash, &fees, self.valid_until)
                 .private_vote_cast(&self.voter, vote_plan, 255, &Choice::new(0)),
         }
     }
@@ -98,9 +98,9 @@ impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
         let fees = self.fragment_sender.fees();
 
         match self.voting_privacy {
-            PayloadType::Public => FragmentBuilder::new(&block0_hash, &fees, self.date)
+            PayloadType::Public => FragmentBuilder::new(&block0_hash, &fees, self.valid_until)
                 .private_vote_cast(&self.voter, vote_plan, 0, &Choice::new(0)),
-            PayloadType::Private => FragmentBuilder::new(&block0_hash, &fees, self.date)
+            PayloadType::Private => FragmentBuilder::new(&block0_hash, &fees, self.valid_until)
                 .public_vote_cast(&self.voter, vote_plan, 0, &Choice::new(0)),
         }
     }
@@ -112,9 +112,9 @@ impl<'a, S: SyncNode + Send> AdversaryVoteCastsGenerator<'a, S> {
         let fees = self.fragment_sender.fees();
 
         match self.voting_privacy {
-            PayloadType::Public => FragmentBuilder::new(&block0_hash, &fees, self.date)
+            PayloadType::Public => FragmentBuilder::new(&block0_hash, &fees, self.valid_until)
                 .public_vote_cast(&self.voter, vote_plan, 0, &Choice::new(options)),
-            PayloadType::Private => FragmentBuilder::new(&block0_hash, &fees, self.date)
+            PayloadType::Private => FragmentBuilder::new(&block0_hash, &fees, self.valid_until)
                 .private_vote_cast(&self.voter, vote_plan, 0, &Choice::new(options)),
         }
     }
@@ -143,7 +143,7 @@ impl<'a, S: SyncNode + Send + Sync + Clone> RequestGenerator
         self.max_splits -= 1;
 
         let other = Self {
-            date: self.date,
+            valid_until: self.valid_until,
             voter: self.voter.clone(),
             vote_plans: self.vote_plans.clone(),
             voting_privacy: self.voting_privacy,

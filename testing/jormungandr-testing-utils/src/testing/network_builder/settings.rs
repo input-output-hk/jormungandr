@@ -285,7 +285,8 @@ impl Settings {
                         });
 
                         self.block0.initial.push(Initial::Cert(
-                            signed_stake_pool_cert(BlockDate::first(), &stake_pool).into(),
+                            signed_stake_pool_cert(BlockDate::first().next_epoch(), &stake_pool)
+                                .into(),
                         ));
 
                         self.stake_pools
@@ -302,8 +303,8 @@ impl Settings {
 
                 // 2. create delegation certificate for the wallet stake key
                 // and add it to the block0.initial array
-                let delegation_certificate =
-                    wallet.delegation_cert_for_block0(BlockDate::first(), stake_pool_id);
+                let delegation_certificate = wallet
+                    .delegation_cert_for_block0(BlockDate::first().next_epoch(), stake_pool_id);
 
                 self.block0.initial.push(delegation_certificate);
             }

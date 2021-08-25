@@ -52,7 +52,7 @@ impl TransactionBuilder {
         sender: &Wallet,
         output_amount: Value,
         receiver: &Wallet,
-        expiry_date: BlockDate,
+        valid_until: BlockDate,
     ) -> String {
         TransactionBuilder::new(self.jcli, self.genesis_hash)
             .new_transaction()
@@ -62,7 +62,7 @@ impl TransactionBuilder {
                 &input_amount.to_string(),
             )
             .add_output(&receiver.address().to_string(), output_amount)
-            .set_expiry_date(expiry_date)
+            .set_expiry_date(valid_until)
             .finalize()
             .seal_with_witness_for_address(sender)
             .to_message()
@@ -159,10 +159,10 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn set_expiry_date(&mut self, expiry_date: BlockDate) -> &mut Self {
+    pub fn set_expiry_date(&mut self, valid_until: BlockDate) -> &mut Self {
         self.jcli
             .transaction()
-            .set_expiry_date(expiry_date, self.staging_file().path());
+            .set_expiry_date(valid_until, self.staging_file().path());
         self
     }
 

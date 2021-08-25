@@ -53,7 +53,7 @@ pub fn fragment_load_test() {
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),
-            BlockDate::first(),
+            BlockDate::first().next_epoch(),
             FragmentSenderSetup::no_verify(),
         ),
     );
@@ -156,7 +156,7 @@ pub fn transaction_load_test() {
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first(),
+        BlockDate::first().next_epoch(),
     );
     request_generator.fill_from_faucet(&mut faucet);
 

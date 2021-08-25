@@ -26,12 +26,17 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
         jormungandr: RemoteJormungandr,
         block_hash: Hash,
         fees: LinearFee,
-        date: BlockDate,
+        valid_until: BlockDate,
         batch_size: u8,
     ) -> Self {
         Self {
             wallets: Vec::new(),
-            fragment_sender: FragmentSender::new(block_hash, fees, date, fragment_sender_setup),
+            fragment_sender: FragmentSender::new(
+                block_hash,
+                fees,
+                valid_until,
+                fragment_sender_setup,
+            ),
             rand: OsRng,
             jormungandr,
             split_marker: 0,

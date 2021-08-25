@@ -212,7 +212,7 @@ pub fn test_vote_flow_bft() {
 
     wait_for_epoch(1, jormungandr.rest());
 
-    let transaction_sender = transaction_sender.set_date(chain_impl_mockchain::block::BlockDate {
+    let transaction_sender = transaction_sender.set_ttl(chain_impl_mockchain::block::BlockDate {
         epoch: 2,
         slot_id: 0,
     });
@@ -346,7 +346,7 @@ pub fn test_vote_flow_praos() {
 
     wait_for_epoch(1, jormungandr.rest());
 
-    let transaction_sender = transaction_sender.set_date(chain_impl_mockchain::block::BlockDate {
+    let transaction_sender = transaction_sender.set_ttl(chain_impl_mockchain::block::BlockDate {
         epoch: 2,
         slot_id: 0,
     });

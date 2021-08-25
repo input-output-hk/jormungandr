@@ -79,12 +79,12 @@ impl VotesOnly {
         let transaction_sender = FragmentSender::new(
             block0_hash,
             fees,
-            BlockDate::first(),
+            BlockDate::first().next_epoch(),
             FragmentSenderSetup::no_verify(),
         );
 
         let generator = AdversaryVoteCastsGenerator::new(
-            BlockDate::first(),
+            BlockDate::first().next_epoch(),
             faucet,
             vote_plans,
             remote_jormungandr.clone_with_rest(),

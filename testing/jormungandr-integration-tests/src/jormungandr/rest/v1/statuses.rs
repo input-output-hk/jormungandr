@@ -1,6 +1,6 @@
 use crate::common::jormungandr::JormungandrProcess;
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
-use chain_impl_mockchain::fragment::FragmentId;
+use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId};
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use rstest::*;
 
@@ -23,7 +23,7 @@ fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            BlockDate::first().next_epoch(),
             bob.address(),
             100.into(),
         )
@@ -33,7 +33,7 @@ fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            BlockDate::first().next_epoch(),
             alice.address(),
             100.into(),
         )

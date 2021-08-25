@@ -1,6 +1,7 @@
 use crate::common::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
+use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
@@ -71,7 +72,7 @@ pub fn explorer_sanity_test() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1_000.into(),
         )

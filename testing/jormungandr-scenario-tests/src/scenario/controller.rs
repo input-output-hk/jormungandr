@@ -492,7 +492,7 @@ impl Controller {
                 .block0
                 .blockchain_configuration
                 .linear_fees,
-            BlockDate::first(),
+            BlockDate::first().next_epoch(),
             builder.build(),
         )
     }

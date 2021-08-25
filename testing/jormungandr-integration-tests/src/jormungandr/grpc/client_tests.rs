@@ -4,9 +4,9 @@ use crate::common::{
 };
 use chain_core::property::FromStr;
 use chain_crypto::{Ed25519, PublicKey, Signature, Verification};
-use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::{
-    block::Header,
+    block::{BlockDate, Header},
+    chaintypes::ConsensusVersion,
     key::Hash,
     testing::{
         builders::{GenesisPraosBlockBuilder, StakePoolBuilder},
@@ -314,7 +314,7 @@ pub fn get_fragments() {
         .transaction_to(
             &setup.server.genesis_block_hash(),
             &setup.server.fees(),
-            chain_impl_mockchain::block::BlockDate::first(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             output_value.into(),
         )

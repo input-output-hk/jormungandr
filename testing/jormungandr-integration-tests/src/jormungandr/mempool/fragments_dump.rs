@@ -2,10 +2,10 @@ use crate::common::jormungandr::{starter::Role, Starter};
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
-use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion};
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::PersistentLog;
-use jormungandr_lib::interfaces::{BlockDate, Mempool};
+use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, Mempool};
 use jormungandr_testing_utils::testing::fragments::FragmentExporter;
 use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
 use jormungandr_testing_utils::testing::{
@@ -67,7 +67,7 @@ pub fn dump_send_correct_fragments() {
         fragment_sender,
     );
 
-    fragment_generator.prepare(BlockDate::new(1, 0));
+    fragment_generator.prepare(BlockDateDto::new(1, 0));
 
     time::wait_for_epoch(1, jormungandr.rest());
 
@@ -112,10 +112,7 @@ pub fn dump_send_invalid_fragments() {
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
+        BlockDate::first().next_epoch(),
         AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
     );
 
@@ -216,10 +213,7 @@ pub fn fragment_which_reached_mempool_should_be_persisted() {
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
+        BlockDate::first().next_epoch(),
         AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
     );
 
@@ -259,10 +253,7 @@ pub fn fragment_which_is_not_in_fragment_log_should_be_persisted() {
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
+        BlockDate::first().next_epoch(),
         AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
     );
 
@@ -302,7 +293,7 @@ pub fn pending_fragment_should_be_persisted() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first(),
+        BlockDate::first().next_epoch(),
         FragmentSenderSetup::dump_into(dump_folder.path().to_path_buf()),
     );
 
@@ -363,10 +354,7 @@ pub fn node_should_pickup_log_after_restart() {
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
+        BlockDate::first().next_epoch(),
         AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
     );
 
@@ -388,10 +376,7 @@ pub fn node_should_pickup_log_after_restart() {
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
+        BlockDate::first().next_epoch(),
         AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
     );
 

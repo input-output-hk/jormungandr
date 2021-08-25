@@ -72,14 +72,14 @@ impl AdversaryAll {
         let transaction_sender = FragmentSender::new(
             block0_hash,
             fees,
-            BlockDate::first(),
+            BlockDate::first().next_epoch(),
             FragmentSenderSetup::no_verify(),
         );
 
         let adversary_transaction_sender = AdversaryFragmentSender::new(
             block0_hash,
             fees,
-            BlockDate::first(),
+            BlockDate::first().next_epoch(),
             AdversaryFragmentSenderSetup::no_verify(),
         );
 
