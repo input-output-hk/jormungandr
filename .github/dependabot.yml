@@ -5,3 +5,22 @@ updates:
     schedule:
       interval: daily
     open-pull-requests-limit: 10
+
+  ignore:
+    # Ignore crates from chain-libs. chain-impl-mockchain is not ignored to be kept as a watchdog.
+    # Due to how `cargo update` works, updating a single chain-libs crate causes all other crates
+    # from that repo to update. Thus, pull requests for each single dependency from chain-libs are
+    # basically all the same and are not needed.
+    - dependency-name: cardano-legacy-address
+    - dependency-name: chain-addr
+    - dependency-name: chain-core
+    - dependency-name: chain-crypto
+    - dependency-name: chain-evm
+    - dependency-name: chain-network
+    - dependency-name: chain-ser
+    - dependency-name: chain-storage
+    - dependency-name: chain-time
+    - dependency-name: chain-vote
+    - dependency-name: imhamt
+    - dependency-name: sparse-array
+    - dependency-name: typed-bytes
