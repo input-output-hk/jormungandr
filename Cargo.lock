@@ -98,7 +98,7 @@ checksum = "3d20831bd004dda4c7c372c19cdabff369f794a95e955b3f13fe460e3e1ae95f"
 dependencies = [
  "bstr",
  "doc-comment",
- "predicates 2.0.1",
+ "predicates 2.0.2",
  "predicates-core",
  "predicates-tree",
  "wait-timeout",
@@ -112,7 +112,7 @@ checksum = "b0ca6aa3066e6c6f0357e056a25fa95e8737f15a04f9aead0b22d0d082a39465"
 dependencies = [
  "doc-comment",
  "globwalk",
- "predicates 2.0.1",
+ "predicates 2.0.2",
  "predicates-core",
  "predicates-tree",
  "tempfile",
@@ -588,7 +588,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#73a4b6cd8d64c9844200c70f86a7d18c519ce8a2"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chain-core",
  "chain-crypto",
  "cryptoxide",
@@ -1811,7 +1811,7 @@ dependencies = [
  "gtmpl",
  "hex",
  "jormungandr-lib",
- "predicates 2.0.1",
+ "predicates 2.0.2",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
  "rayon",
@@ -1912,7 +1912,7 @@ dependencies = [
  "lazy_static",
  "parity-multiaddr",
  "poldercast",
- "predicates 2.0.1",
+ "predicates 2.0.2",
  "prost",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
@@ -2773,9 +2773,9 @@ dependencies = [
 
 [[package]]
 name = "predicates"
-version = "2.0.1"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc3d91237f5de3bcd9d927e24d03b495adb6135097b001cea7403e2d573d00a9"
+checksum = "c143348f141cc87aab5b950021bac6145d0e5ae754b0591de23244cee42c9308"
 dependencies = [
  "difflib",
  "float-cmp 0.9.0",
