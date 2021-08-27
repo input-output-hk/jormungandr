@@ -19,6 +19,7 @@ pub struct Prometheus {
     registry: Registry,
 
     tx_recv_cnt: IntCounter,
+    tx_pending_cnt: UIntGauge,
     block_recv_cnt: IntCounter,
     peer_connected_cnt: UIntGauge,
     peer_quarantined_cnt: UIntGauge,
@@ -74,6 +75,8 @@ impl Default for Prometheus {
 
         let tx_recv_cnt = IntCounter::new("txRecvCnt", "txRecvCnt").unwrap();
         registry.register(Box::new(tx_recv_cnt.clone())).unwrap();
+        let tx_pending_cnt = UIntGauge::new("txPending", "txPending").unwrap();
+        registry.register(Box::new(tx_pending_cnt.clone())).unwrap();
         let block_recv_cnt = IntCounter::new("blockRecvCnt", "blockRecvCnt").unwrap();
         registry.register(Box::new(block_recv_cnt.clone())).unwrap();
         let peer_connected_cnt = UIntGauge::new("peerConnectedCnt", "peerConnectedCnt").unwrap();
@@ -134,6 +137,7 @@ impl Default for Prometheus {
         Self {
             registry,
             tx_recv_cnt,
+            tx_pending_cnt,
             block_recv_cnt,
             peer_connected_cnt,
             peer_quarantined_cnt,
@@ -158,6 +162,11 @@ impl MetricsBackend for Prometheus {
     fn add_tx_recv_cnt(&self, count: usize) {
         let count = count.try_into().unwrap();
         self.tx_recv_cnt.inc_by(count);
+    }
+
+    fn set_tx_pending_cnt(&self, count: usize) {
+        let count = count.try_into().unwrap();
+        self.tx_pending_cnt.set(count);
     }
 
     fn add_block_recv_cnt(&self, count: usize) {
