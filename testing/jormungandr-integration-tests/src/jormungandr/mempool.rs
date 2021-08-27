@@ -1,14 +1,12 @@
-use crate::common::jcli::JCli;
 use crate::common::jormungandr::{starter::Role, Starter};
-use crate::common::transaction_utils::TransactionHash;
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion};
+use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::PersistentLog;
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, Mempool};
-use jormungandr_lib::interfaces::{InitialUTxO, Value};
 use jormungandr_testing_utils::testing::fragments::FragmentExporter;
 use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
 use jormungandr_testing_utils::testing::{
@@ -395,7 +393,9 @@ pub fn node_should_pickup_log_after_restart() {
 }
 
 #[test]
-pub fn expired_fragment_should_be_removed() {
+/// Verifies that a node will reject a fragment that has expired, even after it's been accepted in
+/// its mempool.
+pub fn expired_fragment_should_be_rejected() {
     const N_FRAGMENTS: u32 = 10;
 
     let receiver = startup::create_new_account_address();
@@ -434,7 +434,7 @@ pub fn expired_fragment_should_be_removed() {
         .unwrap();
 
     // By the time the rest of the transactions have been placed in blocks, the epoch should be over
-    // and the transaction below have be expired.
+    // and the transaction below should have expired.
     FragmentVerifier::wait_and_verify_is_rejected(Duration::from_secs(1), check, &jormungandr)
         .unwrap();
 }

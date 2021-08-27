@@ -10,11 +10,12 @@ use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 
 #[test]
+/// Verifies that no log entries are created for fragments that are already expired when received.
 fn rejected_fragments_have_no_log() {
     let receiver = startup::create_new_account_address();
     let mut sender = startup::create_new_account_address();
 
-    let persistent_log_path = TempDir::new().unwrap().child("log_path");
+    let log_path = TempDir::new().unwrap().child("log_path");
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -25,7 +26,7 @@ fn rejected_fragments_have_no_log() {
                 pool_max_entries: 1_000.into(),
                 log_max_entries: 1_000.into(),
                 persistent_log: Some(PersistentLog {
-                    dir: persistent_log_path.path().to_path_buf(),
+                    dir: log_path.path().to_path_buf(),
                 }),
             }),
     )
@@ -81,7 +82,8 @@ fn rejected_fragments_have_no_log() {
         )
         .assert_rejected_summary();
 
-    let persistent_log_viewer = PersistentLogViewer::new(persistent_log_path.path().to_path_buf());
-
-    assert_eq!(persistent_log_viewer.count(), 1);
+    assert_eq!(
+        PersistentLogViewer::new(log_path.path().to_path_buf()).count(),
+        1
+    );
 }
