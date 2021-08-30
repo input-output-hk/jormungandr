@@ -37,7 +37,7 @@ pub struct ConfigurationBuilder {
     kes_update_speed: KesUpdateSpeed,
     linear_fees: LinearFee,
     consensus_leader_ids: Vec<ConsensusLeaderId>,
-    secrets: Vec<NodeSecret>,
+    secret: Option<NodeSecret>,
     fees_go_to: Option<FeesGoTo>,
     total_reward_supply: Option<Value>,
     treasury: Option<Value>,
@@ -63,7 +63,7 @@ impl ConfigurationBuilder {
             funds: vec![],
             certs: vec![],
             consensus_leader_ids: vec![],
-            secrets: vec![],
+            secret: None,
             block0_hash: None,
             block0_consensus: ConsensusVersion::Bft,
             slots_per_epoch: NumberOfSlotsPerEpoch::new(100).unwrap(),
@@ -263,8 +263,8 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_secrets(&mut self, secrets: Vec<NodeSecret>) -> &mut Self {
-        self.secrets = secrets;
+    pub fn with_secret(&mut self, secret: NodeSecret) -> &mut Self {
+        self.secret = Some(secret);
         self
     }
 
@@ -368,19 +368,13 @@ impl ConfigurationBuilder {
             output_file.path().to_path_buf()
         }
 
-        let secret_model_paths = if self.secrets.is_empty() {
-            let secret = SecretModelFactory::bft(leader_key_pair.signing_key());
+        let secret_model_path = {
+            let secret = self
+                .secret
+                .clone()
+                .unwrap_or_else(|| SecretModelFactory::bft(leader_key_pair.signing_key()));
             let output_file = temp_dir.child("node_secret.yaml");
-            vec![write_secret(&secret, output_file)]
-        } else {
-            self.secrets
-                .iter()
-                .enumerate()
-                .map(|(i, x)| {
-                    let output_file = temp_dir.child(&format!("node_secret-{}.yaml", i));
-                    write_secret(x, output_file)
-                })
-                .collect()
+            write_secret(&secret, output_file)
         };
 
         let config_file = temp_dir.child("node_config.yaml");
@@ -390,7 +384,7 @@ impl ConfigurationBuilder {
             config_file.path(),
             path_to_output_block,
             genesis_block_hash,
-            secret_model_paths,
+            secret_model_path,
             block0_config,
             self.rewards_history,
             log_file_path,

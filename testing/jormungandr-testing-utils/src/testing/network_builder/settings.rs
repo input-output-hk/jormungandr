@@ -61,7 +61,7 @@ impl NodeSetting {
         &self.config
     }
 
-    pub fn secrets(&self) -> &NodeSecret {
+    pub fn secret(&self) -> &NodeSecret {
         &self.secret
     }
 }

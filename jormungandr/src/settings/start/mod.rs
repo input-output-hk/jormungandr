@@ -47,7 +47,7 @@ pub struct Settings {
     pub network: network::Configuration,
     pub storage: Option<PathBuf>,
     pub block_0: Block0Info,
-    pub secrets: Vec<PathBuf>,
+    pub secret: Option<PathBuf>,
     pub rest: Option<Rest>,
     pub mempool: Mempool,
     pub rewards_report_all: bool,
@@ -177,12 +177,11 @@ impl RawSettings {
             (None, None) => None,
         };
 
-        let mut secrets = command_arguments.secret.clone();
-        if let Some(secret_files) = config.as_ref().map(|cfg| cfg.secret_files.clone()) {
-            secrets.extend(secret_files);
-        }
-
-        if secrets.is_empty() {
+        let secret = command_arguments
+            .secret
+            .clone()
+            .or_else(|| config.as_ref().map(|cfg| cfg.secret_file.clone()).flatten());
+        if secret.is_none() {
             tracing::warn!(
                 "Node started without path to the stored secret keys (not a stake pool or a BFT leader)"
             );
@@ -217,7 +216,7 @@ impl RawSettings {
             storage,
             block_0,
             network,
-            secrets,
+            secret,
             rewards_report_all: command_line.rewards_report_all,
             rest,
             mempool: config

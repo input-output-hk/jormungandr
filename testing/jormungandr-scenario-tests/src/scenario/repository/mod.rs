@@ -15,7 +15,7 @@ use crate::{
         comm::leader_leader::*,
         comm::passive_leader::*,
         features::{
-            explorer::passive_node_explorer, leader_promotion::*,
+            explorer::passive_node_explorer,
             leadership_log::leader_restart_preserves_leadership_log, p2p::*,
             stake_pool::retire::retire_stake_pool_explorer,
         },
@@ -233,11 +233,6 @@ fn scenarios_repository() -> Vec<Scenario> {
         Scenario::new(
             "custom_network_disruption",
             custom_network_disruption,
-            vec![Tag::Short],
-        ),
-        Scenario::new(
-            "passive_node_promotion",
-            passive_node_promotion,
             vec![Tag::Short],
         ),
         Scenario::new(

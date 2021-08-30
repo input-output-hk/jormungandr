@@ -21,12 +21,12 @@ impl LegacySettings {
             config: converter
                 .convert(&settings.config)
                 .expect("cannot convert node config to legacy"),
-            secret: settings.secrets().clone(),
+            secret: settings.secret().clone(),
             node_topology: settings.node_topology.clone(),
         }
     }
 
-    pub fn secrets(&self) -> &NodeSecret {
+    pub fn secret(&self) -> &NodeSecret {
         &self.secret
     }
 

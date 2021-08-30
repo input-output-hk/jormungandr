@@ -1,7 +1,4 @@
-use crate::{
-    rest::{v0::logic, ContextLock},
-    secure::NodeSecret,
-};
+use crate::rest::{v0::logic, ContextLock};
 use warp::{reject::Reject, Rejection, Reply};
 
 impl Reject for logic::Error {}
@@ -113,34 +110,6 @@ pub async fn shutdown(context: ContextLock) -> Result<impl Reply, Rejection> {
         .await
         .map(|_| warp::reply())
         .map_err(warp::reject::custom)
-}
-
-pub async fn get_leaders(context: ContextLock) -> Result<impl Reply, Rejection> {
-    let context = context.read().await;
-    logic::get_leader_ids(&context)
-        .await
-        .map(|r| warp::reply::json(&r))
-        .map_err(warp::reject::custom)
-}
-
-pub async fn post_leaders(
-    secret: NodeSecret,
-    context: ContextLock,
-) -> Result<impl Reply, Rejection> {
-    let context = context.read().await;
-    logic::post_leaders(&context, secret)
-        .await
-        .map(|r| warp::reply::json(&r))
-        .map_err(warp::reject::custom)
-}
-
-pub async fn delete_leaders(leader_id: u32, context: ContextLock) -> Result<impl Reply, Rejection> {
-    let context = context.read().await;
-    logic::delete_leaders(&context, leader_id.into())
-        .await
-        .map_err(warp::reject::custom)?
-        .map(|()| warp::reply())
-        .ok_or_else(warp::reject::not_found)
 }
 
 pub async fn get_leaders_logs(context: ContextLock) -> Result<impl Reply, Rejection> {

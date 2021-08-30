@@ -12,7 +12,7 @@ pub enum FragmentRejectionReason {
     FragmentAlreadyInLog,
     FragmentInvalid,
     PreviousFragmentInvalid,
-    PoolOverflow { pool_number: usize },
+    PoolOverflow,
     FragmentExpired,
     FragmentValidForTooLong,
 }
@@ -44,7 +44,7 @@ impl FragmentRejectionReason {
             self,
             FragmentRejectionReason::FragmentInvalid
                 | FragmentRejectionReason::PreviousFragmentInvalid
-                | FragmentRejectionReason::PoolOverflow { .. }
+                | FragmentRejectionReason::PoolOverflow
         )
     }
 }
@@ -78,9 +78,7 @@ mod tests {
                 0 => FragmentRejectionReason::FragmentAlreadyInLog,
                 1 => FragmentRejectionReason::FragmentInvalid,
                 2 => FragmentRejectionReason::PreviousFragmentInvalid,
-                3 => FragmentRejectionReason::PoolOverflow {
-                    pool_number: g.next_u64() as usize,
-                },
+                3 => FragmentRejectionReason::PoolOverflow,
                 _ => unreachable!(),
             }
         }

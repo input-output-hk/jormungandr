@@ -21,7 +21,6 @@ use jormungandr_lib::{
 };
 use thiserror::Error;
 
-use std::collections::{HashMap, HashSet};
 use std::mem;
 
 use tokio::fs::File;
@@ -33,9 +32,9 @@ use tokio::io::{AsyncWriteExt, BufWriter};
 // Its main purpose is to avoid unnecessary flushing while processing a single batch of fragments.
 const DEFAULT_BUF_SIZE: usize = 128 * 1024; // 128 KiB
 
-pub struct Pools {
+pub struct Pool {
     logs: Logs,
-    pools: Vec<internal::Pool>,
+    pool: internal::Pool,
     network_msg_box: MessageBox<NetworkMsg>,
     persistent_log: Option<BufWriter<File>>,
     tip: Tip,
@@ -47,24 +46,17 @@ pub enum Error {
     CannotPropagate(#[source] SendError),
 }
 
-impl Pools {
+impl Pool {
     pub fn new(
         max_entries: usize,
-        n_pools: usize,
         logs: Logs,
         network_msg_box: MessageBox<NetworkMsg>,
         persistent_log: Option<File>,
         tip: Tip,
     ) -> Self {
-        // we need a pool even for passive nodes to be able to participate in
-        // the fragments dissemination protocol
-        let n_pools = std::cmp::max(1, n_pools);
-        let pools = (0..n_pools)
-            .map(|_| internal::Pool::new(max_entries))
-            .collect();
-        Pools {
+        Pool {
             logs,
-            pools,
+            pool: internal::Pool::new(max_entries),
             network_msg_box,
             persistent_log: persistent_log
                 .map(|file| BufWriter::with_capacity(DEFAULT_BUF_SIZE, file)),
@@ -214,48 +206,39 @@ impl Pools {
             }
         }
 
-        let mut accepted_fragments = HashMap::new();
+        let span = tracing::trace_span!("pool_insert_fragment");
+        let _enter = span.enter();
 
-        for (pool_number, pool) in self.pools.iter_mut().enumerate() {
-            let span = tracing::trace_span!("pool_insert_fragment", pool_number=?pool_number);
-            let _enter = span.enter();
+        let mut fragments = filtered_fragments.into_iter();
+        let new_fragments = self.pool.insert_all(fragments.by_ref());
+        let count = new_fragments.len();
+        tracing::debug!("{} of the received fragments were added to the pool", count);
+        let fragment_logs: Vec<_> = new_fragments
+            .iter()
+            .map(move |fragment| FragmentLog::new(fragment.id(), origin))
+            .collect();
+        self.logs.insert_all_pending(fragment_logs);
 
-            let mut fragments = filtered_fragments.clone().into_iter();
-            let new_fragments = pool.insert_all(fragments.by_ref());
-            let count = new_fragments.len();
-            tracing::debug!("{} of the received fragments were added to the pool", count,);
-            let fragment_logs: Vec<_> = new_fragments
-                .iter()
-                .map(move |fragment| FragmentLog::new(fragment.id(), origin))
-                .collect();
-            self.logs.insert_all_pending(fragment_logs);
-
-            for fragment in new_fragments {
-                let id = fragment.id();
-                tracing::debug!(fragment_id=?id, "inserted fragment to the pool");
-                accepted_fragments.insert(id, fragment);
-            }
-
-            for fragment in fragments {
-                let id = fragment.id();
-                tracing::debug!(fragment_id=?id, "rejecting fragment due to pool overflow");
-                rejected.push(RejectedFragmentInfo {
-                    id,
-                    reason: FragmentRejectionReason::PoolOverflow { pool_number },
-                })
-            }
-        }
-
-        let mut accepted = Vec::with_capacity(accepted_fragments.len());
+        let mut accepted = Vec::new();
         let mut network_msg_box = self.network_msg_box.clone();
-
-        for (id, fragment) in accepted_fragments.into_iter() {
+        for fragment in new_fragments {
+            let id = fragment.id();
+            tracing::debug!(fragment_id=?id, "inserted fragment to the pool");
+            accepted.push(id);
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
             network_msg_box
                 .send(fragment_msg)
                 .await
                 .map_err(Error::CannotPropagate)?;
-            accepted.push(id);
+        }
+
+        for fragment in fragments {
+            let id = fragment.id();
+            tracing::debug!(fragment_id=?id, "rejecting fragment due to pool overflow");
+            rejected.push(RejectedFragmentInfo {
+                id,
+                reason: FragmentRejectionReason::PoolOverflow,
+            });
         }
 
         Ok(FragmentsProcessingSummary { accepted, rejected })
@@ -267,25 +250,19 @@ impl Pools {
         } else {
             panic!("expected status to be in block, found {:?}", status);
         };
-
-        for pool in &mut self.pools {
-            pool.remove_all(fragment_ids.iter());
-        }
-
+        self.pool.remove_all(fragment_ids.iter());
         self.logs.modify_all(fragment_ids, status, date);
     }
 
     pub async fn select(
         &mut self,
-        pool_idx: usize,
         ledger: ApplyBlockLedger,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
     ) -> (Contents, ApplyBlockLedger) {
-        let Pools { logs, pools, .. } = self;
-        let pool = &mut pools[pool_idx];
+        let Pool { logs, pool, .. } = self;
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
@@ -310,14 +287,8 @@ impl Pools {
 
     pub async fn remove_expired_txs(&mut self) {
         let tip = self.tip.get_ref().await;
-        let mut fragment_ids = HashSet::new();
         let block_date = get_current_block_date(&tip);
-        for pool in &mut self.pools {
-            let fragment_ids_update = pool.remove_expired_txs(block_date);
-            for id in fragment_ids_update {
-                fragment_ids.insert(id);
-            }
-        }
+        let fragment_ids = self.pool.remove_expired_txs(block_date);
         self.logs.modify_all(
             fragment_ids,
             FragmentStatus::Rejected {

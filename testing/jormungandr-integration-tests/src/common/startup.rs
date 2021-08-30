@@ -128,16 +128,11 @@ pub fn start_stake_pool(
 
     let temp_dir = TempDir::new()?;
 
-    let secrets: Vec<NodeSecret> = stake_pools
-        .iter()
-        .map(|x| {
-            SecretModelFactory::genesis(
-                x.kes().signing_key(),
-                x.vrf().signing_key(),
-                &x.id().to_string(),
-            )
-        })
-        .collect();
+    let secret: NodeSecret = SecretModelFactory::genesis(
+        stake_pools[0].kes().signing_key(),
+        stake_pools[0].vrf().signing_key(),
+        &stake_pools[0].id().to_string(),
+    );
 
     let config = config_builder
         .with_block0_consensus(ConsensusVersion::GenesisPraos)
@@ -145,7 +140,7 @@ pub fn start_stake_pool(
         .with_funds(funds)
         .with_explorer()
         .with_initial_certs(initial_certs)
-        .with_secrets(secrets)
+        .with_secret(secret)
         .build(&temp_dir);
 
     Starter::new()

@@ -2,7 +2,6 @@ use super::{FromGenesis, Role};
 
 use jormungandr_testing_utils::testing::{JormungandrParams, TestConfig};
 use serde::Serialize;
-use std::iter::FromIterator;
 use std::path::Path;
 use std::process::Command;
 
@@ -10,7 +9,7 @@ pub struct CommandBuilder<'a> {
     bin: &'a Path,
     config: Option<&'a Path>,
     genesis_block: GenesisBlockOption<'a>,
-    secrets: Vec<&'a Path>,
+    secret: Option<&'a Path>,
     log_file: Option<&'a Path>,
     rewards_history: bool,
 }
@@ -27,7 +26,7 @@ impl<'a> CommandBuilder<'a> {
             bin,
             config: None,
             genesis_block: GenesisBlockOption::None,
-            secrets: Vec::new(),
+            secret: None,
             log_file: None,
             rewards_history: false,
         }
@@ -48,11 +47,8 @@ impl<'a> CommandBuilder<'a> {
         self
     }
 
-    pub fn leader_with_secrets<Iter>(mut self, secrets: Iter) -> Self
-    where
-        Iter: IntoIterator<Item = &'a Path>,
-    {
-        self.secrets = Vec::from_iter(secrets);
+    pub fn leader_with_secret(mut self, secret: &'a Path) -> Self {
+        self.secret = Some(secret);
         self
     }
 
@@ -68,7 +64,7 @@ impl<'a> CommandBuilder<'a> {
 
     pub fn command(self) -> Command {
         let mut command = Command::new(self.bin);
-        for secret_path in self.secrets {
+        if let Some(secret_path) = self.secret {
             command.arg("--secret").arg(secret_path);
         }
 
@@ -117,10 +113,10 @@ pub fn get_command<Conf: TestConfig + Serialize>(
         (Role::Passive, _) => builder.genesis_block_hash(params.genesis_block_hash()),
         (Role::Leader, FromGenesis::File) => builder
             .genesis_block_path(params.genesis_block_path())
-            .leader_with_secrets(params.secret_model_paths()),
+            .leader_with_secret(params.secret_model_path()),
         (Role::Leader, FromGenesis::Hash) => builder
             .genesis_block_hash(params.genesis_block_hash())
-            .leader_with_secrets(params.secret_model_paths()),
+            .leader_with_secret(params.secret_model_path()),
     };
     builder.command()
 }
