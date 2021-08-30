@@ -142,7 +142,7 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
                     self.genesis_block_path().display()
                 )
             })
-            .contents
+            .contents()
             .iter()
             .filter_map(|fragment| match fragment {
                 Fragment::Transaction(transaction) => Some((transaction, fragment.hash())),

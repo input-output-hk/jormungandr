@@ -149,7 +149,7 @@ impl ExplorerBlock {
     /// This function relies on the given block to be validated previously, and will panic
     /// otherwise
     pub fn resolve_from(block: &Block, context: ExplorerBlockBuildingContext) -> ExplorerBlock {
-        let fragments = block.contents.iter();
+        let fragments = block.contents().iter();
         let id = block.id();
         let chain_length = block.chain_length();
 
@@ -287,13 +287,13 @@ impl ExplorerBlock {
             },
         );
 
-        let producer = match block.header.proof() {
+        let producer = match block.header().proof() {
             Proof::GenesisPraos(_proof) => {
                 // Unwrap is safe in this pattern match
-                BlockProducer::StakePool(block.header.get_stakepool_id().unwrap())
+                BlockProducer::StakePool(block.header().get_stakepool_id().unwrap())
             }
             Proof::Bft(_proof) => {
-                BlockProducer::BftLeader(block.header.get_bft_leader_id().unwrap())
+                BlockProducer::BftLeader(block.header().get_bft_leader_id().unwrap())
             }
             Proof::None => BlockProducer::None,
         };
@@ -316,7 +316,7 @@ impl ExplorerBlock {
             id,
             transactions,
             chain_length,
-            date: block.header.block_date(),
+            date: block.header().block_date(),
             parent_hash: block.parent_id(),
             producer,
             total_input,

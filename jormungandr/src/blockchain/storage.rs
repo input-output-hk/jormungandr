@@ -122,16 +122,16 @@ impl Storage {
 
     pub fn put_block(&self, block: &Block) -> Result<(), Error> {
         let id = block
-            .header
+            .header()
             .hash()
             .serialize_as_vec()
             .map_err(Error::Serialize)?;
         let parent_id = block
-            .header
+            .header()
             .block_parent_hash()
             .serialize_as_vec()
             .map_err(Error::Serialize)?;
-        let chain_length = block.header.chain_length().into();
+        let chain_length = block.header().chain_length().into();
         let block_info = BlockInfo::new(id, parent_id, chain_length);
         self.storage
             .put_block(

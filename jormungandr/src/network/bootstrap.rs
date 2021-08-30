@@ -7,7 +7,7 @@ use crate::metrics::Metrics;
 use crate::network::convert::Decode;
 use crate::settings::start::network::Peer;
 use crate::topology;
-use chain_core::property::{Deserialize, HasHeader};
+use chain_core::property::Deserialize;
 use chain_network::data as net_data;
 use chain_network::error::Error as NetworkError;
 use futures::{prelude::*, stream, task::Poll};
@@ -170,7 +170,7 @@ impl BootstrapInfo {
         use chain_core::property::Serialize;
         self.bytes_received += b.serialize_as_vec().unwrap().len() as u64; // TODO sad serialization back
         self.block_received += 1;
-        self.last_block_description = Some(b.header.description());
+        self.last_block_description = Some(b.header().description());
     }
 
     pub fn report(&mut self) {
@@ -255,7 +255,7 @@ where
                 let block =
                     Block::deserialize(block.as_bytes()).map_err(Error::BlockDecodingFailed)?;
 
-                if block.header.hash() == block0 {
+                if block.header().hash() == block0 {
                     continue;
                 }
 
@@ -297,7 +297,7 @@ where
 }
 
 async fn handle_block(blockchain: &Blockchain, block: Block) -> Result<Arc<Ref>, Error> {
-    let header = block.header();
+    let header = block.header().clone();
     let pre_checked = blockchain
         .pre_check_header(header, true)
         .await

@@ -57,7 +57,6 @@ use crate::{
     },
     blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage, StorageError},
 };
-use chain_core::property::HasHeader;
 use chain_impl_mockchain::{leadership::Verification, ledger};
 use chain_time::TimeFrame;
 use std::sync::Arc;
@@ -469,7 +468,7 @@ impl Blockchain {
         let block_id = header.hash();
         let epoch_ledger_parameters = &post_checked_header.epoch_ledger_parameters;
 
-        debug_assert!(block.header.hash() == block_id);
+        debug_assert!(block.header().hash() == block_id);
 
         let metadata = header.get_content_eval_context();
 
@@ -477,7 +476,7 @@ impl Blockchain {
             .parent_ledger_state
             .apply_block(
                 (**epoch_ledger_parameters).clone(),
-                &block.contents,
+                block.contents(),
                 &metadata,
             )
             .map_err(Error::CannotApplyBlock)?;
@@ -590,7 +589,7 @@ impl Blockchain {
             leadership,
         } = leadership_block;
 
-        let header = block.header();
+        let header = block.header().clone();
 
         let EpochLeadership {
             state: parent_ledger_state,
@@ -629,8 +628,8 @@ impl Blockchain {
     /// * the block0 does build an invalid `Ledger`: `Error::Block0InitialLedgerError`;
     ///
     async fn apply_block0(&self, block0: &Block) -> Result<Branch> {
-        let block0_id = block0.header.hash();
-        let block0_date = block0.header.block_date();
+        let block0_id = block0.header().hash();
+        let block0_date = block0.header().block_date();
 
         let mut branches = self.branches.clone();
 
@@ -649,7 +648,7 @@ impl Blockchain {
         // we lift the creation of the ledger in the future type
         // this allow chaining of the operation and lifting the error handling
         // in the same place
-        let block0_ledger = Ledger::new(block0_id, block0.contents.iter())
+        let block0_ledger = Ledger::new(block0_id, block0.contents().iter())
             .map_err(Error::Block0InitialLedgerError)?;
         let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
         let ledger_parameters = block0_leadership.ledger_parameters().clone();
@@ -657,7 +656,7 @@ impl Blockchain {
         let b = self
             .create_and_store_reference(
                 block0_id,
-                block0.header.clone(),
+                block0.header().clone(),
                 block0_ledger,
                 Arc::new(time_frame),
                 Arc::new(block0_leadership),
@@ -719,7 +718,7 @@ impl Blockchain {
     /// * other errors while interacting with the storage (IO errors)
     ///
     pub async fn load_from_storage(&self, block0: Block) -> Result<Branch> {
-        let block0_id = block0.header.hash();
+        let block0_id = block0.header().hash();
         let already_exist = self.storage.block_exists(block0_id)?;
 
         if !already_exist {
@@ -749,7 +748,7 @@ impl Blockchain {
         while let Some(r) = block_stream.next().await {
             let block = r?;
 
-            let header = block.header.clone();
+            let header = block.header().clone();
 
             const PROCESS_LOGGING_DISTANCE: u64 = 2500;
             if count % PROCESS_LOGGING_DISTANCE == 0 {

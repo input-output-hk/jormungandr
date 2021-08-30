@@ -248,7 +248,7 @@ impl LegacyNodeController {
             .blocks_to_tip(from)
             .unwrap()
             .iter()
-            .map(|x| x.header.hash())
+            .map(|x| x.header().hash())
             .collect())
     }
 
@@ -266,8 +266,8 @@ impl LegacyNodeController {
 
         self.progress_bar.log_info(format!(
             "block{} ({}) '{}'",
-            block.header.chain_length(),
-            block.header.block_date(),
+            block.header().chain_length(),
+            block.header().block_date(),
             header_hash,
         ));
 

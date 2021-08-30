@@ -8,7 +8,7 @@ use crate::{
     metrics::{Metrics, MetricsBackend},
     utils::async_msg::{self, MessageBox, MessageQueue},
 };
-use chain_core::property::{Block as _, Fragment as _, HasHeader as _};
+use chain_core::property::{Block as _, Fragment as _};
 use chain_impl_mockchain::block::Block;
 use jormungandr_lib::interfaces::FragmentStatus;
 use std::sync::Arc;
@@ -86,7 +86,7 @@ impl TipUpdater {
         while let Some(block) = stream.next().await {
             let block = block?;
             let fragment_ids = block.fragments().map(|f| f.id()).collect();
-            self.try_request_fragment_removal(fragment_ids, &block.header())?;
+            self.try_request_fragment_removal(fragment_ids, block.header())?;
         }
 
         self.blockchain
@@ -114,7 +114,7 @@ impl TipUpdater {
             .put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
 
         let fragment_ids = block.fragments().map(|f| f.id()).collect();
-        self.try_request_fragment_removal(fragment_ids, &block.header())?;
+        self.try_request_fragment_removal(fragment_ids, block.header())?;
 
         self.tip.update_ref(candidate).await;
         Ok(())

@@ -1,7 +1,7 @@
 pub use chain_network::data::gossip::Gossip;
 
 pub use chain_impl_mockchain::{
-    block::Block,
+    block::{builder as block_builder, Block},
     chaineval::HeaderContentEvalContext,
     chaintypes::ConsensusVersion,
     config::{self, Block0Date, ConfigParam},
