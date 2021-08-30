@@ -240,7 +240,7 @@ impl MetricsBackend for Prometheus {
         let mut votes_casted = 0;
 
         block
-            .contents
+            .contents()
             .iter()
             .try_for_each::<_, Result<(), ValueError>>(|fragment| {
                 fn totals<T>(t: &Transaction<T>) -> Result<(Value, Value), ValueError> {
@@ -279,11 +279,12 @@ impl MetricsBackend for Prometheus {
         self.block_input_sum.set(block_input_sum.0);
         self.block_fee_sum.set(block_fee_sum.0);
         self.block_content_size
-            .set(block.header.block_content_size().into());
-        self.block_epoch.set(block.header.block_date().epoch.into());
+            .set(block.header().block_content_size().into());
+        self.block_epoch
+            .set(block.header().block_date().epoch.into());
         self.block_slot
-            .set(block.header.block_date().slot_id.into());
-        let chain_length: u32 = block.header.chain_length().try_into().unwrap();
+            .set(block.header().block_date().slot_id.into());
+        let chain_length: u32 = block.header().chain_length().try_into().unwrap();
         self.block_chain_length.set(chain_length as u64);
         self.block_time.set(
             block_ref
@@ -293,7 +294,7 @@ impl MetricsBackend for Prometheus {
                 .as_secs(),
         );
 
-        let block_hash = block.header.hash();
+        let block_hash = block.header().hash();
         self.block_hash_value.store(Some(Arc::new(block_hash)));
     }
 }

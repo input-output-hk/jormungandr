@@ -145,7 +145,7 @@ pub fn pull_blocks_to_tip_correct_hash() {
         .pull_blocks_to_tip(Hash::from_str(setup.config.genesis_block_hash()).unwrap())
         .unwrap();
 
-    let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
+    let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header().hash()).collect();
 
     let block_hashes_from_logs = setup.server.logger.get_created_blocks_hashes();
     assert!(
@@ -226,7 +226,7 @@ pub fn push_headers() {
         .with_parent(&tip_header)
         .build(&stake_pool, &time_era);
 
-    assert!(setup.client.push_headers(block.header).is_ok());
+    assert!(setup.client.push_headers(block.header().clone()).is_ok());
 }
 
 // L1020 Push headers incorrect header
@@ -340,7 +340,7 @@ pub fn pull_blocks_correct_hashes_all_blocks() {
         .pull_blocks(&[genesis_block_hash], setup.client.tip().id())
         .unwrap();
 
-    let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
+    let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header().hash()).collect();
     let block_hashes_from_logs = setup.server.logger.get_created_blocks_hashes();
     assert!(
         is_long_prefix(&block_hashes_from_logs, &blocks_hashes),
@@ -371,7 +371,7 @@ pub fn pull_blocks_correct_hashes_partial() {
         )
         .unwrap();
 
-    let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header.hash()).collect();
+    let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header().hash()).collect();
 
     assert_eq!(&expected_hashes[1..], &blocks_hashes);
 }

@@ -50,7 +50,7 @@ impl Controller {
         use chain_core::property::Serialize as _;
 
         let block0 = settings.block0.to_block();
-        let block0_hash = block0.header.hash();
+        let block0_hash = block0.header().hash();
 
         let block0_file = working_directory.child("block0.bin").path().into();
         let file = std::fs::File::create(&block0_file)?;

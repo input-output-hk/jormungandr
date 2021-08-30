@@ -50,7 +50,7 @@ pub enum EpochInfoError {
 
 impl EpochInfo {
     pub(crate) fn new(block0: &Block, ledger: &Ledger) -> Result<Self, EpochInfoError> {
-        let epoch = block0.header.block_date().epoch;
+        let epoch = block0.header().block_date().epoch;
         let time_frame = {
             let start_time = block0::start_time(block0)?;
             let slot_duration = block0::slot_duration(block0)?;

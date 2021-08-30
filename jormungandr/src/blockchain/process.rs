@@ -18,7 +18,7 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
-use chain_core::property::{Block as _, HasHeader as _, Header as _};
+use chain_core::property::{Block as _, Header as _};
 
 use futures::prelude::*;
 use tracing::{span, Level};
@@ -208,9 +208,9 @@ impl Process {
                     parent: self.service_info.span(),
                     Level::TRACE,
                     "process_leadership_block",
-                    hash = %leadership_block.block.header.hash().to_string(),
-                    parent = %leadership_block.block.header.parent_id().to_string(),
-                    date = %leadership_block.block.header.block_date().to_string()
+                    hash = %leadership_block.block.header().hash().to_string(),
+                    parent = %leadership_block.block.header().parent_id().to_string(),
+                    date = %leadership_block.block.header().block_date().to_string()
                 );
                 let _enter = span.enter();
                 tracing::info!("receiving block from leadership service");
@@ -488,7 +488,7 @@ async fn process_network_block(
             |e| tracing::error!(reason = ?e, "get next block schedule completion failed"),
         );
     let header = block.header();
-    let pre_checked = blockchain.pre_check_header(header, false).await?;
+    let pre_checked = blockchain.pre_check_header(header.clone(), false).await?;
     match pre_checked {
         PreCheckedHeader::AlreadyPresent { header, .. } => {
             tracing::debug!(
@@ -524,7 +524,11 @@ async fn check_and_apply_block(
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
     let explorer_enabled = explorer_msg_box.is_some();
     let post_checked = blockchain
-        .post_check_header(block.header(), parent_ref, CheckHeaderProof::Enabled)
+        .post_check_header(
+            block.header().clone(),
+            parent_ref,
+            CheckHeaderProof::Enabled,
+        )
         .await?;
     let header = post_checked.header();
     let block_hash = header.hash();

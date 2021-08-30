@@ -442,7 +442,7 @@ async fn bootstrap_internal(
         })
     }
 
-    let block0_hash = block0.header.hash();
+    let block0_hash = block0.header().hash();
 
     let block0_explorer = block0.clone();
 

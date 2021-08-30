@@ -77,12 +77,12 @@ pub async fn fetch_block(peer: &Peer, hash: HeaderHash) -> Result<Block, FetchBl
                 .decode()
                 .map_err(|e| FetchBlockError::GetBlocksStream { source: e })?;
 
-            if block.header.id() == hash {
+            if block.header().id() == hash {
                 Ok(block)
             } else {
                 Err(FetchBlockError::UnexpectedBlock {
                     requested: hash.to_owned(),
-                    received: block.header.id(),
+                    received: block.header().id(),
                 })
             }
         }
