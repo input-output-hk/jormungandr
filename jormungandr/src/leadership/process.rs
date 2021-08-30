@@ -1,7 +1,7 @@
 use crate::{
     blockcfg::{
-        ApplyBlockLedger, Block, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput,
-        Leadership, LedgerParameters,
+        block_builder, ApplyBlockLedger, BlockVersion, Contents, LeaderOutput, Leadership,
+        LedgerParameters,
     },
     blockchain::{new_epoch_leadership_from, EpochLeadership, LeadershipBlock, Ref, Tip},
     intercom::{unary_reply, BlockMsg, Error as IntercomError, TransactionMsg},
@@ -506,63 +506,69 @@ impl Module {
                 LeaderOutput::GenesisPraos(..) => BlockVersion::KesVrfproof,
             };
 
-            let hdr_builder = HeaderBuilderNew::new(ver, &contents)
-                .set_parent(&parent_id, chain_length)
-                .set_date(event.date);
+            let LeaderEvent { date, output } = event;
 
-            match event.output {
-                LeaderOutput::None => {
-                    let header = hdr_builder
+            match output {
+                LeaderOutput::None => block_builder(ver, contents, |hdr_builder| {
+                    Ok(hdr_builder
+                        .set_parent(&parent_id, chain_length)
+                        .set_date(date)
                         .into_unsigned_header()
                         .expect("Valid Header Builder")
-                        .generalize();
-                    Ok(Some(Block { header, contents }))
-                }
+                        .generalize())
+                })
+                .map(Some),
                 LeaderOutput::Bft(leader_id) => {
-                    let final_builder = hdr_builder
-                        .into_bft_builder()
-                        .expect("Valid Header Builder")
-                        .set_consensus_data(&leader_id);
-                    enclave
-                        .query_header_bft_finalize(final_builder)
-                        .map_ok(|h| {
-                            Some(Block {
-                                header: h.generalize(),
-                                contents,
-                            })
-                        })
-                        .or_else(|e| async move {
+                    let block = block_builder(ver, contents, |hdr_builder| {
+                        let final_builder = hdr_builder
+                            .set_parent(&parent_id, chain_length)
+                            .set_date(date)
+                            .into_bft_builder()
+                            .expect("Valid Header Builder")
+                            .set_consensus_data(&leader_id);
+
+                        enclave
+                            .query_header_bft_finalize(final_builder)
+                            .map(|h| h.generalize())
+                    });
+
+                    match block {
+                        Ok(block) => Ok(Some(block)),
+                        Err(e) => {
                             event_logs_error
                                 .set_status(LeadershipLogStatus::Rejected {
                                     reason: format!("Cannot sign the block: {}", e),
                                 })
                                 .await;
                             Ok(None)
-                        })
-                        .await
+                        }
+                    }
                 }
                 LeaderOutput::GenesisPraos(node_id, vrfproof) => {
-                    let final_builder = hdr_builder
-                        .into_genesis_praos_builder()
-                        .expect("Valid Header Builder")
-                        .set_consensus_data(&node_id, &vrfproof.into());
-                    enclave
-                        .query_header_genesis_praos_finalize(final_builder)
-                        .map_ok(|h| {
-                            Some(Block {
-                                header: h.generalize(),
-                                contents,
-                            })
-                        })
-                        .or_else(|e| async move {
+                    let block = block_builder(ver, contents, |hdr_builder| {
+                        let final_builder = hdr_builder
+                            .set_parent(&parent_id, chain_length)
+                            .set_date(date)
+                            .into_genesis_praos_builder()
+                            .expect("Valid Header Builder")
+                            .set_consensus_data(&node_id, &vrfproof.into());
+
+                        enclave
+                            .query_header_genesis_praos_finalize(final_builder)
+                            .map(|h| h.generalize())
+                    });
+
+                    match block {
+                        Ok(block) => Ok(Some(block)),
+                        Err(e) => {
                             event_logs_error
                                 .set_status(LeadershipLogStatus::Rejected {
                                     reason: format!("Cannot sign the block: {}", e),
                                 })
                                 .await;
                             Ok(None)
-                        })
-                        .await
+                        }
+                    }
                 }
             }
         };
@@ -570,10 +576,10 @@ impl Module {
         match signing {
             Ok(maybe_block) => {
                 if let Some(block) = maybe_block {
-                    let id = block.header.hash();
-                    let parent = block.header.block_parent_hash();
-                    let chain_length: u32 = block.header.chain_length().into();
-                    let ledger = ledger.finish(&block.header.get_consensus_eval_context());
+                    let id = block.header().hash();
+                    let parent = block.header().block_parent_hash();
+                    let chain_length: u32 = block.header().chain_length().into();
+                    let ledger = ledger.finish(&block.header().get_consensus_eval_context());
                     let leadership_block = LeadershipBlock {
                         block,
                         new_ledger: ledger,

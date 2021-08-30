@@ -53,7 +53,7 @@ async fn fetch_block0_http(base_services: &[String], block0_id: &HeaderId) -> Op
             .map_err(|e| format!("cannot get data {}", e))?;
         let block = Block::deserialize(bytes.as_ref())
             .map_err(|err| format!("parse error on data {}", err))?;
-        let got = block.header.id();
+        let got = block.header().id();
         if &got != block0_id {
             return Err(format!("invalid block expecting {} got {}", block0_id, got));
         }
@@ -109,7 +109,7 @@ pub async fn prepare_block_0(settings: &Settings, storage: &Storage) -> Result<B
             match opt_block0_id {
                 None => {}
                 Some(expected_hash) => {
-                    let got = block.header.id();
+                    let got = block.header().id();
                     if &got != expected_hash {
                         return Err(Error::Block0Mismatch {
                             got,
@@ -153,7 +153,7 @@ pub async fn load_blockchain(
     rewards_report_all: bool,
 ) -> Result<(Blockchain, Tip), Error> {
     let blockchain = Blockchain::new(
-        block0.header.hash(),
+        block0.header().hash(),
         storage,
         cache_capacity,
         rewards_report_all,

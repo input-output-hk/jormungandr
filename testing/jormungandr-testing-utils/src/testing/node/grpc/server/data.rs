@@ -106,5 +106,5 @@ pub fn header(slots_per_epochs: u32, parent_id: &Hash) -> Header {
         })
         .with_chain_length(1.into())
         .build(&stake_pool, &time_era);
-    block.header
+    block.header().clone()
 }

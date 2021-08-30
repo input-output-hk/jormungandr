@@ -132,7 +132,10 @@ impl Explorer {
                                 let _state_ref = explorer_db.apply_block(block.clone()).await?;
 
                                 let mut guard = tip_candidate.lock().await;
-                                if guard.map(|hash| hash == block.header.id()).unwrap_or(false) {
+                                if guard
+                                    .map(|hash| hash == block.header().id())
+                                    .unwrap_or(false)
+                                {
                                     let hash = guard.take().unwrap();
                                     explorer_db.set_tip(hash).await;
                                 }
@@ -181,7 +184,7 @@ impl ExplorerDb {
     pub async fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
-                .contents
+                .contents()
                 .iter()
                 .filter_map(|fragment| match fragment {
                     Fragment::Initial(config_params) => Some(config_params),
@@ -207,7 +210,7 @@ impl ExplorerDb {
         let addresses = apply_block_to_addresses(Addresses::new(), &block);
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(StakePool::new(), StakePoolBlocks::new(), &block);
-        let block_id = block0.header.hash();
+        let block_id = block0.header().hash();
 
         let block_ref = blockchain
             .get_ref(block_id)
@@ -273,7 +276,7 @@ impl ExplorerDb {
                 let block = blockchain.storage().get(hash)?.ok_or_else(|| {
                     Error::BootstrapError(format!("couldn't get block {} from the storage", hash))
                 })?;
-                hash = block.header.block_parent_hash();
+                hash = block.header().block_parent_hash();
                 blocks.push(block);
             }
             while let Some(block) = blocks.pop() {
@@ -290,9 +293,9 @@ impl ExplorerDb {
     /// This doesn't perform any validation on the given block and the previous state, it
     /// is assumed that the Block is valid
     async fn apply_block(&self, block: Block) -> Result<multiverse::Ref> {
-        let previous_block = block.header.block_parent_hash();
-        let chain_length = block.header.chain_length();
-        let block_id = block.header.hash();
+        let previous_block = block.header().block_parent_hash();
+        let chain_length = block.header().chain_length();
+        let block_id = block.header().hash();
         let multiverse = self.multiverse.clone();
         let discrimination = self.blockchain_config.discrimination;
 

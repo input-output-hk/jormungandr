@@ -62,7 +62,7 @@ where
     while let Some(block_result) = stream.next().await {
         let maybe_tip = match block_result {
             Ok(block) => {
-                if block.header.hash() == block0 {
+                if block.header().hash() == block0 {
                     continue;
                 }
 

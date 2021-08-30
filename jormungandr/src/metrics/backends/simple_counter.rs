@@ -164,7 +164,7 @@ impl MetricsBackend for SimpleCounter {
         let mut votes_cast = 0;
 
         block
-            .contents
+            .contents()
             .iter()
             .try_for_each::<_, Result<(), ValueError>>(|fragment| {
                 fn totals<T>(t: &Transaction<T>) -> Result<(Value, Value), ValueError> {
@@ -202,10 +202,10 @@ impl MetricsBackend for SimpleCounter {
             block_tx_count,
             block_input_sum: block_input_sum.0,
             block_fee_sum: block_fee_sum.0,
-            content_size: block.header.block_content_size(),
-            date: block.header.block_date().to_string(),
-            hash: block.header.hash().to_string(),
-            chain_length: block.header.chain_length().to_string(),
+            content_size: block.header().block_content_size(),
+            date: block.header().block_date().to_string(),
+            hash: block.header().hash().to_string(),
+            chain_length: block.header().chain_length().to_string(),
             time: SystemTime::from(block_ref.time()),
         };
 
