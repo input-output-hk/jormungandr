@@ -2,6 +2,7 @@ use crate::common::jormungandr::{starter::Role, Starter};
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
+use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion};
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::PersistentLog;
@@ -389,4 +390,51 @@ pub fn node_should_pickup_log_after_restart() {
     let persistent_log_viewer = PersistentLogViewer::new(persistent_log_path.path().to_path_buf());
 
     assert_eq!(20, persistent_log_viewer.get_all().len());
+}
+
+#[test]
+/// Verifies that a node will reject a fragment that has expired, even after it's been accepted in
+/// its mempool.
+pub fn expired_fragment_should_be_rejected() {
+    const N_FRAGMENTS: u32 = 10;
+
+    let receiver = startup::create_new_account_address();
+    let mut sender = startup::create_new_account_address();
+
+    let (jormungandr, _) = startup::start_stake_pool(
+        &[sender.clone()],
+        &[receiver.clone()],
+        ConfigurationBuilder::new()
+            .with_block_content_max_size(256) // This should only fit 1 transaction
+            .with_slots_per_epoch(N_FRAGMENTS)
+            .with_slot_duration(1)
+            .with_mempool(Mempool {
+                pool_max_entries: 1000.into(),
+                log_max_entries: 1000.into(),
+                persistent_log: None,
+            }),
+    )
+    .unwrap();
+
+    let fragment_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        LinearFee::new(0, 0, 0),
+        BlockDate::first().next_epoch(),
+        FragmentSenderSetup::no_verify(),
+    );
+
+    for i in 0..N_FRAGMENTS as u64 {
+        fragment_sender
+            .send_transaction(&mut sender, &receiver, &jormungandr, (100 + i).into())
+            .unwrap();
+    }
+
+    let check = fragment_sender
+        .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
+        .unwrap();
+
+    // By the time the rest of the transactions have been placed in blocks, the epoch should be over
+    // and the transaction below should have expired.
+    FragmentVerifier::wait_and_verify_is_rejected(Duration::from_secs(1), check, &jormungandr)
+        .unwrap();
 }
