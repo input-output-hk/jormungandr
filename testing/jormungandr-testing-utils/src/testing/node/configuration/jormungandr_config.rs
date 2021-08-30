@@ -17,7 +17,7 @@ pub struct JormungandrParams<Conf = NodeConfig> {
     node_config_path: PathBuf,
     genesis_block_path: PathBuf,
     genesis_block_hash: String,
-    secret_model_paths: Vec<PathBuf>,
+    secret_model_path: PathBuf,
     block0_configuration: Block0Configuration,
     rewards_history: bool,
     log_file_path: PathBuf,
@@ -25,29 +25,22 @@ pub struct JormungandrParams<Conf = NodeConfig> {
 
 impl<Conf: TestConfig> JormungandrParams<Conf> {
     #[allow(clippy::too_many_arguments)]
-    pub fn new<Secs>(
+    pub fn new(
         node_config: Conf,
         node_config_path: impl Into<PathBuf>,
         genesis_block_path: impl Into<PathBuf>,
         genesis_block_hash: impl Into<String>,
-        secret_model_paths: Secs,
+        secret_model_path: impl Into<PathBuf>,
         block0_configuration: Block0Configuration,
         rewards_history: bool,
         log_file_path: impl Into<PathBuf>,
-    ) -> Self
-    where
-        Secs: IntoIterator,
-        Secs::Item: Into<PathBuf>,
-    {
+    ) -> Self {
         JormungandrParams {
             node_config,
             node_config_path: node_config_path.into(),
             genesis_block_path: genesis_block_path.into(),
             genesis_block_hash: genesis_block_hash.into(),
-            secret_model_paths: secret_model_paths
-                .into_iter()
-                .map(|item| item.into())
-                .collect(),
+            secret_model_path: secret_model_path.into(),
             block0_configuration,
             rewards_history,
             log_file_path: log_file_path.into(),
@@ -82,8 +75,8 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
         &self.log_file_path
     }
 
-    pub fn secret_model_paths(&self) -> impl Iterator<Item = &Path> {
-        self.secret_model_paths.iter().map(|b| b.as_path())
+    pub fn secret_model_path(&self) -> &Path {
+        self.secret_model_path.as_path()
     }
 
     pub fn rest_uri(&self) -> String {

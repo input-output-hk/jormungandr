@@ -12,7 +12,7 @@ use chain_impl_mockchain::{
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{EnclaveLeaderId, FragmentLog, FragmentStatus, PeerRecord, PeerStats},
+    interfaces::{FragmentLog, FragmentStatus, PeerRecord, PeerStats},
     multiaddr,
 };
 pub use jormungandr_testing_utils::testing::{
@@ -347,66 +347,6 @@ impl LegacyNodeController {
             alias: self.alias().to_string(),
             logs: self.logger().get_lines_as_string(),
         })
-    }
-
-    pub fn leaders(&self) -> Result<Vec<EnclaveLeaderId>> {
-        let leaders = self.get("leaders")?.text()?;
-        let leaders: Vec<EnclaveLeaderId> = if leaders.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&leaders).map_err(Error::InvalidEnclaveLeaderIds)?
-        };
-
-        self.progress_bar
-            .log_info(format!("leaders ids ({})", leaders.len()));
-
-        Ok(leaders)
-    }
-
-    pub fn promote(&self) -> Result<EnclaveLeaderId> {
-        let path = "leaders";
-        let secrets = self.settings.secrets();
-        self.progress_bar.log_info(format!("POST '{}'", &path));
-        let response = reqwest::blocking::Client::new()
-            .post(&self.path(path))
-            .json(&secrets)
-            .send()?;
-
-        self.progress_bar
-            .log_info(format!("Leader promotion for '{}' sent", self.alias()));
-
-        let res = response.error_for_status_ref();
-        if let Err(err) = res {
-            self.progress_bar.log_err(format!(
-                "Leader promotion for '{}' fail to sent: {}",
-                self.alias(),
-                err,
-            ));
-        }
-
-        let leader_id: EnclaveLeaderId = response.json()?;
-        Ok(leader_id)
-    }
-
-    pub fn demote(&self, leader_id: u32) -> Result<()> {
-        let path = format!("leaders/{}", leader_id);
-        self.progress_bar.log_info(format!("DELETE '{}'", &path));
-        let response = reqwest::blocking::Client::new()
-            .delete(&self.path(&path))
-            .send()?;
-
-        self.progress_bar
-            .log_info(format!("Leader demote for '{}' sent", self.alias()));
-
-        let res = response.error_for_status_ref();
-        if let Err(err) = res {
-            self.progress_bar.log_err(format!(
-                "Leader demote for '{}' fail to sent: {}",
-                self.alias(),
-                err,
-            ));
-        }
-        Ok(())
     }
 
     pub fn stats(&self) -> Result<Yaml> {

@@ -24,10 +24,9 @@ pub struct StartArguments {
     #[structopt(long = "config", parse(from_os_str))]
     pub node_config: Option<PathBuf>,
 
-    /// Set the secret node config (in YAML format). Can be given
-    /// multiple times.
+    /// Set the secret node config (in YAML format).
     #[structopt(long = "secret", parse(from_os_str))]
-    pub secret: Vec<PathBuf>,
+    pub secret: Option<PathBuf>,
 
     /// Path to the genesis block (the block0) of the blockchain
     #[structopt(long = "genesis-block", parse(try_from_str))]

@@ -90,21 +90,16 @@ impl RequestGenerator for RestRequestGen {
                 })?;
             }
             6 => {
-                self.rest_client.leaders().map_err(|e| {
-                    RequestFailure::General(format!("Rest - leaders: {}", e.to_string()))
-                })?;
-            }
-            7 => {
                 self.rest_client.stats().map_err(|e| {
                     RequestFailure::General(format!("Rest - stats: {}", e.to_string()))
                 })?;
             }
-            8 => {
+            7 => {
                 self.rest_client.network_stats().map_err(|e| {
                     RequestFailure::General(format!("Rest - network_stats: {}", e.to_string()))
                 })?;
             }
-            9 => {
+            8 => {
                 self.rest_client.tip().map_err(|e| {
                     RequestFailure::General(format!("Rest - tip: {}", e.to_string()))
                 })?;

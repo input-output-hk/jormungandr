@@ -168,10 +168,6 @@ impl RawRest {
         self.get("fragment/logs")
     }
 
-    pub fn leaders(&self) -> Result<Response, reqwest::Error> {
-        self.get("leaders")
-    }
-
     fn construct_headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
         headers.insert(
