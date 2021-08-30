@@ -46,8 +46,8 @@ impl Utils {
 }
 
 fn convert_prefix(from_addr: String, prefix: String) -> Result<(), Error> {
-    let (_, d) = bech32::decode(&from_addr)?;
-    let n = bech32::encode(&prefix, d)?;
+    let (_, d, variant) = bech32::decode(&from_addr)?;
+    let n = bech32::encode(&prefix, d, variant)?;
     println!("{}", n);
     Ok(())
 }

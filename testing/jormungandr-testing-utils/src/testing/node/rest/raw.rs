@@ -137,7 +137,7 @@ impl RawRest {
     }
 
     fn try_from_str(src: &str) -> account::Identifier {
-        let (_, data) = bech32::decode(src).unwrap();
+        let (_, data, _variant) = bech32::decode(src).unwrap();
         let dat = Vec::from_base32(&data).unwrap();
         let pk = PublicKey::from_binary(&dat).unwrap();
         account::Identifier::from(pk)
