@@ -85,7 +85,7 @@ impl MkWitness {
             .map_err(Error::WitnessFileSerializationFailed)?;
 
         let base32 = bytes.to_base32();
-        let bech32 = bech32::encode("witness", &base32)?;
+        let bech32 = bech32::encode("witness", &base32, bech32::Variant::Bech32)?;
         writeln!(writer, "{}", bech32).map_err(|source| Error::WitnessFileWriteFailed {
             source,
             path: self.output.clone().unwrap_or_default(),

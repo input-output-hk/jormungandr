@@ -289,15 +289,22 @@ pub enum CertificateFromStrError {
     InvalidBech32(#[from] bech32::Error),
 }
 
+/// Use bech32m variant to serialize a certificate as its length it's not fixed
+/// but allow to read original bech32 formatted certificates for backward compatibility
 impl Certificate {
-    pub fn to_bech32(&self) -> Result<String, CertificateToBech32Error> {
+    pub fn to_bech32m(&self) -> Result<String, CertificateToBech32Error> {
         use chain_core::property::Serialize as _;
         let bytes = self.serialize_as_vec()?;
-        Ok(bech32::encode(CERTIFICATE_HRP, &bytes.to_base32())?)
+        // jormungandr_lib::Certificate is only used in jcli so we don't
+        Ok(bech32::encode(
+            CERTIFICATE_HRP,
+            &bytes.to_base32(),
+            bech32::Variant::Bech32m,
+        )?)
     }
 
     pub fn from_bech32(bech32: &str) -> Result<Self, CertificateFromBech32Error> {
-        let (hrp, data) = bech32::decode(bech32)?;
+        let (hrp, data, _variant) = bech32::decode(bech32)?;
         if hrp != CERTIFICATE_HRP {
             return Err(CertificateFromBech32Error::InvalidHrp {
                 expected: CERTIFICATE_HRP.to_owned(),
@@ -311,14 +318,18 @@ impl Certificate {
 }
 
 impl SignedCertificate {
-    pub fn to_bech32(&self) -> Result<String, CertificateToBech32Error> {
+    pub fn to_bech32m(&self) -> Result<String, CertificateToBech32Error> {
         use chain_core::property::Serialize as _;
         let bytes = self.serialize_as_vec()?;
-        Ok(bech32::encode(SIGNED_CERTIFICATE_HRP, &bytes.to_base32())?)
+        Ok(bech32::encode(
+            SIGNED_CERTIFICATE_HRP,
+            &bytes.to_base32(),
+            bech32::Variant::Bech32m,
+        )?)
     }
 
     pub fn from_bech32(bech32: &str) -> Result<Self, CertificateFromBech32Error> {
-        let (hrp, data) = bech32::decode(bech32)?;
+        let (hrp, data, _variant) = bech32::decode(bech32)?;
         if hrp != SIGNED_CERTIFICATE_HRP {
             return Err(CertificateFromBech32Error::InvalidHrp {
                 expected: SIGNED_CERTIFICATE_HRP.to_owned(),
@@ -335,7 +346,7 @@ impl SignedCertificate {
 
 impl fmt::Display for Certificate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_bech32().unwrap())
+        write!(f, "{}", self.to_bech32m().unwrap())
     }
 }
 
@@ -348,7 +359,7 @@ impl FromStr for Certificate {
 
 impl fmt::Display for SignedCertificate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_bech32().unwrap())
+        write!(f, "{}", self.to_bech32m().unwrap())
     }
 }
 
@@ -387,7 +398,7 @@ impl Serialize for Certificate {
     {
         use serde::ser::Error as _;
 
-        let bech32 = self.to_bech32().map_err(S::Error::custom)?;
+        let bech32 = self.to_bech32m().map_err(S::Error::custom)?;
 
         bech32.serialize(serializer)
     }
@@ -412,7 +423,7 @@ impl Serialize for SignedCertificate {
     {
         use serde::ser::Error as _;
 
-        let bech32 = self.to_bech32().map_err(S::Error::custom)?;
+        let bech32 = self.to_bech32m().map_err(S::Error::custom)?;
         bech32.serialize(serializer)
     }
 }

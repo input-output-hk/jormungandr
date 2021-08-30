@@ -224,7 +224,8 @@ impl Certificate {
 
 fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certificate, Error> {
     let cert_str = read_input(input)?.trim_end().to_owned();
-    let (hrp, _) = bech32::decode(&cert_str).map_err(chain_crypto::bech32::Error::from)?;
+    let (hrp, _, _variant) =
+        bech32::decode(&cert_str).map_err(chain_crypto::bech32::Error::from)?;
 
     match hrp.as_ref() {
         interfaces::SIGNED_CERTIFICATE_HRP => {

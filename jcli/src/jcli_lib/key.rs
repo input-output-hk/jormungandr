@@ -1,9 +1,10 @@
 use crate::jcli_lib::utils::io;
 use crate::jcli_lib::utils::output_file::{self, OutputFile};
-use bech32::{self, u5, FromBase32, ToBase32};
+use bech32::{self, u5, FromBase32};
 use chain_crypto::{
-    bech32::Bech32, AsymmetricKey, AsymmetricPublicKey, Ed25519, Ed25519Bip32, Ed25519Extended,
-    RistrettoGroup2HashDh, SecretKey, SigningAlgorithm, SumEd25519_12, Verification,
+    bech32::{Bech32, Error as Bech32Error},
+    AsymmetricKey, AsymmetricPublicKey, Ed25519, Ed25519Bip32, Ed25519Extended, PublicKey,
+    RistrettoGroup2HashDh, SecretKey, Signature, SigningAlgorithm, SumEd25519_12, Verification,
     VerificationAlgorithm,
 };
 use ed25519_bip32::{DerivationError, DerivationScheme};
@@ -22,7 +23,7 @@ pub enum Error {
     #[error("I/O error")]
     Io(#[from] std::io::Error),
     #[error("invalid Bech32")]
-    Bech32(#[from] bech32::Error),
+    Bech32(#[from] Bech32Error),
     #[error("invalid Hexadecimal")]
     Hex(#[from] FromHexError),
     #[error("invalid secret key")]
@@ -231,7 +232,7 @@ impl Generate {
 
 impl ToPublic {
     fn exec(self) -> Result<(), Error> {
-        let (hrp, data) = read_bech32(&self.input_key)?;
+        let (hrp, data, _variant) = read_bech32(&self.input_key)?;
         let pub_key_bech32 = match hrp.as_ref() {
             Ed25519::SECRET_BECH32_HRP => gen_pub_key::<Ed25519>(&data),
             Ed25519Bip32::SECRET_BECH32_HRP => gen_pub_key::<Ed25519Bip32>(&data),
@@ -248,7 +249,7 @@ impl ToPublic {
 
 impl ToBytes {
     fn exec(self) -> Result<(), Error> {
-        let (hrp, data) = read_bech32(&self.input_key)?;
+        let (hrp, data, _variant) = read_bech32(&self.input_key)?;
 
         match hrp.as_ref() {
             Ed25519::PUBLIC_BECH32_HRP
@@ -262,7 +263,7 @@ impl ToBytes {
             | RistrettoGroup2HashDh::SECRET_BECH32_HRP => Ok(()),
             _ => Err(Error::UnknownBech32PrivKeyHrp { hrp }),
         }?;
-        let bytes = Vec::<u8>::from_base32(&data)?;
+        let bytes = Vec::<u8>::from_base32(&data).map_err(Bech32Error::from)?;
         let mut output = self.output_file.open()?;
         writeln!(output, "{}", hex::encode(&bytes))?;
         Ok(())
@@ -312,8 +313,8 @@ impl FromBytes {
 
 impl Sign {
     fn exec(self) -> Result<(), Error> {
-        let (hrp, data) = read_bech32(&self.secret_key)?;
-        let secret_bytes = Vec::<u8>::from_base32(&data)?;
+        let (hrp, data, _variant) = read_bech32(&self.secret_key)?;
+        let secret_bytes = Vec::<u8>::from_base32(&data).map_err(Bech32Error::from)?;
         match hrp.as_ref() {
             Ed25519::SECRET_BECH32_HRP => self.sign::<Ed25519>(&secret_bytes),
             Ed25519Bip32::SECRET_BECH32_HRP => self.sign::<Ed25519Bip32>(&secret_bytes),
@@ -339,8 +340,8 @@ impl Sign {
 
 impl Verify {
     fn exec(self) -> Result<(), Error> {
-        let (hrp, data) = read_bech32(&self.public_key)?;
-        let public_bytes = Vec::<u8>::from_base32(&data)?;
+        let (hrp, data, _variant) = read_bech32(&self.public_key)?;
+        let public_bytes = Vec::<u8>::from_base32(&data).map_err(Bech32Error::from)?;
         match hrp.as_ref() {
             Ed25519::PUBLIC_BECH32_HRP => self.verify::<Ed25519>(&public_bytes),
             Ed25519Bip32::PUBLIC_BECH32_HRP => self.verify::<Ed25519Bip32>(&public_bytes),
@@ -354,19 +355,12 @@ impl Verify {
         A: SigningAlgorithm,
         <A as AsymmetricKey>::PubAlg: VerificationAlgorithm,
     {
-        let public = A::PubAlg::public_from_binary(public_bytes)?;
-        let (hrp, data) = read_bech32(&self.signature)?;
-        if hrp != A::PubAlg::SIGNATURE_BECH32_HRP {
-            return Err(Error::UnexpectedBech32SignHrp {
-                actual_hrp: hrp,
-                expected_hrp: A::PubAlg::SIGNATURE_BECH32_HRP.to_string(),
-            });
-        }
-        let sign_bytes = Vec::<u8>::from_base32(&data)?;
-        let sign = A::PubAlg::signature_from_bytes(&sign_bytes)?;
+        let public = <PublicKey<A::PubAlg>>::from_binary(public_bytes)?;
+        let raw_signature = io::read_line(&Some(self.signature))?;
+        let signature = <Signature<&[u8], A::PubAlg>>::try_from_bech32_str(&raw_signature)?;
         let mut data = Vec::new();
         io::open_file_read(&self.data)?.read_to_end(&mut data)?;
-        match A::PubAlg::verify_bytes(&public, &sign, &data) {
+        match signature.verify_slice(&public, &data) {
             Verification::Success => Ok(()),
             Verification::Failed => Err(Error::SignatureVerification),
         }?;
@@ -377,34 +371,33 @@ impl Verify {
 
 impl Derive {
     fn exec(self) -> Result<(), Error> {
-        let (phrp, pdata) = read_bech32(&self.parent_key)?;
-        let key_bytes = Vec::<u8>::from_base32(&pdata)?;
-        let hrp;
-        let child_key;
+        let (phrp, pdata, _variant) = read_bech32(&self.parent_key)?;
+        let key_bytes = Vec::<u8>::from_base32(&pdata).map_err(Bech32Error::from)?;
 
         match phrp.as_ref() {
             Ed25519Bip32::PUBLIC_BECH32_HRP => {
                 let key = Ed25519Bip32::public_from_binary(&key_bytes)?;
-                child_key = key.derive(DerivationScheme::V2, self.index)?.to_base32();
-                hrp = Ed25519Bip32::PUBLIC_BECH32_HRP;
+                self.write_key(<PublicKey<Ed25519Bip32>>::from_binary(
+                    key.derive(DerivationScheme::V2, self.index)?.as_ref(),
+                )?)
             }
             Ed25519Bip32::SECRET_BECH32_HRP => {
                 let key = Ed25519Bip32::secret_from_binary(&key_bytes)?;
-                child_key = key.derive(DerivationScheme::V2, self.index).to_base32();
-                hrp = Ed25519Bip32::SECRET_BECH32_HRP;
+                self.write_key(<PublicKey<Ed25519Bip32>>::from_binary(
+                    key.derive(DerivationScheme::V2, self.index).as_ref(),
+                )?)
             }
-            other => {
-                return Err(Error::UnexpectedBip32Bech32Hrp {
-                    actual_hrp: other.to_string(),
-                    public_hrp: Ed25519Bip32::PUBLIC_BECH32_HRP.to_string(),
-                    private_hrp: Ed25519Bip32::SECRET_BECH32_HRP.to_string(),
-                })
-            }
+            other => Err(Error::UnexpectedBip32Bech32Hrp {
+                actual_hrp: other.to_string(),
+                public_hrp: Ed25519Bip32::PUBLIC_BECH32_HRP.to_string(),
+                private_hrp: Ed25519Bip32::SECRET_BECH32_HRP.to_string(),
+            }),
         }
+    }
 
-        let child_key_bech32 = bech32::encode(hrp, child_key)?;
+    fn write_key<K: Bech32>(&self, key: K) -> Result<(), Error> {
         let mut output = self.child_key.open()?;
-        writeln!(output, "{}", child_key_bech32)?;
+        writeln!(output, "{}", key.to_bech32_str())?;
         Ok(())
     }
 }
@@ -415,28 +408,34 @@ fn read_hex<P: AsRef<Path>>(path: &Option<P>) -> Result<Vec<u8>, Error> {
 
 fn read_bech32<'a>(
     path: impl Into<Option<&'a PathBuf>>,
-) -> Result<(String, Vec<bech32::u5>), Error> {
+) -> Result<(String, Vec<bech32::u5>, bech32::Variant), Error> {
     let line = io::read_line(&path.into())?;
-    bech32::decode(&line).map_err(Into::into)
+    Ok(bech32::decode(&line).map_err(Bech32Error::from)?)
 }
 
-fn gen_priv_key<K: AsymmetricKey>(seed: Option<Seed>) -> Result<String, Error> {
+fn gen_priv_key<K>(seed: Option<Seed>) -> Result<String, Error>
+where
+    K: AsymmetricKey,
+    SecretKey<K>: Bech32,
+{
     let rng = if let Some(seed) = seed {
         ChaChaRng::from_seed(seed.0)
     } else {
         ChaChaRng::from_rng(OsRng)?
     };
-    let secret = K::generate(rng);
-    let hrp = K::SECRET_BECH32_HRP;
-    Ok(bech32::encode(hrp, secret.to_base32())?)
+    let secret = <SecretKey<K>>::generate(rng);
+    Ok(secret.to_bech32_str())
 }
 
-fn gen_pub_key<K: AsymmetricKey>(priv_key_bech32: &[u5]) -> Result<String, Error> {
-    let priv_key_bytes = Vec::<u8>::from_base32(priv_key_bech32)?;
-    let priv_key = K::secret_from_binary(&priv_key_bytes)?;
-    let pub_key = K::compute_public(&priv_key);
-    let hrp = <K::PubAlg as AsymmetricPublicKey>::PUBLIC_BECH32_HRP;
-    Ok(bech32::encode(hrp, pub_key.to_base32())?)
+fn gen_pub_key<K>(priv_key_bech32: &[u5]) -> Result<String, Error>
+where
+    K: AsymmetricKey,
+    PublicKey<K::PubAlg>: Bech32,
+{
+    let priv_key_bytes = Vec::<u8>::from_base32(priv_key_bech32).map_err(Bech32Error::from)?;
+    let priv_key = <SecretKey<K>>::from_binary(&priv_key_bytes)?;
+    let pub_key = priv_key.to_public();
+    Ok(pub_key.to_bech32_str())
 }
 
 fn bytes_to_priv_key<K>(bytes: &[u8]) -> Result<String, Error>
