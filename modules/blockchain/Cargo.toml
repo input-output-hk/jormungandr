@@ -5,7 +5,7 @@ authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
 edition = "2018"
 
 [dependencies]
-chain-impl-mockchain = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
-chain-time           = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size"}
+chain-impl-mockchain = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests" }
+chain-time           = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests"}
 thiserror = "1.0.26"
 lru       = "0.6.6"

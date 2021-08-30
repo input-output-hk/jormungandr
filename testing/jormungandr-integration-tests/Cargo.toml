@@ -12,12 +12,12 @@ tokio = { version = "1.4", features = ["macros", "time"] }
 futures      = "0.3.14"
 base64 = "0.13"
 hex = "0.4.2"
-chain-addr      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
-chain-core      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
-chain-crypto    = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
-chain-impl-mockchain = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
-chain-time      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
-chain-vote      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
+chain-addr      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests" }
+chain-core      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests" }
+chain-crypto    = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests" }
+chain-impl-mockchain = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests" }
+chain-time      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests" }
+chain-vote      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }

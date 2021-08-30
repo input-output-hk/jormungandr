@@ -11,11 +11,11 @@ default-run = "jormungandr-scenario-tests"
 custom_debug = "0.5"
 dialoguer = "0.8.0"
 assert_fs = "1.0"
-chain-core           = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
-chain-crypto         = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size", features = [ "property-test-api" ] }
-chain-addr           = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size", features = [ "property-test-api" ] }
-chain-impl-mockchain = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size", features = [ "property-test-api" ] }
-chain-time           = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
+chain-core           = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests" }
+chain-crypto         = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests", features = [ "property-test-api" ] }
+chain-addr           = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests", features = [ "property-test-api" ] }
+chain-time           = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "inc-tests" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
