@@ -10,9 +10,8 @@ use chain_impl_mockchain::{
 };
 use chain_vote::MemberPublicKey;
 
-use bech32::{FromBase32, ToBase32};
+use chain_crypto::bech32::Bech32;
 use serde::de::Visitor;
-use serde::ser::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use std::convert::TryInto;
@@ -70,8 +69,6 @@ impl From<VotePrivacy> for vote::PayloadType {
 
 struct SerdeMemberPublicKey(chain_vote::MemberPublicKey);
 
-pub const MEMBER_PUBLIC_KEY_BECH32_HRP: &str = "memberpk";
-
 impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
@@ -85,7 +82,7 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
                 write!(
                     formatter,
                     "a Bech32 representation of member public key with prefix {}",
-                    MEMBER_PUBLIC_KEY_BECH32_HRP
+                    MemberPublicKey::BECH32_HRP
                 )
             }
 
@@ -93,42 +90,21 @@ impl<'de> Deserialize<'de> for SerdeMemberPublicKey {
             where
                 E: serde::de::Error,
             {
-                self.visit_string(value.to_string())
+                Ok(SerdeMemberPublicKey(
+                    MemberPublicKey::try_from_bech32_str(value).map_err(|err| {
+                        serde::de::Error::custom(format!(
+                            "Invalid public key with bech32 representation {}, Error {}",
+                            &value, err
+                        ))
+                    })?,
+                ))
             }
 
             fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
             where
                 E: serde::de::Error,
             {
-                let (hrp, content) = bech32::decode(&v).map_err(|err| {
-                    serde::de::Error::custom(format!(
-                        "Invalid public key bech32 representation {}, with err: {}",
-                        &v, err
-                    ))
-                })?;
-
-                let content = Vec::<u8>::from_base32(&content).map_err(|e| {
-                    serde::de::Error::custom(format!(
-                        "Invalid public key bech32 representation {}, with err: {}",
-                        &v, e
-                    ))
-                })?;
-
-                if hrp != MEMBER_PUBLIC_KEY_BECH32_HRP {
-                    return Err(serde::de::Error::custom(format!(
-                        "Invalid public key bech32 public hrp {}, expecting {}",
-                        hrp, MEMBER_PUBLIC_KEY_BECH32_HRP,
-                    )));
-                }
-
-                Ok(SerdeMemberPublicKey(
-                    MemberPublicKey::from_bytes(&content).ok_or_else(|| {
-                        serde::de::Error::custom(format!(
-                            "Invalid public key with bech32 representation {}",
-                            &v
-                        ))
-                    })?,
-                ))
+                self.visit_str(&v)
             }
         }
 
@@ -165,10 +141,7 @@ impl Serialize for SerdeMemberPublicKey {
         S: Serializer,
     {
         if serializer.is_human_readable() {
-            serializer.serialize_str(
-                &bech32::encode(MEMBER_PUBLIC_KEY_BECH32_HRP, &self.0.to_bytes().to_base32())
-                    .map_err(|e| <S as Serializer>::Error::custom(format!("{}", e)))?,
-            )
+            serializer.serialize_str(&self.0.to_bech32_str())
         } else {
             serializer.serialize_bytes(&self.0.to_bytes())
         }
@@ -770,7 +743,6 @@ impl From<VotePlanStatus> for vote::VotePlanStatus {
 mod test {
     use super::*;
     use crate::interfaces::vote::{serde_committee_member_public_keys, SerdeMemberPublicKey};
-    use bech32::ToBase32;
     use chain_impl_mockchain::block::BlockDate;
     use chain_impl_mockchain::certificate;
     use rand_chacha::rand_core::SeedableRng;
@@ -784,7 +756,7 @@ mod test {
         let member_key =
             chain_vote::MemberState::new(&mut rng, 1, &crs, &[comm_key.to_public()], 0);
         let pk = member_key.public_key();
-        let pks = vec![bech32::encode("memberpk", pk.to_bytes().to_base32()).unwrap()];
+        let pks = vec![pk.to_bech32_str()];
         let json = serde_json::to_string(&pks).unwrap();
 
         let result: Vec<SerdeMemberPublicKey> = serde_json::from_str(&json).unwrap();
