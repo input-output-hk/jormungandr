@@ -109,7 +109,7 @@ impl Pool {
             return Err(FragmentRejectionReason::FragmentAlreadyInLog);
         }
 
-        if let Some(valid_until) = get_transaction_expiry_date(&fragment) {
+        if let Some(valid_until) = get_transaction_expiry_date(fragment) {
             use chain_impl_mockchain::ledger::check::{valid_transaction_date, TxValidityError};
             match valid_transaction_date(ledger_settings, valid_until, block_date) {
                 Ok(_) => {}
@@ -124,7 +124,7 @@ impl Pool {
             }
         }
 
-        if !is_fragment_valid(&fragment) {
+        if !is_fragment_valid(fragment) {
             tracing::debug!("fragment is invalid, not including to the pool");
             return Err(FragmentRejectionReason::FragmentInvalid);
         }
@@ -179,7 +179,8 @@ impl Pool {
                 .instrument(span)
                 .await
             {
-                Err(FragmentRejectionReason::FragmentInvalid) => {
+                Err(reason @ FragmentRejectionReason::FragmentInvalid) => {
+                    rejected.push(RejectedFragmentInfo { id, reason });
                     if fail_fast {
                         tracing::debug!("fail_fast is enabled; rejecting all downstream fragments");
                         break;
