@@ -69,8 +69,8 @@ pub enum Error {
     KeyNotFound { index: usize },
     #[error("Invalid input, expected Signed Certificate or just Certificate")]
     ExpectedSignedOrNotCertificate,
-    #[error("Invalid data")]
-    InvalidBech32(#[from] bech32::Error),
+    #[error("Invalid bech32 data")]
+    InvalidBech32(#[from] chain_crypto::bech32::Error),
     #[error("attempted to build delegation with zero weight")]
     PoolDelegationWithZeroWeight,
     #[error("pool delegation rates sum up to {actual}, maximum is 255")]
@@ -224,7 +224,7 @@ impl Certificate {
 
 fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certificate, Error> {
     let cert_str = read_input(input)?.trim_end().to_owned();
-    let (hrp, _) = bech32::decode(&cert_str)?;
+    let (hrp, _) = bech32::decode(&cert_str).map_err(chain_crypto::bech32::Error::from)?;
 
     match hrp.as_ref() {
         interfaces::SIGNED_CERTIFICATE_HRP => {

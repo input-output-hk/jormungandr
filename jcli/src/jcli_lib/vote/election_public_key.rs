@@ -1,5 +1,5 @@
 use crate::jcli_lib::vote::{Error, OutputFile};
-use bech32::{FromBase32, ToBase32};
+use chain_crypto::bech32::Bech32;
 use std::io::Write as _;
 use structopt::StructOpt;
 
@@ -8,7 +8,7 @@ use structopt::StructOpt;
 pub struct ElectionPublicKey {
     /// Keys of all committee members
     #[structopt(
-        parse(try_from_str = parse_member_key),
+        parse(try_from_str = chain_vote::committee::MemberPublicKey::try_from_bech32_str),
         required = true,
         short = "k",
         long = "keys"
@@ -25,29 +25,6 @@ impl ElectionPublicKey {
             chain_vote::ElectionPublicKey::from_participants(&self.member_keys);
 
         let mut output = self.output_file.open()?;
-        writeln!(
-            output,
-            "{}",
-            bech32::encode(
-                crate::jcli_lib::vote::bech32_constants::ENCRYPTING_VOTE_PK_HRP,
-                election_public_key.to_bytes().to_base32()
-            )
-            .map_err(Error::Bech32)?
-        )
-        .map_err(Error::from)
+        writeln!(output, "{}", election_public_key.to_bech32_str()).map_err(Error::from)
     }
-}
-
-fn parse_member_key(key: &str) -> Result<chain_vote::committee::MemberPublicKey, Error> {
-    bech32::decode(key)
-        .map_err(Error::from)
-        .and_then(|(hrp, raw_key)| {
-            if hrp != crate::jcli_lib::vote::bech32_constants::MEMBER_PK_HRP {
-                return Err(Error::InvalidPublicKey);
-            }
-            chain_vote::committee::MemberPublicKey::from_bytes(
-                &Vec::<u8>::from_base32(&raw_key).map_err(|_| Error::InvalidPublicKey)?,
-            )
-            .ok_or(Error::InvalidPublicKey)
-        })
 }
