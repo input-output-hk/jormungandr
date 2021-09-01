@@ -23,6 +23,7 @@ pub struct Blockchain {
     kes_update_speed: KesUpdateSpeed,
     block_content_max_size: BlockContentMaxSize,
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
+    tx_max_expiry_epochs: Option<u8>,
     linear_fee: LinearFee,
     discrimination: Discrimination,
 }
@@ -51,6 +52,7 @@ impl Blockchain {
             linear_fee: LinearFee::new(1, 1, 1),
             discrimination: Discrimination::Test,
             block_content_max_size: 102400.into(),
+            tx_max_expiry_epochs: None,
         }
     }
 
@@ -60,6 +62,14 @@ impl Blockchain {
 
     pub fn external_committees(&self) -> Vec<CommitteeIdDef> {
         self.external_committees.clone()
+    }
+
+    pub fn tx_max_expiry_epochs(&self) -> Option<u8> {
+        self.tx_max_expiry_epochs
+    }
+
+    pub fn set_tx_max_expiry_epochs(&mut self, tx_max_expiry_epochs: Option<u8>) {
+        self.tx_max_expiry_epochs = tx_max_expiry_epochs;
     }
 
     pub fn set_external_committees(&mut self, external_committees: Vec<CommitteeIdDef>) {
