@@ -1,5 +1,6 @@
 use crate::{
     blockcfg::{ApplyBlockLedger, LedgerParameters},
+    blockchain::Tip,
     fragment::{
         selection::{FragmentSelectionAlgorithm, FragmentSelectionAlgorithmParams, OldestFirst},
         Fragment, FragmentId, Logs,
@@ -37,7 +38,7 @@ pub struct Pools {
     pools: Vec<internal::Pool>,
     network_msg_box: MessageBox<NetworkMsg>,
     persistent_log: Option<BufWriter<File>>,
-    last_block_date: BlockDate,
+    tip: Tip,
 }
 
 #[derive(Debug, Error)]
@@ -53,6 +54,7 @@ impl Pools {
         logs: Logs,
         network_msg_box: MessageBox<NetworkMsg>,
         persistent_log: Option<File>,
+        tip: Tip,
     ) -> Self {
         // we need a pool even for passive nodes to be able to participate in
         // the fragments dissemination protocol
@@ -66,7 +68,7 @@ impl Pools {
             network_msg_box,
             persistent_log: persistent_log
                 .map(|file| BufWriter::with_capacity(DEFAULT_BUF_SIZE, file)),
-            last_block_date: BlockDate::first(),
+            tip,
         }
     }
 
@@ -110,6 +112,8 @@ impl Pools {
 
         let mut fragments = fragments.into_iter();
 
+        let block_date = self.get_current_block_date().await;
+
         for fragment in fragments.by_ref() {
             let id = fragment.id();
 
@@ -125,7 +129,7 @@ impl Pools {
                 continue;
             }
 
-            if check_fragment_expired(&fragment, self.last_block_date) {
+            if check_fragment_expired(&fragment, block_date) {
                 rejected.push(RejectedFragmentInfo {
                     id,
                     reason: FragmentRejectionReason::FragmentExpired,
@@ -286,11 +290,9 @@ impl Pools {
         self.logs.remove_logs_after_date(branch_date)
     }
 
-    pub fn remove_expired_txs(&mut self, block_date: BlockDate) {
-        if self.last_block_date < block_date {
-            self.last_block_date = block_date;
-        }
+    pub async fn remove_expired_txs(&mut self) {
         let mut fragment_ids = HashSet::new();
+        let block_date = self.get_current_block_date().await;
         for pool in &mut self.pools {
             let fragment_ids_update = pool.remove_expired_txs(block_date);
             for id in fragment_ids_update {
@@ -304,6 +306,22 @@ impl Pools {
             },
             block_date.into(),
         );
+    }
+
+    async fn get_current_block_date(&self) -> BlockDate {
+        let time = std::time::SystemTime::now();
+        let tip = self.tip.get_ref().await;
+        let era = tip.epoch_leadership_schedule().era();
+        let epoch_position = tip
+            .time_frame()
+            .slot_at(&time)
+            .and_then(|slot| era.from_slot_to_era(slot))
+            .expect("the current time and blockchain state should produce a valid blockchain date");
+        let block_date: BlockDate = epoch_position.into();
+        BlockDate {
+            slot_id: block_date.slot_id + 1,
+            ..block_date
+        }
     }
 }
 
@@ -486,6 +504,7 @@ pub(super) mod internal {
     }
 
     unsafe impl<K: Send, V: Send> Send for IndexedDeqeue<K, V> {}
+    unsafe impl<K: Sync, V: Sync> Sync for IndexedDeqeue<K, V> {}
 
     impl<K: PartialEq> PartialEq for IndexedDequeueKeyRef<K> {
         fn eq(&self, other: &IndexedDequeueKeyRef<K>) -> bool {
@@ -704,25 +723,5 @@ pub(super) mod internal {
 
             assert_eq!(pool.entries.len(), 0, "Expired fragment should be removed");
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn correct_pools_number() {
-        let (fake_msgbox, _) = crate::async_msg::channel(1);
-        // a passive node still has 1 pool
-        let pools = Pools::new(0, 0, Logs::new(1), fake_msgbox.clone(), None);
-        assert_eq!(pools.pools.len(), 1);
-
-        // a leader node should have as many pools as leaders
-        let pools = Pools::new(0, 1, Logs::new(1), fake_msgbox.clone(), None);
-        assert_eq!(pools.pools.len(), 1);
-
-        let pools = Pools::new(0, 5, Logs::new(1), fake_msgbox, None);
-        assert_eq!(pools.pools.len(), 5);
     }
 }
