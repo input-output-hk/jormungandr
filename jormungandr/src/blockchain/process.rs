@@ -283,11 +283,7 @@ fn try_request_fragment_removal(
         date: date.into(),
         block: hash,
     };
-    tx_msg_box.try_send(TransactionMsg::RemoveTransactions(
-        fragment_ids,
-        status,
-        date,
-    ))
+    tx_msg_box.try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))
 }
 
 /// this function will re-process the tip against the different branches

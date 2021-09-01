@@ -1,4 +1,5 @@
 use crate::{
+    blockchain::Tip,
     fragment::{Logs, Pools},
     intercom::{NetworkMsg, TransactionMsg},
     metrics::{Metrics, MetricsBackend},
@@ -54,6 +55,7 @@ impl Process {
         stats_counter: Metrics,
         mut input: MessageQueue<TransactionMsg>,
         persistent_log_dir: Option<P>,
+        tip: Tip,
     ) -> Result<(), Error> {
         async fn hourly_wakeup(enabled: bool) {
             if enabled {
@@ -109,6 +111,7 @@ impl Process {
                 logs,
                 self.network_msg_box,
                 persistent_log,
+                tip,
             );
 
             loop {
@@ -139,14 +142,14 @@ impl Process {
 
                         reply_handle.reply_ok(summary);
                                 }
-                                TransactionMsg::RemoveTransactions(fragment_ids, status, block_date) => {
+                                TransactionMsg::RemoveTransactions(fragment_ids, status) => {
                                     tracing::debug!(
                                         "removing fragments added to block {:?}: {:?}",
                                         status,
                                         fragment_ids
                                     );
                                     pool.remove_added_to_block(fragment_ids, status);
-                                    pool.remove_expired_txs(block_date);
+                                    pool.remove_expired_txs().await;
                                 }
                                 TransactionMsg::GetLogs(reply_handle) => {
                                     let logs = pool.logs().logs().cloned().collect();
