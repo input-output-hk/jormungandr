@@ -112,7 +112,8 @@ impl Pools {
 
         let mut fragments = fragments.into_iter();
 
-        let block_date = self.get_current_block_date().await;
+        let (block_date, max_expiry_epochs) =
+            self.get_current_block_date_and_max_expiry_epochs().await;
 
         for fragment in fragments.by_ref() {
             let id = fragment.id();
@@ -129,13 +130,26 @@ impl Pools {
                 continue;
             }
 
-            if check_fragment_expired(&fragment, block_date) {
-                rejected.push(RejectedFragmentInfo {
-                    id,
-                    reason: FragmentRejectionReason::FragmentExpired,
-                });
-                tracing::debug!("fragment is expired at the time of receiving");
-                continue;
+            // TODO expose `valid_transaction_date` from `chain-impl-mockchain` and just convert to
+            // appropriate error types here to ensure consistency throughout the code base.
+            if let Some(valid_until) = get_transaction_expiry_date(&fragment) {
+                if valid_until < block_date {
+                    rejected.push(RejectedFragmentInfo {
+                        id,
+                        reason: FragmentRejectionReason::FragmentExpired,
+                    });
+                    tracing::debug!("fragment is expired at the time of receiving");
+                    continue;
+                }
+
+                if valid_until.epoch - block_date.epoch > max_expiry_epochs as u32 {
+                    rejected.push(RejectedFragmentInfo {
+                        id,
+                        reason: FragmentRejectionReason::FragmentValidForTooLong,
+                    });
+                    tracing::debug!("fragment is valid for too long");
+                    continue;
+                }
             }
 
             if !is_fragment_valid(&fragment) {
@@ -292,7 +306,8 @@ impl Pools {
 
     pub async fn remove_expired_txs(&mut self) {
         let mut fragment_ids = HashSet::new();
-        let block_date = self.get_current_block_date().await;
+        let (block_date, _max_expiry_epochs) =
+            self.get_current_block_date_and_max_expiry_epochs().await;
         for pool in &mut self.pools {
             let fragment_ids_update = pool.remove_expired_txs(block_date);
             for id in fragment_ids_update {
@@ -308,20 +323,22 @@ impl Pools {
         );
     }
 
-    async fn get_current_block_date(&self) -> BlockDate {
+    async fn get_current_block_date_and_max_expiry_epochs(&self) -> (BlockDate, u8) {
         let time = std::time::SystemTime::now();
         let tip = self.tip.get_ref().await;
         let era = tip.epoch_leadership_schedule().era();
+        let max_expiry_epochs = tip.ledger().settings().transaction_max_expiry_epochs;
         let epoch_position = tip
             .time_frame()
             .slot_at(&time)
             .and_then(|slot| era.from_slot_to_era(slot))
             .expect("the current time and blockchain state should produce a valid blockchain date");
         let block_date: BlockDate = epoch_position.into();
-        BlockDate {
+        let block_date = BlockDate {
             slot_id: block_date.slot_id + 1,
             ..block_date
-        }
+        };
+        (block_date, max_expiry_epochs)
     }
 }
 
@@ -367,14 +384,6 @@ fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
         Fragment::VoteCast(tx) => Some(tx.as_slice().valid_until()),
         Fragment::VoteTally(tx) => Some(tx.as_slice().valid_until()),
         Fragment::EncryptedVoteTally(tx) => Some(tx.as_slice().valid_until()),
-    }
-}
-
-fn check_fragment_expired(fragment: &Fragment, block_date: BlockDate) -> bool {
-    if let Some(valid_until) = get_transaction_expiry_date(fragment) {
-        valid_until < block_date
-    } else {
-        false
     }
 }
 
