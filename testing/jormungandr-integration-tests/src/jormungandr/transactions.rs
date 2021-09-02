@@ -212,5 +212,5 @@ fn transactions_with_long_time_to_live_rejected() {
 
     jcli.fragment_sender(&jormungandr)
         .send(&expired_transaction)
-        .assert_rejected("Transaction validity is too far in the future");
+        .assert_rejected_summary();
 }
