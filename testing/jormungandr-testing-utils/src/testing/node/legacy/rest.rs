@@ -7,7 +7,9 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_lib::interfaces::{Address, FragmentStatus, VotePlanId};
+use jormungandr_lib::interfaces::{
+    Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
+};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
 use reqwest::blocking::Response;
 use std::collections::HashMap;
@@ -199,21 +201,22 @@ impl BackwardCompatibleRest {
         &self,
         fragments: Vec<Fragment>,
         fail_fast: bool,
-    ) -> Result<Vec<MemPoolCheck>, RestError> {
+    ) -> Result<FragmentsProcessingSummary, RestError> {
         let checks: Vec<MemPoolCheck> = fragments
             .iter()
             .map(|x| MemPoolCheck::new(x.id()))
             .collect();
         let response = self.raw.send_fragment_batch(fragments, fail_fast)?;
         self.print_debug_response(&response);
-        if response.status() != reqwest::StatusCode::OK {
-            return Err(RestError::NonSuccessErrorCode {
+        if response.status() == reqwest::StatusCode::OK {
+            Ok(serde_json::from_str(&response.text()?)?)
+        } else {
+            Err(RestError::NonSuccessErrorCode {
                 status: response.status(),
                 response: response.text().unwrap(),
                 checks,
-            });
+            })
         }
-        Ok(checks)
     }
 
     pub fn vote_plan_statuses(&self) -> Result<String, reqwest::Error> {

@@ -9,7 +9,7 @@ use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{fragment::Fragment, fragment::FragmentId};
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{BlockDate, FragmentLog, NodeConfig},
+    interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary, NodeConfig},
 };
 use std::process::Child;
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
@@ -129,7 +129,7 @@ impl FragmentNode for RemoteJormungandr {
         &self,
         fragments: Vec<Fragment>,
         fail_fast: bool,
-    ) -> Result<Vec<MemPoolCheck>, FragmentNodeError> {
+    ) -> Result<FragmentsProcessingSummary, FragmentNodeError> {
         self.rest()
             .send_fragment_batch(fragments.clone(), fail_fast)
             .map_err(|e| FragmentNodeError::CannotSendFragmentBatch {

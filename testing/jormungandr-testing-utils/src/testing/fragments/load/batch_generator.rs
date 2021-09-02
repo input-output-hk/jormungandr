@@ -122,10 +122,11 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
         let start = Instant::now();
         self.fragment_sender
             .send_batch_fragments(transactions, false, &self.jormungandr)
-            .map(|checks| Request {
-                ids: checks
+            .map(|summary| Request {
+                ids: summary
+                    .fragment_ids()
                     .iter()
-                    .map(|x| Some(x.fragment_id().to_string()))
+                    .map(|x| Some(x.to_string()))
                     .collect(),
                 duration: start.elapsed(),
             })

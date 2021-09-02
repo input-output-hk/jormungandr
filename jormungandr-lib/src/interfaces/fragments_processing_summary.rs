@@ -54,6 +54,15 @@ impl FragmentsProcessingSummary {
     pub fn is_error(&self) -> bool {
         self.rejected.iter().any(|info| info.reason.is_error())
     }
+
+    pub fn fragment_ids(&self) -> Vec<FragmentId> {
+        self.rejected
+            .iter()
+            .map(|info| &info.id)
+            .chain(self.accepted.iter())
+            .cloned()
+            .collect()
+    }
 }
 
 #[cfg(test)]

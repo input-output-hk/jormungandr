@@ -173,7 +173,7 @@ impl FragmentLogVerifier {
 pub fn assert_accepted_rejected(
     accepted: Vec<FragmentId>,
     rejected: Vec<(FragmentId, FragmentRejectionReason)>,
-    result: Result<Vec<MemPoolCheck>, RestError>,
+    result: Result<FragmentsProcessingSummary, RestError>,
 ) -> Vec<MemPoolCheck> {
     match result.err().unwrap() {
         RestError::NonSuccessErrorCode {
@@ -201,7 +201,9 @@ pub fn assert_accepted_rejected(
     }
 }
 
-pub fn assert_bad_request(result: Result<Vec<MemPoolCheck>, RestError>) -> Vec<MemPoolCheck> {
+pub fn assert_bad_request(
+    result: Result<FragmentsProcessingSummary, RestError>,
+) -> Vec<MemPoolCheck> {
     match result.err().unwrap() {
         RestError::NonSuccessErrorCode { status, checks, .. } => {
             assert_eq!(status, reqwest::StatusCode::BAD_REQUEST);

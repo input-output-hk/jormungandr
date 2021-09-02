@@ -435,7 +435,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         )
         .unwrap();
 
-    let mempools = fragment_sender
+    let summary = fragment_sender
         .send_batch_fragments(
             vec![first_transaction, second_transaction],
             false,
@@ -446,7 +446,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
     // Wait until the fragment enters the mempool
     FragmentVerifier::wait_fragment(
         Duration::from_millis(100),
-        mempools[1].clone(),
+        summary.fragment_ids()[0].into(),
         VerifyExitStrategy::OnPending,
         &jormungandr,
     )
