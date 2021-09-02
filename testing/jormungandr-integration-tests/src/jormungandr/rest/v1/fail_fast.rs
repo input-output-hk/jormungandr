@@ -188,29 +188,22 @@ pub fn fail_fast_on_first_late_invalid(
     ),
 ) {
     let (jormungandr, valid_fragment_1, valid_fragment_2, _, _, late_invalid_fragment) = world;
+
+    let fragments = vec![late_invalid_fragment, valid_fragment_1, valid_fragment_2];
+
     let transaction_sender = jormungandr.fragment_sender(FragmentSenderSetup::resend_3_times());
-    let summary = transaction_sender
-        .send_batch_fragments(
-            vec![late_invalid_fragment, valid_fragment_1, valid_fragment_2],
-            true,
-            &jormungandr,
-        )
+    transaction_sender
+        .send_batch_fragments(fragments.clone(), true, &jormungandr)
         .unwrap();
 
     FragmentVerifier::wait_for_all_fragments(Duration::from_secs(5), &jormungandr).unwrap();
 
-    let tx_ids: Vec<MemPoolCheck> = summary
-        .fragment_ids()
-        .into_iter()
-        .map(MemPoolCheck::from)
-        .collect();
-
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
-        .assert_valid(&tx_ids[0])
-        .assert_valid(&tx_ids[1])
-        .assert_invalid(&tx_ids[2]);
+        .assert_invalid(&fragments[0].hash().into())
+        .assert_valid(&fragments[1].hash().into())
+        .assert_valid(&fragments[2].hash().into());
 }
 
 #[rstest]
