@@ -1,12 +1,11 @@
 use super::Error;
 use crate::jcli_lib::utils::io;
 use crate::jcli_lib::utils::vote::{self, MemberVotePlanShares, VotePlanDecryptShares};
-use bech32::FromBase32;
+use chain_crypto::bech32::Bech32;
 use chain_vote::tally::{EncryptedTally, OpeningVoteKey};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
 use std::convert::TryFrom;
-use std::path::Path;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -25,7 +24,7 @@ pub struct TallyGenerateVotePlanDecryptionShares {
     /// Can be left unspecified if there is only one vote plan in the input
     #[structopt(long)]
     vote_plan_id: Option<Hash>,
-    /// The path to hex-encoded decryption key.
+    /// The path to bech32-encoded decryption key.
     #[structopt(long)]
     key: PathBuf,
 }
@@ -42,26 +41,12 @@ pub struct MergeShares {
     shares: Vec<PathBuf>,
 }
 
-fn read_decryption_key<P: AsRef<Path>>(path: &Option<P>) -> Result<OpeningVoteKey, Error> {
-    let data = io::read_line(path)?;
-    bech32::decode(&data)
-        .map_err(Error::from)
-        .and_then(|(hrp, raw_key)| {
-            if hrp != crate::jcli_lib::vote::bech32_constants::MEMBER_SK_HRP {
-                return Err(Error::InvalidSecretKey);
-            }
-            OpeningVoteKey::from_bytes(
-                &Vec::<u8>::from_base32(&raw_key).map_err(|_| Error::DecryptionKeyRead)?,
-            )
-            .ok_or(Error::DecryptionKeyRead)
-        })
-}
-
 impl TallyGenerateVotePlanDecryptionShares {
     pub fn exec(&self) -> Result<(), Error> {
         let vote_plan =
             vote::get_vote_plan_by_id(self.vote_plan.as_ref(), self.vote_plan_id.as_ref())?;
-        let decryption_key = read_decryption_key(&Some(&self.key))?;
+        let line = io::read_line(&Some(&self.key))?;
+        let decryption_key = OpeningVoteKey::try_from_bech32_str(&line)?;
 
         let shares = vote_plan
             .proposals
