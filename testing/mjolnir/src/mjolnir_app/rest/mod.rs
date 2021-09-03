@@ -56,6 +56,7 @@ impl RestLoadCommand {
             self.count,
             std::time::Duration::from_secs(self.duration),
             self.pace,
+            Some(250),
             self.build_monitor(),
             0,
             1,

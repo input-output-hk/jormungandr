@@ -94,6 +94,7 @@ impl AdversaryAll {
             self.count,
             std::time::Duration::from_secs(self.duration),
             self.pace,
+            Some(250),
             build_monitor(&self.progress_bar_mode),
             30,
             1,

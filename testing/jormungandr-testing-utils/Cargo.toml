@@ -53,7 +53,7 @@ graphql_client = "0.10.0"
 semver = "1.0"
 json = "0.12.4"
 symmetric-cipher = { git = "https://github.com/input-output-hk/chain-wallet-libs.git", branch = "catalyst-fund6" }
-qrcodegen = "1.6"
+qrcodegen = "<=1.6.0"
 quircs = "0.10.0"
 image = "0.23.12"
 strum = { version = "0.21", features = ["derive"] }

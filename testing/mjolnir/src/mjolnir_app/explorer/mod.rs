@@ -56,6 +56,7 @@ impl ExplorerLoadCommand {
             self.count,
             std::time::Duration::from_secs(self.duration),
             self.pace,
+            None,
             self.build_monitor(),
             0,
             1,
