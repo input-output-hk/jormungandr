@@ -396,7 +396,7 @@ pub fn node_should_pickup_log_after_restart() {
 #[test]
 /// Verifies that a leader node will reject a fragment that has expired, even after it's been
 /// accepted in its mempool.
-pub fn expired_fragment_should_be_rejected_by_leader_node() {
+pub fn expired_fragment_should_be_rejected_by_leader_praos_node() {
     const N_FRAGMENTS: u32 = 10;
 
     let receiver = startup::create_new_account_address();
@@ -443,15 +443,14 @@ pub fn expired_fragment_should_be_rejected_by_leader_node() {
 #[test]
 /// Verifies that a passive node will reject a fragment that has expired, even after it's been
 /// accepted in its mempool.
-fn expired_fragment_should_be_rejected_by_passive_node() {
+fn expired_fragment_should_be_rejected_by_passive_bft_node() {
     const N_FRAGMENTS: u32 = 10;
 
     let receiver = startup::create_new_account_address();
     let mut sender = startup::create_new_account_address();
 
-    let (leader, _) = startup::start_stake_pool(
-        &[sender.clone()],
-        &[receiver.clone()],
+    let leader = startup::start_bft(
+        vec![&receiver, &sender],
         ConfigurationBuilder::new()
             .with_block_content_max_size(256) // This should only fit 1 transaction
             .with_slots_per_epoch(N_FRAGMENTS)
