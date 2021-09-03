@@ -1,5 +1,6 @@
 mod benchmark;
 pub mod configuration;
+pub mod explorer;
 pub mod grpc;
 mod legacy;
 mod logger;
@@ -7,7 +8,6 @@ mod rest;
 pub mod time;
 mod verifier;
 
-pub mod explorer;
 pub use benchmark::*;
 pub use explorer::{Explorer, ExplorerError};
 pub use legacy::{download_last_n_releases, get_jormungandr_bin, version_0_8_19, Version};

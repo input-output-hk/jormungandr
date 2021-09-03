@@ -52,7 +52,7 @@ pub struct VotesOnly {
     #[structopt(long = "spending-counter", short = "s")]
     faucet_spending_counter: u32,
 
-    #[structopt(long = "block-path", short = "b")]
+    #[structopt(long = "block-path", long = "block")]
     block0_path: String,
 }
 
