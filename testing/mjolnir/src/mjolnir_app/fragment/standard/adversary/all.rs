@@ -51,6 +51,10 @@ pub struct AllAdversary {
 
     #[structopt(long = "spending-counter", short = "s")]
     faucet_spending_counter: u32,
+
+    /// Transaction validity deadline (inclusive)
+    #[structopt(long, short, default_value = "1.0")]
+    valid_until: BlockDate,
 }
 
 impl AllAdversary {
@@ -72,14 +76,14 @@ impl AllAdversary {
         let transaction_sender = FragmentSender::new(
             block0_hash,
             fees,
-            BlockDate::first().next_epoch(),
+            self.valid_until,
             FragmentSenderSetup::no_verify(),
         );
 
         let adversary_transaction_sender = AdversaryFragmentSender::new(
             block0_hash,
             fees,
-            BlockDate::first().next_epoch(),
+            self.valid_until,
             AdversaryFragmentSenderSetup::no_verify(),
         );
 

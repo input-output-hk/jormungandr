@@ -59,6 +59,10 @@ pub struct AllFragments {
     /// load test rump up period
     #[structopt(long = "rump-up")]
     rump_up: u32,
+
+    /// Transaction validity deadline (inclusive)
+    #[structopt(long, short, default_value = "1.0")]
+    valid_until: BlockDate,
 }
 
 impl AllFragments {
@@ -80,7 +84,10 @@ impl AllFragments {
         let fragment_sender = FragmentSender::new(
             block0_hash,
             fees,
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            chain_impl_mockchain::block::BlockDate {
+                epoch: self.valid_until.epoch(),
+                slot_id: self.valid_until.slot(),
+            },
             FragmentSenderSetup::no_verify(),
         );
 

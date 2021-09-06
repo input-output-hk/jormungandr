@@ -49,6 +49,10 @@ pub struct TxOnly {
 
     #[structopt(long = "spending-counter", short = "s")]
     faucet_spending_counter: u32,
+
+    /// Transaction validity deadline (inclusive)
+    #[structopt(long, short, default_value = "1.0")]
+    valid_until: BlockDate,
 }
 
 impl TxOnly {
@@ -69,7 +73,7 @@ impl TxOnly {
             remote_jormungandr,
             block0_hash,
             fees,
-            BlockDate::first().next_epoch(),
+            self.valid_until,
             10,
         );
         request_gen.fill_from_faucet(&mut faucet);

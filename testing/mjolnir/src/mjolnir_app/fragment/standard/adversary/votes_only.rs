@@ -54,6 +54,10 @@ pub struct VotesOnly {
 
     #[structopt(long = "block-path", long = "block")]
     block0_path: String,
+
+    /// Transaction validity deadline (inclusive)
+    #[structopt(long, short, default_value = "1.0")]
+    valid_until: BlockDate,
 }
 
 impl VotesOnly {
@@ -78,12 +82,12 @@ impl VotesOnly {
         let transaction_sender = FragmentSender::new(
             block0_hash,
             fees,
-            BlockDate::first().next_epoch(),
+            self.valid_until,
             FragmentSenderSetup::no_verify(),
         );
 
         let generator = AdversaryVoteCastsGenerator::new(
-            BlockDate::first().next_epoch(),
+            self.valid_until,
             faucet,
             vote_plans,
             remote_jormungandr.clone_with_rest(),
