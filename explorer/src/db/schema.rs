@@ -55,27 +55,6 @@ pub enum Root {
     States,
 }
 
-#[derive(Debug, Clone, AsBytes, FromBytes, PartialEq, Eq)]
-#[repr(C)]
-pub struct BranchHead {
-    chain_length: B32,
-    id: BlockId,
-}
-
-impl PartialOrd for BranchHead {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        other.chain_length.partial_cmp(&self.chain_length)
-    }
-}
-
-impl Ord for BranchHead {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        (other.chain_length, &other.id).cmp(&(self.chain_length, &self.id))
-    }
-}
-
-direct_repr!(BranchHead);
-
 pub type TransactionsInputs = Db<Pair<FragmentId, u8>, TransactionInput>;
 pub type TransactionsOutputs = Db<Pair<FragmentId, u8>, TransactionOutput>;
 pub type TransactionsCertificate = UDb<FragmentId, TransactionCertificate>;
@@ -92,6 +71,28 @@ pub type TipsCursor = btree::Cursor<u8, BranchHead, P<u8, BranchHead>>;
 
 // multiverse
 pub type States = Db<BlockId, SerializedStateRef>;
+
+#[derive(Debug, Clone, AsBytes, FromBytes, PartialEq, Eq)]
+#[repr(C)]
+pub struct BranchHead {
+    chain_length: B32,
+    id: BlockId,
+}
+
+impl PartialOrd for BranchHead {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        // NOTE: the order is reversed, so branches are stored in descending order
+        other.chain_length.partial_cmp(&self.chain_length)
+    }
+}
+
+impl Ord for BranchHead {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (other.chain_length, &other.id).cmp(&(self.chain_length, &self.id))
+    }
+}
+
+direct_repr!(BranchHead);
 
 #[derive(Debug, AsBytes, FromBytes)]
 #[repr(C)]
@@ -290,14 +291,17 @@ impl MutTxn<()> {
         Ok(())
     }
 
-    pub fn set_tip(&mut self, id: BlockId) -> Result<bool, ExplorerError> {
-        let block_meta = btree::get(&self.txn, &self.blocks, &id, None)?.filter(|(k, _)| *k == &id);
+    /// this sets `BlockId` as the tip, overriding the current one, BUT apply_block will still
+    /// change the tip anyway if the chain_length increases, this is mostly to simplify garbage
+    /// collection during bootstrap.
+    pub fn set_tip(&mut self, id: &BlockId) -> Result<bool, ExplorerError> {
+        let block_meta = btree::get(&self.txn, &self.blocks, id, None)?.filter(|(k, _)| *k == id);
 
         if let Some(block_meta) = block_meta.map(|(_, meta)| meta.clone()) {
             assert!(btree::del(&mut self.txn, &mut self.tips, &0, None)?);
 
             let new_tip = BranchHead {
-                id,
+                id: id.clone(),
                 chain_length: block_meta.chain_length.0,
             };
 
@@ -316,11 +320,13 @@ impl MutTxn<()> {
     fn gc_stable_states(&mut self, tip_chain_length: u32) -> Result<(), ExplorerError> {
         let mut stability: Stability =
             unsafe { std::mem::transmute(self.txn.root(Root::Stability as usize).unwrap()) };
+
         if let Some(new_stable_chain_length) =
             tip_chain_length.checked_sub(stability.epoch_stability_depth.get())
         {
             stability.last_stable_block = ChainLength::new(new_stable_chain_length);
         }
+
         if let Some(collect_at) = stability.last_stable_block.get().checked_sub(1) {
             let mut states_to_gc = vec![];
 
@@ -344,6 +350,18 @@ impl MutTxn<()> {
                 states_to_gc.push((block_id.clone(), states.unwrap()));
             }
 
+            let state = self.state_at_tip()?;
+
+            let confirmed_block_id = btree::get(
+                &self.txn,
+                &state.blocks,
+                &ChainLength::new(collect_at),
+                None,
+            )?
+            .unwrap()
+            .1
+            .clone();
+
             for (block_id, state) in states_to_gc.drain(..) {
                 // this is safe because after dropping we are inmediately deleting the state from
                 // `self.states`.
@@ -351,28 +369,109 @@ impl MutTxn<()> {
                     state.drop(&mut self.txn)?;
                     btree::del(&mut self.txn, &mut self.states, &block_id, None)?;
                 }
-                btree::del(
-                    &mut self.txn,
-                    &mut self.chain_lengths,
-                    &ChainLength::new(collect_at),
-                    Some(&block_id),
-                )?;
 
-                // TODO: there is more gc to do here.  We need to remove the transactions in the
-                // block we are removing from the global indices, but only if the block is not
-                // included in the main-branch (e.g. is not confirmed).
-                //
-                // We can get the block, ask if it's confirmed.
-                // If it isn't, for each fragment, ask if it is present in any other block, and if it isn't, delete it.
-                //
-                // This is not top priority because that data will only be reachable by id. So it
-                // could be done by a separate task in intervals maybe.
+                // this means the block was part of a fork that didn't survive
+                if block_id != confirmed_block_id {
+                    btree::del(&mut self.txn, &mut self.blocks, &block_id, None)?;
+
+                    btree::del(
+                        &mut self.txn,
+                        &mut self.chain_lengths,
+                        &ChainLength::new(collect_at),
+                        Some(&block_id),
+                    )?;
+
+                    let mut fragment_cursor =
+                        btree::Cursor::new(&self.txn, &self.block_transactions)?;
+
+                    fragment_cursor.set(&self.txn, &block_id, None)?;
+
+                    // using *loop* instead of the iterator to avoid holding a borrow to the txn
+                    // (so we can delete things inside the loop)
+                    loop {
+                        let fragment_id = match fragment_cursor.next(&self.txn)? {
+                            Some((block, fragment_entry)) if block == &block_id => {
+                                fragment_entry.b.clone()
+                            }
+                            _ => break,
+                        };
+
+                        btree::del(
+                            &mut self.txn,
+                            &mut self.transaction_blocks,
+                            &fragment_id,
+                            Some(&block_id),
+                        )?;
+
+                        self.gc_fragment(fragment_id)?;
+                    }
+                }
             }
         }
         unsafe {
             self.txn
                 .set_root(Root::Stability as usize, std::mem::transmute(stability))
         };
+        Ok(())
+    }
+
+    fn state_at_tip(&mut self) -> Result<StateRef, ExplorerError> {
+        let tip = btree::get(&self.txn, &self.tips, &0, None)?.unwrap();
+        let state = btree::get(&self.txn, &self.states, &tip.1.id, None)?;
+        let state = match state {
+            Some((s, state)) if &tip.1.id == s => StateRef::from(state.clone()),
+            _ => panic!("tip is not in the states"),
+        };
+        Ok(state)
+    }
+
+    /// Important: this won't remove the fragment is there are still blocks referencing it in the
+    /// index.
+    fn gc_fragment(&mut self, fragment_id: StorableHash) -> Result<(), ExplorerError> {
+        // make sure that no alive block is referencing this fragment
+        let should_delete =
+            btree::get(&self.txn, &self.transaction_blocks, &fragment_id, None)?.is_none();
+
+        if should_delete {
+            let mut input_counter = 0u8;
+
+            while btree::del(
+                &mut self.txn,
+                &mut self.transaction_inputs,
+                &Pair {
+                    a: fragment_id.clone(),
+                    b: input_counter,
+                },
+                None,
+            )? {
+                input_counter += 1
+            }
+
+            let mut output_counter = 0u8;
+
+            while btree::del(
+                &mut self.txn,
+                &mut self.transaction_outputs,
+                &Pair {
+                    a: fragment_id.clone(),
+                    b: output_counter,
+                },
+                None,
+            )? {
+                output_counter += 1
+            }
+
+            btree::del(
+                &mut self.txn,
+                &mut self.transaction_certificates,
+                &fragment_id,
+                None,
+            )?;
+
+            // TODO: technically we need to collect VotePlans too...  the problem with that is that
+            // with the current indexes there is no way of knowing if they are included in other
+            // fragment, so it is not safe to remove them.
+        }
         Ok(())
     }
 
@@ -542,7 +641,6 @@ impl MutTxn<()> {
                             TransactionCertificate::from_public_vote_cast(vote_cast)
                         }
 
-                        // private vote not supported yet
                         chain_impl_mockchain::vote::Payload::Private {
                             encrypted_vote: _,
                             proof: _,
@@ -636,7 +734,7 @@ impl MutTxn<()> {
 
         // is important that we put outputs first, because utxo's can refer to inputs in the same
         // transaction, so those need to be already indexed. Although it would be technically
-        // faster to just look for them in the serialized transaction, that's increases complexity
+        // faster to just look for them in the serialized transaction, that increases complexity
         // for something that is not really that likely. Besides, the pages should be in the system
         // cache because we recently inserted them.
         for (idx, output) in etx.outputs().iter().enumerate() {
@@ -707,6 +805,16 @@ impl MutTxn<()> {
         debug!(?key);
 
         btree::put(&mut self.txn, &mut self.tips, &1, &key)?;
+
+        let current_tip = {
+            let mut cursor = btree::Cursor::new(&self.txn, &self.tips)?;
+
+            cursor.next(&self.txn)?.unwrap().1.chain_length.get()
+        };
+
+        if chain_length.get() > current_tip {
+            self.set_tip(block_id)?;
+        }
 
         Ok(())
     }
