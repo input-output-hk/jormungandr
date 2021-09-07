@@ -99,6 +99,33 @@ impl NeedsBootstrap {
     }
 }
 
+pub struct Batch {
+    txn: schema::MutTxn<()>,
+}
+
+impl Batch {
+    /// Try to add a new block to the indexes, this can fail if the parent of the block is not
+    /// processed. This doesn't perform any validation on the given block and the previous state,
+    /// it is assumed that the Block is valid
+    /// IMPORTANT: this call is blocking, any calls to it should be encapsulated in a threadpool
+    pub fn apply_block(&mut self, block: Block) -> Result<(), ExplorerError> {
+        self.txn.add_block(
+            &block.parent_id().into(),
+            &block.id().into(),
+            block.chain_length().into(),
+            block.header.block_date().into(),
+            block.fragments(),
+        )?;
+
+        Ok(())
+    }
+
+    /// IMPORTANT: this call is blocking, any calls to it should be encapsulated in a threadpool
+    pub fn commit(self) -> Result<(), ExplorerError> {
+        self.txn.commit()
+    }
+}
+
 impl ExplorerDb {
     pub fn open() -> Result<OpenDb, ExplorerError> {
         let pristine = Pristine::new("explorer-storage")?;
@@ -123,19 +150,27 @@ impl ExplorerDb {
     pub async fn apply_block(&self, block: Block) -> Result<(), ExplorerError> {
         let pristine = self.pristine.clone();
         tokio::task::spawn_blocking(move || {
-            let mut mut_tx = pristine.mut_txn_begin()?;
+            let mut_tx = pristine.mut_txn_begin()?;
 
-            mut_tx.add_block(
-                &block.parent_id().into(),
-                &block.id().into(),
-                block.chain_length().into(),
-                block.header.block_date().into(),
-                block.fragments(),
-            )?;
+            let mut batch = Batch { txn: mut_tx };
 
-            mut_tx.commit()?;
+            batch.apply_block(block)?;
+
+            batch.commit()?;
 
             Ok(())
+        })
+        .await
+        .unwrap()
+    }
+
+    pub async fn start_batch(&self) -> Result<Batch, ExplorerError> {
+        let pristine = self.pristine.clone();
+
+        tokio::task::spawn_blocking(move || {
+            let mut_tx = pristine.mut_txn_begin()?;
+
+            Ok(Batch { txn: mut_tx })
         })
         .await
         .unwrap()
@@ -157,7 +192,7 @@ impl ExplorerDb {
         tokio::task::spawn_blocking(move || {
             let mut mut_tx = pristine.mut_txn_begin()?;
 
-            let status = mut_tx.set_tip(hash.into())?;
+            let status = mut_tx.set_tip(&hash.into())?;
 
             if status {
                 mut_tx.commit()?;
