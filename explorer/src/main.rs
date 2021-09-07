@@ -4,7 +4,7 @@ mod indexer;
 mod logging;
 mod settings;
 
-use crate::{db::NeedsBootstrap, indexer::Indexer};
+use crate::{db::Batch, indexer::Indexer};
 use anyhow::Context;
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::{block::Block, key::Hash as HeaderHash};
@@ -14,17 +14,15 @@ use chain_watch::{
 };
 use db::{ExplorerDb, OpenDb};
 use futures::stream::StreamExt;
-use futures_util::{future, pin_mut, stream::FuturesUnordered, FutureExt, TryFutureExt};
+use futures_util::{future, pin_mut, FutureExt, TryFutureExt};
 use settings::Settings;
 use std::convert::TryInto;
 use thiserror::Error;
 use tokio::{
     select,
     signal::ctrl_c,
-    sync::{broadcast, mpsc, oneshot},
-    task::JoinHandle,
+    sync::{broadcast, oneshot},
 };
-use tokio_util::sync::CancellationToken;
 use tonic::Streaming;
 use tracing::{error, span, Instrument, Level};
 
@@ -166,7 +164,6 @@ async fn main() -> Result<(), Error> {
             .instrument(span!(Level::INFO, "rest service")),
         );
 
-        // (bootstrap, vec![subscriptions, rest])
         (bootstrap, vec![subscriptions, rest])
     };
 
@@ -247,13 +244,38 @@ async fn bootstrap(
 ) -> Result<ExplorerDb, Error> {
     tracing::info!("starting bootstrap process");
 
-    let (mut db, mut bootstrapper): (Option<ExplorerDb>, Option<NeedsBootstrap>) = match open_db {
+    let db = match open_db {
         OpenDb::Initialized {
             db,
             last_stable_block: _,
-        } => (Some(db), None),
-        OpenDb::NeedsBootstrap(b) => (None, Some(b)),
+        } => db,
+        OpenDb::NeedsBootstrap(bootstrapper) => {
+            let block = sync_stream
+                .next()
+                .await
+                .ok_or(BootstrapError::EmptyStream)?;
+
+            let bytes = block
+                .context("failed to decode Block received through bootstrap subscription")
+                .map_err(Error::UnrecoverableError)?;
+
+            let reader = std::io::BufReader::new(bytes.content.as_slice());
+
+            let block0 = Block::deserialize(reader)
+                .context("failed to decode Block received through bootstrap subscription")
+                .map_err(Error::UnrecoverableError)?;
+
+            bootstrapper
+                .add_block0(block0)
+                .map_err(BootstrapError::DbError)?
+        }
     };
+
+    // TODO: maybe can avoid the Option with MaybeUninit or something, but probably not worth it.
+    // mem::swap alone is not enough, because I think it would deadlock, as there can't be two
+    // mutable transactions at the same time in sanakirja.
+    let mut batch: Option<Batch> = Some(db.start_batch().await.map_err(BootstrapError::DbError)?);
+    let mut non_commited = 0u32;
 
     while let Some(block) = sync_stream.next().await {
         let bytes = block
@@ -266,29 +288,45 @@ async fn bootstrap(
             .context("failed to decode Block received through bootstrap subscription")
             .map_err(Error::UnrecoverableError)?;
 
-        if let Some(ref db) = db {
-            tracing::info!(
-                "applying block {:?} {:?}",
-                block.header.hash(),
-                block.header.chain_length()
-            );
-            db.apply_block(block)
-                .await
+        tracing::info!(
+            "applying block {:?} {:?}",
+            block.header.hash(),
+            block.header.chain_length()
+        );
+
+        batch
+            .as_mut()
+            .unwrap()
+            .apply_block(block)
+            .map_err(BootstrapError::DbError)?;
+
+        non_commited += 1;
+
+        if non_commited == 20 {
+            batch
+                .take()
+                .unwrap()
+                .commit()
                 .map_err(BootstrapError::DbError)?;
-        } else {
-            db = Some(
-                bootstrapper
-                    .take()
-                    .unwrap()
-                    .add_block0(block)
-                    .map_err(BootstrapError::DbError)?,
-            );
+
+            non_commited = 0;
+
+            batch = Some(db.start_batch().await.map_err(BootstrapError::DbError)?);
         }
+    }
+
+    // flush in case we didn't get a number of blocks multiple of the flush factor
+    if non_commited != 0 {
+        batch
+            .take()
+            .unwrap()
+            .commit()
+            .map_err(BootstrapError::DbError)?;
     }
 
     tracing::info!("finish bootstrap process");
 
-    db.ok_or(BootstrapError::EmptyStream).map_err(Into::into)
+    Ok(db)
 }
 
 async fn rest_service(mut state: broadcast::Receiver<GlobalState>, settings: Settings) {
