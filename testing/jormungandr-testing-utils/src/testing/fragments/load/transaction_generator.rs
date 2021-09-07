@@ -1,10 +1,10 @@
+use crate::testing::fragments::sender::BlockDateGenerator;
 use crate::testing::FragmentSender;
 use crate::testing::FragmentSenderSetup;
 use crate::testing::RemoteJormungandr;
 use crate::testing::SyncNode;
 use crate::wallet::LinearFee;
 use crate::wallet::Wallet;
-use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
@@ -25,14 +25,14 @@ impl<'a, S: SyncNode + Send> TransactionGenerator<'a, S> {
         jormungandr: RemoteJormungandr,
         block_hash: Hash,
         fees: LinearFee,
-        valid_until: BlockDate,
+        expiry_generator: BlockDateGenerator,
     ) -> Self {
         Self {
             wallets: Vec::new(),
             fragment_sender: FragmentSender::new(
                 block_hash,
                 fees,
-                valid_until,
+                expiry_generator,
                 fragment_sender_setup,
             ),
             rand: OsRng,

@@ -1,7 +1,9 @@
+use crate::mjolnir_app::args::parse_shift;
 use crate::mjolnir_app::build_monitor;
 use crate::mjolnir_app::MjolnirError;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_testing_utils::testing::fragments::BlockDateGenerator;
 use jormungandr_testing_utils::testing::{
     fragments::AdversaryFragmentGenerator, AdversaryFragmentSender, AdversaryFragmentSenderSetup,
     FragmentSender, FragmentStatusProvider,
@@ -53,8 +55,12 @@ pub struct AllAdversary {
     faucet_spending_counter: u32,
 
     /// Transaction validity deadline (inclusive)
-    #[structopt(long, short, default_value = "1.0")]
-    valid_until: BlockDate,
+    #[structopt(short = "v", long = "valid-until", conflicts_with = "ttl")]
+    valid_until: Option<BlockDate>,
+
+    /// Transaction time to live (can be negative e.g. ~4.2)
+    #[structopt(short = "t", long= "ttl", default_value = "1.0", parse(try_from_str = parse_shift))]
+    ttl: (BlockDate, bool),
 }
 
 impl AllAdversary {
@@ -73,17 +79,22 @@ impl AllAdversary {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
+        let expiry_generator = self
+            .valid_until
+            .map(BlockDateGenerator::Fixed)
+            .unwrap_or_else(|| BlockDateGenerator::rolling(&settings, self.ttl.0, self.ttl.1));
+
         let transaction_sender = FragmentSender::new(
             block0_hash,
             fees,
-            self.valid_until,
+            expiry_generator.clone(),
             FragmentSenderSetup::no_verify(),
         );
 
         let adversary_transaction_sender = AdversaryFragmentSender::new(
             block0_hash,
             fees,
-            self.valid_until,
+            expiry_generator,
             AdversaryFragmentSenderSetup::no_verify(),
         );
 

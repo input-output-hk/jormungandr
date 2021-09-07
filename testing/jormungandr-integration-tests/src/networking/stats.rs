@@ -6,7 +6,9 @@ use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
-use jormungandr_testing_utils::testing::network_builder::Blockchain;
+use jormungandr_testing_utils::testing::{
+    fragments::BlockDateGenerator, network_builder::Blockchain,
+};
 use std::{cmp::PartialOrd, fmt::Display};
 
 use chain_impl_mockchain::block::BlockDate;
@@ -63,7 +65,7 @@ pub fn passive_node_last_block_info() {
     let fragment_sender = FragmentSender::new(
         leader.genesis_block_hash(),
         leader.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         Default::default(),
     );
 
@@ -103,7 +105,7 @@ pub fn leader_node_last_block_info() {
     let fragment_sender = FragmentSender::new(
         leader.genesis_block_hash(),
         leader.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         Default::default(),
     );
 

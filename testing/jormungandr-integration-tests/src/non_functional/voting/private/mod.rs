@@ -17,7 +17,9 @@ use chain_impl_mockchain::{
     value::Value,
 };
 use jormungandr_lib::interfaces::BlockDate as BlockDateLib;
-use jormungandr_testing_utils::testing::fragments::AdversaryFragmentGenerator;
+use jormungandr_testing_utils::testing::fragments::{
+    AdversaryFragmentGenerator, BlockDateGenerator,
+};
 use jormungandr_testing_utils::testing::AdversaryFragmentSender;
 use jormungandr_testing_utils::testing::AdversaryFragmentSenderSetup;
 use jormungandr_testing_utils::testing::VoteCastsGenerator;
@@ -118,7 +120,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(chain_impl_mockchain::block::BlockDate::first().next_epoch()),
         FragmentSenderSetup::no_verify(),
     );
 
@@ -293,17 +295,17 @@ pub fn adversary_private_vote_load_scenario(
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(chain_impl_mockchain::block::BlockDate::first().next_epoch()),
         FragmentSenderSetup::no_verify(),
     );
 
     let adversary_transaction_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
+        BlockDateGenerator::Fixed(chain_impl_mockchain::block::BlockDate {
             epoch: 1,
             slot_id: 0,
-        },
+        }),
         AdversaryFragmentSenderSetup::no_verify(),
     );
 

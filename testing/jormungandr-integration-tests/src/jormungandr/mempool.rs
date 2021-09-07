@@ -8,8 +8,8 @@ use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion};
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::PersistentLog;
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, Mempool};
-use jormungandr_testing_utils::testing::fragments::FragmentExporter;
 use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
+use jormungandr_testing_utils::testing::fragments::{BlockDateGenerator, FragmentExporter};
 use jormungandr_testing_utils::testing::{
     node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentVerifier,
     MemPoolCheck,
@@ -49,10 +49,10 @@ pub fn dump_send_correct_fragments() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
+        BlockDateGenerator::Fixed(chain_impl_mockchain::block::BlockDate {
             epoch: 10,
             slot_id: 0,
-        },
+        }),
         FragmentSenderSetup::dump_into(dump_folder.path().to_path_buf()),
     );
 
@@ -114,7 +114,7 @@ pub fn dump_send_invalid_fragments() {
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
     );
 
@@ -215,7 +215,7 @@ pub fn fragment_which_reached_mempool_should_be_persisted() {
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
     );
 
@@ -255,7 +255,7 @@ pub fn fragment_which_is_not_in_fragment_log_should_be_persisted() {
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
     );
 
@@ -295,7 +295,7 @@ pub fn pending_fragment_should_be_persisted() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         FragmentSenderSetup::dump_into(dump_folder.path().to_path_buf()),
     );
 
@@ -356,7 +356,7 @@ pub fn node_should_pickup_log_after_restart() {
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
     );
 
@@ -378,7 +378,7 @@ pub fn node_should_pickup_log_after_restart() {
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         AdversaryFragmentSenderSetup::dump_into(dump_folder.path().to_path_buf(), false),
     );
 
@@ -420,7 +420,7 @@ pub fn expired_fragment_should_be_rejected_by_leader_praos_node() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         LinearFee::new(0, 0, 0),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         FragmentSenderSetup::no_verify(),
     );
 

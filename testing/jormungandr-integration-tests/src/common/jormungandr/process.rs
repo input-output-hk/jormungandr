@@ -10,6 +10,7 @@ use jormungandr_lib::{
     interfaces::{Block0Configuration, TrustedPeer},
 };
 use jormungandr_testing_utils::testing::{
+    fragments::BlockDateGenerator,
     node::{
         uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
         JormungandrStateVerifier, LogLevel,
@@ -82,7 +83,7 @@ impl JormungandrProcess {
         FragmentSender::new(
             self.genesis_block_hash(),
             self.fees(),
-            BlockDate::first().next_epoch(),
+            BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
             setup,
         )
     }

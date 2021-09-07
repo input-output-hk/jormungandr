@@ -1,7 +1,7 @@
 use crate::common::jormungandr::JormungandrProcess;
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
 use chain_impl_mockchain::{block::BlockDate, fragment::Fragment};
-use jormungandr_testing_utils::testing::fragments::FaultyTransactionBuilder;
+use jormungandr_testing_utils::testing::fragments::{BlockDateGenerator, FaultyTransactionBuilder};
 use jormungandr_testing_utils::testing::node::assert_bad_request;
 use jormungandr_testing_utils::testing::FragmentVerifier;
 use jormungandr_testing_utils::testing::{FragmentSenderSetup, MemPoolCheck};
@@ -71,7 +71,7 @@ fn world() -> (
     let faulty_tx_builder = FaultyTransactionBuilder::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
     );
     let early_invalid_fragment = faulty_tx_builder.unbalanced(&alice, &bob);
 

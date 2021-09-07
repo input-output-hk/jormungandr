@@ -4,7 +4,7 @@ use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{Mempool, PersistentLog};
-use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
+use jormungandr_testing_utils::testing::fragments::{BlockDateGenerator, PersistentLogViewer};
 use jormungandr_testing_utils::testing::{
     BatchFragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
 };
@@ -52,7 +52,7 @@ pub fn persistent_log_load_test() {
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first(),
+        BlockDateGenerator::Fixed(BlockDate::first()),
         batch_size,
     );
     request_generator.fill_from_faucet(&mut faucet);

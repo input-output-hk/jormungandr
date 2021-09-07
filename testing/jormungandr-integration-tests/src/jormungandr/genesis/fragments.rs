@@ -2,7 +2,8 @@ use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
-        AdversaryFragmentSender, AdversaryFragmentSenderSetup, FragmentSender, FragmentSenderSetup,
+        fragments::BlockDateGenerator, AdversaryFragmentSender, AdversaryFragmentSenderSetup,
+        FragmentSender, FragmentSenderSetup,
     },
 };
 
@@ -37,10 +38,10 @@ pub fn test_all_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate {
+        BlockDateGenerator::Fixed(BlockDate {
             epoch: 10,
             slot_id: 0,
-        },
+        }),
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -172,14 +173,14 @@ pub fn test_all_adversary_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         FragmentSenderSetup::resend_3_times(),
     );
 
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
         AdversaryFragmentSenderSetup::no_verify(),
     );
     let verifier = jormungandr

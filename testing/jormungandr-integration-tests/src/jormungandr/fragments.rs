@@ -7,8 +7,8 @@ use crate::common::{
 use chain_impl_mockchain::{chaintypes::ConsensusType, fee::LinearFee};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, BlockDate, Mempool};
 use jormungandr_testing_utils::testing::{
-    node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentVerifier,
-    MemPoolCheck,
+    fragments::BlockDateGenerator, node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup,
+    FragmentVerifier, MemPoolCheck,
 };
 use jortestkit::prelude::Wait;
 use std::time::Duration;
@@ -40,10 +40,10 @@ pub fn send_all_fragments() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
+        BlockDateGenerator::Fixed(chain_impl_mockchain::block::BlockDate {
             epoch: 10,
             slot_id: 0,
-        },
+        }),
         FragmentSenderSetup::no_verify(),
     );
 

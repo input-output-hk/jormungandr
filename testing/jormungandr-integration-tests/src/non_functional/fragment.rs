@@ -3,7 +3,7 @@ use crate::common::startup;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
-use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
+use jormungandr_testing_utils::testing::fragments::{BlockDateGenerator, TransactionGenerator};
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::{
@@ -53,7 +53,7 @@ pub fn fragment_load_test() {
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),
-            BlockDate::first().next_epoch(),
+            BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
             FragmentSenderSetup::no_verify(),
         ),
     );
@@ -111,7 +111,7 @@ pub fn fragment_batch_load_test() {
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first(),
+        BlockDateGenerator::Fixed(BlockDate::first()),
         10,
     );
     request_generator.fill_from_faucet(&mut faucet);
@@ -156,7 +156,7 @@ pub fn transaction_load_test() {
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
     );
     request_generator.fill_from_faucet(&mut faucet);
 
