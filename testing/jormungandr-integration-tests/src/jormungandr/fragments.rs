@@ -7,8 +7,8 @@ use crate::common::{
 use chain_impl_mockchain::{chaintypes::ConsensusType, fee::LinearFee};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, BlockDate, Mempool};
 use jormungandr_testing_utils::testing::{
-    fragments::BlockDateGenerator, node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup,
-    FragmentVerifier, MemPoolCheck,
+    fragments::BlockDateGenerator, node::time, FragmentGenerator, FragmentSender,
+    FragmentSenderSetup, FragmentVerifier, MemPoolCheck,
 };
 use jortestkit::prelude::Wait;
 use std::time::Duration;
