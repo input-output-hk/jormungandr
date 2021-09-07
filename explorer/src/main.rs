@@ -352,21 +352,7 @@ async fn process_subscriptions(
 
     let mut indexer = None;
 
-    let (error_tx, mut error_rx) = mpsc::channel(5);
-    let (panic_tx, panic_rx) = mpsc::channel(100);
-
-    let status_collector_cancellation_token = CancellationToken::new();
-
-    let task_status_collector = tokio::spawn(
-        handle_task_results(
-            status_collector_cancellation_token.clone(),
-            panic_rx,
-            error_tx,
-        )
-        .instrument(span!(Level::INFO, "handle_task_results")),
-    );
-
-    pin_mut!(blocks, tips, task_status_collector, state);
+    pin_mut!(blocks, tips, state);
 
     loop {
         let state = state
@@ -382,15 +368,6 @@ async fn process_subscriptions(
             }
 
             GlobalState::ShuttingDown => {
-                status_collector_cancellation_token.cancel();
-
-                let e = task_status_collector
-                    .await
-                    .context("task status collector finished with error")
-                    .map_err(Error::Other)?;
-
-                tracing::error!("task status collector join error {:?}", e);
-
                 return Ok(());
             }
         }
@@ -407,7 +384,6 @@ async fn process_subscriptions(
 
                 match state {
                     GlobalState::ShuttingDown => {
-                        status_collector_cancellation_token.cancel();
                         break;
                     },
                     _ => unreachable!(),
@@ -416,17 +392,14 @@ async fn process_subscriptions(
             Some(block) = blocks.next() => {
                 let indexer = indexer.clone();
 
-                    let handle = tokio::spawn(
-                        async move {
-                            future::ready(block)
-                                .map_err(|e| Error::Other(e.into()))
-                                .and_then(|block| handle_block(block, indexer))
-                                .await
-                        }
-                        .instrument(span!(Level::INFO, "handle_block")),
-                    );
-
-                    let _ = panic_tx.send(handle).await;
+                 async move {
+                    future::ready(block)
+                        .map_err(|e| Error::Other(e.into()))
+                        .and_then(|block| handle_block(block, indexer))
+                        .await
+                }
+                .instrument(span!(Level::INFO, "handle_block"))
+                .await?;
             },
             Some(tip) = tips.next() => {
                 tracing::debug!("received tip event");
@@ -444,26 +417,13 @@ async fn process_subscriptions(
                     .instrument(span!(Level::INFO, "handle_tip")),
                 );
             },
-            Some(error) = error_rx.recv() => {
-                tracing::error!("received error event");
-                return Err(error);
-            },
-            e = &mut task_status_collector => {
-                tracing::error!("received error from subtask {:?}", e);
-                return e
-                    .map_err(|e| Error::Other(e.into()))
-                    .and_then(std::convert::identity);
-            }
             else => break,
         };
     }
 
     tracing::trace!("finishing subscriptions service");
 
-    task_status_collector
-        .await
-        .context("task status collector finished with error")
-        .map_err(Error::Other)?
+    Ok(())
 }
 
 async fn handle_block(raw_block: chain_watch::Block, indexer: Indexer) -> Result<(), Error> {
@@ -486,39 +446,6 @@ async fn handle_tip(raw_tip: chain_watch::BlockId, indexer: Indexer) -> Result<(
         .map_err(Error::Other)?;
 
     indexer.set_tip(HeaderHash::from_bytes(tip)).await?;
-
-    Ok(())
-}
-
-async fn handle_task_results(
-    cancellation_token: CancellationToken,
-    mut channel: mpsc::Receiver<JoinHandle<Result<(), Error>>>,
-    error_tx: mpsc::Sender<Error>,
-) -> Result<(), Error> {
-    let mut handles = FuturesUnordered::new();
-
-    loop {
-        select! {
-            _ = cancellation_token.cancelled() => {
-                break;
-            },
-            Some(handle) = channel.recv() => {
-                handles.push(handle);
-            },
-            Some(result) = handles.next() => {
-                let error = match result {
-                    Ok(Err(err)) => error_tx.send(err).await,
-                    Err(err) => error_tx.send(Error::Other(err.into())).await,
-                    _ => continue,
-                };
-
-                error
-                    .context("failed to report task Error to handler")
-                    .map_err(Error::Other)?;
-            },
-            else => break,
-        }
-    }
 
     Ok(())
 }
