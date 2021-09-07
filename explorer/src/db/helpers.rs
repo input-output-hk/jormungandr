@@ -1,5 +1,24 @@
-use super::Db;
-use sanakirja::{btree, Storable};
+use super::{error::ExplorerError, Db};
+use sanakirja::{
+    btree::{self, BTreeMutPage, BTreePage},
+    RootDb, Storable,
+};
+use std::sync::Arc;
+
+pub(super) fn open_or_create_db<
+    K: Storable,
+    V: Storable,
+    P: BTreePage<K, V> + BTreeMutPage<K, V>,
+>(
+    txn: &mut sanakirja::MutTxn<Arc<sanakirja::Env>, ()>,
+    root: super::schema::Root,
+) -> Result<btree::Db_<K, V, P>, ExplorerError> {
+    Ok(if let Some(db) = txn.root_db(root as usize) {
+        db
+    } else {
+        btree::create_db_(txn)?
+    })
+}
 
 pub(super) fn find_last_record_by<T, K, V>(
     txn: &T,

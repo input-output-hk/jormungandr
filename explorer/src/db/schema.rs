@@ -6,6 +6,7 @@ use super::{
     },
     endian::{B32, L32, L64},
     error::ExplorerError,
+    helpers::open_or_create_db,
     pagination::{
         BlockFragmentsIter, BlocksInBranch, FragmentContentId, FragmentInputIter,
         FragmentOutputIter, SanakirjaCursorIter, TxsByAddress, VotePlanProposalsIter,
@@ -136,72 +137,23 @@ impl Pristine {
     pub fn mut_txn_begin(&self) -> Result<MutTxn<()>, ExplorerError> {
         let mut txn = ::sanakirja::Env::mut_txn_begin(self.env.clone()).unwrap();
         Ok(MutTxn {
-            states: if let Some(db) = txn.root_db(Root::States as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            tips: if let Some(db) = txn.root_db(Root::Tips as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            chain_lengths: if let Some(db) = txn.root_db(Root::ChainLenghts as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            transaction_inputs: if let Some(db) = txn.root_db(Root::TransactionInputs as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            transaction_outputs: if let Some(db) = txn.root_db(Root::TransactionOutputs as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            transaction_certificates: if let Some(db) =
-                txn.root_db(Root::TransactionCertificates as usize)
-            {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            transaction_blocks: if let Some(db) = txn.root_db(Root::TransactionBlocks as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            blocks: if let Some(db) = txn.root_db(Root::Blocks as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            block_transactions: if let Some(db) = txn.root_db(Root::BlockTransactions as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            vote_plans: if let Some(db) = txn.root_db(Root::VotePlans as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            vote_plan_proposals: if let Some(db) = txn.root_db(Root::VotePlanProposals as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
-            stake_pool_data: if let Some(db) = txn.root_db(Root::StakePoolData as usize) {
-                db
-            } else {
-                btree::create_db_(&mut txn)?
-            },
+            states: open_or_create_db(&mut txn, Root::States)?,
+            tips: open_or_create_db(&mut txn, Root::Tips)?,
+            chain_lengths: open_or_create_db(&mut txn, Root::ChainLenghts)?,
+            transaction_inputs: open_or_create_db(&mut txn, Root::TransactionInputs)?,
+            transaction_outputs: open_or_create_db(&mut txn, Root::TransactionOutputs)?,
+            transaction_certificates: open_or_create_db(&mut txn, Root::TransactionCertificates)?,
+            transaction_blocks: open_or_create_db(&mut txn, Root::TransactionBlocks)?,
+            blocks: open_or_create_db(&mut txn, Root::Blocks)?,
+            block_transactions: open_or_create_db(&mut txn, Root::BlockTransactions)?,
+            vote_plans: open_or_create_db(&mut txn, Root::VotePlans)?,
+            vote_plan_proposals: open_or_create_db(&mut txn, Root::VotePlanProposals)?,
+            stake_pool_data: open_or_create_db(&mut txn, Root::StakePoolData)?,
             txn,
         })
     }
 }
+
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[repr(C)]
 pub struct StakePoolMeta {
