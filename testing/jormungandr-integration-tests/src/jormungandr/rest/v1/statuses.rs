@@ -1,7 +1,7 @@
 use crate::common::jormungandr::JormungandrProcess;
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
 use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId};
-use jormungandr_testing_utils::testing::FragmentSenderSetup;
+use jormungandr_testing_utils::testing::{FragmentSenderSetup, MemPoolCheck};
 use rstest::*;
 
 #[fixture]
@@ -44,9 +44,15 @@ fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
         .send_transaction(&mut clarice, &bob, &jormungandr, 100.into())
         .unwrap();
 
-    let tx_ids = transaction_sender
+    let summary = transaction_sender
         .send_batch_fragments(vec![alice_fragment, bob_fragment], false, &jormungandr)
         .unwrap();
+
+    let tx_ids: Vec<MemPoolCheck> = summary
+        .fragment_ids()
+        .into_iter()
+        .map(MemPoolCheck::from)
+        .collect();
 
     tx_ids
         .iter()

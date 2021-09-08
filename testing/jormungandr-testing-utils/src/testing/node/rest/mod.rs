@@ -8,7 +8,9 @@ pub use settings::RestSettings;
 
 use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_lib::interfaces::{Address, FragmentStatus, VotePlanId};
+use jormungandr_lib::interfaces::{
+    Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
+};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
@@ -220,7 +222,7 @@ impl JormungandrRest {
         &self,
         fragments: Vec<Fragment>,
         fail_fast: bool,
-    ) -> Result<Vec<MemPoolCheck>, RestError> {
+    ) -> Result<FragmentsProcessingSummary, RestError> {
         self.inner
             .send_fragment_batch(fragments, fail_fast)
             .map_err(Into::into)

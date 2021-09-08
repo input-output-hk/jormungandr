@@ -16,7 +16,7 @@ use chain_impl_mockchain::{
     fragment::Fragment,
     vote::Choice,
 };
-use jormungandr_lib::interfaces::Address;
+use jormungandr_lib::interfaces::{Address, FragmentsProcessingSummary};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentStatus, Value},
@@ -124,7 +124,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         fragments: Vec<Fragment>,
         fail_fast: bool,
         node: &A,
-    ) -> Result<Vec<MemPoolCheck>, FragmentSenderError> {
+    ) -> Result<FragmentsProcessingSummary, FragmentSenderError> {
         self.wait_for_node_sync_if_enabled(node)
             .map_err(FragmentSenderError::SyncNodeError)?;
         node.send_batch_fragments(fragments, fail_fast)

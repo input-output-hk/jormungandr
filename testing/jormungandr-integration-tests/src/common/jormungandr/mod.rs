@@ -8,6 +8,7 @@ pub use configuration_builder::ConfigurationBuilder;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::FragmentLog;
+use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jormungandr_testing_utils::testing::MemPoolCheck;
 pub use process::*;
 pub use starter::*;
@@ -49,7 +50,7 @@ impl FragmentNode for JormungandrProcess {
         &self,
         fragments: Vec<Fragment>,
         fail_fast: bool,
-    ) -> Result<Vec<MemPoolCheck>, FragmentNodeError> {
+    ) -> Result<FragmentsProcessingSummary, FragmentNodeError> {
         self.rest()
             .send_fragment_batch(fragments.clone(), fail_fast)
             .map_err(|e| FragmentNodeError::CannotSendFragmentBatch {

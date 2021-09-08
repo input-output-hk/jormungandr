@@ -1,10 +1,13 @@
 use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
-
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
+use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
+use jormungandr_lib::interfaces::{
+    ActiveSlotCoefficient, BlockDate as JLibBlockDate, KesUpdateSpeed, Mempool,
+};
 use jormungandr_testing_utils::{
     testing::{
-        benchmark_efficiency, benchmark_endurance, EfficiencyBenchmarkDef,
-        EfficiencyBenchmarkFinish, Endurance, Thresholds,
+        benchmark_efficiency, benchmark_endurance, benchmark_speed, node::time,
+        EfficiencyBenchmarkDef, EfficiencyBenchmarkFinish, Endurance, FragmentSender,
+        FragmentSenderSetup, FragmentVerifier, MemPoolCheck, Thresholds,
     },
     wallet::Wallet,
 };
@@ -203,4 +206,142 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
 
         std::mem::swap(&mut sender, &mut receiver);
     }
+}
+
+#[test]
+pub fn test_expired_transactions_processing_speed() {
+    const N_TRANSACTIONS: usize = 100_000;
+
+    let mut sender = startup::create_new_account_address();
+    let receiver = startup::create_new_account_address();
+
+    let (jormungandr, _) = startup::start_stake_pool(
+        &[sender.clone()],
+        &[],
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(60)
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_slot_duration(4)
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+    )
+    .unwrap();
+
+    time::wait_for_date(JLibBlockDate::new(0, 1), jormungandr.rest());
+
+    let output_value = 1;
+
+    let transactions = (0..N_TRANSACTIONS)
+        .map(|_| {
+            let tx = sender
+                .transaction_to(
+                    &jormungandr.genesis_block_hash(),
+                    &LinearFee::new(0, 0, 0),
+                    BlockDate::first(),
+                    receiver.address(),
+                    output_value.into(),
+                )
+                .unwrap();
+            sender.confirm_transaction();
+            tx
+        })
+        .collect();
+
+    let fragment_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        LinearFee::new(0, 0, 0),
+        BlockDate::first(),
+        FragmentSenderSetup::ignore_errors(),
+    );
+
+    let benchmark = benchmark_speed("test_expired_transactions_processing_speed")
+        .target(Duration::from_secs(10))
+        .start();
+
+    let summary = fragment_sender
+        .send_batch_fragments(transactions, false, &jormungandr)
+        .unwrap();
+
+    benchmark.stop().print();
+
+    assert!(summary.accepted.is_empty());
+    assert_eq!(summary.rejected.len(), N_TRANSACTIONS);
+}
+
+#[test]
+pub fn test_transactions_with_long_ttl_processing_speed() {
+    const N_TRANSACTIONS: usize = 1_000;
+    const MAX_EXPIRY_EPOCHS: u8 = 20;
+    const LONG_TTL_BLOCK_DATE: BlockDate = BlockDate {
+        epoch: 1 + MAX_EXPIRY_EPOCHS as u32,
+        slot_id: 0,
+    };
+
+    let mut sender = startup::create_new_account_address();
+    let receiver = startup::create_new_account_address();
+
+    let (jormungandr, _) = startup::start_stake_pool(
+        &[sender.clone()],
+        &[],
+        ConfigurationBuilder::new()
+            .with_mempool(Mempool {
+                pool_max_entries: N_TRANSACTIONS.into(),
+                log_max_entries: N_TRANSACTIONS.into(),
+                persistent_log: None,
+            })
+            .with_slots_per_epoch(60)
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_slot_duration(4)
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
+            .with_tx_max_expiry_epochs(MAX_EXPIRY_EPOCHS),
+    )
+    .unwrap();
+
+    time::wait_for_date(JLibBlockDate::new(0, 1), jormungandr.rest());
+
+    let output_value = 1;
+
+    let transactions = (0..N_TRANSACTIONS)
+        .map(|_| {
+            let tx = sender
+                .transaction_to(
+                    &jormungandr.genesis_block_hash(),
+                    &LinearFee::new(0, 0, 0),
+                    LONG_TTL_BLOCK_DATE,
+                    receiver.address(),
+                    output_value.into(),
+                )
+                .unwrap();
+            sender.confirm_transaction();
+            tx
+        })
+        .collect();
+
+    let fragment_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        LinearFee::new(0, 0, 0),
+        LONG_TTL_BLOCK_DATE,
+        FragmentSenderSetup::ignore_errors(),
+    );
+
+    let benchmark = benchmark_speed("test_transactions_with_long_ttl_processing_speed")
+        .target(Duration::from_secs(60))
+        .start();
+
+    let summary = fragment_sender
+        .send_batch_fragments(transactions, false, &jormungandr)
+        .unwrap();
+
+    assert_eq!(summary.accepted.len(), N_TRANSACTIONS);
+    assert!(summary.rejected.is_empty());
+
+    for fragment_id in summary.fragment_ids() {
+        FragmentVerifier::wait_and_verify_is_rejected(
+            Duration::from_millis(100),
+            MemPoolCheck::from(fragment_id),
+            &jormungandr,
+        )
+        .unwrap();
+    }
+
+    benchmark.stop().print();
 }

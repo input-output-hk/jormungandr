@@ -4,6 +4,7 @@ use crate::{
     scenario::Controller,
     test::Result,
 };
+use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 pub use jormungandr_testing_utils::testing::{SyncNode, SyncWaitParams};
 
 use jormungandr_lib::{
@@ -121,7 +122,7 @@ impl FragmentNode for LegacyNodeController {
         &self,
         _fragments: Vec<Fragment>,
         _fail_fast: bool,
-    ) -> std::result::Result<Vec<MemPoolCheck>, FragmentNodeError> {
+    ) -> std::result::Result<FragmentsProcessingSummary, FragmentNodeError> {
         //TODO implement
         unimplemented!()
     }

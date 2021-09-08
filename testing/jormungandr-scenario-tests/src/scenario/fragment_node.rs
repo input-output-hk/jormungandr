@@ -1,7 +1,7 @@
 use crate::node::NodeController;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::{BlockDate, FragmentLog};
+use jormungandr_lib::interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary};
 use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError, MemPoolCheck};
 use std::collections::HashMap;
 
@@ -24,7 +24,7 @@ impl FragmentNode for NodeController {
         &self,
         _fragments: Vec<Fragment>,
         _fail_fast: bool,
-    ) -> std::result::Result<Vec<MemPoolCheck>, FragmentNodeError> {
+    ) -> std::result::Result<FragmentsProcessingSummary, FragmentNodeError> {
         //TODO implement
         unimplemented!()
     }
