@@ -8,7 +8,7 @@ use assert_fs::TempDir;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_testing_utils::{
-    testing::{fragments::BlockDateGenerator, node::download_last_n_releases, FragmentSender},
+    testing::{node::download_last_n_releases, FragmentSender},
     Version,
 };
 
@@ -111,7 +111,7 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
     let fragment_sender = FragmentSender::new(
         legacy_jormungandr.genesis_block_hash(),
         legacy_jormungandr.fees(),
-        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
+        BlockDate::first().next_epoch().into(),
         Default::default(),
     );
 
@@ -151,7 +151,7 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
     let fragment_sender = FragmentSender::new(
         legacy_jormungandr.genesis_block_hash(),
         legacy_jormungandr.fees(),
-        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
+        BlockDate::first().next_epoch().into(),
         Default::default(),
     );
 

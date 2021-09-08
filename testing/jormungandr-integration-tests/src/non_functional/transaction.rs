@@ -249,7 +249,7 @@ pub fn test_expired_transactions_processing_speed() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         LinearFee::new(0, 0, 0),
-        BlockDate::first(),
+        BlockDate::first().into(),
         FragmentSenderSetup::ignore_errors(),
     );
 
@@ -319,7 +319,7 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         LinearFee::new(0, 0, 0),
-        LONG_TTL_BLOCK_DATE,
+        LONG_TTL_BLOCK_DATE.into(),
         FragmentSenderSetup::ignore_errors(),
     );
 

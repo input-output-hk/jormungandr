@@ -11,7 +11,7 @@ use jormungandr_lib::{
     interfaces::{BlockDate, InitialUTxO, Ratio, TaxType, Value},
 };
 use jormungandr_testing_utils::{
-    testing::{fragments::BlockDateGenerator, FragmentSender, FragmentSenderSetup},
+    testing::{FragmentSender, FragmentSenderSetup},
     wallet::Wallet,
 };
 use jortestkit::process::Wait;
@@ -38,7 +38,7 @@ pub fn more_than_one_stake_pool_in_app() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
+        BlockDate::first().next_epoch().into(),
         FragmentSenderSetup::resend_3_times(),
     );
     fragment_sender

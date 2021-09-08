@@ -1,5 +1,4 @@
 use crate::testing::node::time;
-use crate::testing::BlockDateGenerator;
 use crate::testing::FragmentSender;
 use crate::testing::FragmentSenderError;
 use crate::testing::FragmentSenderSetup;
@@ -31,12 +30,7 @@ impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
         node: RemoteJormungandr,
     ) -> Self {
         Self {
-            sender: FragmentSender::new(
-                block0_hash,
-                fees,
-                BlockDateGenerator::Fixed(valid_until),
-                setup,
-            ),
+            sender: FragmentSender::new(block0_hash, fees, valid_until.into(), setup),
             node,
             last_mempool_check: None,
         }

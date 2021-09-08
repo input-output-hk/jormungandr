@@ -9,7 +9,6 @@ use chain_impl_mockchain::{
     block::BlockDate,
     transaction::AccountIdentifier,
 };
-use jormungandr_testing_utils::testing::fragments::BlockDateGenerator;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
@@ -56,7 +55,7 @@ pub fn test_legacy_node_all_fragments() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
+        BlockDate::first().next_epoch().into(),
         Default::default(),
     );
 

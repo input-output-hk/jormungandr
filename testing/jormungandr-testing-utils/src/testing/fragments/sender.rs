@@ -103,7 +103,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
 
     pub fn set_valid_until(self, valid_until: BlockDate) -> Self {
         Self {
-            expiry_generator: BlockDateGenerator::Fixed(valid_until),
+            expiry_generator: valid_until.into(),
             ..self
         }
     }
@@ -632,5 +632,11 @@ impl BlockDateGenerator {
             epoch: epoch as u32,
             slot_id: slot_id as u32,
         }
+    }
+}
+
+impl From<BlockDate> for BlockDateGenerator {
+    fn from(from: BlockDate) -> Self {
+        Self::Fixed(from)
     }
 }

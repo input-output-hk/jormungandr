@@ -21,7 +21,6 @@ use chain_impl_mockchain::testing::scenario::template::{
 };
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_testing_utils::testing::fragments::BlockDateGenerator;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
@@ -493,7 +492,7 @@ impl Controller {
                 .block0
                 .blockchain_configuration
                 .linear_fees,
-            BlockDateGenerator::Fixed(BlockDate::first().next_epoch()),
+            BlockDate::first().next_epoch().into(),
             builder.build(),
         )
     }

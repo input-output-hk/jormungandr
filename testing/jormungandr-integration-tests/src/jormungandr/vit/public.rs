@@ -27,7 +27,6 @@ use jormungandr_lib::{
     },
 };
 use jormungandr_testing_utils::testing::asserts::VotePlanStatusAssert;
-use jormungandr_testing_utils::testing::fragments::BlockDateGenerator;
 use jormungandr_testing_utils::testing::VotePlanExtension;
 use jormungandr_testing_utils::{
     testing::{
@@ -195,7 +194,9 @@ pub fn test_vote_flow_bft() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDateGenerator::Fixed(chain_impl_mockchain::block::BlockDate::first().next_epoch()),
+        chain_impl_mockchain::block::BlockDate::first()
+            .next_epoch()
+            .into(),
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -326,7 +327,9 @@ pub fn test_vote_flow_praos() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDateGenerator::Fixed(chain_impl_mockchain::block::BlockDate::first().next_epoch()),
+        chain_impl_mockchain::block::BlockDate::first()
+            .next_epoch()
+            .into(),
         FragmentSenderSetup::resend_3_times(),
     );
 
