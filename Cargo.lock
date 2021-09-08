@@ -2079,7 +2079,7 @@ dependencies = [
  "serde_yaml",
  "strum",
  "symmetric-cipher",
- "sysinfo 0.17.5",
+ "sysinfo 0.20.0",
  "tar",
  "thiserror",
  "tokio",
@@ -3449,12 +3449,12 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.8.17"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15654ed4ab61726bf918a39cb8d98a2e2995b002387807fa6ba58fdf7f59bb23"
+checksum = "ad104641f3c958dab30eb3010e834c2622d1f3f4c530fef1dee20ad9485f3c09"
 dependencies = [
  "dtoa",
- "linked-hash-map",
+ "indexmap",
  "serde",
  "yaml-rust",
 ]
@@ -3720,13 +3720,12 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.17.5"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9d811a7fd68bad355ff84f7d8ad58b33415bccdfce499f98a9ce30471888e05"
+checksum = "0af066e6272f2175c1783cfc2ebf3e2d8dfe2c182b00677fdeccbf8291af83fb"
 dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys",
- "doc-comment",
  "libc",
  "ntapi",
  "once_cell",
