@@ -63,7 +63,7 @@ pub fn passive_node_last_block_info() {
     let fragment_sender = FragmentSender::new(
         leader.genesis_block_hash(),
         leader.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch().into(),
         Default::default(),
     );
 
@@ -103,7 +103,7 @@ pub fn leader_node_last_block_info() {
     let fragment_sender = FragmentSender::new(
         leader.genesis_block_hash(),
         leader.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch().into(),
         Default::default(),
     );
 

@@ -71,7 +71,7 @@ fn world() -> (
     let faulty_tx_builder = FaultyTransactionBuilder::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch().into(),
     );
     let early_invalid_fragment = faulty_tx_builder.unbalanced(&alice, &bob);
 

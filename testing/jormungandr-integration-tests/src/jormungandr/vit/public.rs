@@ -194,10 +194,9 @@ pub fn test_vote_flow_bft() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
+        chain_impl_mockchain::block::BlockDate::first()
+            .next_epoch()
+            .into(),
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -212,10 +211,11 @@ pub fn test_vote_flow_bft() {
 
     wait_for_epoch(1, jormungandr.rest());
 
-    let transaction_sender = transaction_sender.set_ttl(chain_impl_mockchain::block::BlockDate {
-        epoch: 2,
-        slot_id: 0,
-    });
+    let transaction_sender =
+        transaction_sender.set_valid_until(chain_impl_mockchain::block::BlockDate {
+            epoch: 2,
+            slot_id: 0,
+        });
 
     assert_eq!(
         vec![0],
@@ -327,10 +327,9 @@ pub fn test_vote_flow_praos() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
+        chain_impl_mockchain::block::BlockDate::first()
+            .next_epoch()
+            .into(),
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -346,10 +345,11 @@ pub fn test_vote_flow_praos() {
 
     wait_for_epoch(1, jormungandr.rest());
 
-    let transaction_sender = transaction_sender.set_ttl(chain_impl_mockchain::block::BlockDate {
-        epoch: 2,
-        slot_id: 0,
-    });
+    let transaction_sender =
+        transaction_sender.set_valid_until(chain_impl_mockchain::block::BlockDate {
+            epoch: 2,
+            slot_id: 0,
+        });
 
     assert_eq!(
         vec![0],

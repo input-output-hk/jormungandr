@@ -82,7 +82,7 @@ impl JormungandrProcess {
         FragmentSender::new(
             self.genesis_block_hash(),
             self.fees(),
-            BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch().into(),
             setup,
         )
     }

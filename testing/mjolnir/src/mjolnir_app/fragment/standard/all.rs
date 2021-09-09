@@ -1,7 +1,10 @@
+use crate::mjolnir_app::args::parse_shift;
 use crate::mjolnir_app::build_monitor;
 use crate::mjolnir_app::MjolnirError;
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_integration_tests::common::startup;
-use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
+use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_testing_utils::testing::fragments::BlockDateGenerator;
 use jormungandr_testing_utils::{
     testing::{
         node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentStatusProvider,
@@ -59,6 +62,14 @@ pub struct AllFragments {
     /// load test rump up period
     #[structopt(long = "rump-up")]
     rump_up: u32,
+
+    /// Transaction validity deadline (inclusive)
+    #[structopt(short = "v", long = "valid-until", conflicts_with = "ttl")]
+    valid_until: Option<BlockDate>,
+
+    /// Transaction time to live (can be negative e.g. ~4.2)
+    #[structopt(short = "t", long= "ttl", default_value = "1.0", parse(try_from_str = parse_shift))]
+    ttl: (BlockDate, bool),
 }
 
 impl AllFragments {
@@ -80,7 +91,9 @@ impl AllFragments {
         let fragment_sender = FragmentSender::new(
             block0_hash,
             fees,
-            chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+            self.valid_until
+                .map(BlockDateGenerator::Fixed)
+                .unwrap_or_else(|| BlockDateGenerator::rolling(&settings, self.ttl.0, self.ttl.1)),
             FragmentSenderSetup::no_verify(),
         );
 
@@ -95,16 +108,18 @@ impl AllFragments {
             fragment_sender,
         );
 
-        let current_date = BlockDate::from_str(
-            rest.stats()
-                .unwrap()
-                .stats
-                .unwrap()
-                .last_block_date
-                .unwrap()
-                .as_ref(),
-        )
-        .unwrap();
+        let current_date = jormungandr_lib::interfaces::BlockDate::from(
+            BlockDate::from_str(
+                rest.stats()
+                    .unwrap()
+                    .stats
+                    .unwrap()
+                    .last_block_date
+                    .unwrap()
+                    .as_ref(),
+            )
+            .unwrap(),
+        );
 
         let target_date = current_date.shift_slot(
             self.rump_up,

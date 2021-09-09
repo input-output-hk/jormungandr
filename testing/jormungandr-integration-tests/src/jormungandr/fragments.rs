@@ -43,7 +43,8 @@ pub fn send_all_fragments() {
         chain_impl_mockchain::block::BlockDate {
             epoch: 10,
             slot_id: 0,
-        },
+        }
+        .into(),
         FragmentSenderSetup::no_verify(),
     );
 

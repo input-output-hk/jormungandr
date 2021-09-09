@@ -95,7 +95,9 @@ pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+        chain_impl_mockchain::block::BlockDate::first()
+            .next_epoch()
+            .into(),
         FragmentSenderSetup::no_verify(),
     );
 
@@ -232,7 +234,9 @@ pub fn adversary_public_vote_load_scenario(
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first().next_epoch(),
+        chain_impl_mockchain::block::BlockDate::first()
+            .next_epoch()
+            .into(),
         FragmentSenderSetup::no_verify(),
     );
 
@@ -242,7 +246,8 @@ pub fn adversary_public_vote_load_scenario(
         chain_impl_mockchain::block::BlockDate {
             epoch: 1,
             slot_id: 0,
-        },
+        }
+        .into(),
         AdversaryFragmentSenderSetup::no_verify(),
     );
 

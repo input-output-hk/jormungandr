@@ -52,7 +52,7 @@ pub fn persistent_log_load_test() {
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first(),
+        BlockDate::first().into(),
         batch_size,
     );
     request_generator.fill_from_faucet(&mut faucet);

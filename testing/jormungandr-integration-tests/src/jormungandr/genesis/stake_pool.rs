@@ -38,7 +38,7 @@ pub fn more_than_one_stake_pool_in_app() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch().into(),
         FragmentSenderSetup::resend_3_times(),
     );
     fragment_sender

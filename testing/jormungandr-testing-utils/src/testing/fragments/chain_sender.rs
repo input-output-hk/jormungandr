@@ -30,7 +30,7 @@ impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
         node: RemoteJormungandr,
     ) -> Self {
         Self {
-            sender: FragmentSender::new(block0_hash, fees, valid_until, setup),
+            sender: FragmentSender::new(block0_hash, fees, valid_until.into(), setup),
             node,
             last_mempool_check: None,
         }
@@ -67,7 +67,7 @@ impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
         time::wait_for_epoch(span, self.node.rest().clone());
         let slot_id = self.sender.date().slot_id;
         Self {
-            sender: self.sender.set_ttl(BlockDate {
+            sender: self.sender.set_valid_until(BlockDate {
                 epoch: span + 1,
                 slot_id,
             }),

@@ -55,7 +55,7 @@ pub fn test_legacy_node_all_fragments() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch().into(),
         Default::default(),
     );
 

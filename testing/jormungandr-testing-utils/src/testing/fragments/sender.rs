@@ -19,7 +19,8 @@ use chain_impl_mockchain::{
 use jormungandr_lib::interfaces::{Address, FragmentsProcessingSummary};
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{FragmentStatus, Value},
+    interfaces::{FragmentStatus, SettingsDto, Value},
+    time::SystemTime,
 };
 use std::time::Duration;
 
@@ -70,21 +71,21 @@ pub struct FragmentSender<'a, S: SyncNode + Send> {
     block0_hash: Hash,
     fees: LinearFee,
     setup: FragmentSenderSetup<'a, S>,
-    valid_until: BlockDate,
+    expiry_generator: BlockDateGenerator,
 }
 
 impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     pub fn new(
         block0_hash: Hash,
         fees: LinearFee,
-        valid_until: BlockDate,
+        expiry_generator: BlockDateGenerator,
         setup: FragmentSenderSetup<'a, S>,
     ) -> Self {
         Self {
             block0_hash,
             fees,
             setup,
-            valid_until,
+            expiry_generator,
         }
     }
 
@@ -97,12 +98,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     }
 
     pub fn date(&self) -> BlockDate {
-        self.valid_until
+        self.expiry_generator.block_date()
     }
 
-    pub fn set_ttl(self, valid_until: BlockDate) -> Self {
+    pub fn set_valid_until(self, valid_until: BlockDate) -> Self {
         Self {
-            valid_until,
+            expiry_generator: valid_until.into(),
             ..self
         }
     }
@@ -114,7 +115,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         FragmentSender {
             fees: self.fees(),
             block0_hash: self.block0_hash(),
-            valid_until: self.valid_until,
+            expiry_generator: self.expiry_generator.clone(),
             setup,
         }
     }
@@ -142,7 +143,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         let fragment = from.transaction_to(
             &self.block0_hash,
             &self.fees,
-            self.valid_until,
+            self.expiry_generator.block_date(),
             address,
             value,
         )?;
@@ -161,7 +162,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         let fragment = from.transaction_to_many(
             &self.block0_hash,
             &self.fees,
-            self.valid_until,
+            self.expiry_generator.block_date(),
             &addresses,
             value,
         )?;
@@ -175,8 +176,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment =
-            from.issue_full_delegation_cert(&self.block0_hash, &self.fees, self.valid_until, to)?;
+        let fragment = from.issue_full_delegation_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            to,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -190,7 +195,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         let fragment = from.issue_split_delegation_cert(
             &self.block0_hash,
             &self.fees,
-            self.valid_until,
+            self.expiry_generator.block_date(),
             distribution.to_vec(),
         )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
@@ -203,8 +208,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment =
-            from.issue_owner_delegation_cert(&self.block0_hash, &self.fees, self.valid_until, to)?;
+        let fragment = from.issue_owner_delegation_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            to,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -215,8 +224,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment =
-            from.issue_pool_registration_cert(&self.block0_hash, &self.fees, self.valid_until, to)?;
+        let fragment = from.issue_pool_registration_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            to,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -231,7 +244,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         let fragment = from.issue_pool_update_cert(
             &self.block0_hash,
             &self.fees,
-            self.valid_until,
+            self.expiry_generator.block_date(),
             to,
             update_stake_pool,
         )?;
@@ -245,8 +258,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment =
-            from.issue_pool_retire_cert(&self.block0_hash, &self.fees, self.valid_until, to)?;
+        let fragment = from.issue_pool_retire_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            to,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -257,8 +274,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         vote_plan: &VotePlan,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment =
-            from.issue_vote_plan_cert(&self.block0_hash, &self.fees, self.valid_until, vote_plan)?;
+        let fragment = from.issue_vote_plan_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            vote_plan,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -274,7 +295,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         let fragment = from.issue_vote_cast_cert(
             &self.block0_hash,
             &self.fees,
-            self.valid_until,
+            self.expiry_generator.block_date(),
             vote_plan,
             proposal_index,
             choice,
@@ -301,7 +322,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         let fragment = from.issue_encrypted_tally_cert(
             &self.block0_hash,
             &self.fees,
-            self.valid_until,
+            self.expiry_generator.block_date(),
             vote_plan,
         )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
@@ -328,7 +349,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         let fragment = from.issue_vote_tally_cert(
             &self.block0_hash,
             &self.fees,
-            self.valid_until,
+            self.expiry_generator.block_date(),
             vote_plan,
             tally_type,
         )?;
@@ -497,5 +518,125 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
             SyncWaitParams::network_size(nodes_length, 2).into(),
             "waiting for node to be in sync before sending transaction",
         )
+    }
+}
+
+#[derive(Clone)]
+pub enum BlockDateGenerator {
+    Rolling {
+        block0_time: SystemTime,
+        slot_duration: u64,
+        slots_per_epoch: u32,
+        shift: BlockDate,
+        shift_back: bool,
+    },
+    Fixed(BlockDate),
+}
+
+impl BlockDateGenerator {
+    /// Returns `BlockDate`s that are always ahead or behind the current date by a certain shift
+    pub fn rolling(block0_settings: &SettingsDto, shift: BlockDate, shift_back: bool) -> Self {
+        Self::Rolling {
+            block0_time: block0_settings.block0_time,
+            slot_duration: block0_settings.slot_duration,
+            slots_per_epoch: block0_settings.slots_per_epoch,
+            shift,
+            shift_back,
+        }
+    }
+
+    /// Shifts the current date and returns the result on all subsequent calls
+    pub fn shifted(block0_settings: &SettingsDto, shift: BlockDate, shift_back: bool) -> Self {
+        let current = Self::current_blockchain_age(
+            block0_settings.block0_time,
+            block0_settings.slots_per_epoch,
+            block0_settings.slot_duration,
+        );
+
+        let shifted = if shift_back {
+            Self::shift_back(block0_settings.slots_per_epoch, current, shift)
+        } else {
+            Self::shift_ahead(block0_settings.slots_per_epoch, current, shift)
+        };
+
+        Self::Fixed(shifted)
+    }
+
+    pub fn block_date(&self) -> BlockDate {
+        match self {
+            Self::Fixed(valid_until) => *valid_until,
+            Self::Rolling {
+                block0_time,
+                slot_duration,
+                slots_per_epoch,
+                shift,
+                shift_back,
+            } => {
+                let current =
+                    Self::current_blockchain_age(*block0_time, *slots_per_epoch, *slot_duration);
+
+                if *shift_back {
+                    Self::shift_back(*slots_per_epoch, current, *shift)
+                } else {
+                    Self::shift_ahead(*slots_per_epoch, current, *shift)
+                }
+            }
+        }
+    }
+
+    pub fn shift_ahead(slots_per_epoch: u32, date: BlockDate, shift: BlockDate) -> BlockDate {
+        if shift.slot_id >= slots_per_epoch {
+            panic!(
+                "Requested shift by {} but an epoch has {} slots",
+                shift, slots_per_epoch
+            );
+        }
+
+        let epoch = date.epoch + shift.epoch + (date.slot_id + shift.slot_id) / slots_per_epoch;
+        let slot_id = (date.slot_id + shift.slot_id) % slots_per_epoch;
+
+        BlockDate { epoch, slot_id }
+    }
+
+    pub fn shift_back(slots_per_epoch: u32, date: BlockDate, shift: BlockDate) -> BlockDate {
+        if shift.slot_id >= slots_per_epoch {
+            panic!(
+                "Requested shift by -{} but an epoch has {} slots",
+                shift, slots_per_epoch
+            );
+        }
+
+        let epoch = date.epoch - shift.epoch - (date.slot_id + shift.slot_id) / slots_per_epoch;
+        let slot_id = (date.slot_id + shift.slot_id) % slots_per_epoch;
+
+        BlockDate { epoch, slot_id }
+    }
+
+    pub fn current_blockchain_age(
+        block0_time: SystemTime,
+        slots_per_epoch: u32,
+        slot_duration: u64,
+    ) -> BlockDate {
+        let now = SystemTime::now();
+
+        let slots_since_block0 = now
+            .duration_since(block0_time)
+            .unwrap_or_else(|_| jormungandr_lib::time::Duration::from_millis(0))
+            .as_secs()
+            / slot_duration;
+
+        let epoch = slots_since_block0 / slots_per_epoch as u64;
+        let slot_id = slots_since_block0 % slots_per_epoch as u64;
+
+        BlockDate {
+            epoch: epoch as u32,
+            slot_id: slot_id as u32,
+        }
+    }
+}
+
+impl From<BlockDate> for BlockDateGenerator {
+    fn from(from: BlockDate) -> Self {
+        Self::Fixed(from)
     }
 }

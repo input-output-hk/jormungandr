@@ -53,7 +53,7 @@ pub fn fragment_load_test() {
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),
-            BlockDate::first().next_epoch(),
+            BlockDate::first().next_epoch().into(),
             FragmentSenderSetup::no_verify(),
         ),
     );
@@ -111,7 +111,7 @@ pub fn fragment_batch_load_test() {
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first(),
+        BlockDate::first().into(),
         10,
     );
     request_generator.fill_from_faucet(&mut faucet);
@@ -156,7 +156,7 @@ pub fn transaction_load_test() {
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch().into(),
     );
     request_generator.fill_from_faucet(&mut faucet);
 

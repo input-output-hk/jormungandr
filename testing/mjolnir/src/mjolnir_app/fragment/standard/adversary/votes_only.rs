@@ -1,9 +1,11 @@
+use crate::mjolnir_app::args::parse_shift;
 use crate::mjolnir_app::build_monitor;
 use crate::mjolnir_app::MjolnirError;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::testing::block0::get_block;
 use jormungandr_testing_utils::testing::block0::Block0ConfigurationExtension;
+use jormungandr_testing_utils::testing::fragments::BlockDateGenerator;
 use jormungandr_testing_utils::testing::{
     AdversaryVoteCastsGenerator, FragmentSender, FragmentStatusProvider,
 };
@@ -52,8 +54,16 @@ pub struct VotesOnly {
     #[structopt(long = "spending-counter", short = "s")]
     faucet_spending_counter: u32,
 
-    #[structopt(long = "block-path", short = "b")]
+    #[structopt(long = "block-path", long = "block")]
     block0_path: String,
+
+    /// Transaction validity deadline (inclusive)
+    #[structopt(short = "v", long = "valid-until", conflicts_with = "ttl")]
+    valid_until: Option<BlockDate>,
+
+    /// Transaction time to live (can be negative e.g. ~4.2)
+    #[structopt(short = "t", long= "ttl", default_value = "1.0", parse(try_from_str = parse_shift))]
+    ttl: (BlockDate, bool),
 }
 
 impl VotesOnly {
@@ -75,15 +85,20 @@ impl VotesOnly {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
+        let expiry_generator = self
+            .valid_until
+            .map(BlockDateGenerator::Fixed)
+            .unwrap_or_else(|| BlockDateGenerator::rolling(&settings, self.ttl.0, self.ttl.1));
+
         let transaction_sender = FragmentSender::new(
             block0_hash,
             fees,
-            BlockDate::first().next_epoch(),
+            expiry_generator.clone(),
             FragmentSenderSetup::no_verify(),
         );
 
         let generator = AdversaryVoteCastsGenerator::new(
-            BlockDate::first().next_epoch(),
+            expiry_generator,
             faucet,
             vote_plans,
             remote_jormungandr.clone_with_rest(),

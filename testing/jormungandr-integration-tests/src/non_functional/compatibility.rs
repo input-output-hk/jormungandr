@@ -111,7 +111,7 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
     let fragment_sender = FragmentSender::new(
         legacy_jormungandr.genesis_block_hash(),
         legacy_jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch().into(),
         Default::default(),
     );
 
@@ -151,7 +151,7 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
     let fragment_sender = FragmentSender::new(
         legacy_jormungandr.genesis_block_hash(),
         legacy_jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch().into(),
         Default::default(),
     );
 

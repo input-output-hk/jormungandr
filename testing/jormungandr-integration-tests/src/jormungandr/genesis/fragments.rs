@@ -40,7 +40,8 @@ pub fn test_all_fragments() {
         BlockDate {
             epoch: 10,
             slot_id: 0,
-        },
+        }
+        .into(),
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -172,14 +173,14 @@ pub fn test_all_adversary_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch().into(),
         FragmentSenderSetup::resend_3_times(),
     );
 
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch().into(),
         AdversaryFragmentSenderSetup::no_verify(),
     );
     let verifier = jormungandr
