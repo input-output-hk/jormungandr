@@ -42,8 +42,8 @@ jobs:
           name: Save dependency crates into cache
           key: cargo-deps-v3-{{ checksum "Cargo.lock" }}
           paths:
-            /home/circleci/.cargo/registry/cache
-            /home/circleci/.cargo/git/db
+            - /home/circleci/.cargo/registry/cache
+            - /home/circleci/.cargo/git/db
       - persist_to_workspace:
           root: .
           paths:
@@ -59,7 +59,7 @@ jobs:
 
 commands:
   test:
-    description: "Steps for the test jobs"
+    description: 'Steps for the test jobs'
     parameters:
       mode:
         type: string
