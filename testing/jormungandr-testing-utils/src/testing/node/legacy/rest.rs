@@ -174,10 +174,6 @@ impl BackwardCompatibleRest {
         Ok(logs)
     }
 
-    pub fn leaders(&self) -> Result<String, reqwest::Error> {
-        self.raw().leaders()?.text()
-    }
-
     pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, reqwest::Error> {
         let fragment_id = fragment.id();
         let response = self.raw().send_fragment(fragment)?;

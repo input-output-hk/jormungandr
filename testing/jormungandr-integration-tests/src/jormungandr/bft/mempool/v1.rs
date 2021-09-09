@@ -76,7 +76,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         vec![first_transaction.id()],
         vec![(
             second_transaction.id(),
-            FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+            FragmentRejectionReason::PoolOverflow,
         )],
         jormungandr
             .rest()
@@ -173,11 +173,11 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         vec![
             (
                 first_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+                FragmentRejectionReason::PoolOverflow,
             ),
             (
                 second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+                FragmentRejectionReason::PoolOverflow,
             ),
         ],
         jormungandr
@@ -256,7 +256,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         vec![first_transaction.id()],
         vec![(
             second_transaction.id(),
-            FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+            FragmentRejectionReason::PoolOverflow,
         )],
         jormungandr
             .rest()
@@ -353,11 +353,11 @@ pub fn test_mempool_log_max_entries_equals_0() {
         vec![
             (
                 first_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+                FragmentRejectionReason::PoolOverflow,
             ),
             (
                 second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+                FragmentRejectionReason::PoolOverflow,
             ),
         ],
         jormungandr

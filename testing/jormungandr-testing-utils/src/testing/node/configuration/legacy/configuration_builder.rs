@@ -44,7 +44,7 @@ impl LegacyConfigConverter {
             params.node_config_path(),
             params.genesis_block_path(),
             params.genesis_block_hash(),
-            params.secret_model_paths(),
+            params.secret_model_path(),
             params.block0_configuration().clone(),
             params.rewards_history(),
             params.log_file_path(),

@@ -1,6 +1,6 @@
 use crate::{
     blockchain::Tip,
-    fragment::{Logs, Pools},
+    fragment::{Logs, Pool},
     intercom::{NetworkMsg, TransactionMsg},
     metrics::{Metrics, MetricsBackend},
     utils::{
@@ -50,7 +50,6 @@ impl Process {
 
     pub async fn start<P: AsRef<Path>>(
         self,
-        n_pools: usize,
         service_info: TokioServiceInfo,
         stats_counter: Metrics,
         mut input: MessageQueue<TransactionMsg>,
@@ -86,13 +85,12 @@ impl Process {
                 .await
         }
 
-        let min_logs_size = n_pools * self.pool_max_entries;
-        if self.logs_max_entries < min_logs_size {
+        if self.logs_max_entries < self.pool_max_entries {
             tracing::warn!(
-                "Having 'log_max_entries' < 'pool_max_entries' * n_pools is not recommendend. Overriding 'log_max_entries' to {}", min_logs_size
+                "Having 'log_max_entries' < 'pool_max_entries' is not recommendend. Overriding 'log_max_entries' to {}", self.pool_max_entries
             );
         }
-        let logs = Logs::new(std::cmp::max(self.logs_max_entries, min_logs_size));
+        let logs = Logs::new(std::cmp::max(self.logs_max_entries, self.pool_max_entries));
 
         let mut wakeup = Box::pin(hourly_wakeup(persistent_log_dir.is_some()));
 
@@ -105,9 +103,8 @@ impl Process {
                 }
             };
 
-            let mut pool = Pools::new(
+            let mut pool = Pool::new(
                 self.pool_max_entries,
-                n_pools,
                 logs,
                 self.network_msg_box,
                 persistent_log,
@@ -168,7 +165,6 @@ impl Process {
                                     pool.prune_after_ledger_branch(fork_date);
                                 }
                                 TransactionMsg::SelectTransactions {
-                                    pool_idx,
                                     ledger,
                                     ledger_params,
                                     selection_alg,
@@ -178,7 +174,6 @@ impl Process {
                                 } => {
                                     let contents = pool
                                         .select(
-                                            pool_idx,
                                             ledger,
                                             ledger_params,
                                             selection_alg,

@@ -12,7 +12,6 @@ use crate::{
     diagnostic::Diagnostic,
     intercom::{self, NetworkMsg, TopologyMsg, TransactionMsg},
     rest::Context,
-    secure::NodeSecret,
     topology::PeerInfo,
     utils::async_msg::MessageBox,
 };
@@ -25,15 +24,15 @@ use chain_impl_mockchain::{
     account::{AccountAlg, Identifier},
     fragment::{Fragment, FragmentId},
     key::Hash,
-    leadership::{Leader, LeadershipConsensus},
+    leadership::LeadershipConsensus,
     value::ValueError,
 };
 use jormungandr_lib::{
     interfaces::{
-        AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, FragmentOrigin,
-        FragmentsProcessingSummary, LeadershipLog, NodeStatsDto, PeerStats,
-        Rewards as StakePoolRewards, SettingsDto, StakeDistribution, StakeDistributionDto,
-        StakePoolStats, TaxTypeSerde, TransactionOutput, VotePlanStatus,
+        AccountState, EpochRewardsInfo, FragmentLog, FragmentOrigin, FragmentsProcessingSummary,
+        LeadershipLog, NodeStatsDto, PeerStats, Rewards as StakePoolRewards, SettingsDto,
+        StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde, TransactionOutput,
+        VotePlanStatus,
     },
     time::SystemTime,
 };
@@ -316,32 +315,6 @@ pub async fn shutdown(context: &mut Context) -> Result<(), Error> {
     context.stop_bootstrap();
     context.server_stopper()?.stop();
     Ok(())
-}
-
-pub async fn get_leader_ids(context: &Context) -> Result<Vec<EnclaveLeaderId>, Error> {
-    Ok(context.try_full()?.enclave.get_leader_ids().await)
-}
-
-pub async fn post_leaders(context: &Context, secret: NodeSecret) -> Result<EnclaveLeaderId, Error> {
-    let leader = Leader {
-        bft_leader: secret.bft(),
-        genesis_leader: secret.genesis(),
-    };
-    let leader_id = context.try_full()?.enclave.add_leader(leader).await;
-    Ok(leader_id)
-}
-
-pub async fn delete_leaders(
-    context: &Context,
-    leader_id: EnclaveLeaderId,
-) -> Result<Option<()>, Error> {
-    let removed = context.try_full()?.enclave.remove_leader(leader_id).await;
-
-    if removed {
-        Ok(Some(()))
-    } else {
-        Ok(None)
-    }
 }
 
 pub async fn get_leaders_logs(context: &Context) -> Result<Vec<LeadershipLog>, Error> {

@@ -17,7 +17,7 @@ use std::path::PathBuf;
 #[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(default)]
-    pub secret_files: Vec<PathBuf>,
+    pub secret_file: Option<PathBuf>,
     pub storage: Option<PathBuf>,
     pub log: Option<ConfigLogSettings>,
 
