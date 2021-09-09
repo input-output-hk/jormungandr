@@ -653,6 +653,7 @@ impl MutTxn<()> {
                             ConfigParam::AddCommitteeId(_) => {}
                             ConfigParam::RemoveCommitteeId(_) => {}
                             ConfigParam::PerVoteCertificateFees(_) => {}
+                            ConfigParam::TransactionMaxExpiryEpochs(_) => {}
                         }
                     }
 
