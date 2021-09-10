@@ -1,5 +1,5 @@
-use chain_impl_mockchain::block::HeaderId;
 use crate::logging::{LogFormat, LogInfoMsg, LogOutput, LogSettings, LogSettingsEntry};
+use chain_impl_mockchain::block::HeaderId;
 use jormungandr_lib::interfaces::{Cors, Tls};
 use lazy_static::lazy_static;
 use serde::{de, de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
@@ -203,11 +203,11 @@ struct CommandLine {
 #[derive(Debug, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    #[serde(default, deserialize_with = "deserialize_uri_string")]
+    pub node: Option<Uri>,
     pub storage: Option<PathBuf>,
     pub tls: Option<Tls>,
     pub cors: Option<Cors>,
-    #[serde(default, deserialize_with = "deserialize_uri_string")]
-    pub host: Option<Uri>,
     pub binding_address: Option<SocketAddr>,
     pub address_bech32_prefix: Option<String>,
     pub logs: Option<ConfigLogSettings>,
