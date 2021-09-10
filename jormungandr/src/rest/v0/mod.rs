@@ -191,7 +191,13 @@ pub fn filter(
             .and_then(handlers::get_rewards_info_epoch)
             .boxed();
 
-        root.and(history.or(epoch)).boxed()
+        let remaining = warp::path!("remaining")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_rewards_remaining)
+            .boxed();
+
+        root.and(history.or(epoch).or(remaining)).boxed()
     };
 
     let utxo = warp::path!("utxo" / String / u8)
