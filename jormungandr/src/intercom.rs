@@ -508,11 +508,7 @@ pub enum TransactionMsg {
         fail_fast: bool,
         reply_handle: ReplyHandle<FragmentsProcessingSummary>,
     },
-    RemoveTransactions(
-        Vec<FragmentId>,
-        FragmentStatus,
-        chain_impl_mockchain::block::BlockDate,
-    ),
+    RemoveTransactions(Vec<FragmentId>, FragmentStatus),
     BranchSwitch(BlockDate),
     GetLogs(ReplyHandle<Vec<FragmentLog>>),
     GetStatuses(
@@ -520,7 +516,6 @@ pub enum TransactionMsg {
         ReplyHandle<HashMap<FragmentId, FragmentStatus>>,
     ),
     SelectTransactions {
-        pool_idx: usize,
         ledger: ApplyBlockLedger,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,

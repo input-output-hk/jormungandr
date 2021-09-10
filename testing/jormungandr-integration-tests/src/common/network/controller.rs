@@ -169,7 +169,7 @@ impl Controller {
         config_file.write_str(&yaml)?;
 
         let secret_file = dir.child(NODE_SECRETS_FILE);
-        let yaml = serde_yaml::to_string(node_setting.secrets())?;
+        let yaml = serde_yaml::to_string(node_setting.secret())?;
         secret_file.write_str(&yaml)?;
 
         let topology_file = dir.child(NODE_TOPOLOGY_KEY_FILE);
@@ -180,7 +180,7 @@ impl Controller {
             config_file.path(),
             &self.block0_file,
             self.block0_hash.to_string(),
-            &[secret_file.path()],
+            secret_file.path(),
             self.settings.block0.clone(),
             false,
             log_file_path,

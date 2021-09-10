@@ -240,11 +240,10 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             None
         }
     });
-    let leader_secrets = bootstrapped_node
+    let leader_secret = bootstrapped_node
         .settings
-        .secrets
-        .iter()
-        .map(|secret_path| {
+        .secret
+        .map::<Result<_, start_up::Error>, _>(|secret_path| {
             let secret = secure::NodeSecret::load_from_file(secret_path.as_path())?;
             if let (Some(leaders), Some(leader)) = (&bft_leaders, secret.bft()) {
                 let public_key = &leader.sig_key.to_public();
@@ -261,9 +260,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 genesis_leader: secret.genesis(),
             })
         })
-        .collect::<Result<Vec<Leader>, start_up::Error>>()?;
-    let n_pools = leader_secrets.len();
-    let enclave = block_on(Enclave::from_vec(leader_secrets));
+        .transpose()?;
+    let enclave = Enclave::new(leader_secret);
 
     {
         let logs = leadership_logs.clone();
@@ -290,6 +288,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     }
 
     {
+        let blockchain_tip = blockchain_tip.clone();
         let process = fragment::Process::new(
             bootstrapped_node.settings.mempool.pool_max_entries.into(),
             bootstrapped_node.settings.mempool.log_max_entries.into(),
@@ -303,11 +302,11 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
         services.spawn_try_future("fragment", move |info| {
             process.start(
-                n_pools,
                 info,
                 stats_counter,
                 fragment_queue,
                 fragment_log_dir,
+                blockchain_tip,
             )
         });
     };

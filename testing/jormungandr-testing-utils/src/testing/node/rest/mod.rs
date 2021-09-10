@@ -12,8 +12,8 @@ use jormungandr_lib::interfaces::{Address, FragmentStatus, VotePlanId};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
-        AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, LeadershipLog, NodeStatsDto,
-        PeerRecord, PeerStats, SettingsDto, StakeDistributionDto, VotePlanStatus,
+        AccountState, EpochRewardsInfo, FragmentLog, LeadershipLog, NodeStatsDto, PeerRecord,
+        PeerStats, SettingsDto, StakeDistributionDto, VotePlanStatus,
     },
 };
 use std::collections::HashMap;
@@ -180,16 +180,6 @@ impl JormungandrRest {
 
     pub fn leaders_log(&self) -> Result<Vec<LeadershipLog>, RestError> {
         serde_json::from_str(&self.inner.leaders_log()?).map_err(RestError::CannotDeserialize)
-    }
-
-    pub fn leaders(&self) -> Result<Vec<EnclaveLeaderId>, RestError> {
-        let leaders = self.inner.leaders()?;
-        let leaders: Vec<EnclaveLeaderId> = if leaders.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&leaders).map_err(RestError::CannotDeserialize)?
-        };
-        Ok(leaders)
     }
 
     pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, RestError> {

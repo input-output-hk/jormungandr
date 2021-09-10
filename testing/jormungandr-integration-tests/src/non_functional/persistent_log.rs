@@ -42,6 +42,7 @@ pub fn persistent_log_load_test() {
         threads_count,
         requests_per_thread,
         1,
+        None,
         Monitor::Standard(100),
         1,
         1,

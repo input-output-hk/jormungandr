@@ -1,5 +1,6 @@
 use crate::{
     blockcfg::{ApplyBlockLedger, LedgerParameters},
+    blockchain::{Ref, Tip},
     fragment::{
         selection::{FragmentSelectionAlgorithm, FragmentSelectionAlgorithmParams, OldestFirst},
         Fragment, FragmentId, Logs,
@@ -20,7 +21,6 @@ use jormungandr_lib::{
 };
 use thiserror::Error;
 
-use std::collections::{HashMap, HashSet};
 use std::mem;
 
 use tokio::fs::File;
@@ -32,12 +32,12 @@ use tokio::io::{AsyncWriteExt, BufWriter};
 // Its main purpose is to avoid unnecessary flushing while processing a single batch of fragments.
 const DEFAULT_BUF_SIZE: usize = 128 * 1024; // 128 KiB
 
-pub struct Pools {
+pub struct Pool {
     logs: Logs,
-    pools: Vec<internal::Pool>,
+    pool: internal::Pool,
     network_msg_box: MessageBox<NetworkMsg>,
     persistent_log: Option<BufWriter<File>>,
-    last_block_date: BlockDate,
+    tip: Tip,
 }
 
 #[derive(Debug, Error)]
@@ -46,27 +46,21 @@ pub enum Error {
     CannotPropagate(#[source] SendError),
 }
 
-impl Pools {
+impl Pool {
     pub fn new(
         max_entries: usize,
-        n_pools: usize,
         logs: Logs,
         network_msg_box: MessageBox<NetworkMsg>,
         persistent_log: Option<File>,
+        tip: Tip,
     ) -> Self {
-        // we need a pool even for passive nodes to be able to participate in
-        // the fragments dissemination protocol
-        let n_pools = std::cmp::max(1, n_pools);
-        let pools = (0..n_pools)
-            .map(|_| internal::Pool::new(max_entries))
-            .collect();
-        Pools {
+        Pool {
             logs,
-            pools,
+            pool: internal::Pool::new(max_entries),
             network_msg_box,
             persistent_log: persistent_log
                 .map(|file| BufWriter::with_capacity(DEFAULT_BUF_SIZE, file)),
-            last_block_date: BlockDate::first(),
+            tip,
         }
     }
 
@@ -110,6 +104,11 @@ impl Pools {
 
         let mut fragments = fragments.into_iter();
 
+        let tip = self.tip.get_ref().await;
+        let ledger = tip.ledger();
+        let ledger_settings = ledger.settings();
+        let block_date = get_current_block_date(&tip);
+
         for fragment in fragments.by_ref() {
             let id = fragment.id();
 
@@ -125,13 +124,28 @@ impl Pools {
                 continue;
             }
 
-            if check_fragment_expired(&fragment, self.last_block_date) {
-                rejected.push(RejectedFragmentInfo {
-                    id,
-                    reason: FragmentRejectionReason::FragmentExpired,
-                });
-                tracing::debug!("fragment is expired at the time of receiving");
-                continue;
+            if let Some(valid_until) = get_transaction_expiry_date(&fragment) {
+                use chain_impl_mockchain::ledger::check::{valid_transaction_date, TxVerifyError};
+                match valid_transaction_date(ledger_settings, valid_until, block_date) {
+                    Ok(_) => {}
+                    Err(TxVerifyError::TransactionExpired) => {
+                        rejected.push(RejectedFragmentInfo {
+                            id,
+                            reason: FragmentRejectionReason::FragmentExpired,
+                        });
+                        tracing::debug!("fragment is expired at the time of receiving");
+                        continue;
+                    }
+                    Err(TxVerifyError::TransactionValidForTooLong) => {
+                        rejected.push(RejectedFragmentInfo {
+                            id,
+                            reason: FragmentRejectionReason::FragmentValidForTooLong,
+                        });
+                        tracing::debug!("fragment is valid for too long");
+                        continue;
+                    }
+                    Err(_) => unreachable!(),
+                }
             }
 
             if !is_fragment_valid(&fragment) {
@@ -192,48 +206,39 @@ impl Pools {
             }
         }
 
-        let mut accepted_fragments = HashMap::new();
+        let span = tracing::trace_span!("pool_insert_fragment");
+        let _enter = span.enter();
 
-        for (pool_number, pool) in self.pools.iter_mut().enumerate() {
-            let span = tracing::trace_span!("pool_insert_fragment", pool_number=?pool_number);
-            let _enter = span.enter();
+        let mut fragments = filtered_fragments.into_iter();
+        let new_fragments = self.pool.insert_all(fragments.by_ref());
+        let count = new_fragments.len();
+        tracing::debug!("{} of the received fragments were added to the pool", count);
+        let fragment_logs: Vec<_> = new_fragments
+            .iter()
+            .map(move |fragment| FragmentLog::new(fragment.id(), origin))
+            .collect();
+        self.logs.insert_all_pending(fragment_logs);
 
-            let mut fragments = filtered_fragments.clone().into_iter();
-            let new_fragments = pool.insert_all(fragments.by_ref());
-            let count = new_fragments.len();
-            tracing::debug!("{} of the received fragments were added to the pool", count,);
-            let fragment_logs: Vec<_> = new_fragments
-                .iter()
-                .map(move |fragment| FragmentLog::new(fragment.id(), origin))
-                .collect();
-            self.logs.insert_all_pending(fragment_logs);
-
-            for fragment in new_fragments {
-                let id = fragment.id();
-                tracing::debug!(fragment_id=?id, "inserted fragment to the pool");
-                accepted_fragments.insert(id, fragment);
-            }
-
-            for fragment in fragments {
-                let id = fragment.id();
-                tracing::debug!(fragment_id=?id, "rejecting fragment due to pool overflow");
-                rejected.push(RejectedFragmentInfo {
-                    id,
-                    reason: FragmentRejectionReason::PoolOverflow { pool_number },
-                })
-            }
-        }
-
-        let mut accepted = Vec::with_capacity(accepted_fragments.len());
+        let mut accepted = Vec::new();
         let mut network_msg_box = self.network_msg_box.clone();
-
-        for (id, fragment) in accepted_fragments.into_iter() {
+        for fragment in new_fragments {
+            let id = fragment.id();
+            tracing::debug!(fragment_id=?id, "inserted fragment to the pool");
+            accepted.push(id);
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
             network_msg_box
                 .send(fragment_msg)
                 .await
                 .map_err(Error::CannotPropagate)?;
-            accepted.push(id);
+        }
+
+        for fragment in fragments {
+            let id = fragment.id();
+            tracing::debug!(fragment_id=?id, "rejecting fragment due to pool overflow");
+            rejected.push(RejectedFragmentInfo {
+                id,
+                reason: FragmentRejectionReason::PoolOverflow,
+            });
         }
 
         Ok(FragmentsProcessingSummary { accepted, rejected })
@@ -245,25 +250,19 @@ impl Pools {
         } else {
             panic!("expected status to be in block, found {:?}", status);
         };
-
-        for pool in &mut self.pools {
-            pool.remove_all(fragment_ids.iter());
-        }
-
+        self.pool.remove_all(fragment_ids.iter());
         self.logs.modify_all(fragment_ids, status, date);
     }
 
     pub async fn select(
         &mut self,
-        pool_idx: usize,
         ledger: ApplyBlockLedger,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
     ) -> (Contents, ApplyBlockLedger) {
-        let Pools { logs, pools, .. } = self;
-        let pool = &mut pools[pool_idx];
+        let Pool { logs, pool, .. } = self;
         match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
@@ -286,17 +285,10 @@ impl Pools {
         self.logs.remove_logs_after_date(branch_date)
     }
 
-    pub fn remove_expired_txs(&mut self, block_date: BlockDate) {
-        if self.last_block_date < block_date {
-            self.last_block_date = block_date;
-        }
-        let mut fragment_ids = HashSet::new();
-        for pool in &mut self.pools {
-            let fragment_ids_update = pool.remove_expired_txs(block_date);
-            for id in fragment_ids_update {
-                fragment_ids.insert(id);
-            }
-        }
+    pub async fn remove_expired_txs(&mut self) {
+        let tip = self.tip.get_ref().await;
+        let block_date = get_current_block_date(&tip);
+        let fragment_ids = self.pool.remove_expired_txs(block_date);
         self.logs.modify_all(
             fragment_ids,
             FragmentStatus::Rejected {
@@ -304,6 +296,21 @@ impl Pools {
             },
             block_date.into(),
         );
+    }
+}
+
+fn get_current_block_date(tip: &Ref) -> BlockDate {
+    let time = std::time::SystemTime::now();
+    let era = tip.epoch_leadership_schedule().era();
+    let epoch_position = tip
+        .time_frame()
+        .slot_at(&time)
+        .and_then(|slot| era.from_slot_to_era(slot))
+        .expect("the current time and blockchain state should produce a valid blockchain date");
+    let block_date: BlockDate = epoch_position.into();
+    BlockDate {
+        slot_id: block_date.slot_id + 1,
+        ..block_date
     }
 }
 
@@ -349,14 +356,6 @@ fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
         Fragment::VoteCast(tx) => Some(tx.as_slice().valid_until()),
         Fragment::VoteTally(tx) => Some(tx.as_slice().valid_until()),
         Fragment::EncryptedVoteTally(tx) => Some(tx.as_slice().valid_until()),
-    }
-}
-
-fn check_fragment_expired(fragment: &Fragment, block_date: BlockDate) -> bool {
-    if let Some(valid_until) = get_transaction_expiry_date(fragment) {
-        valid_until < block_date
-    } else {
-        false
     }
 }
 
@@ -486,6 +485,7 @@ pub(super) mod internal {
     }
 
     unsafe impl<K: Send, V: Send> Send for IndexedDeqeue<K, V> {}
+    unsafe impl<K: Sync, V: Sync> Sync for IndexedDeqeue<K, V> {}
 
     impl<K: PartialEq> PartialEq for IndexedDequeueKeyRef<K> {
         fn eq(&self, other: &IndexedDequeueKeyRef<K>) -> bool {
@@ -704,25 +704,5 @@ pub(super) mod internal {
 
             assert_eq!(pool.entries.len(), 0, "Expired fragment should be removed");
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn correct_pools_number() {
-        let (fake_msgbox, _) = crate::async_msg::channel(1);
-        // a passive node still has 1 pool
-        let pools = Pools::new(0, 0, Logs::new(1), fake_msgbox.clone(), None);
-        assert_eq!(pools.pools.len(), 1);
-
-        // a leader node should have as many pools as leaders
-        let pools = Pools::new(0, 1, Logs::new(1), fake_msgbox.clone(), None);
-        assert_eq!(pools.pools.len(), 1);
-
-        let pools = Pools::new(0, 5, Logs::new(1), fake_msgbox, None);
-        assert_eq!(pools.pools.len(), 5);
     }
 }

@@ -10,56 +10,12 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, InitialUTxO, Ratio, TaxType, Value},
 };
-use jormungandr_testing_utils::{
-    testing::{FragmentSender, FragmentSenderSetup},
-    wallet::Wallet,
-};
+use jormungandr_testing_utils::wallet::Wallet;
 use jortestkit::process::Wait;
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
 use std::str::FromStr;
-
-#[test]
-pub fn more_than_one_stake_pool_in_app() {
-    use chain_impl_mockchain::block::BlockDate;
-
-    let mut first_spo = startup::create_new_account_address();
-    let second_spo = startup::create_new_account_address();
-    let third_spo = startup::create_new_account_address();
-
-    let (jormungandr, _) = startup::start_stake_pool(
-        &[first_spo.clone(), second_spo.clone(), third_spo],
-        &[],
-        &mut ConfigurationBuilder::new(),
-    )
-    .unwrap();
-
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-        FragmentSenderSetup::resend_3_times(),
-    );
-    fragment_sender
-        .send_transaction(&mut first_spo, &second_spo, &jormungandr, 1.into())
-        .unwrap();
-
-    jormungandr.assert_no_errors_in_log();
-
-    let last_block_height: u64 = jormungandr
-        .rest()
-        .stats()
-        .unwrap()
-        .stats
-        .unwrap()
-        .last_block_height
-        .unwrap()
-        .parse()
-        .unwrap();
-
-    assert!(last_block_height > 0);
-}
 
 #[test]
 pub fn create_delegate_retire_stake_pool() {

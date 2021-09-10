@@ -17,7 +17,7 @@ use chain_time::{
 };
 use futures::{future::TryFutureExt, sink::SinkExt};
 use jormungandr_lib::{
-    interfaces::{EnclaveLeaderId, LeadershipLog, LeadershipLogStatus},
+    interfaces::{LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
 };
 use std::cmp::Ordering;
@@ -244,7 +244,6 @@ impl Module {
             .as_mut()
             .expect("schedule must be available at this point")
             .peek()
-            .await
         {
             None => {
                 // the schedule is empty we were in the _action_ mode, so that means
@@ -259,7 +258,6 @@ impl Module {
                     parent: self.service_info.span(),
                     Level::TRACE, "leader_event",
                     event_date = %event.date.to_string(),
-                    leader_id = %event.id.to_string()
                 );
 
                 let epoch = Epoch(event.date.epoch);
@@ -288,7 +286,7 @@ impl Module {
 
     async fn action(mut self) -> Result<Self, LeadershipError> {
         match self.schedule.as_mut() {
-            Some(schedule) => match schedule.next().await {
+            Some(schedule) => match schedule.next_event() {
                 Some(event) => self.action_entry(event).await,
                 None => self.action_schedule().await,
             },
@@ -302,7 +300,7 @@ impl Module {
         let epoch = Epoch(event.date.epoch);
         let slot = EpochSlotOffset(event.date.slot_id);
         let scheduled_at_time = module.slot_time(epoch, slot);
-        let log = LeadershipLog::new(event.id, event.date.into(), scheduled_at_time);
+        let log = LeadershipLog::new(event.date.into(), scheduled_at_time);
 
         let entry = match module.logs.insert(log).await {
             Ok(log) => Entry { event, log },
@@ -327,7 +325,6 @@ impl Module {
             parent: self.service_info.span(),
             Level::TRACE,
             "action_run_entry",
-            leader_id = %entry.event.id.to_string(),
             event_date = %entry.event.date.to_string(),
             event_start = %event_start.to_string(),
             event_end = %event_end.to_string()
@@ -494,7 +491,6 @@ impl Module {
 
         let (contents, ledger) = prepare_block(
             pool,
-            event.id,
             ledger,
             ledger_parameters,
             soft_deadline_future,
@@ -528,7 +524,7 @@ impl Module {
                         .expect("Valid Header Builder")
                         .set_consensus_data(&leader_id);
                     enclave
-                        .query_header_bft_finalize(final_builder, event.id)
+                        .query_header_bft_finalize(final_builder)
                         .map_ok(|h| {
                             Some(Block {
                                 header: h.generalize(),
@@ -551,7 +547,7 @@ impl Module {
                         .expect("Valid Header Builder")
                         .set_consensus_data(&node_id, &vrfproof.into());
                     enclave
-                        .query_header_genesis_praos_finalize(final_builder, event.id)
+                        .query_header_genesis_praos_finalize(final_builder)
                         .map_ok(|h| {
                             Some(Block {
                                 header: h.generalize(),
@@ -698,7 +694,6 @@ impl Entry {
 
 async fn prepare_block(
     mut fragment_pool: MessageBox<TransactionMsg>,
-    leader_id: EnclaveLeaderId,
     ledger: ApplyBlockLedger,
     epoch_parameters: Arc<LedgerParameters>,
     soft_deadline_future: futures::channel::oneshot::Receiver<()>,
@@ -708,10 +703,7 @@ async fn prepare_block(
 
     let (reply_handle, reply_future) = unary_reply();
 
-    let pool_idx: u32 = leader_id.into();
-
     let msg = TransactionMsg::SelectTransactions {
-        pool_idx: pool_idx as usize,
         ledger,
         ledger_params: epoch_parameters.as_ref().clone(),
         selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
