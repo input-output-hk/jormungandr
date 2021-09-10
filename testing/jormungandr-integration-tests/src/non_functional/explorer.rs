@@ -147,6 +147,7 @@ pub fn explorer_load_test() {
         100,
         std::time::Duration::from_secs(60),
         100,
+        None,
         Monitor::Progress(100),
         0,
         1_000,

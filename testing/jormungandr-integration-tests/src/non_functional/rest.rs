@@ -27,6 +27,7 @@ pub fn rest_load_quick() {
         10,
         std::time::Duration::from_secs(40),
         10,
+        None,
         Monitor::Progress(100),
         0,
         1_000,

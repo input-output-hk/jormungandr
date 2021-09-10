@@ -48,6 +48,7 @@ impl VotingLoadTestConfig {
                 5,
                 250,
                 100,
+                None,
                 Monitor::Standard(100),
                 100,
                 1,
@@ -72,6 +73,7 @@ impl VotingLoadTestConfig {
                 5,
                 20_000,
                 100,
+                None,
                 Monitor::Standard(100),
                 100,
                 1,
@@ -227,5 +229,5 @@ impl PublicVotingLoadTestConfig {
 }
 
 pub fn adversary_noise_config(tps: usize, duration: Duration) -> Configuration {
-    Configuration::duration(tps, duration, 100, Monitor::Disabled(1), 10000, 1)
+    Configuration::duration(tps, duration, 100, None, Monitor::Disabled(1), 10000, 1)
 }
