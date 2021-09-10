@@ -7,7 +7,7 @@ use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{
-    AccountVotes, Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
+    AccountVotes, Address, FragmentStatus, FragmentsProcessingSummary, Value, VotePlanId,
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -114,6 +114,10 @@ impl JormungandrRest {
     pub fn reward_history(&self, length: u32) -> Result<Vec<EpochRewardsInfo>, RestError> {
         serde_json::from_str(&self.inner.reward_history(length)?)
             .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn remaining_rewards(&self) -> Result<Value, RestError> {
+        serde_json::from_str(&self.inner.remaining_rewards()?).map_err(RestError::CannotDeserialize)
     }
 
     pub fn stake_distribution(&self) -> Result<StakeDistributionDto, RestError> {
