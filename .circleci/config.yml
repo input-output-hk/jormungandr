@@ -3,7 +3,7 @@ version: 2.1
 executors:
   rust-stable:
     docker:
-      - image: cimg/rust:1.53.0
+      - image: cimg/rust:1.54.0
     working_directory: /home/circleci/build
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
       - checkout
       - run: git --version
       - run:
-          name: Get top commit hash of cargo registry index
+          name: Get head hash of cargo registry index
           command: |
             git ls-remote --heads https://github.com/rust-lang/crates.io-index.git master |
               cut -f 1 | tee .circleci/crates.io-index.head
@@ -27,12 +27,14 @@ jobs:
           keys:
             - cargo-deps-v3-{{ checksum "Cargo.lock" }}
       - run:
-          name: Fetch dependencies and update cargo registry index
+          name: Fetch dependencies
+          command: cargo fetch
+      - run:
+          name: Update head hash of cargo registry index
           command: |
-            cargo fetch
-            git -C /home/circleci/.cargo/registry/index/github.com-1ecc6299db9ec823 \
-                show-ref -s refs/remotes/origin/master |
-              tee .circleci/crates.io-index.head
+            cat /home/circleci/.cargo/registry/index/*/.git/FETCH_HEAD |
+              grep -F 'github.com/rust-lang/crates.io-index' |
+              cut -f 1 > .circleci/crates.io-index.head
       - save_cache:
           name: Save cargo registry index into cache
           key: cargo-index-v2-{{ checksum ".circleci/crates.io-index.head" }}
@@ -42,8 +44,8 @@ jobs:
           name: Save dependency crates into cache
           key: cargo-deps-v3-{{ checksum "Cargo.lock" }}
           paths:
-            /home/circleci/.cargo/registry/cache
-            /home/circleci/.cargo/git/db
+            - /home/circleci/.cargo/registry/cache
+            - /home/circleci/.cargo/git/db
       - persist_to_workspace:
           root: .
           paths:
@@ -59,7 +61,7 @@ jobs:
 
 commands:
   test:
-    description: "Steps for the test jobs"
+    description: 'Steps for the test jobs'
     parameters:
       mode:
         type: string
