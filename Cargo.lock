@@ -120,9 +120,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql"
-version = "2.9.9"
+version = "2.9.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6745cb39edc36e207b5d6e35d6684fd8d7721f071010a7eff31aaeb5684e3da6"
+checksum = "8640d9d3f3d2ee7df7d64f1ce752877bfbcccfd146a4291a7eca69bcc89ffc17"
 dependencies = [
  "async-graphql-derive",
  "async-graphql-parser",
@@ -134,6 +134,7 @@ dependencies = [
  "futures-util",
  "http",
  "indexmap",
+ "mime",
  "multer",
  "once_cell",
  "pin-project-lite",
@@ -147,9 +148,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-derive"
-version = "2.9.9"
+version = "2.9.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63ad0f21d7fab6d70b5cc5c78688ff1d73d2a7fedf7622e1f3cb76b84e6619b9"
+checksum = "5b146a2869ab23a711721ae7e1d6f08013298f2f7814f5a21431134feed18f31"
 dependencies = [
  "Inflector",
  "async-graphql-parser",
@@ -163,9 +164,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-parser"
-version = "2.9.9"
+version = "2.9.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ba07ce86d05abe3aa8948fde3fd1c76f44bb754b9c6156d9c885ae1491edcc2"
+checksum = "50c9faa27abf0cc9969874a48ff6e439d46cbc6e19d36a73b1b88702ce06b7af"
 dependencies = [
  "async-graphql-value",
  "pest",
@@ -176,9 +177,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-value"
-version = "2.9.9"
+version = "2.9.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a0957e87f88e9e62a161e80662d6aa6e78e6d863c24aea55dc43ee8dc384ed9"
+checksum = "c7d59b43a2116d78557d224d86da65b7b05f9bcbb8b2744bd6c50d18b3b69e29"
 dependencies = [
  "bytes",
  "serde",
@@ -187,9 +188,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-warp"
-version = "2.9.9"
+version = "2.9.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edd37032999dddbe659cb970f565435d159fc525d15d17ea8f27eecfad5299b2"
+checksum = "c4ec5d588e1141d021ec63c700655fd928ff2dc1b3bc2adafa308850043148b5"
 dependencies = [
  "async-graphql",
  "futures-util",
@@ -602,6 +603,7 @@ dependencies = [
 [[package]]
 name = "chain-watch"
 version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=heterogeneous-client-api#6deb54173e6d24124f352660e00f8a53e8c5e434"
 dependencies = [
  "prost",
  "tonic",
@@ -1107,6 +1109,55 @@ checksum = "44533bbbb3bb3c1fa17d9f2e4e38bbbaf8396ba82193c4cb1b6445d711445d36"
 dependencies = [
  "log",
  "regex",
+]
+
+[[package]]
+name = "explorer"
+version = "0.9.1"
+dependencies = [
+ "anyhow",
+ "async-graphql",
+ "async-graphql-warp",
+ "base64",
+ "byteorder",
+ "cardano-legacy-address",
+ "chain-addr",
+ "chain-core",
+ "chain-crypto",
+ "chain-impl-mockchain",
+ "chain-ser",
+ "chain-time",
+ "chain-vote",
+ "chain-watch",
+ "futures",
+ "futures-channel",
+ "futures-util",
+ "hex",
+ "imhamt",
+ "jormungandr-lib",
+ "lazy_static",
+ "parity-multiaddr",
+ "rand 0.8.4",
+ "rand_chacha 0.3.1",
+ "sanakirja",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "structopt",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tonic",
+ "tracing",
+ "tracing-appender",
+ "tracing-futures",
+ "tracing-gelf",
+ "tracing-journald",
+ "tracing-subscriber",
+ "url",
+ "warp",
+ "zerocopy",
 ]
 
 [[package]]
@@ -2267,6 +2318,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b16bd47d9e329435e309c58469fe0791c2d0d1ba96ec0954152a5ae2b04387dc"
 
 [[package]]
+name = "memmap"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6585fd95e7bb50d6cc31e20d4cf9afb4e2ba16c5846fc76793f11218da9c475b"
+dependencies = [
+ "libc",
+ "winapi",
+]
+
+[[package]]
 name = "memmap2"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3330,6 +3391,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "sanakirja"
+version = "1.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be030ebfecb0589e7c83817620ee833b98c3de089b1a9393b195dfc04b7fc9fe"
+dependencies = [
+ "fs2",
+ "log",
+ "memmap",
+ "parking_lot",
+ "sanakirja-core",
+ "thiserror",
+]
+
+[[package]]
+name = "sanakirja-core"
+version = "1.2.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9828a6c9219969d6b19cfb0b53a8aed96e29983d0944a67db0a8c44db20ebe00"
+
+[[package]]
 name = "scoped-tls"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3977,9 +4058,9 @@ dependencies = [
 
 [[package]]
 name = "tonic"
-version = "0.5.0"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b584f064fdfc50017ec39162d5aebce49912f1eb16fd128e04b7f4ce4907c7e5"
+checksum = "796c5e1cd49905e65dd8e700d4cb1dffcbfdb4fc9d017de08c1a537afd83627c"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -4612,6 +4693,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
 dependencies = [
  "linked-hash-map",
+]
+
+[[package]]
+name = "zerocopy"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e59ec1d2457bd6c0dd89b50e7d9d6b0b647809bf3f0a59ac85557046950b7b2"
+dependencies = [
+ "byteorder",
+ "zerocopy-derive",
+]
+
+[[package]]
+name = "zerocopy-derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0af017aca1fa6181f5dd7a802456fe6f7666ecdcc18d0910431f0fc89d474e51"
+dependencies = [
+ "proc-macro2 1.0.28",
+ "syn 1.0.74",
+ "synstructure",
 ]
 
 [[package]]

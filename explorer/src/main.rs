@@ -4,7 +4,7 @@ mod indexer;
 mod logging;
 mod settings;
 
-use crate::indexer::Indexer;
+use crate::{db::NeedsBootstrap, indexer::Indexer};
 use anyhow::Context;
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::{block::Block, key::Hash as HeaderHash};
@@ -12,7 +12,7 @@ use chain_watch::{
     subscription_service_client::SubscriptionServiceClient, BlockSubscriptionRequest,
     SyncMultiverseRequest, TipSubscriptionRequest,
 };
-use db::ExplorerDb;
+use db::{ExplorerDb, OpenDb};
 use futures::stream::StreamExt;
 use futures_util::{future, pin_mut, stream::FuturesUnordered, FutureExt, TryFutureExt};
 use settings::Settings;
@@ -95,8 +95,22 @@ async fn main() -> Result<(), Error> {
             .context("Couldn't establish connection with node")
             .map_err(Error::UnrecoverableError)?;
 
+        let open_db = ExplorerDb::open()
+            .context("Couldn't open database")
+            .map_err(Error::UnrecoverableError)?;
+
+        let from = match open_db {
+            db::OpenDb::Initialized {
+                db: _,
+                last_stable_block,
+            } => last_stable_block + 1,
+            db::OpenDb::NeedsBootstrap(_) => 0,
+        };
+
+        tracing::info!("bootstrap starting from {} (chain_length)", from);
+
         let sync_stream = client
-            .sync_multiverse(SyncMultiverseRequest { from: 0 })
+            .sync_multiverse(SyncMultiverseRequest { from })
             .await
             .context("Failed to establish bootstrap stream")
             .map_err(Error::UnrecoverableError)?
@@ -121,7 +135,7 @@ async fn main() -> Result<(), Error> {
 
             tokio::spawn(
                 async move {
-                    let db = bootstrap(sync_stream).await?;
+                    let db = bootstrap(sync_stream, open_db).await?;
 
                     let msg = GlobalState::Ready(Indexer::new(db));
 
@@ -152,6 +166,7 @@ async fn main() -> Result<(), Error> {
             .instrument(span!(Level::INFO, "rest service")),
         );
 
+        // (bootstrap, vec![subscriptions, rest])
         (bootstrap, vec![subscriptions, rest])
     };
 
@@ -226,13 +241,20 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
-async fn bootstrap(mut sync_stream: Streaming<chain_watch::Block>) -> Result<ExplorerDb, Error> {
+async fn bootstrap(
+    mut sync_stream: Streaming<chain_watch::Block>,
+    open_db: OpenDb,
+) -> Result<ExplorerDb, Error> {
     tracing::info!("starting bootstrap process");
 
-    let mut db: Option<ExplorerDb> = None;
+    let (mut db, mut bootstrapper): (Option<ExplorerDb>, Option<NeedsBootstrap>) = match open_db {
+        OpenDb::Initialized {
+            db,
+            last_stable_block: _,
+        } => (Some(db), None),
+        OpenDb::NeedsBootstrap(b) => (None, Some(b)),
+    };
 
-    // TODO: technically, blocks with the same length can be applied in parallel
-    // but it is simpler to do it serially for now at least
     while let Some(block) = sync_stream.next().await {
         let bytes = block
             .context("failed to decode Block received through bootstrap subscription")
@@ -245,7 +267,7 @@ async fn bootstrap(mut sync_stream: Streaming<chain_watch::Block>) -> Result<Exp
             .map_err(Error::UnrecoverableError)?;
 
         if let Some(ref db) = db {
-            tracing::trace!(
+            tracing::info!(
                 "applying block {:?} {:?}",
                 block.header.hash(),
                 block.header.chain_length()
@@ -254,7 +276,13 @@ async fn bootstrap(mut sync_stream: Streaming<chain_watch::Block>) -> Result<Exp
                 .await
                 .map_err(BootstrapError::DbError)?;
         } else {
-            db = Some(ExplorerDb::bootstrap(block).map_err(BootstrapError::DbError)?)
+            db = Some(
+                bootstrapper
+                    .take()
+                    .unwrap()
+                    .add_block0(block)
+                    .map_err(BootstrapError::DbError)?,
+            );
         }
     }
 
@@ -341,6 +369,36 @@ async fn process_subscriptions(
     pin_mut!(blocks, tips, task_status_collector, state);
 
     loop {
+        let state = state
+            .recv()
+            .await
+            .expect("state broadcast channel doesn't have enough capacity");
+
+        match state {
+            GlobalState::Bootstraping => continue,
+            GlobalState::Ready(i) => {
+                indexer.replace(i);
+                break;
+            }
+
+            GlobalState::ShuttingDown => {
+                status_collector_cancellation_token.cancel();
+
+                let e = task_status_collector
+                    .await
+                    .context("task status collector finished with error")
+                    .map_err(Error::Other)?;
+
+                tracing::error!("task status collector join error {:?}", e);
+
+                return Ok(());
+            }
+        }
+    }
+
+    let indexer = indexer.unwrap();
+
+    loop {
         select! {
             state = state.recv() => {
                 let state = state.expect("state broadcast channel doesn't have enough capacity");
@@ -348,27 +406,27 @@ async fn process_subscriptions(
                 tracing::trace!("got state message {:?}", state);
 
                 match state {
-                    GlobalState::Bootstraping => continue,
-                    GlobalState::Ready(i) => { indexer.replace(i.clone()); },
                     GlobalState::ShuttingDown => {
                         status_collector_cancellation_token.cancel();
                         break;
                     },
+                    _ => unreachable!(),
                 }
             },
             Some(block) = blocks.next() => {
                 let indexer = indexer.clone();
-                let handle = tokio::spawn(
-                    async move {
-                        future::ready(block)
-                            .map_err(|e| Error::Other(e.into()))
-                            .and_then(|block| handle_block(block, indexer))
-                            .await
-                    }
-                    .instrument(span!(Level::INFO, "handle_block")),
-                );
 
-                let _ = panic_tx.send(handle).await;
+                    let handle = tokio::spawn(
+                        async move {
+                            future::ready(block)
+                                .map_err(|e| Error::Other(e.into()))
+                                .and_then(|block| handle_block(block, indexer))
+                                .await
+                        }
+                        .instrument(span!(Level::INFO, "handle_block")),
+                    );
+
+                    let _ = panic_tx.send(handle).await;
             },
             Some(tip) = tips.next() => {
                 tracing::debug!("received tip event");
@@ -387,11 +445,11 @@ async fn process_subscriptions(
                 );
             },
             Some(error) = error_rx.recv() => {
-                tracing::debug!("received error event");
+                tracing::error!("received error event");
                 return Err(error);
             },
             e = &mut task_status_collector => {
-                tracing::debug!("received error from subtask {:?}", e);
+                tracing::error!("received error from subtask {:?}", e);
                 return e
                     .map_err(|e| Error::Other(e.into()))
                     .and_then(std::convert::identity);
@@ -400,7 +458,7 @@ async fn process_subscriptions(
         };
     }
 
-    tracing::debug!("finishing subscriptions service");
+    tracing::trace!("finishing subscriptions service");
 
     task_status_collector
         .await
@@ -408,28 +466,18 @@ async fn process_subscriptions(
         .map_err(Error::Other)?
 }
 
-async fn handle_block(
-    raw_block: chain_watch::Block,
-    indexer: Option<Indexer>,
-) -> Result<(), Error> {
+async fn handle_block(raw_block: chain_watch::Block, indexer: Indexer) -> Result<(), Error> {
     let reader = std::io::BufReader::new(raw_block.content.as_slice());
     let block = Block::deserialize(reader)
         .context("Failed to deserialize block from block subscription")
         .map_err(Error::Other)?;
 
-    if let Some(indexer) = indexer.as_ref() {
-        indexer.apply_block(block).await?;
-    } else {
-        tracing::trace!(
-            "ignoring block {} because database is bootstraping",
-            block.header.id()
-        );
-    }
+    indexer.apply_block(block).await?;
 
     Ok(())
 }
 
-async fn handle_tip(raw_tip: chain_watch::BlockId, indexer: Option<Indexer>) -> Result<(), Error> {
+async fn handle_tip(raw_tip: chain_watch::BlockId, indexer: Indexer) -> Result<(), Error> {
     let tip: [u8; 32] = raw_tip
         .content
         .as_slice()
@@ -437,9 +485,7 @@ async fn handle_tip(raw_tip: chain_watch::BlockId, indexer: Option<Indexer>) -> 
         .context("tip is not 32 bytes long")
         .map_err(Error::Other)?;
 
-    if let Some(indexer) = indexer.as_ref() {
-        indexer.set_tip(HeaderHash::from_bytes(tip)).await;
-    }
+    indexer.set_tip(HeaderHash::from_bytes(tip)).await?;
 
     Ok(())
 }

@@ -1,23 +1,16 @@
-use chain_impl_mockchain::{
-    block::{ChainLength, HeaderId as HeaderHash},
-    fragment::FragmentId,
-};
+use chain_impl_mockchain::block::HeaderId as HeaderHash;
 use thiserror::Error;
 
-#[derive(Debug, Error, Clone)]
+#[derive(Debug, Error)]
 pub enum ExplorerError {
-    #[error("block {0} not found in explorer")]
-    BlockNotFound(HeaderHash),
-    #[error("ancestor of block '{0}' not found in explorer")]
-    AncestorNotFound(HeaderHash),
-    #[error("transaction '{0}' is already indexed")]
-    TransactionAlreadyExists(FragmentId),
+    #[error("ancestor of block '{0}' ('{1}') not found in explorer")]
+    AncestorNotFound(HeaderHash, HeaderHash),
     #[error("tried to index block '{0}' twice")]
     BlockAlreadyExists(HeaderHash),
-    #[error("block with {0} chain length already exists in explorer branch")]
-    ChainLengthBlockAlreadyExists(ChainLength),
-    #[error("the explorer's database couldn't be initialized: {0}")]
-    BootstrapError(String),
+    #[error(transparent)]
+    SanakirjaError(#[from] ::sanakirja::Error),
+    #[error("the database was not initialized or was corrupted")]
+    UnitializedDatabase,
 }
 
 pub type Result<T> = std::result::Result<T, ExplorerError>;
