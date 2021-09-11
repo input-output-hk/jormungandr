@@ -1,5 +1,4 @@
 use crate::logging::{LogFormat, LogInfoMsg, LogOutput, LogSettings, LogSettingsEntry};
-use chain_impl_mockchain::block::HeaderId;
 use jormungandr_lib::interfaces::{Cors, Tls};
 use lazy_static::lazy_static;
 use serde::{de, de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
@@ -47,7 +46,6 @@ pub enum Error {
 
 pub struct Settings {
     pub node: Uri,
-    pub block0_hash: HeaderId,
     pub binding_address: SocketAddr,
     pub address_bech32_prefix: String,
     pub tls: Option<Tls>,
@@ -74,8 +72,6 @@ impl Settings {
             .or_else(|| file.node.clone())
             .unwrap_or_else(|| "127.0.0.1:8299".parse().unwrap());
 
-        let block0_hash = cmd.block0_hash.parse().unwrap();
-
         let binding_address = cmd
             .binding_address
             .or(file.binding_address)
@@ -96,7 +92,6 @@ impl Settings {
 
         Ok(Settings {
             node,
-            block0_hash,
             binding_address,
             address_bech32_prefix,
             tls,
@@ -172,7 +167,6 @@ impl Settings {
 struct CommandLine {
     #[structopt(long)]
     pub node: Option<Uri>,
-    pub block0_hash: String,
     #[structopt(long)]
     pub binding_address: Option<SocketAddr>,
     #[structopt(long)]
