@@ -134,6 +134,18 @@ impl From<&ChainLength> for u32 {
     }
 }
 
+impl From<ChainLength> for u32 {
+    fn from(n: ChainLength) -> Self {
+        n.0.get()
+    }
+}
+
+impl From<u32> for ChainLength {
+    fn from(n: u32) -> Self {
+        ChainLength::new(n)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, AsBytes, FromBytes)]
 #[repr(C)]
 pub struct BlockDate {
