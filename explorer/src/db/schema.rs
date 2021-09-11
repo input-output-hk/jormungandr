@@ -1,6 +1,6 @@
 use super::{
     chain_storable::{
-        Address, BlockDate, BlockId, ChainLength, ExplorerVoteProposal, FragmentId, PoolId,
+        Address, BlockDate, BlockId, ChainLength, ExplorerVoteProposal, FragmentId,
         PrivateVoteCast, ProposalId, PublicVoteCast, StorableHash, TransactionCertificate,
         TransactionInput, TransactionOutput, VotePlanId, VotePlanMeta,
     },
@@ -18,7 +18,6 @@ use super::{
 use crate::db::state_ref::StateRef;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
-    certificate::Certificate,
     config::ConfigParam,
     fragment::Fragment,
     transaction::{self, InputEnum, Witness},
@@ -51,7 +50,6 @@ pub enum Root {
     TransactionBlocks,
     ChainLenghts,
     Tips,
-    StakePoolData,
     States,
 }
 
@@ -65,7 +63,6 @@ pub type ChainLengths = Db<ChainLength, BlockId>;
 pub type ChainLengthsCursor = btree::Cursor<ChainLength, BlockId, P<ChainLength, BlockId>>;
 pub type VotePlans = Db<VotePlanId, VotePlanMeta>;
 pub type VotePlanProposals = Db<Pair<VotePlanId, u8>, ExplorerVoteProposal>;
-pub type StakePools = Db<PoolId, StakePoolMeta>;
 pub type Tips = Db<BranchTag, BranchHead>;
 
 // multiverse
@@ -131,7 +128,6 @@ impl ExplorerDb {
                 block_transactions: txn.root_db(Root::BlockTransactions as usize)?,
                 vote_plans: txn.root_db(Root::VotePlans as usize)?,
                 vote_plan_proposals: txn.root_db(Root::VotePlanProposals as usize)?,
-                stake_pool_data: txn.root_db(Root::StakePoolData as usize)?,
                 txn,
             })
         }
@@ -156,7 +152,6 @@ impl ExplorerDb {
             block_transactions: open_or_create_db(&mut txn, Root::BlockTransactions)?,
             vote_plans: open_or_create_db(&mut txn, Root::VotePlans)?,
             vote_plan_proposals: open_or_create_db(&mut txn, Root::VotePlanProposals)?,
-            stake_pool_data: open_or_create_db(&mut txn, Root::StakePoolData)?,
             txn,
         })
     }
@@ -205,7 +200,6 @@ pub struct GenericTxn<T: ::sanakirja::LoadPage<Error = ::sanakirja::Error> + ::s
     pub block_transactions: BlockTransactions,
     pub vote_plans: VotePlans,
     pub vote_plan_proposals: VotePlanProposals,
-    pub stake_pool_data: StakePools,
 }
 
 impl<T: ::sanakirja::LoadPage<Error = ::sanakirja::Error> + ::sanakirja::RootPage> GenericTxn<T> {}
@@ -221,7 +215,7 @@ impl MutTxn<()> {
         let _enter = span.enter();
         debug!(?parent_id, ?block0_id);
 
-        let state_ref = StateRef::new_empty(&mut self.txn);
+        let state_ref = StateRef::new_empty(&mut self.txn)?;
 
         unsafe {
             self.txn.set_root(
@@ -278,9 +272,14 @@ impl MutTxn<()> {
         block_date: BlockDate,
         fragments: impl IntoIterator<Item = &'a Fragment>,
     ) -> Result<(), DbError> {
-        let span = span!(Level::DEBUG, "add_block");
-        let _enter = span.enter();
-        debug!(?parent_id, ?block_id, ?chain_length);
+        let _span = span!(
+            Level::DEBUG,
+            "add_block",
+            ?parent_id,
+            ?block_id,
+            ?chain_length
+        )
+        .entered();
 
         // Early return if the block is already in the store.
         // Ideally, operations down the line should be idempotent, but it is probably not the case
@@ -300,9 +299,7 @@ impl MutTxn<()> {
                 DbError::AncestorNotFound(block_id.clone().into(), parent_id.clone().into())
             })?;
 
-        debug!("forking states");
-
-        let state_ref = states.fork(&mut self.txn);
+        let state_ref = states.fork(&mut self.txn)?;
 
         self.update_state(
             fragments.into_iter(),
@@ -322,23 +319,18 @@ impl MutTxn<()> {
     /// change the tip anyway if the chain_length increases, this is mostly to simplify garbage
     /// collection during bootstrap.
     pub fn set_tip(&mut self, id: &BlockId) -> Result<bool, DbError> {
-        let span = span!(Level::DEBUG, "set_tip");
-        let _enter = span.enter();
+        let _span = span!(Level::DEBUG, "set_tip", ?id).entered();
 
         let current_tip = btree::get(&self.txn, &self.tips, &BranchTag::Tip, None)?
             .expect("no tip in database")
             .1
             .clone();
 
-        debug!(?current_tip, ?id);
-
         if &current_tip.id == id {
             return Ok(true);
         }
 
         let block_meta = btree::get(&self.txn, &self.blocks, id, None)?.filter(|(k, _)| *k == id);
-
-        debug!(?block_meta);
 
         if let Some(block_meta) = block_meta.map(|(_, meta)| meta.clone()) {
             assert!(btree::del(
@@ -360,6 +352,8 @@ impl MutTxn<()> {
                 &new_tip
             )?);
 
+            debug!("changed explorer tip");
+
             if new_tip.chain_length.get() > current_tip.chain_length.get() {
                 self.gc_stable_states(block_meta.chain_length.get())?;
             }
@@ -373,15 +367,10 @@ impl MutTxn<()> {
     /// this drops old states at: tip_chain_length - (epoch_stability_depth + 1) so we keep the
     /// amount of forks bounded, because we don't need to fork those states anymore.
     fn gc_stable_states(&mut self, tip_chain_length: u32) -> Result<(), DbError> {
-        let span = span!(Level::DEBUG, "gc_stable_states");
-        let _enter = span.enter();
-
-        debug!("removing states at {}", tip_chain_length);
+        let _span = span!(Level::DEBUG, "gc_stable_states", ?tip_chain_length).entered();
 
         let mut stability: Stability =
             unsafe { std::mem::transmute(self.txn.root(Root::Stability as usize).unwrap()) };
-
-        debug!(?stability);
 
         if let Some(new_stable_chain_length) =
             tip_chain_length.checked_sub(stability.epoch_stability_depth.get())
@@ -559,16 +548,13 @@ impl MutTxn<()> {
         block_date: BlockDate,
         parent_id: &StorableHash,
     ) -> Result<(), DbError> {
-        let span = span!(Level::DEBUG, "update_state");
-        let _enter = span.enter();
-        debug!(?block_id);
+        let _span = span!(Level::DEBUG, "update_state").entered();
 
         self.apply_fragments(&block_id, fragments, &mut state_ref)?;
         state_ref.add_block_to_blocks(&mut self.txn, &chain_length, &block_id)?;
 
-        let new_state = state_ref.finish(&mut self.txn);
+        let new_state = state_ref.finish(&mut self.txn)?;
 
-        debug!("adding new state");
         if !btree::put(&mut self.txn, &mut self.states, &block_id, &new_state)? {
             return Err(DbError::BlockAlreadyExists(block_id.clone().into()));
         }
@@ -738,8 +724,6 @@ impl MutTxn<()> {
                     self.apply_transaction(fragment_id, &tx, state_ref)?;
                 }
             }
-
-            self.update_stake_pool_meta(&fragment)?;
         }
 
         Ok(())
@@ -847,11 +831,6 @@ impl MutTxn<()> {
         chain_length: ChainLength,
         block_id: &BlockId,
     ) -> Result<(), DbError> {
-        let span = span!(Level::DEBUG, "update_tips");
-        let _enter = span.enter();
-
-        debug!(?parent_id, ?chain_length, ?block_id);
-
         let parent_key = BranchHead {
             chain_length: B32::new(
                 chain_length
@@ -862,8 +841,6 @@ impl MutTxn<()> {
             ),
             id: parent_id.clone(),
         };
-
-        debug!(?parent_key);
 
         let _ = btree::del(
             &mut self.txn,
@@ -877,8 +854,6 @@ impl MutTxn<()> {
             id: block_id.clone(),
         };
 
-        debug!(?key);
-
         btree::put(&mut self.txn, &mut self.tips, &BranchTag::Branch, &key)?;
 
         let current_tip = {
@@ -886,8 +861,6 @@ impl MutTxn<()> {
 
             cursor.next(&self.txn)?.unwrap().1.chain_length.get()
         };
-
-        debug!(?chain_length, ?current_tip);
 
         if chain_length.get() > current_tip {
             self.set_tip(block_id)?;
@@ -950,65 +923,6 @@ impl MutTxn<()> {
         Ok(())
     }
 
-    fn update_stake_pool_meta(&mut self, fragment: &Fragment) -> Result<(), DbError> {
-        match fragment {
-            Fragment::PoolRegistration(tx) => {
-                let etx = tx.as_slice();
-                let cert = etx.payload();
-
-                let stake_pool_id = match cert.into_certificate_slice().unwrap().into_owned() {
-                    Certificate::PoolRegistration(r) => r.to_id(),
-                    _ => unreachable!("mismatched certificate type"),
-                };
-
-                btree::put(
-                    &mut self.txn,
-                    &mut self.stake_pool_data,
-                    &StorableHash::from(<[u8; 32]>::from(stake_pool_id)),
-                    &StakePoolMeta {
-                        registration: StorableHash::from(fragment.id()),
-                        retirement: None,
-                    },
-                )?;
-            }
-            Fragment::PoolRetirement(tx) => {
-                let etx = tx.as_slice();
-                let cert = etx.payload();
-
-                let stake_pool_id = match cert.into_certificate_slice().unwrap().into_owned() {
-                    Certificate::PoolRetirement(r) => r.pool_id,
-                    _ => unreachable!("mismatched certificate type"),
-                };
-
-                let stake_pool_id = StorableHash::from(<[u8; 32]>::from(stake_pool_id));
-
-                let mut new = btree::get(&self.txn, &self.stake_pool_data, &stake_pool_id, None)?
-                    .map(|(_, meta)| meta)
-                    .cloned()
-                    .unwrap();
-
-                new.retirement = Some(FragmentId::from(fragment.id()));
-
-                btree::del(
-                    &mut self.txn,
-                    &mut self.stake_pool_data,
-                    &stake_pool_id,
-                    None,
-                )?;
-
-                btree::put(
-                    &mut self.txn,
-                    &mut self.stake_pool_data,
-                    &stake_pool_id,
-                    &new,
-                )?;
-            }
-            _ => {}
-        }
-
-        Ok(())
-    }
-
     fn add_block_meta(&mut self, block_id: &BlockId, block: BlockMeta) -> Result<(), DbError> {
         btree::put(&mut self.txn, &mut self.blocks, block_id, &block)?;
 
@@ -1028,7 +942,7 @@ impl MutTxn<()> {
                     &mut self.txn,
                     account.to_single_account().unwrap().as_ref(),
                     value,
-                );
+                )?;
             }
             (InputEnum::AccountInput(_, _), Witness::Multisig(_)) => {}
             (InputEnum::UtxoInput(_), Witness::Utxo(_)) => {
@@ -1039,7 +953,11 @@ impl MutTxn<()> {
 
                 if let chain_addr::Kind::Group(_, account) = address.kind() {
                     let value = &output.value;
-                    state.substract_stake_from_account(&mut self.txn, &account, Value(value.get()));
+                    state.substract_stake_from_account(
+                        &mut self.txn,
+                        &account,
+                        Value(value.get()),
+                    )?;
                 }
             }
             (InputEnum::UtxoInput(_), Witness::OldUtxo(_, _, _)) => {}
@@ -1138,7 +1056,6 @@ impl MutTxn<()> {
             block_transactions,
             vote_plans,
             vote_plan_proposals,
-            stake_pool_data,
         } = self;
 
         txn.set_root(Root::States as usize, states.db);
@@ -1155,7 +1072,6 @@ impl MutTxn<()> {
         txn.set_root(Root::BlockTransactions as usize, block_transactions.db);
         txn.set_root(Root::VotePlans as usize, vote_plans.db);
         txn.set_root(Root::VotePlanProposals as usize, vote_plan_proposals.db);
-        txn.set_root(Root::StakePoolData as usize, stake_pool_data.db);
 
         txn.commit()?;
 
