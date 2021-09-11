@@ -68,8 +68,7 @@ async fn main() -> Result<(), Error> {
         let mut settings = Settings::load()?;
         let (guards, log_init_messages) = settings.log_settings.take().unwrap().init_log()?;
 
-        let init_span = span!(Level::TRACE, "task", kind = "init");
-        let _enter = init_span.enter();
+        let _init_span = span!(Level::TRACE, "task", kind = "init").entered();
         tracing::info!("Starting explorer");
 
         if let Some(msgs) = log_init_messages {
