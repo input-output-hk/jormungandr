@@ -4,6 +4,8 @@ use thiserror::Error;
 pub enum ApiError {
     #[error("internal error (this shouldn't happen) {0}")]
     InternalError(String),
+    #[error("internal error (this shouldn't happen)")]
+    InternalDbError,
     #[error("resource not found {0}")]
     NotFound(String),
     #[error("feature not implemented yet")]
