@@ -206,3 +206,9 @@ impl From<SeqNum> for u64 {
         n.0.get()
     }
 }
+
+impl From<u64> for SeqNum {
+    fn from(n: u64) -> Self {
+        SeqNum::new(n)
+    }
+}
