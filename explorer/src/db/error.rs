@@ -2,7 +2,7 @@ use chain_impl_mockchain::block::HeaderId as HeaderHash;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum ExplorerError {
+pub enum DbError {
     #[error("ancestor of block '{0}' ('{1}') not found in explorer")]
     AncestorNotFound(HeaderHash, HeaderHash),
     #[error("tried to index block '{0}' twice")]
@@ -12,5 +12,3 @@ pub enum ExplorerError {
     #[error("the database was not initialized or was corrupted")]
     UnitializedDatabase,
 }
-
-pub type Result<T> = std::result::Result<T, ExplorerError>;

@@ -6,10 +6,9 @@ pub mod pagination;
 mod pair;
 pub mod schema;
 mod state_ref;
-// mod tally;
 
 use self::endian::B64;
-use self::error::ExplorerError;
+use self::error::DbError;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::block::HeaderId as HeaderHash;
@@ -23,53 +22,9 @@ type Db<K, V> = btree::Db<K, V>;
 type SanakirjaMutTx = ::sanakirja::MutTxn<Arc<::sanakirja::Env>, ()>;
 type SanakirjaTx = ::sanakirja::Txn<Arc<::sanakirja::Env>>;
 
-// A Sanakirja pristine.
-#[derive(Clone)]
-pub struct Pristine {
-    pub env: Arc<::sanakirja::Env>,
-}
-
-impl Pristine {
-    pub fn new<P: AsRef<Path>>(name: P) -> Result<Self, ExplorerError> {
-        Self::new_with_size(name, 1 << 20)
-    }
-
-    pub fn new_with_size<P: AsRef<Path>>(name: P, size: u64) -> Result<Self, ExplorerError> {
-        let env = ::sanakirja::Env::new(name, size, 2);
-        match env {
-            Ok(env) => Ok(Pristine { env: Arc::new(env) }),
-            Err(e) => Err(ExplorerError::SanakirjaError(e)),
-        }
-    }
-
-    pub fn new_anon() -> Result<Self, ExplorerError> {
-        Self::new_anon_with_size(1 << 20)
-    }
-
-    pub fn new_anon_with_size(size: u64) -> Result<Self, ExplorerError> {
-        Ok(Pristine {
-            env: Arc::new(::sanakirja::Env::new_anon(size, 2)?),
-        })
-    }
-}
-
-#[derive(Clone)]
-pub struct Explorer {
-    pub db: ExplorerDb,
-}
-
 #[derive(Clone)]
 pub struct ExplorerDb {
-    pristine: Pristine,
-}
-
-#[derive(Clone)]
-pub struct Settings {
-    /// This is the prefix that's used for the Address bech32 string representation in the
-    /// responses (in the queries any prefix can be used). base32 serialization could
-    /// also be used, but the `Address` struct doesn't have a deserialization method right
-    /// now
-    pub address_bech32_prefix: String,
+    pub env: Arc<::sanakirja::Env>,
 }
 
 pub enum OpenDb {
@@ -80,13 +35,12 @@ pub enum OpenDb {
     NeedsBootstrap(NeedsBootstrap),
 }
 
-pub struct NeedsBootstrap(Pristine);
+pub struct NeedsBootstrap(ExplorerDb);
 
 impl NeedsBootstrap {
-    pub fn add_block0(self, block0: Block) -> Result<ExplorerDb, ExplorerError> {
-        let pristine = self.0;
-
-        let mut mut_tx = pristine.mut_txn_begin()?;
+    pub fn add_block0(self, block0: Block) -> Result<ExplorerDb, DbError> {
+        let db = self.0;
+        let mut mut_tx = db.mut_txn_begin()?;
 
         let parent_id = block0.parent_id();
         let block_id = block0.id();
@@ -95,7 +49,7 @@ impl NeedsBootstrap {
 
         mut_tx.commit()?;
 
-        Ok(ExplorerDb { pristine })
+        Ok(db)
     }
 }
 
@@ -108,7 +62,7 @@ impl Batch {
     /// processed. This doesn't perform any validation on the given block and the previous state,
     /// it is assumed that the Block is valid
     /// IMPORTANT: this call is blocking, any calls to it should be encapsulated in a threadpool
-    pub fn apply_block(&mut self, block: Block) -> Result<(), ExplorerError> {
+    pub fn apply_block(&mut self, block: Block) -> Result<(), DbError> {
         self.txn.add_block(
             &block.parent_id().into(),
             &block.id().into(),
@@ -121,25 +75,26 @@ impl Batch {
     }
 
     /// IMPORTANT: this call is blocking, any calls to it should be encapsulated in a threadpool
-    pub fn commit(self) -> Result<(), ExplorerError> {
+    pub fn commit(self) -> Result<(), DbError> {
         self.txn.commit()
     }
 }
 
 impl ExplorerDb {
-    pub fn open() -> Result<OpenDb, ExplorerError> {
-        let pristine = Pristine::new("explorer-storage")?;
+    pub fn open<P: AsRef<Path>>(storage: Option<P>) -> Result<OpenDb, DbError> {
+        let db = match storage {
+            Some(path) => ExplorerDb::new(path),
+            None => ExplorerDb::new_anon(),
+        }?;
 
-        let txn = pristine.txn_begin();
+        let txn = db.txn_begin();
 
         match txn {
             Ok(txn) => Ok(OpenDb::Initialized {
                 last_stable_block: txn.get_last_stable_block().get(),
-                db: ExplorerDb { pristine },
+                db,
             }),
-            Err(ExplorerError::UnitializedDatabase) => {
-                Ok(OpenDb::NeedsBootstrap(NeedsBootstrap(pristine)))
-            }
+            Err(DbError::UnitializedDatabase) => Ok(OpenDb::NeedsBootstrap(NeedsBootstrap(db))),
             Err(e) => Err(e),
         }
     }
@@ -147,10 +102,10 @@ impl ExplorerDb {
     /// Try to add a new block to the indexes, this can fail if the parent of the block is not
     /// processed. This doesn't perform any validation on the given block and the previous state,
     /// it is assumed that the Block is valid
-    pub async fn apply_block(&self, block: Block) -> Result<(), ExplorerError> {
-        let pristine = self.pristine.clone();
+    pub async fn apply_block(&self, block: Block) -> Result<(), DbError> {
+        let db = self.clone();
         tokio::task::spawn_blocking(move || {
-            let mut_tx = pristine.mut_txn_begin()?;
+            let mut_tx = db.mut_txn_begin()?;
 
             let mut batch = Batch { txn: mut_tx };
 
@@ -164,11 +119,11 @@ impl ExplorerDb {
         .unwrap()
     }
 
-    pub async fn start_batch(&self) -> Result<Batch, ExplorerError> {
-        let pristine = self.pristine.clone();
+    pub async fn start_batch(&self) -> Result<Batch, DbError> {
+        let db = self.clone();
 
         tokio::task::spawn_blocking(move || {
-            let mut_tx = pristine.mut_txn_begin()?;
+            let mut_tx = db.mut_txn_begin()?;
 
             Ok(Batch { txn: mut_tx })
         })
@@ -176,10 +131,10 @@ impl ExplorerDb {
         .unwrap()
     }
 
-    pub async fn get_txn(&self) -> Result<schema::Txn, ExplorerError> {
-        let pristine = self.pristine.clone();
+    pub async fn get_txn(&self) -> Result<schema::Txn, DbError> {
+        let db = self.clone();
         tokio::task::spawn_blocking(move || {
-            let txn = pristine.txn_begin()?;
+            let txn = db.txn_begin()?;
 
             Ok(txn)
         })
@@ -187,10 +142,10 @@ impl ExplorerDb {
         .unwrap()
     }
 
-    pub async fn set_tip(&self, hash: HeaderHash) -> Result<bool, ExplorerError> {
-        let pristine = self.pristine.clone();
+    pub async fn set_tip(&self, hash: HeaderHash) -> Result<bool, DbError> {
+        let db = self.clone();
         tokio::task::spawn_blocking(move || {
-            let mut mut_tx = pristine.mut_txn_begin()?;
+            let mut mut_tx = db.mut_txn_begin()?;
 
             let status = mut_tx.set_tip(&hash.into())?;
 
@@ -202,6 +157,28 @@ impl ExplorerDb {
         })
         .await
         .unwrap()
+    }
+
+    fn new<P: AsRef<Path>>(name: P) -> Result<Self, DbError> {
+        Self::new_with_size(name, 1 << 20)
+    }
+
+    fn new_with_size<P: AsRef<Path>>(name: P, size: u64) -> Result<Self, DbError> {
+        let env = ::sanakirja::Env::new(name, size, 2);
+        match env {
+            Ok(env) => Ok(Self { env: Arc::new(env) }),
+            Err(e) => Err(DbError::SanakirjaError(e)),
+        }
+    }
+
+    fn new_anon() -> Result<Self, DbError> {
+        Self::new_anon_with_size(1 << 20)
+    }
+
+    fn new_anon_with_size(size: u64) -> Result<Self, DbError> {
+        Ok(Self {
+            env: Arc::new(::sanakirja::Env::new_anon(size, 2)?),
+        })
     }
 }
 

@@ -1,4 +1,4 @@
-use super::{error::ExplorerError, Db};
+use super::{error::DbError, Db};
 use sanakirja::{
     btree::{self, BTreeMutPage, BTreePage},
     RootDb, Storable,
@@ -12,7 +12,7 @@ pub(super) fn open_or_create_db<
 >(
     txn: &mut sanakirja::MutTxn<Arc<sanakirja::Env>, ()>,
     root: super::schema::Root,
-) -> Result<btree::Db_<K, V, P>, ExplorerError> {
+) -> Result<btree::Db_<K, V, P>, DbError> {
     Ok(if let Some(db) = txn.root_db(root as usize) {
         db
     } else {

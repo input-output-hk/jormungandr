@@ -5,7 +5,7 @@ use super::{
         TransactionInput, TransactionOutput, VotePlanId, VotePlanMeta,
     },
     endian::{B32, L32, L64},
-    error::ExplorerError,
+    error::DbError,
     helpers::open_or_create_db,
     pagination::{
         BlockFragmentsIter, BlocksInBranch, FragmentContentId, FragmentInputIter,
@@ -13,7 +13,7 @@ use super::{
     },
     pair::Pair,
     state_ref::SerializedStateRef,
-    Db, Pristine, SanakirjaTx, P,
+    Db, ExplorerDb, SanakirjaTx, P,
 };
 use crate::db::state_ref::StateRef;
 use chain_core::property::Fragment as _;
@@ -66,8 +66,7 @@ pub type ChainLengthsCursor = btree::Cursor<ChainLength, BlockId, P<ChainLength,
 pub type VotePlans = Db<VotePlanId, VotePlanMeta>;
 pub type VotePlanProposals = Db<Pair<VotePlanId, u8>, ExplorerVoteProposal>;
 pub type StakePools = Db<PoolId, StakePoolMeta>;
-pub type Tips = Db<u8, BranchHead>;
-pub type TipsCursor = btree::Cursor<u8, BranchHead, P<u8, BranchHead>>;
+pub type Tips = Db<BranchTag, BranchHead>;
 
 // multiverse
 pub type States = Db<BlockId, SerializedStateRef>;
@@ -77,6 +76,13 @@ pub type States = Db<BlockId, SerializedStateRef>;
 pub struct BranchHead {
     chain_length: B32,
     id: BlockId,
+}
+
+#[derive(Debug, Clone, Copy, AsBytes, PartialEq, Eq, PartialOrd, Ord)]
+#[repr(u8)]
+pub enum BranchTag {
+    Tip = 0,
+    Branch = 1,
 }
 
 impl PartialOrd for BranchHead {
@@ -92,6 +98,7 @@ impl Ord for BranchHead {
     }
 }
 
+direct_repr!(BranchTag);
 direct_repr!(BranchHead);
 
 #[derive(Debug, AsBytes, FromBytes)]
@@ -108,8 +115,8 @@ pub struct StaticSettings {
     consensus: L32,
 }
 
-impl Pristine {
-    pub fn txn_begin(&self) -> Result<Txn, ExplorerError> {
+impl ExplorerDb {
+    pub fn txn_begin(&self) -> Result<Txn, DbError> {
         let txn = ::sanakirja::Env::txn_begin(self.env.clone())?;
         fn begin(txn: ::sanakirja::Txn<Arc<::sanakirja::Env>>) -> Option<Txn> {
             Some(Txn {
@@ -131,11 +138,11 @@ impl Pristine {
         if let Some(txn) = begin(txn) {
             Ok(txn)
         } else {
-            Err(ExplorerError::UnitializedDatabase)
+            Err(DbError::UnitializedDatabase)
         }
     }
 
-    pub fn mut_txn_begin(&self) -> Result<MutTxn<()>, ExplorerError> {
+    pub fn mut_txn_begin(&self) -> Result<MutTxn<()>, DbError> {
         let mut txn = ::sanakirja::Env::mut_txn_begin(self.env.clone()).unwrap();
         Ok(MutTxn {
             states: open_or_create_db(&mut txn, Root::States)?,
@@ -209,7 +216,7 @@ impl MutTxn<()> {
         parent_id: &BlockId,
         block0_id: &BlockId,
         fragments: impl Iterator<Item = &'a Fragment>,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         let span = span!(Level::DEBUG, "add_block0");
         let _enter = span.enter();
         debug!(?parent_id, ?block0_id);
@@ -228,7 +235,12 @@ impl MutTxn<()> {
             id: block0_id.clone(),
         };
 
-        assert!(btree::put(&mut self.txn, &mut self.tips, &1, &tip)?);
+        assert!(btree::put(
+            &mut self.txn,
+            &mut self.tips,
+            &BranchTag::Branch,
+            &tip
+        )?);
 
         // the tip is also the only branch
         let head = BranchHead {
@@ -236,7 +248,12 @@ impl MutTxn<()> {
             id: block0_id.clone(),
         };
 
-        assert!(btree::put(&mut self.txn, &mut self.tips, &0, &head)?);
+        assert!(btree::put(
+            &mut self.txn,
+            &mut self.tips,
+            &BranchTag::Tip,
+            &head
+        )?);
 
         self.update_state(
             fragments,
@@ -260,19 +277,27 @@ impl MutTxn<()> {
         chain_length: ChainLength,
         block_date: BlockDate,
         fragments: impl IntoIterator<Item = &'a Fragment>,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         let span = span!(Level::DEBUG, "add_block");
         let _enter = span.enter();
         debug!(?parent_id, ?block_id, ?chain_length);
 
-        self.update_tips(&parent_id, chain_length, &block_id)?;
+        // Early return if the block is already in the store.
+        // Ideally, operations down the line should be idempotent, but it is probably not the case
+        // now, and even then it's probably simpler to just check it here at once.
+        if btree::get(&self.txn, &self.blocks, &block_id, None)?
+            .filter(|(id, _)| id == &block_id)
+            .is_some()
+        {
+            return Ok(());
+        }
 
         let states = btree::get(&self.txn, &self.states, &parent_id, None)?
             .filter(|(branch_id, _states)| *branch_id == parent_id)
             .map(|(_branch_id, states)| states)
             .cloned()
             .ok_or_else(|| {
-                ExplorerError::AncestorNotFound(block_id.clone().into(), parent_id.clone().into())
+                DbError::AncestorNotFound(block_id.clone().into(), parent_id.clone().into())
             })?;
 
         debug!("forking states");
@@ -288,26 +313,56 @@ impl MutTxn<()> {
             parent_id,
         )?;
 
+        self.update_tips(&parent_id, chain_length, &block_id)?;
+
         Ok(())
     }
 
-    /// this sets `BlockId` as the tip, overriding the current one, BUT apply_block will still
+    /// this sets `BlockId` as the tip, overriding the current one, BUT add_block will still
     /// change the tip anyway if the chain_length increases, this is mostly to simplify garbage
     /// collection during bootstrap.
-    pub fn set_tip(&mut self, id: &BlockId) -> Result<bool, ExplorerError> {
+    pub fn set_tip(&mut self, id: &BlockId) -> Result<bool, DbError> {
+        let span = span!(Level::DEBUG, "set_tip");
+        let _enter = span.enter();
+
+        let current_tip = btree::get(&self.txn, &self.tips, &BranchTag::Tip, None)?
+            .expect("no tip in database")
+            .1
+            .clone();
+
+        debug!(?current_tip, ?id);
+
+        if &current_tip.id == id {
+            return Ok(true);
+        }
+
         let block_meta = btree::get(&self.txn, &self.blocks, id, None)?.filter(|(k, _)| *k == id);
 
+        debug!(?block_meta);
+
         if let Some(block_meta) = block_meta.map(|(_, meta)| meta.clone()) {
-            assert!(btree::del(&mut self.txn, &mut self.tips, &0, None)?);
+            assert!(btree::del(
+                &mut self.txn,
+                &mut self.tips,
+                &BranchTag::Tip,
+                None
+            )?);
 
             let new_tip = BranchHead {
                 id: id.clone(),
                 chain_length: block_meta.chain_length.0,
             };
 
-            assert!(btree::put(&mut self.txn, &mut self.tips, &0, &new_tip)?);
+            assert!(btree::put(
+                &mut self.txn,
+                &mut self.tips,
+                &BranchTag::Tip,
+                &new_tip
+            )?);
 
-            self.gc_stable_states(block_meta.chain_length.get())?;
+            if new_tip.chain_length.get() > current_tip.chain_length.get() {
+                self.gc_stable_states(block_meta.chain_length.get())?;
+            }
 
             Ok(true)
         } else {
@@ -317,15 +372,24 @@ impl MutTxn<()> {
 
     /// this drops old states at: tip_chain_length - (epoch_stability_depth + 1) so we keep the
     /// amount of forks bounded, because we don't need to fork those states anymore.
-    fn gc_stable_states(&mut self, tip_chain_length: u32) -> Result<(), ExplorerError> {
+    fn gc_stable_states(&mut self, tip_chain_length: u32) -> Result<(), DbError> {
+        let span = span!(Level::DEBUG, "gc_stable_states");
+        let _enter = span.enter();
+
+        debug!("removing states at {}", tip_chain_length);
+
         let mut stability: Stability =
             unsafe { std::mem::transmute(self.txn.root(Root::Stability as usize).unwrap()) };
+
+        debug!(?stability);
 
         if let Some(new_stable_chain_length) =
             tip_chain_length.checked_sub(stability.epoch_stability_depth.get())
         {
             stability.last_stable_block = ChainLength::new(new_stable_chain_length);
         }
+
+        debug!(?stability);
 
         if let Some(collect_at) = stability.last_stable_block.get().checked_sub(1) {
             let mut states_to_gc = vec![];
@@ -343,11 +407,15 @@ impl MutTxn<()> {
                     break;
                 }
 
-                let states = btree::get(&self.txn, &self.states, &block_id, None)?
+                debug!(?block_id);
+                let state = btree::get(&self.txn, &self.states, &block_id, None)?
                     .filter(|(branch_id, _states)| *branch_id == block_id)
                     .map(|(_branch_id, states)| StateRef::from(states.clone()));
 
-                states_to_gc.push((block_id.clone(), states.unwrap()));
+                if let Some(state) = state {
+                    debug!(?block_id);
+                    states_to_gc.push((block_id.clone(), state));
+                }
             }
 
             let state = self.state_at_tip()?;
@@ -363,15 +431,22 @@ impl MutTxn<()> {
             .clone();
 
             for (block_id, state) in states_to_gc.drain(..) {
+                debug!("dropping state {:?}", &block_id);
                 // this is safe because after dropping we are inmediately deleting the state from
                 // `self.states`.
                 unsafe {
                     state.drop(&mut self.txn)?;
-                    btree::del(&mut self.txn, &mut self.states, &block_id, None)?;
+                    assert!(btree::del(
+                        &mut self.txn,
+                        &mut self.states,
+                        &block_id,
+                        None
+                    )?);
                 }
 
                 // this means the block was part of a fork that didn't survive
                 if block_id != confirmed_block_id {
+                    debug!("removing block from global indices {}", block_id);
                     btree::del(&mut self.txn, &mut self.blocks, &block_id, None)?;
 
                     btree::del(
@@ -415,8 +490,8 @@ impl MutTxn<()> {
         Ok(())
     }
 
-    fn state_at_tip(&mut self) -> Result<StateRef, ExplorerError> {
-        let tip = btree::get(&self.txn, &self.tips, &0, None)?.unwrap();
+    fn state_at_tip(&mut self) -> Result<StateRef, DbError> {
+        let tip = btree::get(&self.txn, &self.tips, &BranchTag::Tip, None)?.unwrap();
         let state = btree::get(&self.txn, &self.states, &tip.1.id, None)?;
         let state = match state {
             Some((s, state)) if &tip.1.id == s => StateRef::from(state.clone()),
@@ -425,9 +500,9 @@ impl MutTxn<()> {
         Ok(state)
     }
 
-    /// Important: this won't remove the fragment is there are still blocks referencing it in the
+    /// Important: this won't remove the fragment if there are still blocks referencing it in the
     /// index.
-    fn gc_fragment(&mut self, fragment_id: StorableHash) -> Result<(), ExplorerError> {
+    fn gc_fragment(&mut self, fragment_id: StorableHash) -> Result<(), DbError> {
         // make sure that no alive block is referencing this fragment
         let should_delete =
             btree::get(&self.txn, &self.transaction_blocks, &fragment_id, None)?.is_none();
@@ -483,7 +558,7 @@ impl MutTxn<()> {
         block_id: &StorableHash,
         block_date: BlockDate,
         parent_id: &StorableHash,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         let span = span!(Level::DEBUG, "update_state");
         let _enter = span.enter();
         debug!(?block_id);
@@ -495,7 +570,7 @@ impl MutTxn<()> {
 
         debug!("adding new state");
         if !btree::put(&mut self.txn, &mut self.states, &block_id, &new_state)? {
-            return Err(ExplorerError::BlockAlreadyExists(block_id.clone().into()));
+            return Err(DbError::BlockAlreadyExists(block_id.clone().into()));
         }
 
         self.update_chain_lengths(chain_length, &block_id)?;
@@ -517,7 +592,7 @@ impl MutTxn<()> {
         block_id: &BlockId,
         fragments: impl Iterator<Item = &'a Fragment>,
         state_ref: &mut StateRef,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         for (idx, fragment) in fragments.enumerate() {
             let fragment_id = StorableHash::from(fragment.id());
 
@@ -632,26 +707,20 @@ impl MutTxn<()> {
 
                     let certificate = match vote_cast.payload() {
                         chain_impl_mockchain::vote::Payload::Public { choice } => {
-                            let vote_cast = PublicVoteCast {
+                            TransactionCertificate::from_public_vote_cast(PublicVoteCast {
                                 vote_plan_id,
                                 proposal_index,
                                 choice: choice.as_byte(),
-                            };
-
-                            TransactionCertificate::from_public_vote_cast(vote_cast)
+                            })
                         }
 
                         chain_impl_mockchain::vote::Payload::Private {
                             encrypted_vote: _,
                             proof: _,
-                        } => {
-                            let vote_cast = PrivateVoteCast {
-                                vote_plan_id,
-                                proposal_index,
-                            };
-
-                            TransactionCertificate::from_private_vote_cast(vote_cast)
-                        }
+                        } => TransactionCertificate::from_private_vote_cast(PrivateVoteCast {
+                            vote_plan_id,
+                            proposal_index,
+                        }),
                     };
 
                     btree::put(
@@ -685,7 +754,7 @@ impl MutTxn<()> {
         &mut self,
         fragment_id: &FragmentId,
         tx: &transaction::Transaction<chain_impl_mockchain::certificate::VotePlan>,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         let vote_plan = tx.as_slice().payload().into_payload();
         let vote_plan_id = StorableHash::from(<[u8; 32]>::from(vote_plan.to_id()));
         let vote_plan_meta = VotePlanMeta {
@@ -729,7 +798,7 @@ impl MutTxn<()> {
         fragment_id: FragmentId,
         tx: &transaction::Transaction<P>,
         state: &mut StateRef,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         let etx = tx.as_slice();
 
         // is important that we put outputs first, because utxo's can refer to inputs in the same
@@ -776,7 +845,7 @@ impl MutTxn<()> {
         parent_id: &BlockId,
         chain_length: ChainLength,
         block_id: &BlockId,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         let span = span!(Level::DEBUG, "update_tips");
         let _enter = span.enter();
 
@@ -795,7 +864,12 @@ impl MutTxn<()> {
 
         debug!(?parent_key);
 
-        let _ = btree::del(&mut self.txn, &mut self.tips, &1, Some(&parent_key))?;
+        let _ = btree::del(
+            &mut self.txn,
+            &mut self.tips,
+            &BranchTag::Branch,
+            Some(&parent_key),
+        )?;
 
         let key = BranchHead {
             chain_length: chain_length.0,
@@ -804,13 +878,15 @@ impl MutTxn<()> {
 
         debug!(?key);
 
-        btree::put(&mut self.txn, &mut self.tips, &1, &key)?;
+        btree::put(&mut self.txn, &mut self.tips, &BranchTag::Branch, &key)?;
 
         let current_tip = {
             let mut cursor = btree::Cursor::new(&self.txn, &self.tips)?;
 
             cursor.next(&self.txn)?.unwrap().1.chain_length.get()
         };
+
+        debug!(?chain_length, ?current_tip);
 
         if chain_length.get() > current_tip {
             self.set_tip(block_id)?;
@@ -823,7 +899,7 @@ impl MutTxn<()> {
         &mut self,
         chain_length: ChainLength,
         block_id: &BlockId,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         btree::put(
             &mut self.txn,
             &mut self.chain_lengths,
@@ -840,7 +916,7 @@ impl MutTxn<()> {
         index: u8,
         input: &transaction::Input,
         witness: &transaction::Witness,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         btree::put(
             &mut self.txn,
             &mut self.transaction_inputs,
@@ -859,7 +935,7 @@ impl MutTxn<()> {
         fragment_id: FragmentId,
         index: u8,
         output: &transaction::Output<chain_addr::Address>,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         btree::put(
             &mut self.txn,
             &mut self.transaction_outputs,
@@ -873,7 +949,7 @@ impl MutTxn<()> {
         Ok(())
     }
 
-    fn update_stake_pool_meta(&mut self, fragment: &Fragment) -> Result<(), ExplorerError> {
+    fn update_stake_pool_meta(&mut self, fragment: &Fragment) -> Result<(), DbError> {
         match fragment {
             Fragment::PoolRegistration(tx) => {
                 let etx = tx.as_slice();
@@ -932,11 +1008,7 @@ impl MutTxn<()> {
         Ok(())
     }
 
-    fn add_block_meta(
-        &mut self,
-        block_id: &BlockId,
-        block: BlockMeta,
-    ) -> Result<(), ExplorerError> {
+    fn add_block_meta(&mut self, block_id: &BlockId, block: BlockMeta) -> Result<(), DbError> {
         btree::put(&mut self.txn, &mut self.blocks, block_id, &block)?;
 
         Ok(())
@@ -948,7 +1020,7 @@ impl MutTxn<()> {
         witness: &transaction::Witness,
         resolved_utxo: Option<&TransactionOutput>,
         state: &mut StateRef,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         match (input.to_enum(), witness) {
             (InputEnum::AccountInput(account, value), Witness::Account(_)) => {
                 state.substract_stake_from_account(
@@ -982,7 +1054,7 @@ impl MutTxn<()> {
         witness: &transaction::Witness,
         resolved_utxo: Option<&TransactionOutput>,
         state: &mut StateRef,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         match (input.to_enum(), witness) {
             (InputEnum::AccountInput(account_id, _value), Witness::Account(_)) => {
                 let kind = chain_addr::Kind::Account(
@@ -1022,7 +1094,7 @@ impl MutTxn<()> {
         &self,
         transactions: &TransactionsOutputs,
         utxo_pointer: transaction::UtxoPointer,
-    ) -> Result<&TransactionOutput, ExplorerError> {
+    ) -> Result<&TransactionOutput, DbError> {
         let txid = utxo_pointer.transaction_id;
         let idx = utxo_pointer.output_index;
 
@@ -1050,7 +1122,7 @@ impl MutTxn<()> {
         }
     }
 
-    pub fn commit(self) -> Result<(), ExplorerError> {
+    pub fn commit(self) -> Result<(), DbError> {
         // destructure things so we get some sort of exhaustiveness-check
         let Self {
             mut txn,
@@ -1095,7 +1167,7 @@ impl Txn {
         &'a self,
         state_id: &StorableHash,
         address: &Address,
-    ) -> Result<Option<TxsByAddress<'a>>, ExplorerError> {
+    ) -> Result<Option<TxsByAddress<'a>>, DbError> {
         let state = btree::get(&self.txn, &self.states, &state_id, None)?;
 
         let state = match state {
@@ -1118,7 +1190,7 @@ impl Txn {
     pub fn get_blocks<'a>(
         &'a self,
         state_id: &StorableHash,
-    ) -> Result<Option<BlocksInBranch>, ExplorerError> {
+    ) -> Result<Option<BlocksInBranch>, DbError> {
         let state = btree::get(&self.txn, &self.states, &state_id, None)?;
 
         let state = match state {
@@ -1133,7 +1205,7 @@ impl Txn {
         )?))
     }
 
-    pub fn get_branches(&self) -> Result<BranchIter, ExplorerError> {
+    pub fn get_branches(&self) -> Result<BranchIter, DbError> {
         let mut cursor = btree::Cursor::new(&self.txn, &self.tips)?;
 
         // skip the tip tag
@@ -1145,7 +1217,7 @@ impl Txn {
         })
     }
 
-    pub fn get_tip(&self) -> Result<BlockId, ExplorerError> {
+    pub fn get_tip(&self) -> Result<BlockId, DbError> {
         let mut cursor = btree::Cursor::new(&self.txn, &self.tips)?;
 
         Ok(cursor.next(&self.txn)?.unwrap().1.id.clone())
@@ -1154,14 +1226,14 @@ impl Txn {
     pub fn get_block_fragments<'a, 'b: 'a>(
         &'a self,
         block_id: &'b BlockId,
-    ) -> Result<BlockFragmentsIter, ExplorerError> {
+    ) -> Result<BlockFragmentsIter, DbError> {
         SanakirjaCursorIter::new(&self.txn, block_id.into(), &self.block_transactions)
     }
 
     pub fn get_fragment_inputs<'a, 'b: 'a>(
         &'a self,
         fragment_id: &'b FragmentId,
-    ) -> Result<FragmentInputIter<'a>, ExplorerError> {
+    ) -> Result<FragmentInputIter<'a>, DbError> {
         SanakirjaCursorIter::new(
             &self.txn,
             FragmentContentId::from(fragment_id),
@@ -1172,7 +1244,7 @@ impl Txn {
     pub fn get_fragment_outputs<'a, 'b: 'a>(
         &'a self,
         fragment_id: &'b FragmentId,
-    ) -> Result<FragmentOutputIter<'a>, ExplorerError> {
+    ) -> Result<FragmentOutputIter<'a>, DbError> {
         SanakirjaCursorIter::new(
             &self.txn,
             FragmentContentId::from(fragment_id),
@@ -1183,7 +1255,7 @@ impl Txn {
     pub fn get_fragment_certificate(
         &self,
         fragment_id: &FragmentId,
-    ) -> Result<Option<&TransactionCertificate>, ExplorerError> {
+    ) -> Result<Option<&TransactionCertificate>, DbError> {
         let key = fragment_id.clone();
 
         let certificate = btree::get(&self.txn, &self.transaction_certificates, &key, None)?;
@@ -1194,7 +1266,7 @@ impl Txn {
     pub fn get_blocks_by_chain_length<'a, 'b: 'a>(
         &'a self,
         chain_length: &'b ChainLength,
-    ) -> Result<impl Iterator<Item = Result<&'a BlockId, ExplorerError>>, ExplorerError> {
+    ) -> Result<impl Iterator<Item = Result<&'a BlockId, DbError>>, DbError> {
         let mut cursor = btree::Cursor::new(&self.txn, &self.chain_lengths)?;
 
         cursor.set(&self.txn, chain_length, None)?;
@@ -1206,7 +1278,7 @@ impl Txn {
         })
     }
 
-    pub fn get_block_meta(&self, block_id: &BlockId) -> Result<Option<&BlockMeta>, ExplorerError> {
+    pub fn get_block_meta(&self, block_id: &BlockId) -> Result<Option<&BlockMeta>, DbError> {
         let block_meta = btree::get(&self.txn, &self.blocks, &block_id, None)?;
 
         Ok(block_meta.and_then(|(k, v)| if k == block_id { Some(v) } else { None }))
@@ -1215,7 +1287,7 @@ impl Txn {
     pub fn get_vote_plan_meta(
         &self,
         vote_plan_id: &VotePlanId,
-    ) -> Result<Option<&VotePlanMeta>, ExplorerError> {
+    ) -> Result<Option<&VotePlanMeta>, DbError> {
         let certificate = btree::get(&self.txn, &self.vote_plans, &vote_plan_id, None)?;
 
         Ok(certificate.and_then(|(k, v)| if k == vote_plan_id { Some(v) } else { None }))
@@ -1224,7 +1296,7 @@ impl Txn {
     pub fn get_vote_plan_proposals<'a, 'b: 'a>(
         &'a self,
         vote_plan_id: &'b VotePlanId,
-    ) -> Result<VotePlanProposalsIter, ExplorerError> {
+    ) -> Result<VotePlanProposalsIter, DbError> {
         SanakirjaCursorIter::new(&self.txn, vote_plan_id.into(), &self.vote_plan_proposals)
     }
 
@@ -1244,7 +1316,7 @@ impl Txn {
     }
 
     // paginating this seems a bit overkill
-    pub fn transaction_blocks(&self, tx: &FragmentId) -> Result<Vec<BlockId>, ExplorerError> {
+    pub fn transaction_blocks(&self, tx: &FragmentId) -> Result<Vec<BlockId>, DbError> {
         let iter = btree::iter(&self.txn, &self.transaction_blocks, Some((tx, None)))?;
 
         let mut ids = vec![];
@@ -1265,17 +1337,17 @@ impl Txn {
 
 pub struct BranchIter<'a> {
     txn: &'a SanakirjaTx,
-    cursor: TipsCursor,
+    cursor: btree::Cursor<BranchTag, BranchHead, P<BranchTag, BranchHead>>,
 }
 
 impl<'a> Iterator for BranchIter<'a> {
-    type Item = Result<&'a FragmentId, ExplorerError>;
+    type Item = Result<&'a FragmentId, DbError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.cursor
             .next(self.txn)
             .transpose()
-            .map(|item| item.map(|(_, v)| &v.id).map_err(ExplorerError::from))
+            .map(|item| item.map(|(_, v)| &v.id).map_err(DbError::from))
     }
 }
 
@@ -1286,7 +1358,7 @@ pub struct BlocksByChainLenght<'a> {
 }
 
 impl<'a> Iterator for BlocksByChainLenght<'a> {
-    type Item = Result<&'a BlockId, ExplorerError>;
+    type Item = Result<&'a BlockId, DbError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.cursor
@@ -1300,7 +1372,7 @@ impl<'a> Iterator for BlocksByChainLenght<'a> {
                     }
                 })
             })
-            .map_err(ExplorerError::from)
+            .map_err(DbError::from)
             .transpose()
     }
 }

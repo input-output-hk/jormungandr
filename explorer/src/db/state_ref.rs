@@ -7,7 +7,7 @@ use super::{
 };
 use super::{
     chain_storable::{ChainLength, ProposalId},
-    error::ExplorerError,
+    error::DbError,
 };
 use chain_impl_mockchain::{transaction, value::Value};
 use sanakirja::{
@@ -128,7 +128,7 @@ impl StateRef {
         txn: &mut SanakirjaMutTx,
         fragment_id: &FragmentId,
         proposal_id: &ProposalId,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         let max_possible_value = Pair {
             a: SeqNum::MAX,
             b: FragmentId::MAX,
@@ -159,7 +159,7 @@ impl StateRef {
         txn: &mut SanakirjaMutTx,
         fragment_id: &FragmentId,
         address: &Address,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         let address_id = self.get_or_insert_address_id(txn, address);
 
         let max_possible_value = Pair {
@@ -202,7 +202,7 @@ impl StateRef {
         txn: &mut SanakirjaMutTx,
         chain_length: &ChainLength,
         block_id: &BlockId,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         btree::put(txn, &mut self.blocks, chain_length, block_id).unwrap();
         Ok(())
     }
@@ -244,7 +244,7 @@ impl StateRef {
         &mut self,
         txn: &mut SanakirjaMutTx,
         output: &transaction::Output<chain_addr::Address>,
-    ) -> Result<(), ExplorerError> {
+    ) -> Result<(), DbError> {
         match output.address.kind() {
             chain_addr::Kind::Group(_, account) => {
                 self.add_stake_to_account(txn, account, output.value);
@@ -322,7 +322,7 @@ impl StateRef {
     /// It's important that any references to this particular state are not used anymore. For the
     /// current use-case, callers need to ensure that this snapshot is not referenced anymore in
     /// the `States` btree.
-    pub unsafe fn drop(self, txn: &mut SanakirjaMutTx) -> Result<(), ExplorerError> {
+    pub unsafe fn drop(self, txn: &mut SanakirjaMutTx) -> Result<(), DbError> {
         let StateRef {
             stake_pool_blocks,
             stake_control,

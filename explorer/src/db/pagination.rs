@@ -1,14 +1,13 @@
-use sanakirja::{btree, Storable};
-
 use super::{
     chain_storable::{
         BlockId, ChainLength, ExplorerVoteProposal, FragmentId, TransactionInput,
         TransactionOutput, VotePlanId,
     },
-    error::ExplorerError,
+    error::DbError,
     pair::Pair,
     Db, SanakirjaTx, SeqNum, P,
 };
+use sanakirja::{btree, Storable};
 
 pub trait PaginationCursor: PartialOrd + Ord + PartialEq + Eq + Clone + Copy {
     const MIN: Self;
@@ -55,13 +54,13 @@ where
     V: Storable + 'a,
     F: MapEntry<'a, K, V, C>,
 {
-    type Item = Result<(C, <F as MapEntry<'a, K, V, C>>::Output), ExplorerError>;
+    type Item = Result<(C, <F as MapEntry<'a, K, V, C>>::Output), DbError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.cursor
             .next(self.txn)
             .map(|item| item.and_then(|(k, v)| self.map_entry.map_entry(k, v)))
-            .map_err(ExplorerError::from)
+            .map_err(DbError::from)
             .transpose()
     }
 }
@@ -76,7 +75,7 @@ where
         self.cursor
             .prev(self.txn)
             .map(|item| item.and_then(|(k, v)| self.map_entry.map_entry(k, v)))
-            .map_err(ExplorerError::from)
+            .map_err(DbError::from)
             .transpose()
     }
 }
@@ -92,7 +91,7 @@ where
     /// `entry_from_cursor` should return the smallest possible entry for the given cursor element,
     /// this is because the internal sanakirja cursor is set at the first position greater than or
     /// equal than what's returned by this function.
-    pub fn new(txn: &'a SanakirjaTx, map_entry: F, db: &Db<K, V>) -> Result<Self, ExplorerError> {
+    pub fn new(txn: &'a SanakirjaTx, map_entry: F, db: &Db<K, V>) -> Result<Self, DbError> {
         let mut cursor = btree::Cursor::new(txn, db)?;
         let min_entry = map_entry.map_cursor(C::MIN);
         let max_entry = map_entry.map_cursor(C::MAX);
@@ -106,7 +105,7 @@ where
         let cursor_bounds = cursor
             .current(txn)?
             .and_then(|(k, v)| map_entry.map_entry(k, v))
-            .map(|first| -> Result<(C, C), ExplorerError> {
+            .map(|first| -> Result<(C, C), DbError> {
                 let (max_key, max_value) = max_entry;
                 let mut cursor = btree::Cursor::new(txn, db)?;
 
@@ -149,7 +148,7 @@ where
 
     /// put the initial iterator position to `cursor`. This has no effect if the cursor is outside
     /// the bounds, and will return Ok(false) if that's the case.
-    pub fn seek(&mut self, cursor: C) -> Result<bool, ExplorerError> {
+    pub fn seek(&mut self, cursor: C) -> Result<bool, DbError> {
         match self.cursor_bounds {
             Some((a, b)) if cursor >= a && cursor <= b => {
                 let (key, value) = self.map_entry.map_cursor(cursor);
@@ -161,7 +160,7 @@ where
         }
     }
 
-    pub fn seek_end(&mut self) -> Result<(), ExplorerError> {
+    pub fn seek_end(&mut self) -> Result<(), DbError> {
         if let Some((_, last)) = self.cursor_bounds {
             assert!(self.seek(last)?);
         }
