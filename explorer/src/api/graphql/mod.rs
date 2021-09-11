@@ -29,7 +29,7 @@ use crate::db::{
     self,
     chain_storable::{BlockId, CertificateTag},
     schema::{BlockMeta, StakePoolMeta, Txn},
-    ExplorerDb, SeqNum, Settings as ChainSettings,
+    ExplorerDb, SeqNum,
 };
 use chain_impl_mockchain::certificate;
 use chain_impl_mockchain::key::BftLeaderId;
@@ -1321,19 +1321,23 @@ pub struct Subscription;
 
 #[Subscription]
 impl Subscription {
-    async fn tip(&self, _context: &Context<'_>) -> impl futures::Stream<Item = Branch> {
-        // use futures::StreamExt;
-        // extract_context(context)
-        //     .db
-        //     .tip_subscription()
-        //     // missing a tip update doesn't seem that important, so I think it's
-        //     // fine to ignore the error
-        //     .filter_map(|tip| async move {
-        //         tip.ok()
-        //             .map(|(hash, state)| Branch::from_id_and_state(hash, state))
-        //     })
+    async fn tip(&self, context: &Context<'_>) -> impl futures::Stream<Item = Branch> + '_ {
+        use futures::StreamExt;
+        let context = extract_context(context);
 
-        futures::stream::iter(vec![])
+        let db = context.db.clone();
+
+        tokio_stream::wrappers::BroadcastStream::new(context.tip_stream.subscribe())
+            // missing a tip update doesn't seem that important, so I think it's
+            // fine to ignore the error
+            .filter_map(move |tip| {
+                let db = db.clone();
+
+                async move {
+                    let txn = Arc::new(db.get_txn().await.unwrap());
+                    tip.ok().map(|id| Branch { id: id.into(), txn })
+                }
+            })
     }
 }
 
@@ -1341,7 +1345,8 @@ pub type Schema = async_graphql::Schema<Query, EmptyMutation, Subscription>;
 
 pub struct EContext {
     pub db: ExplorerDb,
-    pub settings: ChainSettings,
+    pub tip_stream: tokio::sync::broadcast::Sender<HeaderHash>,
+    pub settings: super::Settings,
 }
 
 fn extract_context<'a>(context: &Context<'a>) -> &'a EContext {

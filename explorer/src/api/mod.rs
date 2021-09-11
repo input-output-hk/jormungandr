@@ -1,14 +1,22 @@
 pub mod graphql;
 
-use crate::db::ExplorerDb;
-
 use self::graphql::EContext;
+use crate::db::ExplorerDb;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use futures::Future;
 use jormungandr_lib::interfaces::{Cors, Tls};
 use std::{net::SocketAddr, time::Duration};
 use warp::http::Response as HttpResponse;
 use warp::{Filter, Rejection, Reply};
+
+#[derive(Clone)]
+pub struct Settings {
+    /// This is the prefix that's used for the Address bech32 string representation in the
+    /// responses (in the queries any prefix can be used). base32 serialization could
+    /// also be used, but the `Address` struct doesn't have a deserialization method right
+    /// now
+    pub address_bech32_prefix: String,
+}
 
 pub async fn setup_cors<API>(
     api: API,
@@ -67,14 +75,19 @@ async fn serve<API>(
 
 pub fn filter(
     db: ExplorerDb,
-    settings: crate::db::Settings,
+    tip_stream: tokio::sync::broadcast::Sender<chain_impl_mockchain::key::Hash>,
+    settings: Settings,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     let schema = async_graphql::Schema::build(
         crate::api::graphql::Query {},
         async_graphql::EmptyMutation,
         crate::api::graphql::Subscription {},
     )
-    .data(EContext { db, settings })
+    .data(EContext {
+        db,
+        settings,
+        tip_stream,
+    })
     .finish();
 
     let graphql_post = async_graphql_warp::graphql(schema.clone())
