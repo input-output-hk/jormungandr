@@ -1,11 +1,10 @@
-use std::sync::Arc;
-
 use crate::db::ExplorerDb;
-
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::block::HeaderId as HeaderHash;
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;
+use tracing::{span, Level};
 
 #[derive(Debug, Error)]
 pub enum IndexerError {
@@ -18,22 +17,33 @@ pub enum IndexerError {
     #[error("url error")]
     UrlError(#[from] url::ParseError),
     #[error(transparent)]
-    DbError(#[from] crate::db::error::ExplorerError),
+    DbError(#[from] crate::db::error::DbError),
 }
 
 #[derive(Clone)]
 pub struct Indexer {
     pub db: ExplorerDb,
+    pub tip_broadcast: tokio::sync::broadcast::Sender<HeaderHash>,
     tip_candidate: Arc<Mutex<Option<HeaderHash>>>,
 }
 
 impl Indexer {
-    pub fn new(db: crate::db::ExplorerDb) -> Self {
+    pub fn new(
+        db: crate::db::ExplorerDb,
+        tip_broadcast: tokio::sync::broadcast::Sender<HeaderHash>,
+    ) -> Self {
         let tip_candidate = Arc::new(Mutex::new(None));
-        Indexer { db, tip_candidate }
+        Indexer {
+            db,
+            tip_broadcast,
+            tip_candidate,
+        }
     }
 
     pub async fn apply_block(&self, block: Block) -> Result<(), IndexerError> {
+        let span = span!(Level::INFO, "Indexer::apply_block");
+        let _enter = span.enter();
+
         tracing::info!(
             "applying {} {}",
             block.header.id(),
@@ -52,6 +62,9 @@ impl Indexer {
     }
 
     pub async fn set_tip(&self, tip: HeaderHash) -> Result<(), IndexerError> {
+        let span = span!(Level::INFO, "Indexer::set_tip");
+        let _enter = span.enter();
+
         let successful = self.db.set_tip(tip).await?;
 
         if !successful {
@@ -59,6 +72,10 @@ impl Indexer {
             guard.replace(tip);
         } else {
             tracing::info!("tip set to {}", tip);
+
+            if let Err(e) = self.tip_broadcast.send(tip) {
+                tracing::info!(?e);
+            }
         }
 
         Ok(())

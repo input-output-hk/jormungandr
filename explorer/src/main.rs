@@ -45,7 +45,7 @@ pub enum Error {
 #[derive(Debug, Error)]
 pub enum BootstrapError {
     #[error(transparent)]
-    DbError(db::error::ExplorerError),
+    DbError(db::error::DbError),
     #[error("empty bootstrap stream")]
     EmptyStream,
 }
@@ -56,6 +56,11 @@ enum GlobalState {
     Ready(Indexer),
     ShuttingDown,
 }
+
+/// Number of blocks to apply per transaction commit when bootstrapping.
+///
+/// Each commit flushes the database file, so a bigger number reduces IO overhead.
+const BOOTSTRAP_BATCH_SIZE: u32 = 1000;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -93,7 +98,13 @@ async fn main() -> Result<(), Error> {
             .context("Couldn't establish connection with node")
             .map_err(Error::UnrecoverableError)?;
 
-        let open_db = ExplorerDb::open()
+        if let Some(storage) = settings.storage.as_ref() {
+            std::fs::create_dir_all(storage)
+                .context("Couldn't create database directory")
+                .map_err(Error::UnrecoverableError)?;
+        }
+
+        let open_db = ExplorerDb::open(settings.storage.as_ref())
             .context("Couldn't open database")
             .map_err(Error::UnrecoverableError)?;
 
@@ -135,7 +146,8 @@ async fn main() -> Result<(), Error> {
                 async move {
                     let db = bootstrap(sync_stream, open_db).await?;
 
-                    let msg = GlobalState::Ready(Indexer::new(db));
+                    let (tip_sender, _) = tokio::sync::broadcast::channel(20);
+                    let msg = GlobalState::Ready(Indexer::new(db, tip_sender));
 
                     state_tx
                         .send(msg)
@@ -302,7 +314,7 @@ async fn bootstrap(
 
         non_commited += 1;
 
-        if non_commited == 20 {
+        if non_commited == BOOTSTRAP_BATCH_SIZE {
             batch
                 .take()
                 .unwrap()
@@ -355,11 +367,12 @@ async fn rest_service(mut state: broadcast::Receiver<GlobalState>, settings: Set
         }
     });
 
-    let db = indexer_rx.await.unwrap().db;
+    let indexer = indexer_rx.await.unwrap();
 
     let api = api::filter(
-        db,
-        crate::db::Settings {
+        indexer.db,
+        indexer.tip_broadcast.clone(),
+        crate::api::Settings {
             address_bech32_prefix: settings.address_bech32_prefix,
         },
     );
@@ -443,17 +456,15 @@ async fn process_subscriptions(
                 tracing::debug!("received tip event");
                 let indexer = indexer.clone();
 
-                tokio::spawn(
-                    async {
-                        handle_tip(
-                            tip.context("Failed to receive tip from subscription")
-                                .map_err(Error::Other)?,
-                            indexer,
-                        )
-                        .await
-                    }
-                    .instrument(span!(Level::INFO, "handle_tip")),
-                );
+                async {
+                    handle_tip(
+                        tip.context("Failed to receive tip from subscription")
+                            .map_err(Error::Other)?,
+                        indexer,
+                    )
+                    .await
+                }
+                .instrument(span!(Level::INFO, "handle_tip")).await?;
             },
             else => break,
         };
