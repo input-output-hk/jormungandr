@@ -3,44 +3,37 @@ mod connections;
 mod error;
 mod scalars;
 
-use async_graphql::connection::{query, Connection, Edge, EmptyFields};
-use async_graphql::{
-    Context, EmptyMutation, FieldResult, Object, SimpleObject, Subscription, Union,
+use self::connections::{
+    compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
+    ValidatedPaginationArguments,
 };
-use tokio::sync::Mutex;
-
+use self::error::ApiError;
 use self::{
     certificates::{PrivateVoteCastCertificate, PublicVoteCastCertificate, VotePlanCertificate},
     scalars::{
-        BlockCount, ChainLength, EpochNumber, ExternalProposalId, FragmentId, IndexCursor, NonZero,
-        PayloadType, PoolCount, PoolId, PublicKey, Slot, TransactionCount, TransactionInputCount,
-        TransactionOutputCount, Value, VoteOptionRange, VotePlanStatusCount,
+        BlockCount, ChainLength, EpochNumber, ExternalProposalId, FragmentId, IndexCursor, Slot,
+        TransactionCount, TransactionInputCount, TransactionOutputCount, Value, VoteOptionRange,
     },
 };
-use self::{
-    connections::{
-        compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
-        ValidatedPaginationArguments,
-    },
-    scalars::VotePlanId,
-};
-use self::{error::ApiError, scalars::Weight};
 use crate::db::{
     self,
     chain_storable::{BlockId, CertificateTag},
-    schema::{BlockMeta, StakePoolMeta, Txn},
-    ExplorerDb, SeqNum,
+    schema::{BlockMeta, Txn},
+    ExplorerDb,
+};
+use async_graphql::{
+    connection::{query, Connection, Edge, EmptyFields},
+    FieldError,
+};
+use async_graphql::{
+    Context, EmptyMutation, FieldResult, Object, SimpleObject, Subscription, Union,
 };
 use chain_impl_mockchain::certificate;
-use chain_impl_mockchain::key::BftLeaderId;
-use chain_impl_mockchain::{
-    block::{Epoch as InternalEpoch, HeaderId as HeaderHash},
-    transaction,
-    vote::{EncryptedVote, ProofOfCorrectVote},
-};
+use chain_impl_mockchain::{block::HeaderId as HeaderHash, transaction};
 use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 
 pub struct Branch {
     id: db::chain_storable::BlockId,
@@ -79,71 +72,29 @@ impl Branch {
             last,
             move |after, before, first, last| async move {
                 tokio::task::spawn_blocking(move || {
-                    let connection = match txn
-                        .get_blocks(&id)
-                        .map_err(|_| ApiError::InternalDbError)?
-                    {
-                        Some(mut blocks) => {
-                            let boundaries =
-                                PaginationInterval::Inclusive(InclusivePaginationInterval {
-                                    lower_bound: u32::from(blocks.first_cursor().unwrap()),
-                                    upper_bound: u32::from(blocks.last_cursor().unwrap()),
-                                });
-
-                            let pagination_arguments = ValidatedPaginationArguments {
+                    let connection =
+                        match txn.get_blocks(&id).map_err(|_| ApiError::InternalDbError)? {
+                            Some(blocks) => get_page::<u32, _, _, _, _, _, _, _>(
+                                blocks,
+                                EdgeOrder::Decreasing,
                                 first,
                                 last,
-                                before: before.map(TryInto::try_into).transpose()?,
-                                after: after.map(TryInto::try_into).transpose()?,
-                            };
-
-                            let (range, page_meta) =
-                                compute_interval(boundaries, pagination_arguments)?;
-
-                            let mut connection = Connection::with_additional_fields(
-                                page_meta.has_previous_page,
-                                page_meta.has_next_page,
-                                ConnectionFields {
-                                    total_count: page_meta.total_count,
+                                before,
+                                after,
+                                |chain_length, block_id| {
+                                    Edge::new(
+                                        IndexCursor::from(chain_length.get()),
+                                        Block::from_valid_hash(block_id.clone(), Arc::clone(&txn)),
+                                    )
                                 },
-                            );
-
-                            match range {
-                                PaginationInterval::Empty => (),
-                                PaginationInterval::Inclusive(range) => {
-                                    let a = db::chain_storable::ChainLength::new(range.lower_bound);
-                                    let b = db::chain_storable::ChainLength::new(range.upper_bound);
-
-                                    blocks.seek(b).map_err(|_| ApiError::InternalDbError)?;
-
-                                    // TODO: don't unwrap
-                                    connection.append(
-                                        blocks
-                                            .rev()
-                                            .map(|i| i.unwrap())
-                                            .take_while(|(h, _)| h >= &a)
-                                            .map(|(h, id)| {
-                                                Edge::new(
-                                                    IndexCursor::from(h.get()),
-                                                    Block::from_valid_hash(
-                                                        id.clone(),
-                                                        Arc::clone(&txn),
-                                                    ),
-                                                )
-                                            }),
-                                    );
-                                }
-                            };
-
-                            connection
-                        }
-                        // TODO: this can't really happen
-                        None => Connection::with_additional_fields(
-                            false,
-                            false,
-                            ConnectionFields { total_count: 0 },
-                        ),
-                    };
+                            )?,
+                            // TODO: this can't really happen
+                            None => Connection::with_additional_fields(
+                                false,
+                                false,
+                                ConnectionFields { total_count: 0 },
+                            ),
+                        };
 
                     Ok::<
                         Connection<IndexCursor, Block, ConnectionFields<BlockCount>, EmptyFields>,
@@ -186,60 +137,24 @@ impl Branch {
                         .get_transactions_by_address(&id, &address.into())
                         .map_err(|_| ApiError::InternalDbError)?
                     {
-                        Some(mut txs) => {
-                            let boundaries =
-                                PaginationInterval::Inclusive(InclusivePaginationInterval {
-                                    lower_bound: u64::from(*txs.first_cursor().unwrap()),
-                                    upper_bound: u64::from(*txs.last_cursor().unwrap()),
-                                });
-
-                            let pagination_arguments = ValidatedPaginationArguments {
-                                first,
-                                last,
-                                before: before.map(TryInto::try_into).transpose()?,
-                                after: after.map(TryInto::try_into).transpose()?,
-                            };
-
-                            let (range, page_meta) =
-                                compute_interval(boundaries, pagination_arguments)?;
-
-                            let mut connection = Connection::with_additional_fields(
-                                page_meta.has_previous_page,
-                                page_meta.has_next_page,
-                                ConnectionFields {
-                                    total_count: page_meta.total_count,
-                                },
-                            );
-
-                            match range {
-                                PaginationInterval::Empty => (),
-                                PaginationInterval::Inclusive(range) => {
-                                    let a = SeqNum::new(range.lower_bound);
-                                    let b = SeqNum::new(range.upper_bound);
-
-                                    txs.seek(b).map_err(|_| ApiError::InternalDbError)?;
-
-                                    // TODO: don't unwrap
-                                    connection.append(
-                                        txs.rev()
-                                            .map(|i| i.unwrap())
-                                            .take_while(|(h, _)| h >= &a)
-                                            .map(|(h, id)| {
-                                                Edge::new(
-                                                    IndexCursor::from(h),
-                                                    Transaction {
-                                                        id: id.clone(),
-                                                        block_hashes: vec![],
-                                                        txn: Arc::clone(&txn),
-                                                    },
-                                                )
-                                            }),
-                                    );
-                                }
-                            };
-
-                            connection
-                        }
+                        Some(txs) => get_page::<u64, _, _, _, _, _, _, _>(
+                            txs,
+                            EdgeOrder::Decreasing,
+                            first,
+                            last,
+                            before,
+                            after,
+                            |offset, id| {
+                                Edge::new(
+                                    IndexCursor::from(offset),
+                                    Transaction {
+                                        id: id.clone(),
+                                        block_hashes: vec![],
+                                        txn: Arc::clone(&txn),
+                                    },
+                                )
+                            },
+                        )?,
                         None => Connection::with_additional_fields(
                             false,
                             false,
@@ -262,43 +177,6 @@ impl Branch {
             },
         )
         .await
-    }
-
-    // TODO: what's an appropiated order for this query?
-    pub async fn all_vote_plans(
-        &self,
-        _first: Option<i32>,
-        _last: Option<i32>,
-        _before: Option<String>,
-        _after: Option<String>,
-    ) -> FieldResult<
-        Connection<IndexCursor, VotePlanStatus, ConnectionFields<VotePlanStatusCount>, EmptyFields>,
-    > {
-        Err(ApiError::Unimplemented.into())
-    }
-
-    pub async fn all_stake_pools(
-        &self,
-        _first: Option<i32>,
-        _last: Option<i32>,
-        _before: Option<String>,
-        _after: Option<String>,
-    ) -> FieldResult<Connection<IndexCursor, Pool, ConnectionFields<PoolCount>, EmptyFields>> {
-        Err(ApiError::Unimplemented.into())
-    }
-
-    /// Get a paginated view of all the blocks in this epoch
-    pub async fn blocks_by_epoch(
-        &self,
-        _epoch: EpochNumber,
-        _first: Option<i32>,
-        _last: Option<i32>,
-        _before: Option<String>,
-        _after: Option<String>,
-    ) -> FieldResult<
-        Option<Connection<IndexCursor, Block, ConnectionFields<BlockCount>, EmptyFields>>,
-    > {
-        Err(ApiError::Unimplemented.into())
     }
 }
 
@@ -481,10 +359,6 @@ impl Block {
         Ok(chain_length)
     }
 
-    pub async fn leader(&self) -> FieldResult<Option<Leader>> {
-        Err(ApiError::Unimplemented.into())
-    }
-
     pub async fn previous_block(&self) -> FieldResult<Block> {
         Ok(Block {
             hash: self.get_block_meta().await?.parent_hash,
@@ -510,36 +384,17 @@ impl Block {
     }
 }
 
-pub struct BftLeader {
-    id: BftLeaderId,
-}
-
-#[Object]
-impl BftLeader {
-    async fn id(&self) -> PublicKey {
-        self.id.as_public_key().into()
-    }
-}
-
-#[derive(async_graphql::Union)]
-pub enum Leader {
-    StakePool(Pool),
-    BftLeader(BftLeader),
-}
-
 /// Block's date, composed of an Epoch and a Slot
 #[derive(Clone, SimpleObject)]
 pub struct BlockDate {
-    epoch: Epoch,
+    epoch: EpochNumber,
     slot: Slot,
 }
 
 impl From<db::chain_storable::BlockDate> for BlockDate {
     fn from(date: db::chain_storable::BlockDate) -> BlockDate {
         BlockDate {
-            epoch: Epoch {
-                id: date.epoch.get(),
-            },
+            epoch: date.epoch.get().into(),
             slot: Slot(date.slot_id.get()),
         }
     }
@@ -597,103 +452,61 @@ impl Transaction {
             last,
             move |after, before, first, last| async move {
                 tokio::task::spawn_blocking(move || {
-                    let mut inputs = txn
+                    let inputs = txn
                         .get_fragment_inputs(&id)
                         .map_err(|_| ApiError::InternalDbError)?;
 
-                    let boundaries = inputs
-                        .first_cursor()
-                        .map(|first| {
-                            PaginationInterval::Inclusive(InclusivePaginationInterval {
-                                lower_bound: u64::from(*first),
-                                upper_bound: u64::from(*inputs.last_cursor().unwrap()),
-                            })
-                        })
-                        .unwrap_or(PaginationInterval::Empty);
-
-                    let pagination_arguments = ValidatedPaginationArguments {
+                    let connection = get_page::<u8, _, _, _, _, _, _, _>(
+                        inputs,
+                        EdgeOrder::Increasing,
                         first,
                         last,
-                        before: before.map(TryInto::try_into).transpose()?,
-                        after: after.map(TryInto::try_into).transpose()?,
-                    };
-
-                    let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
-
-                    let mut connection = Connection::with_additional_fields(
-                        page_meta.has_previous_page,
-                        page_meta.has_next_page,
-                        ConnectionFields {
-                            total_count: page_meta.total_count.try_into().unwrap(),
-                        },
-                    );
-
-                    match range {
-                        PaginationInterval::Empty => (),
-                        PaginationInterval::Inclusive(range) => {
-                            let a = u8::try_from(range.lower_bound).unwrap();
-                            let b = range.upper_bound;
-
-                            inputs.seek(a).map_err(|_| ApiError::InternalDbError)?;
-
-                            // TODO: don't unwrap
-                            connection.append(
-                                inputs
-                                    .map(|i| i.unwrap())
-                                    .take_while(|(h, _)| (*h as u64) <= b)
-                                    .map(|(h, input)| {
-                                        let single_account = matches!(
-                                            input.input_type(),
-                                            db::chain_storable::InputType::AccountSingle
-                                        );
-
-                                        Edge::new(
-                                            IndexCursor::from(h as u32),
-                                            match transaction::Input::from(input).to_enum() {
-                                                transaction::InputEnum::AccountInput(
-                                                    account_id,
-                                                    value,
-                                                ) => {
-                                                    let address = if single_account {
-                                                        let public_key =
-                                                            account_id.to_single_account().unwrap();
-                                                        let kind = chain_addr::Kind::Single(
-                                                            public_key.into(),
-                                                        );
-
-                                                        chain_addr::Address(
-                                                            chain_addr::Discrimination::Test,
-                                                            kind,
-                                                        )
-                                                    } else {
-                                                        let kind = chain_addr::Kind::Multisig(
-                                                            account_id.to_multi_account().into(),
-                                                        );
-
-                                                        chain_addr::Address(
-                                                            chain_addr::Discrimination::Test,
-                                                            kind,
-                                                        )
-                                                    };
-                                                    TransactionInput::AccountInput(AccountInput {
-                                                        address: Address { id: address.into() },
-                                                        amount: value.0.into(),
-                                                    })
-                                                }
-                                                transaction::InputEnum::UtxoInput(utxo_pointer) => {
-                                                    TransactionInput::UtxoInput(UtxoInput {
-                                                        fragment: utxo_pointer
-                                                            .transaction_id
-                                                            .into(),
-                                                        offset: utxo_pointer.output_index,
-                                                    })
-                                                }
-                                            },
-                                        )
-                                    }),
+                        before,
+                        after,
+                        |h, input| {
+                            let single_account = matches!(
+                                input.input_type(),
+                                db::chain_storable::InputType::AccountSingle
                             );
-                        }
-                    };
+
+                            Edge::new(
+                                IndexCursor::from(h as u32),
+                                match transaction::Input::from(input).to_enum() {
+                                    transaction::InputEnum::AccountInput(account_id, value) => {
+                                        let address = if single_account {
+                                            let public_key =
+                                                account_id.to_single_account().unwrap();
+                                            let kind = chain_addr::Kind::Single(public_key.into());
+
+                                            chain_addr::Address(
+                                                chain_addr::Discrimination::Test,
+                                                kind,
+                                            )
+                                        } else {
+                                            let kind = chain_addr::Kind::Multisig(
+                                                account_id.to_multi_account().into(),
+                                            );
+
+                                            chain_addr::Address(
+                                                chain_addr::Discrimination::Test,
+                                                kind,
+                                            )
+                                        };
+                                        TransactionInput::AccountInput(AccountInput {
+                                            address: Address { id: address.into() },
+                                            amount: value.0.into(),
+                                        })
+                                    }
+                                    transaction::InputEnum::UtxoInput(utxo_pointer) => {
+                                        TransactionInput::UtxoInput(UtxoInput {
+                                            fragment: utxo_pointer.transaction_id.into(),
+                                            offset: utxo_pointer.output_index,
+                                        })
+                                    }
+                                },
+                            )
+                        },
+                    )?;
 
                     Ok::<
                         Connection<
@@ -735,64 +548,29 @@ impl Transaction {
             last,
             move |after, before, first, last| async move {
                 tokio::task::spawn_blocking(move || {
-                    let mut outputs = txn
+                    let outputs = txn
                         .get_fragment_outputs(&id)
                         .map_err(|_| ApiError::InternalDbError)?;
 
-                    let boundaries = outputs
-                        .first_cursor()
-                        .map(|first| {
-                            PaginationInterval::Inclusive(InclusivePaginationInterval {
-                                lower_bound: u64::from(*first),
-                                upper_bound: u64::from(*outputs.last_cursor().unwrap()),
-                            })
-                        })
-                        .unwrap_or(PaginationInterval::Empty);
-
-                    let pagination_arguments = ValidatedPaginationArguments {
+                    let connection = get_page::<TransactionOutputCount, _, _, _, _, _, _, _>(
+                        outputs,
+                        EdgeOrder::Increasing,
                         first,
                         last,
-                        before: before.map(TryInto::try_into).transpose()?,
-                        after: after.map(TryInto::try_into).transpose()?,
-                    };
-
-                    let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
-
-                    let mut connection = Connection::with_additional_fields(
-                        page_meta.has_previous_page,
-                        page_meta.has_next_page,
-                        ConnectionFields {
-                            total_count: page_meta.total_count.try_into().unwrap(),
+                        before,
+                        after,
+                        |h, output| {
+                            Edge::new(
+                                IndexCursor::from(h as u32),
+                                TransactionOutput {
+                                    amount: output.value.get().into(),
+                                    address: Address {
+                                        id: output.address.clone(),
+                                    },
+                                },
+                            )
                         },
-                    );
-
-                    match range {
-                        PaginationInterval::Empty => (),
-                        PaginationInterval::Inclusive(range) => {
-                            let a = u8::try_from(range.lower_bound).unwrap();
-                            let b = range.upper_bound;
-
-                            outputs.seek(a).map_err(|_| ApiError::InternalDbError)?;
-
-                            // TODO: don't unwrap
-                            connection.append(
-                                outputs
-                                    .map(|i| i.unwrap())
-                                    .take_while(|(h, _)| (*h as u64) <= b)
-                                    .map(|(h, output)| {
-                                        Edge::new(
-                                            IndexCursor::from(h as u32),
-                                            TransactionOutput {
-                                                amount: output.value.get().into(),
-                                                address: Address {
-                                                    id: output.address.clone(),
-                                                },
-                                            },
-                                        )
-                                    }),
-                            );
-                        }
-                    };
+                    )?;
 
                     Ok::<
                         Connection<
@@ -894,42 +672,6 @@ impl Address {
         )
         .to_string()
     }
-
-    async fn delegation(&self, _context: &Context<'_>) -> FieldResult<Pool> {
-        Err(ApiError::Unimplemented.into())
-    }
-}
-
-pub struct TaxType(chain_impl_mockchain::rewards::TaxType);
-
-#[Object]
-impl TaxType {
-    /// what get subtracted as fixed value
-    pub async fn fixed(&self) -> Value {
-        Value(self.0.fixed)
-    }
-    /// Ratio of tax after fixed amout subtracted
-    pub async fn ratio(&self) -> Ratio {
-        Ratio(self.0.ratio)
-    }
-
-    /// Max limit of tax
-    pub async fn max_limit(&self) -> Option<NonZero> {
-        self.0.max_limit.map(NonZero)
-    }
-}
-
-pub struct Ratio(chain_impl_mockchain::rewards::Ratio);
-
-#[Object]
-impl Ratio {
-    pub async fn numerator(&self) -> Value {
-        Value::from(self.0.numerator)
-    }
-
-    pub async fn denominator(&self) -> NonZero {
-        NonZero(self.0.denominator)
-    }
 }
 
 pub struct Proposal(certificate::Proposal);
@@ -947,234 +689,6 @@ impl Proposal {
     /// within the given range
     pub async fn options(&self) -> VoteOptionRange {
         self.0.options().clone().into()
-    }
-}
-
-#[derive(Clone)]
-pub struct Pool {
-    id: certificate::PoolId,
-    data: Option<Arc<StakePoolMeta>>,
-}
-
-impl Pool {
-    async fn from_string_id(_id: &str, _db: &ExplorerDb) -> FieldResult<Pool> {
-        Err(ApiError::Unimplemented.into())
-    }
-}
-
-#[Object]
-impl Pool {
-    pub async fn id(&self) -> PoolId {
-        PoolId(self.id.clone())
-    }
-
-    pub async fn blocks(
-        &self,
-        _first: Option<i32>,
-        _last: Option<i32>,
-        _before: Option<String>,
-        _after: Option<String>,
-    ) -> FieldResult<Connection<IndexCursor, Block, ConnectionFields<BlockCount>>> {
-        Err(ApiError::Unimplemented.into())
-    }
-
-    // TODO: improve this api
-    pub async fn registration(&self) -> FieldResult<Transaction> {
-        Err(ApiError::Unimplemented.into())
-    }
-
-    // TODO: improve this api
-    pub async fn retirement(&self) -> FieldResult<Option<Transaction>> {
-        Err(ApiError::Unimplemented.into())
-    }
-}
-
-pub struct Settings {}
-
-#[Object]
-impl Settings {
-    pub async fn fees(&self) -> FieldResult<FeeSettings> {
-        Err(ApiError::Unimplemented.into())
-    }
-
-    pub async fn epoch_stability_depth(&self) -> FieldResult<String> {
-        Err(ApiError::Unimplemented.into())
-    }
-}
-
-#[derive(SimpleObject)]
-pub struct Treasury {
-    rewards: Value,
-    treasury: Value,
-    treasury_tax: TaxType,
-}
-
-#[derive(SimpleObject)]
-pub struct FeeSettings {
-    constant: Value,
-    coefficient: Value,
-    certificate: Value,
-    certificate_pool_registration: Value,
-    certificate_stake_delegation: Value,
-    certificate_owner_stake_delegation: Value,
-    certificate_vote_plan: Value,
-    certificate_vote_cast: Value,
-}
-
-#[derive(Clone)]
-pub struct Epoch {
-    id: InternalEpoch,
-}
-
-impl Epoch {
-    fn from_epoch_number(id: InternalEpoch) -> Epoch {
-        Epoch { id }
-    }
-}
-
-#[Object]
-impl Epoch {
-    pub async fn id(&self) -> EpochNumber {
-        EpochNumber(self.id)
-    }
-
-    /// Not yet implemented
-    pub async fn stake_distribution(&self) -> FieldResult<StakeDistribution> {
-        Err(ApiError::Unimplemented.into())
-    }
-
-    pub async fn first_block(&self) -> FieldResult<Option<Block>> {
-        Err(ApiError::Unimplemented.into())
-    }
-
-    pub async fn last_block(&self) -> FieldResult<Option<Block>> {
-        Err(ApiError::Unimplemented.into())
-    }
-
-    pub async fn total_blocks(&self) -> FieldResult<BlockCount> {
-        Err(ApiError::Unimplemented.into())
-    }
-}
-
-#[derive(SimpleObject)]
-pub struct StakeDistribution {
-    pools: Vec<PoolStakeDistribution>,
-}
-
-#[derive(SimpleObject)]
-pub struct PoolStakeDistribution {
-    pool: Pool,
-    delegated_stake: Value,
-}
-
-#[derive(Clone)]
-pub struct VotePayloadPublicStatus {
-    choice: i32,
-}
-
-#[derive(Clone)]
-pub struct VotePayloadPrivateStatus {
-    proof: ProofOfCorrectVote,
-    encrypted_vote: EncryptedVote,
-}
-
-#[Object]
-impl VotePayloadPublicStatus {
-    pub async fn choice(&self, _context: &Context<'_>) -> i32 {
-        self.choice
-    }
-}
-
-#[Object]
-impl VotePayloadPrivateStatus {
-    pub async fn proof(&self, _context: &Context<'_>) -> String {
-        let bytes_proof = self.proof.serialize();
-        base64::encode_config(bytes_proof, base64::URL_SAFE)
-    }
-
-    pub async fn encrypted_vote(&self, _context: &Context<'_>) -> String {
-        let encrypted_bote_bytes = self.encrypted_vote.serialize();
-        base64::encode_config(encrypted_bote_bytes, base64::URL_SAFE)
-    }
-}
-
-#[derive(Clone, async_graphql::Union)]
-pub enum VotePayloadStatus {
-    Public(VotePayloadPublicStatus),
-    Private(VotePayloadPrivateStatus),
-}
-
-// TODO do proper vote tally
-#[derive(Clone, SimpleObject)]
-pub struct TallyPublicStatus {
-    results: Vec<Weight>,
-    options: VoteOptionRange,
-}
-
-#[derive(Clone, SimpleObject)]
-pub struct TallyPrivateStatus {
-    results: Option<Vec<Weight>>,
-    options: VoteOptionRange,
-}
-
-#[derive(Clone, async_graphql::Union)]
-pub enum TallyStatus {
-    Public(TallyPublicStatus),
-    Private(TallyPrivateStatus),
-}
-
-#[derive(Clone, SimpleObject)]
-pub struct VotePlanStatus {
-    id: VotePlanId,
-    vote_start: BlockDate,
-    vote_end: BlockDate,
-    committee_end: BlockDate,
-    payload_type: PayloadType,
-    proposals: Vec<VoteProposalStatus>,
-}
-
-impl VotePlanStatus {
-    pub async fn vote_plan_from_id(_vote_plan_id: VotePlanId) -> FieldResult<Self> {
-        Err(ApiError::Unimplemented.into())
-    }
-}
-
-#[derive(Clone, SimpleObject)]
-pub struct VoteStatus {
-    address: Address,
-    payload: VotePayloadStatus,
-}
-
-#[derive(Clone)]
-pub struct VoteProposalStatus {
-    proposal_id: ExternalProposalId,
-    options: VoteOptionRange,
-    tally: Option<TallyStatus>,
-    votes: Vec<VoteStatus>,
-}
-
-#[Object]
-impl VoteProposalStatus {
-    pub async fn proposal_id(&self) -> &ExternalProposalId {
-        &self.proposal_id
-    }
-
-    pub async fn options(&self) -> &VoteOptionRange {
-        &self.options
-    }
-
-    pub async fn tally(&self) -> Option<&TallyStatus> {
-        self.tally.as_ref()
-    }
-
-    pub async fn votes(
-        &self,
-        _first: Option<i32>,
-        _last: Option<i32>,
-        _before: Option<String>,
-        _after: Option<String>,
-    ) -> FieldResult<Connection<IndexCursor, VoteStatus, ConnectionFields<u64>, EmptyFields>> {
-        Err(ApiError::Unimplemented.into())
     }
 }
 
@@ -1207,16 +721,18 @@ impl Query {
                 .map_err(|_| ApiError::InternalDbError)?,
         );
 
-        let blocks = txn
-            .get_blocks_by_chain_length(&db::chain_storable::ChainLength::new(u32::from(length.0)))
-            .map_err(|_| ApiError::InternalDbError)?
-            .map(|i| {
-                i.map(|id| Block::from_valid_hash(id.clone(), Arc::clone(&txn)))
-                    .map_err(|_| ApiError::InternalError("iterator error".to_string()))
-            })
-            .collect::<Result<Vec<_>, ApiError>>()?;
+        let mut result = vec![];
+        let chain_length = db::chain_storable::ChainLength::new(u32::from(length.0));
 
-        Ok(blocks)
+        let blocks = txn
+            .get_blocks_by_chain_length(&chain_length)
+            .map_err(|_| ApiError::InternalDbError)?;
+
+        for block in blocks {
+            result.push(Block::from_valid_hash(block?.clone(), Arc::clone(&txn)));
+        }
+
+        Ok(result)
     }
 
     async fn transaction(&self, context: &Context<'_>, id: String) -> FieldResult<Transaction> {
@@ -1239,11 +755,10 @@ impl Query {
                 })
             }
         })
-        .await
-        .unwrap()
+        .await?
     }
 
-    /// get all current tips, sorted (descending) by their length
+    /// get all current branch heads, sorted (descending) by their length
     pub async fn branches(&self, context: &Context<'_>) -> FieldResult<Vec<Branch>> {
         let db = &extract_context(context).db;
 
@@ -1263,12 +778,10 @@ impl Query {
 
             Ok(branches)
         })
-        .await
-        .unwrap()
+        .await?
     }
 
-    /// get the block that the ledger currently considers as the main branch's
-    /// tip
+    /// get the state that the ledger currently considers as the main branch
     async fn tip(&self, context: &Context<'_>) -> FieldResult<Branch> {
         let db = &extract_context(context).db;
         let txn = Arc::new(db.get_txn().await.map_err(|_| ApiError::InternalDbError)?);
@@ -1284,36 +797,15 @@ impl Query {
 
             Ok(branch)
         })
-        .await
-        .unwrap()
+        .await?
     }
 
     pub async fn branch(&self, _context: &Context<'_>, _id: String) -> FieldResult<Branch> {
         todo!()
     }
 
-    pub async fn epoch(&self, _context: &Context<'_>, id: EpochNumber) -> Epoch {
-        Epoch::from_epoch_number(id.0)
-    }
-
     pub async fn address(&self, _context: &Context<'_>, bech32: String) -> FieldResult<Address> {
         Address::from_bech32(&bech32)
-    }
-
-    pub async fn stake_pool(&self, context: &Context<'_>, id: PoolId) -> FieldResult<Pool> {
-        Pool::from_string_id(&id.0.to_string(), &extract_context(&context).db).await
-    }
-
-    pub async fn settings(&self, _context: &Context<'_>) -> FieldResult<Settings> {
-        Ok(Settings {})
-    }
-
-    pub async fn vote_plan(
-        &self,
-        _context: &Context<'_>,
-        id: String,
-    ) -> FieldResult<VotePlanStatus> {
-        VotePlanStatus::vote_plan_from_id(VotePlanId(id)).await
     }
 }
 
@@ -1351,4 +843,107 @@ pub struct EContext {
 
 fn extract_context<'a>(context: &Context<'a>) -> &'a EContext {
     context.data_unchecked::<EContext>()
+}
+
+pub enum EdgeOrder {
+    Decreasing,
+    Increasing,
+}
+
+/// tie the db::pagination abstraction with the graphql boundary computation.
+//  TODO: the types in this are really complex, there is probably a better strategy,
+//  although by the nature of this function it needs to be fairly generic.
+//  currently the types are complex because it has both the type bounds of db::pagination and the
+//  ones from graphql::pagination, and some extra ones to do conversion between them
+fn get_page<'a, N, K, C, I, Item, F, M, Output>(
+    mut edges: db::pagination::SanakirjaCursorIter<'a, K, I, C, M>,
+    edge_order: EdgeOrder,
+    first: Option<usize>,
+    last: Option<usize>,
+    before: Option<IndexCursor>,
+    after: Option<IndexCursor>,
+    map_item: F,
+    // TODO: extract this to an enum, or better yet, to two different functions
+) -> Result<Connection<IndexCursor, Item, ConnectionFields<N>>, FieldError>
+where
+    C: Clone + From<N> + sanakirja::Storable + db::pagination::PaginationCursor,
+    K: sanakirja::Storable + PartialEq,
+    N: From<C> + Clone + TryFrom<IndexCursor> + TryFrom<u64> + async_graphql::OutputType,
+    I: sanakirja::Storable,
+    u64: std::convert::From<N>,
+    F: Fn(C, &Output) -> Edge<IndexCursor, Item, EmptyFields>,
+    M: db::pagination::MapEntry<'a, K, I, C, Output = &'a Output>,
+    Output: 'a,
+{
+    let boundaries = edges
+        .first_cursor()
+        .map(|first| {
+            PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: N::from(*first),
+                upper_bound: N::from(*edges.last_cursor().unwrap()),
+            })
+        })
+        .unwrap_or(PaginationInterval::Empty);
+
+    let pagination_arguments = ValidatedPaginationArguments {
+        first,
+        last,
+        before: before
+            .map(TryInto::try_into)
+            .transpose()
+            .map_err(|_| ApiError::InvalidCursor("before".to_string()))?,
+        after: after
+            .map(TryInto::try_into)
+            .transpose()
+            .map_err(|_| ApiError::InvalidCursor("after".to_string()))?,
+    };
+
+    let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+    let mut connection = Connection::with_additional_fields(
+        page_meta.has_previous_page,
+        page_meta.has_next_page,
+        ConnectionFields {
+            total_count: page_meta.total_count.try_into().map_err(|_| {
+                ApiError::InternalError(
+                    "pagination has more items than cursor type can hold".to_string(),
+                )
+            })?,
+        },
+    );
+
+    match range {
+        PaginationInterval::Empty => (),
+        PaginationInterval::Inclusive(range) => {
+            let a = C::from(range.lower_bound);
+            let b = C::from(range.upper_bound);
+
+            if matches!(edge_order, EdgeOrder::Decreasing) {
+                edges.seek(b).map_err(|_| ApiError::InternalDbError)?;
+
+                for edge in edges.rev() {
+                    let (cursor, edge) = edge?;
+
+                    if cursor >= a {
+                        connection.append([map_item(cursor, edge)])
+                    } else {
+                        break;
+                    }
+                }
+            } else {
+                edges.seek(a).map_err(|_| ApiError::InternalDbError)?;
+
+                for edge in edges {
+                    let (cursor, edge) = edge?;
+
+                    if cursor <= b {
+                        connection.append([map_item(cursor, edge)])
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    };
+
+    Ok(connection)
 }

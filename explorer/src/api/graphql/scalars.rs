@@ -109,12 +109,10 @@ impl ScalarType for Value {
     }
 }
 
-pub type BlockCount = u64;
+pub type BlockCount = u32;
 pub type TransactionCount = u64;
 pub type TransactionOutputCount = u8;
 pub type TransactionInputCount = u8;
-pub type PoolCount = u64;
-pub type VotePlanStatusCount = u64;
 
 pub struct PublicKey(pub String);
 
@@ -336,16 +334,6 @@ impl From<SeqNum> for IndexCursor {
     }
 }
 
-impl TryInto<u64> for IndexCursor {
-    type Error = ApiError;
-
-    fn try_into(self) -> Result<u64, Self::Error> {
-        self.0
-            .parse()
-            .map_err(|_| ApiError::InvalidCursor("IndexCursor is not a valid number".to_string()))
-    }
-}
-
 impl From<IndexCursor> for String {
     fn from(index_cursor: IndexCursor) -> String {
         index_cursor.0
@@ -388,6 +376,28 @@ impl TryFrom<IndexCursor> for u32 {
 impl From<u64> for IndexCursor {
     fn from(number: u64) -> IndexCursor {
         IndexCursor(number.to_string())
+    }
+}
+
+impl TryFrom<IndexCursor> for u64 {
+    type Error = ApiError;
+
+    fn try_from(value: IndexCursor) -> Result<Self, Self::Error> {
+        value
+            .0
+            .parse()
+            .map_err(|_| ApiError::InvalidCursor("IndexCursor is not a valid number".to_owned()))
+    }
+}
+
+impl TryFrom<IndexCursor> for u8 {
+    type Error = ApiError;
+
+    fn try_from(value: IndexCursor) -> Result<Self, Self::Error> {
+        value
+            .0
+            .parse()
+            .map_err(|_| ApiError::InvalidCursor("IndexCursor is not a valid number".to_owned()))
     }
 }
 
@@ -448,5 +458,11 @@ impl From<u64> for Value {
 impl From<chain_impl_mockchain::fragment::FragmentId> for FragmentId {
     fn from(f: chain_impl_mockchain::fragment::FragmentId) -> Self {
         FragmentId(f)
+    }
+}
+
+impl From<u32> for EpochNumber {
+    fn from(n: u32) -> Self {
+        EpochNumber(n)
     }
 }
