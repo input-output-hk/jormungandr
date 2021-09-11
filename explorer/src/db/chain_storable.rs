@@ -254,9 +254,6 @@ impl TryInto<chain_addr::Address> for Address {
 
 impl std::fmt::Debug for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // let addr: chain_addr::Address = self.clone().try_into().unwrap();
-        // addr.fmt(f)
-        //
         f.write_str(&hex::encode(self.0))
     }
 }

@@ -15,6 +15,7 @@ use chain_impl_mockchain::block::HeaderId as HeaderHash;
 use sanakirja::{btree, direct_repr, Storable, UnsizedStorable};
 use std::path::Path;
 use std::sync::Arc;
+use zerocopy::{AsBytes, FromBytes};
 
 pub(crate) type P<K, V> = btree::page::Page<K, V>;
 type Db<K, V> = btree::Db<K, V>;
@@ -182,7 +183,7 @@ impl ExplorerDb {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, FromBytes, AsBytes)]
 #[repr(C)]
 pub struct SeqNum(B64);
 
