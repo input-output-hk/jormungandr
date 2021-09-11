@@ -1,0 +1,53 @@
+[package]
+authors = ["dev@iohk.io"]
+description = "explorer service for jormungandr"
+documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
+edition = "2018"
+homepage = "https://github.com/input-output-hk/jormungandr#README.md"
+license = "MIT OR Apache-2.0"
+name = "explorer"
+repository = "https://github.com/input-output-hk/jormungandr"
+version = "0.9.1"
+
+[dependencies]
+backoff = {version = "0.3.0", features = ["tokio"]}
+futures = "0.3.5"
+futures-channel = "0.3.5"
+futures-util = "0.3.5"
+async-graphql = "2.5.1"
+async-graphql-warp = "2.6.0"
+serde = {version = "1.0.114", features = ["derive"]}
+serde_json = "1.0.56"
+serde_yaml = "0.8.13"
+sloggers = "1.0.1"
+structopt = "0.3.15"
+thiserror = "1.0.20"
+url = "2.1.1"
+warp = {version = "0.3.1", features = ["tls"]}
+tracing = "0.1"
+tracing-futures = "0.2"
+tracing-gelf = { version = "0.5", optional = true }
+tracing-journald = { version = "0.1.0", optional = true }
+tracing-subscriber = { version = "0.2", features = ["fmt", "json"] }
+tracing-appender = "0.1.2"
+tokio = { version = "^1.4", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
+tokio-stream = { version = "0.1.4", features = ["sync"] }
+tokio-util = { version = "0.6.0", features = ["time"] }
+tonic = "0.4"
+multiaddr = { package = "parity-multiaddr", version = "0.11" }
+rand = "0.8.3"
+rand_chacha = "0.3.0"
+
+jormungandr-lib = {path = "../jormungandr-lib"}
+
+cardano-legacy-address = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-addr = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-core = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-crypto = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-impl-mockchain = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-time = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-vote = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-network = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-ser = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-watch = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "heterogeneous-client-api" }
+imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
