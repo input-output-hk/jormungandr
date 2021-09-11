@@ -1,4 +1,4 @@
-use crate::db::SeqNum;
+use crate::db::{chain_storable::StorableHash, SeqNum};
 
 use super::error::ApiError;
 use async_graphql::{Enum, InputValueError, InputValueResult, Scalar, ScalarType, SimpleObject};
@@ -291,6 +291,23 @@ impl async_graphql::connection::CursorType for IndexCursor {
     }
 }
 
+pub struct FragmentId(chain_impl_mockchain::fragment::FragmentId);
+
+#[Scalar]
+impl ScalarType for FragmentId {
+    fn parse(value: async_graphql::Value) -> InputValueResult<Self> {
+        if let async_graphql::Value::String(value) = &value {
+            Ok(value.parse().map(FragmentId)?)
+        } else {
+            Err(InputValueError::expected_type(value))
+        }
+    }
+
+    fn to_value(&self) -> async_graphql::Value {
+        async_graphql::Value::String(self.0.to_string())
+    }
+}
+
 /*------------------------------*/
 /*------- Conversions ---------*/
 /*----------------------------*/
@@ -335,8 +352,8 @@ impl From<IndexCursor> for String {
     }
 }
 
-impl From<chain_impl_mockchain::certificate::VotePlanId> for VotePlanId {
-    fn from(id: chain_impl_mockchain::certificate::VotePlanId) -> VotePlanId {
+impl From<StorableHash> for VotePlanId {
+    fn from(id: StorableHash) -> VotePlanId {
         VotePlanId(id.to_string())
     }
 }
@@ -425,5 +442,11 @@ impl From<u64> for VoteStatusCount {
 impl From<u64> for Value {
     fn from(number: u64) -> Value {
         Value(InternalValue(number))
+    }
+}
+
+impl From<chain_impl_mockchain::fragment::FragmentId> for FragmentId {
+    fn from(f: chain_impl_mockchain::fragment::FragmentId) -> Self {
+        FragmentId(f)
     }
 }

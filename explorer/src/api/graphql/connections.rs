@@ -22,7 +22,7 @@ pub struct PageMeta {
 fn compute_range_boundaries(
     total_elements: InclusivePaginationInterval<u64>,
     pagination_arguments: ValidatedPaginationArguments<u64>,
-) -> InclusivePaginationInterval<u64>
+) -> PaginationInterval<u64>
 where
 {
     use std::cmp::{max, min};
@@ -41,7 +41,12 @@ where
     };
 
     let mut to: u64 = match pagination_arguments.before {
-        Some(cursor) => min(cursor - 1, upper_bound),
+        Some(cursor) => {
+            if cursor == 0 {
+                return PaginationInterval::Empty;
+            }
+            min(cursor - 1, upper_bound)
+        }
         // If `before` is not set, start from the beginning
         None => upper_bound,
     };
@@ -66,10 +71,10 @@ where
         );
     }
 
-    InclusivePaginationInterval {
+    PaginationInterval::Inclusive(InclusivePaginationInterval {
         lower_bound: from,
         upper_bound: to,
-    }
+    })
 }
 
 pub fn compute_interval<I>(
@@ -93,20 +98,20 @@ where
 
             let page = compute_range_boundaries(total_elements, pagination_arguments);
 
-            let has_next_page = page.upper_bound < upper_bound;
-            let has_previous_page = page.lower_bound > lower_bound;
+            let (has_previous_page, has_next_page) = match &page {
+                PaginationInterval::Empty => (false, false),
+                PaginationInterval::Inclusive(page) => (
+                    page.lower_bound > lower_bound,
+                    page.upper_bound < upper_bound,
+                ),
+            };
 
             let total_count = upper_bound
                 .checked_add(1)
                 .unwrap()
                 .checked_sub(lower_bound)
                 .expect("upper_bound should be >= than lower_bound");
-            (
-                PaginationInterval::Inclusive(page),
-                has_next_page,
-                has_previous_page,
-                total_count,
-            )
+            (page, has_next_page, has_previous_page, total_count)
         }
     };
 

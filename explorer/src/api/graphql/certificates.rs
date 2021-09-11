@@ -1,11 +1,12 @@
+use super::{
+    error::ApiError,
+    scalars::{PayloadType, VotePlanId},
+    BlockDate, Proposal,
+};
 use crate::db::{self, chain_storable::VotePlanMeta, schema::Txn};
-
-use async_graphql::{Context, FieldResult, Object, Union};
-use std::{convert::TryFrom, sync::Arc};
+use async_graphql::{FieldResult, Object, Union};
+use std::sync::Arc;
 use tokio::sync::Mutex;
-
-use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
-use super::{Address, BlockDate, Pool, Proposal, TaxType};
 
 // interface for grouping certificates as a graphl union
 #[derive(Union)]
