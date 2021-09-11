@@ -4,7 +4,7 @@ use chain_impl_mockchain::block::HeaderId as HeaderHash;
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;
-use tracing::{span, Level};
+use tracing::{span, Instrument, Level};
 
 #[derive(Debug, Error)]
 pub enum IndexerError {
@@ -42,42 +42,48 @@ impl Indexer {
 
     pub async fn apply_block(&self, block: Block) -> Result<(), IndexerError> {
         let span = span!(Level::INFO, "Indexer::apply_block");
-        let _enter = span.enter();
 
-        tracing::info!(
-            "applying {} {}",
-            block.header.id(),
-            block.header.chain_length()
-        );
+        async move {
+            tracing::info!(
+                "applying {} {}",
+                block.header.id(),
+                block.header.chain_length()
+            );
 
-        self.db.apply_block(block.clone()).await?;
+            self.db.apply_block(block.clone()).await?;
 
-        let mut guard = self.tip_candidate.lock().await;
-        if guard.map(|hash| hash == block.header.id()).unwrap_or(false) {
-            let hash = guard.take().unwrap();
-            self.set_tip(hash).await?;
+            let mut guard = self.tip_candidate.lock().await;
+            if guard.map(|hash| hash == block.header.id()).unwrap_or(false) {
+                let hash = guard.take().unwrap();
+                self.set_tip(hash).await?;
+            }
+
+            Ok(())
         }
-
-        Ok(())
+        .instrument(span)
+        .await
     }
 
     pub async fn set_tip(&self, tip: HeaderHash) -> Result<(), IndexerError> {
         let span = span!(Level::INFO, "Indexer::set_tip");
-        let _enter = span.enter();
 
-        let successful = self.db.set_tip(tip).await?;
+        async move {
+            let successful = self.db.set_tip(tip).await?;
 
-        if !successful {
-            let mut guard = self.tip_candidate.lock().await;
-            guard.replace(tip);
-        } else {
-            tracing::info!("tip set to {}", tip);
+            if !successful {
+                let mut guard = self.tip_candidate.lock().await;
+                guard.replace(tip);
+            } else {
+                tracing::info!("tip set to {}", tip);
 
-            if let Err(e) = self.tip_broadcast.send(tip) {
-                tracing::info!(?e);
+                if let Err(e) = self.tip_broadcast.send(tip) {
+                    tracing::info!(?e);
+                }
             }
-        }
 
-        Ok(())
+            Ok(())
+        }
+        .instrument(span)
+        .await
     }
 }
