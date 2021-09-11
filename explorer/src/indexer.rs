@@ -77,7 +77,7 @@ impl Indexer {
                 tracing::info!("tip set to {}", tip);
 
                 if let Err(e) = self.tip_broadcast.send(tip) {
-                    tracing::info!(?e);
+                    tracing::warn!(?e);
                 }
             }
 
