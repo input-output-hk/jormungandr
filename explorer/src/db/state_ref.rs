@@ -17,7 +17,6 @@ use sanakirja::{
 use std::convert::TryInto;
 
 pub type StakeControl = Db<AccountId, Stake>;
-pub type StakePoolBlocks = Db<PoolIdEntry, BlockId>;
 pub type BlocksInBranch = Db<ChainLength, BlockId>;
 
 pub type AddressId = SeqNum;
@@ -27,19 +26,18 @@ pub type Votes = Db<ProposalId, Pair<SeqNum, FragmentId>>;
 
 // a typed (and in-memory) version of SerializedStateRef
 pub struct StateRef {
-    pub stake_pool_blocks: StakePoolBlocks,
     pub stake_control: StakeControl,
     pub blocks: BlocksInBranch,
     pub address_id: AddressIds,
     pub address_transactions: AddressTransactions,
     pub votes: Votes,
+    // cached field, this gets written back by `finish`
     next_address_id: Option<SeqNum>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(C)]
 pub struct SerializedStateRef {
-    pub stake_pool_blocks: L64,
     pub stake_control: L64,
     pub blocks: L64,
     pub address_id: L64,
@@ -58,7 +56,6 @@ direct_repr!(PoolIdEntry);
 impl From<SerializedStateRef> for StateRef {
     fn from(ser: SerializedStateRef) -> Self {
         StateRef {
-            stake_pool_blocks: Db::from_page(ser.stake_pool_blocks.get()),
             stake_control: Db::from_page(ser.stake_control.get()),
             blocks: Db::from_page(ser.blocks.get()),
             address_id: Db::from_page(ser.address_id.get()),
@@ -70,14 +67,13 @@ impl From<SerializedStateRef> for StateRef {
 }
 
 impl StateRef {
-    pub fn new_empty<T>(txn: &mut T) -> Self
+    pub fn new_empty<T>(txn: &mut T) -> Result<Self, DbError>
     where
         T: ::sanakirja::AllocPage
             + ::sanakirja::LoadPage<Error = ::sanakirja::Error>
             + ::sanakirja::RootPage,
     {
         let mut empty = Self {
-            stake_pool_blocks: btree::create_db_(txn).unwrap(),
             stake_control: btree::create_db_(txn).unwrap(),
             blocks: btree::create_db_(txn).unwrap(),
             address_id: btree::create_db_(txn).unwrap(),
@@ -93,34 +89,31 @@ impl StateRef {
             &mut empty.address_id,
             &Address([0u8; 65]),
             &SeqNum::new(0),
-        )
-        .unwrap();
+        )?;
 
-        empty
+        Ok(empty)
     }
 
-    pub fn finish(mut self, txn: &mut SanakirjaMutTx) -> SerializedStateRef {
+    pub fn finish(mut self, txn: &mut SanakirjaMutTx) -> Result<SerializedStateRef, DbError> {
         // if the sequence counter for addresses was incremented previously, rewrite it
         if let Some(next_seq) = self.next_address_id {
-            btree::del(txn, &mut self.address_id, &Address([0u8; 65]), None).unwrap();
+            btree::del(txn, &mut self.address_id, &Address([0u8; 65]), None)?;
 
             debug_assert!(btree::put(
                 txn,
                 &mut self.address_id,
                 &Address([0u8; 65]),
                 &next_seq.next(),
-            )
-            .unwrap());
+            )?);
         }
 
-        SerializedStateRef {
-            stake_pool_blocks: L64::new(self.stake_pool_blocks.db),
+        Ok(SerializedStateRef {
             stake_control: L64::new(self.stake_control.db),
             blocks: L64::new(self.blocks.db),
             address_id: L64::new(self.address_id.db),
             addresses: L64::new(self.address_transactions.db),
             votes: L64::new(self.votes.db),
-        }
+        })
     }
 
     pub fn apply_vote(
@@ -160,7 +153,7 @@ impl StateRef {
         fragment_id: &FragmentId,
         address: &Address,
     ) -> Result<(), DbError> {
-        let address_id = self.get_or_insert_address_id(txn, address);
+        let address_id = self.get_or_insert_address_id(txn, address)?;
 
         let max_possible_value = Pair {
             a: SeqNum::MAX,
@@ -191,8 +184,7 @@ impl StateRef {
                 a: seq,
                 b: fragment_id.clone(),
             },
-        )
-        .unwrap());
+        )?);
 
         Ok(())
     }
@@ -211,9 +203,8 @@ impl StateRef {
         &mut self,
         txn: &mut SanakirjaMutTx,
         address: &Address,
-    ) -> SeqNum {
-        let address_exists = btree::get(txn, &self.address_id, address, None)
-            .unwrap()
+    ) -> Result<SeqNum, DbError> {
+        let address_exists = btree::get(txn, &self.address_id, address, None)?
             .filter(|(id, _)| id == &address)
             .map(|(_, v)| v)
             .cloned();
@@ -224,20 +215,19 @@ impl StateRef {
             let next_seq = if let Some(next_seq) = self.next_address_id {
                 next_seq
             } else {
-                *btree::get(txn, &self.address_id, &Address([0u8; 65]), None)
-                    .unwrap()
+                *btree::get(txn, &self.address_id, &Address([0u8; 65]), None)?
                     .unwrap()
                     .1
             };
 
             self.next_address_id = Some(next_seq.next());
 
-            btree::put(txn, &mut self.address_id, address, &next_seq).unwrap();
+            btree::put(txn, &mut self.address_id, address, &next_seq)?;
 
             next_seq
         };
 
-        address_id
+        Ok(address_id)
     }
 
     pub fn apply_output_to_stake_control(
@@ -247,10 +237,10 @@ impl StateRef {
     ) -> Result<(), DbError> {
         match output.address.kind() {
             chain_addr::Kind::Group(_, account) => {
-                self.add_stake_to_account(txn, account, output.value);
+                self.add_stake_to_account(txn, account, output.value)?;
             }
             chain_addr::Kind::Account(account) => {
-                self.add_stake_to_account(txn, account, output.value);
+                self.add_stake_to_account(txn, account, output.value)?;
             }
             chain_addr::Kind::Single(_account) => {}
             chain_addr::Kind::Multisig(_) => {}
@@ -264,11 +254,11 @@ impl StateRef {
         txn: &mut SanakirjaMutTx,
         account: &chain_crypto::PublicKey<chain_crypto::Ed25519>,
         value: Value,
-    ) {
+    ) -> Result<(), DbError> {
         let op =
             |current_stake: u64, value: u64| -> u64 { current_stake.checked_add(value).unwrap() };
 
-        self.update_stake_for_account(txn, account, op, value);
+        self.update_stake_for_account(txn, account, op, value)
     }
 
     pub fn substract_stake_from_account(
@@ -276,11 +266,11 @@ impl StateRef {
         txn: &mut SanakirjaMutTx,
         account: &chain_crypto::PublicKey<chain_crypto::Ed25519>,
         value: Value,
-    ) {
+    ) -> Result<(), DbError> {
         let op =
             |current_stake: u64, value: u64| -> u64 { current_stake.checked_sub(value).unwrap() };
 
-        self.update_stake_for_account(txn, account, op, value);
+        self.update_stake_for_account(txn, account, op, value)
     }
 
     fn update_stake_for_account(
@@ -289,7 +279,7 @@ impl StateRef {
         account: &chain_crypto::PublicKey<chain_crypto::Ed25519>,
         op: impl Fn(u64, u64) -> u64,
         value: Value,
-    ) {
+    ) -> Result<(), DbError> {
         let account_id = AccountId(account.as_ref().try_into().unwrap());
 
         let current_stake = btree::get(txn, &self.stake_control, &account_id, None)
@@ -311,8 +301,9 @@ impl StateRef {
             &mut self.stake_control,
             &account_id,
             &L64::new(new_stake),
-        )
-        .unwrap();
+        )?;
+
+        Ok(())
     }
 
     /// gc this fork so the allocated pages can be re-used
@@ -324,7 +315,6 @@ impl StateRef {
     /// the `States` btree.
     pub unsafe fn drop(self, txn: &mut SanakirjaMutTx) -> Result<(), DbError> {
         let StateRef {
-            stake_pool_blocks,
             stake_control,
             blocks,
             address_transactions,
@@ -333,7 +323,6 @@ impl StateRef {
             next_address_id: _,
         } = self;
 
-        btree::drop(txn, stake_pool_blocks)?;
         btree::drop(txn, stake_control)?;
         btree::drop(txn, blocks)?;
         btree::drop(txn, address_id)?;
@@ -345,18 +334,15 @@ impl StateRef {
 }
 
 impl SerializedStateRef {
-    pub fn fork(&self, txn: &mut SanakirjaMutTx) -> StateRef {
-        StateRef {
-            stake_pool_blocks: btree::fork_db(txn, &Db::from_page(self.stake_pool_blocks.get()))
-                .unwrap(),
-            stake_control: btree::fork_db(txn, &Db::from_page(self.stake_control.get())).unwrap(),
-            blocks: btree::fork_db(txn, &Db::from_page(self.blocks.get())).unwrap(),
-            address_id: btree::fork_db(txn, &Db::from_page(self.address_id.get())).unwrap(),
-            address_transactions: btree::fork_db(txn, &Db::from_page(self.addresses.get()))
-                .unwrap(),
-            votes: btree::fork_db(txn, &Db::from_page(self.votes.get())).unwrap(),
+    pub fn fork(&self, txn: &mut SanakirjaMutTx) -> Result<StateRef, DbError> {
+        Ok(StateRef {
+            stake_control: btree::fork_db(txn, &Db::from_page(self.stake_control.get()))?,
+            blocks: btree::fork_db(txn, &Db::from_page(self.blocks.get()))?,
+            address_id: btree::fork_db(txn, &Db::from_page(self.address_id.get()))?,
+            address_transactions: btree::fork_db(txn, &Db::from_page(self.addresses.get()))?,
+            votes: btree::fork_db(txn, &Db::from_page(self.votes.get()))?,
             next_address_id: None,
-        }
+        })
     }
 }
 
