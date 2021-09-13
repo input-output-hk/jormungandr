@@ -1,6 +1,5 @@
 vscode:
   extensions:
-    - rust-lang.rust
     - matklad.rust-analyzer
     - serayuzgur.crates
     - Swellaby.vscode-rust-test-adapter
