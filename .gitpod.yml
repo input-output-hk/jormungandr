@@ -1,9 +1,3 @@
-image: rust:buster
-
-tasks:
-  - init: |
-      cargo install rust-analyzer
-
 vscode:
   extensions:
     - rust-lang.rust
