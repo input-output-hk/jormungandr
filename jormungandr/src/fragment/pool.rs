@@ -6,6 +6,7 @@ use crate::{
         Fragment, FragmentId, Logs,
     },
     intercom::{NetworkMsg, PropagateMsg},
+    metrics::{Metrics, MetricsBackend},
     utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
@@ -38,6 +39,7 @@ pub struct Pool {
     network_msg_box: MessageBox<NetworkMsg>,
     persistent_log: Option<BufWriter<File>>,
     tip: Tip,
+    metrics: Metrics,
 }
 
 #[derive(Debug, Error)]
@@ -53,6 +55,7 @@ impl Pool {
         network_msg_box: MessageBox<NetworkMsg>,
         persistent_log: Option<File>,
         tip: Tip,
+        metrics: Metrics,
     ) -> Self {
         Pool {
             logs,
@@ -61,6 +64,7 @@ impl Pool {
             persistent_log: persistent_log
                 .map(|file| BufWriter::with_capacity(DEFAULT_BUF_SIZE, file)),
             tip,
+            metrics,
         }
     }
 
@@ -219,6 +223,8 @@ impl Pool {
             .collect();
         self.logs.insert_all_pending(fragment_logs);
 
+        self.update_metrics();
+
         let mut accepted = Vec::new();
         let mut network_msg_box = self.network_msg_box.clone();
         for fragment in new_fragments {
@@ -252,6 +258,7 @@ impl Pool {
         };
         self.pool.remove_all(fragment_ids.iter());
         self.logs.modify_all(fragment_ids, status, date);
+        self.update_metrics();
     }
 
     pub async fn select(
@@ -263,7 +270,7 @@ impl Pool {
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
     ) -> (Contents, ApplyBlockLedger) {
         let Pool { logs, pool, .. } = self;
-        match selection_alg {
+        let result = match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
                 selection_alg
@@ -277,12 +284,15 @@ impl Pool {
                     )
                     .await
             }
-        }
+        };
+        self.update_metrics();
+        result
     }
 
     // Remove from logs fragments that were confirmed (or rejected) in a branch
     pub fn prune_after_ledger_branch(&mut self, branch_date: BlockDateDto) {
-        self.logs.remove_logs_after_date(branch_date)
+        self.logs.remove_logs_after_date(branch_date);
+        self.update_metrics();
     }
 
     pub async fn remove_expired_txs(&mut self) {
@@ -296,6 +306,11 @@ impl Pool {
             },
             block_date.into(),
         );
+        self.update_metrics();
+    }
+
+    fn update_metrics(&self) {
+        self.metrics.set_tx_pending_cnt(self.pool.len())
     }
 }
 
@@ -630,6 +645,10 @@ pub(super) mod internal {
             //     let item = self.timeout_queue.pop_first().unwrap();
             //     self.entries.remove(&item.id);
             // }
+        }
+
+        pub fn len(&self) -> usize {
+            self.entries.len()
         }
     }
 
