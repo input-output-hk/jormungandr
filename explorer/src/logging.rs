@@ -248,5 +248,5 @@ pub enum Error {
     #[error("GELF connection failed")]
     Gelf(tracing_gelf::BuilderError),
     #[error("failed to set global subscriber")]
-    SetGlobalSubscriberError(#[source] SetGlobalDefaultError),
+    SetGlobalSubscriber(#[source] SetGlobalDefaultError),
 }
