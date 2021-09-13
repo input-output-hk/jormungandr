@@ -166,7 +166,7 @@ impl LogSettings {
                     .write(true)
                     .append(true)
                     .open(&path)
-                    .map_err(|cause| Error::FileError {
+                    .map_err(|cause| Error::File {
                         path: path.clone(),
                         cause,
                     })?;
@@ -236,7 +236,7 @@ pub enum Error {
     #[error("log format `{specified}` is not supported for this output")]
     FormatNotSupported { specified: LogFormat },
     #[error("failed to open the log file `{}`", .path.to_string_lossy())]
-    FileError {
+    File {
         path: PathBuf,
         #[source]
         cause: io::Error,
