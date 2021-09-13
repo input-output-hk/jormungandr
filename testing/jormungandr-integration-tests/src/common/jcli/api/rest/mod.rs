@@ -1,6 +1,8 @@
 mod v0;
+mod v1;
 
 use v0::RestV0;
+use v1::RestV1;
 
 use crate::common::jcli::command::RestCommand;
 
@@ -15,5 +17,9 @@ impl Rest {
 
     pub fn v0(self) -> RestV0 {
         RestV0::new(self.rest_command.v0())
+    }
+
+    pub fn v1(self) -> RestV1 {
+        RestV1::new(self.rest_command.v1())
     }
 }
