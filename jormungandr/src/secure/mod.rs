@@ -28,12 +28,6 @@ pub struct GenesisPraos {
 #[derive(Clone, Deserialize)]
 pub struct OwnerKey(Identifier<Ed25519>);
 
-#[derive(Clone, Deserialize)]
-pub struct StakePoolInfo {
-    serial: u128,
-    owners: Vec<OwnerKey>,
-}
-
 /// Node Secret(s)
 #[derive(Clone, Deserialize)]
 pub struct NodeSecret {
