@@ -211,7 +211,7 @@ impl Block {
     }
 
     async fn try_get_block_meta(id: BlockId, txn: &Arc<Txn>) -> FieldResult<Option<BlockMeta>> {
-        let txn = Arc::clone(&txn);
+        let txn = Arc::clone(txn);
         Ok(tokio::task::spawn_blocking(move || {
             txn.get_block_meta(&id).map(|option| option.cloned())
         })
@@ -698,7 +698,7 @@ pub struct Query;
 impl Query {
     async fn block(&self, context: &Context<'_>, id: String) -> FieldResult<Block> {
         let txn = Arc::new(
-            extract_context(&context)
+            extract_context(context)
                 .db
                 .get_txn()
                 .await
@@ -714,7 +714,7 @@ impl Query {
         length: ChainLength,
     ) -> FieldResult<Vec<Block>> {
         let txn = Arc::new(
-            extract_context(&context)
+            extract_context(context)
                 .db
                 .get_txn()
                 .await

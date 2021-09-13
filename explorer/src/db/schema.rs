@@ -253,12 +253,12 @@ impl MutTxn<()> {
             fragments,
             state_ref,
             ChainLength::new(0),
-            &block0_id,
+            block0_id,
             BlockDate {
                 epoch: B32::new(0),
                 slot_id: B32::new(0),
             },
-            &parent_id,
+            parent_id,
         )?;
 
         Ok(())
@@ -284,14 +284,14 @@ impl MutTxn<()> {
         // Early return if the block is already in the store.
         // Ideally, operations down the line should be idempotent, but it is probably not the case
         // now, and even then it's probably simpler to just check it here at once.
-        if btree::get(&self.txn, &self.blocks, &block_id, None)?
+        if btree::get(&self.txn, &self.blocks, block_id, None)?
             .filter(|(id, _)| id == &block_id)
             .is_some()
         {
             return Ok(());
         }
 
-        let states = btree::get(&self.txn, &self.states, &parent_id, None)?
+        let states = btree::get(&self.txn, &self.states, parent_id, None)?
             .filter(|(branch_id, _states)| *branch_id == parent_id)
             .map(|(_branch_id, states)| states)
             .cloned()
@@ -305,12 +305,12 @@ impl MutTxn<()> {
             fragments.into_iter(),
             state_ref,
             chain_length,
-            &block_id,
+            block_id,
             block_date,
             parent_id,
         )?;
 
-        self.update_tips(&parent_id, chain_length, &block_id)?;
+        self.update_tips(parent_id, chain_length, block_id)?;
 
         Ok(())
     }
@@ -397,7 +397,7 @@ impl MutTxn<()> {
                 }
 
                 debug!(?block_id);
-                let state = btree::get(&self.txn, &self.states, &block_id, None)?
+                let state = btree::get(&self.txn, &self.states, block_id, None)?
                     .filter(|(branch_id, _states)| *branch_id == block_id)
                     .map(|(_branch_id, states)| StateRef::from(states.clone()));
 
@@ -550,16 +550,16 @@ impl MutTxn<()> {
     ) -> Result<(), DbError> {
         let _span = span!(Level::DEBUG, "update_state").entered();
 
-        self.apply_fragments(&block_id, fragments, &mut state_ref)?;
-        state_ref.add_block_to_blocks(&mut self.txn, &chain_length, &block_id)?;
+        self.apply_fragments(block_id, fragments, &mut state_ref)?;
+        state_ref.add_block_to_blocks(&mut self.txn, &chain_length, block_id)?;
 
         let new_state = state_ref.finish(&mut self.txn)?;
 
-        if !btree::put(&mut self.txn, &mut self.states, &block_id, &new_state)? {
+        if !btree::put(&mut self.txn, &mut self.states, block_id, &new_state)? {
             return Err(DbError::BlockAlreadyExists(block_id.clone().into()));
         }
 
-        self.update_chain_lengths(chain_length, &block_id)?;
+        self.update_chain_lengths(chain_length, block_id)?;
 
         self.add_block_meta(
             block_id,
@@ -585,7 +585,7 @@ impl MutTxn<()> {
             btree::put(
                 &mut self.txn,
                 &mut self.block_transactions,
-                &block_id,
+                block_id,
                 &Pair {
                     a: u8::try_from(idx).expect("found more than 255 fragments in a block"),
                     b: fragment_id.clone(),
@@ -596,7 +596,7 @@ impl MutTxn<()> {
                 &mut self.txn,
                 &mut self.transaction_blocks,
                 &fragment_id,
-                &block_id,
+                block_id,
             )?;
 
             match &fragment {
@@ -654,31 +654,31 @@ impl MutTxn<()> {
                 }
                 Fragment::OldUtxoDeclaration(_) => {}
                 Fragment::Transaction(tx) => {
-                    self.apply_transaction(fragment_id, &tx, state_ref)?;
+                    self.apply_transaction(fragment_id, tx, state_ref)?;
                 }
                 Fragment::OwnerStakeDelegation(tx) => {
-                    self.apply_transaction(fragment_id, &tx, state_ref)?;
+                    self.apply_transaction(fragment_id, tx, state_ref)?;
                 }
                 Fragment::StakeDelegation(tx) => {
-                    self.apply_transaction(fragment_id, &tx, state_ref)?;
+                    self.apply_transaction(fragment_id, tx, state_ref)?;
                 }
                 Fragment::PoolRegistration(tx) => {
-                    self.apply_transaction(fragment_id, &tx, state_ref)?;
+                    self.apply_transaction(fragment_id, tx, state_ref)?;
                 }
                 Fragment::PoolRetirement(tx) => {
-                    self.apply_transaction(fragment_id, &tx, state_ref)?;
+                    self.apply_transaction(fragment_id, tx, state_ref)?;
                 }
                 Fragment::PoolUpdate(tx) => {
-                    self.apply_transaction(fragment_id, &tx, state_ref)?;
+                    self.apply_transaction(fragment_id, tx, state_ref)?;
                 }
                 Fragment::UpdateProposal(_) => {}
                 Fragment::UpdateVote(_) => {}
                 Fragment::VotePlan(tx) => {
-                    self.apply_transaction(fragment_id.clone(), &tx, state_ref)?;
+                    self.apply_transaction(fragment_id.clone(), tx, state_ref)?;
                     self.add_vote_plan(&fragment_id, tx)?;
                 }
                 Fragment::VoteCast(tx) => {
-                    self.apply_transaction(fragment_id.clone(), &tx, state_ref)?;
+                    self.apply_transaction(fragment_id.clone(), tx, state_ref)?;
 
                     let vote_cast = tx.as_slice().payload().into_payload();
                     let vote_plan_id =
@@ -718,10 +718,10 @@ impl MutTxn<()> {
                     )?;
                 }
                 Fragment::VoteTally(tx) => {
-                    self.apply_transaction(fragment_id, &tx, state_ref)?;
+                    self.apply_transaction(fragment_id, tx, state_ref)?;
                 }
                 Fragment::EncryptedVoteTally(tx) => {
-                    self.apply_transaction(fragment_id, &tx, state_ref)?;
+                    self.apply_transaction(fragment_id, tx, state_ref)?;
                 }
             }
         }
@@ -771,7 +771,7 @@ impl MutTxn<()> {
         btree::put(
             &mut self.txn,
             &mut self.transaction_certificates,
-            &fragment_id,
+            fragment_id,
             &TransactionCertificate::from_vote_plan_id(vote_plan_id),
         )?;
 
@@ -955,7 +955,7 @@ impl MutTxn<()> {
                     let value = &output.value;
                     state.substract_stake_from_account(
                         &mut self.txn,
-                        &account,
+                        account,
                         Value(value.get()),
                     )?;
                 }
@@ -986,7 +986,7 @@ impl MutTxn<()> {
                 let discrimination = self.get_settings().get_discrimination().unwrap();
                 let address = chain_addr::Address(discrimination, kind).into();
 
-                state.add_transaction_to_address(&mut self.txn, &fragment_id, &address)?;
+                state.add_transaction_to_address(&mut self.txn, fragment_id, &address)?;
             }
             (InputEnum::AccountInput(_, _), Witness::Multisig(_)) => {}
             (InputEnum::UtxoInput(_), Witness::Utxo(_)) => {
@@ -995,7 +995,7 @@ impl MutTxn<()> {
 
                 state.add_transaction_to_address(
                     &mut self.txn,
-                    &fragment_id,
+                    fragment_id,
                     &output.address.clone(),
                 )?;
             }
@@ -1017,7 +1017,7 @@ impl MutTxn<()> {
         let txid = utxo_pointer.transaction_id;
         let idx = utxo_pointer.output_index;
 
-        let mut cursor = btree::Cursor::new(&self.txn, &transactions)?;
+        let mut cursor = btree::Cursor::new(&self.txn, transactions)?;
 
         let key = Pair {
             a: StorableHash::from(txid),
@@ -1085,14 +1085,14 @@ impl Txn {
         state_id: &StorableHash,
         address: &Address,
     ) -> Result<Option<TxsByAddress<'a>>, DbError> {
-        let state = btree::get(&self.txn, &self.states, &state_id, None)?;
+        let state = btree::get(&self.txn, &self.states, state_id, None)?;
 
         let state = match state {
             Some((s, state)) if state_id == s => StateRef::from(state.clone()),
             _ => return Ok(None),
         };
 
-        let address_id = match btree::get(&self.txn, &state.address_id, &address, None)? {
+        let address_id = match btree::get(&self.txn, &state.address_id, address, None)? {
             Some((a, id)) if a == address => id,
             _ => return Ok(None),
         };
@@ -1108,7 +1108,7 @@ impl Txn {
         &'a self,
         state_id: &StorableHash,
     ) -> Result<Option<BlocksInBranch>, DbError> {
-        let state = btree::get(&self.txn, &self.states, &state_id, None)?;
+        let state = btree::get(&self.txn, &self.states, state_id, None)?;
 
         let state = match state {
             Some((s, state)) if state_id == s => StateRef::from(state.clone()),
@@ -1196,7 +1196,7 @@ impl Txn {
     }
 
     pub fn get_block_meta(&self, block_id: &BlockId) -> Result<Option<&BlockMeta>, DbError> {
-        let block_meta = btree::get(&self.txn, &self.blocks, &block_id, None)?;
+        let block_meta = btree::get(&self.txn, &self.blocks, block_id, None)?;
 
         Ok(block_meta.and_then(|(k, v)| if k == block_id { Some(v) } else { None }))
     }
@@ -1205,7 +1205,7 @@ impl Txn {
         &self,
         vote_plan_id: &VotePlanId,
     ) -> Result<Option<&VotePlanMeta>, DbError> {
-        let certificate = btree::get(&self.txn, &self.vote_plans, &vote_plan_id, None)?;
+        let certificate = btree::get(&self.txn, &self.vote_plans, vote_plan_id, None)?;
 
         Ok(certificate.and_then(|(k, v)| if k == vote_plan_id { Some(v) } else { None }))
     }

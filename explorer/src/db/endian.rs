@@ -78,7 +78,7 @@ impl PartialOrd for B64 {
 
 impl Ord for B32 {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.as_bytes().cmp(&other.0.as_bytes())
+        self.0.as_bytes().cmp(other.0.as_bytes())
     }
 }
 

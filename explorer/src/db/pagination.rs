@@ -246,7 +246,7 @@ impl<'a, V: 'a> MapEntry<'a, Pair<FragmentId, u8>, V, u8> for FragmentContentId<
 
     fn map_entry(&self, k: &'a Pair<FragmentId, u8>, v: &'a V) -> Option<(u8, Self::Output)> {
         if &k.a == self.as_ref() {
-            Some((k.b, &v))
+            Some((k.b, v))
         } else {
             None
         }

@@ -33,7 +33,7 @@ where
 {
     let mut cursor = btree::Cursor::new(txn, tree).unwrap();
 
-    cursor.set(txn, key, Some(&max_possible_value)).unwrap();
+    cursor.set(txn, key, Some(max_possible_value)).unwrap();
 
     if let Some((k, _)) = cursor.prev(txn).unwrap() {
         if k == key {

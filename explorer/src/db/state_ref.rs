@@ -127,14 +127,14 @@ impl StateRef {
             b: FragmentId::MAX,
         };
 
-        let seq = find_last_record_by(txn, &self.votes, &proposal_id, &max_possible_value)
+        let seq = find_last_record_by(txn, &self.votes, proposal_id, &max_possible_value)
             .map(|last| last.a.next())
             .unwrap_or(SeqNum::MIN);
 
         btree::put(
             txn,
             &mut self.votes,
-            &proposal_id,
+            proposal_id,
             &Pair {
                 a: seq,
                 b: fragment_id.clone(),
