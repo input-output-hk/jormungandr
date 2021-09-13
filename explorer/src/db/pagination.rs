@@ -48,13 +48,15 @@ where
     cursor_bounds: Option<(C, C)>,
 }
 
+pub type CursorAndEntry<'a, K, V, C, F> = (C, <F as MapEntry<'a, K, V, C>>::Output);
+
 impl<'a, K, V, C, F> Iterator for SanakirjaCursorIter<'a, K, V, C, F>
 where
     K: Storable + PartialEq + 'a,
     V: Storable + 'a,
     F: MapEntry<'a, K, V, C>,
 {
-    type Item = Result<(C, <F as MapEntry<'a, K, V, C>>::Output), DbError>;
+    type Item = Result<CursorAndEntry<'a, K, V, C, F>, DbError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.cursor
