@@ -1,0 +1,13 @@
+image: rust:buster
+
+tasks:
+  - init: |
+      cargo install rust-analyzer
+
+vscode:
+  extensions:
+    - rust-lang.rust
+    - matklad.rust-analyzer
+    - serayuzgur.crates
+    - Swellaby.vscode-rust-test-adapter
+    - hbenl.vscode-test-explorer

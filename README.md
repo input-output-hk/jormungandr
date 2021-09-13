@@ -7,6 +7,10 @@ User guide documentation available [here][docs]
 
 [docs]: https://input-output-hk.github.io/jormungandr
 
+## Interactive editing
+[![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-908a85?logo=gitpod)](https://gitpod.io/#https://github.com/input-output-hk/jormungandr)
+
+
 ## Master current build status
 
 | CI | Status | Description |
