@@ -79,7 +79,6 @@ impl ClientLoadCommand {
             self.measure,
             self.count,
             self.address.clone(),
-            self.ip.clone(),
             self.pace,
             self.initial_storage.clone(),
         )
