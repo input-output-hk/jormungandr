@@ -25,7 +25,7 @@ impl LegacyWalletTemplate {
         }
     }
 
-    pub fn alias(&self) -> &WalletAlias {
+    pub fn alias(&self) -> &str {
         &self.alias
     }
 
@@ -33,7 +33,11 @@ impl LegacyWalletTemplate {
         &self.value
     }
 
-    pub fn address(&self) -> String {
-        self.address.clone()
+    pub fn address(&self) -> &str {
+        &self.address
+    }
+
+    pub fn mnemonics(&self) -> &str {
+        &self.mnemonics
     }
 }
