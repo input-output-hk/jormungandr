@@ -6,7 +6,6 @@ use thiserror::Error;
 
 #[derive(Debug)]
 pub struct AccountId {
-    arg: String,
     account: account::Identifier,
 }
 
@@ -23,7 +22,6 @@ impl AccountId {
             if let Ok(addr) = Address::from_bytes(&dat) {
                 match addr.kind() {
                     Kind::Account(pk) => Ok(Self {
-                        arg: src.to_string(),
                         account: id_from_pub(pk.clone()),
                     }),
                     _ => Err(Error::AddressNotAccount {
@@ -33,7 +31,6 @@ impl AccountId {
                 }
             } else if let Ok(pk) = PublicKey::from_binary(&dat) {
                 Ok(Self {
-                    arg: src.to_string(),
                     account: id_from_pub(pk),
                 })
             } else {
