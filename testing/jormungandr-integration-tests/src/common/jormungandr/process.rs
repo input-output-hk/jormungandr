@@ -129,11 +129,13 @@ impl JormungandrProcess {
         }
     }
 
-    fn check_startup_errors_in_logs(&self) -> Result<(), JormungandrError> {
+    fn status(&self, strategy: &StartupVerificationMode) -> Status {
+        println!("startup {:?}", std::time::SystemTime::now());
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         if self.logger.contains_any_of(&port_occupied_msgs) {
             return Err(JormungandrError::PortAlreadyInUse);
         }
+        println!("logs {:?}", std::time::SystemTime::now());
 
         self.check_no_errors_in_log()
     }
@@ -168,6 +170,7 @@ impl JormungandrProcess {
                     .unwrap()
                     .wait_with_output()
                     .expect("failed to execute get_rest_stats command");
+                println!("exec {:?}", std::time::SystemTime::now());
 
                 let output = output.try_as_single_node_yaml();
                 match output
