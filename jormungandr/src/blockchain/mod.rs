@@ -1,4 +1,3 @@
-mod bootstrap;
 mod branch;
 mod candidate;
 mod chain;
@@ -26,7 +25,6 @@ mod chunk_sizes {
 // Re-exports
 
 pub use self::{
-    bootstrap::{bootstrap_from_stream, Error as BootstrapError},
     branch::Branch,
     chain::{
         new_epoch_leadership_from, Blockchain, CheckHeaderProof, EpochLeadership, Error,
@@ -38,5 +36,5 @@ pub use self::{
     process::{start, TaskData},
     reference::Ref,
     storage::{Error as StorageError, Storage},
-    tip::Tip,
+    tip::{Tip, TipUpdater}, // TODO: Remove TipUpdater as soon as the bootstrap process is refactored
 };

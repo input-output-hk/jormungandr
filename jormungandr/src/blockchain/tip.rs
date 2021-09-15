@@ -22,7 +22,7 @@ const BRANCH_REPROCESSING_INTERVAL: Duration = Duration::from_secs(60);
 /// Handles updates to the tip.
 /// Only one of this structs should be active at any given time.
 #[derive(Clone)]
-pub(super) struct TipUpdater {
+pub struct TipUpdater {
     tip: Tip,
     blockchain: Blockchain,
     explorer_mbox: Option<MessageBox<ExplorerMsg>>,
@@ -31,7 +31,7 @@ pub(super) struct TipUpdater {
 }
 
 impl TipUpdater {
-    pub(super) fn new(
+    pub fn new(
         tip: Tip,
         blockchain: Blockchain,
         fragment_mbox: Option<MessageBox<TransactionMsg>>,
@@ -73,7 +73,7 @@ impl TipUpdater {
     /// If the current tip is not the one being updated we will then trigger
     /// chain selection after updating that other branch as it may be possible that
     /// this branch just became more interesting for the current consensus algorithm.
-    pub(super) async fn process_new_ref(&mut self, candidate: Arc<Ref>) -> Result<(), Error> {
+    pub async fn process_new_ref(&mut self, candidate: Arc<Ref>) -> Result<(), Error> {
         let candidate_hash = candidate.hash();
         let storage = self.blockchain.storage();
         let tip_ref = self.tip.get_ref().await;
@@ -208,6 +208,7 @@ pub struct Tip {
 }
 
 impl Tip {
+    // TODO: make this module private as soon as the bootstrap in refactored
     pub fn new(branch: Branch) -> Self {
         Tip { branch }
     }
