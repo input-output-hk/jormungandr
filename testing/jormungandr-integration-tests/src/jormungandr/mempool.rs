@@ -480,6 +480,16 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
         .start()
         .unwrap();
 
+    leader
+        .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(30))
+        .unwrap();
+    println!("{:?}", std::time::SystemTime::now());
+
+    passive
+        .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(30))
+        .unwrap();
+    println!("{:?}", std::time::SystemTime::now());
+
     let fragment_sender = FragmentSender::new(
         passive.genesis_block_hash(),
         LinearFee::new(0, 0, 0),
