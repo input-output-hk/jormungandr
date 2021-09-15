@@ -38,5 +38,5 @@ pub use self::{
     process::{start, TaskData},
     reference::Ref,
     storage::{Error as StorageError, Storage},
-    tip::{Tip, TipUpdater}, // TODO: Remove TipUpdater as soon as the bootstrap process is refactored
+    tip::Tip,
 };
