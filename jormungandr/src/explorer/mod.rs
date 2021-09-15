@@ -67,6 +67,8 @@ pub struct StableIndex {
     confirmed_block_chain_length: Arc<AtomicU32>,
 }
 
+// TODO: not all of the fields may be needed, clean up in future updates
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct BlockchainConfig {
     /// Used to construct `Address` from `AccountIndentifier` when processing transaction

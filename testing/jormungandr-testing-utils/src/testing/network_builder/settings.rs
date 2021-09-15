@@ -161,7 +161,7 @@ impl Settings {
             }]);
 
             self.legacy_wallets
-                .insert(template.alias().clone(), template.clone());
+                .insert(template.alias().to_string(), template.clone());
             self.block0.initial.push(legacy_fragment);
         }
     }

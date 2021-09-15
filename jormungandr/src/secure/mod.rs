@@ -25,23 +25,8 @@ pub struct GenesisPraos {
     vrf_key: SigningKey<RistrettoGroup2HashDh>,
 }
 
-/// the genesis praos setting
-///
-#[derive(Clone, Deserialize)]
-pub struct GenesisPraosPublic {
-    sig_key: Identifier<SumEd25519_12>,
-    vrf_key: Identifier<RistrettoGroup2HashDh>,
-}
-
 #[derive(Clone, Deserialize)]
 pub struct OwnerKey(Identifier<Ed25519>);
-
-#[derive(Clone, Deserialize)]
-pub struct StakePoolInfo {
-    serial: u128,
-    owners: Vec<OwnerKey>,
-    initial_key: GenesisPraosPublic,
-}
 
 /// Node Secret(s)
 #[derive(Clone, Deserialize)]

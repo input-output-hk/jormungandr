@@ -24,7 +24,11 @@ impl ExternalWalletTemplate {
         &self.value
     }
 
-    pub fn address(&self) -> String {
-        self.address.clone()
+    pub fn address(&self) -> &str {
+        &self.address
+    }
+
+    pub fn alias(&self) -> &str {
+        &self.alias
     }
 }

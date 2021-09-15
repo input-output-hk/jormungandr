@@ -18,6 +18,7 @@ pub struct Wallet {
     /// this is the root seed of the wallet, everytime we will require
     /// the wallet to update we will update the rng, we keep the `seed`
     /// so we may reproduce the steps of the wallet
+    #[allow(dead_code)]
     seed: [u8; 32],
 
     rng: ChaChaRng,
