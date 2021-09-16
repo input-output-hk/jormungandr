@@ -215,7 +215,6 @@ impl TipUpdater {
             .collect::<Vec<_>>();
 
         for other in others {
-            // TODO: avoid duplicating branches
             self.process_new_ref(Arc::clone(other)).await?
         }
 
