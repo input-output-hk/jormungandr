@@ -27,7 +27,6 @@ pub struct TestnetConfig {
     block0_hash: String,
     public_ip: String,
     public_port: String,
-    listen_port: String,
     trusted_peers: Vec<TrustedPeer>,
 }
 
@@ -61,10 +60,6 @@ impl TestnetConfig {
         let public_port = env::var(public_port_var_name)
             .unwrap_or_else(|_| panic!("{} env is not set", public_port_var_name));
 
-        let listen_port_var_name = "LISTEN_PORT";
-        let listen_port = env::var(listen_port_var_name)
-            .unwrap_or_else(|_| panic!("{} env is not set", listen_port_var_name));
-
         let trusted_peers = Self::initialize_trusted_peers(prefix);
 
         TestnetConfig {
@@ -72,7 +67,6 @@ impl TestnetConfig {
             block0_hash,
             public_ip,
             public_port,
-            listen_port,
             trusted_peers,
         }
     }
