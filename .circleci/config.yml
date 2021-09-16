@@ -96,7 +96,7 @@ commands:
       - run:
           name: Build tests
           command: |
-            cargo build --workspace --tests << parameters.mode >> << parameters.cargo_behavior >>
+            cargo build --workspace --tests --all-features << parameters.mode >> << parameters.cargo_behavior >>
       - run:
           name: Build scenario tests
           command: |
