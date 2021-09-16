@@ -593,7 +593,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8bdcd2c8369e120a80ec5b40846632c5d295c1f6"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "chain-core",
  "chain-crypto",
  "const_format",
@@ -3661,7 +3661,7 @@ checksum = "8049cf85f0e715d6af38dde439cb0ccb91f67fb9f5f63c80f8b43e48356e1a3f"
 [[package]]
 name = "symmetric-cipher"
 version = "0.5.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#74820529edc37fa5ff128d6e511872122e9a545b"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=master#51947a567a01e771395330e179004ec34371baee"
 dependencies = [
  "cryptoxide",
  "rand 0.8.4",
