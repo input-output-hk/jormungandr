@@ -1,4 +1,3 @@
-use super::LegacyWalletTemplate;
 use crate::testing::network_builder::{
     Blockchain as BlockchainTemplate, ExternalWalletTemplate, Node as NodeTemplate, NodeAlias,
     Random, Wallet, WalletAlias, WalletTemplate, WalletType,
@@ -11,8 +10,7 @@ use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
         ActiveSlotCoefficient, Bft, Block0Configuration, BlockchainConfiguration, CommitteeIdDef,
-        GenesisPraos, Initial, InitialUTxO, LegacyUTxO, NodeConfig, NodeId, NodeSecret,
-        TrustedPeer,
+        GenesisPraos, Initial, InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
     },
 };
 use rand_core::{CryptoRng, RngCore};
@@ -108,8 +106,6 @@ pub struct Settings {
 
     pub wallets: HashMap<WalletAlias, Wallet>,
 
-    pub legacy_wallets: HashMap<WalletAlias, LegacyWalletTemplate>,
-
     pub block0: Block0Configuration,
 
     pub stake_pools: HashMap<NodeAlias, StakePool>,
@@ -137,7 +133,6 @@ impl Settings {
                 ),
                 initial: Vec::new(),
             },
-            legacy_wallets: HashMap::new(),
             stake_pools: HashMap::new(),
             vote_plans: HashMap::new(),
         };
@@ -145,25 +140,11 @@ impl Settings {
         settings.populate_trusted_peers();
         settings.populate_block0_blockchain_initials(blockchain.wallets(), rng);
         settings.populate_block0_blockchain_configuration(&blockchain, rng);
-        settings.populate_block0_blockchain_legacy(blockchain.legacy_wallets());
         settings.populate_block0_blockchain_external(blockchain.external_wallets());
 
         println!("{:#?}", settings);
 
         settings
-    }
-
-    fn populate_block0_blockchain_legacy(&mut self, legacy_wallets: Vec<LegacyWalletTemplate>) {
-        for template in legacy_wallets {
-            let legacy_fragment = Initial::LegacyFund(vec![LegacyUTxO {
-                address: template.address().parse().unwrap(),
-                value: (*template.value()).into(),
-            }]);
-
-            self.legacy_wallets
-                .insert(template.alias().to_string(), template.clone());
-            self.block0.initial.push(legacy_fragment);
-        }
     }
 
     fn populate_block0_blockchain_external(

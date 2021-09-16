@@ -1,12 +1,10 @@
 mod external;
-mod legacy;
 
 use super::{WalletAlias, WalletType};
 use crate::testing::network_builder::NodeAlias;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::value::Value;
 pub use external::ExternalWalletTemplate;
-pub use legacy::LegacyWalletTemplate;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct WalletTemplate {
