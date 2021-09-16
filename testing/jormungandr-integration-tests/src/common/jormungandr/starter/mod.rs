@@ -64,21 +64,6 @@ pub enum OnFail {
     RetryUnlimitedOnPortOccupied,
 }
 
-#[derive(Clone, Debug, Copy)]
-pub enum Role {
-    Passive,
-    Leader,
-}
-
-impl From<LeadershipMode> for Role {
-    fn from(leadership_mode: LeadershipMode) -> Self {
-        match leadership_mode {
-            LeadershipMode::Leader => Self::Leader,
-            LeadershipMode::Passive => Self::Passive,
-        }
-    }
-}
-
 impl From<LeadershipMode> for FromGenesis {
     fn from(leadership_mode: LeadershipMode) -> Self {
         match leadership_mode {
@@ -92,7 +77,7 @@ pub struct Starter {
     timeout: Duration,
     jormungandr_app_path: Option<PathBuf>,
     sleep: u64,
-    role: Role,
+    leadership_mode: LeadershipMode,
     alias: String,
     from_genesis: FromGenesis,
     verification_mode: StartupVerificationMode,
@@ -116,7 +101,7 @@ impl Starter {
             timeout: Duration::from_secs(300),
             sleep: 2,
             alias: "".to_owned(),
-            role: Role::Leader,
+            leadership_mode: LeadershipMode::Leader,
             from_genesis: FromGenesis::File,
             verification_mode: StartupVerificationMode::Rest,
             on_fail: OnFail::RetryUnlimitedOnPortOccupied,
@@ -145,7 +130,7 @@ impl Starter {
     }
 
     pub fn passive(&mut self) -> &mut Self {
-        self.role = Role::Passive;
+        self.leadership_mode = LeadershipMode::Passive;
         self
     }
 
@@ -154,8 +139,8 @@ impl Starter {
         self
     }
 
-    pub fn role(&mut self, role: Role) -> &mut Self {
-        self.role = role;
+    pub fn leadership_mode(&mut self, leadership_mode: LeadershipMode) -> &mut Self {
+        self.leadership_mode = leadership_mode;
         self
     }
 
@@ -356,7 +341,7 @@ where
                 .jormungandr_app_path
                 .clone()
                 .unwrap_or_else(get_jormungandr_app),
-            self.starter.role,
+            self.starter.leadership_mode,
             self.starter.from_genesis,
         )
         .stderr(Stdio::piped())
@@ -385,7 +370,7 @@ where
                 .jormungandr_app_path
                 .clone()
                 .unwrap_or_else(get_jormungandr_app),
-            self.starter.role,
+            self.starter.leadership_mode,
             self.starter.from_genesis,
         );
 

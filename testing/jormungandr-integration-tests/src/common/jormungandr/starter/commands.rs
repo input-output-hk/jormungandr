@@ -1,5 +1,6 @@
-use super::{FromGenesis, Role};
+use super::FromGenesis;
 
+use jormungandr_testing_utils::testing::network_builder::LeadershipMode;
 use jormungandr_testing_utils::testing::{JormungandrParams, TestConfig};
 use serde::Serialize;
 use std::path::Path;
@@ -99,7 +100,7 @@ impl<'a> CommandBuilder<'a> {
 pub fn get_command<Conf: TestConfig + Serialize>(
     params: &JormungandrParams<Conf>,
     bin_path: impl AsRef<Path>,
-    role: Role,
+    leadership_mode: LeadershipMode,
     from_genesis: FromGenesis,
 ) -> Command {
     let bin_path = bin_path.as_ref();
@@ -109,12 +110,12 @@ pub fn get_command<Conf: TestConfig + Serialize>(
     if params.node_config().log_file_path().is_none() {
         builder = builder.stderr_to_log_file(params.log_file_path());
     }
-    let builder = match (role, from_genesis) {
-        (Role::Passive, _) => builder.genesis_block_hash(params.genesis_block_hash()),
-        (Role::Leader, FromGenesis::File) => builder
+    let builder = match (leadership_mode, from_genesis) {
+        (LeadershipMode::Passive, _) => builder.genesis_block_hash(params.genesis_block_hash()),
+        (LeadershipMode::Leader, FromGenesis::File) => builder
             .genesis_block_path(params.genesis_block_path())
             .leader_with_secret(params.secret_model_path()),
-        (Role::Leader, FromGenesis::Hash) => builder
+        (LeadershipMode::Leader, FromGenesis::Hash) => builder
             .genesis_block_hash(params.genesis_block_hash())
             .leader_with_secret(params.secret_model_path()),
     };

@@ -1,5 +1,7 @@
-use crate::common::jormungandr::{starter::Role, Starter};
-use crate::common::{jormungandr::ConfigurationBuilder, startup};
+use crate::common::{
+    jormungandr::{ConfigurationBuilder, Starter},
+    startup,
+};
 use assert_fs::fixture::{PathChild, PathCreateDir};
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
@@ -7,8 +9,10 @@ use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion};
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::PersistentLog;
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, Mempool};
-use jormungandr_testing_utils::testing::fragments::FragmentExporter;
 use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
+use jormungandr_testing_utils::testing::{
+    fragments::FragmentExporter, network_builder::LeadershipMode,
+};
 use jormungandr_testing_utils::testing::{
     node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentVerifier,
     MemPoolCheck,
@@ -349,7 +353,7 @@ pub fn node_should_pickup_log_after_restart() {
 
     let jormungandr = Starter::new()
         .config(config.clone())
-        .role(Role::Leader)
+        .leadership_mode(LeadershipMode::Leader)
         .start()
         .unwrap();
 
@@ -371,7 +375,7 @@ pub fn node_should_pickup_log_after_restart() {
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
         .config(config)
-        .role(Role::Leader)
+        .leadership_mode(LeadershipMode::Leader)
         .start()
         .unwrap();
 

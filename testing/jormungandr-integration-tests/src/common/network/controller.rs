@@ -191,7 +191,7 @@ impl Controller {
             .config(params)
             .alias(spawn_params.alias.clone())
             .from_genesis(spawn_params.get_leadership_mode().into())
-            .role(spawn_params.get_leadership_mode().into());
+            .leadership_mode(spawn_params.get_leadership_mode());
         Ok(starter)
     }
 
