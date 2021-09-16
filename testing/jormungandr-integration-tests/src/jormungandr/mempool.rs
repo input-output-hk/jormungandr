@@ -1,4 +1,3 @@
-use crate::common::jormungandr::StartupVerificationMode;
 use crate::common::jormungandr::{starter::Role, Starter};
 use crate::common::{jormungandr::ConfigurationBuilder, startup};
 use assert_fs::fixture::{PathChild, PathCreateDir};
@@ -414,7 +413,8 @@ pub fn expired_fragment_should_be_rejected_by_leader_praos_node() {
                 pool_max_entries: 1000.into(),
                 log_max_entries: 1000.into(),
                 persistent_log: None,
-            }),
+            })
+            .with_log_level("debug".into()),
     )
     .unwrap();
 
@@ -460,7 +460,8 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
                 pool_max_entries: 1000.into(),
                 log_max_entries: 1000.into(),
                 persistent_log: None,
-            }),
+            })
+            .with_log_level("debug".into()),
     )
     .unwrap();
 
@@ -472,18 +473,11 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
             ConfigurationBuilder::new()
                 .with_trusted_peers(vec![leader.to_trusted_peer()])
                 .with_block_hash(&leader.genesis_block_hash().to_string())
+                .with_log_level("debug".into())
                 .build(&passive_dir),
         )
         .passive()
         .start()
-        .unwrap();
-
-    leader
-        .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(30))
-        .unwrap();
-
-    passive
-        .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(30))
         .unwrap();
 
     let fragment_sender = FragmentSender::new(

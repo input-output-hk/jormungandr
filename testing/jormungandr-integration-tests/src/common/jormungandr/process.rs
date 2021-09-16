@@ -129,23 +129,25 @@ impl JormungandrProcess {
         }
     }
 
-    fn status(&self, strategy: &StartupVerificationMode) -> Status {
+    fn check_startup_errors_in_logs(&self) -> Result<(), JormungandrError> {
         let port_occupied_msgs = ["error 87", "error 98", "panicked at 'Box<Any>'"];
         if self.logger.contains_any_of(&port_occupied_msgs) {
-            return Status::Stopped(JormungandrError::PortAlreadyInUse);
-        }
-        if let Err(err) = self.check_no_errors_in_log() {
-            return Status::Stopped(err);
+            return Err(JormungandrError::PortAlreadyInUse);
         }
 
+        self.check_no_errors_in_log()
+    }
+
+    fn status(&self, strategy: &StartupVerificationMode) -> Status {
         match strategy {
             StartupVerificationMode::Log => {
                 let bootstrap_completed_msgs = [
                     "listening and accepting gRPC connections",
                     "genesis block fetched",
                 ];
-
-                if self.logger.contains_any_of(&bootstrap_completed_msgs) {
+                if let Err(err) = self.check_startup_errors_in_logs() {
+                    Status::Stopped(err)
+                } else if self.logger.contains_any_of(&bootstrap_completed_msgs) {
                     Status::Running
                 } else {
                     Status::Starting
@@ -175,7 +177,13 @@ impl JormungandrProcess {
                     .map(|x| x.as_str())
                 {
                     Some("Running") => Status::Running,
-                    _ => Status::Starting,
+                    _ => {
+                        if let Err(err) = self.check_startup_errors_in_logs() {
+                            Status::Stopped(err)
+                        } else {
+                            Status::Starting
+                        }
+                    }
                 }
             }
         }
