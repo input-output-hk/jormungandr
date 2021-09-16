@@ -65,7 +65,7 @@ pub enum Key {
     Generate(Generate),
     /// get the public key out of a given private key
     ToPublic(ToPublic),
-    /// retrive a private key from the given bytes
+    /// retrive a private/public key from the given bytes
     FromBytes(FromBytes),
     /// get the bytes out of a private key
     ToBytes(ToBytes),
@@ -91,6 +91,9 @@ pub struct FromBytes {
 
     #[structopt(flatten)]
     output_file: OutputFile,
+
+    #[structopt(long = "public")]
+    public_key: bool,
 }
 
 #[derive(StructOpt, Debug)]
@@ -270,6 +273,21 @@ impl FromBytes {
     fn exec(self) -> Result<(), Error> {
         let bytes = read_hex(&self.input_bytes)?;
 
+        if self.public_key {
+            let key_bech32 = match self.key_type {
+                GenPrivKeyType::Ed25519 => bytes_to_pub_key::<Ed25519>(&bytes)?,
+                GenPrivKeyType::Ed25519Bip32 => bytes_to_pub_key::<Ed25519Bip32>(&bytes)?,
+                GenPrivKeyType::Ed25519Extended => unimplemented!(),
+                GenPrivKeyType::SumEd25519_12 => bytes_to_pub_key::<SumEd25519_12>(&bytes)?,
+                GenPrivKeyType::RistrettoGroup2HashDh => {
+                    bytes_to_pub_key::<RistrettoGroup2HashDh>(&bytes)?
+                }
+            };
+            let mut output = self.output_file.open()?;
+            writeln!(output, "{}", key_bech32)?;
+            return Ok(());
+        }
+
         let priv_key_bech32 = match self.key_type {
             GenPrivKeyType::Ed25519 => bytes_to_priv_key::<Ed25519>(&bytes)?,
             GenPrivKeyType::Ed25519Bip32 => bytes_to_priv_key::<Ed25519Bip32>(&bytes)?,
@@ -279,6 +297,7 @@ impl FromBytes {
                 bytes_to_priv_key::<RistrettoGroup2HashDh>(&bytes)?
             }
         };
+
         let mut output = self.output_file.open()?;
         writeln!(output, "{}", priv_key_bech32)?;
         Ok(())
@@ -418,6 +437,12 @@ fn bytes_to_priv_key<K: AsymmetricKey>(bytes: &[u8]) -> Result<String, Error> {
     use chain_crypto::bech32::Bech32 as _;
     let secret: chain_crypto::SecretKey<K> = chain_crypto::SecretKey::from_binary(bytes)?;
     Ok(secret.to_bech32_str())
+}
+
+fn bytes_to_pub_key<K: AsymmetricPublicKey>(bytes: &[u8]) -> Result<String, Error> {
+    use chain_crypto::bech32::Bech32 as _;
+    let public: chain_crypto::PublicKey<K> = chain_crypto::PublicKey::from_binary(bytes)?;
+    Ok(public.to_bech32_str())
 }
 
 #[derive(Debug)]
