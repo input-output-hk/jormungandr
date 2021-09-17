@@ -1,13 +1,12 @@
-use super::{Controller, ControllerError};
 use crate::testing::{
     network::{
+        controller::{Controller, ControllerError},
+        wallet::template::builder::WalletTemplateBuilder,
         Blockchain, Node, NodeAlias, NodeSetting, Random, Seed, Settings, TopologyBuilder,
-        WalletAlias, WalletTemplate,
+        WalletTemplate,
     },
     NodeConfigBuilder,
 };
-use chain_addr::Discrimination;
-use chain_impl_mockchain::value::Value;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::crypto::key::SigningKey;
 use jormungandr_lib::interfaces::{
@@ -104,47 +103,5 @@ impl Default for NetworkBuilder {
             topology_builder: TopologyBuilder::new(),
             wallets: Vec::new(),
         }
-    }
-}
-
-pub struct WalletTemplateBuilder {
-    alias: WalletAlias,
-    value: u64,
-    wallet_template: Option<WalletTemplate>,
-    node_alias: Option<NodeAlias>,
-    discrimination: Discrimination,
-}
-
-impl WalletTemplateBuilder {
-    pub fn new(alias: &str) -> Self {
-        Self {
-            alias: alias.to_string(),
-            value: 0u64,
-            wallet_template: None,
-            node_alias: None,
-            discrimination: Discrimination::Test,
-        }
-    }
-
-    pub fn with(&mut self, value: u64) -> &mut Self {
-        self.value = value;
-        self
-    }
-
-    pub fn discrimination(&mut self, discrimination: Discrimination) -> &mut Self {
-        self.discrimination = discrimination;
-        self
-    }
-
-    pub fn delegated_to(&mut self, delegated_to: &str) -> &mut Self {
-        self.node_alias = Some(delegated_to.to_string());
-        self
-    }
-
-    pub fn build(&self) -> WalletTemplate {
-        let mut wallet =
-            WalletTemplate::new_account(self.alias.clone(), Value(self.value), self.discrimination);
-        *wallet.delegate_mut() = self.node_alias.clone();
-        wallet
     }
 }

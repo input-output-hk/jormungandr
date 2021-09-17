@@ -1,4 +1,4 @@
-mod template;
+pub mod template;
 
 pub use template::{ExternalWalletTemplate, WalletTemplate};
 

@@ -1,6 +1,6 @@
-use jormungandr_testing_utils::testing::common::{
-    jormungandr::process::JormungandrProcess,
-    network::{NetworkBuilder, WalletTemplateBuilder},
+use jormungandr_testing_utils::testing::{
+    common::jormungandr::process::JormungandrProcess,
+    network::{builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder},
 };
 
 use jormungandr_lib::{

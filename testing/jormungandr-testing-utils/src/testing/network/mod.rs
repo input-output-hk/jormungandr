@@ -1,9 +1,11 @@
-mod blockchain;
-mod rng;
-mod settings;
-mod spawn_params;
-mod topology;
-mod wallet;
+pub mod blockchain;
+pub mod builder;
+pub mod controller;
+pub mod rng;
+pub mod settings;
+pub mod spawn_params;
+pub mod topology;
+pub mod wallet;
 
 pub use blockchain::Blockchain;
 use chain_impl_mockchain::header::HeaderId;

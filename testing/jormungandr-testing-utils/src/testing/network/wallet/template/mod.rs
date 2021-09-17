@@ -1,3 +1,4 @@
+pub mod builder;
 mod external;
 
 use super::{WalletAlias, WalletType};
