@@ -1,4 +1,4 @@
-use jormungandr_testing_utils::testing::common::jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode};
+use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode};
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;

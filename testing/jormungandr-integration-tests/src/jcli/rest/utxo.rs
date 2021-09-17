@@ -1,5 +1,5 @@
 use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{starter::Starter, ConfigurationBuilder},
     startup,

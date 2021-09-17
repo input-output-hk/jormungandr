@@ -1,4 +1,4 @@
-use crate::testing::common::{
+use crate::testing::{
     jormungandr::starter::{Starter, StartupError},
     jormungandr::JormungandrProcess,
 };

@@ -40,7 +40,7 @@ pub mod persistent_log;
 
 pub mod voting;
 
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::{
     jcli::{self, JCli},
     jormungandr::{JormungandrError, JormungandrProcess},
 };

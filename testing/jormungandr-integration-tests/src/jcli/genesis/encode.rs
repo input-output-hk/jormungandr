@@ -4,7 +4,7 @@ use chain_impl_mockchain::{
     vote::CommitteeId,
 };
 use jormungandr_lib::interfaces::{Block0Configuration, Initial, InitialUTxO, LegacyUTxO};
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::{
     configuration::{Block0ConfigurationBuilder, JormungandrParams},
     jcli::JCli,
     jormungandr::ConfigurationBuilder,

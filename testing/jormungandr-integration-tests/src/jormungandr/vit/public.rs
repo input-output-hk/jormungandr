@@ -1,5 +1,5 @@
-use jormungandr_testing_utils::testing::common::startup::start_stake_pool;
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::startup::start_stake_pool;
+use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,

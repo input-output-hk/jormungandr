@@ -5,10 +5,10 @@ use jormungandr_lib::interfaces::{
 use jormungandr_testing_utils::{
     testing::{
         benchmark_efficiency, benchmark_endurance, benchmark_speed,
-        common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup},
         node::time,
         EfficiencyBenchmarkDef, EfficiencyBenchmarkFinish, Endurance, FragmentSender,
         FragmentSenderSetup, FragmentVerifier, MemPoolCheck, Thresholds,
+        {jcli::JCli, jormungandr::ConfigurationBuilder, startup},
     },
     wallet::Wallet,
 };

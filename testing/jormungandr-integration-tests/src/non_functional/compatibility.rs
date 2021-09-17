@@ -2,7 +2,7 @@ use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::{
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
     transaction_utils::TransactionHash,

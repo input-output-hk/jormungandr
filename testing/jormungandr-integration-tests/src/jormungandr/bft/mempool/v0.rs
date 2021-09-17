@@ -1,5 +1,5 @@
-use jormungandr_testing_utils::testing::common::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_testing_utils::testing::common::startup;
+use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
+use jormungandr_testing_utils::testing::startup;
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::InitialUTxO;

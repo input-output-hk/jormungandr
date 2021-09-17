@@ -6,7 +6,7 @@ use assert_fs::TempDir;
 pub use duration::DurationBasedClientLoad;
 use indicatif::{ProgressBar, ProgressStyle};
 pub use iteration::IterationBasedClientLoad;
-use jormungandr_testing_utils::testing::common::jormungandr::{
+use jormungandr_testing_utils::testing::jormungandr::{
     ConfigurationBuilder, JormungandrProcess, Starter, StartupError,
 };
 use jortestkit::file;

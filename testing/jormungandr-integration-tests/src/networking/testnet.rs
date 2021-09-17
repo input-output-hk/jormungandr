@@ -6,7 +6,7 @@ use crate::jormungandr::genesis::stake_pool::{
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::{BlockDate, Log, LogEntry, LogOutput, TrustedPeer};
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::{
     configuration::JormungandrParams,
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupVerificationMode},

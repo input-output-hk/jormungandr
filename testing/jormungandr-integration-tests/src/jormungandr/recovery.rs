@@ -1,4 +1,4 @@
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
     startup,

@@ -2,7 +2,7 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, InitialUTxO, UTxOInfo},
 };
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,

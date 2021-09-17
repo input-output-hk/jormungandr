@@ -5,7 +5,7 @@ mod noise;
 #[cfg(feature = "soak-non-functional")]
 mod soak;
 
-use jormungandr_testing_utils::testing::common::jormungandr::{ConfigurationBuilder, Starter};
+use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 use crate::non_functional::voting::config::PrivateVotingLoadTestConfig;
 use assert_fs::TempDir;
 use chain_core::property::BlockDate;

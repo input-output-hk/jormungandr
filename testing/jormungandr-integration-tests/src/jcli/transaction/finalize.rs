@@ -1,5 +1,5 @@
 use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
-use jormungandr_testing_utils::testing::common::{jcli::JCli, startup};
+use jormungandr_testing_utils::testing::{jcli::JCli, startup};
 
 lazy_static! {
     static ref FAKE_INPUT_TRANSACTION_ID: Hash = {

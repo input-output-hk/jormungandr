@@ -1,4 +1,4 @@
-use jormungandr_testing_utils::testing::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
+use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
 
 use chain_impl_mockchain::value::Value;
 use jormungandr_lib::{

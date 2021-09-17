@@ -1,5 +1,5 @@
 use jormungandr_testing_utils::testing::{
-    common::jormungandr::process::JormungandrProcess,
+    jormungandr::process::JormungandrProcess,
     network::{builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder},
 };
 

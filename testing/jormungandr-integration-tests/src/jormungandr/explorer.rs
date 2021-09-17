@@ -3,7 +3,7 @@ use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jormungandr_testing_utils::stake_pool::StakePool;
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use jormungandr_testing_utils::testing::node::Explorer;
@@ -20,7 +20,7 @@ use std::time::Duration;
 #[cfg(unix)]
 pub fn explorer_schema_diff_test() {
     use assert_fs::{fixture::PathChild, TempDir};
-    use jormungandr_testing_utils::testing::common::jormungandr::Starter;
+    use jormungandr_testing_utils::testing::jormungandr::Starter;
 
     let temp_dir = TempDir::new().unwrap();
     let config = ConfigurationBuilder::new().with_explorer().build(&temp_dir);

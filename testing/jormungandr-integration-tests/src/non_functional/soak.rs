@@ -1,6 +1,6 @@
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed, Mempool};
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use jormungandr_testing_utils::testing::{benchmark_consumption, benchmark_endurance};

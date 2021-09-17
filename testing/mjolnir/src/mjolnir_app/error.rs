@@ -1,6 +1,6 @@
 use jormungandr_testing_utils::testing::{
     block0::GetBlock0Error,
-    common::jormungandr::{JormungandrError, StartupError},
+    jormungandr::{JormungandrError, StartupError},
     node::RestError,
 };
 use thiserror::Error;

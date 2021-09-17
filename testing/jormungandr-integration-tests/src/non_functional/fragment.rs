@@ -1,5 +1,5 @@
-use jormungandr_testing_utils::testing::common::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::common::startup;
+use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
+use jormungandr_testing_utils::testing::startup;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
@@ -58,8 +58,8 @@ pub fn fragment_load_test() {
         ),
     );
 
-    use jormungandr_testing_utils::testing::common::jcli::FragmentsCheck;
-    use jormungandr_testing_utils::testing::common::jcli::JCli;
+    use jormungandr_testing_utils::testing::jcli::FragmentsCheck;
+    use jormungandr_testing_utils::testing::jcli::JCli;
 
     request_generator.prepare(BlockDateDto::new(0, 19));
 

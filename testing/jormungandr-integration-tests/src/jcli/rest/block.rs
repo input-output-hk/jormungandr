@@ -1,4 +1,4 @@
-use jormungandr_testing_utils::testing::common::{jcli::JCli, jormungandr::starter::Starter};
+use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::starter::Starter};
 
 #[test]
 pub fn test_non_empty_hash_is_returned_for_block0() {

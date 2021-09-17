@@ -5,7 +5,7 @@ use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion};
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::PersistentLog;
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, Mempool};
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::{
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
 };

@@ -1,5 +1,5 @@
-use jormungandr_testing_utils::testing::common::jormungandr::JormungandrProcess;
-use jormungandr_testing_utils::testing::common::{jormungandr::ConfigurationBuilder, startup};
+use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
+use jormungandr_testing_utils::testing::{jormungandr::ConfigurationBuilder, startup};
 use chain_impl_mockchain::{block::BlockDate, fragment::Fragment};
 use jormungandr_testing_utils::testing::fragments::FaultyTransactionBuilder;
 use jormungandr_testing_utils::testing::node::assert_bad_request;

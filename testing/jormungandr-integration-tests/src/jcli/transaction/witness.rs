@@ -1,7 +1,7 @@
-use jormungandr_testing_utils::testing::common::data::witness::Witness;
-use jormungandr_testing_utils::testing::common::startup;
+use jormungandr_testing_utils::testing::data::witness::Witness;
+use jormungandr_testing_utils::testing::startup;
 use std::path::PathBuf;
-use jormungandr_testing_utils::testing::common::jcli::JCli;
+use jormungandr_testing_utils::testing::jcli::JCli;
 use jortestkit::file::make_readonly;
 use chain_impl_mockchain::key::Hash;
 use assert_fs::TempDir;

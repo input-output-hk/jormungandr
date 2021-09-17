@@ -1,5 +1,5 @@
-use jormungandr_testing_utils::testing::common::transaction_utils::TransactionHash;
-use jormungandr_testing_utils::testing::common::{
+use jormungandr_testing_utils::testing::transaction_utils::TransactionHash;
+use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
