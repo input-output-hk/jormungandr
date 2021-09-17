@@ -1,7 +1,6 @@
 use super::{
     chain_storable::{AccountId, Address, BlockId, FragmentId, PoolId, Stake},
     endian::L64,
-    helpers::find_last_record_by,
     pair::Pair,
     SanakirjaMutTx, SeqNum,
 };
@@ -14,7 +13,6 @@ use sanakirja::{
     btree::{self, Db},
     direct_repr, Storable, UnsizedStorable,
 };
-use std::convert::TryInto;
 
 pub type StakeControl = Db<AccountId, Stake>;
 pub type BlocksInBranch = Db<ChainLength, BlockId>;
@@ -118,30 +116,11 @@ impl StateRef {
 
     pub fn apply_vote(
         &mut self,
-        txn: &mut SanakirjaMutTx,
-        fragment_id: &FragmentId,
-        proposal_id: &ProposalId,
+        _txn: &mut SanakirjaMutTx,
+        _fragment_id: &FragmentId,
+        _proposal_id: &ProposalId,
     ) -> Result<(), DbError> {
-        let max_possible_value = Pair {
-            a: SeqNum::MAX,
-            b: FragmentId::MAX,
-        };
-
-        let seq = find_last_record_by(txn, &self.votes, proposal_id, &max_possible_value)
-            .map(|last| last.a.next())
-            .unwrap_or(SeqNum::MIN);
-
-        btree::put(
-            txn,
-            &mut self.votes,
-            proposal_id,
-            &Pair {
-                a: seq,
-                b: fragment_id.clone(),
-            },
-        )?;
-
-        Ok(())
+        todo!()
     }
 
     /// Add the given transaction to address at the end of the list
@@ -149,161 +128,46 @@ impl StateRef {
     /// than one (input|output) with the same address (eg: utxo input and change).
     pub fn add_transaction_to_address(
         &mut self,
-        txn: &mut SanakirjaMutTx,
-        fragment_id: &FragmentId,
-        address: &Address,
+        _txn: &mut SanakirjaMutTx,
+        _fragment_id: &FragmentId,
+        _address: &Address,
     ) -> Result<(), DbError> {
-        let address_id = self.get_or_insert_address_id(txn, address)?;
-
-        let max_possible_value = Pair {
-            a: SeqNum::MAX,
-            b: FragmentId::MAX,
-        };
-
-        let seq = match find_last_record_by(
-            &*txn,
-            &self.address_transactions,
-            &address_id,
-            &max_possible_value,
-        ) {
-            Some(v) => {
-                if &v.b == fragment_id {
-                    return Ok(());
-                } else {
-                    v.a.next()
-                }
-            }
-            None => SeqNum::MIN,
-        };
-
-        debug_assert!(btree::put(
-            txn,
-            &mut self.address_transactions,
-            &address_id,
-            &Pair {
-                a: seq,
-                b: fragment_id.clone(),
-            },
-        )?);
-
-        Ok(())
+        todo!()
     }
 
     pub fn add_block_to_blocks(
         &mut self,
-        txn: &mut SanakirjaMutTx,
-        chain_length: &ChainLength,
-        block_id: &BlockId,
+        _txn: &mut SanakirjaMutTx,
+        _chain_length: &ChainLength,
+        _block_id: &BlockId,
     ) -> Result<(), DbError> {
-        btree::put(txn, &mut self.blocks, chain_length, block_id).unwrap();
-        Ok(())
-    }
-
-    pub(crate) fn get_or_insert_address_id(
-        &mut self,
-        txn: &mut SanakirjaMutTx,
-        address: &Address,
-    ) -> Result<SeqNum, DbError> {
-        let address_exists = btree::get(txn, &self.address_id, address, None)?
-            .filter(|(id, _)| id == &address)
-            .map(|(_, v)| v)
-            .cloned();
-
-        let address_id = if let Some(v) = address_exists {
-            v
-        } else {
-            let next_seq = if let Some(next_seq) = self.next_address_id {
-                next_seq
-            } else {
-                *btree::get(txn, &self.address_id, &Address([0u8; 65]), None)?
-                    .unwrap()
-                    .1
-            };
-
-            self.next_address_id = Some(next_seq.next());
-
-            btree::put(txn, &mut self.address_id, address, &next_seq)?;
-
-            next_seq
-        };
-
-        Ok(address_id)
+        todo!()
     }
 
     pub fn apply_output_to_stake_control(
         &mut self,
-        txn: &mut SanakirjaMutTx,
-        output: &transaction::Output<chain_addr::Address>,
+        _txn: &mut SanakirjaMutTx,
+        _output: &transaction::Output<chain_addr::Address>,
     ) -> Result<(), DbError> {
-        match output.address.kind() {
-            chain_addr::Kind::Group(_, account) => {
-                self.add_stake_to_account(txn, account, output.value)?;
-            }
-            chain_addr::Kind::Account(account) => {
-                self.add_stake_to_account(txn, account, output.value)?;
-            }
-            chain_addr::Kind::Single(_account) => {}
-            chain_addr::Kind::Multisig(_) => {}
-            chain_addr::Kind::Script(_) => {}
-        }
-        Ok(())
+        todo!()
     }
 
     pub fn add_stake_to_account(
         &mut self,
-        txn: &mut SanakirjaMutTx,
-        account: &chain_crypto::PublicKey<chain_crypto::Ed25519>,
-        value: Value,
+        _txn: &mut SanakirjaMutTx,
+        _account: &chain_crypto::PublicKey<chain_crypto::Ed25519>,
+        _value: Value,
     ) -> Result<(), DbError> {
-        let op =
-            |current_stake: u64, value: u64| -> u64 { current_stake.checked_add(value).unwrap() };
-
-        self.update_stake_for_account(txn, account, op, value)
+        todo!()
     }
 
     pub fn substract_stake_from_account(
         &mut self,
-        txn: &mut SanakirjaMutTx,
-        account: &chain_crypto::PublicKey<chain_crypto::Ed25519>,
-        value: Value,
+        _txn: &mut SanakirjaMutTx,
+        _account: &chain_crypto::PublicKey<chain_crypto::Ed25519>,
+        _value: Value,
     ) -> Result<(), DbError> {
-        let op =
-            |current_stake: u64, value: u64| -> u64 { current_stake.checked_sub(value).unwrap() };
-
-        self.update_stake_for_account(txn, account, op, value)
-    }
-
-    fn update_stake_for_account(
-        &mut self,
-        txn: &mut SanakirjaMutTx,
-        account: &chain_crypto::PublicKey<chain_crypto::Ed25519>,
-        op: impl Fn(u64, u64) -> u64,
-        value: Value,
-    ) -> Result<(), DbError> {
-        let account_id = AccountId(account.as_ref().try_into().unwrap());
-
-        let current_stake = btree::get(txn, &self.stake_control, &account_id, None)
-            .unwrap()
-            .and_then(|(k, stake)| {
-                if k == &account_id {
-                    Some(stake.get())
-                } else {
-                    None
-                }
-            })
-            .unwrap_or(0);
-
-        let new_stake = op(current_stake, value.0);
-
-        btree::del(txn, &mut self.stake_control, &account_id, None).unwrap();
-        btree::put(
-            txn,
-            &mut self.stake_control,
-            &account_id,
-            &L64::new(new_stake),
-        )?;
-
-        Ok(())
+        todo!()
     }
 
     /// gc this fork so the allocated pages can be re-used
