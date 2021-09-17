@@ -26,7 +26,7 @@ use jormungandr_testing_utils::{
     testing::{
         benchmark_consumption,
         fragments::DummySyncNode,
-        network_builder::{
+        network::{
             Blockchain, LeadershipMode, NodeAlias, NodeSetting, PersistenceMode, SpawnParams,
             Topology, Wallet as WalletSetting, WalletAlias,
         },

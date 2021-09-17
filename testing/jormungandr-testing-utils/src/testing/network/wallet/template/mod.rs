@@ -1,7 +1,7 @@
 mod external;
 
 use super::{WalletAlias, WalletType};
-use crate::testing::network_builder::NodeAlias;
+use crate::testing::network::NodeAlias;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::value::Value;
 pub use external::ExternalWalletTemplate;

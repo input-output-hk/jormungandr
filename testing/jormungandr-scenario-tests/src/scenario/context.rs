@@ -10,7 +10,7 @@ use std::sync::atomic::{self, AtomicU16};
 use std::sync::Arc;
 
 use crate::scenario::ProgressBarMode;
-use jormungandr_testing_utils::testing::network_builder::{Random, Seed};
+use jormungandr_testing_utils::testing::network::{Random, Seed};
 
 pub type ContextChaCha = Context<ChaChaRng>;
 

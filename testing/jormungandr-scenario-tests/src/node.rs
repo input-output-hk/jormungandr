@@ -20,7 +20,7 @@ use jormungandr_lib::{
     multiaddr,
 };
 pub use jormungandr_testing_utils::testing::{
-    network_builder::{
+    network::{
         FaketimeConfig, LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode,
         Settings,
     },

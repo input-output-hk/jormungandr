@@ -16,9 +16,7 @@ use jormungandr_lib::{
     multiaddr,
 };
 pub use jormungandr_testing_utils::testing::{
-    network_builder::{
-        LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings,
-    },
+    network::{LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings},
     node::{grpc::JormungandrClient, JormungandrLogger},
     FragmentNode, FragmentNodeError, MemPoolCheck,
 };

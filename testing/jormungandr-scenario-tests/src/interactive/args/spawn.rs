@@ -2,7 +2,7 @@ use super::UserInteractionController;
 use crate::{style, test::Result};
 use jormungandr_testing_utils::{
     testing::{
-        network_builder::{LeadershipMode, PersistenceMode, SpawnParams},
+        network::{LeadershipMode, PersistenceMode, SpawnParams},
         node::download_last_n_releases,
     },
     Version,

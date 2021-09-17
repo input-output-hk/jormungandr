@@ -2,7 +2,7 @@ pub mod asserts;
 pub mod block0;
 pub mod common;
 pub mod fragments;
-pub mod network_builder;
+pub mod network;
 pub mod node;
 pub mod process;
 mod remote;

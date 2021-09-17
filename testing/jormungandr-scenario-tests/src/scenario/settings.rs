@@ -17,8 +17,8 @@ use jormungandr_lib::{
     },
     time::Duration,
 };
-use jormungandr_testing_utils::testing::network_builder::Random;
-use jormungandr_testing_utils::testing::network_builder::{
+use jormungandr_testing_utils::testing::network::Random;
+use jormungandr_testing_utils::testing::network::{
     Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting,
     Settings as NetworkBuilderSettings, Topology as TopologyTemplate, WalletTemplate, WalletType,
 };

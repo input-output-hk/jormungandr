@@ -1,6 +1,6 @@
 use super::{Controller, ControllerError};
 use crate::testing::{
-    network_builder::{
+    network::{
         Blockchain, Node, NodeAlias, NodeSetting, Random, Seed, Settings, TopologyBuilder,
         WalletAlias, WalletTemplate,
     },

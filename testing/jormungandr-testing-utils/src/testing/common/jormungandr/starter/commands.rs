@@ -1,6 +1,6 @@
 use super::FromGenesis;
 
-use crate::testing::{network_builder::LeadershipMode, JormungandrParams, TestConfig};
+use crate::testing::{network::LeadershipMode, JormungandrParams, TestConfig};
 use serde::Serialize;
 use std::path::Path;
 use std::process::Command;

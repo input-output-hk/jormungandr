@@ -9,7 +9,7 @@ use crate::testing::common::{
 };
 use crate::{
     testing::{
-        network_builder::LeadershipMode, node::configuration::legacy, JormungandrParams,
+        network::LeadershipMode, node::configuration::legacy, JormungandrParams,
         LegacyConfigConverter, LegacyConfigConverterError, SpeedBenchmarkDef, SpeedBenchmarkRun,
         TestConfig,
     },

@@ -1,4 +1,4 @@
-use crate::testing::network_builder::WalletAlias;
+use crate::testing::network::WalletAlias;
 use chain_impl_mockchain::value::Value;
 
 /// Struct can be used to differentiate wallet template

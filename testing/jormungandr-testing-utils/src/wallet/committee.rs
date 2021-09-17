@@ -1,4 +1,4 @@
-use crate::testing::network_builder::WalletAlias;
+use crate::testing::network::WalletAlias;
 use assert_fs::fixture::{ChildPath, PathChild};
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::{

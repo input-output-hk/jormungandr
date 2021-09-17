@@ -5,7 +5,7 @@ use jormungandr_testing_utils::testing::common::{
 };
 
 use jormungandr_lib::interfaces::{AccountState, BlockDate, InitialUTxO, SettingsDto, UTxOInfo};
-use jormungandr_testing_utils::testing::{network_builder::LeadershipMode, SyncNode};
+use jormungandr_testing_utils::testing::{network::LeadershipMode, SyncNode};
 use jormungandr_testing_utils::wallet::Wallet;
 
 use assert_fs::prelude::*;

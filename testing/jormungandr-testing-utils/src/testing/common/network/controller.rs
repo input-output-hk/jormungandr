@@ -4,7 +4,7 @@ use crate::testing::common::{
 };
 use crate::{
     testing::{
-        network_builder::{LeadershipMode, NodeSetting, PersistenceMode, Settings, SpawnParams},
+        network::{LeadershipMode, NodeSetting, PersistenceMode, Settings, SpawnParams},
         JormungandrParams,
     },
     wallet::Wallet,

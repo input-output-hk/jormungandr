@@ -1,4 +1,4 @@
-use crate::testing::network_builder::{
+use crate::testing::network::{
     Blockchain as BlockchainTemplate, ExternalWalletTemplate, Node as NodeTemplate, NodeAlias,
     Random, Wallet, WalletAlias, WalletTemplate, WalletType,
 };

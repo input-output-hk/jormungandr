@@ -1,12 +1,12 @@
-use jormungandr_testing_utils::testing::common::{
-    jormungandr::JormungandrProcess,
-    network::{NetworkBuilder, WalletTemplateBuilder},
-};
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
-use jormungandr_testing_utils::testing::network_builder::Blockchain;
+use jormungandr_testing_utils::testing::common::{
+    jormungandr::JormungandrProcess,
+    network::{NetworkBuilder, WalletTemplateBuilder},
+};
+use jormungandr_testing_utils::testing::network::Blockchain;
 use std::{cmp::PartialOrd, fmt::Display};
 
 use chain_impl_mockchain::block::BlockDate;

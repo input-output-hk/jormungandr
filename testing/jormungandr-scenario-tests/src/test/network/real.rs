@@ -11,7 +11,7 @@ use crate::{
     Context, NodeController,
 };
 use jormungandr_testing_utils::testing::{
-    network_builder::{Blockchain, TopologyBuilder, WalletTemplate},
+    network::{Blockchain, TopologyBuilder, WalletTemplate},
     node::{download_last_n_releases, get_jormungandr_bin},
 };
 
