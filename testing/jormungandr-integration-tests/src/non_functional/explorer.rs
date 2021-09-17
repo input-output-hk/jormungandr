@@ -144,7 +144,7 @@ pub fn explorer_load_test() {
         .do_setup(addresses.iter().map(|x| x.address().to_string()).collect())
         .unwrap();
     let config = Configuration::duration(
-        100,
+        30,
         std::time::Duration::from_secs(60),
         100,
         Monitor::Progress(100),

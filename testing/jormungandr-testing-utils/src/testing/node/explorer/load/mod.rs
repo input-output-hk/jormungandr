@@ -7,12 +7,15 @@ use rand::RngCore;
 use rand_core::OsRng;
 use std::time::Instant;
 
+const DEFAULT_MAX_SPLITS: usize = 7; // equals to 128 splits, will likely not reach that value but it's there just to prevent a stack overflow
+
 #[derive(Clone)]
 pub struct ExplorerRequestGen {
     explorer: Explorer,
     rand: OsRng,
     addresses: Vec<String>,
     stake_pools: Vec<String>,
+    max_splits: usize,
 }
 
 impl ExplorerRequestGen {
@@ -22,6 +25,7 @@ impl ExplorerRequestGen {
             rand: OsRng,
             addresses: Vec::new(),
             stake_pools: Vec::new(),
+            max_splits: DEFAULT_MAX_SPLITS,
         }
     }
 
@@ -153,7 +157,13 @@ impl RequestGenerator for ExplorerRequestGen {
         })
     }
 
-    fn split(self) -> (Self, Option<Self>) {
+    fn split(mut self) -> (Self, Option<Self>) {
+        // Since explorer queries do not modify the node state we can split as many times as we want
+        // but that may trigger a bug in rayon so we artificially limit it
+        if self.max_splits == 0 {
+            return (self, None);
+        }
+        self.max_splits -= 1;
         (self.clone(), Some(self))
     }
 }
