@@ -1,5 +1,5 @@
 use super::setup;
-use crate::common::{
+use jormungandr_testing_utils::testing::common::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
 use chain_core::property::FromStr;

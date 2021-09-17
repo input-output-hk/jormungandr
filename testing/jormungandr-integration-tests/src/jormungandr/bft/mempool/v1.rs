@@ -1,5 +1,5 @@
-use crate::common::jormungandr::{ConfigurationBuilder, Starter};
-use crate::common::startup;
+use jormungandr_testing_utils::testing::common::jormungandr::{ConfigurationBuilder, Starter};
+use jormungandr_testing_utils::testing::common::startup;
 use assert_fs::TempDir;
 use chain_core::property::Fragment;
 use chain_impl_mockchain::block::BlockDate;

@@ -1,7 +1,7 @@
-use crate::common::jcli::JCli;
-use crate::common::jormungandr::ConfigurationBuilder;
-use crate::common::startup;
-use crate::common::transaction_utils::TransactionHash;
+use jormungandr_testing_utils::testing::common::jcli::JCli;
+use jormungandr_testing_utils::testing::common::jormungandr::ConfigurationBuilder;
+use jormungandr_testing_utils::testing::common::startup;
+use jormungandr_testing_utils::testing::common::transaction_utils::TransactionHash;
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use chain_impl_mockchain::block::BlockDate;

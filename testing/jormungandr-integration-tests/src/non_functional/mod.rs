@@ -40,7 +40,7 @@ pub mod persistent_log;
 
 pub mod voting;
 
-use crate::common::{
+use jormungandr_testing_utils::testing::common::{
     jcli::{self, JCli},
     jormungandr::{JormungandrError, JormungandrProcess},
 };

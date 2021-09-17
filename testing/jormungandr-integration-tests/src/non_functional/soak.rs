@@ -1,8 +1,8 @@
-use crate::common::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
-};
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed, Mempool};
+use jormungandr_testing_utils::testing::common::{
+    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+};
 use jormungandr_testing_utils::testing::{benchmark_consumption, benchmark_endurance};
 use jortestkit::process::Wait;
 use std::time::Duration;

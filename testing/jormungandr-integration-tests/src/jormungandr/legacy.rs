@@ -1,5 +1,5 @@
-use crate::common::transaction_utils::TransactionHash;
-use crate::common::{
+use jormungandr_testing_utils::testing::common::transaction_utils::TransactionHash;
+use jormungandr_testing_utils::testing::common::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,

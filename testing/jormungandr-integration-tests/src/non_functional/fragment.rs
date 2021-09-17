@@ -1,5 +1,5 @@
-use crate::common::jormungandr::ConfigurationBuilder;
-use crate::common::startup;
+use jormungandr_testing_utils::testing::common::jormungandr::ConfigurationBuilder;
+use jormungandr_testing_utils::testing::common::startup;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
@@ -58,8 +58,8 @@ pub fn fragment_load_test() {
         ),
     );
 
-    use crate::common::jcli::FragmentsCheck;
-    use crate::common::jcli::JCli;
+    use jormungandr_testing_utils::testing::common::jcli::FragmentsCheck;
+    use jormungandr_testing_utils::testing::common::jcli::JCli;
 
     request_generator.prepare(BlockDateDto::new(0, 19));
 

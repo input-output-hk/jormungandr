@@ -1,4 +1,4 @@
-use crate::common::{jcli::JCli, startup::create_new_key_pair};
+use jormungandr_testing_utils::testing::common::{jcli::JCli, startup::create_new_key_pair};
 use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::PoolId, testing::builders::cert_builder::build_stake_pool_retirement_cert,

@@ -2,7 +2,7 @@ use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::interfaces::TrustedPeer;
 use jormungandr_testing_utils::testing::{node::grpc::JormungandrClient, SyncNode};
 
-use crate::common::{
+use jormungandr_testing_utils::testing::common::{
     configuration::JormungandrParams,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
@@ -63,7 +63,7 @@ pub mod client {
 
 pub mod server {
     use super::*;
-    use crate::common::configuration;
+    use jormungandr_testing_utils::testing::common::configuration;
     const SERVER_RETRY_WAIT: Duration = Duration::from_secs(1);
     const TIMEOUT: Duration = Duration::from_secs(60);
 

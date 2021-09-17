@@ -1,4 +1,4 @@
-use crate::common::jcli::JCli;
+use jormungandr_testing_utils::testing::common::jcli::JCli;
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;

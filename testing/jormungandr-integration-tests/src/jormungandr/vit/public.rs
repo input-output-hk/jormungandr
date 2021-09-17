@@ -1,5 +1,5 @@
-use crate::common::startup::start_stake_pool;
-use crate::common::{
+use jormungandr_testing_utils::testing::common::startup::start_stake_pool;
+use jormungandr_testing_utils::testing::common::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,

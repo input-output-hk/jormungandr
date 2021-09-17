@@ -1,4 +1,4 @@
-use crate::common::{jormungandr::ConfigurationBuilder, startup};
+use jormungandr_testing_utils::testing::common::{jormungandr::ConfigurationBuilder, startup};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
 use jormungandr_testing_utils::testing::node::RestRequestGen;
 use jortestkit::load::{self, Configuration, Monitor};

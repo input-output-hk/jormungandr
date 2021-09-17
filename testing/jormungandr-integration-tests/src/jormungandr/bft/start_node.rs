@@ -1,4 +1,4 @@
-use crate::common::jormungandr::{ConfigurationBuilder, Starter};
+use jormungandr_testing_utils::testing::common::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput};
 
 use assert_fs::prelude::*;

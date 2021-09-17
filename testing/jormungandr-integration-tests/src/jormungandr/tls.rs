@@ -1,9 +1,9 @@
-use crate::common::{
+use assert_fs::TempDir;
+use jormungandr_lib::interfaces::Tls;
+use jormungandr_testing_utils::testing::common::{
     jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode},
     resources,
 };
-use assert_fs::TempDir;
-use jormungandr_lib::interfaces::Tls;
 
 #[test]
 #[cfg(any(unix, windows))]

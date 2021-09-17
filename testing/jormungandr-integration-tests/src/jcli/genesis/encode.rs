@@ -1,4 +1,4 @@
-use crate::common::{
+use jormungandr_testing_utils::testing::common::{
     configuration::{Block0ConfigurationBuilder, JormungandrParams},
     jcli::JCli,
     jormungandr::ConfigurationBuilder,

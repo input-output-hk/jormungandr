@@ -1,4 +1,4 @@
-use crate::common::{jcli::JCli, startup};
+use jormungandr_testing_utils::testing::common::{jcli::JCli, startup};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
 
 lazy_static! {

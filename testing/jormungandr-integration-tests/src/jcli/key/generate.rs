@@ -1,4 +1,4 @@
-use crate::common::jcli::JCli;
+use jormungandr_testing_utils::testing::common::jcli::JCli;
 
 #[test]
 pub fn test_ed25519_key_generation() {

@@ -8,7 +8,7 @@ use jormungandr_testing_utils::testing::{
 
 use crate::mjolnir_app::bootstrap::ClientLoadConfig;
 use crate::mjolnir_app::MjolnirError;
-use jormungandr_integration_tests::common::jormungandr::JormungandrProcess;
+use jormungandr_testing_utils::testing::common::jormungandr::JormungandrProcess;
 use std::{
     thread,
     time::{Duration, Instant},

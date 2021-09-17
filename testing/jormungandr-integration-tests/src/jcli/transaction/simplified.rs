@@ -1,5 +1,5 @@
-use crate::common::jormungandr::ConfigurationBuilder;
-use crate::common::{jcli::JCli, jormungandr::starter::Starter, startup};
+use jormungandr_testing_utils::testing::common::jormungandr::ConfigurationBuilder;
+use jormungandr_testing_utils::testing::common::{jcli::JCli, jormungandr::starter::Starter, startup};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{BlockDate, InitialUTxO};
 

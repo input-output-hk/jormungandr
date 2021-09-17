@@ -1,11 +1,11 @@
-use crate::common::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
-};
 use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jormungandr_testing_utils::stake_pool::StakePool;
+use jormungandr_testing_utils::testing::common::{
+    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+};
 use jormungandr_testing_utils::testing::node::Explorer;
 use jortestkit::process::Wait;
 use std::str::FromStr;
@@ -19,8 +19,8 @@ use std::time::Duration;
 #[cfg(feature = "explorer-schema-gen")]
 #[cfg(unix)]
 pub fn explorer_schema_diff_test() {
-    use crate::common::jormungandr::Starter;
     use assert_fs::{fixture::PathChild, TempDir};
+    use jormungandr_testing_utils::testing::common::jormungandr::Starter;
 
     let temp_dir = TempDir::new().unwrap();
     let config = ConfigurationBuilder::new().with_explorer().build(&temp_dir);

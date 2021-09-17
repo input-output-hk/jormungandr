@@ -1,4 +1,4 @@
-use crate::common::jcli::JCli;
+use jormungandr_testing_utils::testing::common::jcli::JCli;
 use chain_addr::Discrimination;
 
 #[test]

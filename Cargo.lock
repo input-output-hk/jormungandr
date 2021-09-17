@@ -2051,6 +2051,7 @@ dependencies = [
 name = "jormungandr-testing-utils"
 version = "0.13.0-dev"
 dependencies = [
+ "assert_cmd",
  "assert_fs",
  "base64",
  "bech32 0.8.1",
@@ -2082,6 +2083,7 @@ dependencies = [
  "os_info",
  "parity-multiaddr",
  "poldercast",
+ "predicates 2.0.2",
  "prost",
  "qrcodegen",
  "quircs",
@@ -2099,6 +2101,7 @@ dependencies = [
  "symmetric-cipher",
  "sysinfo 0.20.3",
  "tar",
+ "tempfile",
  "thiserror",
  "tokio",
  "tokio-stream",

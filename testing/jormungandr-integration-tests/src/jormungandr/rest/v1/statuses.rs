@@ -1,5 +1,5 @@
-use crate::common::jormungandr::JormungandrProcess;
-use crate::common::{jormungandr::ConfigurationBuilder, startup};
+use jormungandr_testing_utils::testing::common::jormungandr::JormungandrProcess;
+use jormungandr_testing_utils::testing::common::{jormungandr::ConfigurationBuilder, startup};
 use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId};
 use jormungandr_testing_utils::testing::{FragmentSenderSetup, MemPoolCheck};
 use rstest::*;

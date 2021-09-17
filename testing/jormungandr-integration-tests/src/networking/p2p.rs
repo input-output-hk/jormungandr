@@ -1,4 +1,4 @@
-use crate::common::{
+use jormungandr_testing_utils::testing::common::{
     jormungandr::process::JormungandrProcess,
     network::{NetworkBuilder, WalletTemplateBuilder},
 };

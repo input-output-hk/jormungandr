@@ -1,4 +1,4 @@
-use crate::common::{jcli::JCli, jormungandr::starter::Starter, jormungandr::ConfigurationBuilder};
+use jormungandr_testing_utils::testing::common::{jcli::JCli, jormungandr::starter::Starter, jormungandr::ConfigurationBuilder};
 use assert_fs::TempDir;
 use chain_core::property::BlockDate;
 use chain_impl_mockchain::vote::Choice;
