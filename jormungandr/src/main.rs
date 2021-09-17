@@ -158,7 +158,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let block_cache_ttl: Duration = Duration::from_secs(120);
         let stats_counter = stats_counter.clone();
         services.spawn_future("block", move |info| {
-            let process = blockchain::Process {
+            let task_data = blockchain::TaskData {
                 blockchain,
                 blockchain_tip,
                 stats_counter,
@@ -167,7 +167,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 explorer_msgbox,
                 garbage_collection_interval: block_cache_ttl,
             };
-            process.start(info, block_queue)
+            blockchain::start(task_data, info, block_queue)
         });
     }
 
@@ -500,7 +500,7 @@ async fn bootstrap_internal(
 
     let explorer_db = if settings.explorer {
         futures::select! {
-            explorer_result = explorer::ExplorerDb::bootstrap(block0_explorer, &blockchain, blockchain_tip.clone()).fuse() => {
+            explorer_result = explorer::ExplorerDb::bootstrap(block0_explorer, &blockchain).fuse() => {
                 Some(explorer_result?)
             },
             _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),

@@ -47,7 +47,18 @@ impl Branches {
         let maybe_branch = self.apply(Arc::clone(&candidate)).await;
         match maybe_branch {
             Some(branch) => branch,
-            None => self.create(candidate).await,
+            None => {
+                let maybe_exists = self
+                    .branches()
+                    .await
+                    .into_iter()
+                    .find(|branch| branch.hash() == candidate.hash());
+
+                if let Some(branch) = maybe_exists {
+                    return Branch::new(branch);
+                }
+                self.create(candidate).await
+            }
         }
     }
 

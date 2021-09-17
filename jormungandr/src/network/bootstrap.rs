@@ -1,6 +1,9 @@
 use super::grpc;
 use crate::blockcfg::{Block, HeaderDesc, HeaderHash};
-use crate::blockchain::{self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip};
+use crate::blockchain::{
+    self, Blockchain, Error as BlockchainError, PreCheckedHeader, Ref, Tip, TipUpdater,
+};
+use crate::metrics::Metrics;
 use crate::network::convert::Decode;
 use crate::settings::start::network::Peer;
 use crate::topology;
@@ -207,7 +210,7 @@ impl BootstrapInfo {
 }
 
 async fn bootstrap_from_stream<S>(
-    mut blockchain: Blockchain,
+    blockchain: Blockchain,
     branch: Tip,
     stream: S,
     cancellation_token: CancellationToken,
@@ -220,6 +223,13 @@ where
 
     let mut bootstrap_info = BootstrapInfo::new();
     let mut maybe_parent_tip = None;
+    let mut tip_updater = TipUpdater::new(
+        branch,
+        blockchain.clone(),
+        None,
+        None,
+        Metrics::builder().build(),
+    );
 
     let mut stream = stream.map_err(Error::PullStreamFailed);
     let mut cancel = cancellation_token.cancelled().boxed();
@@ -266,15 +276,7 @@ where
             }
             Err(err) => {
                 if let Some(parent_tip) = maybe_parent_tip {
-                    if let Err(err) = blockchain::process_new_ref(
-                        &mut blockchain,
-                        branch.clone(),
-                        parent_tip.clone(),
-                        None,
-                        None,
-                    )
-                    .await
-                    {
+                    if let Err(err) = tip_updater.process_new_ref(parent_tip.clone()).await {
                         tracing::warn!(error = ?err, "couldn't gracefully exit from failed netboot");
                     }
                 }
@@ -284,7 +286,8 @@ where
     }
 
     if let Some(parent_tip) = maybe_parent_tip {
-        blockchain::process_new_ref(&mut blockchain, branch, parent_tip, None, None)
+        tip_updater
+            .process_new_ref(parent_tip)
             .await
             .map_err(Error::ChainSelectionFailed)
     } else {

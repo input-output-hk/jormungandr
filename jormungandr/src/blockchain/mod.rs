@@ -33,8 +33,8 @@ pub use self::{
     chain_selection::{compare_against, ComparisonResult},
     checkpoints::Checkpoints,
     multiverse::Multiverse,
-    process::{process_new_ref, Process},
+    process::{start, TaskData},
     reference::Ref,
     storage::{Error as StorageError, Storage},
-    tip::Tip,
+    tip::{Tip, TipUpdater}, // TODO: Remove TipUpdater as soon as the bootstrap process is refactored
 };
