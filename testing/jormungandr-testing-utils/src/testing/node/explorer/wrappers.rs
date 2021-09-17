@@ -1,5 +1,4 @@
-use super::super::data::last_block;
-use crate::testing::node::explorer::BlockDate;
+use crate::testing::node::explorer::{data::last_block, BlockDate};
 use chain_impl_mockchain::block::BlockDate as LibBlockDate;
 use graphql_client::Response;
 
