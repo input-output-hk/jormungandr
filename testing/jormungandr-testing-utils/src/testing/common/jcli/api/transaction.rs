@@ -1,5 +1,5 @@
-use crate::testing::common::{jcli::command::TransactionCommand, witness::Witness};
 use crate::testing::process::ProcessOutput;
+use crate::testing::{common::jcli::command::TransactionCommand, witness::Witness};
 use crate::wallet::Wallet;
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::TempDir;

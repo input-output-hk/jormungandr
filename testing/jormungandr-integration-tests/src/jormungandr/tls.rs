@@ -1,7 +1,7 @@
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::Tls;
-use jormungandr_testing_utils::testing::common::{
-    jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode},
+use jormungandr_testing_utils::testing::{
+    common::jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode},
     resources,
 };
 

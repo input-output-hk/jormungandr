@@ -1,11 +1,11 @@
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{BlockDate, InitialUTxO, UTxOInfo},
+};
 use jormungandr_testing_utils::testing::common::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
-};
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{BlockDate, InitialUTxO, UTxOInfo},
 };
 
 use chain_impl_mockchain::fee::LinearFee;

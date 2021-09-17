@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
-use crate::testing::common::{jcli::JCli, witness::Witness};
+use crate::testing::common::jcli::JCli;
+use crate::testing::witness::Witness;
 use crate::wallet::Wallet;
 use assert_fs::fixture::ChildPath;
 use assert_fs::{prelude::*, TempDir};

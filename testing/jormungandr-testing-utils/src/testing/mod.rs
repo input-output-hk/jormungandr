@@ -5,11 +5,13 @@ pub mod fragments;
 pub mod network;
 pub mod node;
 pub mod process;
-mod remote;
-mod storage;
+pub mod remote;
+pub mod resources;
+pub mod storage;
 pub mod sync;
-mod verify;
-mod vit;
+pub mod verify;
+pub mod vit;
+pub mod witness;
 
 pub use fragments::{
     signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, AdversaryFragmentGenerator,
