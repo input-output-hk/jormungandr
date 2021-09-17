@@ -2,6 +2,7 @@ pub mod chain_storable;
 mod endian;
 pub mod error;
 mod helpers;
+pub mod pagination;
 mod pair;
 pub mod schema;
 mod state_ref;
@@ -20,6 +21,7 @@ pub(crate) type P<K, V> = btree::page::Page<K, V>;
 type Db<K, V> = btree::Db<K, V>;
 
 type SanakirjaMutTx = ::sanakirja::MutTxn<Arc<::sanakirja::Env>, ()>;
+type SanakirjaTx = ::sanakirja::Txn<Arc<::sanakirja::Env>>;
 
 #[derive(Clone)]
 pub struct ExplorerDb {
