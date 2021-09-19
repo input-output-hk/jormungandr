@@ -4,12 +4,15 @@ use rand::RngCore;
 use rand_core::OsRng;
 use std::time::Instant;
 
+const DEFAULT_MAX_SPLITS: usize = 7; // equals to 128 splits, will likely not reach that value but it's there just to prevent a stack overflow
+
 #[derive(Clone)]
 pub struct RestRequestGen {
     rest_client: JormungandrRest,
     rand: OsRng,
     addresses: Vec<String>,
     stake_pools: Vec<String>,
+    max_splits: usize,
 }
 
 impl RestRequestGen {
@@ -19,6 +22,7 @@ impl RestRequestGen {
             rand: OsRng,
             addresses: Vec::new(),
             stake_pools: Vec::new(),
+            max_splits: DEFAULT_MAX_SPLITS,
         }
     }
 
@@ -58,7 +62,7 @@ impl RestRequestGen {
 impl RequestGenerator for RestRequestGen {
     fn next(&mut self) -> Result<Request, RequestFailure> {
         let start = Instant::now();
-        match self.next_usize() % 10 {
+        match self.next_usize() % 9 {
             0 => {
                 self.rest_client.p2p_available().map_err(|e| {
                     RequestFailure::General(format!("Rest - p2p_available: {}", e.to_string()))
@@ -112,7 +116,13 @@ impl RequestGenerator for RestRequestGen {
         })
     }
 
-    fn split(self) -> (Self, Option<Self>) {
+    fn split(mut self) -> (Self, Option<Self>) {
+        // Since rest queries do not modify the node state we can split as many times as we want
+        // but that may trigger a bug in rayon so we artificially limit it
+        if self.max_splits == 0 {
+            return (self, None);
+        }
+        self.max_splits -= 1;
         (self.clone(), Some(self))
     }
 }
