@@ -586,6 +586,7 @@ paths:
                   - state
                   - txRecvCnt
                   - txRejectedCnt
+                  - txPending
                   - uptime
                   - version
                   - peerAvailableCnt
@@ -662,6 +663,10 @@ paths:
                     minimum: 0
                   txRejectedCnt:
                     description: Number of transactions rejected by the ledger
+                    type: integer
+                    minimum: 0
+                  txPending:
+                    description: Number of pending transactions in the mempool
                     type: integer
                     minimum: 0
                   uptime:
