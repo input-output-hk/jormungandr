@@ -585,6 +585,7 @@ paths:
                   - lastBlockTx
                   - state
                   - txRecvCnt
+                  - txRejectedCnt
                   - uptime
                   - version
                   - peerAvailableCnt
@@ -657,6 +658,10 @@ paths:
                       - Running
                   txRecvCnt:
                     description: Number of transactions received by node
+                    type: integer
+                    minimum: 0
+                  txRejectedCnt:
+                    description: Number of transactions rejected by the ledger
                     type: integer
                     minimum: 0
                   uptime:

@@ -31,7 +31,13 @@ pub trait FragmentSelectionAlgorithm {
         pool: &mut Pool,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
-    ) -> (Contents, ApplyBlockLedger);
+    ) -> FragmentSelectionResult;
+}
+
+pub struct FragmentSelectionResult {
+    pub contents: Contents,
+    pub ledger: ApplyBlockLedger,
+    pub rejected_fragments_cnt: usize,
 }
 
 #[derive(Debug)]
@@ -63,13 +69,14 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         pool: &mut Pool,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
-    ) -> (Contents, ApplyBlockLedger) {
+    ) -> FragmentSelectionResult {
         use futures::future::{select, Either};
 
         let date: BlockDate = ledger.block_date().into();
         let mut current_total_size = 0;
         let mut contents_builder = ContentsBuilder::new();
         let mut return_to_pool = Vec::new();
+        let mut rejected_fragments_cnt = 0;
 
         let soft_deadline_future = soft_deadline_future.shared();
         let hard_deadline_future = hard_deadline_future.shared();
@@ -88,6 +95,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                 );
                 tracing::debug!("{}", reason);
                 logs.modify(id, FragmentStatus::Rejected { reason }, date);
+                rejected_fragments_cnt += 1;
                 continue;
             }
 
@@ -134,6 +142,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                                 },
                                 date,
                             );
+                            rejected_fragments_cnt += 1;
                             break;
                         }
                     }
@@ -154,7 +163,8 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                         msg.push_str(&e.to_string());
                     }
                     tracing::debug!(?error, "fragment is rejected");
-                    logs.modify(id, FragmentStatus::Rejected { reason: msg }, date)
+                    logs.modify(id, FragmentStatus::Rejected { reason: msg }, date);
+                    rejected_fragments_cnt += 1;
                 }
             }
 
@@ -166,6 +176,10 @@ impl FragmentSelectionAlgorithm for OldestFirst {
         return_to_pool.reverse();
         pool.return_to_pool(return_to_pool);
 
-        (contents_builder.into(), ledger)
+        FragmentSelectionResult {
+            contents: contents_builder.into(),
+            ledger,
+            rejected_fragments_cnt,
+        }
     }
 }
