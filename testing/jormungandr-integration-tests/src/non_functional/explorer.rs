@@ -7,12 +7,12 @@ use crate::common::{
 
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{ActiveSlotCoefficient, KesUpdateSpeed},
+    interfaces::{ActiveSlotCoefficient, BlockDate, KesUpdateSpeed},
 };
 use jormungandr_testing_utils::{
     testing::{
         benchmark_consumption, benchmark_endurance, node::explorer::load::ExplorerRequestGen,
-        Endurance, EnduranceBenchmarkRun, Thresholds,
+        BlockDateGenerator, Endurance, EnduranceBenchmarkRun, Thresholds,
     },
     wallet::Wallet,
 };
@@ -48,12 +48,17 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
             .for_process("Node with Explorer", jormungandr.pid() as usize)
             .start();
 
+    let shift = BlockDate::new(0, 4);
+    let settings = jormungandr.rest().settings().unwrap();
+    let expiry_block_date_generator = BlockDateGenerator::rolling(&settings, shift.into(), false);
+
     loop {
         let transaction = jcli
             .transaction_builder(jormungandr.genesis_block_hash())
             .new_transaction()
             .add_account(&sender.address().to_string(), &output_value.into())
             .add_output(&receiver.address().to_string(), output_value.into())
+            .set_expiry_date(expiry_block_date_generator.block_date().into())
             .finalize()
             .seal_with_witness_for_address(&sender)
             .to_message();
