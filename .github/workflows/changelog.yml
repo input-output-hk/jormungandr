@@ -1,0 +1,16 @@
+name: CHANGELOG
+
+on:
+  pull_request:
+
+jobs:
+  diff_changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: git fetch origin master
+      - run: |
+          if [[ ! `git diff --name-only origin/master | grep CHANGELOG.md` ]]
+          then
+            echo "::warning file=CHANGELOG.md::CHANGELOG.md was not updated"
+          fi
