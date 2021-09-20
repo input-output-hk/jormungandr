@@ -587,6 +587,7 @@ paths:
                   - txRecvCnt
                   - txRejectedCnt
                   - txPending
+                  - votesCast
                   - uptime
                   - version
                   - peerAvailableCnt
@@ -667,6 +668,10 @@ paths:
                     minimum: 0
                   txPending:
                     description: Number of pending transactions in the mempool
+                    type: integer
+                    minimum: 0
+                  votesCast:
+                    description: Number of successful vote cast fragments processed by this node
                     type: integer
                     minimum: 0
                   uptime:
