@@ -15,8 +15,6 @@ use jormungandr_lib::{
         Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret, SignedCertificate,
     },
 };
-use jortestkit::process as process_utils;
-
 use super::jcli::JCli;
 use assert_fs::fixture::{ChildPath, PathChild, TempDir};
 use assert_fs::prelude::*;
@@ -171,16 +169,4 @@ pub fn start_bft(
         .build(&temp_dir);
 
     Starter::new().temp_dir(temp_dir).config(config).start()
-}
-
-pub fn sleep_till_epoch(epoch_interval: u32, grace_period: u32, config: &Block0Configuration) {
-    let coeff = epoch_interval * 2;
-    let slots_per_epoch: u32 = config.blockchain_configuration.slots_per_epoch.into();
-    let slot_duration: u8 = config.blockchain_configuration.slot_duration.into();
-    let wait_time = ((slots_per_epoch * (slot_duration as u32)) * coeff) + grace_period;
-    process_utils::sleep(wait_time.into());
-}
-
-pub fn sleep_till_next_epoch(grace_period: u32, config: &Block0Configuration) {
-    sleep_till_epoch(1, grace_period, config);
 }

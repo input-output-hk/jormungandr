@@ -12,7 +12,7 @@ use jormungandr_testing_utils::testing::{
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
-        node::{download_last_n_releases, get_jormungandr_bin},
+        node::{download_last_n_releases, get_jormungandr_bin, time},
         FragmentSender,
     },
 };
@@ -209,7 +209,7 @@ pub fn test_legacy_node_all_fragments() {
 
     // 6. send pool update certificate
 
-    startup::sleep_till_next_epoch(1, jormungandr.block0_configuration());
+    time::wait_for_epoch(2, jormungandr.rest());
     fragment = first_stake_pool_owner
         .issue_pool_update_cert(
             &jormungandr.genesis_block_hash(),
