@@ -141,7 +141,7 @@ impl Controller {
     fn make_starter_for(&mut self, spawn_params: &SpawnParams) -> Result<Starter, ControllerError> {
         let node_setting = self.node_settings(&spawn_params.alias)?;
         let dir = self.node_dir(&node_setting.alias);
-        let mut config = node_setting.config().clone();
+        let mut config = node_setting.config.clone();
         spawn_params.override_settings(&mut config);
 
         for peer in config.p2p.trusted_peers.iter_mut() {
@@ -169,7 +169,7 @@ impl Controller {
         config_file.write_str(&yaml)?;
 
         let secret_file = dir.child(NODE_SECRETS_FILE);
-        let yaml = serde_yaml::to_string(node_setting.secret())?;
+        let yaml = serde_yaml::to_string(&node_setting.secret)?;
         secret_file.write_str(&yaml)?;
 
         let topology_file = dir.child(NODE_TOPOLOGY_KEY_FILE);

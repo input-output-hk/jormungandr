@@ -21,7 +21,7 @@ impl LegacySettings {
             config: converter
                 .convert(&settings.config)
                 .expect("cannot convert node config to legacy"),
-            secret: settings.secret().clone(),
+            secret: settings.secret.clone(),
             node_topology: settings.node_topology.clone(),
         }
     }

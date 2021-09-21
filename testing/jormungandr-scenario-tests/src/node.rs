@@ -467,9 +467,9 @@ impl Node {
     pub fn controller(mut self) -> NodeController {
         let p2p_address = format!(
             "{}",
-            self.node_settings.config().p2p.get_listen_addr().unwrap()
+            self.node_settings.config.p2p.get_listen_addr().unwrap()
         );
-        let rest_uri = uri_from_socket_addr(self.node_settings.config().rest.listen);
+        let rest_uri = uri_from_socket_addr(self.node_settings.config.rest.listen);
 
         NodeController {
             alias: self.alias().clone(),
@@ -534,7 +534,7 @@ impl Node {
             "{} {} ... [{}]",
             *style::icons::jormungandr,
             style::binary.apply_to(self.alias()),
-            self.node_settings.config().rest.listen,
+            self.node_settings.config.rest.listen,
         ));
     }
 
@@ -696,7 +696,7 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
                 path: config_file.as_ref().to_path_buf(),
                 cause: e,
             })?,
-            self.node_settings.config(),
+            &self.node_settings.config,
         )
         .map_err(|e| Error::CannotWriteYamlFile {
             path: config_file.as_ref().to_path_buf(),
@@ -710,7 +710,7 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
                 path: config_secret.as_ref().to_path_buf(),
                 cause: e,
             })?,
-            self.node_settings.secret(),
+            &self.node_settings.secret,
         )
         .map_err(|e| Error::CannotWriteYamlFile {
             path: config_secret.as_ref().to_path_buf(),
@@ -788,7 +788,7 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, Node> {
 
         let progress_bar = ProgressBarController::new(
             self.progress_bar,
-            format!("{}@{}", self.alias, self.node_settings.config().rest.listen),
+            format!("{}@{}", self.alias, self.node_settings.config.rest.listen),
             self.context.progress_bar_mode(),
         );
 
@@ -825,7 +825,7 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, LegacyNode> {
 
         let progress_bar = ProgressBarController::new(
             self.progress_bar,
-            format!("{}@{}", self.alias, self.node_settings.config().rest.listen),
+            format!("{}@{}", self.alias, self.node_settings.config.rest.listen),
             self.context.progress_bar_mode(),
         );
 

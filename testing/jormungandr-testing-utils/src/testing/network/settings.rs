@@ -38,32 +38,6 @@ pub struct NodeSetting {
     pub node_topology: NodeTemplate,
 }
 
-impl NodeSetting {
-    pub fn new(
-        alias: NodeAlias,
-        config: NodeConfig,
-        secret: NodeSecret,
-        topology_secret: SigningKey<Ed25519>,
-        template: NodeTemplate,
-    ) -> Self {
-        Self {
-            alias,
-            config,
-            secret,
-            topology_secret,
-            node_topology: template,
-        }
-    }
-
-    pub fn config(&self) -> &NodeConfig {
-        &self.config
-    }
-
-    pub fn secret(&self) -> &NodeSecret {
-        &self.secret
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct WalletProxySettings {
     pub proxy_address: SocketAddr,

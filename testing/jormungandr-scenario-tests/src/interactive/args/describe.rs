@@ -116,7 +116,7 @@ impl DescribeNodes {
     pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         println!("Nodes:");
         for (alias, node) in controller.controller().nodes() {
-            println!("\t{}: rest api: {}", alias, node.config().rest.listen);
+            println!("\t{}: rest api: {}", alias, node.config.rest.listen);
         }
         Ok(())
     }
