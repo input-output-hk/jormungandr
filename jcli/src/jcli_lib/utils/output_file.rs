@@ -22,6 +22,14 @@ pub struct OutputFile {
     output: Option<PathBuf>,
 }
 
+impl From<PathBuf> for OutputFile {
+    fn from(output: PathBuf) -> Self {
+        Self {
+            output: Some(output),
+        }
+    }
+}
+
 impl OutputFile {
     pub fn open(&self) -> Result<impl Write, Error> {
         io::open_file_write(&self.output).map_err(|cause| Error::CannotOpen {
