@@ -13,7 +13,7 @@ pub use rng::{Random, Seed};
 pub use settings::{NodeSetting, Settings, WalletProxySettings};
 pub use spawn_params::{FaketimeConfig, SpawnParams};
 use std::path::PathBuf;
-pub use topology::{Node, NodeAlias, Topology, TopologyBuilder};
+pub use topology::{Node, NodeAlias, Topology};
 pub use wallet::{ExternalWalletTemplate, Wallet, WalletAlias, WalletTemplate, WalletType};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

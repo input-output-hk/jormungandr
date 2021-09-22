@@ -11,7 +11,7 @@ use crate::{
     Context, NodeController,
 };
 use jormungandr_testing_utils::testing::{
-    network::{Blockchain, TopologyBuilder, WalletTemplate},
+    network::{Blockchain, Topology, WalletTemplate},
     node::{download_last_n_releases, get_jormungandr_bin},
 };
 
@@ -47,7 +47,7 @@ fn prepare_real_scenario(
     consensus: ConsensusVersion,
 ) -> ControllerBuilder {
     let mut builder = ControllerBuilder::new(title);
-    let mut topology_builder = TopologyBuilder::new();
+    let mut topology = Topology::default().with_node(Node::new(CORE_NODE));
 
     let mut blockchain = Blockchain::new(
         consensus,
@@ -58,14 +58,9 @@ fn prepare_real_scenario(
             .expect("active slot coefficient in millis"),
     );
 
-    let core_node = Node::new(CORE_NODE);
-    topology_builder.register_node(core_node);
-
     for i in 0..relay_nodes_count {
         let relay_name = relay_name(i + 1);
-        let mut relay_node = Node::new(&relay_name);
-        relay_node.add_trusted_peer(CORE_NODE);
-        topology_builder.register_node(relay_node);
+        topology = topology.with_node(Node::new(&relay_name).with_trusted_peer(CORE_NODE));
         blockchain.add_leader(relay_name);
     }
 
@@ -77,10 +72,8 @@ fn prepare_real_scenario(
 
         for _ in 0..nodes_count_per_relay {
             let leader_name = leader_name(leader_counter);
-            let mut leader_node = Node::new(&leader_name);
+            topology = topology.with_node(Node::new(&leader_name).with_trusted_peer(&relay_name));
 
-            leader_node.add_trusted_peer(relay_name.clone());
-            topology_builder.register_node(leader_node);
             blockchain.add_leader(leader_name);
 
             leader_counter += 1;
@@ -88,16 +81,14 @@ fn prepare_real_scenario(
 
         for _ in 0..legacy_nodes_count_per_relay {
             let legacy_name = legacy_name(legacy_nodes_counter);
-            let mut legacy_node = Node::new(&legacy_name);
-            legacy_node.add_trusted_peer(relay_name.clone());
-            topology_builder.register_node(legacy_node);
+            topology = topology.with_node(Node::new(&legacy_name).with_trusted_peer(&relay_name));
+
             blockchain.add_leader(legacy_name);
 
             legacy_nodes_counter += 1;
         }
     }
 
-    let topology = topology_builder.build();
     builder.set_topology(topology);
 
     // adds all nodes as leaders

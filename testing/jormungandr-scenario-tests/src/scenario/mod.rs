@@ -17,8 +17,7 @@ pub use jormungandr_lib::interfaces::{
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 
 pub use jormungandr_testing_utils::testing::network::{
-    Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, TopologyBuilder, Wallet, WalletAlias,
-    WalletType,
+    Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, Wallet, WalletAlias, WalletType,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -84,16 +83,15 @@ macro_rules! prepare_scenario {
         }
     ) => {{
         let mut builder = $crate::scenario::ControllerBuilder::new($title);
-        let mut topology_builder = jormungandr_testing_utils::testing::network::TopologyBuilder::new();
+        let mut topology = jormungandr_testing_utils::testing::network::Topology::default();
         $(
             #[allow(unused_mut)]
             let mut node = $crate::scenario::Node::new($topology_tt);
             $(
-                node.add_trusted_peer($node_link);
+                node = node.with_trusted_peer($node_link);
             )*
-            topology_builder.register_node(node);
+            topology = topology.with_node(node);
         )*
-        let topology : jormungandr_testing_utils::testing::network::Topology = topology_builder.build();
         builder.set_topology(topology);
 
         let mut blockchain = $crate::scenario::Blockchain::new(
