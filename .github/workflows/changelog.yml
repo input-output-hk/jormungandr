@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v2
       - run: git fetch origin master
       - run: |
-          if [[ ! `git diff --name-only origin/master | grep CHANGELOG.md` ]]
+          if [[ ! `git diff --exit-code --name-only origin/master -- CHANGELOG.md` ]]
           then
             echo "::warning file=CHANGELOG.md::CHANGELOG.md was not updated"
           fi
