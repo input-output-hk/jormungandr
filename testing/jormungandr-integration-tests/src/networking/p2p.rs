@@ -118,14 +118,18 @@ pub fn assert_node_stats(
 pub fn node_whitelist_itself() {
     let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
@@ -151,14 +155,18 @@ pub fn node_whitelist_itself() {
 pub fn node_does_not_quarantine_whitelisted_node() {
     let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
@@ -198,14 +206,18 @@ pub fn node_does_not_quarantine_whitelisted_node() {
 pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
     let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
@@ -239,14 +251,18 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
 pub fn node_does_not_quarantine_trusted_node() {
     let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
@@ -270,14 +286,18 @@ pub fn node_does_not_quarantine_trusted_node() {
 pub fn node_trust_itself() {
     let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
@@ -304,14 +324,18 @@ pub fn node_trust_itself() {
 pub fn node_put_itself_in_preffered_layers() {
     let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
@@ -346,14 +370,18 @@ fn gossip_interval() {
 
     let mut network_controller = NetworkBuilder::default()
         .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 

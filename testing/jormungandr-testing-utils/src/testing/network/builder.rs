@@ -1,23 +1,20 @@
 use crate::testing::{
     network::{
         controller::{Controller, ControllerError},
-        wallet::template::builder::WalletTemplateBuilder,
         Blockchain, Node, NodeAlias, NodeSetting, Random, Seed, Settings, Topology, WalletTemplate,
     },
     NodeConfigBuilder,
 };
 use assert_fs::TempDir;
-use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::crypto::key::SigningKey;
-use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, KesUpdateSpeed, NodeSecret, NumberOfSlotsPerEpoch, SlotDuration,
-};
+use jormungandr_lib::interfaces::NodeSecret;
 use std::collections::HashMap;
 
+#[derive(Default)]
 pub struct NetworkBuilder {
     topology: Topology,
     blockchain: Blockchain,
-    wallets: Vec<WalletTemplate>,
+    wallet_templates: Vec<WalletTemplate>,
 }
 
 impl NetworkBuilder {
@@ -38,8 +35,8 @@ impl NetworkBuilder {
         self
     }
 
-    pub fn initials(mut self, wallets: Vec<&mut WalletTemplateBuilder>) -> Self {
-        self.wallets.extend(wallets.iter().map(|x| x.build()));
+    pub fn wallet_template(mut self, wallet: WalletTemplate) -> Self {
+        self.wallet_templates.push(wallet);
         self
     }
 
@@ -73,28 +70,11 @@ impl NetworkBuilder {
             self.blockchain.add_leader(leader);
         }
 
-        for wallet in &self.wallets {
+        for wallet in &self.wallet_templates {
             self.blockchain.add_wallet(wallet.clone());
         }
 
         let settings = Settings::new(nodes, self.blockchain, &mut random);
         Controller::new(settings, temp_dir)
-    }
-}
-
-impl Default for NetworkBuilder {
-    fn default() -> Self {
-        Self {
-            blockchain: Blockchain::new(
-                ConsensusVersion::GenesisPraos,
-                NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
-                SlotDuration::new(2).expect("valid slot duration in seconds"),
-                KesUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
-                ActiveSlotCoefficient::new(Milli::from_millis(999))
-                    .expect("active slot coefficient in millis"),
-            ),
-            topology: Topology::default(),
-            wallets: Vec::new(),
-        }
     }
 }

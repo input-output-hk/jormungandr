@@ -37,12 +37,13 @@ macro_rules! build_network {
 pub fn passive_node_last_block_info() {
     let mut network_controller = build_network!()
         .single_trust_direction(PASSIVE, LEADER)
-        .initials(vec![
+        .wallet_template(
             WalletTemplateBuilder::new("alice")
                 .with(1_000_000)
-                .delegated_to(LEADER),
-            WalletTemplateBuilder::new("bob").with(1_000_000),
-        ])
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .wallet_template(WalletTemplateBuilder::new("bob").with(1_000_000).build())
         .build()
         .unwrap();
 
@@ -77,12 +78,13 @@ pub fn passive_node_last_block_info() {
 pub fn leader_node_last_block_info() {
     let mut network_controller = build_network!()
         .single_trust_direction(LEADER_CLIENT, LEADER)
-        .initials(vec![
+        .wallet_template(
             WalletTemplateBuilder::new("alice")
                 .with(1_000_000)
-                .delegated_to(LEADER),
-            WalletTemplateBuilder::new("bob").with(1_000_000),
-        ])
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .wallet_template(WalletTemplateBuilder::new("bob").with(1_000_000).build())
         .build()
         .unwrap();
 

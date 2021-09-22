@@ -1,6 +1,7 @@
 use super::{ExternalWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
 use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use chain_impl_mockchain::milli::Milli;
 use chain_impl_mockchain::{fee::LinearFee, testing::scenario::template::VotePlanDef};
 use jormungandr_lib::interfaces::CommitteeIdDef;
 use jormungandr_lib::interfaces::{
@@ -153,5 +154,18 @@ impl Blockchain {
 
     pub fn wallets(&self) -> impl Iterator<Item = &WalletTemplate> {
         self.wallets.values()
+    }
+}
+
+impl Default for Blockchain {
+    fn default() -> Self {
+        Self::new(
+            ConsensusVersion::GenesisPraos,
+            NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
+            SlotDuration::new(2).expect("valid slot duration in seconds"),
+            KesUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
+            ActiveSlotCoefficient::new(Milli::from_millis(999))
+                .expect("active slot coefficient in millis"),
+        )
     }
 }
