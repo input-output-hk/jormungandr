@@ -45,7 +45,7 @@ impl SimpleCounter {
 
     pub fn get_stats(&self) -> NodeStats {
         let peer_available_cnt = self.peers_available_cnt.load(Ordering::Relaxed);
-        let peer_quarantined_cnt = self.peers_quarantined_cnt.load(Ordering::SeqCst);
+        let peer_quarantined_cnt = self.peers_quarantined_cnt.load(Ordering::Relaxed);
         let peer_total_cnt = peer_available_cnt + peer_quarantined_cnt;
 
         let block_data = self.tip_block.load();
@@ -101,45 +101,46 @@ impl Default for SimpleCounter {
 
 impl MetricsBackend for SimpleCounter {
     fn add_tx_recv_cnt(&self, count: usize) {
-        self.tx_recv_cnt.fetch_add(count, Ordering::SeqCst);
+        self.tx_recv_cnt.fetch_add(count, Ordering::Relaxed);
     }
 
     fn set_tx_pending_cnt(&self, count: usize) {
-        self.tx_pending_cnt.store(count, Ordering::SeqCst);
+        self.tx_pending_cnt.store(count, Ordering::Relaxed);
     }
 
     fn add_block_recv_cnt(&self, count: usize) {
-        self.block_recv_cnt.fetch_add(count, Ordering::SeqCst);
+        self.block_recv_cnt.fetch_add(count, Ordering::Relaxed);
     }
 
     fn add_peer_connected_cnt(&self, count: usize) {
-        self.peers_connected_cnt.fetch_add(count, Ordering::SeqCst);
+        self.peers_connected_cnt.fetch_add(count, Ordering::Relaxed);
     }
 
     fn sub_peer_connected_cnt(&self, count: usize) {
-        self.peers_connected_cnt.fetch_sub(count, Ordering::SeqCst);
+        self.peers_connected_cnt.fetch_sub(count, Ordering::Relaxed);
     }
 
     fn add_peer_quarantined_cnt(&self, count: usize) {
         self.peers_quarantined_cnt
-            .fetch_add(count, Ordering::SeqCst);
+            .fetch_add(count, Ordering::Relaxed);
     }
 
     fn sub_peer_quarantined_cnt(&self, count: usize) {
         self.peers_quarantined_cnt
-            .fetch_sub(count, Ordering::SeqCst);
+            .fetch_sub(count, Ordering::Relaxed);
     }
 
     fn add_peer_available_cnt(&self, count: usize) {
-        self.peers_available_cnt.fetch_add(count, Ordering::SeqCst);
+        self.peers_available_cnt.fetch_add(count, Ordering::Relaxed);
     }
 
     fn sub_peer_available_cnt(&self, count: usize) {
-        self.peers_available_cnt.fetch_sub(count, Ordering::SeqCst);
+        self.peers_available_cnt.fetch_sub(count, Ordering::Relaxed);
     }
 
     fn set_slot_start_time(&self, time: SecondsSinceUnixEpoch) {
-        self.slot_start_time.store(time.to_secs(), Ordering::SeqCst);
+        self.slot_start_time
+            .store(time.to_secs(), Ordering::Relaxed);
     }
 
     fn set_tip_block(&self, block: &Block, block_ref: &Ref) {
