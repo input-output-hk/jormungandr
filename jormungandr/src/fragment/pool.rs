@@ -2,7 +2,10 @@ use crate::{
     blockcfg::{ApplyBlockLedger, LedgerParameters},
     blockchain::{Ref, Tip},
     fragment::{
-        selection::{FragmentSelectionAlgorithm, FragmentSelectionAlgorithmParams, OldestFirst},
+        selection::{
+            FragmentSelectionAlgorithm, FragmentSelectionAlgorithmParams, FragmentSelectionResult,
+            OldestFirst,
+        },
         Fragment, FragmentId, Logs,
     },
     intercom::{NetworkMsg, PropagateMsg},
@@ -270,7 +273,11 @@ impl Pool {
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
     ) -> (Contents, ApplyBlockLedger) {
         let Pool { logs, pool, .. } = self;
-        let result = match selection_alg {
+        let FragmentSelectionResult {
+            contents,
+            ledger,
+            rejected_fragments_cnt,
+        } = match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
                 selection_alg
@@ -285,8 +292,9 @@ impl Pool {
                     .await
             }
         };
+        self.metrics.add_tx_rejected_cnt(rejected_fragments_cnt);
         self.update_metrics();
-        result
+        (contents, ledger)
     }
 
     // Remove from logs fragments that were confirmed (or rejected) in a branch

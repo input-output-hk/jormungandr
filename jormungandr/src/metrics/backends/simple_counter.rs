@@ -17,6 +17,7 @@ use arc_swap::ArcSwapOption;
 
 pub struct SimpleCounter {
     tx_recv_cnt: AtomicUsize,
+    tx_rejected_cnt: AtomicUsize,
     tx_pending_cnt: AtomicUsize,
     block_recv_cnt: AtomicUsize,
     slot_start_time: AtomicU64,
@@ -78,6 +79,11 @@ impl SimpleCounter {
                 .load(Ordering::Relaxed)
                 .try_into()
                 .unwrap(),
+            tx_rejected_cnt: self
+                .tx_rejected_cnt
+                .load(Ordering::Relaxed)
+                .try_into()
+                .unwrap(),
             uptime: Some(self.start_time.elapsed().as_secs()),
         }
     }
@@ -87,6 +93,7 @@ impl Default for SimpleCounter {
     fn default() -> Self {
         Self {
             tx_recv_cnt: Default::default(),
+            tx_rejected_cnt: Default::default(),
             tx_pending_cnt: Default::default(),
             block_recv_cnt: Default::default(),
             slot_start_time: Default::default(),
@@ -102,6 +109,10 @@ impl Default for SimpleCounter {
 impl MetricsBackend for SimpleCounter {
     fn add_tx_recv_cnt(&self, count: usize) {
         self.tx_recv_cnt.fetch_add(count, Ordering::Relaxed);
+    }
+
+    fn add_tx_rejected_cnt(&self, count: usize) {
+        self.tx_rejected_cnt.fetch_add(count, Ordering::Relaxed);
     }
 
     fn set_tx_pending_cnt(&self, count: usize) {

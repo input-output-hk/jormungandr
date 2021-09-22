@@ -10,6 +10,7 @@ pub mod backends;
 pub trait MetricsBackend {
     fn add_tx_recv_cnt(&self, count: usize);
     fn set_tx_pending_cnt(&self, count: usize);
+    fn add_tx_rejected_cnt(&self, count: usize);
     fn add_block_recv_cnt(&self, count: usize);
     fn add_peer_connected_cnt(&self, count: usize);
     fn sub_peer_connected_cnt(&self, count: usize);
@@ -68,6 +69,7 @@ macro_rules! metrics_count_method {
 
 impl MetricsBackend for Metrics {
     metrics_count_method!(add_tx_recv_cnt);
+    metrics_count_method!(add_tx_rejected_cnt);
     metrics_count_method!(set_tx_pending_cnt);
     metrics_count_method!(add_block_recv_cnt);
     metrics_count_method!(add_peer_connected_cnt);
