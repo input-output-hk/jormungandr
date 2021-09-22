@@ -273,22 +273,31 @@ impl FromBytes {
     fn exec(self) -> Result<(), Error> {
         let bytes = read_hex(&self.input_bytes)?;
 
-        if self.public_key {
-            let key_bech32 = match self.key_type {
-                GenPrivKeyType::Ed25519 => bytes_to_pub_key::<Ed25519>(&bytes)?,
-                GenPrivKeyType::Ed25519Bip32 => bytes_to_pub_key::<Ed25519Bip32>(&bytes)?,
-                GenPrivKeyType::Ed25519Extended => unimplemented!(),
-                GenPrivKeyType::SumEd25519_12 => bytes_to_pub_key::<SumEd25519_12>(&bytes)?,
-                GenPrivKeyType::RistrettoGroup2HashDh => {
-                    bytes_to_pub_key::<RistrettoGroup2HashDh>(&bytes)?
-                }
-            };
-            let mut output = self.output_file.open()?;
-            writeln!(output, "{}", key_bech32)?;
-            return Ok(());
-        }
+        let bench32_key = if self.public_key {
+            self.process_public_key(bytes)?
+        } else {
+            self.process_private_key(bytes)?
+        };
+        let mut output = self.output_file.open()?;
+        writeln!(output, "{}", bench32_key)?;
+        Ok(())
+    }
 
-        let priv_key_bech32 = match self.key_type {
+    fn process_public_key(&self, bytes: Vec<u8>) -> Result<String, Error> {
+        let key = match self.key_type {
+            GenPrivKeyType::Ed25519 => bytes_to_pub_key::<Ed25519>(&bytes)?,
+            GenPrivKeyType::Ed25519Bip32 => bytes_to_pub_key::<Ed25519Bip32>(&bytes)?,
+            GenPrivKeyType::Ed25519Extended => unimplemented!(),
+            GenPrivKeyType::SumEd25519_12 => bytes_to_pub_key::<SumEd25519_12>(&bytes)?,
+            GenPrivKeyType::RistrettoGroup2HashDh => {
+                bytes_to_pub_key::<RistrettoGroup2HashDh>(&bytes)?
+            }
+        };
+        Ok(key)
+    }
+
+    fn process_private_key(&self, bytes: Vec<u8>) -> Result<String, Error> {
+        let key = match self.key_type {
             GenPrivKeyType::Ed25519 => bytes_to_priv_key::<Ed25519>(&bytes)?,
             GenPrivKeyType::Ed25519Bip32 => bytes_to_priv_key::<Ed25519Bip32>(&bytes)?,
             GenPrivKeyType::Ed25519Extended => bytes_to_priv_key::<Ed25519Extended>(&bytes)?,
@@ -297,10 +306,7 @@ impl FromBytes {
                 bytes_to_priv_key::<RistrettoGroup2HashDh>(&bytes)?
             }
         };
-
-        let mut output = self.output_file.open()?;
-        writeln!(output, "{}", priv_key_bech32)?;
-        Ok(())
+        Ok(key)
     }
 }
 
