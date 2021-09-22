@@ -223,6 +223,10 @@ impl JormungandrRest {
             .map_err(RestError::CannotDeserialize)
     }
 
+    pub fn set_origin<S: Into<String>>(&mut self, origin: S) {
+        self.inner.set_origin(origin);
+    }
+
     pub fn vote_plan_account_info(
         &self,
         vote_plan_id: VotePlanId,

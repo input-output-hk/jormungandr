@@ -2,8 +2,8 @@
 
 use jormungandr_lib::{
     interfaces::{
-        Explorer, LayersConfig, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls, TopicsOfInterest,
-        TrustedPeer,
+        Cors, Explorer, LayersConfig, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls,
+        TopicsOfInterest, TrustedPeer,
     },
     time::Duration,
 };
@@ -110,6 +110,11 @@ impl NodeConfigBuilder {
 
     pub fn with_rest_tls_config(&mut self, tls: Tls) -> &mut Self {
         self.rest.tls = Some(tls);
+        self
+    }
+
+    pub fn with_rest_cors_config(&mut self, cors: Cors) -> &mut Self {
+        self.rest.cors = Some(cors);
         self
     }
 

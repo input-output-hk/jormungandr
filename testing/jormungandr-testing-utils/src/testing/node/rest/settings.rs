@@ -5,6 +5,7 @@ pub struct RestSettings {
     pub enable_debug: bool,
     pub use_https: bool,
     pub certificate: Option<Certificate>,
+    pub cors: Option<String>,
 }
 
 impl RestSettings {
@@ -13,6 +14,7 @@ impl RestSettings {
             enable_debug: false,
             use_https: true,
             certificate: None,
+            cors: None,
         }
     }
 }
@@ -23,6 +25,7 @@ impl Default for RestSettings {
             enable_debug: false,
             use_https: false,
             certificate: None,
+            cors: None,
         }
     }
 }

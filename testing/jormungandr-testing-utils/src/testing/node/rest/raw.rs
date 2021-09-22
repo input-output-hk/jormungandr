@@ -13,6 +13,7 @@ use reqwest::{
 };
 use std::fmt;
 
+const ORIGIN: &str = "Origin";
 enum ApiVersion {
     V0,
     V1,
@@ -34,7 +35,7 @@ impl fmt::Display for ApiVersion {
 pub struct RawRest {
     uri: String,
     client: Client,
-    logging_enabled: bool,
+    settings: RestSettings,
 }
 
 impl RawRest {
@@ -61,16 +62,24 @@ impl RawRest {
         Self {
             uri,
             client,
-            logging_enabled: settings.enable_debug,
+            settings,
         }
     }
 
+    pub fn rest_settings(&self) -> &RestSettings {
+        &self.settings
+    }
+
+    pub fn rest_settings_mut(&mut self) -> &mut RestSettings {
+        &mut self.settings
+    }
+
     pub fn enable_logger(&mut self) {
-        self.logging_enabled = true;
+        self.rest_settings_mut().enable_debug = true;
     }
 
     pub fn disable_logger(&mut self) {
-        self.logging_enabled = false;
+        self.rest_settings_mut().enable_debug = false;
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<Response, reqwest::Error> {
@@ -84,7 +93,7 @@ impl RawRest {
     }
 
     fn print_request_path(&self, text: &str) {
-        if self.logging_enabled {
+        if self.rest_settings().enable_debug {
             println!("Request: {}", text);
         }
     }
@@ -92,7 +101,22 @@ impl RawRest {
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
         let request = self.path(ApiVersion::V0, path);
         self.print_request_path(&request);
-        self.client.get(request).send()
+
+        let mut client_builder = reqwest::blocking::Client::builder();
+
+        if let Some(cert) = self.rest_settings().certificate.as_ref() {
+            client_builder = client_builder
+                .use_rustls_tls()
+                .add_root_certificate(cert.clone())
+        }
+        let client = client_builder.build()?;
+        let mut res = client.get(&request);
+
+        if let Some(origin) = self.rest_settings().cors.as_ref() {
+            res = res.header(ORIGIN, origin.to_string());
+        }
+
+        res.send()
     }
 
     fn path(&self, api_version: ApiVersion, path: &str) -> String {
