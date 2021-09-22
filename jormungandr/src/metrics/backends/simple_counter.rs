@@ -19,6 +19,7 @@ pub struct SimpleCounter {
     tx_recv_cnt: AtomicUsize,
     tx_rejected_cnt: AtomicUsize,
     tx_pending_cnt: AtomicUsize,
+    votes_cast: AtomicU64,
     block_recv_cnt: AtomicUsize,
     slot_start_time: AtomicU64,
     peers_connected_cnt: AtomicUsize,
@@ -84,6 +85,7 @@ impl SimpleCounter {
                 .load(Ordering::Relaxed)
                 .try_into()
                 .unwrap(),
+            votes_cast: self.votes_cast.load(Ordering::Relaxed),
             uptime: Some(self.start_time.elapsed().as_secs()),
         }
     }
@@ -95,6 +97,7 @@ impl Default for SimpleCounter {
             tx_recv_cnt: Default::default(),
             tx_rejected_cnt: Default::default(),
             tx_pending_cnt: Default::default(),
+            votes_cast: Default::default(),
             block_recv_cnt: Default::default(),
             slot_start_time: Default::default(),
             peers_connected_cnt: Default::default(),
@@ -158,6 +161,7 @@ impl MetricsBackend for SimpleCounter {
         let mut block_tx_count = 0;
         let mut block_input_sum = Value::zero();
         let mut block_fee_sum = Value::zero();
+        let mut votes_cast = 0;
 
         block
             .contents
@@ -175,7 +179,10 @@ impl MetricsBackend for SimpleCounter {
                     Fragment::PoolRetirement(tx) => totals(tx),
                     Fragment::PoolUpdate(tx) => totals(tx),
                     Fragment::VotePlan(tx) => totals(tx),
-                    Fragment::VoteCast(tx) => totals(tx),
+                    Fragment::VoteCast(tx) => {
+                        votes_cast += 1;
+                        totals(tx)
+                    }
                     Fragment::VoteTally(tx) => totals(tx),
                     Fragment::EncryptedVoteTally(tx) => totals(tx),
                     Fragment::Initial(_)
@@ -202,6 +209,7 @@ impl MetricsBackend for SimpleCounter {
             time: SystemTime::from(block_ref.time()),
         };
 
+        self.votes_cast.fetch_add(votes_cast, Ordering::Relaxed);
         self.tip_block.store(Some(Arc::new(block_data)));
     }
 }

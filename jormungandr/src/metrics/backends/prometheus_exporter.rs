@@ -21,6 +21,7 @@ pub struct Prometheus {
     tx_recv_cnt: IntCounter,
     tx_rejected_cnt: IntCounter,
     tx_pending_cnt: UIntGauge,
+    votes_casted_cnt: IntCounter,
     block_recv_cnt: IntCounter,
     peer_connected_cnt: UIntGauge,
     peer_quarantined_cnt: UIntGauge,
@@ -81,6 +82,10 @@ impl Default for Prometheus {
         let tx_rejected_cnt = IntCounter::new("txRejectedCnt", "txRejectedCnt").unwrap();
         registry
             .register(Box::new(tx_rejected_cnt.clone()))
+            .unwrap();
+        let votes_casted_cnt = IntCounter::new("votesCasted", "votesCasted").unwrap();
+        registry
+            .register(Box::new(votes_casted_cnt.clone()))
             .unwrap();
         let block_recv_cnt = IntCounter::new("blockRecvCnt", "blockRecvCnt").unwrap();
         registry.register(Box::new(block_recv_cnt.clone())).unwrap();
@@ -144,6 +149,7 @@ impl Default for Prometheus {
             tx_recv_cnt,
             tx_rejected_cnt,
             tx_pending_cnt,
+            votes_casted_cnt,
             block_recv_cnt,
             peer_connected_cnt,
             peer_quarantined_cnt,
@@ -231,6 +237,7 @@ impl MetricsBackend for Prometheus {
         let mut block_tx_count = 0;
         let mut block_input_sum = Value::zero();
         let mut block_fee_sum = Value::zero();
+        let mut votes_casted = 0;
 
         block
             .contents
@@ -248,7 +255,10 @@ impl MetricsBackend for Prometheus {
                     Fragment::PoolRetirement(tx) => totals(tx),
                     Fragment::PoolUpdate(tx) => totals(tx),
                     Fragment::VotePlan(tx) => totals(tx),
-                    Fragment::VoteCast(tx) => totals(tx),
+                    Fragment::VoteCast(tx) => {
+                        votes_casted += 1;
+                        totals(tx)
+                    }
                     Fragment::VoteTally(tx) => totals(tx),
                     Fragment::EncryptedVoteTally(tx) => totals(tx),
                     Fragment::Initial(_)
@@ -264,6 +274,7 @@ impl MetricsBackend for Prometheus {
             })
             .expect("should be good");
 
+        self.votes_casted_cnt.inc_by(votes_casted);
         self.block_tx_count.set(block_tx_count);
         self.block_input_sum.set(block_input_sum.0);
         self.block_fee_sum.set(block_fee_sum.0);
