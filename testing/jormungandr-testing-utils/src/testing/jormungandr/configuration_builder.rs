@@ -13,11 +13,18 @@ use chain_addr::Discrimination;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
+use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo,
     Initial, InitialUTxO, KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
     NodeSecret, NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
     Value,
+};
+use jormungandr_testing_utils::{
+    testing::{
+        Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
+    },
+    wallet::Wallet,
 };
 use std::path::PathBuf;
 const DEFAULT_SLOT_DURATION: u8 = 2;
@@ -44,7 +51,7 @@ pub struct ConfigurationBuilder {
     block_content_max_size: u32,
     configure_default_log: bool,
     committee_ids: Vec<CommitteeIdDef>,
-    leader_key_pair: Option<KeyPair<Ed25519>>,
+    leader_key_pair: KeyPair<Ed25519>,
     discrimination: Discrimination,
     tx_max_expiry_epochs: Option<u8>,
     log_level: String,
@@ -76,7 +83,7 @@ impl ConfigurationBuilder {
             rewards_history: false,
             configure_default_log: true,
             committee_ids: vec![],
-            leader_key_pair: None,
+            leader_key_pair: create_new_key_pair::<Ed25519>(),
             fees_go_to: None,
             treasury: None,
             total_reward_supply: None,
@@ -279,7 +286,7 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_leader_key_pair(&mut self, leader_key_pair: KeyPair<Ed25519>) -> &mut Self {
-        self.leader_key_pair = Some(leader_key_pair);
+        self.leader_key_pair = leader_key_pair;
         self
     }
 
@@ -303,6 +310,41 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn build_block0(&self) -> Block0Configuration {
+        let mut leaders_ids = self.consensus_leader_ids.clone();
+        leaders_ids.push(self.leader_key_pair.identifier().into());
+
+        let mut initial: Vec<Initial> = Vec::new();
+        initial.extend(self.funds.iter().cloned());
+        initial.extend(self.certs.iter().cloned());
+
+        let mut block0_config_builder = Block0ConfigurationBuilder::new();
+
+        if let Some(tx_max_expiry_epochs) = self.tx_max_expiry_epochs {
+            block0_config_builder = block0_config_builder
+                .with_tx_max_expiry_epochs(tx_max_expiry_epochs)
+                .to_owned();
+        }
+
+        block0_config_builder
+            .with_discrimination(self.discrimination)
+            .with_initial(initial)
+            .with_leaders(leaders_ids)
+            .with_block0_consensus(self.block0_consensus)
+            .with_kes_update_speed(self.kes_update_speed)
+            .with_slots_per_epoch(self.slots_per_epoch)
+            .with_slot_duration(self.slot_duration)
+            .with_fees_go_to(self.fees_go_to)
+            .with_treasury(self.treasury)
+            .with_epoch_stability_depth(self.epoch_stability_depth)
+            .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff)
+            .with_linear_fees(self.linear_fees)
+            .with_block_content_max_size(self.block_content_max_size.into())
+            .with_committee_ids(self.committee_ids.clone())
+            .with_total_rewards_supply(self.total_reward_supply)
+            .build()
+    }
+
     pub fn build(&self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
         let mut node_config = self.node_config_builder.build();
 
@@ -319,7 +361,7 @@ impl ConfigurationBuilder {
             (None, true) => {
                 let path = default_log_file();
                 node_config.log = Some(Log(LogEntry {
-                    level: self.log_level.clone(),
+                    level: "trace".to_string(),
                     format: "json".to_string(),
                     output: LogOutput::Stdout,
                 }));
@@ -327,42 +369,7 @@ impl ConfigurationBuilder {
             }
         };
 
-        let leader_key_pair = self
-            .leader_key_pair
-            .clone()
-            .unwrap_or_else(create_new_key_pair::<Ed25519>);
-        let mut leaders_ids = self.consensus_leader_ids.clone();
-        leaders_ids.push(leader_key_pair.identifier().into());
-
-        let mut initial: Vec<Initial> = Vec::new();
-        initial.extend(self.funds.iter().cloned());
-        initial.extend(self.certs.iter().cloned());
-
-        let mut block0_config_builder = Block0ConfigurationBuilder::new();
-
-        if let Some(tx_max_expiry_epochs) = self.tx_max_expiry_epochs {
-            block0_config_builder = block0_config_builder
-                .with_tx_max_expiry_epochs(tx_max_expiry_epochs)
-                .to_owned();
-        }
-
-        let block0_config = block0_config_builder
-            .with_discrimination(self.discrimination)
-            .with_initial(initial)
-            .with_leaders(leaders_ids)
-            .with_block0_consensus(self.block0_consensus)
-            .with_kes_update_speed(self.kes_update_speed)
-            .with_slots_per_epoch(self.slots_per_epoch)
-            .with_slot_duration(self.slot_duration)
-            .with_fees_go_to(self.fees_go_to)
-            .with_treasury(self.treasury)
-            .with_epoch_stability_depth(self.epoch_stability_depth)
-            .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff)
-            .with_linear_fees(self.linear_fees)
-            .with_block_content_max_size(self.block_content_max_size.into())
-            .with_committee_ids(self.committee_ids.clone())
-            .with_total_rewards_supply(self.total_reward_supply)
-            .build();
+        let block0_config = self.build_block0();
 
         let path_to_output_block = build_genesis_block(&block0_config, temp_dir);
         let genesis_block_hash = match self.block0_hash {
@@ -382,7 +389,7 @@ impl ConfigurationBuilder {
             let secret = self
                 .secret
                 .clone()
-                .unwrap_or_else(|| SecretModelFactory::bft(leader_key_pair.signing_key()));
+                .unwrap_or_else(|| SecretModelFactory::bft(self.leader_key_pair.signing_key()));
             let output_file = temp_dir.child("node_secret.yaml");
             write_secret(&secret, output_file)
         };
