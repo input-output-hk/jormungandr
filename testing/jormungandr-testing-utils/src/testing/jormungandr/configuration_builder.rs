@@ -13,6 +13,7 @@ use chain_addr::Discrimination;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
+use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo,
     Initial, InitialUTxO, KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
@@ -44,7 +45,7 @@ pub struct ConfigurationBuilder {
     block_content_max_size: u32,
     configure_default_log: bool,
     committee_ids: Vec<CommitteeIdDef>,
-    leader_key_pair: Option<KeyPair<Ed25519>>,
+    leader_key_pair: KeyPair<Ed25519>,
     discrimination: Discrimination,
     tx_max_expiry_epochs: Option<u8>,
     log_level: String,
@@ -76,7 +77,7 @@ impl ConfigurationBuilder {
             rewards_history: false,
             configure_default_log: true,
             committee_ids: vec![],
-            leader_key_pair: None,
+            leader_key_pair: create_new_key_pair::<Ed25519>(),
             fees_go_to: None,
             treasury: None,
             total_reward_supply: None,
@@ -279,7 +280,7 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_leader_key_pair(&mut self, leader_key_pair: KeyPair<Ed25519>) -> &mut Self {
-        self.leader_key_pair = Some(leader_key_pair);
+        self.leader_key_pair = leader_key_pair;
         self
     }
 
@@ -332,7 +333,7 @@ impl ConfigurationBuilder {
             .clone()
             .unwrap_or_else(create_new_key_pair::<Ed25519>);
         let mut leaders_ids = self.consensus_leader_ids.clone();
-        leaders_ids.push(leader_key_pair.identifier().into());
+        leaders_ids.push(self.leader_key_pair.identifier().into());
 
         let mut initial: Vec<Initial> = Vec::new();
         initial.extend(self.funds.iter().cloned());
@@ -346,7 +347,7 @@ impl ConfigurationBuilder {
                 .to_owned();
         }
 
-        let block0_config = block0_config_builder
+        block0_config_builder
             .with_discrimination(self.discrimination)
             .with_initial(initial)
             .with_leaders(leaders_ids)
@@ -362,7 +363,34 @@ impl ConfigurationBuilder {
             .with_block_content_max_size(self.block_content_max_size.into())
             .with_committee_ids(self.committee_ids.clone())
             .with_total_rewards_supply(self.total_reward_supply)
-            .build();
+            .build()
+    }
+
+    pub fn build(&self, temp_dir: &impl PathChild) -> JormungandrParams<NodeConfig> {
+        let mut node_config = self.node_config_builder.build();
+
+        //remove id from trusted peers
+        for trusted_peer in node_config.p2p.trusted_peers.iter_mut() {
+            trusted_peer.id = None;
+        }
+
+        let default_log_file = || temp_dir.child("node.log").path().to_path_buf();
+
+        let log_file_path = match (&node_config.log, self.configure_default_log) {
+            (Some(log), _) => log.file_path().map_or_else(default_log_file, Into::into),
+            (None, false) => default_log_file(),
+            (None, true) => {
+                let path = default_log_file();
+                node_config.log = Some(Log(LogEntry {
+                    level: "trace".to_string(),
+                    format: "json".to_string(),
+                    output: LogOutput::Stdout,
+                }));
+                path
+            }
+        };
+
+        let block0_config = self.build_block0();
 
         let path_to_output_block = build_genesis_block(&block0_config, temp_dir);
         let genesis_block_hash = match self.block0_hash {
@@ -382,7 +410,7 @@ impl ConfigurationBuilder {
             let secret = self
                 .secret
                 .clone()
-                .unwrap_or_else(|| SecretModelFactory::bft(leader_key_pair.signing_key()));
+                .unwrap_or_else(|| SecretModelFactory::bft(self.leader_key_pair.signing_key()));
             let output_file = temp_dir.child("node_secret.yaml");
             write_secret(&secret, output_file)
         };
