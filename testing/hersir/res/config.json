@@ -3,17 +3,28 @@
         {
             "spawn_params": {
                 "alias": "passive",
-                "leadership_mode": "Passive",
-                "persistence_mode": "InMemory"
+                "leadership_mode": "passive",
+                "persistence_mode": "inmemory"
             },
             "trusted_peers": ["leader"]
         },
         {
             "spawn_params": {
                 "alias": "leader",
-                "leadership_mode": "Leader",
-                "persistence_mode": "InMemory"
+                "leadership_mode": "leader",
+                "persistence_mode": "inmemory"
             }
         }
-    ]
+    ],
+    "blockchain": {
+        "blockchain_configuration": {
+            "discrimination": "test",
+            "block0_consensus": "genesis_praos",
+            "linear_fees": {
+                "constant": 1,
+                "coefficient": 0,
+                "certificate": 0
+            }
+        }
+    }
 }

@@ -18,12 +18,14 @@ pub use topology::{Node, NodeAlias, Topology};
 pub use wallet::{ExternalWalletTemplate, Wallet, WalletAlias, WalletTemplate, WalletType};
 
 #[derive(Debug, Copy, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum LeadershipMode {
     Leader,
     Passive,
 }
 
 #[derive(Debug, Copy, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
 pub enum PersistenceMode {
     Persistent,
     InMemory,

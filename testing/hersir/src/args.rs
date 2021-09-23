@@ -3,6 +3,9 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 pub struct Args {
-    #[structopt(long = "config", short = "c")]
+    #[structopt(long, short)]
     pub config: PathBuf,
+
+    #[structopt(long, short)]
+    pub verbose: bool,
 }

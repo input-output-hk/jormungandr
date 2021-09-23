@@ -10,12 +10,9 @@ use structopt::StructOpt;
 fn main() {
     let args = Args::from_args();
 
-    let _processes = match spawn::spawn_network(args) {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("{}", e);
-            std::process::exit(1);
-        }
+    if let Err(e) = spawn::spawn_network(args) {
+        eprintln!("{}", e);
+        std::process::exit(1);
     };
 
     loop {

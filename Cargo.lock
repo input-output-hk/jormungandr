@@ -1593,6 +1593,9 @@ dependencies = [
 name = "hersir"
 version = "0.1.0"
 dependencies = [
+ "chain-addr",
+ "chain-impl-mockchain",
+ "jormungandr-lib",
  "jormungandr-testing-utils",
  "serde",
  "serde_derive",
