@@ -139,7 +139,7 @@ impl Controller {
     }
 
     fn make_starter_for(&mut self, spawn_params: &SpawnParams) -> Result<Starter, ControllerError> {
-        let node_setting = self.node_settings(&spawn_params.alias)?;
+        let node_setting = self.node_settings(spawn_params.get_alias())?;
         let dir = self.node_dir(&node_setting.alias);
         let mut config = node_setting.config.clone();
         spawn_params.override_settings(&mut config);
@@ -152,7 +152,7 @@ impl Controller {
         config.log = Some(Log(LogEntry {
             format: "json".into(),
             level: spawn_params
-                .log_level
+                .get_log_level()
                 .map(|l| l.to_string())
                 .unwrap_or_else(|| String::from("debug")),
             output: LogOutput::Stdout,
@@ -189,7 +189,7 @@ impl Controller {
         let mut starter = Starter::new();
         starter
             .config(params)
-            .alias(spawn_params.alias.clone())
+            .alias(spawn_params.get_alias().clone())
             .from_genesis(spawn_params.get_leadership_mode().into())
             .leadership_mode(spawn_params.get_leadership_mode());
         Ok(starter)

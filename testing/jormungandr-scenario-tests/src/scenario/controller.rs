@@ -346,15 +346,12 @@ impl Controller {
         params: &mut SpawnParams,
         version: &Version,
     ) -> Result<LegacyNodeController> {
-        let node_setting = if let Some(node_setting) = self
-            .settings
-            .network_settings
-            .nodes
-            .get(&params.get_alias())
+        let node_setting = if let Some(node_setting) =
+            self.settings.network_settings.nodes.get(params.get_alias())
         {
             node_setting
         } else {
-            return Err(Error::NodeNotFound(params.get_alias()));
+            return Err(Error::NodeNotFound(params.get_alias().clone()));
         };
 
         let mut node_setting_overriden = node_setting.clone();
@@ -379,22 +376,19 @@ impl Controller {
             .progress_bar(pb)
             .alias(params.get_alias())
             .block0(block0_setting)
-            .working_dir(self.node_dir(&params.get_alias()).path())
+            .working_dir(self.node_dir(params.get_alias()).path())
             .peristence_mode(params.get_persistence_mode());
         let node = spawn_builder.build(version)?;
         Ok(node.controller())
     }
 
     pub fn spawn_node_custom(&mut self, params: &mut SpawnParams) -> Result<NodeController> {
-        let node_setting = if let Some(node_setting) = self
-            .settings
-            .network_settings
-            .nodes
-            .get(&params.get_alias())
+        let node_setting = if let Some(node_setting) =
+            self.settings.network_settings.nodes.get(params.get_alias())
         {
             node_setting
         } else {
-            return Err(Error::NodeNotFound(params.get_alias()));
+            return Err(Error::NodeNotFound(params.get_alias().clone()));
         };
         let mut node_setting_overriden = node_setting.clone();
         params.override_settings(&mut node_setting_overriden.config);
@@ -423,10 +417,10 @@ impl Controller {
             .progress_bar(pb)
             .alias(params.get_alias())
             .block0(block0_setting)
-            .working_dir(self.node_dir(&params.get_alias()).path())
+            .working_dir(self.node_dir(params.get_alias()).path())
             .peristence_mode(params.get_persistence_mode());
-        if let Some(faketime) = params.faketime.take() {
-            spawn_builder.faketime(faketime);
+        if let Some(faketime) = params.get_faketime().take() {
+            spawn_builder.faketime(faketime.clone());
         }
         let node = spawn_builder.build()?;
 

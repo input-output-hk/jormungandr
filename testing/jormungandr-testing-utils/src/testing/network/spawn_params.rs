@@ -7,40 +7,41 @@ use multiaddr::Multiaddr;
 use std::net::SocketAddr;
 use tracing::Level;
 
-use super::{LeadershipMode, PersistenceMode};
+use super::{LeadershipMode, NodeAlias, PersistenceMode};
 use crate::testing::node::Version;
+use serde::Deserialize;
 use std::path::Path;
 use std::path::PathBuf;
 
 #[derive(Clone)]
 pub struct SpawnParams {
-    pub topics_of_interest: Option<TopicsOfInterest>,
-    pub explorer: Option<Explorer>,
-    pub mempool: Option<Mempool>,
-    pub policy: Option<Policy>,
-    pub jormungandr: Option<PathBuf>,
-    pub listen_address: Option<Option<SocketAddr>>,
-    pub trusted_peers: Option<Vec<TrustedPeer>>,
-    pub preferred_layer: Option<PreferredListConfig>,
-    pub leadership_mode: LeadershipMode,
-    pub persistence_mode: PersistenceMode,
-    pub persistent_fragment_log: Option<PathBuf>,
-    pub max_connections: Option<u32>,
-    pub max_inbound_connections: Option<u32>,
-    pub alias: String,
-    pub public_address: Option<Multiaddr>,
-    pub version: Option<Version>,
-    pub bootstrap_from_peers: Option<bool>,
-    pub skip_bootstrap: Option<bool>,
-    pub node_key_file: Option<PathBuf>,
-    pub faketime: Option<FaketimeConfig>,
-    pub gossip_interval: Option<Duration>,
-    pub log_level: Option<Level>,
-    pub max_bootstrap_attempts: Option<usize>,
-    pub network_stuck_check: Option<Duration>,
+    alias: NodeAlias,
+    bootstrap_from_peers: Option<bool>,
+    explorer: Option<Explorer>,
+    faketime: Option<FaketimeConfig>,
+    gossip_interval: Option<Duration>,
+    jormungandr: Option<PathBuf>,
+    leadership_mode: LeadershipMode,
+    listen_address: Option<Option<SocketAddr>>,
+    log_level: Option<Level>,
+    max_bootstrap_attempts: Option<usize>,
+    max_connections: Option<u32>,
+    max_inbound_connections: Option<u32>,
+    mempool: Option<Mempool>,
+    network_stuck_check: Option<Duration>,
+    node_key_file: Option<PathBuf>,
+    persistence_mode: PersistenceMode,
+    persistent_fragment_log: Option<PathBuf>,
+    policy: Option<Policy>,
+    preferred_layer: Option<PreferredListConfig>,
+    public_address: Option<Multiaddr>,
+    skip_bootstrap: Option<bool>,
+    topics_of_interest: Option<TopicsOfInterest>,
+    trusted_peers: Option<Vec<TrustedPeer>>,
+    version: Option<Version>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Deserialize)]
 pub struct FaketimeConfig {
     /// Clock drift (1 = no drift, 2 = double speed)
     pub drift: f32,
@@ -78,8 +79,8 @@ impl SpawnParams {
         }
     }
 
-    pub fn get_alias(&self) -> String {
-        self.alias.clone()
+    pub fn get_alias(&self) -> &NodeAlias {
+        &self.alias
     }
 
     pub fn no_listen_address(&mut self) -> &mut Self {
@@ -208,6 +209,10 @@ impl SpawnParams {
         self
     }
 
+    pub fn get_faketime(&self) -> Option<&FaketimeConfig> {
+        self.faketime.as_ref()
+    }
+
     pub fn gossip_interval(&mut self, duration: Duration) -> &mut Self {
         self.gossip_interval = Some(duration);
         self
@@ -216,6 +221,10 @@ impl SpawnParams {
     pub fn log_level(&mut self, level: Level) -> &mut Self {
         self.log_level = Some(level);
         self
+    }
+
+    pub fn get_log_level(&self) -> Option<&Level> {
+        self.log_level.as_ref()
     }
 
     pub fn max_bootstrap_attempts(&mut self, attempts: usize) -> &mut Self {
