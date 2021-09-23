@@ -6,6 +6,7 @@ use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash},
     interfaces::{ActiveSlotCoefficient, Stake, StakeDistributionDto},
 };
+use jormungandr_testing_utils::testing::node::time;
 use std::str::FromStr;
 
 #[test]
@@ -61,7 +62,7 @@ pub fn stake_distribution() {
         .send(&transaction)
         .assert_in_block();
 
-    startup::sleep_till_next_epoch(10, jormungandr.block0_configuration());
+    time::wait_for_epoch(2, jormungandr.rest());
 
     let identifier: AccountIdentifier = stake_pool_owner_1.identifier().into();
     let reward: u64 = (*jormungandr
@@ -78,7 +79,7 @@ pub fn stake_distribution() {
         jormungandr.rest_uri(),
     );
 
-    startup::sleep_till_epoch(3, 10, jormungandr.block0_configuration());
+    time::wait_for_epoch(3, jormungandr.rest());
 
     jcli.rest().v0().account_stats(
         stake_pool_owner_1.address().to_string(),

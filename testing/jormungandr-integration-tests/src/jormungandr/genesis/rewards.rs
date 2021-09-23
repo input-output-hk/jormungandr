@@ -110,7 +110,7 @@ pub fn reward_history() {
         "reward per epoch for current epoch in the future should return error"
     );
 
-    startup::sleep_till_next_epoch(10, jormungandr.block0_configuration());
+    time::wait_for_epoch(2, jormungandr.rest());
 
     let history = jormungandr.rest().reward_history(1).unwrap();
     let epoch_reward_info_from_history = history.get(0).unwrap();

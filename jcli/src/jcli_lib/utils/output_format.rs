@@ -13,10 +13,16 @@ pub struct OutputFormat {
     format: FormatVariant,
 }
 
-enum FormatVariant {
+pub enum FormatVariant {
     Yaml,
     Json,
     Custom(String),
+}
+
+impl From<FormatVariant> for OutputFormat {
+    fn from(format: FormatVariant) -> Self {
+        Self { format }
+    }
 }
 
 impl<'a> From<&'a str> for FormatVariant {
