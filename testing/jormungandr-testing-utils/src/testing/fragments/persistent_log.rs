@@ -39,7 +39,7 @@ pub fn write_into_persistent_log<P: AsRef<Path>>(
     persistent_log: P,
     entries: Vec<PersistentFragmentLog>,
 ) -> Result<(), Error> {
-    let mut output = BufWriter::with_capacity(128 * 1024, File::open(persistent_log.as_ref())?);
+    let mut output = BufWriter::with_capacity(128 * 1024, File::create(persistent_log.as_ref())?);
 
     for entry in entries {
         let codec = bincode::DefaultOptions::new().with_fixint_encoding();
