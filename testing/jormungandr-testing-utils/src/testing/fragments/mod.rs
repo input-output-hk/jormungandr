@@ -8,7 +8,7 @@ pub use self::{
     generator::FragmentGenerator,
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
     node::{FragmentNode, FragmentNodeError, MemPoolCheck},
-    persistent_log::PersistentLogViewer,
+    persistent_log::{write_into_persistent_log, PersistentLogViewer},
     sender::{FragmentSender, FragmentSenderError},
     setup::DummySyncNode,
     setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
