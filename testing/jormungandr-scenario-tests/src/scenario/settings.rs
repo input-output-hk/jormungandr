@@ -182,7 +182,7 @@ impl Dotifier {
             let label = self.dot_node_label(node);
             writeln!(&mut w, "    {}", &label)?;
 
-            for trusted_peer in node.node_topology.trusted_peers() {
+            for trusted_peer in node.node_topology.trusted_peers.iter() {
                 let trusted_peer = settings.network_settings.nodes.get(trusted_peer).unwrap();
                 writeln!(
                     &mut w,
@@ -256,11 +256,12 @@ impl PrepareSettings for Settings {
         RNG: RngCore + CryptoRng,
     {
         let nodes = topology
-            .into_iter()
-            .map(|(alias, template)| {
+            .nodes
+            .iter()
+            .map(|(alias, node)| {
                 (
                     alias.clone(),
-                    NodeSetting::prepare(alias, context, &template),
+                    NodeSetting::prepare(alias.clone(), context, node),
                 )
             })
             .collect();

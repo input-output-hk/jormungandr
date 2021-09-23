@@ -44,11 +44,11 @@ impl DescribeTopology {
             "{}",
             style::info.apply_to("Legend: '->' means trust direction".to_owned())
         );
-        for (alias, node) in controller.controller().topology().clone().into_iter() {
+        for (alias, node) in controller.controller().topology().clone().nodes.iter() {
             println!(
                 "\t{} -> {:?}",
                 alias,
-                node.trusted_peers().collect::<Vec<&String>>()
+                node.trusted_peers.iter().collect::<Vec<&String>>()
             )
         }
         Ok(())

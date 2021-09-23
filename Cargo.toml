@@ -9,4 +9,5 @@ members = [
   "testing/jormungandr-integration-tests",
   "testing/jormungandr-scenario-tests",
   "testing/mjolnir",
+  "testing/hersir",
 ]

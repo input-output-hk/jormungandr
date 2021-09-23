@@ -44,13 +44,14 @@ impl NetworkBuilder {
         let temp_dir = TempDir::new().unwrap();
         let nodes: HashMap<NodeAlias, NodeSetting> = self
             .topology
-            .nodes()
-            .map(|node| {
+            .nodes
+            .iter()
+            .map(|(alias, node)| {
                 let node_config = NodeConfigBuilder::new().build();
                 (
-                    node.alias().clone(),
+                    alias.clone(),
                     NodeSetting {
-                        alias: node.alias().clone(),
+                        alias: alias.clone(),
                         config: node_config,
                         secret: NodeSecret {
                             bft: None,

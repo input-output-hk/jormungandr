@@ -9,7 +9,7 @@ use jormungandr_lib::{
 };
 use jormungandr_testing_utils::testing::FragmentNode;
 use jortestkit::process as process_utils;
-use tracing::Level;
+use log::Level;
 
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
@@ -390,7 +390,7 @@ fn gossip_interval() {
             network_controller
                 .spawn_params(SERVER)
                 .gossip_interval(Duration::new(INTERVAL_SECS, 0))
-                .log_level(Level::TRACE),
+                .log_level(Level::Trace),
         )
         .unwrap();
 
@@ -434,7 +434,7 @@ fn network_stuck_check() {
         .spawn_custom(
             network_controller
                 .spawn_params(CLIENT)
-                .log_level(Level::TRACE)
+                .log_level(Level::Trace)
                 .gossip_interval(Duration::new(5, 0))
                 .network_stuck_check(Duration::new(INTERVAL_SECS, 0)),
         )
@@ -478,7 +478,7 @@ fn max_bootstrap_attempts() {
             network_controller
                 .spawn_params(CLIENT)
                 .max_bootstrap_attempts(ATTEMPTS)
-                .log_level(Level::TRACE),
+                .log_level(Level::Trace),
         )
         .unwrap();
 

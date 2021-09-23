@@ -3,9 +3,9 @@ use jormungandr_lib::interfaces::{
     TrustedPeer,
 };
 use jormungandr_lib::time::Duration;
+use log::Level;
 use multiaddr::Multiaddr;
 use std::net::SocketAddr;
-use tracing::Level;
 
 use super::{LeadershipMode, NodeAlias, PersistenceMode};
 use crate::testing::node::Version;
@@ -13,7 +13,7 @@ use serde::Deserialize;
 use std::path::Path;
 use std::path::PathBuf;
 
-#[derive(Clone)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct SpawnParams {
     alias: NodeAlias,
     bootstrap_from_peers: Option<bool>,
@@ -41,7 +41,7 @@ pub struct SpawnParams {
     version: Option<Version>,
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct FaketimeConfig {
     /// Clock drift (1 = no drift, 2 = double speed)
     pub drift: f32,
@@ -52,30 +52,30 @@ pub struct FaketimeConfig {
 impl SpawnParams {
     pub fn new(alias: &str) -> Self {
         Self {
-            topics_of_interest: None,
-            explorer: None,
-            mempool: None,
-            policy: None,
-            jormungandr: None,
             alias: alias.to_owned(),
-            leadership_mode: LeadershipMode::Leader,
-            persistence_mode: PersistenceMode::Persistent,
-            public_address: None,
-            trusted_peers: None,
-            listen_address: None,
-            max_connections: None,
-            max_inbound_connections: None,
-            preferred_layer: None,
-            version: None,
             bootstrap_from_peers: None,
-            skip_bootstrap: None,
-            node_key_file: None,
-            persistent_fragment_log: None,
+            explorer: None,
             faketime: None,
             gossip_interval: None,
+            jormungandr: None,
+            leadership_mode: LeadershipMode::Leader,
+            listen_address: None,
             log_level: None,
             max_bootstrap_attempts: None,
+            max_connections: None,
+            max_inbound_connections: None,
+            mempool: None,
             network_stuck_check: None,
+            node_key_file: None,
+            persistence_mode: PersistenceMode::Persistent,
+            persistent_fragment_log: None,
+            policy: None,
+            preferred_layer: None,
+            public_address: None,
+            skip_bootstrap: None,
+            topics_of_interest: None,
+            trusted_peers: None,
+            version: None,
         }
     }
 

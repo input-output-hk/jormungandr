@@ -1,0 +1,19 @@
+{
+    "nodes" :[
+        {
+            "spawn_params": {
+                "alias": "passive",
+                "leadership_mode": "Passive",
+                "persistence_mode": "InMemory"
+            },
+            "trusted_peers": ["leader"]
+        },
+        {
+            "spawn_params": {
+                "alias": "leader",
+                "leadership_mode": "Leader",
+                "persistence_mode": "InMemory"
+            }
+        }
+    ]
+}

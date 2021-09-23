@@ -273,7 +273,7 @@ impl Settings {
 
         //gather aliases which are trusted peers
         for (_alias, node) in self.nodes.iter() {
-            for trusted_peer in node.node_topology.trusted_peers() {
+            for trusted_peer in node.node_topology.trusted_peers.iter() {
                 trusted_peers_aliases.insert(trusted_peer.clone());
             }
         }
@@ -282,7 +282,7 @@ impl Settings {
         for (_alias, node) in self.nodes.iter_mut() {
             let mut trusted_peers = Vec::new();
 
-            for trusted_peer in node.node_topology.trusted_peers() {
+            for trusted_peer in node.node_topology.trusted_peers.iter() {
                 let trusted_peer = nodes.get(trusted_peer).unwrap();
                 let id = NodeId::from(
                     <chain_crypto::SecretKey<chain_crypto::Ed25519>>::generate(rand::thread_rng())
