@@ -8,7 +8,7 @@ use crate::metrics::Metrics;
 use chain_core::property::Deserialize;
 use chain_network::data as net_data;
 use chain_network::error::Error as NetworkError;
-use futures::{prelude::*, stream, task::Poll};
+use futures::{prelude::*, task::Poll};
 use tokio_util::sync::CancellationToken;
 
 use std::pin::Pin;
@@ -53,6 +53,7 @@ where
     // the cancellation signal arrives. Building such stream allows us to
     // correctly write all blocks and update the block tip upon the arrival of
     // the cancellation signal.
+
     let mut cancel = cancellation_token.cancelled().boxed();
     let mut stream = stream.map_err(Error::PullStreamFailed);
 
@@ -78,7 +79,7 @@ where
 
                 bootstrap_info.append_block(&block);
                 Ok(blockchain
-                    .handle_stream_block(block, CheckHeaderProof::Enabled)
+                    .handle_bootstrap_block(block, CheckHeaderProof::Enabled)
                     .await?)
             }
             Err(err) => Err(err),
@@ -100,7 +101,7 @@ where
     if let Some(ref bootstrap_tip) = maybe_parent_tip {
         tip_updater.process_new_ref(bootstrap_tip.clone()).await?;
     } else {
-        tracing::info!("no new blocks in bootstrap stream");
+        tracing::info!("no new blocks received from the network");
     }
 
     Ok(maybe_parent_tip)

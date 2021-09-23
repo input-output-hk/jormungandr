@@ -704,7 +704,7 @@ impl Blockchain {
         Ok(Tip::new(block0_branch))
     }
 
-    pub(super) async fn handle_stream_block(
+    pub(super) async fn handle_bootstrap_block(
         &self,
         block: Block,
         check_header: CheckHeaderProof,
@@ -782,12 +782,11 @@ impl Blockchain {
             .stream_from_to(block0_id, head_hash)
             .map(Box::pin)?;
 
-        while let Some(r) = block_stream.next().await {
-            let block = r?;
+        while let Some(block) = block_stream.next().await.transpose()? {
             reporter.append_block(&block);
             branch
                 .update_ref(
-                    self.handle_stream_block(block, CheckHeaderProof::SkipFromStorage)
+                    self.handle_bootstrap_block(block, CheckHeaderProof::SkipFromStorage)
                         .await?,
                 )
                 .await;
