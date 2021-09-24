@@ -59,14 +59,15 @@ impl Default for OldestFirst {
     }
 }
 
-enum ApplyFragmentResult {
-    Ok {
-        ledger: ApplyBlockLedger,
-        space_left: u32,
-    },
+enum ApplyFragmentError {
     DoesNotFit,
     SoftDeadlineReached,
-    Err(String),
+    Rejected(String),
+}
+
+struct NewLedgerState {
+    ledger: ApplyBlockLedger,
+    space_left: u32,
 }
 
 async fn try_apply_fragment(
@@ -76,7 +77,7 @@ async fn try_apply_fragment(
     soft_deadline_future: Shared<Receiver<()>>,
     hard_deadline_future: Shared<Receiver<()>>,
     mut space_left: u32,
-) -> ApplyFragmentResult {
+) -> Result<NewLedgerState, ApplyFragmentError> {
     use futures::future::{select, Either};
     let fragment_raw = fragment.to_raw(); // TODO: replace everything to FragmentRaw in the node
     let fragment_size = fragment_raw.size_bytes_plus_size() as u32;
@@ -86,13 +87,13 @@ async fn try_apply_fragment(
             "fragment size {} exceeds maximum block content size {}",
             fragment_size, ledger_params.block_content_max_size
         );
-        return ApplyFragmentResult::Err(reason);
+        return Err(ApplyFragmentError::Rejected(reason));
     }
 
     if fragment_size > space_left {
         // return a fragment to the pool later if does not fit the contents size limit
         tracing::trace!("discarding fragment that does not fit in block");
-        return ApplyFragmentResult::DoesNotFit;
+        return Err(ApplyFragmentError::DoesNotFit);
     }
 
     space_left -= fragment_size;
@@ -108,7 +109,7 @@ async fn try_apply_fragment(
                 tracing::debug!(
                     "aborting processing of the current fragment to satisfy the soft deadline"
                 );
-                return ApplyFragmentResult::SoftDeadlineReached;
+                return Err(ApplyFragmentError::SoftDeadlineReached);
             }
 
             tracing::debug!(
@@ -117,23 +118,23 @@ async fn try_apply_fragment(
 
             match select(fragment_future, hard_deadline_future.clone()).await {
                 Either::Left((join_result, _)) => join_result.unwrap(),
-                Either::Right(_) => return ApplyFragmentResult::Err(
+                Either::Right(_) => return Err(ApplyFragmentError::Rejected(
                     "cannot process a single fragment within the given time bounds (hard deadline)"
                         .into(),
-                ),
+                )),
             }
         }
     };
 
     match ledger_res {
-        Ok(ledger) => ApplyFragmentResult::Ok { ledger, space_left },
+        Ok(ledger) => Ok(NewLedgerState { ledger, space_left }),
         Err(err) => {
             let mut msg = err.to_string();
             for e in iter::successors(err.source(), |&e| e.source()) {
                 msg.push_str(": ");
                 msg.push_str(&e.to_string());
             }
-            ApplyFragmentResult::Err(msg)
+            Err(ApplyFragmentError::Rejected(msg))
         }
     }
 }
@@ -172,19 +173,20 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                 )
                 .await;
                 match result {
-                    ApplyFragmentResult::Ok {
+                    Ok(NewLedgerState {
                         ledger: ledger_new,
                         space_left: space_left_new,
-                    } => {
+                    }) => {
                         contents_builder.push(fragment);
                         ledger = ledger_new;
                         tracing::debug!("successfully applied and committed the fragment");
                         space_left = space_left_new;
                     }
-                    ApplyFragmentResult::DoesNotFit | ApplyFragmentResult::SoftDeadlineReached => {
+                    Err(ApplyFragmentError::DoesNotFit)
+                    | Err(ApplyFragmentError::SoftDeadlineReached) => {
                         return_to_pool.push(fragment);
                     }
-                    ApplyFragmentResult::Err(reason) => {
+                    Err(ApplyFragmentError::Rejected(reason)) => {
                         tracing::debug!(%reason, "fragment is rejected");
                         logs.modify(id, FragmentStatus::Rejected { reason }, date);
                         rejected_fragments_cnt += 1;
