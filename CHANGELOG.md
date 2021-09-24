@@ -1,5 +1,9 @@
 # Change Log
 
+## Unreleased
+
+- fix incorrect keys bech32 HRP by always using the ones provided by the library
+
 ## [v0.9.3](https://github.com/input-output-hk/jormungandr/tree/v0.9.3) (2020-09-24)
 
 Rolled in recent fixes, testing improvements, and dependency updates for the Catalyst project

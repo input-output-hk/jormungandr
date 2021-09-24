@@ -1,7 +1,6 @@
 use crate::jcli_lib::utils::output_file::{self, OutputFile};
 use crate::jcli_lib::utils::vote::{SharesError, VotePlanError};
 
-pub mod bech32_constants;
 mod committee;
 mod election_public_key;
 mod tally;
@@ -17,8 +16,8 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
     #[error("base64 decode error")]
     Base64(#[from] base64::DecodeError),
-    #[error("bech32 decode error")]
-    Bech32(#[from] bech32::Error),
+    #[error("bech32 error")]
+    Bech32(#[from] chain_crypto::bech32::Error),
     #[error("error while decoding base64 source")]
     Rand(#[from] rand::Error),
     #[error("invalid seed length, expected 32 bytes but received {seed_len}")]

@@ -3,9 +3,7 @@ pub mod committee;
 pub mod delegation;
 pub mod utxo;
 
-pub use committee::{
-    ElectionPublicKeyExtension, PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager,
-};
+pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
 
 use crate::{
     qr_code::{generate, KeyQrCode},
