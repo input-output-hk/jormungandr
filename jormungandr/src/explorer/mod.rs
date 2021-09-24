@@ -73,7 +73,6 @@ pub struct BlockchainConfig {
     /// Used to construct `Address` from `AccountIndentifier` when processing transaction
     /// inputs
     discrimination: Discrimination,
-    consensus_version: ConsensusVersion,
     fees: LinearFee,
     epoch_stability_depth: u32,
 }
@@ -891,8 +890,6 @@ impl BlockchainConfig {
 
         BlockchainConfig {
             discrimination: discrimination.expect("discrimination not found in initial params"),
-            consensus_version: consensus_version
-                .expect("consensus version not found in initial params"),
             fees: fees.expect("fees not found in initial params"),
             epoch_stability_depth: epoch_stability_depth
                 .expect("epoch stability depth not found in initial params"),
