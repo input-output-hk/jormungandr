@@ -1,5 +1,5 @@
-use chain_crypto::bech32::Bech32;
 use chain_crypto::{
+    bech32::{Bech32, Error as Bech32Error},
     AsymmetricKey, AsymmetricPublicKey, Blake2b256, PublicKey, SecretKey, Signature,
     VerificationAlgorithm,
 };
@@ -15,6 +15,7 @@ pub fn serialize_secret<S, A>(key: &SecretKey<A>, serializer: S) -> Result<S::Ok
 where
     S: Serializer,
     A: AsymmetricKey,
+    SecretKey<A>: Bech32,
 {
     if serializer.is_human_readable() {
         key.to_bech32_str().serialize(serializer)
@@ -65,6 +66,7 @@ pub fn deserialize_secret<'de, D, A>(deserializer: D) -> Result<SecretKey<A>, D:
 where
     D: Deserializer<'de>,
     A: AsymmetricKey,
+    SecretKey<A>: Bech32,
 {
     let secret_key_visitor = SecretKeyVisitor::new();
     if deserializer.is_human_readable() {
@@ -154,6 +156,7 @@ impl<T, A: VerificationAlgorithm> SignatureVisitor<T, A> {
 impl<'de, A> Visitor<'de> for SecretKeyVisitor<A>
 where
     A: AsymmetricKey,
+    SecretKey<A>: Bech32,
 {
     type Value = SecretKey<A>;
 
@@ -165,18 +168,7 @@ where
     where
         E: DeserializerError,
     {
-        use chain_crypto::bech32::Error as Bech32Error;
-        match Self::Value::try_from_bech32_str(v) {
-            Err(Bech32Error::DataInvalid(err)) => Err(E::custom(format!("Invalid data: {}", err))),
-            Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
-                "Invalid prefix: expected {} but was {}",
-                expected, actual
-            ))),
-            Err(Bech32Error::Bech32Malformed(err)) => {
-                Err(E::custom(format!("Invalid bech32: {}", err)))
-            }
-            Ok(key) => Ok(key),
-        }
+        Self::Value::try_from_bech32_str(v).map_err(bech32_error_to_serde)
     }
 
     fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
@@ -206,18 +198,7 @@ where
     where
         E: DeserializerError,
     {
-        use chain_crypto::bech32::Error as Bech32Error;
-        match Self::Value::try_from_bech32_str(v) {
-            Err(Bech32Error::DataInvalid(err)) => Err(E::custom(format!("Invalid data: {}", err))),
-            Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
-                "Invalid prefix: expected {} but was {}",
-                expected, actual
-            ))),
-            Err(Bech32Error::Bech32Malformed(err)) => {
-                Err(E::custom(format!("Invalid bech32: {}", err)))
-            }
-            Ok(key) => Ok(key),
-        }
+        Self::Value::try_from_bech32_str(v).map_err(bech32_error_to_serde)
     }
 
     fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
@@ -250,18 +231,7 @@ where
     where
         E: DeserializerError,
     {
-        use chain_crypto::bech32::Error as Bech32Error;
-        match Self::Value::try_from_bech32_str(v) {
-            Err(Bech32Error::DataInvalid(err)) => Err(E::custom(format!("Invalid data: {}", err))),
-            Err(Bech32Error::HrpInvalid { expected, actual }) => Err(E::custom(format!(
-                "Invalid prefix: expected {} but was {}",
-                expected, actual
-            ))),
-            Err(Bech32Error::Bech32Malformed(err)) => {
-                Err(E::custom(format!("Invalid bech32: {}", err)))
-            }
-            Ok(key) => Ok(key),
-        }
+        Self::Value::try_from_bech32_str(v).map_err(bech32_error_to_serde)
     }
 
     fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
@@ -299,5 +269,23 @@ impl<'de> Visitor<'de> for HashVisitor {
         E: DeserializerError,
     {
         Blake2b256::try_from_slice(v).map_err(E::custom)
+    }
+}
+
+fn bech32_error_to_serde<E>(error: Bech32Error) -> E
+where
+    E: DeserializerError,
+{
+    match error {
+        Bech32Error::DataInvalid(err) => E::custom(format!("Invalid data: {}", err)),
+        Bech32Error::HrpInvalid { expected, actual } => E::custom(format!(
+            "Invalid prefix: expected {} but was {}",
+            expected, actual
+        )),
+        Bech32Error::Bech32Malformed(err) => E::custom(format!("Invalid bech32: {}", err)),
+        Bech32Error::UnexpectedDataLen { expected, actual } => E::custom(format!(
+            "Invalid bech32 length: expected {} but was actual {}",
+            expected, actual
+        )),
     }
 }

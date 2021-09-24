@@ -29,9 +29,12 @@ pub fn parse_pub_key<A: AsymmetricPublicKey>(
     Bech32::try_from_bech32_str(bech32_str)
 }
 
-pub fn _read_secret_key_from_file<A: AsymmetricKey, P: AsRef<Path>>(
-    path: &Option<P>,
-) -> Result<SecretKey<A>, Error> {
+pub fn _read_secret_key_from_file<A, P>(path: &Option<P>) -> Result<SecretKey<A>, Error>
+where
+    A: AsymmetricKey,
+    SecretKey<A>: Bech32,
+    P: AsRef<Path>,
+{
     let bech32_str: String =
         io::read_line(path).map_err(|source| Error::SecretKeyFileReadFailed {
             source,
