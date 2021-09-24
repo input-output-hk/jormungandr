@@ -132,10 +132,12 @@ impl Pool {
             }
 
             if let Some(valid_until) = get_transaction_expiry_date(&fragment) {
-                use chain_impl_mockchain::ledger::check::{valid_transaction_date, TxVerifyError};
+                use chain_impl_mockchain::ledger::check::{
+                    valid_transaction_date, TxValidityError,
+                };
                 match valid_transaction_date(ledger_settings, valid_until, block_date) {
                     Ok(_) => {}
-                    Err(TxVerifyError::TransactionExpired) => {
+                    Err(TxValidityError::TransactionExpired) => {
                         rejected.push(RejectedFragmentInfo {
                             id,
                             reason: FragmentRejectionReason::FragmentExpired,
@@ -143,7 +145,7 @@ impl Pool {
                         tracing::debug!("fragment is expired at the time of receiving");
                         continue;
                     }
-                    Err(TxVerifyError::TransactionValidForTooLong) => {
+                    Err(TxValidityError::TransactionValidForTooLong) => {
                         rejected.push(RejectedFragmentInfo {
                             id,
                             reason: FragmentRejectionReason::FragmentValidForTooLong,
@@ -151,7 +153,6 @@ impl Pool {
                         tracing::debug!("fragment is valid for too long");
                         continue;
                     }
-                    Err(_) => unreachable!(),
                 }
             }
 
