@@ -323,7 +323,7 @@ impl Module {
 
         let span = span!(
             parent: self.service_info.span(),
-            Level::TRACE,
+            Level::DEBUG,
             "action_run_entry",
             event_date = %entry.event.date.to_string(),
             event_start = %event_start.to_string(),
@@ -611,7 +611,7 @@ impl Module {
         let parent_span = self.service_info.span();
         let span = tracing::span!(
             parent: parent_span,
-            Level::TRACE,
+            Level::DEBUG,
             "action_schedule",
             epoch_tip = epoch_tip.0,
             current_epoch = current_slot_position.epoch.0,
