@@ -316,11 +316,13 @@ async fn handle_network_input(
                     .await
                     .unwrap_or_else(|e| tracing::error!("Error while propagating message: {}", e));
             }
-            NetworkMsg::GetBlocks(block_ids) => state.peers.fetch_blocks(block_ids.encode()).await,
+            NetworkMsg::GetBlocks(block_ids) => {
+                state.peers.solicit_blocks_any(block_ids.encode()).await
+            }
             NetworkMsg::GetNextBlock(node_id, block_id) => {
                 state
                     .peers
-                    .solicit_blocks(node_id, Box::new([block_id.encode()]))
+                    .solicit_blocks_peer(node_id, Box::new([block_id.encode()]))
                     .await;
             }
             NetworkMsg::PullHeaders {
