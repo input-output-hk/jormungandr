@@ -24,12 +24,12 @@ bech32 = "0.7"
 hex = "0.4.2"
 rayon = "1.5"
 base64 = "0.13.0"
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-core      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
+chain-impl-mockchain = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
+chain-addr      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
+chain-crypto    = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
+chain-time    = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
+chain-vote = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.6.0"
 ed25519-bip32 = "0.4"

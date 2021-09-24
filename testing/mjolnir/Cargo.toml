@@ -15,13 +15,13 @@ thiserror = "1.0"
 structopt = "^0.3"
 assert_fs = "1.0"
 indicatif = "0.15"
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = ["with-bench"] }
-chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size", features = [ "property-test-api" ] }
+chain-core      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
+chain-crypto    = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size", features = [ "property-test-api" ] }
+chain-time      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
+chain-storage   = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size", features = ["with-bench"] }
+chain-vote      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "sumed25519-kes-fixed-size" }
 tokio = { version = "1.4", features = ["macros"] }
 
 [build-dependencies]
