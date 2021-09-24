@@ -44,7 +44,6 @@ pub struct ClientLoadConfig {
     measure: bool,
     count: u32,
     address: String,
-    ip: String,
     pace: u64,
     initial_storage: Option<PathBuf>,
 }
@@ -55,7 +54,6 @@ impl ClientLoadConfig {
         measure: bool,
         count: u32,
         address: String,
-        ip: String,
         pace: u64,
         initial_storage: Option<PathBuf>,
     ) -> Self {
@@ -64,7 +62,6 @@ impl ClientLoadConfig {
             measure,
             count,
             address,
-            ip,
             pace,
             initial_storage,
         }

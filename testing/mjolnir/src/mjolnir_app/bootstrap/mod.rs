@@ -27,9 +27,6 @@ pub struct ClientLoadCommand {
     #[structopt(short = "a", long = "address")]
     pub address: String,
 
-    #[structopt(short = "i", long = "ip", default_value = "127.0.0.1")]
-    pub ip: String,
-
     /// amount of delay [seconds] between sync attempts
     #[structopt(short = "p", long = "pace", default_value = "2")]
     pub pace: u64,
@@ -79,7 +76,6 @@ impl ClientLoadCommand {
             self.measure,
             self.count,
             self.address.clone(),
-            self.ip.clone(),
             self.pace,
             self.initial_storage.clone(),
         )
