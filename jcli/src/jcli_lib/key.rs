@@ -2,9 +2,9 @@ use crate::jcli_lib::utils::io;
 use crate::jcli_lib::utils::output_file::{self, OutputFile};
 use bech32::{self, u5, FromBase32, ToBase32};
 use chain_crypto::{
-    bech32::Bech32 as _, AsymmetricKey, AsymmetricPublicKey, Ed25519, Ed25519Bip32,
-    Ed25519Extended, RistrettoGroup2HashDh, SecretKey, SigningAlgorithm, SumEd25519_12,
-    Verification, VerificationAlgorithm,
+    bech32::Bech32, AsymmetricKey, AsymmetricPublicKey, Ed25519, Ed25519Bip32, Ed25519Extended,
+    RistrettoGroup2HashDh, SecretKey, SigningAlgorithm, SumEd25519_12, Verification,
+    VerificationAlgorithm,
 };
 use ed25519_bip32::{DerivationError, DerivationScheme};
 use hex::FromHexError;
@@ -439,8 +439,11 @@ fn gen_pub_key<K: AsymmetricKey>(priv_key_bech32: &[u5]) -> Result<String, Error
     Ok(bech32::encode(hrp, pub_key.to_base32())?)
 }
 
-fn bytes_to_priv_key<K: AsymmetricKey>(bytes: &[u8]) -> Result<String, Error> {
-    use chain_crypto::bech32::Bech32 as _;
+fn bytes_to_priv_key<K>(bytes: &[u8]) -> Result<String, Error>
+where
+    K: AsymmetricKey,
+    SecretKey<K>: Bech32,
+{
     let secret: chain_crypto::SecretKey<K> = chain_crypto::SecretKey::from_binary(bytes)?;
     Ok(secret.to_bech32_str())
 }
