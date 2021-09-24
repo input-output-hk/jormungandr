@@ -18,7 +18,7 @@ use chain_network::error::{Code as ErrorCode, Error};
 use async_trait::async_trait;
 use futures::prelude::*;
 use futures::try_join;
-use tracing::{instrument, span, Level, Span};
+use tracing::instrument;
 use tracing_futures::Instrument;
 
 use std::convert::TryFrom;
@@ -27,16 +27,13 @@ use std::convert::TryFrom;
 pub struct NodeService {
     channels: Channels,
     global_state: GlobalStateR,
-    span: Span,
 }
 
 impl NodeService {
     pub fn new(channels: Channels, global_state: GlobalStateR) -> Self {
-        let span = span!(parent: global_state.span(), Level::DEBUG, "node server");
         NodeService {
             channels,
             global_state,
-            span,
         }
     }
 }

@@ -18,7 +18,6 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::SystemTime;
-use tracing::{field, Span};
 use tracing_futures::Instrument;
 
 // Buffer size determines the number of stream items pending processing that
