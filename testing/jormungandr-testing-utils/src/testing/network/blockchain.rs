@@ -1,30 +1,48 @@
 use super::{ExternalWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
+use crate::testing::serde::ConsensusVersionSerde;
 use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::milli::Milli;
-use chain_impl_mockchain::{fee::LinearFee, testing::scenario::template::VotePlanDef};
 use jormungandr_lib::interfaces::CommitteeIdDef;
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, BlockContentMaxSize, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
+    ActiveSlotCoefficient, BlockContentMaxSize, DiscriminationDef, KesUpdateSpeed, LinearFeeDef,
+    NumberOfSlotsPerEpoch, SlotDuration, VotePlan,
 };
+use serde::Deserialize;
 use std::collections::HashMap;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Deserialize, Debug)]
+#[serde(deny_unknown_fields)]
 pub struct Blockchain {
-    consensus: ConsensusVersion,
-    slots_per_epoch: NumberOfSlotsPerEpoch,
-    slot_duration: SlotDuration,
-    leaders: Vec<NodeAlias>,
-    committees: Vec<WalletAlias>,
-    external_committees: Vec<CommitteeIdDef>,
-    vote_plans: Vec<VotePlanDef>,
-    external_wallets: Vec<ExternalWalletTemplate>,
-    wallets: HashMap<WalletAlias, WalletTemplate>,
-    kes_update_speed: KesUpdateSpeed,
+    #[serde(default)]
     block_content_max_size: BlockContentMaxSize,
+    #[serde(default)]
+    committees: Vec<WalletAlias>,
+    #[serde(with = "ConsensusVersionSerde")]
+    consensus: ConsensusVersion,
+    #[serde(default)]
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
-    linear_fee: LinearFee,
+    #[serde(with = "DiscriminationDef")]
     discrimination: Discrimination,
+    #[serde(default)]
+    external_committees: Vec<CommitteeIdDef>,
+    #[serde(default)]
+    external_wallets: Vec<ExternalWalletTemplate>,
+    #[serde(default)]
+    kes_update_speed: KesUpdateSpeed,
+    #[serde(default)]
+    leaders: Vec<NodeAlias>,
+    #[serde(with = "LinearFeeDef")]
+    linear_fee: LinearFee,
+    #[serde(default)]
+    slot_duration: SlotDuration,
+    #[serde(default)]
+    slots_per_epoch: NumberOfSlotsPerEpoch,
+    #[serde(default)]
+    vote_plans: HashMap<(String, String), VotePlan>,
+    #[serde(default)]
+    wallets: HashMap<WalletAlias, WalletTemplate>,
 }
 
 impl Blockchain {
@@ -36,20 +54,20 @@ impl Blockchain {
         consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
     ) -> Self {
         Blockchain {
-            consensus,
-            leaders: Vec::new(),
-            wallets: HashMap::new(),
+            block_content_max_size: BlockContentMaxSize::default(),
             committees: Vec::new(),
-            external_committees: Vec::new(),
-            vote_plans: Vec::new(),
-            external_wallets: Vec::new(),
-            slots_per_epoch,
-            slot_duration,
-            kes_update_speed,
+            consensus,
             consensus_genesis_praos_active_slot_coeff,
-            linear_fee: LinearFee::new(1, 1, 1),
             discrimination: Discrimination::Test,
-            block_content_max_size: 102400.into(),
+            external_committees: Vec::new(),
+            external_wallets: Vec::new(),
+            kes_update_speed,
+            leaders: Vec::new(),
+            linear_fee: LinearFee::new(1, 1, 1),
+            slot_duration,
+            slots_per_epoch,
+            vote_plans: HashMap::new(),
+            wallets: HashMap::new(),
         }
     }
 
@@ -73,7 +91,7 @@ impl Blockchain {
         self.external_wallets = external_wallets;
     }
 
-    pub fn vote_plans(&self) -> Vec<VotePlanDef> {
+    pub fn vote_plans(&self) -> HashMap<(String, String), VotePlan> {
         self.vote_plans.clone()
     }
 
@@ -101,13 +119,6 @@ impl Blockchain {
         &self.block_content_max_size
     }
 
-    pub fn vote_plan(&self, alias: &str) -> Option<VotePlanDef> {
-        self.vote_plans()
-            .iter()
-            .cloned()
-            .find(|x| x.alias() == alias)
-    }
-
     pub fn add_committee<S: Into<NodeAlias>>(&mut self, alias: S) {
         self.committees.push(alias.into());
     }
@@ -116,8 +127,14 @@ impl Blockchain {
         self.external_committees.push(committee);
     }
 
-    pub fn add_vote_plan(&mut self, vote_plan_template: VotePlanDef) {
-        self.vote_plans.push(vote_plan_template);
+    pub fn add_vote_plan(
+        &mut self,
+        alias: String,
+        owner_alias: String,
+        vote_plan_template: VotePlan,
+    ) {
+        self.vote_plans
+            .insert((alias, owner_alias), vote_plan_template);
     }
 
     pub fn add_leader<S: Into<NodeAlias>>(&mut self, alias: S) {

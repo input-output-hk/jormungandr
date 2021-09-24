@@ -10,10 +10,13 @@ use crate::{args::Args, config::Config, error::Error};
 pub fn spawn_network(args: Args) -> Result<HashMap<NodeAlias, JormungandrProcess>, Error> {
     let config: Config = serde_json::from_reader(File::open(args.config)?)?;
 
+    println!("{:?}", config);
+
     let mut topology = config.build_topology();
 
     let mut controller = NetworkBuilder::default()
         .topology(topology.clone())
+        .blockchain_config(config.blockchain)
         .build()?;
 
     let mut processes: HashMap<NodeAlias, JormungandrProcess> = HashMap::new();

@@ -3,9 +3,7 @@ use crate::{scenario::Context, style};
 use assert_fs::fixture::ChildPath;
 use assert_fs::fixture::PathChild;
 use chain_impl_mockchain::{
-    certificate::VotePlan,
-    testing::{create_initial_vote_plan, scenario::template::VotePlanDef},
-    vote::PayloadType,
+    certificate::VotePlan, testing::create_initial_vote_plan, vote::PayloadType,
 };
 
 use jormungandr_lib::crypto::{account::Identifier, key::SigningKey};
@@ -13,7 +11,7 @@ use jormungandr_lib::interfaces::try_initials_vec_from_messages;
 use jormungandr_lib::{
     interfaces::{
         Explorer, LayersConfig, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
-        TopicsOfInterest,
+        TopicsOfInterest, VotePlan as VotePlanLib,
     },
     time::Duration,
 };
@@ -103,7 +101,7 @@ impl Settings {
 
     fn populate_block0_blockchain_vote_plans<RNG>(
         &mut self,
-        mut vote_plans: Vec<VotePlanDef>,
+        mut vote_plans: HashMap<(String, String), VotePlanLib>,
         committees_aliases: Vec<WalletAlias>,
         rng: &mut RNG,
     ) where
@@ -111,24 +109,18 @@ impl Settings {
     {
         let mut vote_plans_fragments = Vec::new();
 
-        for vote_plan_def in vote_plans.iter_mut() {
+        for ((alias, owner), vote_plan) in vote_plans.iter_mut() {
             let owner = self
                 .network_settings
                 .wallets
-                .get(&vote_plan_def.owner())
-                .unwrap_or_else(|| {
-                    panic!(
-                        "Owner {} of {} is unknown wallet ",
-                        vote_plan_def.owner(),
-                        vote_plan_def.alias()
-                    )
-                });
+                .get(owner)
+                .unwrap_or_else(|| panic!("Owner {} of {} is unknown wallet ", owner, alias));
 
             // workaround beacuse vote_plan_def does not expose payload_type
-            let tmp_vote_plan: VotePlan = vote_plan_def.clone().into();
+            let tmp_vote_plan: VotePlan = vote_plan.clone().into();
 
             let vote_plan: VotePlan = match tmp_vote_plan.payload_type() {
-                PayloadType::Public => vote_plan_def.clone().into(),
+                PayloadType::Public => vote_plan.clone().into(),
                 PayloadType::Private => {
                     let mut wallets = self.network_settings.wallets.clone();
                     let committees: Vec<(WalletAlias, Identifier)> = committees_aliases
@@ -141,18 +133,17 @@ impl Settings {
                     let threshold = committees.len();
                     let manager = PrivateVoteCommitteeDataManager::new(rng, committees, threshold);
 
-                    vote_plan_def
-                        .committee_keys_mut()
+                    vote_plan
+                        .committee_member_public_keys
                         .extend(manager.member_public_keys());
-                    self.private_vote_plans
-                        .insert(vote_plan_def.alias(), manager);
-                    vote_plan_def.clone().into()
+                    self.private_vote_plans.insert(alias.clone(), manager);
+                    vote_plan.clone().into()
                 }
             };
 
             self.network_settings
                 .vote_plans
-                .insert(vote_plan_def.alias(), vote_plan.clone());
+                .insert(alias.clone(), vote_plan.clone());
 
             vote_plans_fragments.push(create_initial_vote_plan(
                 &vote_plan,

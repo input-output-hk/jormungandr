@@ -17,14 +17,12 @@
         }
     ],
     "blockchain": {
-        "blockchain_configuration": {
-            "discrimination": "test",
-            "block0_consensus": "genesis_praos",
-            "linear_fees": {
-                "constant": 1,
-                "coefficient": 0,
-                "certificate": 0
-            }
+        "discrimination": "test",
+        "consensus": "genesis_praos",
+        "linear_fee": {
+            "constant": 1,
+            "coefficient": 1,
+            "certificate": 1
         }
     }
 }

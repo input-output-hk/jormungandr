@@ -1,12 +1,15 @@
 use crate::testing::network::WalletAlias;
+use crate::testing::serde::ValueSerde;
 use chain_impl_mockchain::value::Value;
+use serde::Deserialize;
 
 /// Struct can be used to differentiate wallet template
 /// which only adress is known and controller cannot control it
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct ExternalWalletTemplate {
     alias: WalletAlias,
     address: String,
+    #[serde(with = "ValueSerde")]
     value: Value,
 }
 

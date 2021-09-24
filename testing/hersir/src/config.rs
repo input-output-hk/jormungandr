@@ -1,12 +1,13 @@
-use jormungandr_lib::interfaces::Block0Configuration;
-use jormungandr_testing_utils::testing::network::{Node, NodeAlias, SpawnParams, Topology};
+use jormungandr_testing_utils::testing::network::{
+    Blockchain, Node, NodeAlias, SpawnParams, Topology,
+};
 use serde::Deserialize;
 use std::collections::HashSet;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    blockchain: Option<Block0Configuration>,
-    nodes: Vec<NodeConfig>,
+    pub blockchain: Blockchain,
+    pub nodes: Vec<NodeConfig>,
 }
 
 impl Config {
@@ -28,8 +29,8 @@ impl Config {
 }
 
 #[derive(Debug, Deserialize)]
-struct NodeConfig {
-    spawn_params: SpawnParams,
+pub struct NodeConfig {
+    pub spawn_params: SpawnParams,
     #[serde(default)]
-    trusted_peers: HashSet<NodeAlias>,
+    pub trusted_peers: HashSet<NodeAlias>,
 }

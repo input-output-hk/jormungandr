@@ -476,7 +476,7 @@ impl BlockchainConfiguration {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", remote = "Discrimination")]
-enum DiscriminationDef {
+pub enum DiscriminationDef {
     Test,
     Production,
 }

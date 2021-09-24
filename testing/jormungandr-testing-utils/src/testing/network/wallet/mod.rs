@@ -14,11 +14,13 @@ use jormungandr_lib::{
     interfaces::{Address, Initial, Value},
 };
 use rand_core::{CryptoRng, RngCore};
+use serde::Deserialize;
 use std::path::Path;
 
 pub type WalletAlias = String;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
 pub enum WalletType {
     Account,
     UTxO,

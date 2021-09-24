@@ -3,16 +3,21 @@ mod external;
 
 use super::{WalletAlias, WalletType};
 use crate::testing::network::NodeAlias;
+use crate::testing::serde::ValueSerde;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::value::Value;
 pub use external::ExternalWalletTemplate;
+use jormungandr_lib::interfaces::DiscriminationDef;
+use serde::Deserialize;
 
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Hash)]
 pub struct WalletTemplate {
     alias: WalletAlias,
+    #[serde(with = "ValueSerde")]
     value: Value,
     wallet_type: WalletType,
     delegate: Option<NodeAlias>,
+    #[serde(with = "DiscriminationDef")]
     discrimination: Discrimination,
 }
 
