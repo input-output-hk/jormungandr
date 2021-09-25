@@ -1,6 +1,8 @@
 use jormungandr_testing_utils::testing::{
     jormungandr::process::JormungandrProcess,
-    network::{builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder},
+    network::{
+        builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Node, Topology,
+    },
 };
 
 use jormungandr_lib::{
@@ -117,7 +119,11 @@ pub fn assert_node_stats(
 #[test]
 pub fn node_whitelist_itself() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
@@ -154,7 +160,11 @@ pub fn node_whitelist_itself() {
 #[test]
 pub fn node_does_not_quarantine_whitelisted_node() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
@@ -205,7 +215,11 @@ pub fn node_does_not_quarantine_whitelisted_node() {
 #[test]
 pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
@@ -250,7 +264,11 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
 #[test]
 pub fn node_does_not_quarantine_trusted_node() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
@@ -285,7 +303,11 @@ pub fn node_does_not_quarantine_trusted_node() {
 #[test]
 pub fn node_trust_itself() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
@@ -323,7 +345,11 @@ pub fn node_trust_itself() {
 #[ignore]
 pub fn node_put_itself_in_preffered_layers() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
@@ -369,7 +395,11 @@ fn gossip_interval() {
     const INTERVAL_SECS: u64 = 3;
 
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
@@ -424,7 +454,11 @@ fn gossip_interval() {
 fn network_stuck_check() {
     const INTERVAL_SECS: u64 = 90;
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .build()
         .unwrap();
 
@@ -469,7 +503,11 @@ fn max_bootstrap_attempts() {
     const ATTEMPTS: usize = 3;
 
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .build()
         .unwrap();
 

@@ -6,6 +6,7 @@ use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
 use jormungandr_testing_utils::testing::network::{
     builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Blockchain,
 };
+use jormungandr_testing_utils::testing::network::{Node, Topology};
 use std::{cmp::PartialOrd, fmt::Display};
 
 use chain_impl_mockchain::block::BlockDate;
@@ -36,7 +37,11 @@ macro_rules! build_network {
 #[test]
 pub fn passive_node_last_block_info() {
     let mut network_controller = build_network!()
-        .single_trust_direction(PASSIVE, LEADER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
+        )
         .wallet_template(
             WalletTemplateBuilder::new("alice")
                 .with(1_000_000)
@@ -77,7 +82,11 @@ pub fn passive_node_last_block_info() {
 #[test]
 pub fn leader_node_last_block_info() {
     let mut network_controller = build_network!()
-        .single_trust_direction(LEADER_CLIENT, LEADER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(LEADER_CLIENT).with_trusted_peer(LEADER)),
+        )
         .wallet_template(
             WalletTemplateBuilder::new("alice")
                 .with(1_000_000)

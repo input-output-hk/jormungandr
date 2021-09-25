@@ -1,7 +1,7 @@
 use crate::testing::{
     network::{
         controller::{Controller, ControllerError},
-        Blockchain, Node, NodeAlias, NodeSetting, Random, Seed, Settings, Topology, WalletTemplate,
+        Blockchain, NodeAlias, NodeSetting, Random, Seed, Settings, Topology, WalletTemplate,
     },
     NodeConfigBuilder,
 };
@@ -18,13 +18,6 @@ pub struct NetworkBuilder {
 }
 
 impl NetworkBuilder {
-    pub fn single_trust_direction(mut self, client: &str, server: &str) -> Self {
-        self.topology = Topology::default()
-            .with_node(Node::new(server))
-            .with_node(Node::new(client).with_trusted_peer(server));
-        self
-    }
-
     pub fn topology(mut self, topology: Topology) -> Self {
         self.topology = topology;
         self
