@@ -1,15 +1,14 @@
 #![allow(dead_code)]
 
-use crate::testing::jcli::JCli;
-use crate::testing::witness::Witness;
+use crate::testing::{jcli::JCli, witness::Witness};
 use crate::wallet::Wallet;
 use assert_fs::fixture::ChildPath;
 use assert_fs::{prelude::*, TempDir};
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
-use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::{
     crypto::hash::Hash,
+    interfaces::BlockDate,
     interfaces::{LegacyUTxO, UTxOInfo, Value},
 };
 use std::path::{Path, PathBuf};

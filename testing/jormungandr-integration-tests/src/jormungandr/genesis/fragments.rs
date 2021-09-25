@@ -1,6 +1,4 @@
-use jormungandr_testing_utils::testing::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup,
-};
+use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{

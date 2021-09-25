@@ -1,5 +1,5 @@
-use jormungandr_testing_utils::testing::jcli::JCli;
 use chain_addr::Discrimination;
+use jormungandr_testing_utils::testing::jcli::JCli;
 
 #[test]
 pub fn test_utxo_address_made_of_ed25519_extended_key() {

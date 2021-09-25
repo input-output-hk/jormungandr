@@ -1,11 +1,9 @@
-use crate::testing::{
-    configuration,
-    jcli::JCli,
-    jormungandr::JormungandrProcess,
-    startup::{build_genesis_block, create_new_key_pair},
-};
 use crate::{
     testing::{
+        configuration,
+        jcli::JCli,
+        jormungandr::JormungandrProcess,
+        startup::{build_genesis_block, create_new_key_pair},
         Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
     },
     wallet::Wallet,

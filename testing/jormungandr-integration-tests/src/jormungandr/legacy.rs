@@ -1,13 +1,13 @@
+use chain_impl_mockchain::{
+    accounting::account::{DelegationRatio, DelegationType},
+    block::BlockDate,
+    transaction::AccountIdentifier,
+};
 use jormungandr_testing_utils::testing::transaction_utils::TransactionHash;
 use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
-};
-use chain_impl_mockchain::{
-    accounting::account::{DelegationRatio, DelegationType},
-    block::BlockDate,
-    transaction::AccountIdentifier,
 };
 use jormungandr_testing_utils::{
     stake_pool::StakePool,

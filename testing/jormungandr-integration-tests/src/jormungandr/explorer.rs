@@ -3,10 +3,10 @@ use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jormungandr_testing_utils::stake_pool::StakePool;
+use jormungandr_testing_utils::testing::node::Explorer;
 use jormungandr_testing_utils::testing::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
-use jormungandr_testing_utils::testing::node::Explorer;
 use jortestkit::process::Wait;
 use std::str::FromStr;
 use std::time::Duration;

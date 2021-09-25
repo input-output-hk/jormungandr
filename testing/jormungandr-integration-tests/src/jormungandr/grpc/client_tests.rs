@@ -1,7 +1,4 @@
 use super::setup;
-use jormungandr_testing_utils::testing::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
-};
 use chain_core::property::FromStr;
 use chain_crypto::{Ed25519, PublicKey, Signature, Verification};
 use chain_impl_mockchain::{
@@ -16,6 +13,9 @@ use chain_impl_mockchain::{
 use chain_time::{Epoch, TimeEra};
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_testing_utils::testing::node::grpc::client::MockClientError;
+use jormungandr_testing_utils::testing::{
+    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+};
 
 use rand::Rng;
 use std::time::Duration;

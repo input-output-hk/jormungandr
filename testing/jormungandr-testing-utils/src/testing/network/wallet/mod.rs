@@ -1,7 +1,5 @@
 pub mod template;
 
-pub use template::{ExternalWalletTemplate, WalletTemplate};
-
 use crate::wallet::{
     account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner, WalletError,
 };
@@ -16,6 +14,7 @@ use jormungandr_lib::{
 use rand_core::{CryptoRng, RngCore};
 use serde::Deserialize;
 use std::path::Path;
+pub use template::{ExternalWalletTemplate, WalletTemplate};
 
 pub type WalletAlias = String;
 

@@ -2,11 +2,11 @@ use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::interfaces::TrustedPeer;
 use jormungandr_testing_utils::testing::{node::grpc::JormungandrClient, SyncNode};
 
+use assert_fs::TempDir;
 use jormungandr_testing_utils::testing::{
     configuration::JormungandrParams,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
-use assert_fs::TempDir;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 const DEFAULT_SLOT_DURATION: u8 = 1;

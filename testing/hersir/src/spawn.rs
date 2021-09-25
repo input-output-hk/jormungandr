@@ -1,16 +1,12 @@
-use std::{collections::HashMap, fs::File};
-
+use crate::{args::Args, config::Config, error::Error};
 use jormungandr_testing_utils::testing::{
     jormungandr::JormungandrProcess,
     network::{builder::NetworkBuilder, NodeAlias},
 };
-
-use crate::{args::Args, config::Config, error::Error};
+use std::{collections::HashMap, fs::File};
 
 pub fn spawn_network(args: Args) -> Result<HashMap<NodeAlias, JormungandrProcess>, Error> {
     let config: Config = serde_json::from_reader(File::open(args.config)?)?;
-
-    println!("{:?}", config);
 
     let mut topology = config.build_topology();
 

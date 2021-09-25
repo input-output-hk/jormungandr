@@ -1,6 +1,6 @@
-use jormungandr_testing_utils::testing::{jormungandr::ConfigurationBuilder, startup};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
 use jormungandr_testing_utils::testing::node::RestRequestGen;
+use jormungandr_testing_utils::testing::{jormungandr::ConfigurationBuilder, startup};
 use jortestkit::load::{self, Configuration, Monitor};
 
 #[test]

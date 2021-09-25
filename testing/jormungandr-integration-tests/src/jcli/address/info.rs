@@ -1,5 +1,5 @@
-use jormungandr_testing_utils::testing::jcli::JCli;
 use chain_addr::Discrimination;
+use jormungandr_testing_utils::testing::jcli::JCli;
 
 #[test]
 pub fn test_info_unknown_address_public_key() {

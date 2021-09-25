@@ -40,11 +40,11 @@ pub mod persistent_log;
 
 pub mod voting;
 
+use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
 use jormungandr_testing_utils::testing::{
     jcli::{self, JCli},
     jormungandr::{JormungandrError, JormungandrProcess},
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
 use jormungandr_testing_utils::{testing::node::ExplorerError, wallet::Wallet};
 use thiserror::Error;
 
