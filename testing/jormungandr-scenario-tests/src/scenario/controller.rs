@@ -335,9 +335,7 @@ impl Controller {
     }
 
     pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
-        let mut spawn_params = SpawnParams::new(node_alias);
-        spawn_params.node_key_file(self.node_dir(node_alias).path().into());
-        spawn_params
+        SpawnParams::new(node_alias).node_key_file(self.node_dir(node_alias).path().into())
     }
 
     fn node_dir(&self, alias: &str) -> ChildPath {
@@ -346,7 +344,7 @@ impl Controller {
 
     pub fn spawn_legacy_node(
         &mut self,
-        params: &mut SpawnParams,
+        params: SpawnParams,
         version: &Version,
     ) -> Result<LegacyNodeController> {
         let node_setting = if let Some(node_setting) =
@@ -385,7 +383,7 @@ impl Controller {
         Ok(node.controller())
     }
 
-    pub fn spawn_node_custom(&mut self, params: &mut SpawnParams) -> Result<NodeController> {
+    pub fn spawn_node_custom(&mut self, params: SpawnParams) -> Result<NodeController> {
         let node_setting = if let Some(node_setting) =
             self.settings.network_settings.nodes.get(params.get_alias())
         {
@@ -436,10 +434,11 @@ impl Controller {
         leadership_mode: LeadershipMode,
         persistence_mode: PersistenceMode,
     ) -> Result<NodeController> {
-        let mut params = self.new_spawn_params(node_alias);
-        params.leadership_mode(leadership_mode);
-        params.persistence_mode(persistence_mode);
-        self.spawn_node_custom(&mut params)
+        self.spawn_node_custom(
+            self.new_spawn_params(node_alias)
+                .leadership_mode(leadership_mode)
+                .persistence_mode(persistence_mode),
+        )
     }
 
     pub fn restart_node(

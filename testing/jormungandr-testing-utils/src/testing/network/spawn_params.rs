@@ -83,16 +83,16 @@ impl SpawnParams {
         &self.alias
     }
 
-    pub fn no_listen_address(&mut self) -> &mut Self {
+    pub fn no_listen_address(self) -> Self {
         self.listen_address(None)
     }
 
-    pub fn listen_address(&mut self, address: Option<SocketAddr>) -> &mut Self {
+    pub fn listen_address(mut self, address: Option<SocketAddr>) -> Self {
         self.listen_address = Some(address);
         self
     }
 
-    pub fn persistent_fragment_log<P: AsRef<Path>>(&mut self, path: P) -> &mut Self {
+    pub fn persistent_fragment_log<P: AsRef<Path>>(mut self, path: P) -> Self {
         self.persistent_fragment_log = Some(path.as_ref().to_path_buf());
         self
     }
@@ -109,102 +109,102 @@ impl SpawnParams {
         &self.version
     }
 
-    pub fn topics_of_interest(&mut self, topics_of_interest: TopicsOfInterest) -> &mut Self {
+    pub fn topics_of_interest(mut self, topics_of_interest: TopicsOfInterest) -> Self {
         self.topics_of_interest = Some(topics_of_interest);
         self
     }
 
-    pub fn public_address(&mut self, public_address: Multiaddr) -> &mut Self {
+    pub fn public_address(mut self, public_address: Multiaddr) -> Self {
         self.public_address = Some(public_address);
         self
     }
 
-    pub fn version(&mut self, version: Version) -> &mut Self {
+    pub fn version(mut self, version: Version) -> Self {
         self.version = Some(version);
         self
     }
 
-    pub fn max_connections(&mut self, max_connections: u32) -> &mut Self {
+    pub fn max_connections(mut self, max_connections: u32) -> Self {
         self.max_connections = Some(max_connections);
         self
     }
 
-    pub fn max_inbound_connections(&mut self, max_inbound_connections: u32) -> &mut Self {
+    pub fn max_inbound_connections(mut self, max_inbound_connections: u32) -> Self {
         self.max_inbound_connections = Some(max_inbound_connections);
         self
     }
 
-    pub fn explorer(&mut self, explorer: Explorer) -> &mut Self {
+    pub fn explorer(mut self, explorer: Explorer) -> Self {
         self.explorer = Some(explorer);
         self
     }
 
-    pub fn skip_bootstrap(&mut self, skip_bootstrap: bool) -> &mut Self {
+    pub fn skip_bootstrap(mut self, skip_bootstrap: bool) -> Self {
         self.skip_bootstrap = Some(skip_bootstrap);
         self
     }
 
-    pub fn mempool(&mut self, mempool: Mempool) -> &mut Self {
+    pub fn mempool(mut self, mempool: Mempool) -> Self {
         self.mempool = Some(mempool);
         self
     }
 
-    pub fn bootstrap_from_peers(&mut self, bootstrap_from_peers: bool) -> &mut Self {
+    pub fn bootstrap_from_peers(mut self, bootstrap_from_peers: bool) -> Self {
         self.bootstrap_from_peers = Some(bootstrap_from_peers);
         self
     }
 
-    pub fn trusted_peers(&mut self, trusted_peers: Vec<TrustedPeer>) -> &mut Self {
+    pub fn trusted_peers(mut self, trusted_peers: Vec<TrustedPeer>) -> Self {
         self.trusted_peers = Some(trusted_peers);
         self
     }
 
-    pub fn preferred_layer(&mut self, preferred_layer: PreferredListConfig) -> &mut Self {
+    pub fn preferred_layer(mut self, preferred_layer: PreferredListConfig) -> Self {
         self.preferred_layer = Some(preferred_layer);
         self
     }
 
-    pub fn policy(&mut self, policy: Policy) -> &mut Self {
+    pub fn policy(mut self, policy: Policy) -> Self {
         self.policy = Some(policy);
         self
     }
 
-    pub fn jormungandr(&mut self, jormungandr_app_path: PathBuf) -> &mut Self {
+    pub fn jormungandr(mut self, jormungandr_app_path: PathBuf) -> Self {
         self.jormungandr = Some(jormungandr_app_path);
         self
     }
 
-    pub fn passive(&mut self) -> &mut Self {
+    pub fn passive(mut self) -> Self {
         self.leadership_mode = LeadershipMode::Passive;
         self
     }
 
-    pub fn leader(&mut self) -> &mut Self {
+    pub fn leader(mut self) -> Self {
         self.leadership_mode = LeadershipMode::Leader;
         self
     }
 
-    pub fn in_memory(&mut self) -> &mut Self {
+    pub fn in_memory(mut self) -> Self {
         self.persistence_mode = PersistenceMode::InMemory;
         self
     }
 
-    pub fn leadership_mode(&mut self, leadership_mode: LeadershipMode) -> &mut Self {
+    pub fn leadership_mode(mut self, leadership_mode: LeadershipMode) -> Self {
         self.leadership_mode = leadership_mode;
         self
     }
 
-    pub fn persistence_mode(&mut self, persistence_mode: PersistenceMode) -> &mut Self {
+    pub fn persistence_mode(mut self, persistence_mode: PersistenceMode) -> Self {
         self.persistence_mode = persistence_mode;
         self
     }
 
-    pub fn node_key_file(&mut self, node_key_file: PathBuf) -> &mut Self {
+    pub fn node_key_file(mut self, node_key_file: PathBuf) -> Self {
         self.node_key_file = Some(node_key_file);
         self
     }
 
-    pub fn faketime(&mut self, faketime: FaketimeConfig) -> &mut Self {
+    pub fn faketime(mut self, faketime: FaketimeConfig) -> Self {
         self.faketime = Some(faketime);
         self
     }
@@ -213,12 +213,12 @@ impl SpawnParams {
         self.faketime.as_ref()
     }
 
-    pub fn gossip_interval(&mut self, duration: Duration) -> &mut Self {
+    pub fn gossip_interval(mut self, duration: Duration) -> Self {
         self.gossip_interval = Some(duration);
         self
     }
 
-    pub fn log_level(&mut self, level: Level) -> &mut Self {
+    pub fn log_level(mut self, level: Level) -> Self {
         self.log_level = Some(level);
         self
     }
@@ -227,12 +227,12 @@ impl SpawnParams {
         self.log_level.as_ref()
     }
 
-    pub fn max_bootstrap_attempts(&mut self, attempts: usize) -> &mut Self {
+    pub fn max_bootstrap_attempts(mut self, attempts: usize) -> Self {
         self.max_bootstrap_attempts = Some(attempts);
         self
     }
 
-    pub fn network_stuck_check(&mut self, duration: Duration) -> &mut Self {
+    pub fn network_stuck_check(mut self, duration: Duration) -> Self {
         self.network_stuck_check = Some(duration);
         self
     }

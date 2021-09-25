@@ -1,7 +1,8 @@
 use jormungandr_testing_utils::testing::{
     jormungandr::process::JormungandrProcess,
     network::{
-        builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Node, Topology,
+        builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Node,
+        SpawnParams, Topology,
     },
 };
 
@@ -139,7 +140,7 @@ pub fn node_whitelist_itself() {
         .build()
         .unwrap();
 
-    let _server = network_controller.spawn_and_wait(SERVER);
+    let _server = network_controller.spawn(SpawnParams::new(SERVER).in_memory());
 
     let client_public_address = network_controller
         .node_config(CLIENT)
@@ -152,7 +153,7 @@ pub fn node_whitelist_itself() {
     };
 
     let client = network_controller
-        .spawn_custom(network_controller.spawn_params(CLIENT).policy(policy))
+        .spawn(SpawnParams::new(CLIENT).policy(policy))
         .unwrap();
     client.assert_no_errors_in_log();
 }
@@ -187,13 +188,12 @@ pub fn node_does_not_quarantine_whitelisted_node() {
     };
 
     let server = network_controller
-        .spawn_custom(network_controller.spawn_params(SERVER).policy(policy))
+        .spawn(SpawnParams::new(SERVER).policy(policy))
         .unwrap();
 
     let _client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
+        .spawn(
+            SpawnParams::new(CLIENT)
                 // The client broadcast a different ip address from the one it's actually
                 // listening to, so that the server will fail connection
                 .public_address("/ip4/127.0.0.1/tcp/80".parse().unwrap())
@@ -235,12 +235,13 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
         .build()
         .unwrap();
 
-    let server = network_controller.spawn_and_wait(SERVER);
+    let server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
 
     let client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
+        .spawn(
+            SpawnParams::new(CLIENT)
                 // The client broadcast a different ip address from the one it's actually
                 // listening to, so that the server will fail connection and put it in quarantine
                 .public_address("/ip4/127.0.0.1/tcp/80".parse().unwrap())
@@ -284,8 +285,12 @@ pub fn node_does_not_quarantine_trusted_node() {
         .build()
         .unwrap();
 
-    let server = network_controller.spawn_and_wait(SERVER);
-    let client = network_controller.spawn_and_wait(CLIENT);
+    let server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
+    let client = network_controller
+        .spawn(SpawnParams::new(CLIENT).in_memory())
+        .unwrap();
 
     process_utils::sleep(5);
 
@@ -323,7 +328,9 @@ pub fn node_trust_itself() {
         .build()
         .unwrap();
 
-    let _server = network_controller.spawn_and_wait(SERVER);
+    let _server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
 
     let config = network_controller.node_config(CLIENT).unwrap().p2p;
 
@@ -333,9 +340,7 @@ pub fn node_trust_itself() {
     };
     network_controller
         .expect_spawn_failed(
-            network_controller
-                .spawn_params(CLIENT)
-                .trusted_peers(vec![peer]),
+            SpawnParams::new(CLIENT).trusted_peers(vec![peer]),
             "failed to retrieve the list of bootstrap peers from trusted peer",
         )
         .unwrap();
@@ -365,7 +370,9 @@ pub fn node_put_itself_in_preffered_layers() {
         .build()
         .unwrap();
 
-    let _server = network_controller.spawn_and_wait(SERVER);
+    let _server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
 
     let config = network_controller.node_config(CLIENT).unwrap().p2p;
 
@@ -381,9 +388,7 @@ pub fn node_put_itself_in_preffered_layers() {
 
     assert!(network_controller
         .expect_spawn_failed(
-            network_controller
-                .spawn_params(CLIENT)
-                .preferred_layer(layer),
+            SpawnParams::new(CLIENT).preferred_layer(layer),
             "topology tells the node to connect to itself"
         )
         .is_ok());
@@ -416,15 +421,16 @@ fn gossip_interval() {
         .unwrap();
 
     let server = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(SERVER)
+        .spawn(
+            SpawnParams::new(SERVER)
                 .gossip_interval(Duration::new(INTERVAL_SECS, 0))
                 .log_level(Level::Trace),
         )
         .unwrap();
 
-    let _client = network_controller.spawn_and_wait(CLIENT);
+    let _client = network_controller
+        .spawn(SpawnParams::new(CLIENT).in_memory())
+        .unwrap();
 
     process_utils::sleep(10);
 
@@ -462,12 +468,13 @@ fn network_stuck_check() {
         .build()
         .unwrap();
 
-    let server = network_controller.spawn_and_wait(SERVER);
+    let server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
 
     let client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
+        .spawn(
+            SpawnParams::new(CLIENT)
                 .log_level(Level::Trace)
                 .gossip_interval(Duration::new(5, 0))
                 .network_stuck_check(Duration::new(INTERVAL_SECS, 0)),
@@ -512,9 +519,8 @@ fn max_bootstrap_attempts() {
         .unwrap();
 
     let client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
+        .spawn(
+            SpawnParams::new(CLIENT)
                 .max_bootstrap_attempts(ATTEMPTS)
                 .log_level(Level::Trace),
         )

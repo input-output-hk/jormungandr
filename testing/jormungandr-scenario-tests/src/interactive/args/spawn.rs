@@ -78,8 +78,7 @@ fn spawn_node(
         }
     };
 
-    let mut spawn_params = SpawnParams::new(alias);
-    spawn_params
+    let spawn_params = SpawnParams::new(alias)
         .persistence_mode(persistence_mode)
         .leadership_mode(leadership_mode);
 
@@ -92,7 +91,7 @@ fn spawn_node(
 
         let node = controller
             .controller_mut()
-            .spawn_legacy_node(&mut spawn_params, &legacy_release.version())?;
+            .spawn_legacy_node(spawn_params, &legacy_release.version())?;
         println!(
             "{}",
             style::info.apply_to(format!("node '{}' spawned", alias))
@@ -116,7 +115,7 @@ fn spawn_node(
 
     let node = controller
         .controller_mut()
-        .spawn_node_custom(&mut spawn_params)?;
+        .spawn_node_custom(spawn_params)?;
     println!(
         "{}",
         style::info.apply_to(format!("node '{}' spawned", alias))

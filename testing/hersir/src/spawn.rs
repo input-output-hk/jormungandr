@@ -25,7 +25,17 @@ pub fn spawn_network(args: Args) -> Result<HashMap<NodeAlias, JormungandrProcess
             .map(|n| n.alias.clone())
             .ok_or(Error::CircularTrust)?;
 
-        processes.insert(alias.clone(), controller.spawn_and_wait(&alias));
+        let spawn_params = config
+            .nodes
+            .iter()
+            .find(|c| c.spawn_params.get_alias() == &alias)
+            .map(|c| &c.spawn_params)
+            .ok_or(Error::Internal(format!(
+                "Node '{}' has no spawn parameters",
+                alias
+            )))?;
+
+        processes.insert(alias.clone(), controller.spawn(spawn_params.clone())?);
 
         topology.nodes.remove(&alias);
         topology.nodes.values_mut().for_each(|n| {

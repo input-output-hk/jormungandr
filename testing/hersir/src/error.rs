@@ -11,4 +11,6 @@ pub enum Error {
     CircularTrust,
     #[error("Controller error: {0}")]
     Controller(#[from] ControllerError),
+    #[error("INTERNAL ERROR: {0}")]
+    Internal(String),
 }

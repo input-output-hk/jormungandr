@@ -6,7 +6,7 @@ use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
 use jormungandr_testing_utils::testing::network::{
     builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Blockchain,
 };
-use jormungandr_testing_utils::testing::network::{Node, Topology};
+use jormungandr_testing_utils::testing::network::{Node, SpawnParams, Topology};
 use std::{cmp::PartialOrd, fmt::Display};
 
 use chain_impl_mockchain::block::BlockDate;
@@ -52,8 +52,12 @@ pub fn passive_node_last_block_info() {
         .build()
         .unwrap();
 
-    let leader = network_controller.spawn_and_wait(LEADER);
-    let passive = network_controller.spawn_as_passive_and_wait(PASSIVE);
+    let leader = network_controller
+        .spawn(SpawnParams::new(LEADER).in_memory())
+        .unwrap();
+    let passive = network_controller
+        .spawn(SpawnParams::new(PASSIVE).in_memory().passive().in_memory())
+        .unwrap();
 
     let mut alice = network_controller.wallet("alice").unwrap();
     let mut bob = network_controller.wallet("bob").unwrap();
@@ -97,8 +101,12 @@ pub fn leader_node_last_block_info() {
         .build()
         .unwrap();
 
-    let leader = network_controller.spawn_and_wait(LEADER);
-    let leader_client = network_controller.spawn_and_wait(LEADER_CLIENT);
+    let leader = network_controller
+        .spawn(SpawnParams::new(LEADER).in_memory())
+        .unwrap();
+    let leader_client = network_controller
+        .spawn(SpawnParams::new(LEADER_CLIENT).in_memory())
+        .unwrap();
 
     let mut alice = network_controller.wallet("alice").unwrap();
     let mut bob = network_controller.wallet("bob").unwrap();

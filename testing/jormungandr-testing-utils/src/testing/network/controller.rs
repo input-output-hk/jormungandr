@@ -4,7 +4,7 @@ use crate::testing::{
 };
 use crate::{
     testing::{
-        network::{LeadershipMode, NodeSetting, PersistenceMode, Settings, SpawnParams},
+        network::{NodeSetting, PersistenceMode, Settings, SpawnParams},
         JormungandrParams,
     },
     wallet::Wallet,
@@ -12,7 +12,7 @@ use crate::{
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 
-use assert_fs::fixture::{ChildPath, FixtureError};
+use assert_fs::fixture::FixtureError;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
 use std::path::PathBuf;
@@ -77,47 +77,23 @@ impl Controller {
     }
 
     fn node_settings(&self, alias: &str) -> Result<&NodeSetting, ControllerError> {
-        if let Some(node_setting) = self.settings.nodes.get(alias) {
-            Ok(node_setting)
-        } else {
-            Err(ControllerError::NodeNotFound(alias.to_string()))
-        }
-    }
-
-    pub fn spawn_params(&self, alias: &str) -> SpawnParams {
-        let mut spawn_params = SpawnParams::new(alias);
-        spawn_params.node_key_file(
-            self.node_dir(alias)
-                .child(NODE_TOPOLOGY_KEY_FILE)
-                .path()
-                .into(),
-        );
-        spawn_params
-    }
-
-    pub fn spawn_and_wait(&mut self, alias: &str) -> JormungandrProcess {
-        self.spawn_node(alias, PersistenceMode::InMemory, LeadershipMode::Leader)
-            .unwrap_or_else(|_| panic!("cannot start {}", alias))
-    }
-
-    pub fn spawn_as_passive_and_wait(&mut self, alias: &str) -> JormungandrProcess {
-        self.spawn_node(alias, PersistenceMode::InMemory, LeadershipMode::Passive)
-            .unwrap_or_else(|_| panic!("cannot start {}", alias))
+        self.settings
+            .nodes
+            .get(alias)
+            .ok_or_else(|| ControllerError::NodeNotFound(alias.to_string()))
     }
 
     pub fn spawn_node_async(&mut self, alias: &str) -> Result<JormungandrProcess, ControllerError> {
-        let mut spawn_params = SpawnParams::new(alias);
-        spawn_params.leadership_mode(LeadershipMode::Leader);
-        spawn_params.persistence_mode(PersistenceMode::InMemory);
-
-        let mut starter = self.make_starter_for(&spawn_params)?;
+        let mut starter = self.make_starter_for(
+            SpawnParams::new(alias).persistence_mode(PersistenceMode::InMemory),
+        )?;
         let process = starter.start_async()?;
         Ok(process)
     }
 
     pub fn expect_spawn_failed(
         &mut self,
-        spawn_params: &SpawnParams,
+        spawn_params: SpawnParams,
         expected_msg: &str,
     ) -> Result<(), ControllerError> {
         let mut starter = self.make_starter_for(spawn_params)?;
@@ -125,22 +101,28 @@ impl Controller {
         Ok(())
     }
 
-    pub fn spawn_custom(
+    pub fn spawn(
         &mut self,
-        spawn_params: &SpawnParams,
+        spawn_params: SpawnParams,
     ) -> Result<JormungandrProcess, ControllerError> {
-        let mut starter = self.make_starter_for(spawn_params)?;
-        let process = starter.start()?;
-        Ok(process)
+        Ok(self.make_starter_for(spawn_params)?.start()?)
     }
 
-    fn node_dir(&self, alias: &str) -> ChildPath {
-        self.working_directory.child(alias)
-    }
+    fn make_starter_for(
+        &mut self,
+        mut spawn_params: SpawnParams,
+    ) -> Result<Starter, ControllerError> {
+        let node_key_file = self
+            .working_directory
+            .child(spawn_params.get_alias())
+            .child(NODE_TOPOLOGY_KEY_FILE)
+            .path()
+            .into();
 
-    fn make_starter_for(&mut self, spawn_params: &SpawnParams) -> Result<Starter, ControllerError> {
+        spawn_params = spawn_params.node_key_file(node_key_file);
+
         let node_setting = self.node_settings(spawn_params.get_alias())?;
-        let dir = self.node_dir(&node_setting.alias);
+        let dir = self.working_directory.child(spawn_params.get_alias());
         let mut config = node_setting.config.clone();
         spawn_params.override_settings(&mut config);
 
@@ -193,18 +175,5 @@ impl Controller {
             .from_genesis(spawn_params.get_leadership_mode().into())
             .leadership_mode(spawn_params.get_leadership_mode());
         Ok(starter)
-    }
-
-    pub fn spawn_node(
-        &mut self,
-        alias: &str,
-        persistence_mode: PersistenceMode,
-        leadership_mode: LeadershipMode,
-    ) -> Result<JormungandrProcess, ControllerError> {
-        self.spawn_custom(
-            self.spawn_params(alias)
-                .leadership_mode(leadership_mode)
-                .persistence_mode(persistence_mode),
-        )
     }
 }
