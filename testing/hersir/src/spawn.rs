@@ -30,10 +30,7 @@ pub fn spawn_network(args: Args) -> Result<HashMap<NodeAlias, JormungandrProcess
             .iter()
             .find(|c| c.spawn_params.get_alias() == &alias)
             .map(|c| &c.spawn_params)
-            .ok_or(Error::Internal(format!(
-                "Node '{}' has no spawn parameters",
-                alias
-            )))?;
+            .ok_or_else(|| Error::Internal(format!("Node '{}' has no spawn parameters", alias)))?;
 
         processes.insert(alias.clone(), controller.spawn(spawn_params.clone())?);
 
