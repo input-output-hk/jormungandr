@@ -213,7 +213,7 @@ impl Process {
                     date = %leadership_block.block.header().block_date()
                 );
                 let _enter = span.enter();
-                tracing::info!("receiving block from leadership service");
+                tracing::debug!("receiving block from leadership service");
 
                 self.service_info.timeout_spawn_fallible(
                     "process leadership block",
@@ -239,7 +239,7 @@ impl Process {
                     peer = %node_id
                 );
                 let _enter = span.enter();
-                tracing::info!("received block announcement from network");
+                tracing::debug!("received block announcement from network");
 
                 self.service_info.timeout_spawn_fallible(
                     "process block announcement",
@@ -262,7 +262,7 @@ impl Process {
                     "process_network_blocks",
                 );
                 let _guard = span.enter();
-                tracing::info!("receiving block stream from network");
+                tracing::debug!("receiving block stream from network");
 
                 self.service_info.timeout_spawn_fallible(
                     "process network blocks",
@@ -282,7 +282,7 @@ impl Process {
             BlockMsg::ChainHeaders(handle) => {
                 let span = span!(parent: self.service_info.span(), Level::DEBUG, "process_chain_headers", sub_task = "chain_pull");
                 let _enter = span.enter();
-                tracing::info!("receiving header stream from network");
+                tracing::debug!("receiving header stream from network");
 
                 self.service_info.timeout_spawn(
                     "process network headers",
