@@ -52,7 +52,8 @@ where
     // the cancellation signal arrives. Building such stream allows us to
     // correctly write all blocks and update the block tip upon the arrival of
     // the cancellation signal.
-    let cancel = cancellation_token.cancelled().boxed();
+    let cancel = cancellation_token.cancelled();
+    tokio::pin!(cancel);
     let mut stream = stream
         .map_err(Error::PullStreamFailed)
         .map(|maybe_block| maybe_block.and_then(|b| Ok(Block::deserialize(b.as_bytes())?)))
