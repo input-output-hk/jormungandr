@@ -40,7 +40,7 @@
   verification of the blockchain result, forensics, and possibly to compute
   the vote tally from the received fragments off-chain as a backup counting
   method.
-- `scripts/bootstrap.py`, a cross-platform Python script to replace tje older
+- `scripts/bootstrap.py`, a cross-platform Python script to replace the older
   collection of outdated shell scripts.
 
 **Changes:**
