@@ -27,4 +27,8 @@ impl ExternalWalletTemplate {
     pub fn address(&self) -> String {
         self.address.clone()
     }
+
+    pub fn alias(&self) -> WalletAlias {
+        self.alias.clone()
+    }
 }

@@ -36,4 +36,8 @@ impl LegacyWalletTemplate {
     pub fn address(&self) -> String {
         self.address.clone()
     }
+
+    pub fn mnemonics(&self) -> String {
+        self.mnemonics.clone()
+    }
 }

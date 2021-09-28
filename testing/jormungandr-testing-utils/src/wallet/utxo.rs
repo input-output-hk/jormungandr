@@ -14,11 +14,6 @@ pub type SpendingKey = key::SigningKey<chain_crypto::Ed25519Extended>;
 /// wallet for an account
 #[derive(Debug, Clone)]
 pub struct Wallet {
-    /// this is the root seed of the wallet, everytime we will require
-    /// the wallet to update we will update the rng, we keep the `seed`
-    /// so we may reproduce the steps of the wallet
-    seed: [u8; 32],
-
     rng: ChaChaRng,
 
     /// the spending key
@@ -41,7 +36,6 @@ impl Wallet {
 
         let mut wallet = Self {
             signing_keys: Vec::new(),
-            seed,
             rng: ChaChaRng::from_seed(seed),
             utxos: Vec::new(),
             discrimination,
@@ -55,6 +49,10 @@ impl Wallet {
         let key = key::SigningKey::generate(&mut self.rng);
         self.signing_keys.push(key);
         self.last_signing_key()
+    }
+
+    pub fn utxos(&self) -> Vec<(usize, UTxOInfo)> {
+        self.utxos.clone()
     }
 
     pub fn address(&self) -> Address {
