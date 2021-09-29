@@ -743,28 +743,17 @@ impl Peers {
         }
     }
 
-    pub async fn fetch_blocks(&self, hashes: BlockIds) {
-        async move {
-            let mut map = self.inner().await;
-            if let Some((node_id, comms)) = map.next_peer_for_block_fetch() {
-                tracing::debug!("fetching blocks from {}", node_id);
-                comms
-                    .block_solicitations
-                    .try_send(hashes)
-                    .unwrap_or_else(|e| {
-                        tracing::debug!("block fetch from {} failed: {:?}", node_id, e);
-                        tracing::debug!("unsubscribing peer {}", node_id);
-                        map.remove_peer(node_id);
-                    });
-            } else {
-                tracing::warn!("no peers to fetch blocks from");
-            }
+    pub async fn solicit_blocks_any(&self, hashes: BlockIds) {
+        let mut map = self.inner().await;
+        if let Some((peer, _)) = map.next_peer_for_block_fetch() {
+            drop(map); // do not hold the lock
+            self.solicit_blocks_peer(peer, hashes).await;
+        } else {
+            tracing::warn!("no peers to fetch blocks from");
         }
-        .instrument(self.span.clone())
-        .await
     }
 
-    pub async fn solicit_blocks(&self, peer: Address, hashes: BlockIds) {
+    pub async fn solicit_blocks_peer(&self, peer: Address, hashes: BlockIds) {
         async move {
             let mut map = self.inner().await;
             match map.peer_comms(&peer) {
