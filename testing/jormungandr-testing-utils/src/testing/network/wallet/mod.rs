@@ -30,7 +30,7 @@ pub enum WalletType {
 /// This can be used for a faucet
 #[derive(Debug, Clone)]
 pub struct Wallet {
-    pub inner: Inner,
+    inner: Inner,
     template: WalletTemplate,
 }
 
