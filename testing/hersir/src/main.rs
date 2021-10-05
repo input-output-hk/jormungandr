@@ -10,12 +10,21 @@ use structopt::StructOpt;
 fn main() {
     let args = Args::from_args();
 
-    if let Err(e) = spawn::spawn_network(args) {
-        eprintln!("{}", e);
-        std::process::exit(1);
+    let nodes = match spawn::spawn_network(args) {
+        Ok(nodes) => nodes,
+        Err(e) => {
+            eprintln!("{}", e);
+            std::process::exit(1);
+        }
     };
 
     loop {
+        for node in nodes.values() {
+            if let Err(e) = node.rest().network_stats() {
+                eprintln!("{}", e);
+                std::process::exit(1);
+            }
+        }
         std::thread::sleep(Duration::from_secs(1));
     }
 }

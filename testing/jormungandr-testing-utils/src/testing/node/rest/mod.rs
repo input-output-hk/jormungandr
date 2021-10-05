@@ -197,10 +197,6 @@ impl JormungandrRest {
         self.inner.send_raw_fragments(bytes).map_err(Into::into)
     }
 
-    pub fn fragments_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
-        self.inner.fragments_logs()
-    }
-
     pub fn fragments_statuses(
         &self,
         ids: Vec<String>,
