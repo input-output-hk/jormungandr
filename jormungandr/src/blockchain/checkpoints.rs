@@ -18,6 +18,8 @@ impl Checkpoints {
     pub fn new_from(from: Arc<Ref>) -> Self {
         let mut checkpoints = vec![from.hash(), from.block_parent_hash()];
 
+        let block0_hash = from.ledger().get_static_parameters().block0_initial_hash;
+
         let mut ignore_prev = 0;
         let mut current_ref = from;
         while let Some(prev_epoch) = current_ref.last_ref_previous_epoch() {
@@ -39,6 +41,10 @@ impl Checkpoints {
                 ignore_prev += 1;
                 checkpoints.push(hash);
             }
+        }
+
+        if block0_hash != checkpoints[1] {
+            checkpoints.push(block0_hash);
         }
 
         Checkpoints(checkpoints)
