@@ -160,6 +160,12 @@ pub struct VotePlan {
     pub committee_member_public_keys: Vec<chain_vote::MemberPublicKey>,
 }
 
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct VotePlanKey {
+    pub alias: String,
+    pub owner_alias: String,
+}
+
 #[derive(Deserialize, Serialize)]
 #[serde(remote = "Proposal")]
 struct VoteProposalDef {

@@ -7,7 +7,7 @@ use chain_impl_mockchain::{
 };
 
 use jormungandr_lib::crypto::{account::Identifier, key::SigningKey};
-use jormungandr_lib::interfaces::try_initials_vec_from_messages;
+use jormungandr_lib::interfaces::{try_initials_vec_from_messages, VotePlanKey};
 use jormungandr_lib::{
     interfaces::{
         Explorer, LayersConfig, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
@@ -101,7 +101,7 @@ impl Settings {
 
     fn populate_block0_blockchain_vote_plans<RNG>(
         &mut self,
-        mut vote_plans: HashMap<(String, String), VotePlanLib>,
+        mut vote_plans: HashMap<VotePlanKey, VotePlanLib>,
         committees_aliases: Vec<WalletAlias>,
         rng: &mut RNG,
     ) where
@@ -109,12 +109,17 @@ impl Settings {
     {
         let mut vote_plans_fragments = Vec::new();
 
-        for ((alias, owner), vote_plan) in vote_plans.iter_mut() {
+        for (vote_plan_key, vote_plan) in vote_plans.iter_mut() {
             let owner = self
                 .network_settings
                 .wallets
-                .get(owner)
-                .unwrap_or_else(|| panic!("Owner {} of {} is unknown wallet ", owner, alias));
+                .get(&vote_plan_key.owner_alias)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Owner {} of {} is unknown wallet ",
+                        vote_plan_key.owner_alias, vote_plan_key.alias
+                    )
+                });
 
             // workaround beacuse vote_plan_def does not expose payload_type
             let tmp_vote_plan: VotePlan = vote_plan.clone().into();
@@ -136,14 +141,15 @@ impl Settings {
                     vote_plan
                         .committee_member_public_keys
                         .extend(manager.member_public_keys());
-                    self.private_vote_plans.insert(alias.clone(), manager);
+                    self.private_vote_plans
+                        .insert(vote_plan_key.alias.clone(), manager);
                     vote_plan.clone().into()
                 }
             };
 
             self.network_settings
                 .vote_plans
-                .insert(alias.clone(), vote_plan.clone());
+                .insert(vote_plan_key.alias.clone(), vote_plan.clone());
 
             vote_plans_fragments.push(create_initial_vote_plan(
                 &vote_plan,

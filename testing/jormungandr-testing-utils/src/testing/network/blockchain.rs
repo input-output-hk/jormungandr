@@ -6,6 +6,7 @@ use chain_impl_mockchain::milli::Milli;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusVersionDef,
     DiscriminationDef, KesUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, SlotDuration, VotePlan,
+    VotePlanKey,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -38,7 +39,7 @@ pub struct Blockchain {
     #[serde(default)]
     slots_per_epoch: NumberOfSlotsPerEpoch,
     #[serde(default)]
-    vote_plans: HashMap<(String, String), VotePlan>,
+    vote_plans: HashMap<VotePlanKey, VotePlan>,
     #[serde(default)]
     wallets: HashMap<WalletAlias, WalletTemplate>,
 }
@@ -89,7 +90,7 @@ impl Blockchain {
         self.external_wallets = external_wallets;
     }
 
-    pub fn vote_plans(&self) -> HashMap<(String, String), VotePlan> {
+    pub fn vote_plans(&self) -> HashMap<VotePlanKey, VotePlan> {
         self.vote_plans.clone()
     }
 
@@ -132,7 +133,7 @@ impl Blockchain {
         vote_plan_template: VotePlan,
     ) {
         self.vote_plans
-            .insert((alias, owner_alias), vote_plan_template);
+            .insert(VotePlanKey { alias, owner_alias }, vote_plan_template);
     }
 
     pub fn add_leader<S: Into<NodeAlias>>(&mut self, alias: S) {

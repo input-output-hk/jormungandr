@@ -228,13 +228,10 @@ impl Controller {
 
     fn convert_to_def(&self, alias: &str, vote_plan: &VotePlan) -> VotePlanDef {
         let templates = self.blockchain.vote_plans();
-        let template = templates
-            .iter()
-            .find(|vote_plan| vote_plan.0 .0 == alias)
-            .unwrap();
+        let key = templates.keys().find(|key| key.alias == alias).unwrap();
         let mut builder = VotePlanDefBuilder::new(alias);
         builder
-            .owner(&template.0 .1)
+            .owner(&key.owner_alias)
             .payload_type(vote_plan.payload_type())
             .committee_keys(vote_plan.committee_public_keys().to_vec())
             .vote_phases(
