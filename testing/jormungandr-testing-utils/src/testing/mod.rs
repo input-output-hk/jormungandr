@@ -9,7 +9,6 @@ pub mod node;
 pub mod process;
 pub mod remote;
 pub mod resources;
-pub mod serde;
 pub mod startup;
 pub mod storage;
 pub mod sync;

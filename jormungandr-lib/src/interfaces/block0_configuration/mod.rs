@@ -16,7 +16,7 @@ pub use self::block_content_max_size::BlockContentMaxSize;
 pub use self::default_values::*;
 pub use self::epoch_stability_depth::EpochStabilityDepth;
 pub use self::fees_go_to::FeesGoTo;
-pub use self::initial_config::{BlockchainConfiguration, DiscriminationDef};
+pub use self::initial_config::{BlockchainConfiguration, ConsensusVersionDef, DiscriminationDef};
 pub use self::initial_fragment::{
     try_initials_vec_from_messages, Initial, InitialUTxO, LegacyUTxO,
 };

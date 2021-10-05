@@ -483,7 +483,7 @@ pub enum DiscriminationDef {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", remote = "ConsensusVersion")]
-enum ConsensusVersionDef {
+pub enum ConsensusVersionDef {
     Bft,
     GenesisPraos,
 }

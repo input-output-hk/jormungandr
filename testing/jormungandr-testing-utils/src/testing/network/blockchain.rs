@@ -1,13 +1,11 @@
 use super::{ExternalWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
-use crate::testing::serde::ConsensusVersionSerde;
 use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::milli::Milli;
-use jormungandr_lib::interfaces::CommitteeIdDef;
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, BlockContentMaxSize, DiscriminationDef, KesUpdateSpeed, LinearFeeDef,
-    NumberOfSlotsPerEpoch, SlotDuration, VotePlan,
+    ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusVersionDef,
+    DiscriminationDef, KesUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, SlotDuration, VotePlan,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -19,7 +17,7 @@ pub struct Blockchain {
     block_content_max_size: BlockContentMaxSize,
     #[serde(default)]
     committees: Vec<WalletAlias>,
-    #[serde(with = "ConsensusVersionSerde")]
+    #[serde(with = "ConsensusVersionDef")]
     consensus: ConsensusVersion,
     #[serde(default)]
     consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,

@@ -1,6 +1,6 @@
 use crate::testing::network::WalletAlias;
-use crate::testing::serde::ValueSerde;
 use chain_impl_mockchain::value::Value;
+use jormungandr_lib::interfaces::ValueDef;
 use serde::Deserialize;
 
 /// Struct can be used to differentiate wallet template
@@ -9,7 +9,7 @@ use serde::Deserialize;
 pub struct ExternalWalletTemplate {
     alias: WalletAlias,
     address: String,
-    #[serde(with = "ValueSerde")]
+    #[serde(with = "ValueDef")]
     value: Value,
 }
 
