@@ -72,5 +72,5 @@ pub use self::utxo_info::{UTxOInfo, UTxOOutputInfo};
 pub use self::value::{Value, ValueDef};
 pub use self::vote::{
     serde_base64_bytes, PrivateTallyState, Tally, TallyResult, VotePayload, VotePlan, VotePlanId,
-    VotePlanKey, VotePlanStatus, VotePrivacy, VoteProposalStatus,
+    VotePlanStatus, VotePrivacy, VoteProposalStatus,
 };

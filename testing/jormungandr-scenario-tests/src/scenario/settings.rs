@@ -7,7 +7,7 @@ use chain_impl_mockchain::{
 };
 
 use jormungandr_lib::crypto::{account::Identifier, key::SigningKey};
-use jormungandr_lib::interfaces::{try_initials_vec_from_messages, VotePlanKey};
+use jormungandr_lib::interfaces::try_initials_vec_from_messages;
 use jormungandr_lib::{
     interfaces::{
         Explorer, LayersConfig, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
@@ -15,10 +15,10 @@ use jormungandr_lib::{
     },
     time::Duration,
 };
-use jormungandr_testing_utils::testing::network::Random;
 use jormungandr_testing_utils::testing::network::{
-    Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting,
-    Settings as NetworkBuilderSettings, Topology as TopologyTemplate, WalletTemplate, WalletType,
+    Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting, Random,
+    Settings as NetworkBuilderSettings, Topology as TopologyTemplate, VotePlanKey, WalletTemplate,
+    WalletType,
 };
 use jormungandr_testing_utils::wallet::PrivateVoteCommitteeDataManager;
 use rand_core::{CryptoRng, RngCore};

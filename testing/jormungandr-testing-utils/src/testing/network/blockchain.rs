@@ -1,12 +1,11 @@
 use super::{ExternalWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
+use crate::testing::network::VotePlanKey;
 use chain_addr::Discrimination;
-pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::milli::Milli;
+use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use chain_impl_mockchain::{fee::LinearFee, milli::Milli};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusVersionDef,
     DiscriminationDef, KesUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, SlotDuration, VotePlan,
-    VotePlanKey,
 };
 use serde::Deserialize;
 use std::collections::HashMap;
