@@ -697,7 +697,7 @@ pub async fn bootstrap(
     blockchain
         .gc(branch.get_ref().await)
         .await
-        .map_err(bootstrap::Error::GcFailed)?;
+        .map_err(|e| bootstrap::Error::GcFailed(Box::new(e)))?;
 
     Ok(NetworkBootstrapResult {
         initial_peers: bootstrap_peers

@@ -228,8 +228,7 @@ pub struct Tip {
 }
 
 impl Tip {
-    // TODO: make this module private as soon as the bootstrap in refactored
-    pub fn new(branch: Branch) -> Self {
+    pub(super) fn new(branch: Branch) -> Self {
         Tip { branch }
     }
 
