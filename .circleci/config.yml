@@ -96,7 +96,7 @@ commands:
       - run:
           name: Build tests
           command: |
-            cargo build --workspace --tests << parameters.mode >> << parameters.cargo_behavior >>
+            cargo build --workspace --tests --all-features << parameters.mode >> << parameters.cargo_behavior >>
       - run:
           name: Build scenario tests
           command: |
@@ -107,6 +107,7 @@ commands:
             RUST_BACKTRACE: 1
           command: |
             cargo test --workspace --tests << parameters.mode >> << parameters.cargo_behavior >>
+          no_output_timeout: 30m
       - run:
           name: Run doc tests
           environment:
