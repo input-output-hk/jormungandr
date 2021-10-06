@@ -209,7 +209,7 @@ impl GlobalState {
 
     fn inc_client_count(&self) {
         self.stats_counter.add_peer_connected_cnt(1);
-        self.connected_count.fetch_sub(1, Ordering::Relaxed);
+        self.connected_count.fetch_add(1, Ordering::Relaxed);
     }
 
     fn dec_client_count(&self) {
