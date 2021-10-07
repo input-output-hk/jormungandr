@@ -1,3 +1,4 @@
+pub mod adversary;
 pub mod asserts;
 pub mod block0;
 pub mod configuration;
@@ -13,6 +14,7 @@ pub mod startup;
 pub mod storage;
 pub mod sync;
 pub mod transaction_utils;
+mod utils;
 pub mod verify;
 pub mod vit;
 pub mod witness;
