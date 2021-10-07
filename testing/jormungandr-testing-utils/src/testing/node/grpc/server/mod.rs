@@ -23,9 +23,9 @@ mod data;
 mod logger;
 mod verifier;
 
-pub use builder::MockBuilder;
+pub use builder::{start_thread, MockBuilder};
 pub use controller::MockController;
-pub use data::{header, MockServerData};
+pub use data::MockServerData;
 pub use logger::{MethodType, MockLogger};
 pub use verifier::MockVerifier;
 
@@ -119,7 +119,14 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<TipResponse>, tonic::Status> {
         info!(method = %MethodType::Tip, "Tip request received");
         let tip_response = TipResponse {
-            block_header: self.data.read().unwrap().tip().to_raw().to_vec(),
+            block_header: self
+                .data
+                .read()
+                .unwrap()
+                .tip()
+                .map_err(|e| tonic::Status::internal(format!("invalid tip {}", e)))?
+                .to_raw()
+                .to_vec(),
         };
         Ok(Response::new(tip_response))
     }
@@ -187,13 +194,40 @@ impl Node for JormungandrServerImpl {
     }
     async fn pull_blocks(
         &self,
-        _request: tonic::Request<PullBlocksRequest>,
+        request: tonic::Request<PullBlocksRequest>,
     ) -> Result<tonic::Response<Self::PullBlocksStream>, tonic::Status> {
         info!(
             method = %MethodType::PullBlocks,
             "PullBlocks request received",
         );
-        let (_tx, rx) = mpsc::channel(1);
+        let request = request.into_inner();
+        let (distance, block_iter) = {
+            let data = self.data.read().unwrap();
+
+            let (from, to) = (request.from[0].as_ref(), request.to.as_ref());
+
+            let distance = data
+                .storage()
+                // This ignores all checkpoints except the first one, we don't need it for now
+                .is_ancestor(from, to)
+                .map_err(|e| tonic::Status::not_found(e.to_string()))?
+                .ok_or_else(|| tonic::Status::invalid_argument("from is not an ancestor of to"))?;
+            let iter = data.storage().iter(request.to.as_ref(), distance).unwrap();
+            (distance, iter)
+        };
+
+        let (tx, rx) = mpsc::channel(distance as usize);
+        for block in block_iter {
+            tx.send(
+                block
+                    .map(|b| Block {
+                        content: b.as_ref().into(),
+                    })
+                    .map_err(|e| tonic::Status::aborted(e.to_string())),
+            )
+            .await
+            .unwrap();
+        }
         Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn pull_blocks_to_tip(
