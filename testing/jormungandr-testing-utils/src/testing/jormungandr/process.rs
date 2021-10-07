@@ -5,7 +5,7 @@ use crate::testing::{
         uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
         JormungandrStateVerifier, LogLevel,
     },
-    JormungandrParams, SyncNode, TestConfig,
+    utils, JormungandrParams, SyncNode, TestConfig,
 };
 use crate::testing::{FragmentChainSender, FragmentSender, FragmentSenderSetup};
 use crate::testing::{RemoteJormungandr, RemoteJormungandrBuilder};
@@ -13,7 +13,6 @@ use ::multiaddr::Multiaddr;
 use assert_fs::TempDir;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use chain_time::TimeEra;
-use fs_extra::dir::{move_dir, CopyOptions};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Block0Configuration, TrustedPeer},
@@ -24,7 +23,7 @@ use std::path::Path;
 use std::process::Child;
 use std::process::Stdio;
 use std::str::FromStr;
-use std::thread::panicking;
+
 use std::time::{Duration, Instant};
 
 pub enum StartupVerificationMode {
@@ -314,33 +313,11 @@ impl Drop for JormungandrProcess {
         let _ = self.child.kill();
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
-        if panicking() {
-            let logs_dir = match tempfile::Builder::new().prefix("jormungandr_").tempdir() {
-                Ok(dir) => dir.into_path(),
-                Err(e) => {
-                    eprintln!("Could not create logs dir: {}", e);
-                    return;
-                }
-            };
 
-            println!(
-                "persisting node temp_dir after panic: {}",
-                logs_dir.display()
-            );
-
-            if let Some(dir) = self.temp_dir.take() {
-                let options = CopyOptions {
-                    content_only: true,
-                    ..Default::default()
-                };
-                move_dir(dir.path(), &logs_dir, &options)
-                    .map(|_| ())
-                    .unwrap_or_else(|e| eprintln!("Could not move files to new dir: {}", e));
-            }
-
-            std::fs::write(logs_dir.join("node.log"), self.log_content())
-                .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
-        }
+        utils::persist_dir_on_panic(
+            self.temp_dir.take(),
+            vec![("node.log", &self.log_content())],
+        );
     }
 }
 
