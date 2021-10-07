@@ -6,7 +6,7 @@ use jormungandr_testing_utils::testing::{
 use std::{collections::HashMap, fs::File};
 
 pub fn spawn_network(args: Args) -> Result<HashMap<NodeAlias, JormungandrProcess>, Error> {
-    let config: Config = serde_json::from_reader(File::open(args.config)?)?;
+    let config: Config = serde_yaml::from_reader(File::open(args.config)?)?;
 
     let mut topology = config.build_topology();
 

@@ -6,7 +6,7 @@ pub enum Error {
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
     #[error("Serialization error: {0}")]
-    Serialization(#[from] serde_json::Error),
+    Serialization(#[from] serde_yaml::Error),
     #[error("Circular dependency in network topology")]
     CircularTrust,
     #[error("Controller error: {0}")]
