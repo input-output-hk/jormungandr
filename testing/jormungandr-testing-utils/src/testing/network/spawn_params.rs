@@ -3,12 +3,11 @@ use jormungandr_lib::interfaces::{
     TrustedPeer,
 };
 use jormungandr_lib::time::Duration;
-use log::Level;
 use multiaddr::Multiaddr;
 use std::net::SocketAddr;
 
 use super::{LeadershipMode, NodeAlias, PersistenceMode};
-use crate::testing::node::Version;
+use crate::testing::node::{LogLevel, Version};
 use serde::Deserialize;
 use std::path::Path;
 use std::path::PathBuf;
@@ -23,7 +22,7 @@ pub struct SpawnParams {
     jormungandr: Option<PathBuf>,
     leadership_mode: LeadershipMode,
     listen_address: Option<Option<SocketAddr>>,
-    log_level: Option<Level>,
+    log_level: Option<LogLevel>,
     max_bootstrap_attempts: Option<usize>,
     max_connections: Option<u32>,
     max_inbound_connections: Option<u32>,
@@ -218,12 +217,12 @@ impl SpawnParams {
         self
     }
 
-    pub fn log_level(mut self, level: Level) -> Self {
+    pub fn log_level(mut self, level: LogLevel) -> Self {
         self.log_level = Some(level);
         self
     }
 
-    pub fn get_log_level(&self) -> Option<&Level> {
+    pub fn get_log_level(&self) -> Option<&LogLevel> {
         self.log_level.as_ref()
     }
 

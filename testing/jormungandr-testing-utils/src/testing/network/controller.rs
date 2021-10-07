@@ -1,6 +1,7 @@
 use crate::testing::{
     jormungandr::starter::{Starter, StartupError},
     jormungandr::JormungandrProcess,
+    node::LogLevel,
 };
 use crate::{
     testing::{
@@ -135,8 +136,8 @@ impl Controller {
             format: "json".into(),
             level: spawn_params
                 .get_log_level()
-                .map(|l| l.to_string())
-                .unwrap_or_else(|| String::from("debug")),
+                .unwrap_or(&LogLevel::DEBUG)
+                .to_string(),
             output: LogOutput::Stdout,
         }));
 

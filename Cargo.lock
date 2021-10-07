@@ -1964,7 +1964,6 @@ dependencies = [
  "jortestkit",
  "json",
  "lazy_static",
- "log",
  "parity-multiaddr",
  "poldercast",
  "predicates 2.0.2",

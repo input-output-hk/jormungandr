@@ -35,6 +35,12 @@ pub enum Level {
     ERROR,
 }
 
+impl fmt::Display for Level {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfully stored";
 type RawFields = HashMap<String, String>;
 

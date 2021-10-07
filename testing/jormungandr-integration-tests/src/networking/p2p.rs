@@ -4,6 +4,7 @@ use jormungandr_testing_utils::testing::{
         builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Node,
         SpawnParams, Topology,
     },
+    node::LogLevel,
 };
 
 use jormungandr_lib::{
@@ -12,7 +13,6 @@ use jormungandr_lib::{
 };
 use jormungandr_testing_utils::testing::FragmentNode;
 use jortestkit::process as process_utils;
-use log::Level;
 
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
@@ -424,7 +424,7 @@ fn gossip_interval() {
         .spawn(
             SpawnParams::new(SERVER)
                 .gossip_interval(Duration::new(INTERVAL_SECS, 0))
-                .log_level(Level::Trace),
+                .log_level(LogLevel::TRACE),
         )
         .unwrap();
 
@@ -475,7 +475,7 @@ fn network_stuck_check() {
     let client = network_controller
         .spawn(
             SpawnParams::new(CLIENT)
-                .log_level(Level::Trace)
+                .log_level(LogLevel::TRACE)
                 .gossip_interval(Duration::new(5, 0))
                 .network_stuck_check(Duration::new(INTERVAL_SECS, 0)),
         )
@@ -522,7 +522,7 @@ fn max_bootstrap_attempts() {
         .spawn(
             SpawnParams::new(CLIENT)
                 .max_bootstrap_attempts(ATTEMPTS)
-                .log_level(Level::Trace),
+                .log_level(LogLevel::TRACE),
         )
         .unwrap();
 
