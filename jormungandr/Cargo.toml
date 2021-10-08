@@ -70,7 +70,7 @@ features = ["rustls-tls"]
 
 [dev-dependencies]
 tokio = { version = "^1.4", features = ["full"] }
-quickcheck = "0.9"
+quickcheck = "1.0"
 quickcheck_macros = "0.9"
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
