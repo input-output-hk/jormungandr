@@ -476,14 +476,14 @@ impl BlockchainConfiguration {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", remote = "Discrimination")]
-enum DiscriminationDef {
+pub enum DiscriminationDef {
     Test,
     Production,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", remote = "ConsensusVersion")]
-enum ConsensusVersionDef {
+pub enum ConsensusVersionDef {
     Bft,
     GenesisPraos,
 }

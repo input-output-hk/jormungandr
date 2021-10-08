@@ -5,7 +5,6 @@ mod noise;
 #[cfg(feature = "soak-non-functional")]
 mod soak;
 
-use crate::common::jormungandr::{ConfigurationBuilder, Starter};
 use crate::non_functional::voting::config::PublicVotingLoadTestConfig;
 use assert_fs::TempDir;
 use chain_core::property::BlockDate;
@@ -15,6 +14,7 @@ use chain_impl_mockchain::{
     value::Value,
 };
 use jormungandr_testing_utils::testing::fragments::AdversaryFragmentGenerator;
+use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_testing_utils::testing::AdversaryFragmentSender;
 use jormungandr_testing_utils::testing::AdversaryFragmentSenderSetup;
 use jormungandr_testing_utils::testing::VoteCastsGenerator;

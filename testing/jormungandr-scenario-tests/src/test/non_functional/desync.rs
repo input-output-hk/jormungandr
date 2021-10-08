@@ -5,7 +5,7 @@ use crate::{
     Context,
 };
 use function_name::named;
-use jormungandr_testing_utils::{testing::network_builder::FaketimeConfig, wallet::Wallet};
+use jormungandr_testing_utils::{testing::network::FaketimeConfig, wallet::Wallet};
 use rand_chacha::ChaChaRng;
 
 #[named]

@@ -1,9 +1,9 @@
-use crate::common::{
+use jormungandr_lib::interfaces::LeadershipLogStatus;
+use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, StartupVerificationMode},
     startup,
 };
-use jormungandr_lib::interfaces::LeadershipLogStatus;
 use std::time::Duration;
 
 #[test]

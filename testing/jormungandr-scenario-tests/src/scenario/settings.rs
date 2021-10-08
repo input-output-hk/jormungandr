@@ -3,9 +3,7 @@ use crate::{scenario::Context, style};
 use assert_fs::fixture::ChildPath;
 use assert_fs::fixture::PathChild;
 use chain_impl_mockchain::{
-    certificate::VotePlan,
-    testing::{create_initial_vote_plan, scenario::template::VotePlanDef},
-    vote::PayloadType,
+    certificate::VotePlan, testing::create_initial_vote_plan, vote::PayloadType,
 };
 
 use jormungandr_lib::crypto::{account::Identifier, key::SigningKey};
@@ -13,14 +11,14 @@ use jormungandr_lib::interfaces::try_initials_vec_from_messages;
 use jormungandr_lib::{
     interfaces::{
         Explorer, LayersConfig, Mempool, NodeConfig, NodeSecret, P2p, Policy, Rest,
-        TopicsOfInterest,
+        TopicsOfInterest, VotePlan as VotePlanLib,
     },
     time::Duration,
 };
-use jormungandr_testing_utils::testing::network_builder::Random;
-use jormungandr_testing_utils::testing::network_builder::{
-    Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting,
-    Settings as NetworkBuilderSettings, Topology as TopologyTemplate, WalletTemplate, WalletType,
+use jormungandr_testing_utils::testing::network::{
+    Blockchain as BlockchainTemplate, Node as NodeTemplate, NodeAlias, NodeSetting, Random,
+    Settings as NetworkBuilderSettings, Topology as TopologyTemplate, VotePlanKey, WalletTemplate,
+    WalletType,
 };
 use jormungandr_testing_utils::wallet::PrivateVoteCommitteeDataManager;
 use rand_core::{CryptoRng, RngCore};
@@ -103,7 +101,7 @@ impl Settings {
 
     fn populate_block0_blockchain_vote_plans<RNG>(
         &mut self,
-        mut vote_plans: Vec<VotePlanDef>,
+        mut vote_plans: HashMap<VotePlanKey, VotePlanLib>,
         committees_aliases: Vec<WalletAlias>,
         rng: &mut RNG,
     ) where
@@ -111,24 +109,23 @@ impl Settings {
     {
         let mut vote_plans_fragments = Vec::new();
 
-        for vote_plan_def in vote_plans.iter_mut() {
+        for (vote_plan_key, vote_plan) in vote_plans.iter_mut() {
             let owner = self
                 .network_settings
                 .wallets
-                .get(&vote_plan_def.owner())
+                .get(&vote_plan_key.owner_alias)
                 .unwrap_or_else(|| {
                     panic!(
                         "Owner {} of {} is unknown wallet ",
-                        vote_plan_def.owner(),
-                        vote_plan_def.alias()
+                        vote_plan_key.owner_alias, vote_plan_key.alias
                     )
                 });
 
             // workaround beacuse vote_plan_def does not expose payload_type
-            let tmp_vote_plan: VotePlan = vote_plan_def.clone().into();
+            let tmp_vote_plan: VotePlan = vote_plan.clone().into();
 
             let vote_plan: VotePlan = match tmp_vote_plan.payload_type() {
-                PayloadType::Public => vote_plan_def.clone().into(),
+                PayloadType::Public => vote_plan.clone().into(),
                 PayloadType::Private => {
                     let mut wallets = self.network_settings.wallets.clone();
                     let committees: Vec<(WalletAlias, Identifier)> = committees_aliases
@@ -141,18 +138,18 @@ impl Settings {
                     let threshold = committees.len();
                     let manager = PrivateVoteCommitteeDataManager::new(rng, committees, threshold);
 
-                    vote_plan_def
-                        .committee_keys_mut()
+                    vote_plan
+                        .committee_member_public_keys
                         .extend(manager.member_public_keys());
                     self.private_vote_plans
-                        .insert(vote_plan_def.alias(), manager);
-                    vote_plan_def.clone().into()
+                        .insert(vote_plan_key.alias.clone(), manager);
+                    vote_plan.clone().into()
                 }
             };
 
             self.network_settings
                 .vote_plans
-                .insert(vote_plan_def.alias(), vote_plan.clone());
+                .insert(vote_plan_key.alias.clone(), vote_plan.clone());
 
             vote_plans_fragments.push(create_initial_vote_plan(
                 &vote_plan,
@@ -182,7 +179,7 @@ impl Dotifier {
             let label = self.dot_node_label(node);
             writeln!(&mut w, "    {}", &label)?;
 
-            for trusted_peer in node.node_topology.trusted_peers() {
+            for trusted_peer in node.node_topology.trusted_peers.iter() {
                 let trusted_peer = settings.network_settings.nodes.get(trusted_peer).unwrap();
                 writeln!(
                     &mut w,
@@ -256,11 +253,12 @@ impl PrepareSettings for Settings {
         RNG: RngCore + CryptoRng,
     {
         let nodes = topology
-            .into_iter()
-            .map(|(alias, template)| {
+            .nodes
+            .iter()
+            .map(|(alias, node)| {
                 (
                     alias.clone(),
-                    NodeSetting::prepare(alias, context, &template),
+                    NodeSetting::prepare(alias.clone(), context, node),
                 )
             })
             .collect();

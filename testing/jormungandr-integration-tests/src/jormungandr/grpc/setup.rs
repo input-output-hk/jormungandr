@@ -2,11 +2,11 @@ use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::interfaces::TrustedPeer;
 use jormungandr_testing_utils::testing::{node::grpc::JormungandrClient, SyncNode};
 
-use crate::common::{
+use assert_fs::TempDir;
+use jormungandr_testing_utils::testing::{
     configuration::JormungandrParams,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
-use assert_fs::TempDir;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 const DEFAULT_SLOT_DURATION: u8 = 1;
@@ -63,7 +63,7 @@ pub mod client {
 
 pub mod server {
     use super::*;
-    use crate::common::configuration;
+    use jormungandr_testing_utils::testing::configuration;
     const SERVER_RETRY_WAIT: Duration = Duration::from_secs(1);
     const TIMEOUT: Duration = Duration::from_secs(60);
 

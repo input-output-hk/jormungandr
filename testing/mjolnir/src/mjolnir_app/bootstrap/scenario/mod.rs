@@ -6,10 +6,9 @@ use assert_fs::TempDir;
 pub use duration::DurationBasedClientLoad;
 use indicatif::{ProgressBar, ProgressStyle};
 pub use iteration::IterationBasedClientLoad;
-use jormungandr_integration_tests::common::jormungandr::ConfigurationBuilder;
-use jormungandr_integration_tests::common::jormungandr::JormungandrProcess;
-use jormungandr_integration_tests::common::jormungandr::Starter;
-use jormungandr_integration_tests::common::jormungandr::StartupError;
+use jormungandr_testing_utils::testing::jormungandr::{
+    ConfigurationBuilder, JormungandrProcess, Starter, StartupError,
+};
 use jortestkit::file;
 use std::path::PathBuf;
 use std::{fs, result::Result};

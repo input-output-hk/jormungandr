@@ -1590,6 +1590,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "hersir"
+version = "0.1.0"
+dependencies = [
+ "chain-addr",
+ "chain-impl-mockchain",
+ "jormungandr-lib",
+ "jormungandr-testing-utils",
+ "serde",
+ "serde_derive",
+ "serde_yaml",
+ "structopt",
+ "thiserror",
+]
+
+[[package]]
 name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2051,6 +2066,7 @@ dependencies = [
 name = "jormungandr-testing-utils"
 version = "0.13.0-dev"
 dependencies = [
+ "assert_cmd",
  "assert_fs",
  "base64",
  "bech32 0.8.1",
@@ -2078,10 +2094,12 @@ dependencies = [
  "json",
  "keynesis",
  "lazy_static",
+ "log",
  "netstat2",
  "os_info",
  "parity-multiaddr",
  "poldercast",
+ "predicates 2.0.2",
  "prost",
  "qrcodegen",
  "quircs",
@@ -2099,6 +2117,7 @@ dependencies = [
  "symmetric-cipher",
  "sysinfo 0.20.3",
  "tar",
+ "tempfile",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -2230,6 +2249,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if 1.0.0",
+ "serde",
 ]
 
 [[package]]
@@ -3435,6 +3455,9 @@ name = "semver"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "568a8e6258aa33c13358f81fd834adb854c6f7c9468520910a9b1e8fac068012"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "semver-parser"
@@ -3523,9 +3546,9 @@ dependencies = [
 
 [[package]]
 name = "serde_yaml"
-version = "0.8.20"
+version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad104641f3c958dab30eb3010e834c2622d1f3f4c530fef1dee20ad9485f3c09"
+checksum = "d8c608a35705a5d3cdc9fbe403147647ff34b921f8e833e49306df898f9b20af"
 dependencies = [
  "dtoa",
  "indexmap",
@@ -3701,9 +3724,9 @@ dependencies = [
 
 [[package]]
 name = "structopt"
-version = "0.3.22"
+version = "0.3.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69b041cdcb67226aca307e6e7be44c8806423d83e018bd662360a93dabce4d71"
+checksum = "bf9d950ef167e25e0bdb073cf1d68e9ad2795ac826f2f3f59647817cf23c0bfa"
 dependencies = [
  "clap",
  "lazy_static",
@@ -3712,9 +3735,9 @@ dependencies = [
 
 [[package]]
 name = "structopt-derive"
-version = "0.4.15"
+version = "0.4.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7813934aecf5f51a54775e00068c237de98489463968231a51746bbbc03f9c10"
+checksum = "134d838a2c9943ac3125cf6df165eda53493451b719f3255b2a26b85f772d0ba"
 dependencies = [
  "heck",
  "proc-macro-error",

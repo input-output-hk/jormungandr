@@ -1,7 +1,3 @@
-use crate::common::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Starter},
-};
 use assert_fs::NamedTempFile;
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
@@ -18,6 +14,10 @@ use chain_impl_mockchain::{
 use chain_vote::MemberPublicKey;
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, KesUpdateSpeed};
 use jormungandr_testing_utils::testing::node::time;
+use jormungandr_testing_utils::testing::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+};
 use jormungandr_testing_utils::testing::{VotePlanBuilder, VotePlanExtension};
 use jormungandr_testing_utils::wallet::Wallet;
 use jortestkit::prelude::read_file;

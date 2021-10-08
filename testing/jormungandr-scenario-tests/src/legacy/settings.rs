@@ -1,6 +1,6 @@
 use jormungandr_lib::interfaces::NodeSecret;
 use jormungandr_testing_utils::{
-    testing::network_builder::{Node as NodeTemplate, NodeSetting},
+    testing::network::{Node as NodeTemplate, NodeSetting},
     testing::{node::configuration::legacy::NodeConfig as LegacyConfig, LegacyNodeConfigConverter},
     Version,
 };
@@ -21,7 +21,7 @@ impl LegacySettings {
             config: converter
                 .convert(&settings.config)
                 .expect("cannot convert node config to legacy"),
-            secret: settings.secret().clone(),
+            secret: settings.secret.clone(),
             node_topology: settings.node_topology.clone(),
         }
     }

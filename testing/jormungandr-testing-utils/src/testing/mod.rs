@@ -1,14 +1,21 @@
 pub mod asserts;
 pub mod block0;
+pub mod configuration;
 pub mod fragments;
-pub mod network_builder;
+pub mod jcli;
+pub mod jormungandr;
+pub mod network;
 pub mod node;
 pub mod process;
-mod remote;
-mod storage;
+pub mod remote;
+pub mod resources;
+pub mod startup;
+pub mod storage;
 pub mod sync;
-mod verify;
-mod vit;
+pub mod transaction_utils;
+pub mod verify;
+pub mod vit;
+pub mod witness;
 
 pub use fragments::{
     signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, AdversaryFragmentGenerator,

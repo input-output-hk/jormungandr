@@ -5,7 +5,7 @@ use function_name::named;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
-        network_builder::{LeadershipMode, PersistenceMode},
+        network::{LeadershipMode, PersistenceMode},
         node::{download_last_n_releases, get_jormungandr_bin},
         FragmentNode, SyncNode,
     },

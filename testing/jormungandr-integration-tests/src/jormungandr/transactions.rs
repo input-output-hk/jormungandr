@@ -1,12 +1,12 @@
-use crate::common::{
+use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, Mempool, Value};
+use jormungandr_testing_utils::testing::node::time::wait_for_epoch;
+use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::ConfigurationBuilder,
     startup::{self},
     transaction_utils::TransactionHash,
 };
-use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, Mempool, Value};
-use jormungandr_testing_utils::testing::node::time::wait_for_epoch;
 
 #[test]
 pub fn accounts_funds_are_updated_after_transaction() {

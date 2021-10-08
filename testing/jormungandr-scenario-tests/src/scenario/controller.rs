@@ -26,7 +26,7 @@ use jormungandr_testing_utils::{
     testing::{
         benchmark_consumption,
         fragments::DummySyncNode,
-        network_builder::{
+        network::{
             Blockchain, LeadershipMode, NodeAlias, NodeSetting, PersistenceMode, SpawnParams,
             Topology, Wallet as WalletSetting, WalletAlias,
         },
@@ -228,10 +228,10 @@ impl Controller {
 
     fn convert_to_def(&self, alias: &str, vote_plan: &VotePlan) -> VotePlanDef {
         let templates = self.blockchain.vote_plans();
-        let template = templates.iter().find(|x| x.alias() == alias).unwrap();
+        let key = templates.keys().find(|key| key.alias == alias).unwrap();
         let mut builder = VotePlanDefBuilder::new(alias);
         builder
-            .owner(&template.owner())
+            .owner(&key.owner_alias)
             .payload_type(vote_plan.payload_type())
             .committee_keys(vote_plan.committee_public_keys().to_vec())
             .vote_phases(
@@ -332,9 +332,7 @@ impl Controller {
     }
 
     pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
-        let mut spawn_params = SpawnParams::new(node_alias);
-        spawn_params.node_key_file(self.node_dir(node_alias).path().into());
-        spawn_params
+        SpawnParams::new(node_alias).node_key_file(self.node_dir(node_alias).path().into())
     }
 
     fn node_dir(&self, alias: &str) -> ChildPath {
@@ -343,18 +341,15 @@ impl Controller {
 
     pub fn spawn_legacy_node(
         &mut self,
-        params: &mut SpawnParams,
+        params: SpawnParams,
         version: &Version,
     ) -> Result<LegacyNodeController> {
-        let node_setting = if let Some(node_setting) = self
-            .settings
-            .network_settings
-            .nodes
-            .get(&params.get_alias())
+        let node_setting = if let Some(node_setting) =
+            self.settings.network_settings.nodes.get(params.get_alias())
         {
             node_setting
         } else {
-            return Err(Error::NodeNotFound(params.get_alias()));
+            return Err(Error::NodeNotFound(params.get_alias().clone()));
         };
 
         let mut node_setting_overriden = node_setting.clone();
@@ -379,22 +374,19 @@ impl Controller {
             .progress_bar(pb)
             .alias(params.get_alias())
             .block0(block0_setting)
-            .working_dir(self.node_dir(&params.get_alias()).path())
+            .working_dir(self.node_dir(params.get_alias()).path())
             .peristence_mode(params.get_persistence_mode());
         let node = spawn_builder.build(version)?;
         Ok(node.controller())
     }
 
-    pub fn spawn_node_custom(&mut self, params: &mut SpawnParams) -> Result<NodeController> {
-        let node_setting = if let Some(node_setting) = self
-            .settings
-            .network_settings
-            .nodes
-            .get(&params.get_alias())
+    pub fn spawn_node_custom(&mut self, params: SpawnParams) -> Result<NodeController> {
+        let node_setting = if let Some(node_setting) =
+            self.settings.network_settings.nodes.get(params.get_alias())
         {
             node_setting
         } else {
-            return Err(Error::NodeNotFound(params.get_alias()));
+            return Err(Error::NodeNotFound(params.get_alias().clone()));
         };
         let mut node_setting_overriden = node_setting.clone();
         params.override_settings(&mut node_setting_overriden.config);
@@ -423,10 +415,10 @@ impl Controller {
             .progress_bar(pb)
             .alias(params.get_alias())
             .block0(block0_setting)
-            .working_dir(self.node_dir(&params.get_alias()).path())
+            .working_dir(self.node_dir(params.get_alias()).path())
             .peristence_mode(params.get_persistence_mode());
-        if let Some(faketime) = params.faketime.take() {
-            spawn_builder.faketime(faketime);
+        if let Some(faketime) = params.get_faketime().take() {
+            spawn_builder.faketime(faketime.clone());
         }
         let node = spawn_builder.build()?;
 
@@ -439,10 +431,11 @@ impl Controller {
         leadership_mode: LeadershipMode,
         persistence_mode: PersistenceMode,
     ) -> Result<NodeController> {
-        let mut params = self.new_spawn_params(node_alias);
-        params.leadership_mode(leadership_mode);
-        params.persistence_mode(persistence_mode);
-        self.spawn_node_custom(&mut params)
+        self.spawn_node_custom(
+            self.new_spawn_params(node_alias)
+                .leadership_mode(leadership_mode)
+                .persistence_mode(persistence_mode),
+        )
     }
 
     pub fn restart_node(

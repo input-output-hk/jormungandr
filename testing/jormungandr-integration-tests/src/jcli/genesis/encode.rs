@@ -1,15 +1,15 @@
-use crate::common::{
-    configuration::{Block0ConfigurationBuilder, JormungandrParams},
-    jcli::JCli,
-    jormungandr::ConfigurationBuilder,
-    startup,
-};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee},
     vote::CommitteeId,
 };
 use jormungandr_lib::interfaces::{Block0Configuration, Initial, InitialUTxO, LegacyUTxO};
+use jormungandr_testing_utils::testing::{
+    configuration::{Block0ConfigurationBuilder, JormungandrParams},
+    jcli::JCli,
+    jormungandr::ConfigurationBuilder,
+    startup,
+};
 
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;

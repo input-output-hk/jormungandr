@@ -1,9 +1,3 @@
-use crate::common::startup::start_stake_pool;
-use crate::common::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Starter},
-    startup,
-};
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
     TempDir,
@@ -27,7 +21,13 @@ use jormungandr_lib::{
     },
 };
 use jormungandr_testing_utils::testing::asserts::VotePlanStatusAssert;
+use jormungandr_testing_utils::testing::startup::start_stake_pool;
 use jormungandr_testing_utils::testing::VotePlanExtension;
+use jormungandr_testing_utils::testing::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+    startup,
+};
 use jormungandr_testing_utils::{
     testing::{
         node::time::{self, wait_for_epoch},

@@ -10,5 +10,3 @@ pub mod jormungandr;
 pub mod networking;
 #[cfg(test)]
 pub mod non_functional;
-
-pub mod common;

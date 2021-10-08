@@ -1,6 +1,10 @@
-use crate::common::{
+use jormungandr_testing_utils::testing::{
     jormungandr::process::JormungandrProcess,
-    network::{NetworkBuilder, WalletTemplateBuilder},
+    network::{
+        builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Node,
+        SpawnParams, Topology,
+    },
+    node::LogLevel,
 };
 
 use jormungandr_lib::{
@@ -9,7 +13,6 @@ use jormungandr_lib::{
 };
 use jormungandr_testing_utils::testing::FragmentNode;
 use jortestkit::process as process_utils;
-use tracing::Level;
 
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
@@ -117,19 +120,27 @@ pub fn assert_node_stats(
 #[test]
 pub fn node_whitelist_itself() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
-    let _server = network_controller.spawn_and_wait(SERVER);
+    let _server = network_controller.spawn(SpawnParams::new(SERVER).in_memory());
 
     let client_public_address = network_controller
         .node_config(CLIENT)
@@ -142,7 +153,7 @@ pub fn node_whitelist_itself() {
     };
 
     let client = network_controller
-        .spawn_custom(network_controller.spawn_params(CLIENT).policy(policy))
+        .spawn(SpawnParams::new(CLIENT).policy(policy))
         .unwrap();
     client.assert_no_errors_in_log();
 }
@@ -150,15 +161,23 @@ pub fn node_whitelist_itself() {
 #[test]
 pub fn node_does_not_quarantine_whitelisted_node() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
@@ -169,13 +188,12 @@ pub fn node_does_not_quarantine_whitelisted_node() {
     };
 
     let server = network_controller
-        .spawn_custom(network_controller.spawn_params(SERVER).policy(policy))
+        .spawn(SpawnParams::new(SERVER).policy(policy))
         .unwrap();
 
     let _client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
+        .spawn(
+            SpawnParams::new(CLIENT)
                 // The client broadcast a different ip address from the one it's actually
                 // listening to, so that the server will fail connection
                 .public_address("/ip4/127.0.0.1/tcp/80".parse().unwrap())
@@ -197,24 +215,33 @@ pub fn node_does_not_quarantine_whitelisted_node() {
 #[test]
 pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
-    let server = network_controller.spawn_and_wait(SERVER);
+    let server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
 
     let client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
+        .spawn(
+            SpawnParams::new(CLIENT)
                 // The client broadcast a different ip address from the one it's actually
                 // listening to, so that the server will fail connection and put it in quarantine
                 .public_address("/ip4/127.0.0.1/tcp/80".parse().unwrap())
@@ -238,20 +265,32 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
 #[test]
 pub fn node_does_not_quarantine_trusted_node() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
-    let server = network_controller.spawn_and_wait(SERVER);
-    let client = network_controller.spawn_and_wait(CLIENT);
+    let server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
+    let client = network_controller
+        .spawn(SpawnParams::new(CLIENT).in_memory())
+        .unwrap();
 
     process_utils::sleep(5);
 
@@ -269,19 +308,29 @@ pub fn node_does_not_quarantine_trusted_node() {
 #[test]
 pub fn node_trust_itself() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
-    let _server = network_controller.spawn_and_wait(SERVER);
+    let _server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
 
     let config = network_controller.node_config(CLIENT).unwrap().p2p;
 
@@ -291,9 +340,7 @@ pub fn node_trust_itself() {
     };
     network_controller
         .expect_spawn_failed(
-            network_controller
-                .spawn_params(CLIENT)
-                .trusted_peers(vec![peer]),
+            SpawnParams::new(CLIENT).trusted_peers(vec![peer]),
             "failed to retrieve the list of bootstrap peers from trusted peer",
         )
         .unwrap();
@@ -303,19 +350,29 @@ pub fn node_trust_itself() {
 #[ignore]
 pub fn node_put_itself_in_preffered_layers() {
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
-    let _server = network_controller.spawn_and_wait(SERVER);
+    let _server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
 
     let config = network_controller.node_config(CLIENT).unwrap().p2p;
 
@@ -331,9 +388,7 @@ pub fn node_put_itself_in_preffered_layers() {
 
     assert!(network_controller
         .expect_spawn_failed(
-            network_controller
-                .spawn_params(CLIENT)
-                .preferred_layer(layer),
+            SpawnParams::new(CLIENT).preferred_layer(layer),
             "topology tells the node to connect to itself"
         )
         .is_ok());
@@ -345,28 +400,37 @@ fn gossip_interval() {
     const INTERVAL_SECS: u64 = 3;
 
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
-        .initials(vec![
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated1")
                 .with(1_000_000)
-                .delegated_to(CLIENT),
+                .delegated_to(CLIENT)
+                .build(),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("delegated2")
                 .with(1_000_000)
-                .delegated_to(SERVER),
-        ])
+                .delegated_to(SERVER)
+                .build(),
+        )
         .build()
         .unwrap();
 
     let server = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(SERVER)
+        .spawn(
+            SpawnParams::new(SERVER)
                 .gossip_interval(Duration::new(INTERVAL_SECS, 0))
-                .log_level(Level::TRACE),
+                .log_level(LogLevel::TRACE),
         )
         .unwrap();
 
-    let _client = network_controller.spawn_and_wait(CLIENT);
+    let _client = network_controller
+        .spawn(SpawnParams::new(CLIENT).in_memory())
+        .unwrap();
 
     process_utils::sleep(10);
 
@@ -396,17 +460,22 @@ fn gossip_interval() {
 fn network_stuck_check() {
     const INTERVAL_SECS: u64 = 90;
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .build()
         .unwrap();
 
-    let server = network_controller.spawn_and_wait(SERVER);
+    let server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
 
     let client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
-                .log_level(Level::TRACE)
+        .spawn(
+            SpawnParams::new(CLIENT)
+                .log_level(LogLevel::TRACE)
                 .gossip_interval(Duration::new(5, 0))
                 .network_stuck_check(Duration::new(INTERVAL_SECS, 0)),
         )
@@ -441,16 +510,19 @@ fn max_bootstrap_attempts() {
     const ATTEMPTS: usize = 3;
 
     let mut network_controller = NetworkBuilder::default()
-        .single_trust_direction(CLIENT, SERVER)
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
         .build()
         .unwrap();
 
     let client = network_controller
-        .spawn_custom(
-            network_controller
-                .spawn_params(CLIENT)
+        .spawn(
+            SpawnParams::new(CLIENT)
                 .max_bootstrap_attempts(ATTEMPTS)
-                .log_level(Level::TRACE),
+                .log_level(LogLevel::TRACE),
         )
         .unwrap();
 

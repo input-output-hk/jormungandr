@@ -16,9 +16,8 @@ pub use jormungandr_lib::interfaces::{
 };
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 
-pub use jormungandr_testing_utils::testing::network_builder::{
-    Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, TopologyBuilder, Wallet, WalletAlias,
-    WalletType,
+pub use jormungandr_testing_utils::testing::network::{
+    Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, Wallet, WalletAlias, WalletType,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -84,16 +83,15 @@ macro_rules! prepare_scenario {
         }
     ) => {{
         let mut builder = $crate::scenario::ControllerBuilder::new($title);
-        let mut topology_builder = jormungandr_testing_utils::testing::network_builder::TopologyBuilder::new();
+        let mut topology = jormungandr_testing_utils::testing::network::Topology::default();
         $(
             #[allow(unused_mut)]
             let mut node = $crate::scenario::Node::new($topology_tt);
             $(
-                node.add_trusted_peer($node_link);
+                node = node.with_trusted_peer($node_link);
             )*
-            topology_builder.register_node(node);
+            topology = topology.with_node(node);
         )*
-        let topology : jormungandr_testing_utils::testing::network_builder::Topology = topology_builder.build();
         builder.set_topology(topology);
 
         let mut blockchain = $crate::scenario::Blockchain::new(
@@ -114,7 +112,7 @@ macro_rules! prepare_scenario {
 
                 if $wallet_type == "account" {
                     #[allow(unused_mut)]
-                    let mut wallet = jormungandr_testing_utils::testing::network_builder::WalletTemplate::new_account(
+                    let mut wallet = jormungandr_testing_utils::testing::network::WalletTemplate::new_account(
                         $initial_wallet_name.to_owned(),
                         chain_impl_mockchain::value::Value($initial_wallet_funds).into(),
                         blockchain.discrimination()
@@ -131,7 +129,7 @@ macro_rules! prepare_scenario {
                     wallet
                 } else if $wallet_type == "utxo" {
                     #[allow(unused_mut)]
-                    let wallet = jormungandr_testing_utils::testing::network_builder::WalletTemplate::new_utxo(
+                    let wallet = jormungandr_testing_utils::testing::network::WalletTemplate::new_utxo(
                         $initial_wallet_name.to_owned(),
                         chain_impl_mockchain::value::Value($initial_wallet_funds).into(),
                         blockchain.discrimination()
@@ -154,7 +152,7 @@ macro_rules! prepare_scenario {
         $(
             $(
                 let value = chain_impl_mockchain::value::Value($initial_legacy_funds);
-                let legacy_wallet = jormungandr_testing_utils::testing::network_builder::LegacyWalletTemplate::new($legacy_wallet_name,value.into(),$legacy_wallet_address.to_owned(),$legacy_wallet_mnemonics.to_owned());
+                let legacy_wallet = jormungandr_testing_utils::testing::network::LegacyWalletTemplate::new($legacy_wallet_name,value.into(),$legacy_wallet_address.to_owned(),$legacy_wallet_mnemonics.to_owned());
                 blockchain.add_legacy_wallet(legacy_wallet);
             )*
         )?

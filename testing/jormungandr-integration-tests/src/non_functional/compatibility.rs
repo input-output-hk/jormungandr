@@ -1,12 +1,12 @@
-use crate::common::{
-    jormungandr::{ConfigurationBuilder, Starter},
-    startup,
-    transaction_utils::TransactionHash,
-};
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::InitialUTxO;
+use jormungandr_testing_utils::testing::{
+    jormungandr::{ConfigurationBuilder, Starter},
+    startup,
+    transaction_utils::TransactionHash,
+};
 use jormungandr_testing_utils::{
     testing::{node::download_last_n_releases, FragmentSender},
     Version,

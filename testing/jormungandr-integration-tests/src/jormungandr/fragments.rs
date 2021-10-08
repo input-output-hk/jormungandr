@@ -1,4 +1,4 @@
-use crate::common::{
+use jormungandr_testing_utils::testing::{
     jcli::{FragmentsCheck, JCli},
     jormungandr::ConfigurationBuilder,
     startup,

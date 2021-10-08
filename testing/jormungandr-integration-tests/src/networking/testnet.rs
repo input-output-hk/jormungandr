@@ -1,16 +1,16 @@
 #![cfg(feature = "testnet")]
 
-use crate::{
-    common::{
-        configuration::JormungandrParams,
-        jcli::JCli,
-        jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupVerificationMode},
-    },
-    jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
+use crate::jormungandr::genesis::stake_pool::{
+    create_new_stake_pool, delegate_stake, retire_stake_pool,
 };
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::{BlockDate, Log, LogEntry, LogOutput, TrustedPeer};
+use jormungandr_testing_utils::testing::{
+    configuration::JormungandrParams,
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupVerificationMode},
+};
 use jormungandr_testing_utils::{
     testing::node::{
         download_last_n_releases, get_jormungandr_bin, storage_loading_benchmark_from_log,

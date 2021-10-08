@@ -1,12 +1,12 @@
-use crate::common::{
-    jormungandr::JormungandrProcess,
-    network::{NetworkBuilder, WalletTemplateBuilder},
-};
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
-use jormungandr_testing_utils::testing::network_builder::Blockchain;
+use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
+use jormungandr_testing_utils::testing::network::{
+    builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Blockchain,
+};
+use jormungandr_testing_utils::testing::network::{Node, SpawnParams, Topology};
 use std::{cmp::PartialOrd, fmt::Display};
 
 use chain_impl_mockchain::block::BlockDate;
@@ -37,18 +37,27 @@ macro_rules! build_network {
 #[test]
 pub fn passive_node_last_block_info() {
     let mut network_controller = build_network!()
-        .single_trust_direction(PASSIVE, LEADER)
-        .initials(vec![
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("alice")
                 .with(1_000_000)
-                .delegated_to(LEADER),
-            WalletTemplateBuilder::new("bob").with(1_000_000),
-        ])
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .wallet_template(WalletTemplateBuilder::new("bob").with(1_000_000).build())
         .build()
         .unwrap();
 
-    let leader = network_controller.spawn_and_wait(LEADER);
-    let passive = network_controller.spawn_as_passive_and_wait(PASSIVE);
+    let leader = network_controller
+        .spawn(SpawnParams::new(LEADER).in_memory())
+        .unwrap();
+    let passive = network_controller
+        .spawn(SpawnParams::new(PASSIVE).in_memory().passive().in_memory())
+        .unwrap();
 
     let mut alice = network_controller.wallet("alice").unwrap();
     let mut bob = network_controller.wallet("bob").unwrap();
@@ -77,18 +86,27 @@ pub fn passive_node_last_block_info() {
 #[test]
 pub fn leader_node_last_block_info() {
     let mut network_controller = build_network!()
-        .single_trust_direction(LEADER_CLIENT, LEADER)
-        .initials(vec![
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(LEADER_CLIENT).with_trusted_peer(LEADER)),
+        )
+        .wallet_template(
             WalletTemplateBuilder::new("alice")
                 .with(1_000_000)
-                .delegated_to(LEADER),
-            WalletTemplateBuilder::new("bob").with(1_000_000),
-        ])
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .wallet_template(WalletTemplateBuilder::new("bob").with(1_000_000).build())
         .build()
         .unwrap();
 
-    let leader = network_controller.spawn_and_wait(LEADER);
-    let leader_client = network_controller.spawn_and_wait(LEADER_CLIENT);
+    let leader = network_controller
+        .spawn(SpawnParams::new(LEADER).in_memory())
+        .unwrap();
+    let leader_client = network_controller
+        .spawn(SpawnParams::new(LEADER_CLIENT).in_memory())
+        .unwrap();
 
     let mut alice = network_controller.wallet("alice").unwrap();
     let mut bob = network_controller.wallet("bob").unwrap();

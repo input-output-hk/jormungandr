@@ -148,7 +148,7 @@ impl Serialize for SerdeMemberPublicKey {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Eq, PartialEq)]
+#[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
 pub struct VotePlan {
     payload_type: VotePrivacy,
     vote_start: BlockDate,
@@ -157,7 +157,7 @@ pub struct VotePlan {
     #[serde(with = "serde_proposals")]
     proposals: Proposals,
     #[serde(with = "serde_committee_member_public_keys", default = "Vec::new")]
-    committee_member_public_keys: Vec<chain_vote::MemberPublicKey>,
+    pub committee_member_public_keys: Vec<chain_vote::MemberPublicKey>,
 }
 
 #[derive(Deserialize, Serialize)]

@@ -1,13 +1,14 @@
-use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockDate as JLibBlockDate, KesUpdateSpeed, Mempool,
 };
 use jormungandr_testing_utils::{
     testing::{
-        benchmark_efficiency, benchmark_endurance, benchmark_speed, node::time,
+        benchmark_efficiency, benchmark_endurance, benchmark_speed,
+        node::time,
         EfficiencyBenchmarkDef, EfficiencyBenchmarkFinish, Endurance, FragmentSender,
         FragmentSenderSetup, FragmentVerifier, MemPoolCheck, Thresholds,
+        {jcli::JCli, jormungandr::ConfigurationBuilder, startup},
     },
     wallet::Wallet,
 };
