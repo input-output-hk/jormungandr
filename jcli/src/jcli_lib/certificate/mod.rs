@@ -19,7 +19,7 @@ use crate::jcli_lib::utils::{
     io, key_parser,
     vote::{SharesError, VotePlanError},
 };
-use chain_impl_mockchain::block::BlockDate;
+use chain_impl_mockchain::{block::BlockDate, certificate::DecryptedPrivateTallyError};
 use jormungandr_lib::interfaces::{self, CertificateFromBech32Error, CertificateFromStrError};
 use std::{
     fmt::Display,
@@ -111,6 +111,8 @@ pub enum Error {
     SharesError(#[from] SharesError),
     #[error("expected decrypted private tally, found {found}")]
     PrivateTallyExpected { found: &'static str },
+    #[error(transparent)]
+    PrivateTallyError(#[from] DecryptedPrivateTallyError),
 }
 
 #[allow(clippy::large_enum_variant)]

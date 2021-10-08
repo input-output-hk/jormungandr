@@ -12,12 +12,12 @@ tokio = { version = "1.4", features = ["macros", "time"] }
 futures      = "0.3.14"
 base64 = "0.13"
 hex = "0.4.2"
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-addr      = { git = "https://github.com/Mr-Leshiy/chain-libs.git", branch = "tally-share-validation" }
+chain-core      = { git = "https://github.com/Mr-Leshiy/chain-libs.git", branch = "tally-share-validation" }
+chain-crypto    = { git = "https://github.com/Mr-Leshiy/chain-libs.git", branch = "tally-share-validation" }
+chain-impl-mockchain = { git = "https://github.com/Mr-Leshiy/chain-libs.git", branch = "tally-share-validation" }
+chain-time      = { git = "https://github.com/Mr-Leshiy/chain-libs.git", branch = "tally-share-validation" }
+chain-vote      = { git = "https://github.com/Mr-Leshiy/chain-libs.git", branch = "tally-share-validation" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
