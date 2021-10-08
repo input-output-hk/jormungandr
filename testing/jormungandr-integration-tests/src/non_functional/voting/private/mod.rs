@@ -174,7 +174,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
         .unwrap();
 
-    let shares = decrypt_tally(&vote_plan_status.clone().into(), &members);
+    let shares = decrypt_tally(&vote_plan_status.clone().into(), &members).unwrap();
 
     transaction_sender
         .send_vote_tally(
@@ -377,7 +377,7 @@ pub fn adversary_private_vote_load_scenario(
         .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
         .unwrap();
 
-    let shares = decrypt_tally(&vote_plan_status.clone().into(), &members);
+    let shares = decrypt_tally(&vote_plan_status.clone().into(), &members).unwrap();
 
     transaction_sender
         .send_vote_tally(
