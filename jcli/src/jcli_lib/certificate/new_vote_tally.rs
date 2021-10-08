@@ -104,8 +104,10 @@ impl PrivateTally {
                 }
             })
             .collect::<Result<Vec<_>, Error>>()?;
-        let vote_tally =
-            VoteTally::new_private(vote_plan.id.into(), DecryptedPrivateTally::new(tallies));
+        let vote_tally = VoteTally::new_private(
+            vote_plan.id.into(),
+            DecryptedPrivateTally::new(tallies).map_err(Error::PrivateTallyError)?,
+        );
         let cert = Certificate::VoteTally(vote_tally);
         write_cert(self.output.as_deref(), cert.into())
     }

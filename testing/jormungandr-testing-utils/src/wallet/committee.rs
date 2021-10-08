@@ -2,7 +2,9 @@ use crate::testing::network_builder::WalletAlias;
 use assert_fs::fixture::{ChildPath, PathChild};
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::{
-    certificate::{DecryptedPrivateTally, DecryptedPrivateTallyProposal},
+    certificate::{
+        DecryptedPrivateTally, DecryptedPrivateTallyError, DecryptedPrivateTallyProposal,
+    },
     vote::VotePlanStatus,
 };
 use chain_vote::{
@@ -181,7 +183,10 @@ impl PrivateVoteCommitteeDataManager {
         self.data.values().map(|x| x.member_public_key()).collect()
     }
 
-    pub fn decrypt_tally(&self, vote_plan_status: &VotePlanStatus) -> DecryptedPrivateTally {
+    pub fn decrypt_tally(
+        &self,
+        vote_plan_status: &VotePlanStatus,
+    ) -> Result<DecryptedPrivateTally, DecryptedPrivateTallyError> {
         let encrypted_tally = vote_plan_status
             .proposals
             .iter()
