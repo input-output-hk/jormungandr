@@ -2,18 +2,22 @@ use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::InitialUTxO;
+use jormungandr_testing_utils::testing::Release;
 use jormungandr_testing_utils::testing::{
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
     transaction_utils::TransactionHash,
 };
 use jormungandr_testing_utils::{
-    testing::{node::download_last_n_releases, FragmentSender},
+    testing::{
+        node::{download_last_n_releases, get_jormungandr_bin},
+        FragmentSender,
+    },
     Version,
 };
 
-fn test_connectivity_between_master_and_legacy_app(version: Version, temp_dir: &TempDir) {
-    println!("Testing version: {}", version);
+fn test_connectivity_between_master_and_legacy_app(release: Release, temp_dir: &TempDir) {
+    println!("Testing version: {}", release.version());
 
     let mut sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
@@ -37,7 +41,8 @@ fn test_connectivity_between_master_and_legacy_app(version: Version, temp_dir: &
 
     let trusted_jormungandr = Starter::new()
         .config(trusted_node_config)
-        .legacy(version.clone())
+        .legacy(release.version())
+        .jormungandr_app(get_jormungandr_bin(&release, temp_dir))
         .passive()
         .start()
         .unwrap();
@@ -55,7 +60,7 @@ fn test_connectivity_between_master_and_legacy_app(version: Version, temp_dir: &
 
     let message = format!(
         "Unable to connect newest master with node from {} version",
-        version
+        release.version()
     );
     assert!(
         super::check_transaction_was_processed(new_transaction, &receiver, 1, &leader_jormungandr)
@@ -67,15 +72,16 @@ fn test_connectivity_between_master_and_legacy_app(version: Version, temp_dir: &
     trusted_jormungandr.assert_no_errors_in_log_with_message("newest master has errors in log");
     leader_jormungandr.assert_no_errors_in_log_with_message(&format!(
         "Legacy nodes from {} version, has errrors in logs",
-        version
+        release.version()
     ));
 }
 
 #[test]
+#[ignore]
 pub fn test_compability() {
     let temp_dir = TempDir::new().unwrap();
     for release in download_last_n_releases(5) {
-        test_connectivity_between_master_and_legacy_app(release.version(), &temp_dir);
+        test_connectivity_between_master_and_legacy_app(release, &temp_dir);
     }
 }
 
@@ -157,7 +163,7 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
 
     fragment_sender
         .send_transactions_round_trip(
-            10,
+            1,
             &mut sender,
             &mut receiver,
             &legacy_jormungandr,

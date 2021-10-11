@@ -7,7 +7,8 @@ mod soak;
 
 use crate::non_functional::voting::config::PrivateVotingLoadTestConfig;
 use assert_fs::TempDir;
-use chain_core::property::BlockDate;
+use chain_core::property::BlockDate as _;
+use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::testing::data::CommitteeMembersManager;
 use chain_impl_mockchain::{
     certificate::{VoteAction, VoteTallyPayload},
@@ -20,6 +21,7 @@ use jormungandr_testing_utils::testing::fragments::AdversaryFragmentGenerator;
 use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_testing_utils::testing::AdversaryFragmentSender;
 use jormungandr_testing_utils::testing::AdversaryFragmentSenderSetup;
+use jormungandr_testing_utils::testing::BlockDateGenerator;
 use jormungandr_testing_utils::testing::VoteCastsGenerator;
 use jormungandr_testing_utils::testing::{
     benchmark_consumption, FragmentStatusProvider, VotePlanBuilder,
@@ -115,12 +117,20 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         .start()
         .unwrap();
 
+    let settings = jormungandr.rest().settings().unwrap();
+    let block_date_generator = BlockDateGenerator::rolling(
+        &settings,
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        false,
+    );
+
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first()
-            .next_epoch()
-            .into(),
+        block_date_generator,
         FragmentSenderSetup::no_verify(),
     );
 
@@ -292,12 +302,20 @@ pub fn adversary_private_vote_load_scenario(
         .start()
         .unwrap();
 
+    let settings = jormungandr.rest().settings().unwrap();
+    let block_date_generator = BlockDateGenerator::rolling(
+        &settings,
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        false,
+    );
+
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first()
-            .next_epoch()
-            .into(),
+        block_date_generator,
         FragmentSenderSetup::no_verify(),
     );
 

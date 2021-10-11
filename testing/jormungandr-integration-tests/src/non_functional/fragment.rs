@@ -5,6 +5,7 @@ use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
 use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::startup;
+use jormungandr_testing_utils::testing::BlockDateGenerator;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::{
     BatchFragmentGenerator, FragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
@@ -32,6 +33,7 @@ pub fn fragment_load_test() {
     .unwrap();
 
     jormungandr.steal_temp_dir().unwrap().into_persistent();
+    let settings = jormungandr.rest().settings().unwrap();
 
     let configuration = Configuration::duration(
         1,
@@ -53,7 +55,14 @@ pub fn fragment_load_test() {
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),
-            BlockDate::first().next_epoch().into(),
+            BlockDateGenerator::rolling(
+                &settings,
+                BlockDate {
+                    epoch: 1,
+                    slot_id: 0,
+                },
+                false,
+            ),
             FragmentSenderSetup::no_verify(),
         ),
     );
@@ -64,7 +73,6 @@ pub fn fragment_load_test() {
     request_generator.prepare(BlockDateDto::new(0, 19));
 
     let jcli: JCli = Default::default();
-
     let fragment_check = FragmentsCheck::new(jcli, &jormungandr);
     let wait = Wait::new(Duration::from_secs(1), 25);
     fragment_check.wait_until_all_processed(&wait).unwrap();
@@ -106,12 +114,21 @@ pub fn fragment_batch_load_test() {
         1_000,
     );
 
+    let settings = jormungandr.rest().settings().unwrap();
+
     let mut request_generator = BatchFragmentGenerator::new(
         FragmentSenderSetup::no_verify(),
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().into(),
+        BlockDateGenerator::rolling(
+            &settings,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            false,
+        ),
         10,
     );
     request_generator.fill_from_faucet(&mut faucet);
@@ -141,6 +158,7 @@ pub fn transaction_load_test() {
     .unwrap();
 
     jormungandr.steal_temp_dir().unwrap().into_persistent();
+    let settings = jormungandr.rest().settings().unwrap();
 
     let configuration = Configuration::duration(
         1,
@@ -156,7 +174,14 @@ pub fn transaction_load_test() {
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
+        BlockDateGenerator::rolling(
+            &settings,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            false,
+        ),
     );
     request_generator.fill_from_faucet(&mut faucet);
 

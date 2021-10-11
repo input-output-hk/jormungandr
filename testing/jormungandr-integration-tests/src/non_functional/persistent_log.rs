@@ -6,7 +6,7 @@ use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
 use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
 use jormungandr_testing_utils::testing::startup;
 use jormungandr_testing_utils::testing::{
-    BatchFragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
+    BatchFragmentGenerator, BlockDateGenerator, FragmentSenderSetup, FragmentStatusProvider,
 };
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 use jortestkit::load::{self, Configuration, Monitor};
@@ -34,7 +34,7 @@ pub fn persistent_log_load_test() {
     )
     .unwrap();
 
-    let batch_size = 100;
+    let batch_size = 10;
     let requests_per_thread = 50;
     let threads_count = 1;
 
@@ -44,15 +44,24 @@ pub fn persistent_log_load_test() {
         1,
         Monitor::Standard(100),
         1,
-        1,
+        30,
     );
+
+    let settings = jormungandr.rest().settings().unwrap();
 
     let mut request_generator = BatchFragmentGenerator::new(
         FragmentSenderSetup::no_verify(),
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        BlockDate::first().into(),
+        BlockDateGenerator::rolling(
+            &settings,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            false,
+        ),
         batch_size,
     );
     request_generator.fill_from_faucet(&mut faucet);

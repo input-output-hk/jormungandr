@@ -17,7 +17,7 @@ use std::path::PathBuf;
 
 pub use rest::BackwardCompatibleRest;
 
-pub use version::{version_0_8_19, Version};
+pub use version::*;
 
 const GITHUB_TOKEN: &str = "GITHUB_TOKEN";
 
