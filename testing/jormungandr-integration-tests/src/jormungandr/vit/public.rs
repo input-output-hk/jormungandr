@@ -181,7 +181,6 @@ pub fn test_vote_flow_bft() {
         .with_slots_per_epoch(60)
         .with_certs(vec![vote_plan_cert])
         .with_explorer()
-        .with_slot_duration(1)
         .with_treasury(1_000.into())
         .build(&temp_dir);
 
@@ -314,8 +313,7 @@ pub fn test_vote_flow_praos() {
             ActiveSlotCoefficient::new(Milli::from_millis(1_000)).unwrap(),
         )
         .with_certs(vec![vote_plan_cert])
-        .with_total_rewards_supply(1_000_000.into())
-        .with_slot_duration(1);
+        .with_total_rewards_supply(1_000_000.into());
 
     let (jormungandr, _stake_pools) = start_stake_pool(
         &[alice.clone()],

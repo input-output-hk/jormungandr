@@ -22,7 +22,6 @@ pub fn persistent_log_load_test() {
         vec![&faucet],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_slot_duration(1)
             .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),

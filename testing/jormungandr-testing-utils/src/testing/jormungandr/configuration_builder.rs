@@ -20,6 +20,7 @@ use jormungandr_lib::interfaces::{
     Value,
 };
 use std::path::PathBuf;
+const DEFAULT_SLOT_DURATION: u8 = 2;
 
 #[derive(Clone, Debug)]
 pub struct ConfigurationBuilder {
@@ -65,7 +66,7 @@ impl ConfigurationBuilder {
             block0_hash: None,
             block0_consensus: ConsensusVersion::Bft,
             slots_per_epoch: NumberOfSlotsPerEpoch::new(100).unwrap(),
-            slot_duration: SlotDuration::new(1).unwrap(),
+            slot_duration: SlotDuration::new(DEFAULT_SLOT_DURATION).unwrap(),
             epoch_stability_depth: 2600u32.into(),
             linear_fees: LinearFee::new(0, 0, 0),
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,

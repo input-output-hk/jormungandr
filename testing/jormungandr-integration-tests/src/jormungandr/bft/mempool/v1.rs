@@ -128,7 +128,6 @@ pub fn test_mempool_pool_max_entries_equal_0() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 0.into(),
             log_max_entries: 100.into(),
@@ -212,7 +211,6 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
             log_max_entries: 1.into(),
@@ -308,7 +306,6 @@ pub fn test_mempool_log_max_entries_equals_0() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 0.into(),
             log_max_entries: 0.into(),
@@ -393,7 +390,6 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 2.into(),
             log_max_entries: 0.into(),

@@ -105,7 +105,6 @@ fn expired_transactions_rejected() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(30)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(1)
             .with_linear_fees(LinearFee::new(0, 0, 0))
             .with_mempool(Mempool {
                 pool_max_entries: 1_000.into(),
@@ -165,7 +164,6 @@ fn transactions_with_long_time_to_live_rejected() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(30)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(1)
             .with_linear_fees(LinearFee::new(0, 0, 0))
             .with_mempool(Mempool {
                 pool_max_entries: 1_000.into(),
