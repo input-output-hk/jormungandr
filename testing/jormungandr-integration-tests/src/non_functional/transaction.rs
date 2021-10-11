@@ -2,6 +2,7 @@ use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockDate as JLibBlockDate, KesUpdateSpeed, Mempool,
 };
+use jormungandr_testing_utils::testing::BlockDateGenerator;
 use jormungandr_testing_utils::{
     testing::{
         benchmark_efficiency, benchmark_endurance, benchmark_speed,
@@ -66,6 +67,15 @@ fn send_100_transaction_in_10_packs_for_recievers(
     )
     .unwrap();
 
+    let settings = jormungandr.rest().settings().unwrap();
+    let block_date_generator = BlockDateGenerator::rolling(
+        &settings,
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        false,
+    );
     let output_value = 1_u64;
     let mut efficiency_benchmark_run = efficiency_benchmark_def.start();
     for i in 0..iterations_count {
@@ -77,6 +87,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
                     .new_transaction()
                     .add_account(&sender.address().to_string(), &output_value.into())
                     .add_output(&receiver.address().to_string(), output_value.into())
+                    .set_expiry_date(block_date_generator.block_date().into())
                     .finalize()
                     .seal_with_witness_for_address(&sender)
                     .to_message();
@@ -116,6 +127,15 @@ pub fn test_100_transaction_is_processed_simple() {
     )
     .unwrap();
 
+    let settings = jormungandr.rest().settings().unwrap();
+    let block_date_generator = BlockDateGenerator::rolling(
+        &settings,
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        false,
+    );
     let output_value = 1_u64;
     let mut benchmark = benchmark_efficiency("test_100_transaction_is_processed_simple")
         .target(transaction_max_count)
@@ -127,6 +147,7 @@ pub fn test_100_transaction_is_processed_simple() {
             .new_transaction()
             .add_account(&sender.address().to_string(), &output_value.into())
             .add_output(&receiver.address().to_string(), output_value.into())
+            .set_expiry_date(block_date_generator.block_date().into())
             .finalize()
             .seal_with_witness_for_address(&sender)
             .to_message();
@@ -176,12 +197,23 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
         .target(Duration::from_secs(900))
         .start();
 
+    let settings = jormungandr.rest().settings().unwrap();
+    let block_date_generator = BlockDateGenerator::rolling(
+        &settings,
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        false,
+    );
+
     loop {
         let transaction = jcli
             .transaction_builder(jormungandr.genesis_block_hash())
             .new_transaction()
             .add_account(&sender.address().to_string(), &output_value.into())
             .add_output(&receiver.address().to_string(), output_value.into())
+            .set_expiry_date(block_date_generator.block_date().into())
             .finalize()
             .seal_with_witness_for_address(&sender)
             .to_message();
@@ -231,13 +263,23 @@ pub fn test_expired_transactions_processing_speed() {
 
     let output_value = 1;
 
+    let settings = jormungandr.rest().settings().unwrap();
+    let block_date_generator = BlockDateGenerator::rolling(
+        &settings,
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        false,
+    );
+
     let transactions = (0..N_TRANSACTIONS)
         .map(|_| {
             let tx = sender
                 .transaction_to(
                     &jormungandr.genesis_block_hash(),
                     &LinearFee::new(0, 0, 0),
-                    BlockDate::first(),
+                    block_date_generator.block_date(),
                     receiver.address(),
                     output_value.into(),
                 )
@@ -271,12 +313,7 @@ pub fn test_expired_transactions_processing_speed() {
 #[test]
 pub fn test_transactions_with_long_ttl_processing_speed() {
     const N_TRANSACTIONS: usize = 1_000;
-    const MAX_EXPIRY_EPOCHS: u8 = 20;
-    const LONG_TTL_BLOCK_DATE: BlockDate = BlockDate {
-        epoch: 1 + MAX_EXPIRY_EPOCHS as u32,
-        slot_id: 0,
-    };
-
+    const MAX_EXPIRY_EPOCHS: u32 = 20;
     let mut sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
 
@@ -293,11 +330,21 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
-            .with_tx_max_expiry_epochs(MAX_EXPIRY_EPOCHS),
+            .with_tx_max_expiry_epochs(MAX_EXPIRY_EPOCHS as u8),
     )
     .unwrap();
 
     time::wait_for_date(JLibBlockDate::new(0, 1), jormungandr.rest());
+
+    let settings = jormungandr.rest().settings().unwrap();
+    let block_date_generator = BlockDateGenerator::rolling(
+        &settings,
+        BlockDate {
+            epoch: MAX_EXPIRY_EPOCHS + 1,
+            slot_id: 0,
+        },
+        false,
+    );
 
     let output_value = 1;
 
@@ -307,7 +354,7 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
                 .transaction_to(
                     &jormungandr.genesis_block_hash(),
                     &LinearFee::new(0, 0, 0),
-                    LONG_TTL_BLOCK_DATE,
+                    block_date_generator.block_date(),
                     receiver.address(),
                     output_value.into(),
                 )
@@ -320,7 +367,7 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         LinearFee::new(0, 0, 0),
-        LONG_TTL_BLOCK_DATE.into(),
+        block_date_generator.block_date().into(),
         FragmentSenderSetup::ignore_errors(),
     );
 
@@ -336,7 +383,7 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
     assert!(summary.rejected.is_empty());
 
     for fragment_id in summary.fragment_ids() {
-        FragmentVerifier::wait_and_verify_is_rejected(
+        FragmentVerifier::wait_and_verify_is_in_block(
             Duration::from_millis(100),
             MemPoolCheck::from(fragment_id),
             &jormungandr,
