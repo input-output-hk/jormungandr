@@ -180,6 +180,7 @@ impl Settings {
         };
         blockchain_configuration.slots_per_epoch = *blockchain.slots_per_epoch();
         blockchain_configuration.slot_duration = *blockchain.slot_duration();
+        blockchain_configuration.tx_max_expiry_epochs = blockchain.tx_max_expiry_epochs();
         blockchain_configuration.treasury = Some(1_000_000.into());
         blockchain_configuration.block_content_max_size = *blockchain.block_content_max_size();
         blockchain_configuration.kes_update_speed = *blockchain.kes_update_speed();

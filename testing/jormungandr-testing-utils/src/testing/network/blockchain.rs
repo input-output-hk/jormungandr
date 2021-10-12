@@ -41,6 +41,8 @@ pub struct Blockchain {
     vote_plans: HashMap<VotePlanKey, VotePlan>,
     #[serde(default)]
     wallets: HashMap<WalletAlias, WalletTemplate>,
+    #[serde(default)]
+    tx_max_expiry_epochs: Option<u8>,
 }
 
 impl Blockchain {
@@ -66,6 +68,7 @@ impl Blockchain {
             slots_per_epoch,
             vote_plans: HashMap::new(),
             wallets: HashMap::new(),
+            tx_max_expiry_epochs: None,
         }
     }
 
@@ -75,6 +78,14 @@ impl Blockchain {
 
     pub fn external_committees(&self) -> Vec<CommitteeIdDef> {
         self.external_committees.clone()
+    }
+
+    pub fn tx_max_expiry_epochs(&self) -> Option<u8> {
+        self.tx_max_expiry_epochs
+    }
+
+    pub fn set_tx_max_expiry_epochs(&mut self, tx_max_expiry_epochs: Option<u8>) {
+        self.tx_max_expiry_epochs = tx_max_expiry_epochs;
     }
 
     pub fn set_external_committees(&mut self, external_committees: Vec<CommitteeIdDef>) {
