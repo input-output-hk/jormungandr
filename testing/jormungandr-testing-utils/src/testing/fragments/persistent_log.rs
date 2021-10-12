@@ -1,12 +1,7 @@
-use bincode::Options;
 use chain_core::property::Serialize;
 use chain_impl_mockchain::fragment::Fragment;
-use jormungandr_lib::interfaces::{
-    load_persistent_fragments_logs_from_folder_path, PersistentFragmentLog,
-};
-use std::fs::File;
-use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
+use jormungandr_lib::interfaces::load_persistent_fragments_logs_from_folder_path;
+use std::path::PathBuf;
 
 pub struct PersistentLogViewer {
     dir: PathBuf,
