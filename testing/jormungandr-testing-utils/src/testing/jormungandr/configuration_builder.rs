@@ -20,12 +20,6 @@ use jormungandr_lib::interfaces::{
     NodeSecret, NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
     Value,
 };
-use jormungandr_testing_utils::{
-    testing::{
-        Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
-    },
-    wallet::Wallet,
-};
 use std::path::PathBuf;
 const DEFAULT_SLOT_DURATION: u8 = 2;
 

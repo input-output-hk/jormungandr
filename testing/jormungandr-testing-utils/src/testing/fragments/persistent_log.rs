@@ -35,26 +35,9 @@ impl PersistentLogViewer {
         self.get_all().len()
     }
 }
-pub fn write_into_persistent_log<P: AsRef<Path>>(
-    persistent_log: P,
-    entries: Vec<PersistentFragmentLog>,
-) -> Result<(), Error> {
-    let mut output = BufWriter::with_capacity(128 * 1024, File::create(persistent_log.as_ref())?);
-
-    for entry in entries {
-        let codec = bincode::DefaultOptions::new().with_fixint_encoding();
-        let serialized = codec
-            .serialize(&entry)
-            .map_err(|_| Error::CannotSerializeEntry)?;
-        output.write_all(&serialized)?;
-    }
-    Ok(())
-}
 
 #[derive(custom_debug::Debug, thiserror::Error)]
 pub enum Error {
-    #[error("cannot serialize entry of persistent log")]
-    CannotSerializeEntry,
     #[error("cannot serialize entry of persistent log")]
     Io(#[from] std::io::Error),
 }
