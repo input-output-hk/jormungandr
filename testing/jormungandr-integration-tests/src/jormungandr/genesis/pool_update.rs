@@ -1,8 +1,8 @@
+use chain_impl_mockchain::rewards::TaxType;
+use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
-use chain_impl_mockchain::rewards::TaxType;
-use jormungandr_testing_utils::testing::node::time;
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;

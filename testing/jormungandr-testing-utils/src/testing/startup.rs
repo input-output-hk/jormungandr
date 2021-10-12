@@ -1,3 +1,4 @@
+use super::jcli::JCli;
 use crate::testing::{
     configuration::SecretModelFactory,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
@@ -7,6 +8,8 @@ use crate::{
     testing::{signed_delegation_cert, signed_stake_pool_cert},
     wallet::Wallet,
 };
+use assert_fs::fixture::{ChildPath, PathChild, TempDir};
+use assert_fs::prelude::*;
 use chain_crypto::{AsymmetricKey, Ed25519};
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::{
@@ -15,9 +18,6 @@ use jormungandr_lib::{
         Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret, SignedCertificate,
     },
 };
-use super::jcli::JCli;
-use assert_fs::fixture::{ChildPath, PathChild, TempDir};
-use assert_fs::prelude::*;
 use std::path::PathBuf;
 
 pub fn build_genesis_block(
