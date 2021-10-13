@@ -1,6 +1,6 @@
 [package]
 name = "jormungandr"
-version = "0.13.0-dev"
+version = "0.13.0"
 authors = [ "dev@iohk.io" ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/input-output-hk/jormungandr"
@@ -81,7 +81,7 @@ versionisator = "1.0.2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.93"
-nix = "0.22.0"
+nix = "0.23.0"
 
 [features]
 default = ["codegen-rustfmt"]
