@@ -31,7 +31,7 @@ impl ExternalWalletTemplate {
         &self.address
     }
 
-    pub fn alias(&self) -> &str {
-        &self.alias
+    pub fn alias(&self) -> WalletAlias {
+        self.alias.clone()
     }
 }
