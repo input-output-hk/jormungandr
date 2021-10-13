@@ -1,3 +1,6 @@
+use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
+use chain_impl_mockchain::block::BlockDate;
+use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
@@ -5,9 +8,6 @@ use jormungandr_testing_utils::{
         AdversaryFragmentSender, AdversaryFragmentSenderSetup, FragmentSender, FragmentSenderSetup,
     },
 };
-
-use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
-use chain_impl_mockchain::block::BlockDate;
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
@@ -125,7 +125,7 @@ pub fn test_all_fragments() {
     let mut stake_pool_info = new_stake_pool.info_mut();
     stake_pool_info.serial = 100u128;
 
-    startup::sleep_till_next_epoch(1, jormungandr.block0_configuration());
+    time::wait_for_epoch(1, jormungandr.rest());
 
     transaction_sender
         .send_pool_update(
