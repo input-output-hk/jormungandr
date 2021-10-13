@@ -146,25 +146,30 @@ impl Settings {
         // TODO blockchain_configuration.block0_date = ;
         blockchain_configuration.linear_fees = blockchain.linear_fee();
         blockchain_configuration.discrimination = blockchain.discrimination();
+        blockchain_configuration.block0_date = blockchain.block0_date();
         blockchain_configuration.block0_consensus = *blockchain.consensus();
         blockchain_configuration.consensus_leader_ids = {
-            let mut leader_ids = Vec::new();
-            for leader_alias in blockchain.leaders() {
-                let identifier = if let Some(node) = self.nodes.get_mut(leader_alias) {
-                    if let Some(bft) = &node.secret.bft {
-                        bft.signing_key.identifier()
+            if blockchain.has_external_consensus_leader_ids() {
+                blockchain.external_consensus_leader_ids()
+            } else {
+                let mut leader_ids = Vec::new();
+                for leader_alias in blockchain.leaders() {
+                    let identifier = if let Some(node) = self.nodes.get_mut(leader_alias) {
+                        if let Some(bft) = &node.secret.bft {
+                            bft.signing_key.identifier()
+                        } else {
+                            let signing_key = SigningKey::generate(rng.rng_mut());
+                            let identifier = signing_key.identifier();
+                            node.secret.bft = Some(Bft { signing_key });
+                            identifier
+                        }
                     } else {
-                        let signing_key = SigningKey::generate(rng.rng_mut());
-                        let identifier = signing_key.identifier();
-                        node.secret.bft = Some(Bft { signing_key });
-                        identifier
-                    }
-                } else {
-                    SigningKey::<Ed25519>::generate(rng.rng_mut()).identifier()
-                };
-                leader_ids.push(identifier.into());
+                        SigningKey::<Ed25519>::generate(rng.rng_mut()).identifier()
+                    };
+                    leader_ids.push(identifier.into());
+                }
+                leader_ids
             }
-            leader_ids
         };
         blockchain_configuration.committees = {
             let mut committees = Vec::new();
