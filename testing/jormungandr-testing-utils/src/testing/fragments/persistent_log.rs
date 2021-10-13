@@ -30,3 +30,9 @@ impl PersistentLogViewer {
         self.get_all().len()
     }
 }
+
+#[derive(custom_debug::Debug, thiserror::Error)]
+pub enum Error {
+    #[error("cannot serialize entry of persistent log")]
+    Io(#[from] std::io::Error),
+}
