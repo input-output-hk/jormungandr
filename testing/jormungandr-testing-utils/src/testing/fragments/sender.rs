@@ -39,7 +39,7 @@ pub enum FragmentSenderError {
     TooManyAttemptsFailed { attempts: u8, alias: String },
     #[error("fragment verifier error")]
     FragmentVerifierError(#[from] super::FragmentVerifierError),
-    #[error("cannot send fragment")]
+    #[error(transparent)]
     SendFragmentError(#[from] super::node::FragmentNodeError),
     #[error("cannot sync node before sending fragment")]
     SyncNodeError(#[from] crate::testing::SyncNodeError),
@@ -47,7 +47,7 @@ pub enum FragmentSenderError {
     WalletError(#[from] crate::wallet::WalletError),
     #[error("wrong sender configuration: cannot use disable transaction auto confirm when sending more than one transaction")]
     TransactionAutoConfirmDisabledError,
-    #[error("fragment exporter error")]
+    #[error(transparent)]
     FragmentExporterError(#[from] FragmentExporterError),
 }
 
@@ -130,6 +130,26 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
             .map_err(FragmentSenderError::SyncNodeError)?;
         node.send_batch_fragments(fragments, fail_fast)
             .map_err(|e| e.into())
+    }
+
+    pub fn send_batch_fragments_in_chunks<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        fragments: Vec<Fragment>,
+        chunks_size: usize,
+        fail_fast: bool,
+        node: &A,
+    ) -> Result<FragmentsProcessingSummary, FragmentSenderError> {
+        let mut summary = FragmentsProcessingSummary {
+            accepted: Vec::new(),
+            rejected: Vec::new(),
+        };
+
+        for chunks in fragments.chunks(chunks_size) {
+            let chunk_summary = self.send_batch_fragments(chunks.to_vec(), fail_fast, node)?;
+            summary.accepted.extend(chunk_summary.accepted);
+            summary.rejected.extend(chunk_summary.rejected);
+        }
+        Ok(summary)
     }
 
     pub fn send_transaction<A: FragmentNode + SyncNode + Sized + Send>(

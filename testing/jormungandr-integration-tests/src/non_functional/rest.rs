@@ -21,6 +21,9 @@ pub fn rest_load_quick() {
 
     jormungandr.steal_temp_dir().unwrap().into_persistent();
 
+    // give some time to jormungandr spin off on slower environments
+    std::thread::sleep(std::time::Duration::from_secs(3));
+
     let rest_client = jormungandr.rest();
     let request = RestRequestGen::new(rest_client);
     let config = Configuration::duration(

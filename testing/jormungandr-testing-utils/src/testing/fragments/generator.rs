@@ -13,6 +13,7 @@ use chain_impl_mockchain::{
     vote::Choice,
 };
 use chain_time::TimeEra;
+use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
@@ -76,82 +77,83 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
 
     pub fn prepare(&mut self, start_block_date: BlockDateDto) {
         let time_era = start_block_date.time_era(self.slots_per_epoch);
+        let mut fragments = Vec::new();
+        let settings = self.node.rest().settings().unwrap();
+        let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
+        let fees = settings.fees;
 
-        let sender = self.sender.clone();
-
-        let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&sender)))
+        let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&self.sender)))
             .take(self.stake_pools_count)
-            .map(|stake_pool| {
-                let fragment = self
-                    .fragment_sender
-                    .send_pool_registration(&mut self.sender, &stake_pool, &self.node)
-                    .unwrap();
-
-                FragmentVerifier::wait_and_verify_is_in_block(
-                    Duration::from_secs(2),
-                    fragment,
-                    &self.node,
-                )
-                .unwrap();
-
-                stake_pool
-            })
             .collect();
 
         let votes_plan_for_casting: Vec<VotePlan> = iter::from_fn(|| {
             Some(
                 VotePlanBuilder::new()
                     .proposals_count(256)
-                    .with_vote_start(start_block_date.into())
+                    .with_vote_start(start_block_date.shift_slot(5, &time_era).into())
                     .with_tally_start(start_block_date.shift_epoch(5).into())
                     .with_tally_end(start_block_date.shift_epoch(6).into())
                     .build(),
             )
         })
         .take(self.vote_plans_for_casting_count)
-        .map(|vote_plan| {
-            let fragment = self
-                .fragment_sender
-                .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
-                .unwrap();
-
-            FragmentVerifier::wait_and_verify_is_in_block(
-                Duration::from_secs(2),
-                fragment,
-                &self.node,
-            )
-            .unwrap();
-
-            vote_plan
-        })
         .collect();
 
         let vote_plans_for_tally: Vec<VotePlan> = iter::from_fn(|| {
             Some(
                 VotePlanBuilder::new()
-                    .with_vote_start(start_block_date.into())
-                    .with_tally_start(start_block_date.shift_slot(1, &time_era).into())
+                    .with_vote_start(start_block_date.shift_slot(10, &time_era).into())
+                    .with_tally_start(start_block_date.shift_slot(11, &time_era).into())
                     .with_tally_end(start_block_date.shift_epoch(5).into())
                     .build(),
             )
         })
         .take(self.vote_plans_for_tally_count)
-        .map(|vote_plan| {
-            let fragment = self
-                .fragment_sender
-                .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
-                .unwrap();
-
-            FragmentVerifier::wait_and_verify_is_in_block(
-                Duration::from_secs(2),
-                fragment,
-                &self.node,
-            )
-            .unwrap();
-
-            vote_plan
-        })
         .collect();
+
+        for stake_pool in &stake_pools {
+            fragments.push(
+                self.sender
+                    .issue_pool_registration_cert(
+                        &block0_hash,
+                        &fees,
+                        self.fragment_sender.date(),
+                        stake_pool,
+                    )
+                    .unwrap(),
+            );
+        }
+
+        for vote_plan_for_casting in &votes_plan_for_casting {
+            fragments.push(
+                self.sender
+                    .issue_vote_plan_cert(
+                        &block0_hash,
+                        &fees,
+                        self.fragment_sender.date(),
+                        vote_plan_for_casting,
+                    )
+                    .unwrap(),
+            );
+        }
+
+        for vote_plan_for_tally in &vote_plans_for_tally {
+            fragments.push(
+                self.sender
+                    .issue_vote_plan_cert(
+                        &block0_hash,
+                        &fees,
+                        self.fragment_sender.date(),
+                        vote_plan_for_tally,
+                    )
+                    .unwrap(),
+            );
+        }
+
+        self.fragment_sender
+            .send_batch_fragments(fragments, true, &self.node)
+            .unwrap();
+        FragmentVerifier::wait_for_all_fragments(Duration::from_secs(10), &self.node).unwrap();
 
         self.vote_plans_for_casting = votes_plan_for_casting;
         self.vote_plans_for_tally = vote_plans_for_tally;
