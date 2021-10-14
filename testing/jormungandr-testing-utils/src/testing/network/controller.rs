@@ -77,7 +77,7 @@ impl Controller {
         Ok(self.node_settings(alias)?.config.clone())
     }
 
-    fn node_settings(&self, alias: &str) -> Result<&NodeSetting, ControllerError> {
+    pub fn node_settings(&self, alias: &str) -> Result<&NodeSetting, ControllerError> {
         self.settings
             .nodes
             .get(alias)

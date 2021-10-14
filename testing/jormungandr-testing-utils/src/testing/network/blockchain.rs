@@ -79,8 +79,36 @@ impl Blockchain {
         }
     }
 
+    pub fn block_content_max_size(&self) -> &BlockContentMaxSize {
+        &self.block_content_max_size
+    }
+
+    pub fn set_block_content_max_size(&mut self, block_content_max_size: BlockContentMaxSize) {
+        self.block_content_max_size = block_content_max_size;
+    }
+
     pub fn committees(&self) -> Vec<WalletAlias> {
         self.committees.clone()
+    }
+
+    pub fn set_committes(&mut self, committees: Vec<WalletAlias>) {
+        self.committees = committees;
+    }
+
+    pub fn consensus(&self) -> &ConsensusVersion {
+        &self.consensus
+    }
+
+    pub fn set_consensus(&mut self, consensus: ConsensusVersion) {
+        self.consensus = consensus;
+    }
+
+    pub fn discrimination(&self) -> Discrimination {
+        self.discrimination
+    }
+
+    pub fn set_discrimination(&mut self, discrimination: Discrimination) {
+        self.discrimination = discrimination;
     }
 
     pub fn external_committees(&self) -> Vec<CommitteeIdDef> {
@@ -130,6 +158,10 @@ impl Blockchain {
         self.external_wallets.clone()
     }
 
+    pub fn kes_update_speed(&self) -> &KesUpdateSpeed {
+        &self.kes_update_speed
+    }
+
     pub fn vote_plans(&self) -> HashMap<VotePlanKey, VotePlan> {
         self.vote_plans.clone()
     }
@@ -140,22 +172,6 @@ impl Blockchain {
 
     pub fn set_linear_fee(&mut self, linear_fee: LinearFee) {
         self.linear_fee = linear_fee;
-    }
-
-    pub fn discrimination(&self) -> Discrimination {
-        self.discrimination
-    }
-
-    pub fn set_discrimination(&mut self, discrimination: Discrimination) {
-        self.discrimination = discrimination;
-    }
-
-    pub fn set_block_content_max_size(&mut self, block_content_max_size: BlockContentMaxSize) {
-        self.block_content_max_size = block_content_max_size;
-    }
-
-    pub fn block_content_max_size(&self) -> &BlockContentMaxSize {
-        &self.block_content_max_size
     }
 
     pub fn add_committee<S: Into<NodeAlias>>(&mut self, alias: S) {
@@ -184,10 +200,6 @@ impl Blockchain {
         self.wallets.insert(wallet.alias().clone(), wallet);
     }
 
-    pub fn consensus(&self) -> &ConsensusVersion {
-        &self.consensus
-    }
-
     pub fn slots_per_epoch(&self) -> &NumberOfSlotsPerEpoch {
         &self.slots_per_epoch
     }
@@ -196,8 +208,8 @@ impl Blockchain {
         &self.slot_duration
     }
 
-    pub fn kes_update_speed(&self) -> &KesUpdateSpeed {
-        &self.kes_update_speed
+    pub fn set_slot_duration(&mut self, slot_duration: SlotDuration) {
+        self.slot_duration = slot_duration;
     }
 
     pub fn consensus_genesis_praos_active_slot_coeff(&self) -> &ActiveSlotCoefficient {
