@@ -9,6 +9,7 @@ use crate::testing::MemPoolCheck;
 use crate::testing::RemoteJormungandr;
 use crate::testing::SyncNode;
 use crate::wallet::Wallet;
+use crate::testing::BlockDateGenerator;
 use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::certificate::VotePlan;
 use chain_impl_mockchain::certificate::VoteTallyPayload;

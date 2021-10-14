@@ -1,2 +1,2 @@
-pub mod fail_fast;
-pub mod statuses;
+pub mod fragments;
+pub mod votes;
