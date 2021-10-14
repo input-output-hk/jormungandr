@@ -35,7 +35,6 @@ impl PersistentLogViewer {
         self.get_all().len()
     }
 }
-#[allow(dead_code)]
 pub fn write_into_persistent_log<P: AsRef<Path>>(
     persistent_log: P,
     entries: Vec<PersistentFragmentLog>,
