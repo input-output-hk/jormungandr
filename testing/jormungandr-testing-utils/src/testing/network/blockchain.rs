@@ -1,12 +1,15 @@
 use super::{ExternalWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
 use crate::testing::network::VotePlanKey;
 use chain_addr::Discrimination;
-use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use chain_impl_mockchain::{fee::LinearFee, milli::Milli};
+pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::milli::Milli;
 use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusVersionDef,
-    DiscriminationDef, KesUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch, SlotDuration, VotePlan,
+    ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
+    ConsensusVersionDef, DiscriminationDef, KesUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch,
+    SlotDuration, VotePlan,
 };
+use jormungandr_lib::time::SecondsSinceUnixEpoch;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -29,6 +32,8 @@ pub struct Blockchain {
     external_wallets: Vec<ExternalWalletTemplate>,
     #[serde(default)]
     kes_update_speed: KesUpdateSpeed,
+    block0_date: SecondsSinceUnixEpoch,
+    external_consensus_leader_ids: Vec<ConsensusLeaderId>,
     #[serde(default)]
     leaders: Vec<NodeAlias>,
     #[serde(with = "LinearFeeDef")]
@@ -61,11 +66,13 @@ impl Blockchain {
             discrimination: Discrimination::Test,
             external_committees: Vec::new(),
             external_wallets: Vec::new(),
+            block0_date: Default::default(),
+            external_consensus_leader_ids: Vec::new(),
+            slots_per_epoch,
+            slot_duration,
             kes_update_speed,
             leaders: Vec::new(),
             linear_fee: LinearFee::new(1, 1, 1),
-            slot_duration,
-            slots_per_epoch,
             vote_plans: HashMap::new(),
             wallets: HashMap::new(),
             tx_max_expiry_epochs: None,
@@ -88,16 +95,39 @@ impl Blockchain {
         self.tx_max_expiry_epochs = tx_max_expiry_epochs;
     }
 
+    pub fn set_block0_date(&mut self, block0_date: SecondsSinceUnixEpoch) {
+        self.block0_date = block0_date;
+    }
+
+    pub fn block0_date(&self) -> SecondsSinceUnixEpoch {
+        self.block0_date
+    }
+
     pub fn set_external_committees(&mut self, external_committees: Vec<CommitteeIdDef>) {
         self.external_committees = external_committees;
     }
 
-    pub fn external_wallets(&self) -> Vec<ExternalWalletTemplate> {
-        self.external_wallets.clone()
+    pub fn set_external_consensus_leader_ids(
+        &mut self,
+        external_consensus_leader_ids: Vec<ConsensusLeaderId>,
+    ) {
+        self.external_consensus_leader_ids = external_consensus_leader_ids;
+    }
+
+    pub fn has_external_consensus_leader_ids(&self) -> bool {
+        !self.external_consensus_leader_ids().is_empty()
+    }
+
+    pub fn external_consensus_leader_ids(&self) -> Vec<ConsensusLeaderId> {
+        self.external_consensus_leader_ids.clone()
     }
 
     pub fn set_external_wallets(&mut self, external_wallets: Vec<ExternalWalletTemplate>) {
         self.external_wallets = external_wallets;
+    }
+
+    pub fn external_wallets(&self) -> Vec<ExternalWalletTemplate> {
+        self.external_wallets.clone()
     }
 
     pub fn vote_plans(&self) -> HashMap<VotePlanKey, VotePlan> {
