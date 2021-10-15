@@ -2,7 +2,7 @@ use crate::{
     node::{LeadershipMode, PersistenceMode},
     scenario::{
         repository::ScenarioResult, ActiveSlotCoefficient, ConsensusVersion, ControllerBuilder,
-        KesUpdateSpeed, Milli, Node, NumberOfSlotsPerEpoch, SlotDuration, Value,
+        Milli, Node, SlotDuration, Value,
     },
     test::{
         utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
@@ -49,13 +49,11 @@ fn prepare_real_scenario(
     let mut builder = ControllerBuilder::new(title);
     let mut topology = Topology::default().with_node(Node::new(CORE_NODE));
 
-    let mut blockchain = Blockchain::new(
-        consensus,
-        NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
-        SlotDuration::new(1).expect("valid slot duration in seconds"),
-        KesUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
-        ActiveSlotCoefficient::new(Milli::from_millis(700))
-            .expect("active slot coefficient in millis"),
+    let mut blockchain = Blockchain::default();
+    blockchain.set_consensus(consensus);
+    blockchain.set_slot_duration(SlotDuration::new(1).unwrap());
+    blockchain.set_consensus_genesis_praos_active_slot_coeff(
+        ActiveSlotCoefficient::new(Milli::from_millis(700)).unwrap(),
     );
 
     for i in 0..relay_nodes_count {
