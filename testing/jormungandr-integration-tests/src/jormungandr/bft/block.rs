@@ -4,6 +4,7 @@ use chain_impl_mockchain::{
     chaintypes::{ConsensusType, ConsensusVersion},
     fee::LinearFee,
     header::HeaderBuilder,
+    key::BftLeaderId,
     testing::TestGen,
 };
 use jormungandr_lib::interfaces::SlotDuration;
@@ -53,16 +54,60 @@ fn block_with_incorrect_hash() {
     })
     .unwrap();
 
-    let mut adversary = AdversaryNodeBuilder::new(block0).build();
-
-    assert!(adversary
+    assert!(AdversaryNodeBuilder::new(block0)
+        .build()
         .send_block_to_peer(jormungandr.address(), block)
         .is_err());
 }
 
 #[test]
 fn block_with_bad_signature() {
-    // TODO
+    let temp_dir = TempDir::new().unwrap();
+    let keys = startup::create_new_key_pair();
+
+    let node_params = ConfigurationBuilder::default()
+        .with_block0_consensus(ConsensusType::Bft)
+        .with_slot_duration(10)
+        .with_leader_key_pair(keys.clone())
+        .build(&temp_dir);
+
+    let bft_leader_id = BftLeaderId::from(keys.identifier().into_public_key());
+
+    let block0 = node_params.block0_configuration().to_block();
+
+    let jormungandr = Starter::default().config(node_params).start().unwrap();
+
+    jormungandr
+        .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(1))
+        .unwrap();
+
+    let block = builder(
+        BlockVersion::Ed25519Signed,
+        Contents::empty(),
+        |hdr_builder| {
+            Ok::<_, ()>({
+                let builder = hdr_builder
+                    .set_parent(&block0.header().id(), 1.into())
+                    .set_date(BlockDate {
+                        epoch: 0,
+                        slot_id: 1,
+                    })
+                    .into_bft_builder()
+                    .unwrap()
+                    .set_consensus_data(&bft_leader_id);
+
+                let signature = keys.signing_key().into_secret_key().sign_slice(&[42u8]);
+
+                builder.set_signature(signature.into()).generalize()
+            })
+        },
+    )
+    .unwrap();
+
+    assert!(AdversaryNodeBuilder::new(block0)
+        .build()
+        .send_block_to_peer(jormungandr.address(), block)
+        .is_err());
 }
 
 #[test]
@@ -81,7 +126,7 @@ fn block_with_wrong_leader() {
         .topology(
             Topology::default()
                 .with_node(Node::new(LEADER_1))
-                .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_1)),
+                .with_node(Node::new(LEADER_2)),
         )
         .build()
         .unwrap();
@@ -200,9 +245,8 @@ fn block_with_nonexistent_leader() {
     })
     .unwrap();
 
-    let mut adversary = AdversaryNodeBuilder::new(block0).build();
-
-    assert!(adversary
+    assert!(AdversaryNodeBuilder::new(block0)
+        .build()
         .send_block_to_peer(jormungandr.address(), block)
         .is_err());
 }
@@ -262,9 +306,8 @@ fn block_with_invalid_fragment() {
     )
     .unwrap();
 
-    let mut adversary = AdversaryNodeBuilder::new(block0).build();
-
-    assert!(adversary
+    assert!(AdversaryNodeBuilder::new(block0)
+        .build()
         .send_block_to_peer(jormungandr.address(), block)
         .is_err());
 }
