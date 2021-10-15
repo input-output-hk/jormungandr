@@ -122,8 +122,8 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     )
                     .unwrap(),
             );
+            self.sender.confirm_transaction();
         }
-
         for vote_plan_for_casting in &votes_plan_for_casting {
             fragments.push(
                 self.sender
@@ -135,6 +135,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     )
                     .unwrap(),
             );
+            self.sender.confirm_transaction();
         }
 
         for vote_plan_for_tally in &vote_plans_for_tally {
@@ -148,13 +149,13 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     )
                     .unwrap(),
             );
+            self.sender.confirm_transaction();
         }
 
         self.fragment_sender
             .send_batch_fragments(fragments, true, &self.node)
             .unwrap();
         FragmentVerifier::wait_for_all_fragments(Duration::from_secs(10), &self.node).unwrap();
-
         self.vote_plans_for_casting = votes_plan_for_casting;
         self.vote_plans_for_tally = vote_plans_for_tally;
         self.active_stake_pools = stake_pools;

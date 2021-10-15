@@ -1,5 +1,6 @@
 pub mod template;
 
+use crate::wallet::SpendingCounter;
 use crate::wallet::{
     account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner, WalletError,
 };
@@ -83,6 +84,10 @@ impl Wallet {
 
     pub fn confirm_transaction(&mut self) {
         self.inner.confirm_transaction()
+    }
+
+    pub fn spending_counter(&self) -> SpendingCounter {
+        self.inner.spending_counter()
     }
 
     pub fn identifier(&mut self) -> chain_impl_mockchain::account::Identifier {

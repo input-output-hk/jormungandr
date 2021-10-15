@@ -126,6 +126,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         fail_fast: bool,
         node: &A,
     ) -> Result<FragmentsProcessingSummary, FragmentSenderError> {
+        self.dump_fragments_if_enabled(&fragments, node)?;
         self.wait_for_node_sync_if_enabled(node)
             .map_err(FragmentSenderError::SyncNodeError)?;
         node.send_batch_fragments(fragments, fail_fast)
@@ -464,6 +465,20 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         if let Some(dump_folder) = &self.setup.dump_fragments {
             FragmentExporter::new(dump_folder.to_path_buf())?
                 .dump_to_file(fragment, sender, via)?;
+        }
+        Ok(())
+    }
+
+    fn dump_fragments_if_enabled(
+        &self,
+        fragments: &[Fragment],
+        via: &dyn FragmentNode,
+    ) -> Result<(), FragmentSenderError> {
+        if let Some(dump_folder) = &self.setup.dump_fragments {
+            let exporter = FragmentExporter::new(dump_folder.to_path_buf())?;
+            for fragment in fragments {
+                exporter.dump_to_file_no_sender(fragment, via)?;
+            }
         }
         Ok(())
     }

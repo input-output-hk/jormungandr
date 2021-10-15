@@ -7,8 +7,10 @@ use crate::testing::{
     },
     JormungandrParams, SyncNode, TestConfig,
 };
-use crate::testing::{FragmentChainSender, FragmentSender, FragmentSenderSetup};
-use crate::testing::{RemoteJormungandr, RemoteJormungandrBuilder};
+use crate::testing::{
+    BlockDateGenerator, FragmentChainSender, FragmentSender, FragmentSenderSetup,
+    RemoteJormungandr, RemoteJormungandrBuilder,
+};
 use ::multiaddr::Multiaddr;
 use assert_fs::TempDir;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
@@ -79,9 +81,37 @@ impl JormungandrProcess {
         FragmentSender::new(
             self.genesis_block_hash(),
             self.fees(),
-            BlockDate::first().next_epoch().into(),
+            self.default_block_date_generator(),
             setup,
         )
+    }
+
+    pub fn default_block_date_generator(&self) -> BlockDateGenerator {
+        BlockDateGenerator::Rolling {
+            block0_time: self
+                .block0_configuration
+                .blockchain_configuration
+                .block0_date
+                .into(),
+            slot_duration: {
+                let slot_duration: u8 = self
+                    .block0_configuration
+                    .blockchain_configuration
+                    .slot_duration
+                    .into();
+                slot_duration.into()
+            },
+            slots_per_epoch: self
+                .block0_configuration
+                .blockchain_configuration
+                .slots_per_epoch
+                .into(),
+            shift: BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            shift_back: false,
+        }
     }
 
     pub fn fragment_chain_sender<'a, S: SyncNode + Send>(
@@ -91,7 +121,7 @@ impl JormungandrProcess {
         FragmentChainSender::new(
             self.genesis_block_hash(),
             self.fees(),
-            BlockDate::first().next_epoch(),
+            self.default_block_date_generator(),
             setup,
             self.to_remote(),
         )
