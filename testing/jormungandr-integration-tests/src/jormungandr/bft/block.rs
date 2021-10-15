@@ -17,6 +17,7 @@ use jormungandr_testing_utils::testing::{
 use std::time::Duration;
 
 #[test]
+/// Ensures that blocks with an incorrect content hash are rejected by a BFT leader node
 fn block_with_incorrect_hash() {
     let temp_dir = TempDir::new().unwrap();
     let keys = startup::create_new_key_pair();
@@ -61,7 +62,8 @@ fn block_with_incorrect_hash() {
 }
 
 #[test]
-fn block_with_bad_signature() {
+/// Ensures that blocks with an incorrect signature are rejected by a BFT leader node
+fn block_with_incorrect_signature() {
     let temp_dir = TempDir::new().unwrap();
     let keys = startup::create_new_key_pair();
 
@@ -111,6 +113,7 @@ fn block_with_bad_signature() {
 }
 
 #[test]
+/// Ensures that blocks signed by the wrong leader on a given timeslot are rejected by a BFT leader node
 fn block_with_wrong_leader() {
     const LEADER_1: &str = "Abbott";
     const LEADER_2: &str = "Costello";
@@ -211,6 +214,7 @@ fn block_with_wrong_leader() {
 }
 
 #[test]
+/// Ensures that blocks signed by a non-existent leader are rejected by a BFT leader node
 fn block_with_nonexistent_leader() {
     let temp_dir = TempDir::new().unwrap();
 
@@ -252,6 +256,8 @@ fn block_with_nonexistent_leader() {
 }
 
 #[test]
+/// Ensures that blocks with an invalid fragment –in this case a transaction from a non-existent
+/// wallet- are rejected by a BFT leader node
 fn block_with_invalid_fragment() {
     let temp_dir = TempDir::new().unwrap();
     let keys = startup::create_new_key_pair();
