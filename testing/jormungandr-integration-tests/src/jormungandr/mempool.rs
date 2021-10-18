@@ -16,7 +16,6 @@ use jormungandr_testing_utils::testing::{
     MemPoolCheck,
 };
 use jormungandr_testing_utils::testing::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
-use jortestkit::prelude::Wait;
 use std::fs::metadata;
 use std::path::Path;
 use std::thread::sleep;
@@ -34,7 +33,7 @@ pub fn dump_send_correct_fragments() {
         vec![&sender, &receiver],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_block_content_max_size(10000)
+            .with_block_content_max_size(100000)
             .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
@@ -49,11 +48,7 @@ pub fn dump_send_correct_fragments() {
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 10,
-            slot_id: 0,
-        }
-        .into(),
+        jormungandr.default_block_date_generator(),
         FragmentSenderSetup::dump_into(dump_folder.path().to_path_buf()),
     );
 
@@ -72,10 +67,7 @@ pub fn dump_send_correct_fragments() {
 
     fragment_generator.prepare(BlockDateDto::new(1, 0));
 
-    time::wait_for_epoch(1, jormungandr.rest());
-
-    let wait = Wait::new(Duration::from_secs(1), 25);
-    FragmentVerifier::wait_until_all_processed(wait, &jormungandr).unwrap();
+    time::wait_for_epoch(2, jormungandr.rest());
 
     let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
     FragmentVerifier::wait_and_verify_all_are_in_block(

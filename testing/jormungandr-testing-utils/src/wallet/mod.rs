@@ -272,6 +272,13 @@ impl Wallet {
         }
     }
 
+    pub fn spending_counter(&self) -> SpendingCounter {
+        match self {
+            Wallet::Account(account) => account.internal_counter(),
+            _ => unimplemented!(),
+        }
+    }
+
     pub fn stake_key(&self) -> Option<UnspecifiedAccountIdentifier> {
         match &self {
             Wallet::Account(account) => Some(account.stake_key()),

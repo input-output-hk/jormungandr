@@ -241,12 +241,21 @@ pub fn adversary_public_vote_load_scenario(
         .start()
         .unwrap();
 
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let generator = BlockDateGenerator::rolling(
+        &settings,
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        false,
+    );
+
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first()
-            .next_epoch()
-            .into(),
+        generator,
         FragmentSenderSetup::no_verify(),
     );
 

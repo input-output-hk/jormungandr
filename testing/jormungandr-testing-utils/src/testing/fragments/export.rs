@@ -48,10 +48,11 @@ impl FragmentExporter {
         entries
             .into_iter()
             .filter(|path| {
-                let file_name = path.file_name().unwrap().to_str().unwrap();
-                file_name.contains("_from_")
-                    && file_name.contains("_to_")
-                    && file_name.ends_with(".txt")
+                path.file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .ends_with(".fragment")
             })
             .map(|path| {
                 let content = jortestkit::prelude::read_file(path);
@@ -80,6 +81,46 @@ impl FragmentExporter {
         Ok(())
     }
 
+    pub fn dump_to_file_no_sender(
+        &self,
+        fragment: &Fragment,
+        via: &dyn FragmentNode,
+    ) -> Result<(), FragmentExporterError> {
+        let file_name = self.generate_file_name_without_sender(fragment, via);
+        let file_path = self.dump_folder.join(file_name);
+        let mut file = fs::File::create(&file_path)
+            .map_err(|_| FragmentExporterError::CannotCreateDumpFile(file_path))?;
+
+        file.write_all(self.format_fragment(fragment).as_bytes())
+            .map_err(|_| {
+                FragmentExporterError::CannotWriteFragmentToDumpFile(self.dump_folder.clone())
+            })?;
+
+        Ok(())
+    }
+
+    fn generate_file_name_without_sender(
+        &self,
+        fragment: &Fragment,
+        via: &dyn FragmentNode,
+    ) -> String {
+        let now: DateTime<Utc> = Utc::now();
+        let alias = {
+            if via.alias().is_empty() {
+                "jormungandr"
+            } else {
+                via.alias()
+            }
+        };
+
+        format!(
+            "{}_{}_to_{}.fragment",
+            now.format("%F_%H_%M_%S_%f"),
+            self.format_id(fragment.hash()),
+            alias
+        )
+    }
+
     fn generate_file_name(
         &self,
         fragment: &Fragment,
@@ -96,7 +137,7 @@ impl FragmentExporter {
         };
 
         format!(
-            "{}_{}_from_{}_to_{}.txt",
+            "{}_{}_from_{}_to_{}.fragment",
             now.format("%F_%H_%M_%S_%f"),
             self.format_id(fragment.hash()),
             self.format_address(sender.address()),

@@ -1,3 +1,4 @@
+use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockDate as JLibBlockDate, KesUpdateSpeed, Mempool,
@@ -8,7 +9,7 @@ use jormungandr_testing_utils::{
         benchmark_efficiency, benchmark_endurance, benchmark_speed,
         node::time,
         EfficiencyBenchmarkDef, EfficiencyBenchmarkFinish, Endurance, FragmentSender,
-        FragmentSenderSetup, FragmentVerifier, MemPoolCheck, Thresholds,
+        FragmentSenderSetup, Thresholds,
         {jcli::JCli, jormungandr::ConfigurationBuilder, startup},
     },
     wallet::Wallet,
@@ -262,24 +263,16 @@ pub fn test_expired_transactions_processing_speed() {
     time::wait_for_date(JLibBlockDate::new(0, 1), jormungandr.rest());
 
     let output_value = 1;
-
-    let settings = jormungandr.rest().settings().unwrap();
-    let block_date_generator = BlockDateGenerator::rolling(
-        &settings,
-        BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
-        false,
-    );
-
-    let transactions = (0..N_TRANSACTIONS)
+    let transactions: Vec<Fragment> = (0..N_TRANSACTIONS)
         .map(|_| {
             let tx = sender
                 .transaction_to(
                     &jormungandr.genesis_block_hash(),
                     &LinearFee::new(0, 0, 0),
-                    block_date_generator.block_date(),
+                    BlockDate {
+                        epoch: 0,
+                        slot_id: 0,
+                    },
                     receiver.address(),
                     output_value.into(),
                 )
@@ -301,13 +294,13 @@ pub fn test_expired_transactions_processing_speed() {
         .start();
 
     let summary = fragment_sender
-        .send_batch_fragments(transactions, false, &jormungandr)
+        .send_batch_fragments_in_chunks(transactions, 100, false, &jormungandr)
         .unwrap();
-
-    benchmark.stop().print();
 
     assert!(summary.accepted.is_empty());
     assert_eq!(summary.rejected.len(), N_TRANSACTIONS);
+
+    benchmark.stop().print();
 }
 
 #[test]
@@ -348,7 +341,7 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
 
     let output_value = 1;
 
-    let transactions = (0..N_TRANSACTIONS)
+    let transactions: Vec<Fragment> = (0..N_TRANSACTIONS)
         .map(|_| {
             let tx = sender
                 .transaction_to(
@@ -376,20 +369,10 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
         .start();
 
     let summary = fragment_sender
-        .send_batch_fragments(transactions, false, &jormungandr)
+        .send_batch_fragments_in_chunks(transactions, 100, false, &jormungandr)
         .unwrap();
 
-    assert_eq!(summary.accepted.len(), N_TRANSACTIONS);
-    assert!(summary.rejected.is_empty());
-
-    for fragment_id in summary.fragment_ids() {
-        FragmentVerifier::wait_and_verify_is_in_block(
-            Duration::from_millis(100),
-            MemPoolCheck::from(fragment_id),
-            &jormungandr,
-        )
-        .unwrap();
-    }
-
+    assert!(summary.accepted.is_empty());
+    assert_eq!(summary.rejected.len(), N_TRANSACTIONS);
     benchmark.stop().print();
 }

@@ -196,14 +196,8 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_funds_split_if_needed(&mut self, initials: Vec<InitialUTxO>) -> &mut Self {
-        let mut funds = Vec::new();
-        for initial in initials.iter() {
-            funds.push(initial.clone());
-
-            if funds.len() >= 254 {
-                self.with_funds(funds.clone());
-                funds.clear();
-            }
+        for chunks in initials.chunks(254) {
+            self.with_funds(chunks.to_vec());
         }
         self
     }

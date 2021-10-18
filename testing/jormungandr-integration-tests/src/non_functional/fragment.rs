@@ -27,6 +27,7 @@ pub fn fragment_load_test() {
             .with_slots_per_epoch(30)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
+            .with_block_content_max_size(204800)
             .with_epoch_stability_depth(10)
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
@@ -70,14 +71,14 @@ pub fn fragment_load_test() {
     use jormungandr_testing_utils::testing::jcli::FragmentsCheck;
     use jormungandr_testing_utils::testing::jcli::JCli;
 
-    request_generator.prepare(BlockDateDto::new(0, 19));
+    request_generator.prepare(BlockDateDto::new(2, 0));
 
     let jcli: JCli = Default::default();
     let fragment_check = FragmentsCheck::new(jcli, &jormungandr);
     let wait = Wait::new(Duration::from_secs(1), 25);
     fragment_check.wait_until_all_processed(&wait).unwrap();
 
-    time::wait_for_epoch(1, jormungandr.rest());
+    time::wait_for_epoch(3, jormungandr.rest());
 
     load::start_async(
         request_generator,
