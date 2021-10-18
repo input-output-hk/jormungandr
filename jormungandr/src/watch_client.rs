@@ -232,6 +232,17 @@ async fn handle_sync_multiverse(
 
         checkpoints.remove(&ancestor);
 
+        // when calling stream_from_to, the from argument is not streamed, this is good for most
+        // cases, but if the client is bootstrapping we need to send the block0 too
+        if &ancestor == block0 {
+            let block0_body = storage.get(*block0).unwrap().unwrap();
+            sink.send(Ok(chain_network::data::Block::from_bytes(
+                block0_body.serialize_as_vec().unwrap(),
+            )))
+            .await
+            .map_err(intercom::Error::failed)?;
+        }
+
         let stream = storage
             .stream_from_to(ancestor, head_id)
             .map_err(intercom::Error::failed)?
@@ -239,28 +250,14 @@ async fn handle_sync_multiverse(
 
         futures::pin_mut!(stream);
 
-        let mut first_iter = true;
-
         while let Some(block) = stream.next().await {
             let block = block?;
-            // unless we are bootstrapping the whole chain, the client
-            // already has the 'from', either because it's one of the
-            // checkpoints or because we sent it before.
-            //
-            // (that is, if the `from` argument is inclusive, though, which
-            // I haven't checked)
-            if first_iter {
-                first_iter = false;
-                if &block.header().id() != block0 {
-                    continue;
-                }
-            }
 
-            let _ = sink
-                .send(Ok(chain_network::data::Block::from_bytes(
-                    block.serialize_as_vec().unwrap(),
-                )))
-                .await;
+            sink.send(Ok(chain_network::data::Block::from_bytes(
+                block.serialize_as_vec().unwrap(),
+            )))
+            .await
+            .map_err(intercom::Error::failed)?;
         }
     }
 
