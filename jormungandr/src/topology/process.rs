@@ -66,6 +66,7 @@ impl Process {
         loop {
             tokio::select! {
                 Some(input) = self.input.next() => {
+                    tracing::trace!("handling new topology task item");
                     match input {
                         TopologyMsg::AcceptGossip(gossip) => {
                             self.topology.accept_gossips(gossip);
@@ -86,8 +87,11 @@ impl Process {
                             handle.reply_ok(self.topology.list_quarantined())
                         }
                     }
+                    tracing::trace!("item handling finished");
                 },
                 _ = self.gossip_interval.tick() => {
+                        let span = tracing::debug_span!("generating_gossip", task = "topology");
+                        let _guard = span.enter();
                         self.topology.update_gossip();
                         let view = self.topology.view(poldercast::layer::Selection::Any);
                         if view.peers.is_empty() {
@@ -97,6 +101,8 @@ impl Process {
                         self.send_gossip_messages(view.peers)
                     }
                 _ = quarantine_check.tick() => {
+                    let span = tracing::debug_span!("quarantine_check", task = "topology");
+                    let _guard = span.enter();
                     // Even if lifted from quarantine, peers will be re-added to the topology
                     // only after we receive a gossip about them.
                     let mut nodes_to_contact = self.topology.lift_reports();

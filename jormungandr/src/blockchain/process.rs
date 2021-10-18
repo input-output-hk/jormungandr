@@ -201,19 +201,19 @@ impl Process {
         let network_msg_box = self.network_msgbox.clone();
         let explorer_msg_box = self.explorer_msgbox.clone();
         let stats_counter = self.stats_counter.clone();
-
+        tracing::trace!("handling new blockchain task item");
         match input {
             BlockMsg::LeadershipBlock(leadership_block) => {
                 let span = span!(
                     parent: self.service_info.span(),
-                    Level::TRACE,
+                    Level::DEBUG,
                     "process_leadership_block",
-                    hash = %leadership_block.block.header().hash().to_string(),
-                    parent = %leadership_block.block.header().parent_id().to_string(),
-                    date = %leadership_block.block.header().block_date().to_string()
+                    hash = %leadership_block.block.header().hash(),
+                    parent = %leadership_block.block.header().parent_id(),
+                    date = %leadership_block.block.header().block_date()
                 );
                 let _enter = span.enter();
-                tracing::info!("receiving block from leadership service");
+                tracing::debug!("receiving block from leadership service");
 
                 self.service_info.timeout_spawn_fallible(
                     "process leadership block",
@@ -231,15 +231,15 @@ impl Process {
             BlockMsg::AnnouncedBlock(header, node_id) => {
                 let span = span!(
                     parent: self.service_info.span(),
-                    Level::TRACE,
+                    Level::DEBUG,
                     "process_announced_block",
-                    hash = %header.hash().to_string(),
-                    parent = %header.parent_id().to_string(),
-                    date = %header.block_date().to_string(),
-                    peer = %node_id.to_string()
+                    hash = %header.hash(),
+                    parent = %header.parent_id(),
+                    date = %header.block_date(),
+                    peer = %node_id
                 );
                 let _enter = span.enter();
-                tracing::info!("received block announcement from network");
+                tracing::debug!("received block announcement from network");
 
                 self.service_info.timeout_spawn_fallible(
                     "process block announcement",
@@ -251,11 +251,18 @@ impl Process {
                         node_id,
                         self.pull_headers_scheduler.clone(),
                         self.get_next_block_scheduler.clone(),
-                    ),
+                    )
+                    .instrument(span.clone()),
                 )
             }
             BlockMsg::NetworkBlocks(handle) => {
-                tracing::info!("receiving block stream from network");
+                let span = span!(
+                    parent: self.service_info.span(),
+                    Level::DEBUG,
+                    "process_network_blocks",
+                );
+                let _guard = span.enter();
+                tracing::debug!("receiving block stream from network");
 
                 self.service_info.timeout_spawn_fallible(
                     "process network blocks",
@@ -268,13 +275,14 @@ impl Process {
                         self.get_next_block_scheduler.clone(),
                         handle,
                         stats_counter,
-                    ),
+                    )
+                    .instrument(span.clone()),
                 );
             }
             BlockMsg::ChainHeaders(handle) => {
-                tracing::info!("receiving header stream from network");
-                let span = span!(parent: self.service_info.span(), Level::TRACE, "process_chain_headers", sub_task = "chain_pull");
+                let span = span!(parent: self.service_info.span(), Level::DEBUG, "process_chain_headers", sub_task = "chain_pull");
                 let _enter = span.enter();
+                tracing::debug!("receiving header stream from network");
 
                 self.service_info.timeout_spawn(
                     "process network headers",
@@ -284,10 +292,12 @@ impl Process {
                         handle,
                         self.pull_headers_scheduler.clone(),
                         network_msg_box,
-                    ),
+                    )
+                    .instrument(span.clone()),
                 );
             }
         }
+        tracing::trace!("item handling finished");
     }
 
     fn start_garbage_collector(&self, info: &TokioServiceInfo) {
@@ -312,22 +322,29 @@ async fn process_and_propagate_new_ref(
     mut network_msg_box: MessageBox<NetworkMsg>,
 ) -> chain::Result<()> {
     let header = new_block_ref.header().clone();
-    tracing::debug!("processing the new block and propagating");
-    // Even if this fails because the queue is full we periodically recompute the tip
-    tip_update_mbox
-        .try_send(new_block_ref)
-        .unwrap_or_else(|err| {
-            tracing::error!(
-                "cannot send new ref to be evaluated as candidate tip: {}",
-                err
-            )
-        });
+    let span = span!(Level::DEBUG, "process_and_propagate_new_ref", block = %header.hash());
 
-    tracing::debug!("propagating block to the network");
+    async {
+        tracing::debug!("processing the new block and propagating");
+        // Even if this fails because the queue is full we periodically recompute the tip
+        tip_update_mbox
+            .try_send(new_block_ref)
+            .unwrap_or_else(|err| {
+                tracing::error!(
+                    "cannot send new ref to be evaluated as candidate tip: {}",
+                    err
+                )
+            });
 
-    network_msg_box
-        .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
-        .await?;
+        tracing::debug!("propagating block to the network");
+
+        network_msg_box
+            .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+            .await?;
+        Ok::<(), Error>(())
+    }
+    .instrument(span)
+    .await?;
 
     Ok(())
 }
@@ -482,38 +499,41 @@ async fn process_network_block(
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
     get_next_block_scheduler: &mut GetNextBlockScheduler,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
-    get_next_block_scheduler
-        .declare_completed(block.id())
-        .unwrap_or_else(
-            |e| tracing::error!(reason = ?e, "get next block schedule completion failed"),
-        );
-    let header = block.header();
-    let pre_checked = blockchain.pre_check_header(header.clone(), false).await?;
-    match pre_checked {
-        PreCheckedHeader::AlreadyPresent { header, .. } => {
-            tracing::debug!(
-                hash = %header.hash(),
-                parent = %header.parent_id(),
-                date = %header.block_date(),
-                "block is already present"
+    let header = block.header().clone();
+    let span = tracing::span!(
+        Level::DEBUG,
+        "network_block",
+        block = %header.hash(),
+        parent = %header.parent_id(),
+        date = %header.block_date(),
+    );
+
+    async {
+        get_next_block_scheduler
+            .declare_completed(block.id())
+            .unwrap_or_else(
+                |e| tracing::error!(reason = ?e, "get next block schedule completion failed"),
             );
-            Ok(None)
-        }
-        PreCheckedHeader::MissingParent { header, .. } => {
-            let parent_hash = header.parent_id();
-            tracing::debug!(
-                hash = %header.hash(),
-                parent = %parent_hash,
-                date = %header.block_date(),
-                "block is missing a locally stored parent"
-            );
-            Err(Error::MissingParentBlock(parent_hash))
-        }
-        PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
-            let r = check_and_apply_block(blockchain, parent_ref, block, explorer_msg_box).await;
-            r
+        let pre_checked = blockchain.pre_check_header(header, false).await?;
+        match pre_checked {
+            PreCheckedHeader::AlreadyPresent { .. } => {
+                tracing::debug!("block is already present");
+                Ok(None)
+            }
+            PreCheckedHeader::MissingParent { header } => {
+                let parent_hash = header.parent_id();
+                tracing::debug!("block is missing a locally stored parent");
+                Err(Error::MissingParentBlock(parent_hash))
+            }
+            PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
+                let r =
+                    check_and_apply_block(blockchain, parent_ref, block, explorer_msg_box).await;
+                r
+            }
         }
     }
+    .instrument(span)
+    .await
 }
 
 async fn check_and_apply_block(
@@ -530,14 +550,7 @@ async fn check_and_apply_block(
             CheckHeaderProof::Enabled,
         )
         .await?;
-    let header = post_checked.header();
-    let block_hash = header.hash();
-    tracing::debug!(
-        hash = %block_hash,
-        parent = %header.parent_id(),
-        date = %header.block_date(),
-        "applying block to storage"
-    );
+    tracing::debug!("applying block to storage");
     let mut block_for_explorer = if explorer_enabled {
         Some(block.clone())
     } else {
@@ -547,13 +560,7 @@ async fn check_and_apply_block(
         .apply_and_store_block(post_checked, block)
         .await?;
     if let AppliedBlock::New(block_ref) = applied_block {
-        let header = block_ref.header();
-        tracing::debug!(
-            hash = %block_hash,
-            parent = %header.parent_id(),
-            date = %header.block_date(),
-            "applied block to storage"
-        );
+        tracing::debug!("applied block to storage");
         if let Some(msg_box) = explorer_msg_box {
             msg_box
                 .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
@@ -561,10 +568,7 @@ async fn check_and_apply_block(
         }
         Ok(Some(block_ref))
     } else {
-        tracing::debug!(
-            hash = %block_hash,
-            "block is already present in storage, not applied"
-        );
+        tracing::debug!("block is already present in storage, not applied");
         Ok(None)
     }
 }
