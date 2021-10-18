@@ -118,8 +118,12 @@ impl JormungandrRest {
             .map_err(RestError::CannotDeserialize)
     }
 
-    pub fn account_votes(&self, vote_plan_id: VotePlanId, wallet: &Wallet) -> Result<Option<Vec<u8>>, RestError> {
-        serde_json::from_str(&self.inner.account_votes(vote_plan_id,wallet)?)
+    pub fn account_votes(
+        &self,
+        vote_plan_id: VotePlanId,
+        wallet: &Wallet,
+    ) -> Result<Option<Vec<u8>>, RestError> {
+        serde_json::from_str(&self.inner.account_votes(vote_plan_id, wallet)?)
             .map_err(RestError::CannotDeserialize)
     }
 

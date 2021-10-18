@@ -38,15 +38,15 @@ impl BackwardCompatibleRest {
     }
 
     fn print_response_text(&self, text: &str) {
-        if self.rest_settings().enable_debug {
-            println!("Response: {}", text);
-        }
+        //  if self.rest_settings().enable_debug {
+        println!("Response: {}", text);
+        //   }
     }
 
     fn print_debug_response(&self, response: &Response) {
-        if self.rest_settings().enable_debug {
-            println!("Response: {:?}", response);
-        }
+        //     if self.rest_settings().enable_debug {
+        println!("Response: {:?}", response);
+        //  }
     }
 
     pub fn disable_logger(&mut self) {
@@ -81,8 +81,15 @@ impl BackwardCompatibleRest {
         self.account_state_by_pk(&wallet.identifier().to_bech32_str())
     }
 
-    pub fn account_votes(&self, vote_plan_id: VotePlanId, wallet: &Wallet) -> Result<String, reqwest::Error> {
-        let response_text = self.raw().account_votes_by_pk(vote_plan_id,&wallet.identifier().to_bech32_str())?.text()?;
+    pub fn account_votes(
+        &self,
+        vote_plan_id: VotePlanId,
+        wallet: &Wallet,
+    ) -> Result<String, reqwest::Error> {
+        let response_text = self
+            .raw()
+            .account_votes_by_pk(vote_plan_id, &wallet.identifier().to_bech32_str())?
+            .text()?;
         self.print_response_text(&response_text);
         Ok(response_text)
     }

@@ -3,14 +3,13 @@ use crate::testing::jcli::{JCli, JCliCommand};
 use crate::testing::{
     node::{
         uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
-        JormungandrStateVerifier, LogLevel
+        JormungandrStateVerifier, LogLevel,
     },
-    JormungandrParams, SyncNode, TestConfig,BlockDateGenerator
-    utils, JormungandrParams, SyncNode, TestConfig,
+    utils, BlockDateGenerator, JormungandrParams, SyncNode, TestConfig,
 };
 use crate::testing::{
-    BlockDateGenerator, FragmentChainSender, FragmentSender, FragmentSenderSetup,
-    RemoteJormungandr, RemoteJormungandrBuilder,
+    FragmentChainSender, FragmentSender, FragmentSenderSetup, RemoteJormungandr,
+    RemoteJormungandrBuilder,
 };
 use ::multiaddr::Multiaddr;
 use assert_fs::TempDir;
@@ -125,22 +124,6 @@ impl JormungandrProcess {
             setup,
             self.to_remote(),
         )
-    }
-
-    fn defult_block_date_generator(&self) -> BlockDateGenerator {
-        BlockDateGenerator::Rolling {
-            block0_time: self.block0_configuration.blockchain_configuration.block0_date.into(),
-            slot_duration: {
-                let slot_duration: u8 = self.block0_configuration.blockchain_configuration.slot_duration.into();
-                slot_duration.into()
-            },
-            slots_per_epoch: self.block0_configuration.blockchain_configuration.slots_per_epoch.into(),
-            shift: BlockDate {
-                epoch: 1,
-                slot_id: 0,
-            },
-            shift_back: false,
-        }
     }
 
     pub fn wait_for_bootstrap(
