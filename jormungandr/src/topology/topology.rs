@@ -155,7 +155,8 @@ impl P2pTopology {
             tracing::trace!(node = %peer.address(), "received peer from gossip");
             if self.topology.add_peer(peer) {
                 self.quarantine.record_new_gossip(&peer_id);
-                self.stats_counter.add_peer_available_cnt(1);
+                self.stats_counter
+                    .set_peer_available_cnt(self.peer_available_cnt());
             }
         }
     }
@@ -173,6 +174,8 @@ impl P2pTopology {
             .collect()
     }
 
+    /// This returns the peers known to the node which are not quarantined.
+    /// Please note some of these may not be present in the topology view.
     pub fn list_available(&self) -> impl Iterator<Item = Peer> + '_ {
         let profiles = self.topology.peers();
         profiles
@@ -201,6 +204,8 @@ impl P2pTopology {
     /// register that we were able to establish an handshake with given peer
     pub fn promote_node(&mut self, node: &NodeId) {
         self.topology.promote_peer(node.as_ref());
+        self.stats_counter
+            .set_peer_available_cnt(self.peer_available_cnt());
     }
 
     /// register a strike against the given peer
@@ -211,7 +216,8 @@ impl P2pTopology {
                 .quarantine
                 .report_node(&mut self.topology, Peer::from(node.gossip().clone()));
             if let ReportNodeStatus::Quarantine | ReportNodeStatus::SoftReport = result {
-                self.stats_counter.sub_peer_available_cnt(1);
+                self.stats_counter
+                    .set_peer_available_cnt(self.peer_available_cnt());
             }
             if let ReportNodeStatus::Quarantine = result {
                 self.stats_counter.add_peer_quarantined_cnt(1);
@@ -239,9 +245,17 @@ impl P2pTopology {
                     tracing::debug!(node = %node.address(), id=?node.id(), "lifting node from quarantine");
                     self.topology.promote_peer(&node.id());
                     self.stats_counter.sub_peer_quarantined_cnt(1);
+                    self.stats_counter
+                    .set_peer_available_cnt(self.peer_available_cnt());
                 }
                 node.map(|node| Peer::from(node.gossip().clone()))
             })
             .collect()
+    }
+
+    fn peer_available_cnt(&self) -> usize {
+        // We cannot use ExactSizeIterator as a limitation of iterator::chain, but since
+        // size_hint still relies on the underlying exact size iterator, it is equivalent.
+        self.list_available().size_hint().0
     }
 }

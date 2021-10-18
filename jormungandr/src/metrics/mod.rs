@@ -16,8 +16,7 @@ pub trait MetricsBackend {
     fn sub_peer_connected_cnt(&self, count: usize);
     fn add_peer_quarantined_cnt(&self, count: usize);
     fn sub_peer_quarantined_cnt(&self, count: usize);
-    fn add_peer_available_cnt(&self, count: usize);
-    fn sub_peer_available_cnt(&self, count: usize);
+    fn set_peer_available_cnt(&self, count: usize);
     fn set_slot_start_time(&self, time: SecondsSinceUnixEpoch);
     fn set_tip_block(&self, block: &Block, block_ref: &Ref);
 }
@@ -76,8 +75,7 @@ impl MetricsBackend for Metrics {
     metrics_count_method!(sub_peer_connected_cnt);
     metrics_count_method!(add_peer_quarantined_cnt);
     metrics_count_method!(sub_peer_quarantined_cnt);
-    metrics_count_method!(add_peer_available_cnt);
-    metrics_count_method!(sub_peer_available_cnt);
+    metrics_count_method!(set_peer_available_cnt);
     metrics_method!(set_slot_start_time, SecondsSinceUnixEpoch);
 
     fn set_tip_block(&self, block: &Block, block_ref: &Ref) {

@@ -59,7 +59,8 @@ impl Prometheus {
             // hash value once again
             self.block_hash_value.store(None);
         }
-
+        self.peer_total_cnt
+            .set(self.peer_available_cnt.get() + self.peer_quarantined_cnt.get());
         let encoder = TextEncoder::new();
         let metric_families = self.registry.gather();
         let mut buffer = Vec::new();
@@ -204,25 +205,16 @@ impl MetricsBackend for Prometheus {
     fn add_peer_quarantined_cnt(&self, count: usize) {
         let count = count.try_into().unwrap();
         self.peer_quarantined_cnt.add(count);
-        self.peer_total_cnt.add(count);
     }
 
     fn sub_peer_quarantined_cnt(&self, count: usize) {
         let count = count.try_into().unwrap();
         self.peer_quarantined_cnt.sub(count);
-        self.peer_total_cnt.sub(count);
     }
 
-    fn add_peer_available_cnt(&self, count: usize) {
+    fn set_peer_available_cnt(&self, count: usize) {
         let count = count.try_into().unwrap();
-        self.peer_available_cnt.add(count);
-        self.peer_total_cnt.add(count);
-    }
-
-    fn sub_peer_available_cnt(&self, count: usize) {
-        let count = count.try_into().unwrap();
-        self.peer_available_cnt.sub(count);
-        self.peer_total_cnt.sub(count);
+        self.peer_available_cnt.set(count);
     }
 
     fn set_slot_start_time(&self, time: jormungandr_lib::time::SecondsSinceUnixEpoch) {

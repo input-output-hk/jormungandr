@@ -262,6 +262,7 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
     assert_are_in_quarantine(&server, vec![&client], "after starting client");
 }
 
+// PS: trusted as in poldercast-trusted, not trusted peer
 #[test]
 pub fn node_does_not_quarantine_trusted_node() {
     let mut network_controller = NetworkBuilder::default()
@@ -301,7 +302,7 @@ pub fn node_does_not_quarantine_trusted_node() {
     process_utils::sleep(20);
 
     // The server "forgets" the client but does not quarantine it
-    assert_node_stats(&server, 0, 0, 0, "before restarting client");
+    assert_node_stats(&server, 1, 0, 1, "before restarting client");
     assert_empty_quarantine(&server, "before restarting client");
 }
 

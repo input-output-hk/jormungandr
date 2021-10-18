@@ -144,12 +144,8 @@ impl MetricsBackend for SimpleCounter {
             .fetch_sub(count, Ordering::Relaxed);
     }
 
-    fn add_peer_available_cnt(&self, count: usize) {
-        self.peers_available_cnt.fetch_add(count, Ordering::Relaxed);
-    }
-
-    fn sub_peer_available_cnt(&self, count: usize) {
-        self.peers_available_cnt.fetch_sub(count, Ordering::Relaxed);
+    fn set_peer_available_cnt(&self, count: usize) {
+        self.peers_available_cnt.store(count, Ordering::Relaxed);
     }
 
     fn set_slot_start_time(&self, time: SecondsSinceUnixEpoch) {
