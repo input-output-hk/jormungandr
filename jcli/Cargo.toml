@@ -24,12 +24,12 @@ bech32 = "0.8"
 hex = "0.4.2"
 rayon = "1.5"
 base64 = "0.13.0"
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deprecated-definition" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deprecated-definition" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deprecated-definition" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deprecated-definition" }
+chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deprecated-definition" }
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deprecated-definition" }
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.6.0"
 ed25519-bip32 = "0.4"
