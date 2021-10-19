@@ -26,6 +26,7 @@ use futures::{
 use std::{collections::HashSet, sync::Arc};
 use tokio::sync::{broadcast, watch, Mutex};
 use tokio_stream::wrappers::{BroadcastStream, WatchStream};
+use tracing::{instrument, span, Instrument, Level};
 
 #[derive(Clone)]
 pub struct WatchClient {
@@ -51,51 +52,85 @@ enum RequestMsg {
 
 impl MessageProcessor {
     pub async fn start(self, info: TokioServiceInfo, mut queue: MessageQueue<Message>) {
+        let span = span!(Level::TRACE, "watch client message processor");
+
         let storage = self.storage;
         let requests = self.requests;
         let blockchain = self.blockchain.clone();
-        info.spawn("watch client", async move {
-            requests
-                .for_each(|msg| async {
-                    match msg {
-                        RequestMsg::SyncMultiverse { from, handle } => {
-                            let mut sink = handle.start_sending();
+        info.spawn(
+            "watch client",
+            async move {
+                requests
+                    .for_each(|msg| async {
+                        match msg {
+                            RequestMsg::SyncMultiverse { from, handle } => {
+                                let mut sink = handle.start_sending();
 
-                            if let Err(e) =
-                                handle_sync_multiverse(from, &blockchain, &storage, &mut sink).await
-                            {
-                                let _ = sink.feed(Err(e)).await;
+                                if let Err(e) =
+                                    handle_sync_multiverse(from, &blockchain, &storage, &mut sink)
+                                        .await
+                                {
+                                    let _ = sink.feed(Err(e)).await;
+                                }
+
+                                let _ = sink.close().await;
                             }
-
-                            let _ = sink.close().await;
                         }
-                    }
-                })
-                .await;
-        });
+                    })
+                    .await;
+            }
+            .instrument(tracing::info_span!(
+                parent: span.clone(),
+                "received sync multiverse request"
+            )),
+        );
 
         while let Some(input) = queue.next().await {
             match input {
                 Message::NewBlock(block) => {
                     let block_sender = Arc::clone(&self.block_sender);
                     let block_id = block.id();
-                    info.spawn("notifier broadcast block", async move {
-                        if let Err(_err) =
-                            block_sender.send(Block::from_bytes(block.serialize_as_vec().unwrap()))
-                        {
-                            tracing::error!("notifier failed to broadcast block {}", block_id);
+                    info.spawn(
+                        "notifier broadcast block",
+                        async move {
+                            if let Err(_err) = block_sender
+                                .send(Block::from_bytes(block.serialize_as_vec().unwrap()))
+                            {
+                                tracing::trace!(
+                                    "there are no subscribers to broadcast block {}",
+                                    block_id
+                                );
+                            }
                         }
-                    });
+                        .instrument(tracing::debug_span!(
+                            parent: span.clone(),
+                            "block propagation message",
+                            ?block_id
+                        )),
+                    );
                 }
                 Message::NewTip(header) => {
                     let tip_sender = Arc::clone(&self.tip_sender);
-                    info.spawn("notifier broadcast new tip", async move {
-                        if let Err(_err) = tip_sender.send(Header::from_bytes(
-                            header.serialize_as_vec().unwrap().as_ref(),
-                        )) {
-                            tracing::error!("notifier failed to broadcast tip {}", header.id());
+                    let tip_id = header.id();
+                    info.spawn(
+                        "notifier broadcast new tip",
+                        async move {
+                            if let Err(err) = tip_sender.send(Header::from_bytes(
+                                header.serialize_as_vec().unwrap().as_ref(),
+                            )) {
+                                tracing::debug!(
+                                    "notifier failed to broadcast tip {}, {}",
+                                    header.id(),
+                                    err
+                                );
+                            }
                         }
-                    });
+                        .instrument(tracing::debug_span!(
+                            parent: span.clone(),
+                            "tip propagation message",
+                            ?tip_id
+                        )),
+                    );
                 }
             }
         }
@@ -152,6 +187,7 @@ impl Watch for WatchClient {
     type TipSubscriptionStream = SubscriptionStream<WatchStream<Header>>;
     type SyncMultiverseStream = SubscriptionTryStream<ReplyStream<Block, intercom::Error>>;
 
+    #[instrument(skip(self))]
     async fn block_subscription(
         &self,
     ) -> Result<Self::BlockSubscriptionStream, chain_network::error::Error> {
@@ -168,6 +204,7 @@ impl Watch for WatchClient {
         Ok(live_stream)
     }
 
+    #[instrument(skip(self))]
     async fn tip_subscription(
         &self,
     ) -> Result<Self::TipSubscriptionStream, chain_network::error::Error> {
@@ -177,6 +214,7 @@ impl Watch for WatchClient {
         Ok(tip_receiver)
     }
 
+    #[instrument(skip(self))]
     async fn sync_multiverse(
         &self,
         from: BlockIds,
@@ -235,6 +273,8 @@ async fn handle_sync_multiverse(
         // when calling stream_from_to, the from argument is not streamed, this is good for most
         // cases, but if the client is bootstrapping we need to send the block0 too
         if &ancestor == block0 {
+            tracing::trace!("streaming block0");
+
             let block0_body = storage.get(*block0).unwrap().unwrap();
             sink.send(Ok(chain_network::data::Block::from_bytes(
                 block0_body.serialize_as_vec().unwrap(),
@@ -242,6 +282,8 @@ async fn handle_sync_multiverse(
             .await
             .map_err(intercom::Error::failed)?;
         }
+
+        tracing::trace!("streaming blocks from {:?} to {:?}", ancestor, head_id);
 
         let stream = storage
             .stream_from_to(ancestor, head_id)
