@@ -4,7 +4,7 @@ use crate::{
         chain_selection::{self, ComparisonResult},
         storage, Blockchain, Branch, Error, Ref, MAIN_BRANCH_TAG,
     },
-    intercom::{ExplorerMsg, TransactionMsg},
+    intercom::{ExplorerMsg, TransactionMsg, WatchMsg},
     metrics::{Metrics, MetricsBackend},
     utils::async_msg::{self, MessageBox, MessageQueue},
 };
@@ -27,6 +27,7 @@ pub struct TipUpdater {
     tip: Tip,
     blockchain: Blockchain,
     explorer_mbox: Option<MessageBox<ExplorerMsg>>,
+    watch_mbox: Option<MessageBox<WatchMsg>>,
     fragment_mbox: Option<MessageBox<TransactionMsg>>,
     stats_counter: Metrics,
 }
@@ -37,6 +38,7 @@ impl TipUpdater {
         blockchain: Blockchain,
         fragment_mbox: Option<MessageBox<TransactionMsg>>,
         explorer_mbox: Option<MessageBox<ExplorerMsg>>,
+        watch_mbox: Option<MessageBox<WatchMsg>>,
         stats_counter: Metrics,
     ) -> Self {
         Self {
@@ -44,6 +46,7 @@ impl TipUpdater {
             blockchain,
             fragment_mbox,
             explorer_mbox,
+            watch_mbox,
             stats_counter,
         }
     }
@@ -176,6 +179,17 @@ impl TipUpdater {
                         .await
                         .unwrap_or_else(|err| {
                             tracing::error!("cannot send new tip to explorer: {}", err)
+                        });
+                }
+
+                if let Some(ref mut msg_box) = self.watch_mbox {
+                    tracing::debug!("sending new tip to watch subscribers {}", candidate_hash);
+
+                    msg_box
+                        .send(WatchMsg::NewTip(candidate.header().clone()))
+                        .await
+                        .unwrap_or_else(|err| {
+                            tracing::error!("cannot send new tip to watch client: {}", err)
                         });
                 }
             }

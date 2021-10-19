@@ -7,7 +7,7 @@ use super::{
 use crate::{
     blockcfg::{Block, Header, HeaderHash},
     blockchain::Checkpoints,
-    intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
+    intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg, WatchMsg},
     metrics::{Metrics, MetricsBackend},
     network::p2p::Address,
     utils::{
@@ -57,6 +57,7 @@ pub struct TaskData {
     pub network_msgbox: MessageBox<NetworkMsg>,
     pub fragment_msgbox: MessageBox<TransactionMsg>,
     pub explorer_msgbox: Option<MessageBox<ExplorerMsg>>,
+    pub watch_msgbox: MessageBox<WatchMsg>,
     pub garbage_collection_interval: Duration,
 }
 
@@ -74,6 +75,7 @@ struct Process {
     network_msgbox: MessageBox<NetworkMsg>,
     fragment_msgbox: MessageBox<TransactionMsg>,
     explorer_msgbox: Option<MessageBox<ExplorerMsg>>,
+    watch_msgbox: MessageBox<WatchMsg>,
     garbage_collection_interval: Duration,
     tip_update_mbox: MessageBox<Arc<Ref>>,
     pull_headers_scheduler: PullHeadersScheduler,
@@ -145,6 +147,7 @@ pub async fn start(
         fragment_msgbox,
         explorer_msgbox,
         garbage_collection_interval,
+        watch_msgbox,
     } = task_data;
 
     let (tip_update_mbox, tip_update_queue) = async_msg::channel(TIP_UPDATE_QUEUE_SIZE);
@@ -160,6 +163,7 @@ pub async fn start(
         network_msgbox,
         fragment_msgbox,
         explorer_msgbox,
+        watch_msgbox,
         garbage_collection_interval,
         tip_update_mbox,
         pull_headers_scheduler,
@@ -183,6 +187,7 @@ impl Process {
             self.blockchain.clone(),
             Some(self.fragment_msgbox.clone()),
             self.explorer_msgbox.clone(),
+            Some(self.watch_msgbox.clone()),
             self.stats_counter.clone(),
         );
 
@@ -200,6 +205,7 @@ impl Process {
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
         let explorer_msg_box = self.explorer_msgbox.clone();
+        let watch_msg_box = self.watch_msgbox.clone();
         let stats_counter = self.stats_counter.clone();
         tracing::trace!("handling new blockchain task item");
         match input {
@@ -223,6 +229,7 @@ impl Process {
                         self.tip_update_mbox.clone(),
                         network_msg_box,
                         explorer_msg_box,
+                        watch_msg_box,
                         leadership_block,
                     )
                     .instrument(span.clone()),
@@ -272,6 +279,7 @@ impl Process {
                         self.tip_update_mbox.clone(),
                         network_msg_box,
                         explorer_msg_box,
+                        watch_msg_box,
                         self.get_next_block_scheduler.clone(),
                         handle,
                         stats_counter,
@@ -355,13 +363,20 @@ async fn process_leadership_block(
     tip_update_mbox: MessageBox<Arc<Ref>>,
     network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    mut watch_msg_box: MessageBox<WatchMsg>,
     leadership_block: LeadershipBlock,
 ) -> chain::Result<()> {
     let block = leadership_block.block.clone();
     let new_block_ref = process_leadership_block_inner(&mut blockchain, leadership_block).await?;
+
+    watch_msg_box
+        .send(WatchMsg::NewBlock(block.clone()))
+        .await?;
+
     if let Some(mut msg_box) = explorer_msg_box {
         msg_box.send(ExplorerMsg::NewBlock(block)).await?;
     }
+
     process_and_propagate_new_ref(Arc::clone(&new_block_ref), tip_update_mbox, network_msg_box)
         .await?;
 
@@ -434,6 +449,7 @@ async fn process_network_blocks(
     tip_update_mbox: MessageBox<Arc<Ref>>,
     network_msg_box: MessageBox<NetworkMsg>,
     mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    mut watch_msg_box: MessageBox<WatchMsg>,
     mut get_next_block_scheduler: GetNextBlockScheduler,
     handle: intercom::RequestStreamHandle<Block, ()>,
     stats_counter: Metrics,
@@ -449,6 +465,7 @@ async fn process_network_blocks(
                     &blockchain,
                     block.clone(),
                     explorer_msg_box.as_mut(),
+                    &mut watch_msg_box,
                     &mut get_next_block_scheduler,
                 )
                 .await;
@@ -497,6 +514,7 @@ async fn process_network_block(
     blockchain: &Blockchain,
     block: Block,
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
+    watch_msg_box: &mut MessageBox<WatchMsg>,
     get_next_block_scheduler: &mut GetNextBlockScheduler,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
     let header = block.header().clone();
@@ -526,8 +544,14 @@ async fn process_network_block(
                 Err(Error::MissingParentBlock(parent_hash))
             }
             PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
-                let r =
-                    check_and_apply_block(blockchain, parent_ref, block, explorer_msg_box).await;
+                let r = check_and_apply_block(
+                    blockchain,
+                    parent_ref,
+                    block,
+                    explorer_msg_box,
+                    watch_msg_box,
+                )
+                .await;
                 r
             }
         }
@@ -541,6 +565,7 @@ async fn check_and_apply_block(
     parent_ref: Arc<Ref>,
     block: Block,
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
+    watch_msg_box: &mut MessageBox<WatchMsg>,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
     let explorer_enabled = explorer_msg_box.is_some();
     let post_checked = blockchain
@@ -556,6 +581,7 @@ async fn check_and_apply_block(
     } else {
         None
     };
+    let block_for_watchers = block.clone();
     let applied_block = blockchain
         .apply_and_store_block(post_checked, block)
         .await?;
@@ -566,6 +592,13 @@ async fn check_and_apply_block(
                 .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
                 .unwrap_or_else(|err| tracing::error!("cannot add block to explorer: {}", err));
         }
+
+        watch_msg_box
+            .try_send(WatchMsg::NewBlock(block_for_watchers))
+            .unwrap_or_else(|err| {
+                tracing::error!("cannot propagate block to watch clients: {}", err)
+            });
+
         Ok(Some(block_ref))
     } else {
         tracing::debug!("block is already present in storage, not applied");
