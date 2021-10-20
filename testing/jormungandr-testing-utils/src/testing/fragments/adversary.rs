@@ -39,7 +39,7 @@ pub enum AdversaryFragmentSenderError {
     SendFragmentError(#[from] super::node::FragmentNodeError),
     #[error("cannot send fragment")]
     FragmentVerifierError(#[from] super::FragmentVerifierError),
-    #[error("fragment exporter error")]
+    #[error(transparent)]
     FragmentExporterError(#[from] FragmentExporterError),
     #[error("cannot sync node before sending fragment")]
     SyncNodeError(#[from] crate::testing::SyncNodeError),

@@ -70,6 +70,7 @@ impl FragmentExporter {
     ) -> Result<(), FragmentExporterError> {
         let file_name = self.generate_file_name(fragment, sender, via);
         let file_path = self.dump_folder.join(file_name);
+
         let mut file = fs::File::create(&file_path)
             .map_err(|_| FragmentExporterError::CannotCreateDumpFile(file_path))?;
 
@@ -161,6 +162,6 @@ impl FragmentExporter {
     }
 
     fn format_hash(&self, hash: String) -> String {
-        hash
+        hash[..6].to_owned()
     }
 }
