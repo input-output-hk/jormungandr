@@ -10,11 +10,10 @@ use chain_impl_mockchain::{
 use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::{
     adversary::process::AdversaryNodeBuilder,
-    jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode},
+    jormungandr::{ConfigurationBuilder, Starter},
     network::{builder::NetworkBuilder, Blockchain, Node, SpawnParams, Topology},
     startup, FragmentBuilder,
 };
-use std::time::Duration;
 
 #[test]
 /// Ensures that blocks with an incorrect content hash are rejected by a BFT leader node
@@ -31,10 +30,6 @@ fn block_with_incorrect_hash() {
     let block0 = node_params.block0_configuration().to_block();
 
     let jormungandr = Starter::default().config(node_params).start().unwrap();
-
-    jormungandr
-        .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(1))
-        .unwrap();
 
     let contents = Contents::empty();
     let content_size = contents.compute_hash_size().1;
@@ -78,10 +73,6 @@ fn block_with_incorrect_signature() {
     let block0 = node_params.block0_configuration().to_block();
 
     let jormungandr = Starter::default().config(node_params).start().unwrap();
-
-    jormungandr
-        .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(1))
-        .unwrap();
 
     let block = builder(
         BlockVersion::Ed25519Signed,
@@ -227,10 +218,6 @@ fn block_with_nonexistent_leader() {
 
     let jormungandr = Starter::default().config(node_params).start().unwrap();
 
-    jormungandr
-        .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(1))
-        .unwrap();
-
     let contents = Contents::empty();
 
     let block = builder(BlockVersion::Ed25519Signed, contents, |hdr_builder| {
@@ -271,10 +258,6 @@ fn block_with_invalid_fragment() {
     let block0 = node_params.block0_configuration().to_block();
 
     let jormungandr = Starter::default().config(node_params).start().unwrap();
-
-    jormungandr
-        .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(1))
-        .unwrap();
 
     let mut contents_builder = ContentsBuilder::default();
 
