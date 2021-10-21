@@ -22,6 +22,7 @@ pub struct MockServerData {
     profile: poldercast::Profile,
     auth_nonce: [u8; AUTH_NONCE_LEN],
     storage: BlockStore,
+    invalid_block0_hash: bool,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -41,6 +42,7 @@ impl MockServerData {
         protocol: ProtocolVersion,
         addr: SocketAddr,
         storage: BlockStore,
+        invalid_get_blocks_hash: bool,
     ) -> Self {
         let keypair = KeyPair::generate(&mut rand::thread_rng());
         let topology_key = keynesis::key::ed25519::SecretKey::new(&mut rand::thread_rng());
@@ -52,6 +54,7 @@ impl MockServerData {
             profile,
             auth_nonce: [0; AUTH_NONCE_LEN],
             storage,
+            invalid_block0_hash: invalid_get_blocks_hash,
         }
     }
 
@@ -145,6 +148,10 @@ impl MockServerData {
 
     pub fn protocol_mut(&mut self) -> &mut ProtocolVersion {
         &mut self.protocol
+    }
+
+    pub fn invalid_block0_hash(&self) -> bool {
+        self.invalid_block0_hash
     }
 }
 

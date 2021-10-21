@@ -153,6 +153,7 @@ pub struct AdversaryNodeBuilder {
     server_enabled: bool,
     protocol_version: ProtocolVersion,
     genesis_block: Block,
+    invalid_block0_hash: bool,
 }
 
 impl AdversaryNodeBuilder {
@@ -165,6 +166,7 @@ impl AdversaryNodeBuilder {
             server_enabled: false,
             protocol_version: ProtocolVersion::Bft,
             genesis_block,
+            invalid_block0_hash: false,
         }
     }
 
@@ -193,8 +195,16 @@ impl AdversaryNodeBuilder {
         }
     }
 
+    pub fn with_invalid_block0_hash(self) -> Self {
+        Self {
+            invalid_block0_hash: true,
+            ..self
+        }
+    }
+
     pub fn build(self) -> AdversaryNode {
-        let data = MockBuilder::new()
+        let data = MockBuilder::default()
+            .with_invalid_block0_hash(self.invalid_block0_hash)
             .with_protocol_version(self.protocol_version)
             .with_genesis_block(self.genesis_block)
             .build_data();

@@ -1,20 +1,26 @@
-pub use super::proto::{
-    node_server::{Node, NodeServer},
-    {
-        Block, BlockEvent, BlockIds, ClientAuthRequest, ClientAuthResponse, Fragment, FragmentIds,
-        Gossip, HandshakeRequest, HandshakeResponse, Header, PeersRequest, PeersResponse,
-        PullBlocksRequest, PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse,
-        TipRequest, TipResponse, UploadBlocksResponse,
+use crate::testing::{
+    node::grpc::proto::{
+        node_server::{Node, NodeServer},
+        {
+            Block, BlockEvent, BlockIds, ClientAuthRequest, ClientAuthResponse, Fragment,
+            FragmentIds, Gossip, HandshakeRequest, HandshakeResponse, Header, PeersRequest,
+            PeersResponse, PullBlocksRequest, PullBlocksToTipRequest, PullHeadersRequest,
+            PushHeadersResponse, TipRequest, TipResponse, UploadBlocksResponse,
+        },
     },
+    Block0ConfigurationBuilder,
 };
-
+use chain_core::{
+    mempack::{ReadBuf, Readable},
+    property::{Header as BlockHeader, Serialize},
+};
+use chain_impl_mockchain::{block::BlockVersion, chaintypes::ConsensusVersion, key::Hash};
+use std::fmt;
+use std::sync::Arc;
 use std::sync::RwLock;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
-
-use std::fmt;
-use std::sync::Arc;
 use tracing::info;
 
 mod builder;
@@ -39,6 +45,15 @@ pub enum MockExitCode {
 pub enum ProtocolVersion {
     Bft = 0,
     GenesisPraos = 1,
+}
+
+impl From<ConsensusVersion> for ProtocolVersion {
+    fn from(from: ConsensusVersion) -> Self {
+        match from {
+            ConsensusVersion::Bft => Self::Bft,
+            ConsensusVersion::GenesisPraos => Self::GenesisPraos,
+        }
+    }
 }
 
 impl fmt::Display for ProtocolVersion {
@@ -150,13 +165,51 @@ impl Node for JormungandrServerImpl {
     }
     async fn get_blocks(
         &self,
-        _request: tonic::Request<BlockIds>,
+        request: tonic::Request<BlockIds>,
     ) -> Result<tonic::Response<Self::GetBlocksStream>, tonic::Status> {
         info!(
             method = %MethodType::GetBlocks,
             "Get blocks request received"
         );
-        let (_tx, rx) = mpsc::channel(1);
+
+        let block_ids = request.into_inner();
+
+        let mut blocks = vec![];
+
+        for block_id in block_ids.ids.iter() {
+            let block_hash = Hash::read(&mut ReadBuf::from(block_id.as_ref())).unwrap();
+
+            let mut block = self
+                .data
+                .read()
+                .unwrap()
+                .get_block(block_hash)
+                .map_err(|_| tonic::Status::not_found(format!("{} not available", block_hash)));
+
+            if self.data.read().unwrap().invalid_block0_hash()
+                && block
+                    .as_ref()
+                    .map(|b| b.header().version() == BlockVersion::Genesis)
+                    .unwrap_or(false)
+            {
+                block = Ok(Block0ConfigurationBuilder::new().build().to_block());
+            }
+
+            blocks.push(block);
+        }
+
+        let (tx, rx) = mpsc::channel(blocks.len());
+
+        for block in blocks {
+            tx.send(block.map(|b| {
+                let mut bytes = vec![];
+                b.serialize(&mut bytes).unwrap();
+                Block { content: bytes }
+            }))
+            .await
+            .unwrap();
+        }
+
         Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn get_headers(

@@ -5,10 +5,12 @@ use chain_impl_mockchain::{
     header::HeaderBuilder,
     testing::TestGen,
 };
+use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::{
     adversary::process::AdversaryNodeBuilder,
     jormungandr::{ConfigurationBuilder, Starter},
-    startup,
+    network::LeadershipMode,
+    startup, Block0ConfigurationBuilder,
 };
 
 #[test]
@@ -19,6 +21,16 @@ fn bft_block_with_incorrect_hash() {
 #[test]
 fn genesis_block_with_incorrect_hash() {
     block_with_incorrect_hash(ConsensusType::GenesisPraos);
+}
+
+#[test]
+fn bft_block0_with_incorrect_hash() {
+    block0_with_incorrect_hash(ConsensusType::Bft);
+}
+
+#[test]
+fn genesis_praos_block0_with_incorrect_hash() {
+    block0_with_incorrect_hash(ConsensusType::GenesisPraos)
 }
 
 /// Ensures that blocks with an incorrect content hash are rejected by a BFT leader node
@@ -59,4 +71,33 @@ fn block_with_incorrect_hash(consensus: ConsensusType) {
         .build()
         .send_block_to_peer(jormungandr.address(), block)
         .is_err());
+}
+
+/// Ensures that the genesis block fetched during bootstrapping is the requested one.
+fn block0_with_incorrect_hash(consensus: ConsensusType) {
+    let block0 = Block0ConfigurationBuilder::new()
+        .with_slot_duration(SlotDuration::new(10).unwrap())
+        .with_block0_consensus(consensus)
+        .build()
+        .to_block();
+
+    let adversary = AdversaryNodeBuilder::new(block0)
+        .with_protocol_version(consensus.into())
+        .with_invalid_block0_hash()
+        .with_server_enabled()
+        .build();
+
+    let passive_temp_dir = TempDir::new().unwrap();
+
+    let passive_params = ConfigurationBuilder::default()
+        .with_block0_consensus(consensus)
+        .with_trusted_peers(vec![adversary.to_trusted_peer()])
+        .with_block_hash(format!("{}", adversary.genesis_block_hash()))
+        .build(&passive_temp_dir);
+
+    Starter::default()
+        .config(passive_params)
+        .leadership_mode(LeadershipMode::Passive)
+        .start_with_fail_in_logs("failed to download block")
+        .unwrap();
 }
