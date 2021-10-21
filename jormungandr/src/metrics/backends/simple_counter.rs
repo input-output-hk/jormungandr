@@ -15,10 +15,13 @@ use std::time::Instant;
 
 use arc_swap::ArcSwapOption;
 
+const EXP_MOVING_AVERAGE_COEFF: f64 = 0.5;
+
 pub struct SimpleCounter {
     tx_recv_cnt: AtomicUsize,
     tx_rejected_cnt: AtomicUsize,
     tx_pending_cnt: AtomicUsize,
+    tx_pending_total_size: AtomicUsize,
     votes_cast: AtomicU64,
     block_recv_cnt: AtomicUsize,
     slot_start_time: AtomicU64,
@@ -34,6 +37,7 @@ struct BlockCounters {
     block_input_sum: u64,
     block_fee_sum: u64,
     content_size: u32,
+    avg_content_size: u32,
     date: String,
     hash: String,
     chain_length: String,
@@ -70,21 +74,15 @@ impl SimpleCounter {
             last_received_block_time: Some(SystemTime::from_secs_since_epoch(
                 self.slot_start_time.load(Ordering::Relaxed),
             )),
+            block_content_size_avg: block_data.map(|bd| bd.avg_content_size).unwrap_or_default(),
             peer_available_cnt,
             peer_connected_cnt: self.peers_connected_cnt.load(Ordering::Relaxed),
             peer_quarantined_cnt,
             peer_total_cnt,
             tx_recv_cnt: self.tx_recv_cnt.load(Ordering::Relaxed).try_into().unwrap(),
-            tx_pending: self
-                .tx_pending_cnt
-                .load(Ordering::Relaxed)
-                .try_into()
-                .unwrap(),
-            tx_rejected_cnt: self
-                .tx_rejected_cnt
-                .load(Ordering::Relaxed)
-                .try_into()
-                .unwrap(),
+            tx_pending: self.tx_pending_cnt.load(Ordering::Relaxed) as u64,
+            tx_pending_total_size: self.tx_pending_total_size.load(Ordering::Relaxed) as u64,
+            tx_rejected_cnt: self.tx_rejected_cnt.load(Ordering::Relaxed) as u64,
             votes_cast: self.votes_cast.load(Ordering::Relaxed),
             uptime: Some(self.start_time.elapsed().as_secs()),
         }
@@ -97,6 +95,7 @@ impl Default for SimpleCounter {
             tx_recv_cnt: Default::default(),
             tx_rejected_cnt: Default::default(),
             tx_pending_cnt: Default::default(),
+            tx_pending_total_size: Default::default(),
             votes_cast: Default::default(),
             block_recv_cnt: Default::default(),
             slot_start_time: Default::default(),
@@ -107,6 +106,11 @@ impl Default for SimpleCounter {
             start_time: Instant::now(),
         }
     }
+}
+
+fn calc_running_block_size_average(last_avg: u32, new_value: u32) -> u32 {
+    (last_avg as f64 * (1.0 - EXP_MOVING_AVERAGE_COEFF)
+        + new_value as f64 * EXP_MOVING_AVERAGE_COEFF) as u32
 }
 
 impl MetricsBackend for SimpleCounter {
@@ -120,6 +124,10 @@ impl MetricsBackend for SimpleCounter {
 
     fn set_tx_pending_cnt(&self, count: usize) {
         self.tx_pending_cnt.store(count, Ordering::Relaxed);
+    }
+
+    fn set_tx_pending_total_size(&self, size: usize) {
+        self.tx_pending_total_size.store(size, Ordering::Relaxed);
     }
 
     fn add_block_recv_cnt(&self, count: usize) {
@@ -194,11 +202,19 @@ impl MetricsBackend for SimpleCounter {
             })
             .expect("should be good");
 
+        let content_size = block.header().block_content_size();
+        let last_avg = if let Some(data) = self.tip_block.load().as_deref() {
+            data.avg_content_size
+        } else {
+            content_size // jump start moving average from first known value
+        };
+
         let block_data = BlockCounters {
             block_tx_count,
             block_input_sum: block_input_sum.0,
             block_fee_sum: block_fee_sum.0,
-            content_size: block.header().block_content_size(),
+            content_size,
+            avg_content_size: calc_running_block_size_average(last_avg, content_size),
             date: block.header().block_date().to_string(),
             hash: block.header().hash().to_string(),
             chain_length: block.header().chain_length().to_string(),

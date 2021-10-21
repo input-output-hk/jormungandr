@@ -21,6 +21,7 @@ pub struct Prometheus {
     tx_recv_cnt: IntCounter,
     tx_rejected_cnt: IntCounter,
     tx_pending_cnt: UIntGauge,
+    tx_pending_total_size_bytes: UIntGauge,
     votes_casted_cnt: IntCounter,
     block_recv_cnt: IntCounter,
     peer_connected_cnt: UIntGauge,
@@ -80,6 +81,11 @@ impl Default for Prometheus {
         registry.register(Box::new(tx_recv_cnt.clone())).unwrap();
         let tx_pending_cnt = UIntGauge::new("txPending", "txPending").unwrap();
         registry.register(Box::new(tx_pending_cnt.clone())).unwrap();
+        let tx_pending_total_size =
+            UIntGauge::new("txPendingSizeBytesTotal", "txPendingSizeBytesTotal").unwrap();
+        registry
+            .register(Box::new(tx_pending_total_size.clone()))
+            .unwrap();
         let tx_rejected_cnt = IntCounter::new("txRejectedCnt", "txRejectedCnt").unwrap();
         registry
             .register(Box::new(tx_rejected_cnt.clone()))

@@ -548,6 +548,7 @@ pub(super) mod internal {
         entries: IndexedDeqeue<FragmentId, Fragment>,
         timeout_queue: BTreeSet<TimeoutQueueItem>,
         max_entries: usize,
+        total_size_bytes: usize,
     }
 
     impl Pool {
@@ -558,6 +559,7 @@ pub(super) mod internal {
                 // out of their order in a queue. BinaryHeap does not allow that.
                 timeout_queue: BTreeSet::new(),
                 max_entries,
+                total_size_bytes: 0,
             }
         }
 
@@ -574,6 +576,7 @@ pub(super) mod internal {
                     if self.entries.contains(&fragment_id) {
                         false
                     } else {
+                        self.total_size_bytes += fragment.serialized_size();
                         self.timeout_queue_insert(fragment);
                         self.entries.push_front(fragment_id, fragment.clone());
                         true
@@ -588,6 +591,7 @@ pub(super) mod internal {
                 let maybe_fragment = self.entries.remove(fragment_id);
                 if let Some(fragment) = maybe_fragment {
                     self.timeout_queue_remove(&fragment);
+                    self.total_size_bytes -= fragment.serialized_size();
                 }
             }
         }
@@ -595,12 +599,14 @@ pub(super) mod internal {
         pub fn remove_oldest(&mut self) -> Option<Fragment> {
             let fragment = self.entries.pop_back().map(|(_, value)| value)?;
             self.timeout_queue_remove(&fragment);
+            self.total_size_bytes -= fragment.serialized_size();
             Some(fragment)
         }
 
         pub fn return_to_pool(&mut self, fragments: impl IntoIterator<Item = Fragment>) {
             for fragment in fragments.into_iter() {
                 self.timeout_queue_insert(&fragment);
+                self.total_size_bytes += fragment.serialized_size();
                 self.entries.push_back(fragment.id(), fragment);
             }
         }
@@ -634,7 +640,9 @@ pub(super) mod internal {
                 .collect();
             for item in &to_remove {
                 self.timeout_queue.remove(item);
-                self.entries.remove(&item.id);
+                if let Some(fragment) = self.entries.remove(&item.id) {
+                    self.total_size_bytes -= fragment.serialized_size();
+                }
             }
             to_remove.into_iter().map(|x| x.id).collect()
             // TODO convert to something like this when .first() and .pop_first() are stabilized. This does not have unnecessary clones.
@@ -688,6 +696,13 @@ pub(super) mod internal {
             ];
             let mut pool = Pool::new(4);
             assert_eq!(fragments1, pool.insert_all(fragments1.clone()));
+            assert_eq!(
+                pool.total_size_bytes,
+                fragments1
+                    .iter()
+                    .map(|f| f.to_raw().size_bytes_plus_size())
+                    .sum::<usize>()
+            );
             assert_eq!(fragments2_expected, pool.insert_all(fragments2));
             for expected in final_expected.into_iter() {
                 assert_eq!(expected, pool.remove_oldest().unwrap());
