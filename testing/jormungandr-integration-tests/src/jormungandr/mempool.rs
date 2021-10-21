@@ -472,7 +472,7 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
     let fragment_sender = FragmentSender::new(
         passive.genesis_block_hash(),
         LinearFee::new(0, 0, 0),
-        BlockDate::first().next_epoch().into(),
+        passive.default_block_date_generator(),
         FragmentSenderSetup::no_verify(),
     );
 
