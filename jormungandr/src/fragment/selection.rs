@@ -79,16 +79,19 @@ async fn try_apply_fragment(
     mut space_left: u32,
 ) -> Result<NewLedgerState, ApplyFragmentError> {
     use futures::future::{select, Either};
-    let fragment_raw = fragment.to_raw(); // TODO: replace everything to FragmentRaw in the node
-    let fragment_size = fragment_raw.size_bytes_plus_size() as u32;
+    use std::convert::TryFrom;
 
-    if fragment_size > ledger_params.block_content_max_size {
-        let reason = format!(
-            "fragment size {} exceeds maximum block content size {}",
-            fragment_size, ledger_params.block_content_max_size
-        );
-        return Err(ApplyFragmentError::Rejected(reason));
-    }
+    let raw_fragment_size = fragment.serialized_size();
+    let fragment_size = match u32::try_from(raw_fragment_size) {
+        Ok(size) if size <= ledger_params.block_content_max_size => size,
+        _ => {
+            let reason = format!(
+                "fragment size {} exceeds maximum block content size {}",
+                raw_fragment_size, ledger_params.block_content_max_size
+            );
+            return Err(ApplyFragmentError::Rejected(reason));
+        }
+    };
 
     if fragment_size > space_left {
         // return a fragment to the pool later if does not fit the contents size limit
