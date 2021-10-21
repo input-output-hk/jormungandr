@@ -1,14 +1,15 @@
 pub mod account;
 pub mod committee;
 pub mod delegation;
+pub mod discrimination;
 pub mod utxo;
 
-pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
-
+use crate::wallet::discrimination::DiscriminationExtension;
 use crate::{
     stake_pool::StakePool,
     testing::{FragmentBuilder, FragmentBuilderError},
 };
+use chain_addr::AddressReadable;
 use chain_addr::Discrimination;
 use chain_crypto::{Ed25519, Ed25519Extended, SecretKey, Signature};
 pub use chain_impl_mockchain::{
@@ -35,6 +36,7 @@ use chain_impl_mockchain::{
     value::Value as ValueLib,
     vote::{Choice, CommitteeId},
 };
+pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
     interfaces::{Address, CommitteeIdDef, Initial, InitialUTxO, Value},
@@ -187,6 +189,11 @@ impl Wallet {
             Wallet::UTxO(utxo) => utxo.address(),
             Wallet::Delegation(delegation) => delegation.address(),
         }
+    }
+
+    pub fn address_bech32(&self, discrimination: Discrimination) -> String {
+        AddressReadable::from_address(&discrimination.into_prefix(), &self.address().into())
+            .to_string()
     }
 
     pub fn sign_slice(&self, data: &[u8]) -> Signature<TransactionBindingAuthDataPhantom, Ed25519> {
