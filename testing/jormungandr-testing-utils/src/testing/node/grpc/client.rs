@@ -25,12 +25,18 @@ const CLIENT_RETRY_WAIT: Duration = Duration::from_millis(500);
 
 #[derive(Error, Debug, PartialEq)]
 pub enum MockClientError {
-    #[error("request failed with message {0}")]
+    #[error("request failed with message '{0}'")]
     InvalidRequest(String),
     #[error(
         "could not parse address '{0}'. HINT: accepted format example: /ip4/127.0.0.1/tcp/9000"
     )]
     InvalidAddressFormat(String),
+}
+
+impl MockClientError {
+    pub fn message(&self) -> String {
+        format!("{}", self)
+    }
 }
 
 pub struct JormungandrClient {

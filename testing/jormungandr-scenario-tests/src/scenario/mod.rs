@@ -94,13 +94,11 @@ macro_rules! prepare_scenario {
         )*
         builder.set_topology(topology);
 
-        let mut blockchain = $crate::scenario::Blockchain::new(
-            $crate::scenario::ConsensusVersion::$blockchain_consensus,
-            $crate::scenario::NumberOfSlotsPerEpoch::new($slots_per_epoch).expect("valid number of slots per epoch"),
-            $crate::scenario::SlotDuration::new($slot_duration).expect("valid slot duration in seconds"),
-            $crate::scenario::KesUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
-            $crate::scenario::ActiveSlotCoefficient::new($crate::scenario::Milli::from_millis(700)).expect("active slot coefficient in millis"),
-        );
+        let mut blockchain = crate::scenario::Blockchain::default();
+        blockchain.set_consensus(crate::scenario::ConsensusVersion::$blockchain_consensus);
+        blockchain.set_consensus_genesis_praos_active_slot_coeff(crate::scenario::ActiveSlotCoefficient::new(crate::scenario::Milli::from_millis(700)).unwrap());
+        blockchain.set_slots_per_epoch(crate::scenario::NumberOfSlotsPerEpoch::new($slots_per_epoch).unwrap());
+        blockchain.set_slot_duration(crate::scenario::SlotDuration::new($slot_duration).unwrap());
 
         $(
             let node_leader = $node_leader.to_owned();

@@ -1,7 +1,4 @@
-use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli};
-use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
-};
+use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
 use jormungandr_testing_utils::testing::network::{
     builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Blockchain,
@@ -22,16 +19,11 @@ const LEADER: &str = "LEADER";
 // https://github.com/input-output-hk/jormungandr/issues/3183.
 // It is a macro because the builder is returned by reference.
 macro_rules! build_network {
-    () => {
-        NetworkBuilder::default().blockchain_config(Blockchain::new(
-            ConsensusVersion::GenesisPraos,
-            NumberOfSlotsPerEpoch::new(60).expect("valid number of slots per epoch"),
-            SlotDuration::new(5).expect("valid slot duration in seconds"),
-            KesUpdateSpeed::new(46800).expect("valid kes update speed in seconds"),
-            ActiveSlotCoefficient::new(Milli::from_millis(999))
-                .expect("active slot coefficient in millis"),
-        ))
-    };
+    () => {{
+        let mut blockchain = Blockchain::default();
+        blockchain.set_slot_duration(SlotDuration::new(5).unwrap());
+        NetworkBuilder::default().blockchain_config(blockchain)
+    }};
 }
 
 #[test]
