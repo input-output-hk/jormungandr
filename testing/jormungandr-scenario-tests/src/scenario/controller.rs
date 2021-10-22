@@ -21,6 +21,11 @@ use chain_impl_mockchain::testing::scenario::template::{
 };
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::interfaces::Log;
+use jormungandr_lib::interfaces::LogEntry;
+use jormungandr_lib::interfaces::LogOutput;
+use jormungandr_testing_utils::testing::node::LogLevel;
+use jormungandr_testing_utils::testing::BlockDateGenerator;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
@@ -355,6 +360,20 @@ impl Controller {
         let mut node_setting_overriden = node_setting.clone();
         params.override_settings(&mut node_setting_overriden.config);
 
+        let log_file_path = self
+            .node_dir(params.get_alias())
+            .child("node.log")
+            .path()
+            .to_path_buf();
+        node_setting_overriden.config.log = Some(Log(LogEntry {
+            format: "json".into(),
+            level: params
+                .get_log_level()
+                .unwrap_or(&LogLevel::DEBUG)
+                .to_string(),
+            output: LogOutput::File(log_file_path),
+        }));
+
         let block0_setting = match params.get_leadership_mode() {
             LeadershipMode::Leader => NodeBlock0::File(self.block0_file.as_path().into()),
             LeadershipMode::Passive => NodeBlock0::Hash(self.block0_hash),
@@ -390,6 +409,20 @@ impl Controller {
         };
         let mut node_setting_overriden = node_setting.clone();
         params.override_settings(&mut node_setting_overriden.config);
+
+        let log_file_path = self
+            .node_dir(params.get_alias())
+            .child("node.log")
+            .path()
+            .to_path_buf();
+        node_setting_overriden.config.log = Some(Log(LogEntry {
+            format: "json".into(),
+            level: params
+                .get_log_level()
+                .unwrap_or(&LogLevel::DEBUG)
+                .to_string(),
+            output: LogOutput::File(log_file_path),
+        }));
 
         // remove all id from trusted peers for current version
         for trusted_peer in node_setting_overriden.config.p2p.trusted_peers.iter_mut() {
@@ -478,14 +511,26 @@ impl Controller {
         builder.dump_fragments_into(root_dir.join("fragments"));
         let hash = Hash::from_hash(self.block0_hash);
 
+        let blockchain_configuration = self
+            .settings
+            .network_settings
+            .block0
+            .blockchain_configuration
+            .clone();
+
+        let block_date_generator = BlockDateGenerator::rolling_from_blockchain_config(
+            &blockchain_configuration,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            false,
+        );
+
         FragmentSender::new(
             hash,
-            self.settings
-                .network_settings
-                .block0
-                .blockchain_configuration
-                .linear_fees,
-            BlockDate::first().next_epoch().into(),
+            blockchain_configuration.linear_fees,
+            block_date_generator,
             builder.build(),
         )
     }

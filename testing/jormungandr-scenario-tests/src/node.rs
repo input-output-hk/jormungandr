@@ -14,8 +14,7 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
-        FragmentLog, LeadershipLog, Log, LogEntry, LogOutput, NodeState, NodeStatsDto, PeerRecord,
-        PeerStats, VotePlanStatus,
+        FragmentLog, LeadershipLog, NodeState, NodeStatsDto, PeerRecord, PeerStats, VotePlanStatus,
     },
     multiaddr,
 };
@@ -633,15 +632,6 @@ pub struct SpawnBuilder<'a, R: RngCore, N> {
 
 impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
     pub fn new(context: &'a Context<R>, node_settings: &'a mut NodeSetting) -> Self {
-        // Ensure that logs are set in JSON format and output to stdout
-        // when spawning a new Node.
-        let format = "json";
-        let level = context.log_level();
-        node_settings.config.log = Some(Log(LogEntry {
-            format: format.to_string(),
-            level,
-            output: LogOutput::Stdout,
-        }));
         Self {
             jormungandr: PathBuf::new(),
             context,

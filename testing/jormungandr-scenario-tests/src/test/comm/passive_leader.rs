@@ -114,14 +114,15 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     )?;
     leader_2.wait_for_bootstrap()?;
 
-    let leader = controller
-        .spawn_node_custom(controller.new_spawn_params(LEADER).policy(policy).leader())?;
+    let leader =
+        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
 
-    let passive = controller.spawn_node(
-        PASSIVE,
-        LeadershipMode::Passive,
-        PersistenceMode::Persistent,
+    let passive = controller.spawn_node_custom(
+        controller
+            .new_spawn_params(PASSIVE)
+            .policy(policy)
+            .passive(),
     )?;
     passive.wait_for_bootstrap()?;
 

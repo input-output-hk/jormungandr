@@ -16,6 +16,7 @@ use chain_impl_mockchain::{
     fragment::Fragment,
     vote::Choice,
 };
+use jormungandr_lib::interfaces::BlockchainConfiguration;
 use jormungandr_lib::interfaces::{Address, FragmentsProcessingSummary};
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -569,6 +570,23 @@ pub enum BlockDateGenerator {
 }
 
 impl BlockDateGenerator {
+    pub fn rolling_from_blockchain_config(
+        blockchain_configuration: &BlockchainConfiguration,
+        shift: BlockDate,
+        shift_back: bool,
+    ) -> Self {
+        Self::Rolling {
+            block0_time: blockchain_configuration.block0_date.into(),
+            slot_duration: {
+                let slot_duration: u8 = blockchain_configuration.slot_duration.into();
+                slot_duration.into()
+            },
+            slots_per_epoch: blockchain_configuration.slots_per_epoch.into(),
+            shift,
+            shift_back,
+        }
+    }
+
     /// Returns `BlockDate`s that are always ahead or behind the current date by a certain shift
     pub fn rolling(block0_settings: &SettingsDto, shift: BlockDate, shift_back: bool) -> Self {
         Self::Rolling {

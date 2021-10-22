@@ -472,7 +472,7 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
     let fragment_sender = FragmentSender::new(
         passive.genesis_block_hash(),
         LinearFee::new(0, 0, 0),
-        BlockDate::first().next_epoch().into(),
+        passive.default_block_date_generator(),
         FragmentSenderSetup::no_verify(),
     );
 
@@ -488,5 +488,5 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
 
     // By the time the rest of the transactions have been placed in blocks, the epoch should be over
     // and the transaction below should have expired.
-    FragmentVerifier::wait_and_verify_is_rejected(Duration::from_secs(1), check, &passive).unwrap();
+    FragmentVerifier::wait_and_verify_is_rejected(Duration::from_secs(5), check, &passive).unwrap();
 }
