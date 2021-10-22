@@ -518,19 +518,14 @@ impl Controller {
             .blockchain_configuration
             .clone();
 
-        let block_date_generator = BlockDateGenerator::Rolling {
-            block0_time: blockchain_configuration.block0_date.into(),
-            slot_duration: {
-                let slot_duration: u8 = blockchain_configuration.slot_duration.into();
-                slot_duration.into()
-            },
-            slots_per_epoch: blockchain_configuration.slots_per_epoch.into(),
-            shift: BlockDate {
+        let block_date_generator = BlockDateGenerator::rolling_from_blockchain_config(
+            &blockchain_configuration,
+            BlockDate {
                 epoch: 1,
                 slot_id: 0,
             },
-            shift_back: false,
-        };
+            false,
+        );
 
         FragmentSender::new(
             hash,
