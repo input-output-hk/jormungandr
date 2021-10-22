@@ -80,9 +80,21 @@ impl SimpleCounter {
             peer_quarantined_cnt,
             peer_total_cnt,
             tx_recv_cnt: self.tx_recv_cnt.load(Ordering::Relaxed).try_into().unwrap(),
-            tx_pending: self.tx_pending_cnt.load(Ordering::Relaxed) as u64,
-            tx_pending_total_size: self.tx_pending_total_size.load(Ordering::Relaxed) as u64,
-            tx_rejected_cnt: self.tx_rejected_cnt.load(Ordering::Relaxed) as u64,
+            tx_pending: self
+                .tx_pending_cnt
+                .load(Ordering::Relaxed)
+                .try_into()
+                .unwrap(),
+            tx_pending_total_size: self
+                .tx_pending_total_size
+                .load(Ordering::Relaxed)
+                .try_into()
+                .unwrap(),
+            tx_rejected_cnt: self
+                .tx_rejected_cnt
+                .load(Ordering::Relaxed)
+                .try_into()
+                .unwrap(),
             votes_cast: self.votes_cast.load(Ordering::Relaxed),
             uptime: Some(self.start_time.elapsed().as_secs()),
         }
