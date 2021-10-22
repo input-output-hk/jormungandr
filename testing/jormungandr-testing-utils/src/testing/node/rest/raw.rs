@@ -120,9 +120,7 @@ impl RawRest {
     }
 
     fn path(&self, api_version: ApiVersion, path: &str) -> String {
-        let path = format!("{}/{}/{}", self.uri, api_version, path);
-        println!("Request: {}", path);
-        path
+        format!("{}/{}/{}", self.uri, api_version, path)
     }
 
     pub fn stake_distribution(&self) -> Result<Response, reqwest::Error> {

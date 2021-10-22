@@ -130,6 +130,15 @@ impl JormungandrRest {
             .map_err(RestError::CannotDeserialize)
     }
 
+    pub fn account_votes_by_bech32(
+        &self,
+        vote_plan_id: VotePlanId,
+        address_bech32: String,
+    ) -> Result<Option<Vec<u8>>, RestError> {
+        serde_json::from_str(&self.inner.account_votes(vote_plan_id, address_bech32)?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
     pub fn stake_pools(&self) -> Result<Vec<String>, RestError> {
         serde_json::from_str(&self.inner.stake_pools()?).map_err(RestError::CannotDeserialize)
     }

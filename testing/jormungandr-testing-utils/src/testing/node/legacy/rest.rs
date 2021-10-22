@@ -38,15 +38,15 @@ impl BackwardCompatibleRest {
     }
 
     fn print_response_text(&self, text: &str) {
-        //  if self.rest_settings().enable_debug {
-        println!("Response: {}", text);
-        //   }
+        if self.rest_settings().enable_debug {
+            println!("Response: {}", text);
+        }
     }
 
     fn print_debug_response(&self, response: &Response) {
-        //     if self.rest_settings().enable_debug {
-        println!("Response: {:?}", response);
-        //  }
+        if self.rest_settings().enable_debug {
+            println!("Response: {:?}", response);
+        }
     }
 
     pub fn disable_logger(&mut self) {
