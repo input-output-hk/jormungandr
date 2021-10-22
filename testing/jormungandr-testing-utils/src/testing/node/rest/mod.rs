@@ -7,6 +7,7 @@ pub use raw::RawRest;
 pub use settings::RestSettings;
 
 use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
+use chain_addr::Discrimination;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::interfaces::{
     Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
@@ -115,6 +116,26 @@ impl JormungandrRest {
 
     pub fn stake_distribution(&self) -> Result<StakeDistributionDto, RestError> {
         serde_json::from_str(&self.inner.stake_distribution()?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn account_votes(
+        &self,
+        vote_plan_id: VotePlanId,
+        wallet: &Wallet,
+        discrimination: Discrimination,
+    ) -> Result<Option<Vec<u8>>, RestError> {
+        let address_bech32 = wallet.address_bech32(discrimination);
+        serde_json::from_str(&self.inner.account_votes(vote_plan_id, address_bech32)?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn account_votes_by_bech32(
+        &self,
+        vote_plan_id: VotePlanId,
+        address_bech32: String,
+    ) -> Result<Option<Vec<u8>>, RestError> {
+        serde_json::from_str(&self.inner.account_votes(vote_plan_id, address_bech32)?)
             .map_err(RestError::CannotDeserialize)
     }
 

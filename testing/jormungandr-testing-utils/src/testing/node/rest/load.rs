@@ -28,7 +28,6 @@ impl RestRequestGen {
 
     pub fn do_setup(&mut self, addresses: Vec<String>) -> Result<(), RestError> {
         self.addresses = addresses;
-        //   self.stake_pools = self.rest_client.stake_pools()?;
         Ok(())
     }
 

@@ -5,11 +5,11 @@ use crate::testing::{
         uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
         JormungandrStateVerifier, LogLevel,
     },
-    utils, JormungandrParams, SyncNode, TestConfig,
+    utils, BlockDateGenerator, JormungandrParams, SyncNode, TestConfig,
 };
 use crate::testing::{
-    BlockDateGenerator, FragmentChainSender, FragmentSender, FragmentSenderSetup,
-    RemoteJormungandr, RemoteJormungandrBuilder,
+    FragmentChainSender, FragmentSender, FragmentSenderSetup, RemoteJormungandr,
+    RemoteJormungandrBuilder,
 };
 use ::multiaddr::Multiaddr;
 use assert_fs::TempDir;

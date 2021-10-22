@@ -147,6 +147,18 @@ impl RawRest {
         self.get("stake_pools")
     }
 
+    pub fn account_votes(
+        &self,
+        vote_plan_id: VotePlanId,
+        address_bech32: &str,
+    ) -> Result<Response, reqwest::Error> {
+        let request = format!(
+            "votes/plan/{}/account-votes/{}",
+            vote_plan_id, address_bech32
+        );
+        self.client.get(&self.path(ApiVersion::V1, &request)).send()
+    }
+
     pub fn stake_distribution_at(&self, epoch: u32) -> Result<Response, reqwest::Error> {
         let request = format!("stake/{}", epoch);
         self.get(&request)
