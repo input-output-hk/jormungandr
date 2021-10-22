@@ -170,10 +170,7 @@ impl GlobalState {
         stats_counter: Metrics,
         span: Span,
     ) -> Self {
-        let peers = Peers::new(
-            config.max_connections,
-            span!(parent: &span, Level::TRACE, "peers"),
-        );
+        let peers = Peers::new(config.max_connections);
 
         let mut rng_seed = [0; 32];
         rand::thread_rng().fill(&mut rng_seed);

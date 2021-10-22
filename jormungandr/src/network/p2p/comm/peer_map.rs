@@ -174,10 +174,6 @@ pub struct Entry<'a> {
 }
 
 impl<'a> Entry<'a> {
-    pub fn address(&self) -> &Address {
-        self.inner.key()
-    }
-
     pub fn update_comm_status(&mut self) -> CommStatus<'_> {
         self.inner.get_mut().update_comm_status()
     }
