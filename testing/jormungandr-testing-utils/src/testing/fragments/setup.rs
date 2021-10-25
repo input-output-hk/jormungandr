@@ -82,12 +82,6 @@ impl<'a, S: SyncNode + Send> FragmentSenderSetup<'a, S> {
         self.fire_and_forget
     }
 
-    pub fn should_stop_at_error() -> Self {
-        let mut builder = FragmentSenderSetupBuilder::new();
-        builder.stop_at_error();
-        builder.into()
-    }
-
     pub fn new() -> Self {
         Self {
             resend_on_error: None,
@@ -148,21 +142,22 @@ impl<'a> FragmentSenderSetup<'a, DummySyncNode> {
         let mut builder = FragmentSenderSetupBuilder::from(Self::def());
         builder.fire_and_forget();
         builder.into()
-    pub fn stop_at_error(&self) -> bool {
-        self.stop_at_error
     }
 
-    pub fn attempts_count(&self) -> u8 {
-        match self.resend_on_error {
-            Some(resend_counter) => resend_counter + 1,
-            None => 1,
-        }
+    pub fn stop_at_error(&self) -> bool {
+        self.stop_at_error
     }
 
     pub fn dump_into(path: PathBuf) -> Self {
         let mut builder = FragmentSenderSetupBuilder::from(Self::def());
         builder.fire_and_forget();
         builder.dump_fragments_into(path);
+        builder.into()
+    }
+
+    pub fn should_stop_at_error() -> Self {
+        let mut builder = FragmentSenderSetupBuilder::from(Self::def());
+        builder.stop_at_error();
         builder.into()
     }
 

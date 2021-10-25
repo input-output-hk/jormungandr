@@ -13,8 +13,8 @@ use chain_addr::Discrimination;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
-use jormungandr_lib::interfaces::BlockContentMaxSize;
 use jormungandr_lib::interfaces::Block0Configuration;
+use jormungandr_lib::interfaces::BlockContentMaxSize;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo,
     Initial, InitialUTxO, KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
@@ -183,9 +183,9 @@ impl ConfigurationBuilder {
 
     pub fn with_block_content_max_size(
         &mut self,
-        block_content_max_size: u32,
+        block_content_max_size: BlockContentMaxSize,
     ) -> &mut Self {
-        self.block_content_max_size = block_content_max_size.into();
+        self.block_content_max_size = block_content_max_size;
         self
     }
 
@@ -320,7 +320,6 @@ impl ConfigurationBuilder {
 
         block0_config_builder
             .with_discrimination(self.discrimination)
-            .with_block_content_max_size(self.block_content_max_size)
             .with_initial(initial)
             .with_leaders(leaders_ids)
             .with_block0_consensus(self.block0_consensus)

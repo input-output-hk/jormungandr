@@ -107,7 +107,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         .with_slots_per_epoch(quick_config.slots_in_epoch())
         .with_certs(vec![vote_plan_cert])
         .with_slot_duration(quick_config.slot_duration())
-        .with_block_content_max_size(quick_config.block_content_max_size())
+        .with_block_content_max_size(quick_config.block_content_max_size().into())
         .with_treasury(1_000.into())
         .build(&temp_dir);
 
@@ -292,7 +292,7 @@ pub fn adversary_private_vote_load_scenario(
         .with_slots_per_epoch(quick_config.slots_in_epoch())
         .with_certs(vec![vote_plan_cert])
         .with_slot_duration(quick_config.slot_duration())
-        .with_block_content_max_size(quick_config.block_content_max_size())
+        .with_block_content_max_size(quick_config.block_content_max_size().into())
         .with_treasury(1_000.into())
         .build(&temp_dir);
 

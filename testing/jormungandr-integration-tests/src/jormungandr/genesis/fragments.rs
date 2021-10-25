@@ -220,7 +220,7 @@ pub fn test_all_adversary_fragments() {
 }
 
 #[test]
-pub fn one_hundreds_addresses() {
+pub fn test_increased_block_content_max_size() {
     let receivers: Vec<Wallet> = std::iter::from_fn(|| Some(startup::create_new_account_address()))
         .take(98)
         .collect();
@@ -232,7 +232,8 @@ pub fn one_hundreds_addresses() {
         &[stake_pool_owner.clone()],
         &[],
         &mut ConfigurationBuilder::new()
-            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM),
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_block_content_max_size(8192.into()),
     )
     .unwrap();
 
@@ -260,4 +261,35 @@ pub fn one_hundreds_addresses() {
             stake_pool_owner_stake.into(),
         )
         .unwrap();
+}
+
+#[test]
+pub fn test_block_content_max_size_below_transaction_size() {
+    let receivers: Vec<Wallet> = std::iter::from_fn(|| Some(startup::create_new_account_address()))
+        .take(98)
+        .collect();
+    let mut stake_pool_owner = startup::create_new_account_address();
+
+    let stake_pool_owner_stake = 1;
+
+    let (jormungandr, _stake_pools) = startup::start_stake_pool(
+        &[stake_pool_owner.clone()],
+        &[],
+        &mut ConfigurationBuilder::new()
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_block_content_max_size(4092.into()),
+    )
+    .unwrap();
+
+    let transaction_sender =
+        jormungandr.fragment_sender(FragmentSenderSetup::should_stop_at_error());
+
+    assert!(transaction_sender
+        .send_transaction_to_many(
+            &mut stake_pool_owner,
+            &receivers,
+            &jormungandr,
+            stake_pool_owner_stake.into(),
+        )
+        .is_err());
 }
