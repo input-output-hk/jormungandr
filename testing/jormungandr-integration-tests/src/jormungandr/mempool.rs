@@ -33,7 +33,7 @@ pub fn dump_send_correct_fragments() {
         vec![&sender, &receiver],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_block_content_max_size(100000)
+            .with_block_content_max_size(100000.into())
             .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
@@ -397,7 +397,7 @@ pub fn expired_fragment_should_be_rejected_by_leader_praos_node() {
         &[sender.clone()],
         &[receiver.clone()],
         ConfigurationBuilder::new()
-            .with_block_content_max_size(256) // This should only fit 1 transaction
+            .with_block_content_max_size(256.into()) // This should only fit 1 transaction
             .with_slots_per_epoch(N_FRAGMENTS)
             .with_mempool(Mempool {
                 pool_max_entries: 1000.into(),
@@ -443,7 +443,7 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
     let leader = startup::start_bft(
         vec![&receiver, &sender],
         ConfigurationBuilder::new()
-            .with_block_content_max_size(256) // This should only fit 1 transaction
+            .with_block_content_max_size(256.into()) // This should only fit 1 transaction
             .with_slots_per_epoch(N_FRAGMENTS)
             .with_mempool(Mempool {
                 pool_max_entries: 1000.into(),

@@ -27,7 +27,7 @@ pub fn fragment_load_test() {
             .with_slots_per_epoch(30)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
-            .with_block_content_max_size(204800)
+            .with_block_content_max_size(204800.into())
             .with_epoch_stability_depth(10)
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )

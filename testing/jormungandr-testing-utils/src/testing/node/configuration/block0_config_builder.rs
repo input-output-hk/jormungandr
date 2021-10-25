@@ -75,6 +75,15 @@ impl Block0ConfigurationBuilder {
         self.initial.extend(funds.iter().cloned());
         self
     }
+
+    pub fn with_block_content_max_size(
+        &mut self,
+        block_content_max_size: BlockContentMaxSize,
+    ) -> &mut Self {
+        self.blockchain_configuration.block_content_max_size = block_content_max_size;
+        self
+    }
+
     pub fn with_leaders(&mut self, leaders_ids: Vec<ConsensusLeaderId>) -> &mut Self {
         self.blockchain_configuration.consensus_leader_ids = leaders_ids;
         self
@@ -129,14 +138,6 @@ impl Block0ConfigurationBuilder {
 
     pub fn with_committee_ids(&mut self, committee_ids: Vec<CommitteeIdDef>) -> &mut Self {
         self.blockchain_configuration.committees = committee_ids;
-        self
-    }
-
-    pub fn with_block_content_max_size(
-        &mut self,
-        block_content_max_size: BlockContentMaxSize,
-    ) -> &mut Self {
-        self.blockchain_configuration.block_content_max_size = block_content_max_size;
         self
     }
 

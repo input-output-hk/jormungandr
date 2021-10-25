@@ -19,7 +19,7 @@ pub fn send_all_fragments() {
         ConfigurationBuilder::new()
             .with_block0_consensus(ConsensusType::GenesisPraos)
             .with_slots_per_epoch(20)
-            .with_block_content_max_size(100000)
+            .with_block_content_max_size(100000.into())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(3)
             .with_linear_fees(LinearFee::new(1, 1, 1))
