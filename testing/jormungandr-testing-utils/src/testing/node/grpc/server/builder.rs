@@ -11,31 +11,30 @@ use std::sync::RwLock;
 use tokio::sync::oneshot;
 use tonic::transport::Server;
 
+use crate::testing::configuration::get_available_port;
 use crate::testing::node::grpc::server::NodeServer;
 
 pub struct MockBuilder {
-    mock_port: u16,
+    mock_port: Option<u16>,
     genesis_block: Option<Block>,
     protocol_version: ProtocolVersion,
+    invalid_block0_hash: bool,
 }
 
 impl Default for MockBuilder {
     fn default() -> Self {
-        Self::new()
+        Self {
+            mock_port: None,
+            genesis_block: None,
+            protocol_version: ProtocolVersion::GenesisPraos,
+            invalid_block0_hash: false,
+        }
     }
 }
 
 impl MockBuilder {
-    pub fn new() -> Self {
-        Self {
-            mock_port: 9999,
-            genesis_block: None,
-            protocol_version: ProtocolVersion::GenesisPraos,
-        }
-    }
-
     pub fn with_port(&mut self, mock_port: u16) -> &mut Self {
-        self.mock_port = mock_port;
+        self.mock_port = Some(mock_port);
         self
     }
 
@@ -46,6 +45,11 @@ impl MockBuilder {
 
     pub fn with_protocol_version(&mut self, protocol_version: ProtocolVersion) -> &mut Self {
         self.protocol_version = protocol_version;
+        self
+    }
+
+    pub fn with_invalid_block0_hash(&mut self, invalid_block0_hash: bool) -> &mut Self {
+        self.invalid_block0_hash = invalid_block0_hash;
         self
     }
 
@@ -62,10 +66,14 @@ impl MockBuilder {
         let data = MockServerData::new(
             block0.header().hash(),
             self.protocol_version.clone(),
-            format!("127.0.0.1:{}", self.mock_port)
-                .parse::<SocketAddr>()
-                .unwrap(),
+            format!(
+                "127.0.0.1:{}",
+                self.mock_port.unwrap_or_else(get_available_port)
+            )
+            .parse::<SocketAddr>()
+            .unwrap(),
             storage,
+            self.invalid_block0_hash,
         );
 
         data.put_block(&block0).unwrap();

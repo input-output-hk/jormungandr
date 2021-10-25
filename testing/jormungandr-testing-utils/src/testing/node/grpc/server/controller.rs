@@ -14,7 +14,7 @@ use std::{
 pub struct MockController {
     verifier: MockVerifier,
     stop_signal: tokio::sync::oneshot::Sender<()>,
-    pub data: Arc<RwLock<MockServerData>>,
+    data: Arc<RwLock<MockServerData>>,
     port: u16,
 }
 

@@ -11,7 +11,7 @@ pub fn wrong_protocol() {
 
     let block0 = setup.server.block0_configuration().to_block();
 
-    let mock_controller = MockBuilder::new()
+    let mock_controller = MockBuilder::default()
         .with_port(setup.mock_port)
         .with_genesis_block(block0)
         .with_protocol_version(ProtocolVersion::Bft)
@@ -42,7 +42,7 @@ pub fn wrong_genesis_hash() {
 
     let block0 = setup.server.block0_configuration().to_block();
 
-    let mut mock_controller = MockBuilder::new()
+    let mut mock_controller = MockBuilder::default()
         .with_port(setup.mock_port)
         .with_protocol_version(ProtocolVersion::GenesisPraos)
         .build();
@@ -77,7 +77,7 @@ pub fn handshake_ok() {
 
     let block0 = setup.server.block0_configuration().to_block();
 
-    let mock_controller = MockBuilder::new()
+    let mock_controller = MockBuilder::default()
         .with_port(setup.mock_port)
         .with_genesis_block(block0)
         .with_protocol_version(ProtocolVersion::GenesisPraos)

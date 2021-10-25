@@ -10,7 +10,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let port: u16 = args[1].parse().unwrap();
 
-    let mut mock_controller = MockBuilder::new().with_port(port).build();
+    let mut mock_controller = MockBuilder::default().with_port(port).build();
 
     std::thread::sleep(std::time::Duration::from_secs(60));
 
