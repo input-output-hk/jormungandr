@@ -1,6 +1,6 @@
 use jormungandr_lib::interfaces::{
-    Explorer, LayersConfig, Mempool, NodeConfig, Policy, PreferredListConfig, TopicsOfInterest,
-    TrustedPeer,
+    Explorer, LayersConfig, Mempool, NodeConfig, PersistentLog, Policy, PreferredListConfig,
+    TopicsOfInterest, TrustedPeer,
 };
 use jormungandr_lib::time::Duration;
 use multiaddr::Multiaddr;
@@ -318,5 +318,11 @@ impl SpawnParams {
         if let Some(network_stuck_check) = self.network_stuck_check {
             node_config.p2p.network_stuck_check = Some(network_stuck_check);
         }
+        node_config.mempool.as_mut().unwrap().persistent_log = self
+            .persistent_fragment_log
+            .as_ref()
+            .map(|dir| PersistentLog {
+                dir: dir.to_path_buf(),
+            });
     }
 }
