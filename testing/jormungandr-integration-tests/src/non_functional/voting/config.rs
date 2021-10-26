@@ -1,6 +1,7 @@
-use jortestkit::load::Configuration;
-use jortestkit::load::Monitor;
-use jortestkit::prelude::ResourcesUsage;
+use jortestkit::{
+    load::{Configuration, ConfigurationBuilder, Monitor},
+    prelude::ResourcesUsage,
+};
 use std::time::Duration;
 
 pub struct VotingLoadTestConfig {
@@ -44,14 +45,13 @@ impl VotingLoadTestConfig {
         Self {
             name: "quick".to_string(),
             rewards_increase: 10u64,
-            configuration: Configuration::requests_per_thread(
-                5,
-                250,
-                100,
-                Monitor::Standard(100),
-                100,
-                1,
-            ),
+            configuration: ConfigurationBuilder::requests_per_thread(250)
+                .thread_no(5)
+                .step_delay(Duration::from_millis(100))
+                .monitor(Monitor::Standard(100))
+                .shutdown_grace_period(Duration::from_millis(100))
+                .status_pace(Duration::from_secs(1))
+                .build(),
             initial_fund_per_wallet: 10_000,
             wallets_count: 3_000,
             slot_duration: 2,
@@ -68,14 +68,13 @@ impl VotingLoadTestConfig {
         Self {
             name: "long".to_string(),
             rewards_increase: 10u64,
-            configuration: Configuration::requests_per_thread(
-                5,
-                20_000,
-                100,
-                Monitor::Standard(100),
-                100,
-                1,
-            ),
+            configuration: ConfigurationBuilder::requests_per_thread(20_000)
+                .thread_no(5)
+                .step_delay(Duration::from_millis(100))
+                .monitor(Monitor::Standard(100))
+                .shutdown_grace_period(Duration::from_millis(100))
+                .status_pace(Duration::from_secs(1))
+                .build(),
             initial_fund_per_wallet: 10_000,
             wallets_count: 8_000,
             slot_duration: 4,
@@ -227,5 +226,11 @@ impl PublicVotingLoadTestConfig {
 }
 
 pub fn adversary_noise_config(tps: usize, duration: Duration) -> Configuration {
-    Configuration::duration(tps, duration, 100, Monitor::Disabled(1), 10000, 1)
+    ConfigurationBuilder::duration(duration)
+        .thread_no(tps)
+        .step_delay(Duration::from_millis(100))
+        .monitor(Monitor::Disabled(1))
+        .shutdown_grace_period(Duration::from_secs(10))
+        .status_pace(Duration::from_secs(1))
+        .build()
 }
