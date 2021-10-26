@@ -1,5 +1,7 @@
 use chain_addr::Discrimination;
-use chain_impl_mockchain::transaction::{TransactionSignDataHash, Witness};
+use chain_impl_mockchain::transaction::{
+    TransactionSignDataHash, UnspecifiedAccountIdentifier, Witness,
+};
 use jormungandr_lib::{
     crypto::{
         account::Identifier as AccountIdentifier,
@@ -46,6 +48,12 @@ impl Wallet {
         self.signing_keys.push(key);
         self.delegations.push(delegation);
         self.signing_keys.last().unwrap()
+    }
+
+    pub fn stake_key(&self) -> UnspecifiedAccountIdentifier {
+        UnspecifiedAccountIdentifier::from_single_account(
+            self.last_delegation_identifier().to_inner(),
+        )
     }
 
     pub fn delegation(&self, i: usize) -> &AccountIdentifier {

@@ -21,7 +21,7 @@ pub use chain_impl_mockchain::{
     fragment::Fragment,
     header::HeaderId,
     milli::Milli,
-    transaction::{Input, TransactionBindingAuthData, UnspecifiedAccountIdentifier},
+    transaction::{Input, TransactionBindingAuthData},
 };
 use chain_impl_mockchain::{
     block::BlockDate,
@@ -31,7 +31,7 @@ use chain_impl_mockchain::{
     testing::data::{AddressData, AddressDataValue, Wallet as WalletLib},
     transaction::{
         InputOutputBuilder, Payload, PayloadSlice, TransactionBindingAuthDataPhantom,
-        TransactionSignDataHash, Witness,
+        TransactionSignDataHash, UnspecifiedAccountIdentifier, Witness,
     },
     value::Value as ValueLib,
     vote::{Choice, CommitteeId},
@@ -199,7 +199,10 @@ impl Wallet {
     pub fn sign_slice(&self, data: &[u8]) -> Signature<TransactionBindingAuthDataPhantom, Ed25519> {
         match self {
             Wallet::Account(account) => account.signing_key().as_ref().sign_slice(data),
-            _ => unimplemented!(),
+            Wallet::UTxO(utxo) => utxo.last_signing_key().as_ref().sign_slice(data),
+            Wallet::Delegation(delegation) => {
+                delegation.last_signing_key().as_ref().sign_slice(data)
+            }
         }
     }
 
@@ -289,6 +292,7 @@ impl Wallet {
     pub fn stake_key(&self) -> Option<UnspecifiedAccountIdentifier> {
         match &self {
             Wallet::Account(account) => Some(account.stake_key()),
+            Wallet::Delegation(delegation) => Some(delegation.stake_key()),
             _ => unimplemented!(),
         }
     }
