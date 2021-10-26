@@ -320,7 +320,7 @@ fn scenarios_repository() -> Vec<Scenario> {
         Scenario::new(
             "point_to_point_disruption_overlap",
             point_to_point_disruption_overlap,
-            vec![Tag::Short],
+            vec![Tag::Short, Tag::Unstable],
         ),
         Scenario::new("real_praos_network", real_praos_network, vec![Tag::Long]),
         Scenario::new("real_bft_network", real_bft_network, vec![Tag::Long]),

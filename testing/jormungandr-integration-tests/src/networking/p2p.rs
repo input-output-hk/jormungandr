@@ -8,7 +8,7 @@ use jormungandr_testing_utils::testing::{
 };
 
 use jormungandr_lib::{
-    interfaces::{PeerRecord, Policy, PreferredListConfig, TrustedPeer},
+    interfaces::{PeerRecord, Policy, TrustedPeer},
     time::Duration,
 };
 use jormungandr_testing_utils::testing::FragmentNode;
