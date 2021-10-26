@@ -22,7 +22,7 @@ pub struct UpdateVote {
     /// the file path to the file to read the signing key from.
     /// If omitted it will be read from the standard input.
     #[structopt(long)]
-    pub secret: Option<PathBuf>,
+    secret: Option<PathBuf>,
 
     #[structopt(flatten)]
     rest_args: RestArgs,
