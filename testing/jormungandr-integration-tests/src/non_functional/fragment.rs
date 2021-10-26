@@ -1,18 +1,20 @@
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
-use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::startup;
-use jormungandr_testing_utils::testing::BlockDateGenerator;
-use jormungandr_testing_utils::testing::FragmentSender;
-use jormungandr_testing_utils::testing::{
-    BatchFragmentGenerator, FragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
+use jormungandr_lib::interfaces::{
+    ActiveSlotCoefficient, BlockDate as BlockDateDto, KesUpdateSpeed,
 };
-pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
-use jortestkit::load::{self, Configuration, Monitor};
-use jortestkit::prelude::Wait;
+use jormungandr_testing_utils::testing::{
+    fragments::TransactionGenerator,
+    jcli::{FragmentsCheck, JCli},
+    jormungandr::ConfigurationBuilder,
+    node::time,
+    startup, BatchFragmentGenerator, BlockDateGenerator, FragmentGenerator, FragmentSender,
+    FragmentSenderSetup, FragmentStatusProvider,
+};
+pub use jortestkit::{
+    console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode},
+    load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor},
+    prelude::Wait,
+};
 use std::time::Duration;
 
 #[test]
@@ -36,14 +38,12 @@ pub fn fragment_load_test() {
     jormungandr.steal_temp_dir().unwrap().into_persistent();
     let settings = jormungandr.rest().settings().unwrap();
 
-    let configuration = Configuration::duration(
-        1,
-        std::time::Duration::from_secs(60),
-        500,
-        Monitor::Standard(1000),
-        1_000,
-        1_000,
-    );
+    let configuration = LoadConfigurationBuilder::duration(Duration::from_secs(60))
+        .step_delay(Duration::from_millis(500))
+        .monitor(Monitor::Standard(1000))
+        .shutdown_grace_period(Duration::from_secs(1))
+        .status_pace(Duration::from_secs(1))
+        .build();
 
     let mut request_generator = FragmentGenerator::new(
         faucet,
@@ -67,9 +67,6 @@ pub fn fragment_load_test() {
             FragmentSenderSetup::no_verify(),
         ),
     );
-
-    use jormungandr_testing_utils::testing::jcli::FragmentsCheck;
-    use jormungandr_testing_utils::testing::jcli::JCli;
 
     request_generator.prepare(BlockDateDto::new(2, 0));
 
@@ -106,14 +103,13 @@ pub fn fragment_batch_load_test() {
 
     jormungandr.steal_temp_dir().unwrap().into_persistent();
 
-    let configuration = Configuration::duration(
-        5,
-        std::time::Duration::from_secs(60),
-        1000,
-        Monitor::Standard(100),
-        3_000,
-        1_000,
-    );
+    let configuration = LoadConfigurationBuilder::duration(Duration::from_secs(60))
+        .thread_no(5)
+        .step_delay(Duration::from_secs(1))
+        .monitor(Monitor::Standard(100))
+        .shutdown_grace_period(Duration::from_secs(3))
+        .status_pace(Duration::from_secs(1))
+        .build();
 
     let settings = jormungandr.rest().settings().unwrap();
 
@@ -161,14 +157,12 @@ pub fn transaction_load_test() {
     jormungandr.steal_temp_dir().unwrap().into_persistent();
     let settings = jormungandr.rest().settings().unwrap();
 
-    let configuration = Configuration::duration(
-        1,
-        std::time::Duration::from_secs(60),
-        100,
-        Monitor::Standard(100),
-        100,
-        1_000,
-    );
+    let configuration = LoadConfigurationBuilder::duration(Duration::from_secs(60))
+        .step_delay(Duration::from_millis(100))
+        .monitor(Monitor::Standard(100))
+        .shutdown_grace_period(Duration::from_millis(100))
+        .status_pace(Duration::from_secs(1))
+        .build();
 
     let mut request_generator = TransactionGenerator::new(
         FragmentSenderSetup::no_verify(),

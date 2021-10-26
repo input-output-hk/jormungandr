@@ -1,22 +1,19 @@
 use super::NodeStuckError;
-use jormungandr_testing_utils::testing::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess},
-    startup,
-};
-
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, BlockDate, KesUpdateSpeed},
 };
 use jormungandr_testing_utils::{
     testing::{
-        benchmark_consumption, benchmark_endurance, node::explorer::load::ExplorerRequestGen,
-        BlockDateGenerator, Endurance, EnduranceBenchmarkRun, Thresholds,
+        benchmark_consumption, benchmark_endurance,
+        jcli::JCli,
+        jormungandr::{ConfigurationBuilder, JormungandrProcess},
+        node::explorer::load::ExplorerRequestGen,
+        startup, BlockDateGenerator, Endurance, EnduranceBenchmarkRun, Thresholds,
     },
     wallet::Wallet,
 };
-use jortestkit::load::{Configuration, Monitor};
+use jortestkit::load::{ConfigurationBuilder as LoadConfigurationBuilder, Monitor};
 use std::{str::FromStr, time::Duration};
 
 #[test]
@@ -148,14 +145,12 @@ pub fn explorer_load_test() {
     request_gen
         .do_setup(addresses.iter().map(|x| x.address().to_string()).collect())
         .unwrap();
-    let config = Configuration::duration(
-        30,
-        std::time::Duration::from_secs(60),
-        100,
-        Monitor::Progress(100),
-        0,
-        1_000,
-    );
+    let config = LoadConfigurationBuilder::duration(Duration::from_secs(60))
+        .thread_no(30)
+        .step_delay(Duration::from_millis(100))
+        .monitor(Monitor::Progress(100))
+        .status_pace(Duration::from_secs(1))
+        .build();
     let stats = jortestkit::load::start_sync(request_gen, config, "Explorer load test");
     assert!((stats.calculate_passrate() as u32) > 95);
 }
