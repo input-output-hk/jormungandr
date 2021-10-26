@@ -20,7 +20,7 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct UpdateProposal {
-    /// the config update
+    /// the config update in the hex representation 
     #[structopt(name = "CONFIG_UPDATE", parse(try_from_str = parse_hex))]
     config: ConfigParams,
 
