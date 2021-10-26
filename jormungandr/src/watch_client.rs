@@ -24,7 +24,7 @@ use futures::{
     SinkExt, StreamExt, TryStream, TryStreamExt,
 };
 use std::{collections::HashSet, sync::Arc};
-use tokio::sync::{broadcast, watch, Mutex};
+use tokio::sync::{broadcast, watch};
 use tokio_stream::wrappers::{BroadcastStream, WatchStream};
 use tracing::{instrument, span, Instrument, Level};
 
@@ -32,7 +32,7 @@ use tracing::{instrument, span, Instrument, Level};
 pub struct WatchClient {
     tip_receiver: watch::Receiver<Header>,
     block_sender: Arc<broadcast::Sender<Block>>,
-    request_tx: Arc<tokio::sync::Mutex<MessageBox<RequestMsg>>>,
+    request_tx: MessageBox<RequestMsg>,
 }
 
 pub struct MessageProcessor {
@@ -157,7 +157,7 @@ impl WatchClient {
         let client = WatchClient {
             tip_receiver,
             block_sender: Arc::clone(&block_sender),
-            request_tx: Arc::new(Mutex::new(request_tx)),
+            request_tx,
         };
 
         let message_processor = MessageProcessor {
@@ -222,8 +222,7 @@ impl Watch for WatchClient {
         let (handle, future) = intercom::stream_reply(32);
 
         self.request_tx
-            .lock()
-            .await
+            .clone()
             .send(RequestMsg::SyncMultiverse { from, handle })
             .await
             .map_err(|e| chain_network::error::Error::new(Code::Unavailable, e))?;
