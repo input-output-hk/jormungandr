@@ -53,58 +53,56 @@ pub enum ConfigParam {
     TransactionMaxExpiryEpochs(u8),
 }
 
-impl Into<ConfigParamsLib> for ConfigParams {
-    fn into(self) -> ConfigParamsLib {
-        let mut config = ConfigParamsLib::new();
-        for el in self.0 {
-            config.push(el.into());
+impl From<ConfigParams> for ConfigParamsLib {
+    fn from(config: ConfigParams) -> Self {
+        let mut res = Self::new();
+        for el in config.0 {
+            res.push(el.into());
         }
-        config
+        res
     }
 }
 
-impl Into<ConfigParamLib> for ConfigParam {
-    fn into(self) -> ConfigParamLib {
-        match self {
-            Self::Block0Date(val) => ConfigParamLib::Block0Date(Block0Date(val.0)),
-            Self::Discrimination(val) => ConfigParamLib::Discrimination(val),
-            Self::ConsensusVersion(val) => ConfigParamLib::ConsensusVersion(val),
-            Self::SlotsPerEpoch(val) => ConfigParamLib::SlotsPerEpoch(val.0),
-            Self::SlotDuration(val) => ConfigParamLib::SlotDuration(val.0),
-            Self::EpochStabilityDepth(val) => ConfigParamLib::EpochStabilityDepth(val.0),
-            Self::ConsensusGenesisPraosActiveSlotsCoeff(val) => {
-                ConfigParamLib::ConsensusGenesisPraosActiveSlotsCoeff(val.0)
+impl From<ConfigParam> for ConfigParamLib {
+    fn from(config: ConfigParam) -> Self {
+        match config {
+            ConfigParam::Block0Date(val) => Self::Block0Date(Block0Date(val.0)),
+            ConfigParam::Discrimination(val) => Self::Discrimination(val),
+            ConfigParam::ConsensusVersion(val) => Self::ConsensusVersion(val),
+            ConfigParam::SlotsPerEpoch(val) => Self::SlotsPerEpoch(val.0),
+            ConfigParam::SlotDuration(val) => Self::SlotDuration(val.0),
+            ConfigParam::EpochStabilityDepth(val) => Self::EpochStabilityDepth(val.0),
+            ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(val) => {
+                Self::ConsensusGenesisPraosActiveSlotsCoeff(val.0)
             }
-            Self::BlockContentMaxSize(val) => ConfigParamLib::BlockContentMaxSize(val.into()),
-            Self::AddBftLeader(val) => ConfigParamLib::AddBftLeader(val.0),
-            Self::RemoveBftLeader(val) => ConfigParamLib::RemoveBftLeader(val.0),
-            Self::LinearFee(val) => ConfigParamLib::LinearFee(val),
+            ConfigParam::BlockContentMaxSize(val) => Self::BlockContentMaxSize(val.into()),
+            ConfigParam::AddBftLeader(val) => Self::AddBftLeader(val.0),
+            ConfigParam::RemoveBftLeader(val) => Self::RemoveBftLeader(val.0),
+            ConfigParam::LinearFee(val) => Self::LinearFee(val),
             // TODO implement
-            Self::ProposalExpiration() => ConfigParamLib::ProposalExpiration(Default::default()),
-            Self::KesUpdateSpeed(val) => ConfigParamLib::KesUpdateSpeed(val.0),
-            Self::TreasuryAdd(val) => ConfigParamLib::TreasuryAdd(val.into()),
-            Self::TreasuryParams(val) => ConfigParamLib::TreasuryParams(val.into()),
-            Self::RewardPot(val) => ConfigParamLib::RewardPot(val.into()),
-            Self::RewardParams(val) => ConfigParamLib::RewardParams(val.into()),
+            ConfigParam::ProposalExpiration() => Self::ProposalExpiration(Default::default()),
+            ConfigParam::KesUpdateSpeed(val) => Self::KesUpdateSpeed(val.0),
+            ConfigParam::TreasuryAdd(val) => Self::TreasuryAdd(val.into()),
+            ConfigParam::TreasuryParams(val) => Self::TreasuryParams(val.into()),
+            ConfigParam::RewardPot(val) => Self::RewardPot(val.into()),
+            ConfigParam::RewardParams(val) => Self::RewardParams(val.into()),
             // TODO implement
-            Self::PerCertificateFees() => ConfigParamLib::PerCertificateFees(Default::default()),
-            Self::FeesInTreasury(val) => ConfigParamLib::FeesInTreasury(val.into()),
-            Self::RewardLimitNone => ConfigParamLib::RewardLimitNone,
-            Self::RewardLimitByAbsoluteStake(val) => {
-                ConfigParamLib::RewardLimitByAbsoluteStake(val.into())
+            ConfigParam::PerCertificateFees() => Self::PerCertificateFees(Default::default()),
+            ConfigParam::FeesInTreasury(val) => Self::FeesInTreasury(val.into()),
+            ConfigParam::RewardLimitNone => Self::RewardLimitNone,
+            ConfigParam::RewardLimitByAbsoluteStake(val) => {
+                Self::RewardLimitByAbsoluteStake(val.into())
             }
-            Self::PoolRewardParticipationCapping(val) => {
-                ConfigParamLib::PoolRewardParticipationCapping((val.min, val.max))
+            ConfigParam::PoolRewardParticipationCapping(val) => {
+                Self::PoolRewardParticipationCapping((val.min, val.max))
             }
-            Self::AddCommitteeId(val) => ConfigParamLib::AddCommitteeId(val.into()),
-            Self::RemoveCommitteeId(val) => ConfigParamLib::RemoveCommitteeId(val.into()),
+            ConfigParam::AddCommitteeId(val) => Self::AddCommitteeId(val.into()),
+            ConfigParam::RemoveCommitteeId(val) => Self::RemoveCommitteeId(val.into()),
             // TODO implement
-            Self::PerVoteCertificateFees() => {
-                ConfigParamLib::PerVoteCertificateFees(Default::default())
+            ConfigParam::PerVoteCertificateFees() => {
+                Self::PerVoteCertificateFees(Default::default())
             }
-            Self::TransactionMaxExpiryEpochs(val) => {
-                ConfigParamLib::TransactionMaxExpiryEpochs(val)
-            }
+            ConfigParam::TransactionMaxExpiryEpochs(val) => Self::TransactionMaxExpiryEpochs(val),
         }
     }
 }

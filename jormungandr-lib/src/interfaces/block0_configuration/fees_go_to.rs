@@ -53,11 +53,11 @@ impl From<bool> for FeesGoTo {
     }
 }
 
-impl Into<bool> for FeesGoTo {
-    fn into(self) -> bool {
-        match self {
-            Self::Treasury => true,
-            Self::Rewards => false,
+impl From<FeesGoTo> for bool {
+    fn from(fees_in_treasury: FeesGoTo) -> Self {
+        match fees_in_treasury {
+            FeesGoTo::Treasury => true,
+            FeesGoTo::Rewards => false,
         }
     }
 }
