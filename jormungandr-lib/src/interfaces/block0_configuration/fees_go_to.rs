@@ -91,12 +91,5 @@ mod test {
 
             fees_go_to == fees_go_to_dec
         }
-
-        // fn convert_from_to_config_param(fees_go_to: FeesGoTo) -> bool {
-        //     let cp = ConfigParam::from(fees_go_to);
-        //     let fees_go_to_dec = FeesGoTo::try_from(cp).unwrap();
-
-        //     fees_go_to == fees_go_to_dec
-        // }
     }
 }
