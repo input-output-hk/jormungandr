@@ -4,15 +4,15 @@ use crate::jcli_lib::utils::{
     vote::{SharesError, VotePlanError},
 };
 use crate::rest;
+use std::path::PathBuf;
+use structopt::StructOpt;
+use thiserror::Error;
 
 mod committee;
 mod election_public_key;
 mod tally;
 mod update_proposal;
 mod update_vote;
-
-use structopt::StructOpt;
-use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -63,6 +63,14 @@ pub enum Error {
     SecretKeyReadFailed(#[from] key_parser::Error),
     #[error(transparent)]
     RestError(#[from] rest::Error),
+    #[error("invalid input file path '{path}'")]
+    InputInvalid {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("config file corrupted")]
+    ConfigFileCorrupted(#[source] serde_yaml::Error),
 }
 
 #[derive(StructOpt)]

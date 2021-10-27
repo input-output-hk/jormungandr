@@ -166,8 +166,6 @@ pub enum FromConfigParamsError {
     ),
     #[error("Invalid KES Update speed value")]
     KesUpdateSpeed(#[from] super::kes_update_speed::TryFromKesUpdateSpeedError),
-    #[error("Invalid FeesGoTo setting")]
-    FeesGoTo(#[from] super::fees_go_to::TryFromFeesGoToError),
 }
 
 impl TryFrom<ConfigParams> for BlockchainConfiguration {
@@ -263,8 +261,8 @@ impl BlockchainConfiguration {
                 cp @ ConfigParam::KesUpdateSpeed(_) => kes_update_speed
                     .replace(KesUpdateSpeed::try_from(cp)?)
                     .map(|_| "kes_update_speed"),
-                cp @ ConfigParam::FeesInTreasury(_) => fees_go_to
-                    .replace(FeesGoTo::try_from(cp)?)
+                ConfigParam::FeesInTreasury(param) => fees_go_to
+                    .replace(FeesGoTo::from(param))
                     .map(|_| "fees_go_to"),
 
                 ConfigParam::RemoveBftLeader(_) => {
@@ -401,7 +399,7 @@ impl BlockchainConfiguration {
         ));
 
         if let Some(fees_go_to) = fees_go_to {
-            params.push(ConfigParam::from(fees_go_to));
+            params.push(ConfigParam::FeesInTreasury(fees_go_to.into()));
         }
 
         if !crate::interfaces::linear_fee::per_certificate_fee_is_zero(

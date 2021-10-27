@@ -9,7 +9,7 @@ use std::{convert::TryFrom, fmt};
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConsensusLeaderId(pub BftLeaderId);
+pub struct ConsensusLeaderId(pub(crate) BftLeaderId);
 
 #[derive(Debug, Error)]
 pub enum TryFromConsensusLeaderIdError {
