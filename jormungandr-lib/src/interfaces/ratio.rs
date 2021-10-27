@@ -9,7 +9,7 @@ use thiserror::Error;
 /// registration certificate.
 ///
 #[derive(Debug, Clone, Copy)]
-pub struct Ratio(rewards::Ratio);
+pub struct Ratio(pub(crate) rewards::Ratio);
 
 impl Ratio {
     pub const fn new(numerator: u64, denominator: NonZeroU64) -> Self {

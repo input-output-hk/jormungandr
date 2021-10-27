@@ -65,6 +65,16 @@ impl TryFrom<ConfigParam> for FeesGoTo {
     }
 }
 
+impl From<bool> for FeesGoTo {
+    fn from(fees_in_treasury: bool) -> Self {
+        if fees_in_treasury {
+            Self::Treasury
+        } else {
+            Self::Rewards
+        }
+    }
+}
+
 impl From<FeesGoTo> for ConfigParam {
     fn from(fees_go_to: FeesGoTo) -> Self {
         let to_treasury = fees_go_to == FeesGoTo::Treasury;

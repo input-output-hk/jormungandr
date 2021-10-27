@@ -6,6 +6,7 @@ mod blockdate;
 mod certificate;
 mod committee;
 mod config;
+mod config_params;
 mod fragment;
 mod fragment_log;
 mod fragment_log_persistent;

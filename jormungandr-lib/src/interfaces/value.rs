@@ -19,7 +19,7 @@ use value::ValueError;
 /// ```
 ///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Value(value::Value);
+pub struct Value(pub(crate) value::Value);
 
 impl Value {
     #[inline]
