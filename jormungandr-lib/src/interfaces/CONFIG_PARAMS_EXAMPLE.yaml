@@ -1,0 +1,371 @@
+---
+RemoveCommitteeId: 62b9a993c4bdaa61bad6250c8549c73c2ee64517d986c8ef4d9440633605c30d
+
+---
+AddCommitteeId: aad3872a3082b999cb1d5ddabfa4f751e562d6e5fdad9489306fbedfad87888c
+
+---
+Discrimination: production
+
+---
+PerVoteCertificateFees: []
+
+---
+Discrimination: production
+
+---
+FeesInTreasury: treasury
+
+---
+ConsensusGenesisPraosActiveSlotsCoeff: "0.057"
+
+---
+ConsensusGenesisPraosActiveSlotsCoeff: "0.093"
+
+---
+FeesInTreasury: treasury
+
+---
+PerVoteCertificateFees: []
+
+---
+RewardLimitNone
+
+---
+RewardPot: 34
+
+---
+PerVoteCertificateFees: []
+
+---
+FeesInTreasury: treasury
+
+---
+RewardLimitByAbsoluteStake: 80/44
+
+---
+RewardLimitByAbsoluteStake: 16/56
+
+---
+TransactionMaxExpiryEpochs: 98
+
+---
+RemoveBftLeader: ed25519_pk13k6ls5c4zsyxtt306tn2m05m9lppr3a8w4vq3uysk3t53dcwf5cs4zgvu0
+
+---
+RewardPot: 12
+
+---
+FeesInTreasury: rewards
+
+---
+AddBftLeader: ed25519_pk1qka5erkcmjcd8cgyten08su6cle2kd5lfkhfyafkuzu3nr8fm98swm834n
+
+---
+LinearFee:
+  constant: 87
+  coefficient: 19
+  certificate: 8
+
+---
+RewardParams:
+  halving:
+    constant: 40
+    ratio: 51/57
+    epoch_start: 60
+    epoch_rate: 20
+
+---
+RewardParams:
+  halving:
+    constant: 61
+    ratio: 65/75
+    epoch_start: 91
+    epoch_rate: 20
+
+---
+SlotDuration: 62
+
+---
+ConsensusGenesisPraosActiveSlotsCoeff: "0.059"
+
+---
+RemoveCommitteeId: 4bd3dc3236036cc0746d3e91fe45e3b9d9578299f23e3e07b1528c449525759a
+
+---
+ProposalExpiration: []
+
+---
+TransactionMaxExpiryEpochs: 9
+
+---
+RemoveBftLeader: ed25519_pk1jzw6w4gdtyr8pqtgsc3zf9ajf523cmdd5nue6cl27llpvnq69auqxfc397
+
+---
+PerCertificateFees: []
+
+---
+AddBftLeader: ed25519_pk1hvvvexdtay3lzfpyl8zjv28f4w92pd5sxrnlz6803sjl72uk8hnqazgq23
+
+---
+RewardParams:
+  linear:
+    constant: 82
+    ratio: 60/6
+    epoch_start: 75
+    epoch_rate: 20
+
+---
+ProposalExpiration: []
+
+---
+RewardParams:
+  halving:
+    constant: 80
+    ratio: 39/19
+    epoch_start: 4
+    epoch_rate: 20
+
+---
+AddCommitteeId: a8cf5c52a54a68d35eb73c6b8f3f42aca142e86752b2aa1a84d302ee3a43a2be
+
+---
+PerVoteCertificateFees: []
+
+---
+AddBftLeader: ed25519_pk1gm6dmhr2j4nhc8q73mtdfksg79vvugejmqnhlsljfcye49w75u5qq6c9ka
+
+---
+TreasuryAdd: 43
+
+---
+RewardParams:
+  linear:
+    constant: 59
+    ratio: 10/13
+    epoch_start: 47
+    epoch_rate: 20
+
+---
+RemoveBftLeader: ed25519_pk1f2f93deczhjduk84wyc43jpcypkh3vyp5ncsfe2q8emzuc7juj0qptqhhc
+
+---
+AddCommitteeId: 6d2e6238425e944cf5e0c1552f9900a3bab18cabf50216d52840537178b3d88a
+
+---
+LinearFee:
+  constant: 93
+  coefficient: 24
+  certificate: 21
+
+---
+AddCommitteeId: ff51323ca2928a43aa2596f8713f61c43d8a4e3d934434b59921a83eed5d1c16
+
+---
+BlockContentMaxSize: 71
+
+---
+Block0Date: 88
+
+---
+ConsensusVersion: genesis_praos
+
+---
+SlotsPerEpoch: 3
+
+---
+LinearFee:
+  constant: 53
+  coefficient: 43
+  certificate: 35
+
+---
+AddBftLeader: ed25519_pk1gcmv2ruux04w0hcayravdl4f6lx96448nyz6mz0whc3edk9tecys5nd0dv
+
+---
+ConsensusGenesisPraosActiveSlotsCoeff: "0.088"
+
+---
+TreasuryAdd: 61
+
+---
+SlotDuration: 67
+
+---
+Discrimination: production
+
+---
+SlotsPerEpoch: 13
+
+---
+PoolRewardParticipationCapping:
+  min: 32
+  max: 21
+
+---
+Block0Date: 30
+
+---
+LinearFee:
+  constant: 76
+  coefficient: 41
+  certificate: 4
+
+---
+TransactionMaxExpiryEpochs: 22
+
+---
+Discrimination: test
+
+---
+RemoveCommitteeId: 567d8924ec3600abf8090fb44379c46b64c960f477b9fa4c9c09275c1778dd04
+
+---
+AddBftLeader: ed25519_pk1skjayxtjn5zcs0frwwwxl45jwfmhzrg8arklutjg68fnf225xy7qv8plhc
+
+---
+BlockContentMaxSize: 83
+
+---
+PoolRewardParticipationCapping:
+  min: 52
+  max: 81
+
+---
+ConsensusVersion: bft
+
+---
+Discrimination: test
+
+---
+PerVoteCertificateFees: []
+
+---
+PerCertificateFees: []
+
+---
+PerCertificateFees: []
+
+---
+RewardParams:
+  halving:
+    constant: 36
+    ratio: 51/24
+    epoch_start: 23
+    epoch_rate: 20
+
+---
+Discrimination: production
+
+---
+PerVoteCertificateFees: []
+
+---
+RewardParams:
+  linear:
+    constant: 46
+    ratio: 44/27
+    epoch_start: 74
+    epoch_rate: 20
+
+---
+Discrimination: production
+
+---
+LinearFee:
+  constant: 31
+  coefficient: 28
+  certificate: 97
+
+---
+BlockContentMaxSize: 78
+
+---
+ConsensusVersion: genesis_praos
+
+---
+RewardParams:
+  halving:
+    constant: 91
+    ratio: 55/24
+    epoch_start: 94
+    epoch_rate: 20
+
+---
+TransactionMaxExpiryEpochs: 84
+
+---
+RemoveCommitteeId: 6a174f949146d1c531d069e6dd816b5e80e6f144bec1ea8fbd23b711e1baf49a
+
+---
+ConsensusVersion: bft
+
+---
+FeesInTreasury: treasury
+
+---
+RewardPot: 6
+
+---
+LinearFee:
+  constant: 13
+  coefficient: 32
+  certificate: 86
+
+---
+SlotDuration: 92
+
+---
+SlotDuration: 34
+
+---
+PerVoteCertificateFees: []
+
+---
+AddCommitteeId: 7eafbf2808e5efc44d4c6b1671a9db3e5b10cfcc4cbffa0e60a7e296d86035cd
+
+---
+AddBftLeader: ed25519_pk1a82vs77anzvjzupwxt9lm6wpw507fda4lkgvrj76jl2km88g099qag6kmt
+
+---
+RewardLimitNone
+
+---
+AddCommitteeId: d628da10b939e1b18a1ee09932876918dd6ff177d15b3794a8ee6c06d19032d2
+
+---
+TreasuryAdd: 3
+
+---
+PerCertificateFees: []
+
+---
+AddBftLeader: ed25519_pk12yga59aucq6vv6c53y3rlt9u7kzld9zrymlgdr4lce3yckvvpxzs3ev5rk
+
+---
+RewardParams:
+  linear:
+    constant: 72
+    ratio: 4/25
+    epoch_start: 3
+    epoch_rate: 20
+
+---
+ConsensusGenesisPraosActiveSlotsCoeff: "0.058"
+
+---
+RemoveCommitteeId: 4bb89e85f243c4e83f5ffea9d7ff4bc01b4ab50493b4f265b065ce6faa7a186e
+
+---
+BlockContentMaxSize: 5
+
+---
+RewardParams:
+  halving:
+    constant: 82
+    ratio: 97/17
+    epoch_start: 43
+    epoch_rate: 20
+
+---
+SlotsPerEpoch: 36
