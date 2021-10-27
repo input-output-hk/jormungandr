@@ -77,6 +77,8 @@ fn test_connectivity_between_master_and_legacy_app(release: Release, temp_dir: &
 }
 
 #[test]
+// Re-enable when rate of breaking changes subsides and we can maintain
+// backward compatible releases again.
 #[ignore]
 pub fn test_compability() {
     let temp_dir = TempDir::new().unwrap();

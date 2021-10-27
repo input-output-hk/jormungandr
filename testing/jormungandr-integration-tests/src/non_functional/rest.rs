@@ -24,7 +24,7 @@ pub fn rest_load_quick() {
     let rest_client = jormungandr.rest();
     let request = RestRequestGen::new(rest_client);
     let config = Configuration::duration(
-        10,
+        5,
         std::time::Duration::from_secs(40),
         10,
         Monitor::Progress(100),

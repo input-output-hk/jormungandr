@@ -8,7 +8,7 @@ use jormungandr_testing_utils::testing::{
 };
 
 use jormungandr_lib::{
-    interfaces::{PeerRecord, Policy, PreferredListConfig, TrustedPeer},
+    interfaces::{PeerRecord, Policy, TrustedPeer},
     time::Duration,
 };
 use jormungandr_testing_utils::testing::FragmentNode;
@@ -345,54 +345,6 @@ pub fn node_trust_itself() {
             "failed to retrieve the list of bootstrap peers from trusted peer",
         )
         .unwrap();
-}
-
-#[test]
-#[ignore]
-pub fn node_put_itself_in_preffered_layers() {
-    let mut network_controller = NetworkBuilder::default()
-        .topology(
-            Topology::default()
-                .with_node(Node::new(SERVER))
-                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
-        )
-        .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
-                .with(1_000_000)
-                .delegated_to(CLIENT)
-                .build(),
-        )
-        .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
-                .with(1_000_000)
-                .delegated_to(SERVER)
-                .build(),
-        )
-        .build()
-        .unwrap();
-
-    let _server = network_controller
-        .spawn(SpawnParams::new(SERVER).in_memory())
-        .unwrap();
-
-    let config = network_controller.node_config(CLIENT).unwrap().p2p;
-
-    let peer = TrustedPeer {
-        address: config.public_address,
-        id: None,
-    };
-
-    let layer = PreferredListConfig {
-        view_max: Default::default(),
-        peers: vec![peer],
-    };
-
-    assert!(network_controller
-        .expect_spawn_failed(
-            SpawnParams::new(CLIENT).preferred_layer(layer),
-            "topology tells the node to connect to itself"
-        )
-        .is_ok());
 }
 
 #[test]
