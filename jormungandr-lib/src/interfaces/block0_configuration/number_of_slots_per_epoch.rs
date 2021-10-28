@@ -8,7 +8,7 @@ use std::{convert::TryFrom, fmt};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-pub struct NumberOfSlotsPerEpoch(pub(crate) u32);
+pub struct NumberOfSlotsPerEpoch(u32);
 
 impl NumberOfSlotsPerEpoch {
     /// minimal value for the number of slots per epoch

@@ -13,6 +13,8 @@ use chain_impl_mockchain::{
     fragment::ConfigParams as ConfigParamsLib,
 };
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
+use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ConfigParams(pub(crate) Vec<ConfigParam>);
@@ -53,6 +55,16 @@ pub enum ConfigParam {
     TransactionMaxExpiryEpochs(u8),
 }
 
+#[derive(Debug, Error)]
+pub enum FromConfigParamError {
+    #[error("Invalid number of slots per epoch")]
+    NumberOfSlotsPerEpoch(#[from] super::block0_configuration::TryFromNumberOfSlotsPerEpochError),
+    #[error("Invalid slot duration value")]
+    SlotDuration(#[from] super::block0_configuration::TryFromSlotDurationError),
+    #[error("Invalid FeesGoTo setting")]
+    FeesGoTo(#[from] super::block0_configuration::TryFromFeesGoToError),
+}
+
 impl From<ConfigParams> for ConfigParamsLib {
     fn from(config: ConfigParams) -> Self {
         let mut res = Self::new();
@@ -69,15 +81,15 @@ impl From<ConfigParam> for ConfigParamLib {
             ConfigParam::Block0Date(val) => Self::Block0Date(Block0Date(val.0)),
             ConfigParam::Discrimination(val) => Self::Discrimination(val),
             ConfigParam::ConsensusVersion(val) => Self::ConsensusVersion(val),
-            ConfigParam::SlotsPerEpoch(val) => Self::SlotsPerEpoch(val.0),
-            ConfigParam::SlotDuration(val) => Self::SlotDuration(val.0),
-            ConfigParam::EpochStabilityDepth(val) => Self::EpochStabilityDepth(val.0),
+            ConfigParam::SlotsPerEpoch(val) => Self::SlotsPerEpoch(val.into()),
+            ConfigParam::SlotDuration(val) => Self::SlotDuration(val.into()),
+            ConfigParam::EpochStabilityDepth(val) => Self::EpochStabilityDepth(val.into()),
             ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(val) => {
                 Self::ConsensusGenesisPraosActiveSlotsCoeff(val.0)
             }
             ConfigParam::BlockContentMaxSize(val) => Self::BlockContentMaxSize(val.into()),
-            ConfigParam::AddBftLeader(val) => Self::AddBftLeader(val.0),
-            ConfigParam::RemoveBftLeader(val) => Self::RemoveBftLeader(val.0),
+            ConfigParam::AddBftLeader(val) => Self::AddBftLeader(val.into()),
+            ConfigParam::RemoveBftLeader(val) => Self::RemoveBftLeader(val.into()),
             ConfigParam::LinearFee(val) => Self::LinearFee(val),
             // TODO implement
             ConfigParam::ProposalExpiration() => Self::ProposalExpiration(Default::default()),
@@ -88,7 +100,7 @@ impl From<ConfigParam> for ConfigParamLib {
             ConfigParam::RewardParams(val) => Self::RewardParams(val.into()),
             // TODO implement
             ConfigParam::PerCertificateFees() => Self::PerCertificateFees(Default::default()),
-            ConfigParam::FeesInTreasury(val) => Self::FeesInTreasury(val.into()),
+            ConfigParam::FeesInTreasury(val) => Self::from(val),
             ConfigParam::RewardLimitNone => Self::RewardLimitNone,
             ConfigParam::RewardLimitByAbsoluteStake(val) => {
                 Self::RewardLimitByAbsoluteStake(val.into())
@@ -107,37 +119,46 @@ impl From<ConfigParam> for ConfigParamLib {
     }
 }
 
-impl From<ConfigParamLib> for ConfigParam {
-    fn from(config: ConfigParamLib) -> Self {
-        match config {
+impl TryFrom<ConfigParamLib> for ConfigParam {
+    type Error = FromConfigParamError;
+    fn try_from(config: ConfigParamLib) -> Result<Self, Self::Error> {
+        Ok(match config {
             ConfigParamLib::Block0Date(val) => Self::Block0Date(SecondsSinceUnixEpoch(val.0)),
             ConfigParamLib::Discrimination(val) => Self::Discrimination(val),
             ConfigParamLib::ConsensusVersion(val) => Self::ConsensusVersion(val),
-            ConfigParamLib::SlotsPerEpoch(val) => Self::SlotsPerEpoch(NumberOfSlotsPerEpoch(val)),
-            ConfigParamLib::SlotDuration(val) => Self::SlotDuration(SlotDuration(val)),
+            config @ ConfigParamLib::SlotsPerEpoch(_) => {
+                Self::SlotsPerEpoch(NumberOfSlotsPerEpoch::try_from(config)?)
+            }
+            config @ ConfigParamLib::SlotDuration(_) => {
+                Self::SlotDuration(SlotDuration::try_from(config)?)
+            }
             ConfigParamLib::EpochStabilityDepth(val) => {
-                Self::EpochStabilityDepth(EpochStabilityDepth(val))
+                Self::EpochStabilityDepth(EpochStabilityDepth::from(val))
             }
             ConfigParamLib::ConsensusGenesisPraosActiveSlotsCoeff(val) => {
                 Self::ConsensusGenesisPraosActiveSlotsCoeff(ActiveSlotCoefficient(val))
             }
             ConfigParamLib::BlockContentMaxSize(val) => Self::BlockContentMaxSize(val.into()),
-            ConfigParamLib::AddBftLeader(val) => Self::AddBftLeader(ConsensusLeaderId(val)),
-            ConfigParamLib::RemoveBftLeader(val) => Self::RemoveBftLeader(ConsensusLeaderId(val)),
+            ConfigParamLib::AddBftLeader(val) => Self::AddBftLeader(ConsensusLeaderId::from(val)),
+            ConfigParamLib::RemoveBftLeader(val) => {
+                Self::RemoveBftLeader(ConsensusLeaderId::from(val))
+            }
             ConfigParamLib::LinearFee(val) => Self::LinearFee(val),
             // TODO implement
             ConfigParamLib::ProposalExpiration(_val) => Self::ProposalExpiration(),
             ConfigParamLib::KesUpdateSpeed(val) => Self::KesUpdateSpeed(KesUpdateSpeed(val)),
-            ConfigParamLib::TreasuryAdd(val) => Self::TreasuryAdd(Value(val)),
+            ConfigParamLib::TreasuryAdd(val) => Self::TreasuryAdd(Value::from(val)),
             ConfigParamLib::TreasuryParams(val) => Self::TreasuryParams(TaxType::from(val)),
-            ConfigParamLib::RewardPot(val) => Self::RewardPot(Value(val)),
+            ConfigParamLib::RewardPot(val) => Self::RewardPot(Value::from(val)),
             ConfigParamLib::RewardParams(val) => Self::RewardParams(RewardParams::from(val)),
             // TODO implement
             ConfigParamLib::PerCertificateFees(_val) => Self::PerCertificateFees(),
-            ConfigParamLib::FeesInTreasury(val) => Self::FeesInTreasury(FeesGoTo::from(val)),
+            config @ ConfigParamLib::FeesInTreasury(_) => {
+                Self::FeesInTreasury(FeesGoTo::try_from(config)?)
+            }
             ConfigParamLib::RewardLimitNone => Self::RewardLimitNone,
             ConfigParamLib::RewardLimitByAbsoluteStake(val) => {
-                Self::RewardLimitByAbsoluteStake(Ratio(val))
+                Self::RewardLimitByAbsoluteStake(Ratio::from(val))
             }
             ConfigParamLib::PoolRewardParticipationCapping((min, max)) => {
                 Self::PoolRewardParticipationCapping(PoolParticipationCapping { min, max })
@@ -151,7 +172,7 @@ impl From<ConfigParamLib> for ConfigParam {
             ConfigParamLib::TransactionMaxExpiryEpochs(val) => {
                 Self::TransactionMaxExpiryEpochs(val)
             }
-        }
+        })
     }
 }
 
@@ -163,7 +184,7 @@ mod test {
     impl Arbitrary for ConfigParam {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             let config = ConfigParamLib::arbitrary(g);
-            Self::from(config)
+            Self::try_from(config).unwrap()
         }
     }
 

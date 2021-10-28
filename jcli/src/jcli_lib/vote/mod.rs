@@ -82,7 +82,7 @@ pub enum Vote {
     ElectionKey(election_public_key::ElectionPublicKey),
     /// Perform decryption of private voting tally
     Tally(tally::Tally),
-    /// Create proposal for the updating chain config
+    /// Create proposal for updating chain config
     UpdateProposal(update_proposal::UpdateProposal),
     /// Vote for the update proposal
     UpdateVote(update_vote::UpdateVote),

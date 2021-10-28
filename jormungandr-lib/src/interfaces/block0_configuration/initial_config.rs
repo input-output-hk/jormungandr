@@ -158,14 +158,14 @@ pub enum FromConfigParamsError {
     ),
     #[error("Invalid slot duration value")]
     SlotDuration(#[from] super::slots_duration::TryFromSlotDurationError),
-    #[error("Invalid consensus leader id")]
-    ConsensusLeaderId(#[from] super::leader_id::TryFromConsensusLeaderIdError),
     #[error("Invalid active slot coefficient value")]
     ActiveSlotCoefficient(
         #[from] super::active_slot_coefficient::TryFromActiveSlotCoefficientError,
     ),
     #[error("Invalid KES Update speed value")]
     KesUpdateSpeed(#[from] super::kes_update_speed::TryFromKesUpdateSpeedError),
+    #[error("Invalid FeesGoTo setting")]
+    FeesGoTo(#[from] super::fees_go_to::TryFromFeesGoToError),
 }
 
 impl TryFrom<ConfigParams> for BlockchainConfiguration {
@@ -248,8 +248,8 @@ impl BlockchainConfiguration {
                 cp @ ConfigParam::SlotDuration(_) => slot_duration
                     .replace(SlotDuration::try_from(cp)?)
                     .map(|_| "slot_duration"),
-                cp @ ConfigParam::AddBftLeader(_) => {
-                    consensus_leader_ids.push(ConsensusLeaderId::try_from(cp)?);
+                ConfigParam::AddBftLeader(val) => {
+                    consensus_leader_ids.push(val.into());
                     None
                 }
                 cp @ ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(_) => {
@@ -261,8 +261,8 @@ impl BlockchainConfiguration {
                 cp @ ConfigParam::KesUpdateSpeed(_) => kes_update_speed
                     .replace(KesUpdateSpeed::try_from(cp)?)
                     .map(|_| "kes_update_speed"),
-                ConfigParam::FeesInTreasury(param) => fees_go_to
-                    .replace(FeesGoTo::from(param))
+                cp @ ConfigParam::FeesInTreasury(_) => fees_go_to
+                    .replace(FeesGoTo::try_from(cp)?)
                     .map(|_| "fees_go_to"),
 
                 ConfigParam::RemoveBftLeader(_) => {
@@ -399,7 +399,7 @@ impl BlockchainConfiguration {
         ));
 
         if let Some(fees_go_to) = fees_go_to {
-            params.push(ConfigParam::FeesInTreasury(fees_go_to.into()));
+            params.push(ConfigParam::from(fees_go_to));
         }
 
         if !crate::interfaces::linear_fee::per_certificate_fee_is_zero(

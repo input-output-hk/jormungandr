@@ -1,5 +1,6 @@
+use chain_impl_mockchain::config::ConfigParam;
 use serde::{Deserialize, Serialize};
-use std::{fmt, str::FromStr};
+use std::{convert::TryFrom, fmt, str::FromStr};
 use thiserror::Error;
 
 /// the settings for the fees to be redistributed to
@@ -43,22 +44,31 @@ impl FromStr for FeesGoTo {
 
 /* Conversion *************************************************************** */
 
-impl From<bool> for FeesGoTo {
-    fn from(fees_in_treasury: bool) -> Self {
-        if fees_in_treasury {
-            Self::Treasury
-        } else {
-            Self::Rewards
+#[derive(Debug, Error)]
+#[error("Invalid fees go to config parameter. Expect \"rewards\" or \"treasury\" ")]
+pub struct TryFromFeesGoToError;
+
+impl TryFrom<ConfigParam> for FeesGoTo {
+    type Error = TryFromFeesGoToError;
+    fn try_from(config_param: ConfigParam) -> Result<Self, Self::Error> {
+        match config_param {
+            ConfigParam::FeesInTreasury(to_treasury) => {
+                let fees_go_to = if to_treasury {
+                    Self::Treasury
+                } else {
+                    Self::Rewards
+                };
+                Ok(fees_go_to)
+            }
+            _ => Err(TryFromFeesGoToError),
         }
     }
 }
 
-impl From<FeesGoTo> for bool {
-    fn from(fees_in_treasury: FeesGoTo) -> Self {
-        match fees_in_treasury {
-            FeesGoTo::Treasury => true,
-            FeesGoTo::Rewards => false,
-        }
+impl From<FeesGoTo> for ConfigParam {
+    fn from(fees_go_to: FeesGoTo) -> Self {
+        let to_treasury = fees_go_to == FeesGoTo::Treasury;
+        ConfigParam::FeesInTreasury(to_treasury)
     }
 }
 
@@ -88,6 +98,13 @@ mod test {
         fn display_from_str(fees_go_to: FeesGoTo) -> bool {
             let s = fees_go_to.to_string();
             let fees_go_to_dec: FeesGoTo = s.parse().unwrap();
+
+            fees_go_to == fees_go_to_dec
+        }
+
+        fn convert_from_to_config_param(fees_go_to: FeesGoTo) -> bool {
+            let cp = ConfigParam::from(fees_go_to);
+            let fees_go_to_dec = FeesGoTo::try_from(cp).unwrap();
 
             fees_go_to == fees_go_to_dec
         }

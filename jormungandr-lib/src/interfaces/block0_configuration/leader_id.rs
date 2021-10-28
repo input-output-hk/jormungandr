@@ -5,27 +5,10 @@ use chain_impl_mockchain::{
     key::{BftLeaderId, BftVerificationAlg},
 };
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{convert::TryFrom, fmt};
-use thiserror::Error;
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ConsensusLeaderId(pub(crate) BftLeaderId);
-
-#[derive(Debug, Error)]
-pub enum TryFromConsensusLeaderIdError {
-    #[error("Incompatible Config param, expected Add BFT Leader")]
-    Incompatible,
-}
-
-impl TryFrom<ConfigParam> for ConsensusLeaderId {
-    type Error = TryFromConsensusLeaderIdError;
-    fn try_from(config_param: ConfigParam) -> Result<Self, Self::Error> {
-        match config_param {
-            ConfigParam::AddBftLeader(leader_id) => Ok(ConsensusLeaderId(leader_id)),
-            _ => Err(TryFromConsensusLeaderIdError::Incompatible),
-        }
-    }
-}
+pub struct ConsensusLeaderId(BftLeaderId);
 
 impl From<ConsensusLeaderId> for ConfigParam {
     fn from(consensus_leader_id: ConsensusLeaderId) -> Self {
@@ -42,6 +25,18 @@ impl From<Identifier<Ed25519>> for ConsensusLeaderId {
 impl From<PublicKey<Ed25519>> for ConsensusLeaderId {
     fn from(public_key: PublicKey<Ed25519>) -> Self {
         ConsensusLeaderId(BftLeaderId::from(public_key))
+    }
+}
+
+impl From<BftLeaderId> for ConsensusLeaderId {
+    fn from(leader_id: BftLeaderId) -> Self {
+        Self(leader_id)
+    }
+}
+
+impl From<ConsensusLeaderId> for BftLeaderId {
+    fn from(leader_id: ConsensusLeaderId) -> Self {
+        leader_id.0
     }
 }
 
@@ -115,13 +110,6 @@ mod test {
         fn serde_encode_decode(consensus_leader_id: ConsensusLeaderId) -> bool {
             let s = serde_yaml::to_string(&consensus_leader_id).unwrap();
             let consensus_leader_id_dec: ConsensusLeaderId = serde_yaml::from_str(&s).unwrap();
-
-            consensus_leader_id == consensus_leader_id_dec
-        }
-
-        fn convert_from_to_config_param(consensus_leader_id: ConsensusLeaderId) -> bool {
-            let cp = ConfigParam::from(consensus_leader_id.clone());
-            let consensus_leader_id_dec = ConsensusLeaderId::try_from(cp).unwrap();
 
             consensus_leader_id == consensus_leader_id_dec
         }

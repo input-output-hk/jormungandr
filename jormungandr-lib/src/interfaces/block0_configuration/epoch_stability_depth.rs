@@ -4,7 +4,7 @@ use std::fmt;
 
 /// epoch stability depth
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct EpochStabilityDepth(pub(crate) u32);
+pub struct EpochStabilityDepth(u32);
 
 impl fmt::Display for EpochStabilityDepth {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
