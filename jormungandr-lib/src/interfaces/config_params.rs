@@ -1,15 +1,15 @@
 use super::{
     ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
     ConsensusVersionDef, DiscriminationDef, EpochStabilityDepth, FeesGoTo, KesUpdateSpeed,
-    LinearFeeDef, NumberOfSlotsPerEpoch, PoolParticipationCapping, Ratio, RewardParams,
-    SlotDuration, TaxType, Value,
+    LinearFeeDef, NumberOfSlotsPerEpoch, PerCertificateFeeDef, PerVoteCertificateFeeDef,
+    PoolParticipationCapping, Ratio, RewardParams, SlotDuration, TaxType, Value,
 };
 use crate::time::SecondsSinceUnixEpoch;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     chaintypes::ConsensusVersion,
     config::{Block0Date, ConfigParam as ConfigParamLib},
-    fee::LinearFee,
+    fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee},
     fragment::ConfigParams as ConfigParamsLib,
 };
 use serde::{Deserialize, Serialize};
@@ -36,22 +36,22 @@ pub enum ConfigParam {
     #[serde(with = "LinearFeeDef")]
     LinearFee(LinearFee),
     // TODO implement interface
-    ProposalExpiration(),
+    ProposalExpiration(u32),
     KesUpdateSpeed(KesUpdateSpeed),
     TreasuryAdd(Value),
     TreasuryParams(TaxType),
     RewardPot(Value),
     RewardParams(RewardParams),
-    // TODO implement interface
-    PerCertificateFees(),
+    #[serde(with = "PerCertificateFeeDef")]
+    PerCertificateFees(PerCertificateFee),
     FeesInTreasury(FeesGoTo),
     RewardLimitNone,
     RewardLimitByAbsoluteStake(Ratio),
     PoolRewardParticipationCapping(PoolParticipationCapping),
     AddCommitteeId(CommitteeIdDef),
     RemoveCommitteeId(CommitteeIdDef),
-    // TODO implement interface
-    PerVoteCertificateFees(),
+    #[serde(with = "PerVoteCertificateFeeDef")]
+    PerVoteCertificateFees(PerVoteCertificateFee),
     TransactionMaxExpiryEpochs(u8),
 }
 
@@ -92,14 +92,13 @@ impl From<ConfigParam> for ConfigParamLib {
             ConfigParam::RemoveBftLeader(val) => Self::RemoveBftLeader(val.into()),
             ConfigParam::LinearFee(val) => Self::LinearFee(val),
             // TODO implement
-            ConfigParam::ProposalExpiration() => Self::ProposalExpiration(Default::default()),
+            ConfigParam::ProposalExpiration(val) => Self::ProposalExpiration(val),
             ConfigParam::KesUpdateSpeed(val) => Self::KesUpdateSpeed(val.0),
             ConfigParam::TreasuryAdd(val) => Self::TreasuryAdd(val.into()),
             ConfigParam::TreasuryParams(val) => Self::TreasuryParams(val.into()),
             ConfigParam::RewardPot(val) => Self::RewardPot(val.into()),
             ConfigParam::RewardParams(val) => Self::RewardParams(val.into()),
-            // TODO implement
-            ConfigParam::PerCertificateFees() => Self::PerCertificateFees(Default::default()),
+            ConfigParam::PerCertificateFees(val) => Self::PerCertificateFees(val),
             ConfigParam::FeesInTreasury(val) => Self::from(val),
             ConfigParam::RewardLimitNone => Self::RewardLimitNone,
             ConfigParam::RewardLimitByAbsoluteStake(val) => {
@@ -110,10 +109,7 @@ impl From<ConfigParam> for ConfigParamLib {
             }
             ConfigParam::AddCommitteeId(val) => Self::AddCommitteeId(val.into()),
             ConfigParam::RemoveCommitteeId(val) => Self::RemoveCommitteeId(val.into()),
-            // TODO implement
-            ConfigParam::PerVoteCertificateFees() => {
-                Self::PerVoteCertificateFees(Default::default())
-            }
+            ConfigParam::PerVoteCertificateFees(val) => Self::PerVoteCertificateFees(val),
             ConfigParam::TransactionMaxExpiryEpochs(val) => Self::TransactionMaxExpiryEpochs(val),
         }
     }
@@ -145,14 +141,13 @@ impl TryFrom<ConfigParamLib> for ConfigParam {
             }
             ConfigParamLib::LinearFee(val) => Self::LinearFee(val),
             // TODO implement
-            ConfigParamLib::ProposalExpiration(_val) => Self::ProposalExpiration(),
+            ConfigParamLib::ProposalExpiration(val) => Self::ProposalExpiration(val),
             ConfigParamLib::KesUpdateSpeed(val) => Self::KesUpdateSpeed(KesUpdateSpeed(val)),
             ConfigParamLib::TreasuryAdd(val) => Self::TreasuryAdd(Value::from(val)),
             ConfigParamLib::TreasuryParams(val) => Self::TreasuryParams(TaxType::from(val)),
             ConfigParamLib::RewardPot(val) => Self::RewardPot(Value::from(val)),
             ConfigParamLib::RewardParams(val) => Self::RewardParams(RewardParams::from(val)),
-            // TODO implement
-            ConfigParamLib::PerCertificateFees(_val) => Self::PerCertificateFees(),
+            ConfigParamLib::PerCertificateFees(val) => Self::PerCertificateFees(val),
             config @ ConfigParamLib::FeesInTreasury(_) => {
                 Self::FeesInTreasury(FeesGoTo::try_from(config)?)
             }
@@ -167,8 +162,7 @@ impl TryFrom<ConfigParamLib> for ConfigParam {
             ConfigParamLib::RemoveCommitteeId(val) => {
                 Self::RemoveCommitteeId(CommitteeIdDef::from(val))
             }
-            // TODO implement
-            ConfigParamLib::PerVoteCertificateFees(_val) => Self::PerVoteCertificateFees(),
+            ConfigParamLib::PerVoteCertificateFees(val) => Self::PerVoteCertificateFees(val),
             ConfigParamLib::TransactionMaxExpiryEpochs(val) => {
                 Self::TransactionMaxExpiryEpochs(val)
             }
