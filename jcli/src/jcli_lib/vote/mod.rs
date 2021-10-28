@@ -7,6 +7,7 @@ use crate::rest;
 use crate::utils::io;
 use chain_core::property::Serialize;
 use chain_impl_mockchain::fragment::Fragment;
+use std::io::Write;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -83,7 +84,7 @@ pub enum Error {
     #[error("could not write fragment file '{path}'")]
     FragmentFileWriteFailed {
         #[source]
-        source: bincode::ErrorKind,
+        source: std::io::Error,
         path: PathBuf,
     },
 }
@@ -141,16 +142,18 @@ fn write_fragment_into_file(
 
     let hex = hex::encode(&fragment_bytes);
 
-    let writer =
+    let mut writer =
         io::open_file_write(&fragment_file).map_err(|source| Error::FragmentFileOpenFailed {
             source,
             path: io::path_to_path_buf(&fragment_file),
         })?;
 
-    bincode::serialize_into(writer, &hex).map_err(|source| Error::FragmentFileWriteFailed {
-        source: *source,
-        path: io::path_to_path_buf(&fragment_file),
-    })?;
+    writer
+        .write_all(hex.as_bytes())
+        .map_err(|source| Error::FragmentFileWriteFailed {
+            source,
+            path: io::path_to_path_buf(&fragment_file),
+        })?;
 
     Ok(())
 }
