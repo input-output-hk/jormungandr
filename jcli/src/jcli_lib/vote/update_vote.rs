@@ -1,8 +1,4 @@
-use crate::{
-    jcli_lib::vote::Error,
-    rest::{v0::message::post_fragment, RestArgs},
-    utils::key_parser::read_secret_key,
-};
+use crate::{jcli_lib::vote::Error, utils::key_parser::read_secret_key};
 use chain_core::property::Serialize;
 use chain_impl_mockchain::{
     fragment::Fragment,
@@ -24,8 +20,10 @@ pub struct UpdateVote {
     #[structopt(long)]
     secret: Option<PathBuf>,
 
-    #[structopt(flatten)]
-    rest_args: RestArgs,
+    /// place where the transaction is going to be saved.
+    /// If omitted it will be written to the standard input.
+    #[structopt(long)]
+    fragment_file: Option<PathBuf>,
 }
 
 impl UpdateVote {
@@ -34,10 +32,7 @@ impl UpdateVote {
 
         let fragment = build_fragment(secret_key, self.proposal_id);
 
-        let fragment_id = post_fragment(self.rest_args, fragment)?;
-        println!("Posted fragment id: {}", fragment_id);
-
-        Ok(())
+        super::write_fragment_into_file(fragment, self.fragment_file)
     }
 }
 

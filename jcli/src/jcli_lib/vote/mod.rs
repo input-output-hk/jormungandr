@@ -4,6 +4,9 @@ use crate::jcli_lib::utils::{
     vote::{SharesError, VotePlanError},
 };
 use crate::rest;
+use crate::utils::io;
+use chain_core::property::Serialize;
+use chain_impl_mockchain::fragment::Fragment;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -71,6 +74,18 @@ pub enum Error {
     },
     #[error("config file corrupted")]
     ConfigFileCorrupted(#[source] serde_yaml::Error),
+    #[error("could not open fragment file '{path}'")]
+    FragmentFileOpenFailed {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("could not write fragment file '{path}'")]
+    FragmentFileWriteFailed {
+        #[source]
+        source: bincode::ErrorKind,
+        path: PathBuf,
+    },
 }
 
 #[derive(StructOpt)]
@@ -116,4 +131,26 @@ impl std::str::FromStr for Seed {
         bytes.copy_from_slice(&vec);
         Ok(Seed(bytes))
     }
+}
+
+fn write_fragment_into_file(
+    fragment: Fragment,
+    fragment_file: Option<PathBuf>,
+) -> Result<(), Error> {
+    let fragment_bytes = fragment.serialize_as_vec()?;
+
+    let hex = hex::encode(&fragment_bytes);
+
+    let writer =
+        io::open_file_write(&fragment_file).map_err(|source| Error::FragmentFileOpenFailed {
+            source,
+            path: io::path_to_path_buf(&fragment_file),
+        })?;
+
+    bincode::serialize_into(writer, &hex).map_err(|source| Error::FragmentFileWriteFailed {
+        source: *source,
+        path: io::path_to_path_buf(&fragment_file),
+    })?;
+
+    Ok(())
 }
