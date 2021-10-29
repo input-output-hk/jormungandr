@@ -255,14 +255,4 @@ impl BackwardCompatibleRest {
     pub fn set_origin<S: Into<String>>(&mut self, origin: S) {
         self.raw.rest_settings_mut().cors = Some(origin.into());
     }
-
-    pub fn vote_plan_account_info(
-        &self,
-        vote_plan_id: VotePlanId,
-        address: Address,
-    ) -> Result<String, reqwest::Error> {
-        self.raw()
-            .vote_plan_account_info(vote_plan_id, address)?
-            .text()
-    }
 }

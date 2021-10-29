@@ -303,24 +303,6 @@ impl RawRest {
         self.get("vote/active/plans")
     }
 
-    pub fn vote_plan_account_info(
-        &self,
-        vote_plan_id: VotePlanId,
-        address: Address,
-    ) -> Result<Response, reqwest::Error> {
-        let pk = address.1.public_key().unwrap();
-        let key = hex::encode(account::Identifier::from(pk.clone()).as_ref());
-
-        let path = format!(
-            "votes/plan/{}/account-votes/{}",
-            vote_plan_id.to_string(),
-            key,
-        );
-        let request = self.path(ApiVersion::V1, &path);
-        self.print_request_path(&request);
-        self.client.get(request).send()
-    }
-
     pub fn send_until_ok<F>(&self, action: F, mut wait: Wait) -> Result<(), RestError>
     where
         F: Fn(&RawRest) -> Result<Response, reqwest::Error>,

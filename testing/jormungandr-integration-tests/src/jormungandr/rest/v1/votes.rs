@@ -36,7 +36,7 @@ pub fn list_casted_votes_for_active_vote_plan() {
 
     assert!(jormungandr
         .rest()
-        .account_votes_with_plan_id(vote_plan.to_id().into(), &alice)
+        .account_votes_with_plan_id(vote_plan.to_id().into(), alice.address())
         .is_err());
 
     let proposals_ids = vec![0u8, 1u8, 2u8];
@@ -65,14 +65,14 @@ pub fn list_casted_votes_for_active_vote_plan() {
         Some(proposals_ids),
         jormungandr
             .rest()
-            .account_votes_with_plan_id(vote_plan.to_id().into(), &alice)
+            .account_votes_with_plan_id(vote_plan.to_id().into(), alice.address())
             .unwrap()
     );
     assert_eq!(
         Some(vec![]),
         jormungandr
             .rest()
-            .account_votes_with_plan_id(vote_plan.to_id().into(), &bob)
+            .account_votes_with_plan_id(vote_plan.to_id().into(), bob.address())
             .unwrap()
     );
 }
@@ -132,7 +132,7 @@ pub fn list_casted_votes_for_already_finished_vote_plan() {
         Some(proposals_ids),
         jormungandr
             .rest()
-            .account_votes_with_plan_id(vote_plan.to_id().into(), &alice)
+            .account_votes_with_plan_id(vote_plan.to_id().into(), alice.address())
             .unwrap()
     );
 }
@@ -165,6 +165,6 @@ pub fn list_casted_votes_for_non_voted() {
 
     assert!(jormungandr
         .rest()
-        .account_votes_with_plan_id(vote_plan.to_id().into(), &alice)
+        .account_votes_with_plan_id(vote_plan.to_id().into(), alice.address())
         .is_err());
 }
