@@ -1,5 +1,6 @@
 use super::{do_for_all_alias, UserInteractionController};
 use jormungandr_testing_utils::testing::node::{JormungandrLogger, LogLevel};
+use jormungandr_testing_utils::testing::FragmentNode;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -74,8 +75,8 @@ impl ActiveVotePlans {
             &self.alias,
             controller.nodes(),
             controller.legacy_nodes(),
-            |node| println!("{}: {:#?}", node.alias(), node.vote_plans()),
-            |node| println!("{}: {:#?}", node.alias(), node.vote_plans()),
+            |node| println!("{}: {:#?}", node.alias(), node.rest().vote_plan_statuses()),
+            |node| println!("{}: {:#?}", node.alias(), node.rest().vote_plan_statuses()),
         )
     }
 }
@@ -99,7 +100,7 @@ impl ShowStatus {
             controller.nodes(),
             controller.legacy_nodes(),
             |node| println!("{} is up", node.alias()),
-            |node| println!("{} is up", node.alias()),
+            |node| println!("{} is up", &node.alias()),
         )
     }
 }
@@ -117,7 +118,13 @@ impl ShowFragmentCount {
                     node.fragment_logs().unwrap().len()
                 )
             },
-            |node| println!("{}: {}", node.alias(), node.fragment_logs().unwrap().len()),
+            |node| {
+                println!(
+                    "{}: {}",
+                    node.alias(),
+                    node.rest().fragment_logs().unwrap().len()
+                )
+            },
         )
     }
 }
@@ -133,7 +140,7 @@ impl ShowFragments {
                 println!(
                     "{}: {:#?}",
                     node.alias(),
-                    node.fragment_logs().unwrap().len()
+                    node.rest().fragment_logs().unwrap().len()
                 )
             },
         )
@@ -150,7 +157,12 @@ impl ShowBlockHeight {
                 println!(
                     "{}: {:?}",
                     node.alias(),
-                    node.stats().unwrap().stats.unwrap().last_block_height
+                    node.rest()
+                        .stats()
+                        .unwrap()
+                        .stats
+                        .unwrap()
+                        .last_block_height
                 )
             },
             |node| {
@@ -182,8 +194,8 @@ impl ShowNodeStats {
             &self.alias,
             controller.nodes(),
             controller.legacy_nodes(),
-            |node| println!("{}: {:#?}", node.alias(), node.stats()),
-            |node| println!("{}: {:#?}", node.alias(), node.stats()),
+            |node| println!("{}: {:#?}", node.alias(), node.status()),
+            |node| println!("{}: {:#?}", node.alias(), node.status()),
         )
     }
 }
@@ -237,7 +249,7 @@ impl ShowLogs {
                 show_logs_for(
                     self.only_errors,
                     &self.contains,
-                    node.alias(),
+                    &node.alias(),
                     self.tail,
                     node.logger(),
                 )
@@ -246,7 +258,7 @@ impl ShowLogs {
                 show_logs_for(
                     self.only_errors,
                     &self.contains,
-                    node.alias(),
+                    &node.alias(),
                     self.tail,
                     node.logger(),
                 )

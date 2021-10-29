@@ -46,7 +46,7 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let tip1 = node1.tip()?;
     std::thread::sleep(std::time::Duration::from_secs(1));
     node1.shutdown()?;
-    let _block = node2.block(&tip1.into_hash())?;
+    let _block = node2.rest().block(&tip1.into_hash())?;
 
     std::thread::sleep(std::time::Duration::from_secs(1));
 

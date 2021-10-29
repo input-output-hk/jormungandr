@@ -8,7 +8,7 @@ use crate::{
         utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
         Result,
     },
-    Context, NodeController,
+    Context, Node as NodeController,
 };
 use jormungandr_testing_utils::testing::{
     network::{Blockchain, Topology, WalletTemplate},

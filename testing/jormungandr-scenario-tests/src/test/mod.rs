@@ -6,6 +6,7 @@ pub mod non_functional;
 pub mod utils;
 
 use jormungandr_lib::interfaces::FragmentStatus;
+use jormungandr_testing_utils::testing::jormungandr::StartupError;
 
 use std::time::Duration;
 
@@ -52,6 +53,11 @@ pub enum Error {
         node: String,
         status: FragmentStatus,
     },
+    #[error(transparent)]
+    Rest(#[from] jormungandr_testing_utils::testing::node::RestError),
+
+    #[error(transparent)]
+    Startup(#[from] StartupError),
 }
 
 pub type Result<T> = ::core::result::Result<T, Error>;

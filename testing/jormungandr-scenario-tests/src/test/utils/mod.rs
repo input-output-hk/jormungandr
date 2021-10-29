@@ -1,16 +1,16 @@
-use crate::legacy::LegacyNodeController;
+use crate::legacy::LegacyNode;
 use crate::{
-    node::{FragmentNode, NodeController},
+    node::{FragmentNode, Node},
     scenario::Controller,
     test::Result,
 };
 use jormungandr_lib::interfaces::FragmentsProcessingSummary;
-pub use jormungandr_testing_utils::testing::{SyncNode, SyncWaitParams};
-
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog, NodeState},
 };
+use jormungandr_testing_utils::testing::network::NodeAlias;
+pub use jormungandr_testing_utils::testing::{SyncNode, SyncWaitParams};
 use jormungandr_testing_utils::{
     testing::{Speed, Thresholds},
     wallet::Wallet,
@@ -58,13 +58,14 @@ pub fn measure_single_transaction_propagation_speed<A: SyncNode + FragmentNode +
     )?)
 }
 
-impl SyncNode for NodeController {
-    fn alias(&self) -> &str {
+impl SyncNode for Node {
+    fn alias(&self) -> NodeAlias {
         self.alias()
     }
 
     fn last_block_height(&self) -> u32 {
-        self.stats()
+        self.rest()
+            .stats()
             .unwrap()
             .stats
             .unwrap()
@@ -75,7 +76,7 @@ impl SyncNode for NodeController {
     }
 
     fn log_stats(&self) {
-        println!("Node: {} -> {:?}", self.alias(), self.stats());
+        println!("Node: {} -> {:?}", self.alias(), self.rest().stats());
     }
 
     fn tip(&self) -> Hash {
@@ -83,7 +84,7 @@ impl SyncNode for NodeController {
     }
 
     fn is_running(&self) -> bool {
-        self.stats().unwrap().state == NodeState::Running
+        self.rest().stats().unwrap().state == NodeState::Running
     }
 
     fn log_content(&self) -> String {
@@ -98,15 +99,16 @@ impl SyncNode for NodeController {
     }
 }
 
-impl FragmentNode for LegacyNodeController {
-    fn alias(&self) -> &str {
+impl FragmentNode for LegacyNode {
+    fn alias(&self) -> NodeAlias {
         self.alias()
     }
     fn fragment_logs(
         &self,
     ) -> std::result::Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError> {
         //TODO: implement conversion
-        self.fragment_logs()
+        self.rest()
+            .fragment_logs()
             .map_err(|_| FragmentNodeError::UnknownError)
     }
     fn send_fragment(
@@ -114,7 +116,8 @@ impl FragmentNode for LegacyNodeController {
         fragment: Fragment,
     ) -> std::result::Result<MemPoolCheck, FragmentNodeError> {
         //TODO: implement conversion
-        self.send_fragment(fragment)
+        self.rest()
+            .send_fragment(fragment)
             .map_err(|_| FragmentNodeError::UnknownError)
     }
 
@@ -146,8 +149,8 @@ impl FragmentNode for LegacyNodeController {
     }
 }
 
-impl SyncNode for LegacyNodeController {
-    fn alias(&self) -> &str {
+impl SyncNode for LegacyNode {
+    fn alias(&self) -> NodeAlias {
         self.alias()
     }
 
@@ -164,7 +167,7 @@ impl SyncNode for LegacyNodeController {
     }
 
     fn tip(&self) -> Hash {
-        self.tip().expect("cannot get tip from rest")
+        self.rest().tip().expect("cannot get tip from rest")
     }
 
     fn log_content(&self) -> String {

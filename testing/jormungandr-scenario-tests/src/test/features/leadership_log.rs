@@ -64,7 +64,7 @@ pub fn leader_restart_preserves_leadership_log(
 
     // logs during epoch 0 should be empty
     utils::assert(
-        !leader_2.leadership_log()?.is_empty(),
+        !leader_2.rest().leaders_log()?.is_empty(),
         "leadeship log should NOT be empty in current epoch",
     )?;
 
@@ -74,7 +74,7 @@ pub fn leader_restart_preserves_leadership_log(
 
     // logs during epoch 0 should be empty
     utils::assert(
-        !leader_2.leadership_log()?.is_empty(),
+        !leader_2.rest().leaders_log()?.is_empty(),
         "leadeship log should NOT be empty in new epoch",
     )?;
 

@@ -47,27 +47,27 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let info_before = "no peers for leader 1";
     utils::assert_equals(
         &vec![],
-        &leader1.network_stats()?,
+        &leader1.rest().network_stats()?,
         &format!("{} network_stats", info_before),
     )?;
     utils::assert_equals(
         &vec![],
-        &leader1.p2p_quarantined()?,
+        &leader1.rest().p2p_quarantined()?,
         &format!("{} p2p_quarantined", info_before),
     )?;
     utils::assert_equals(
         &vec![],
-        &leader1.p2p_non_public()?,
+        &leader1.rest().p2p_non_public()?,
         &format!("{} p2p_non_public", info_before),
     )?;
     utils::assert_equals(
         &vec![],
-        &leader1.p2p_available()?,
+        &leader1.rest().p2p_available()?,
         &format!("{} p2p_available", info_before),
     )?;
     utils::assert_equals(
         &vec![],
-        &leader1.p2p_view()?,
+        &leader1.rest().p2p_view()?,
         &format!("{} p2p_view", info_before),
     )?;
 
