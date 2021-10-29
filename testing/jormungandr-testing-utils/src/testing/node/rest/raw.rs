@@ -148,7 +148,15 @@ impl RawRest {
         self.get("stake_pools")
     }
 
-    pub fn account_votes(
+    pub fn account_votes(&self, address: Address) -> Result<Response, reqwest::Error> {
+        let pk = address.1.public_key().unwrap();
+        let key = hex::encode(account::Identifier::from(pk.clone()).as_ref());
+
+        let request = format!("votes/plan/account-votes/{}", key);
+        self.client.get(&self.path(ApiVersion::V1, &request)).send()
+    }
+
+    pub fn account_votes_with_plan_id(
         &self,
         vote_plan_id: VotePlanId,
         address: Address,

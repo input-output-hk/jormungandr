@@ -123,11 +123,23 @@ impl JormungandrRest {
 
     pub fn account_votes(
         &self,
+        wallet: &Wallet,
+    ) -> Result<Option<Vec<(VotePlanId, Vec<u8>)>>, RestError> {
+        serde_json::from_str(&self.inner.account_votes(wallet.address())?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn account_votes_with_plan_id(
+        &self,
         vote_plan_id: VotePlanId,
         wallet: &Wallet,
     ) -> Result<Option<Vec<u8>>, RestError> {
-        serde_json::from_str(&self.inner.account_votes(vote_plan_id, wallet.address())?)
-            .map_err(RestError::CannotDeserialize)
+        serde_json::from_str(
+            &self
+                .inner
+                .account_votes_with_plan_id(vote_plan_id, wallet.address())?,
+        )
+        .map_err(RestError::CannotDeserialize)
     }
 
     pub fn stake_pools(&self) -> Result<Vec<String>, RestError> {
