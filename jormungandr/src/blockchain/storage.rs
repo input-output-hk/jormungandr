@@ -141,6 +141,33 @@ impl Storage {
             .map_err(Into::into)
     }
 
+    pub fn get_parent(&self, header_hash: HeaderHash) -> Result<Option<HeaderHash>, Error> {
+        let block_info = match self.storage.get_block_info(header_hash.as_ref()) {
+            Ok(block_info) => block_info,
+            Err(_) => return Ok(None),
+        };
+
+        HeaderHash::deserialize(block_info.parent_id().as_ref())
+            .map_err(Error::Deserialize)
+            .map(Some)
+    }
+
+    pub fn is_ancestor(&self, a: HeaderHash, b: HeaderHash) -> bool {
+        self.storage
+            .is_ancestor(a.as_ref(), b.as_ref())
+            .map(|x| x.is_some())
+            .unwrap_or(false)
+    }
+
+    pub fn get_chain_length(&self, block_id: HeaderHash) -> Option<u32> {
+        let block_info = match self.storage.get_block_info(block_id.as_ref()) {
+            Ok(block_info) => block_info,
+            Err(_) => return None,
+        };
+
+        Some(block_info.chain_length())
+    }
+
     /// Return values:
     /// - `Ok(stream)` - `from` is ancestor of `to`, returns blocks between them
     /// - `Err(CannotIterate)` - `from` is not ancestor of `to`

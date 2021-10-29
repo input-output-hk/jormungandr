@@ -244,56 +244,60 @@ async fn handle_sync_multiverse(
     let mut checkpoints = checkpoints
         .iter()
         .map(|id| HeaderHash::deserialize(id.as_bytes()).map_err(intercom::Error::invalid_argument))
-        .collect::<Result<HashSet<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()?;
 
-    let branches = blockchain.branches().branches().await;
-    let mut previous_branch = None;
     let block0 = blockchain.block0();
-    for next_branch in branches {
-        let head_id = next_branch.header().id();
 
-        if let Some(prev) = previous_branch.replace(head_id) {
-            let lca = storage.find_common_ancestor(prev, head_id).unwrap();
+    if checkpoints.is_empty() {
+        let block = storage.get(*block0).unwrap().unwrap();
+        sink.send(Ok(chain_network::data::Block::from_bytes(
+            block.serialize_as_vec().unwrap(),
+        )))
+        .await
+        .map_err(intercom::Error::failed)?;
+    }
 
-            checkpoints.insert(lca);
+    // assume the first checkpoint is the last_stable_block (for now, the docs don't require this)
+    let lsb = checkpoints.pop().unwrap_or(*block0);
+
+    let mut known_unstable_blocks_by_client = HashSet::new();
+
+    for checkpoint in checkpoints {
+        if !storage.is_ancestor(lsb, checkpoint) {
+            return Err(intercom::Error::invalid_argument(
+                "invalid from/checkpoints",
+            ));
         }
 
-        let ancestor = storage
-            // TODO: why does find_closest_ancestor need to own the
-            // Vec?
-            // it could be just impl Iterator I think
-            .find_closest_ancestor(checkpoints.iter().cloned().collect(), head_id)
-            .map_err(intercom::Error::failed)?
-            .map(|ancestor| ancestor.header_hash)
-            .unwrap_or(*block0);
+        let mut current = checkpoint;
 
-        checkpoints.remove(&ancestor);
+        while current != lsb {
+            known_unstable_blocks_by_client.insert(current);
 
-        // when calling stream_from_to, the from argument is not streamed, this is good for most
-        // cases, but if the client is bootstrapping we need to send the block0 too
-        if &ancestor == block0 {
-            tracing::trace!("streaming block0");
+            current = storage
+                .get_parent(current)
+                .map_err(intercom::Error::failed_precondition)?
+                .ok_or_else(|| intercom::Error::aborted("reached block0"))?;
+        }
+    }
 
-            let block0_body = storage.get(*block0).unwrap().unwrap();
-            sink.send(Ok(chain_network::data::Block::from_bytes(
-                block0_body.serialize_as_vec().unwrap(),
-            )))
-            .await
-            .map_err(intercom::Error::failed)?;
+    let mut current_length = storage.get_chain_length(lsb).unwrap() + 1;
+
+    loop {
+        let blocks = storage
+            .get_blocks_by_chain_length(current_length)
+            .map_err(intercom::Error::aborted)?;
+
+        current_length += 1;
+
+        if blocks.is_empty() {
+            break;
         }
 
-        tracing::trace!("streaming blocks from {:?} to {:?}", ancestor, head_id);
-
-        let stream = storage
-            .stream_from_to(ancestor, head_id)
-            .map_err(intercom::Error::failed)?
-            .fuse();
-
-        futures::pin_mut!(stream);
-
-        while let Some(block) = stream.next().await {
-            let block = block?;
-
+        for block in blocks
+            .iter()
+            .filter(|b| !known_unstable_blocks_by_client.contains(&b.header().id()))
+        {
             sink.send(Ok(chain_network::data::Block::from_bytes(
                 block.serialize_as_vec().unwrap(),
             )))
