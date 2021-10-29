@@ -225,10 +225,26 @@ pub fn test_vote_flow_bft() {
             .unwrap()
     );
     assert_eq!(
+        vec![(vote_plan.to_id().into(), vec![0])],
+        jormungandr
+            .rest()
+            .account_votes(alice.address())
+            .unwrap()
+            .unwrap()
+    );
+    assert_eq!(
         vec![0],
         jormungandr
             .rest()
             .account_votes_with_plan_id(vote_plan.to_id().into(), bob.address())
+            .unwrap()
+            .unwrap()
+    );
+    assert_eq!(
+        vec![(vote_plan.to_id().into(), vec![0])],
+        jormungandr
+            .rest()
+            .account_votes(bob.address())
             .unwrap()
             .unwrap()
     );
@@ -360,6 +376,14 @@ pub fn test_vote_flow_praos() {
             .unwrap()
     );
     assert_eq!(
+        vec![(vote_plan.to_id().into(), vec![0])],
+        jormungandr
+            .rest()
+            .account_votes(alice.address())
+            .unwrap()
+            .unwrap()
+    );
+    assert_eq!(
         vec![0],
         jormungandr
             .rest()
@@ -368,10 +392,26 @@ pub fn test_vote_flow_praos() {
             .unwrap()
     );
     assert_eq!(
+        vec![(vote_plan.to_id().into(), vec![0])],
+        jormungandr
+            .rest()
+            .account_votes(bob.address())
+            .unwrap()
+            .unwrap()
+    );
+    assert_eq!(
         vec![0],
         jormungandr
             .rest()
             .account_votes_with_plan_id(vote_plan.to_id().into(), clarice.address())
+            .unwrap()
+            .unwrap()
+    );
+    assert_eq!(
+        vec![(vote_plan.to_id().into(), vec![0])],
+        jormungandr
+            .rest()
+            .account_votes(clarice.address())
             .unwrap()
             .unwrap()
     );
