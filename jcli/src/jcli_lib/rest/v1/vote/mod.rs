@@ -1,5 +1,6 @@
 use crate::jcli_lib::rest::{Error, RestArgs};
 use crate::jcli_lib::utils::OutputFormat;
+use crate::utils::AccountId;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -11,9 +12,10 @@ pub struct AccountVotes {
     #[structopt(flatten)]
     output_format: OutputFormat,
 
-    /// Account address to filter votes
-    #[structopt(short, long)]
-    account: String,
+    /// Account id to filter votes.
+    /// An Account ID either in the form of an address of kind account, or an account public key.
+    #[structopt(parse(try_from_str = AccountId::try_from_str))]
+    account_id: AccountId,
 
     /// Id of the voteplan for which we want to list proposals
     /// the account voted for
@@ -47,7 +49,7 @@ impl AccountVotes {
                 "plan",
                 &self.vote_plan_id,
                 "account-votes",
-                &self.account,
+                &self.account_id.to_url_arg(),
             ])
             .execute()?
             .json()?;

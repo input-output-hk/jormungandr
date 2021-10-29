@@ -3,12 +3,18 @@ use crate::{
     intercom::{self, TransactionMsg},
     rest::Context,
 };
-use chain_crypto::{digest::Error as DigestError, hash::Error as HashError, PublicKeyFromStrError};
-use chain_impl_mockchain::{fragment::FragmentId, value::ValueError};
+use chain_crypto::{
+    digest::Error as DigestError, hash::Error as HashError, PublicKey, PublicKeyFromStrError,
+};
+use chain_impl_mockchain::{
+    account::{AccountAlg, Identifier},
+    fragment::FragmentId,
+    value::ValueError,
+};
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 use jormungandr_lib::interfaces::{
-    Address, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch,
-    FragmentsProcessingSummary, VotePlanId,
+    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch, FragmentsProcessingSummary,
+    VotePlanId,
 };
 use std::{collections::HashMap, convert::TryInto, str::FromStr};
 use tracing::{span, Level};
@@ -39,8 +45,12 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
     #[error("Could not process all fragments")]
     Fragments(FragmentsProcessingSummary),
-    #[error("Unexpected address type")]
-    UnexpectedAddressType,
+}
+
+fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
+    PublicKey::<AccountAlg>::from_str(id_hex)
+        .map(Into::into)
+        .map_err(Into::into)
 }
 
 pub async fn get_fragment_statuses<'a>(
@@ -118,20 +128,14 @@ pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Er
 pub async fn get_account_votes(
     context: &Context,
     vote_plan_id: VotePlanId,
-    address: Address,
+    account_id_hex: String,
 ) -> Result<Option<Vec<u8>>, Error> {
     let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes", request = "get_account_votes");
 
-    let address: chain_addr::Address = address.into();
-    let identifier = match address.kind() {
-        chain_addr::Kind::Account(pubkey) => {
-            let account_id = chain_impl_mockchain::account::Identifier::from(pubkey.clone());
-            chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
-                account_id,
-            )
-        }
-        _ => return Err(Error::UnexpectedAddressType),
-    };
+    let identifier =
+        chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
+            parse_account_id(&account_id_hex)?,
+        );
 
     let vote_plan_id: chain_crypto::digest::DigestOf<_, _> = vote_plan_id.into_digest().into();
 
