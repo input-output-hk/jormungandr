@@ -19,7 +19,7 @@ impl VoteCommand {
             .arg("account-votes")
             .arg("--host")
             .arg(host.into())
-            .arg("--account")
+            .arg("--account-id")
             .arg(account.into())
             .arg("--vote-plan-id")
             .arg(voteplan.into());

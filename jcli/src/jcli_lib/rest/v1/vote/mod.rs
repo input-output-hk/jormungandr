@@ -14,7 +14,7 @@ pub struct AccountVotes {
 
     /// Account id to filter votes.
     /// An Account ID either in the form of an address of kind account, or an account public key.
-    #[structopt(parse(try_from_str = AccountId::try_from_str))]
+    #[structopt(short, long, parse(try_from_str = AccountId::try_from_str))]
     account_id: AccountId,
 
     /// Id of the voteplan for which we want to list proposals

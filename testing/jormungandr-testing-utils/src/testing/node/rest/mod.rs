@@ -3,7 +3,6 @@ mod raw;
 mod settings;
 
 use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
-use chain_addr::Discrimination;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::header::HeaderId;
@@ -126,19 +125,8 @@ impl JormungandrRest {
         &self,
         vote_plan_id: VotePlanId,
         wallet: &Wallet,
-        discrimination: Discrimination,
     ) -> Result<Option<Vec<u8>>, RestError> {
-        let address_bech32 = wallet.address_bech32(discrimination);
-        serde_json::from_str(&self.inner.account_votes(vote_plan_id, address_bech32)?)
-            .map_err(RestError::CannotDeserialize)
-    }
-
-    pub fn account_votes_by_bech32(
-        &self,
-        vote_plan_id: VotePlanId,
-        address_bech32: String,
-    ) -> Result<Option<Vec<u8>>, RestError> {
-        serde_json::from_str(&self.inner.account_votes(vote_plan_id, address_bech32)?)
+        serde_json::from_str(&self.inner.account_votes(vote_plan_id, wallet.address())?)
             .map_err(RestError::CannotDeserialize)
     }
 

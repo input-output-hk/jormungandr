@@ -133,7 +133,7 @@ impl RawRest {
     }
 
     pub fn account_state_by_pk(&self, bech32_str: &str) -> Result<Response, reqwest::Error> {
-        let key = hex::encode(Self::try_from_str(bech32_str).as_ref().as_ref());
+        let key = hex::encode(Self::try_from_str(bech32_str).as_ref());
         self.get(&format!("account/{}", key))
     }
 
@@ -151,12 +151,12 @@ impl RawRest {
     pub fn account_votes(
         &self,
         vote_plan_id: VotePlanId,
-        address_bech32: &str,
+        address: Address,
     ) -> Result<Response, reqwest::Error> {
-        let request = format!(
-            "votes/plan/{}/account-votes/{}",
-            vote_plan_id, address_bech32
-        );
+        let pk = address.1.public_key().unwrap();
+        let key = hex::encode(account::Identifier::from(pk.clone()).as_ref());
+
+        let request = format!("votes/plan/{}/account-votes/{}", vote_plan_id, key);
         self.client.get(&self.path(ApiVersion::V1, &request)).send()
     }
 
@@ -300,10 +300,13 @@ impl RawRest {
         vote_plan_id: VotePlanId,
         address: Address,
     ) -> Result<Response, reqwest::Error> {
+        let pk = address.1.public_key().unwrap();
+        let key = hex::encode(account::Identifier::from(pk.clone()).as_ref());
+
         let path = format!(
             "votes/plan/{}/account-votes/{}",
             vote_plan_id.to_string(),
-            address.to_string()
+            key,
         );
         let request = self.path(ApiVersion::V1, &path);
         self.print_request_path(&request);

@@ -242,7 +242,7 @@ paths:
                       },
                     ]
 
-  /api/v1/votes/plan/{votePlanId}/account-votes/{address}:
+  /api/v1/votes/plan/{votePlanId}/account-votes/{account_id}:
     get:
       description: Get numbers of proposals within a vote plan a given user have voted for.
       operationId: AccountVotes
@@ -257,9 +257,9 @@ paths:
             type: string
             pattern: '[0-9a-f]+'
         - in: path
-          name: address
+          name: account_id
           required: true
-          description: The address of the account to get the information from.
+          description: Hex-encoded account ID the account to get the information from.
           schema:
             type: string
             pattern: '[0-9a-f]+'
