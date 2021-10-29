@@ -125,12 +125,12 @@ pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Er
     .await
 }
 
-pub async fn get_account_votes(
+pub async fn get_account_votes_with_plan(
     context: &Context,
     vote_plan_id: VotePlanId,
     account_id_hex: String,
 ) -> Result<Option<Vec<u8>>, Error> {
-    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes", request = "get_account_votes");
+    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes_with_plan", request = "get_account_votes_with_plan");
 
     let identifier =
         chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
@@ -159,6 +159,47 @@ pub async fn get_account_votes(
             .filter(|(_, x)| x.votes.contains_key(&identifier))
             .map(|(i, _)| i.try_into().unwrap())
             .collect();
+        Ok(Some(result))
+    }
+    .instrument(span)
+    .await
+}
+
+pub async fn get_account_votes(
+    context: &Context,
+    account_id_hex: String,
+) -> Result<Option<Vec<(VotePlanId, Vec<u8>)>>, Error> {
+    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes_with_plan", request = "get_account_votes_with_plan");
+
+    let identifier =
+        chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
+            parse_account_id(&account_id_hex)?,
+        );
+
+    async move {
+        let mut result = Vec::new();
+
+        for vote_plan in context
+            .blockchain_tip()?
+            .get_ref()
+            .await
+            .ledger()
+            .active_vote_plans()
+            .into_iter()
+        {
+            let votes = vote_plan
+                .proposals
+                .into_iter()
+                .enumerate()
+                .filter(|(_, x)| x.votes.contains_key(&identifier))
+                .map(|(i, _)| i.try_into().unwrap())
+                .collect();
+
+            let vote_plan_id: VotePlanId = vote_plan.id.into();
+
+            result.push((vote_plan_id, votes));
+        }
+
         Ok(Some(result))
     }
     .instrument(span)
