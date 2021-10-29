@@ -316,7 +316,9 @@ impl Pool {
     }
 
     fn update_metrics(&self) {
-        self.metrics.set_tx_pending_cnt(self.pool.len())
+        self.metrics.set_tx_pending_cnt(self.pool.len());
+        self.metrics
+            .set_tx_pending_total_size(self.pool.total_size_bytes());
     }
 }
 
@@ -663,6 +665,10 @@ pub(super) mod internal {
 
         pub fn len(&self) -> usize {
             self.entries.len()
+        }
+
+        pub fn total_size_bytes(&self) -> usize {
+            self.total_size_bytes
         }
     }
 
