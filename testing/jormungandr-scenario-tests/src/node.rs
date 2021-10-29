@@ -5,19 +5,11 @@ use crate::{
     scenario::ProgressBarMode,
     style, Context,
 };
-use chain_impl_mockchain::{
-    block::Block,
-    fragment::{Fragment, FragmentId},
-    header::HeaderId,
-    testing::TestGen,
-};
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{
-        FragmentLog, LeadershipLog, NodeState, NodeStatsDto, PeerRecord, PeerStats, VotePlanStatus,
-    },
-    multiaddr,
-};
+use chain_impl_mockchain::{fragment::FragmentId, testing::TestGen};
+use jormungandr_lib::interfaces::Block0Configuration;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::NodeState, multiaddr};
+use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
+use jormungandr_testing_utils::testing::jormungandr::StartupError;
 pub use jormungandr_testing_utils::testing::{
     network::{
         FaketimeConfig, LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode,
@@ -35,10 +27,9 @@ use indicatif::ProgressBar;
 use rand_core::RngCore;
 use std::net::SocketAddr;
 
-use std::collections::HashMap;
 use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, ExitStatus, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -81,8 +72,8 @@ pub enum Error {
     InvalidBlock(#[source] chain_core::mempack::ReadError),
     #[error("fragment logs in an invalid format")]
     InvalidFragmentLogs(#[source] serde_json::Error),
-    #[error("node stats in an invalid format")]
-    InvalidNodeStats(#[source] RestError),
+    #[error("rest error")]
+    Rest(#[source] RestError),
     #[error("network stats in an invalid format")]
     InvalidNetworkStats(#[source] serde_json::Error),
     #[error("leaders ids in an invalid format")]
@@ -116,6 +107,8 @@ pub enum Error {
         #[debug(skip)]
         logs: Vec<String>,
     },
+    #[error(transparent)]
+    Startup(#[from] StartupError),
 }
 
 impl Error {
@@ -150,31 +143,12 @@ pub struct ProgressBarController {
     logging_mode: ProgressBarMode,
 }
 
-/// send query to a running node
-pub struct NodeController {
-    alias: NodeAlias,
-    rest_client: JormungandrRest,
-    grpc_client: JormungandrClient,
-    settings: NodeSetting,
-    progress_bar: ProgressBarController,
-    status: Arc<Mutex<Status>>,
-    process_id: u32,
-    logger: JormungandrLogger,
-}
-
 /// Node is going to be used by the `Controller` to monitor the node process
-///
-/// To send queries to the Node, use the `NodeController`
 pub struct Node {
-    alias: NodeAlias,
-
-    #[allow(unused)]
     dir: PathBuf,
-
-    process: Child,
+    process: JormungandrProcess,
 
     progress_bar: ProgressBarController,
-    node_settings: NodeSetting,
     status: Arc<Mutex<Status>>,
 }
 
@@ -183,9 +157,9 @@ const NODE_SECRET: &str = "node_secret.yaml";
 const NODE_TOPOLOGY_KEY: &str = "node_topology_key";
 const NODE_STORAGE: &str = "storage.db";
 
-impl NodeController {
-    pub fn alias(&self) -> &NodeAlias {
-        &self.alias
+impl Node {
+    pub fn alias(&self) -> NodeAlias {
+        self.process.alias()
     }
 
     pub fn status(&self) -> Status {
@@ -196,54 +170,16 @@ impl NodeController {
         self.status() == Status::Running
     }
 
-    fn path(&self, path: &str) -> String {
-        format!("{}/{}", self.base_url(), path)
-    }
-
     pub fn address(&self) -> SocketAddr {
-        multiaddr::to_tcp_socket_addr(&self.settings.config.p2p.public_address).unwrap()
+        multiaddr::to_tcp_socket_addr(&self.process.p2p_public_address()).unwrap()
     }
 
     pub fn explorer(&self) -> Explorer {
-        Explorer::new(self.settings.config.rest.listen.to_string())
+        self.process.explorer()
     }
 
     pub fn as_named_process(&self) -> NamedProcess {
-        NamedProcess::new(self.alias().to_string(), self.process_id as usize)
-    }
-
-    fn get(&self, path: &str) -> Result<reqwest::blocking::Response> {
-        self.progress_bar.log_info(format!("GET '{}'", path));
-
-        match reqwest::blocking::get(&format!("{}/{}", self.base_url(), path)) {
-            Err(err) => {
-                self.progress_bar
-                    .log_err(format!("Failed to send request {}", &err));
-                Err(err.into())
-            }
-            Ok(r) => Ok(r),
-        }
-    }
-
-    fn base_url(&self) -> String {
-        format!("http://{}/api/v0", self.settings.config.rest.listen.clone())
-    }
-
-    pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck> {
-        use chain_core::property::Fragment as _;
-
-        let fragment_id = fragment.id();
-        let result = self.rest_client.send_fragment(fragment);
-
-        self.progress_bar
-            .log_info(format!("Fragment '{}' sent", fragment_id));
-
-        if let Err(err) = result {
-            self.progress_bar
-                .log_err(format!("Fragment ({}) fail to send: {}", fragment_id, err,));
-        }
-
-        Ok(MemPoolCheck::new(fragment_id))
+        NamedProcess::new(self.alias(), self.process.process_id() as usize)
     }
 
     pub fn log(&self, info: &str) {
@@ -251,128 +187,33 @@ impl NodeController {
     }
 
     pub fn tip(&self) -> Result<Hash> {
-        let hash = self.rest_client.tip()?;
+        let hash = self.rest().tip()?;
         self.progress_bar.log_info(format!("tip '{}'", hash));
         Ok(hash)
     }
 
     pub fn rest(&self) -> JormungandrRest {
-        self.rest_client.clone()
+        self.process.rest()
     }
 
-    pub fn blocks_to_tip(&self, from: HeaderId) -> Result<Vec<Block>> {
-        self.grpc_client
-            .pull_blocks_to_tip(from)
-            .map_err(Error::InvalidGrpcCall)
+    pub fn grpc(&self) -> JormungandrClient {
+        self.process.grpc()
     }
-
-    pub fn network_stats(&self) -> Result<Vec<PeerStats>> {
-        let network_stats = self.rest_client.network_stats()?;
-        self.progress_bar
-            .log_info(format!("network_stats: '{:?}'", network_stats));
-        Ok(network_stats)
-    }
-
-    pub fn p2p_quarantined(&self) -> Result<Vec<PeerRecord>> {
-        let p2p_quarantined = self.rest_client.p2p_quarantined()?;
-        self.progress_bar
-            .log_info(format!("network/p2p_quarantined: {:?}", p2p_quarantined));
-        Ok(p2p_quarantined)
-    }
-
-    pub fn p2p_non_public(&self) -> Result<Vec<PeerRecord>> {
-        let non_public = self.rest_client.p2p_non_public()?;
-        self.progress_bar
-            .log_info(format!("network/p2p/non_public: {:?}", non_public));
-        Ok(non_public)
-    }
-
-    pub fn p2p_available(&self) -> Result<Vec<PeerRecord>> {
-        let p2p_available = self.rest_client.p2p_available()?;
-        self.progress_bar
-            .log_info(format!("network/p2p/available: {:?}", p2p_available));
-        Ok(p2p_available)
-    }
-
-    pub fn p2p_view(&self) -> Result<Vec<String>> {
-        let p2p_view = self.rest_client.p2p_view()?;
-        self.progress_bar
-            .log_info(format!("network/p2p/view: {:?}", p2p_view));
-        Ok(p2p_view)
-    }
-
-    pub fn all_blocks_hashes(&self) -> Result<Vec<HeaderId>> {
-        let genesis_hash = self
-            .genesis_block_hash()
-            .expect("Cannot download genesis hash");
-        self.blocks_hashes_to_tip(genesis_hash)
-    }
-
-    pub fn blocks_hashes_to_tip(&self, from: HeaderId) -> Result<Vec<HeaderId>> {
-        Ok(self
-            .blocks_to_tip(from)
-            .unwrap()
-            .iter()
-            .map(|x| x.header().hash())
-            .collect())
-    }
-
-    pub fn genesis_block_hash(&self) -> Result<HeaderId> {
-        Ok(self.grpc_client.get_genesis_block_hash())
-    }
-
-    pub fn block(&self, header_hash: &HeaderId) -> Result<Block> {
-        use chain_core::mempack::{ReadBuf, Readable as _};
-
-        let mut resp = self.get(&format!("block/{}", header_hash))?;
-        let mut bytes = Vec::new();
-        resp.copy_to(&mut bytes)?;
-        let block = Block::read(&mut ReadBuf::from(&bytes)).map_err(Error::InvalidBlock)?;
-
-        self.progress_bar.log_info(format!(
-            "block{} ({}) '{}'",
-            block.header().chain_length(),
-            block.header().block_date(),
-            header_hash,
-        ));
-
-        Ok(block)
-    }
-
-    pub fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>> {
-        let logs = self.rest_client.fragment_logs()?;
-        self.progress_bar
-            .log_info(format!("fragment logs ({})", logs.len()));
-        Ok(logs)
-    }
-
-    pub fn stats(&self) -> Result<NodeStatsDto> {
-        self.rest_client.stats().map_err(Error::InvalidNodeStats)
-    }
-
-    pub fn vote_plans(&self) -> Result<Vec<VotePlanStatus>> {
-        Ok(self.rest_client.vote_plan_statuses()?)
-    }
-
     pub fn log_stats(&self) {
         self.progress_bar
-            .log_info(format!("node stats ({:?})", self.stats()));
-    }
-
-    pub fn leadership_log(&self) -> Result<Vec<LeadershipLog>> {
-        Ok(self.rest_client.leaders_log()?)
+            .log_info(format!("node stats ({:?})", self.rest().stats()));
     }
 
     pub fn log_leadership_log(&self) {
         self.progress_bar
-            .log_info(format!("{:?}", self.leadership_log().unwrap()));
+            .log_info(format!("{:?}", self.rest().leaders_log().unwrap()));
     }
 
     pub fn wait_for_bootstrap(&self) -> Result<()> {
         let max_try = 20;
         let sleep = Duration::from_secs(8);
         for _ in 0..max_try {
-            let stats = self.stats();
+            let stats = self.rest().stats();
             match stats {
                 Ok(stats) => {
                     if stats.state == NodeState::Running {
@@ -387,7 +228,7 @@ impl NodeController {
             std::thread::sleep(sleep);
         }
         Err(Error::NodeFailedToBootstrap {
-            alias: self.alias().to_string(),
+            alias: self.alias(),
             duration: Duration::from_secs(sleep.as_secs() * max_try),
             logs: self.logger().get_lines_as_string(),
         })
@@ -397,13 +238,13 @@ impl NodeController {
         let max_try = 2;
         let sleep = Duration::from_secs(2);
         for _ in 0..max_try {
-            if self.stats().is_err() && self.ports_are_opened() {
+            if self.rest().stats().is_err() && self.ports_are_opened() {
                 return Ok(());
             };
             std::thread::sleep(sleep);
         }
         Err(Error::NodeFailedToShutdown {
-            alias: self.alias().to_string(),
+            alias: self.alias(),
             message: format!(
                 "node is still up after {} s from sending shutdown request",
                 sleep.as_secs()
@@ -413,8 +254,8 @@ impl NodeController {
     }
 
     fn ports_are_opened(&self) -> bool {
-        self.port_opened(self.settings.config.rest.listen.port())
-            && self.port_opened(self.settings.config.p2p.get_listen_addr().unwrap().port())
+        self.port_opened(self.process.rest_address().port())
+            && self.port_opened(self.process.p2p_listen_addr().port())
     }
 
     fn port_opened(&self, port: u16) -> bool {
@@ -423,7 +264,7 @@ impl NodeController {
     }
 
     pub fn is_up(&self) -> bool {
-        let stats = self.stats();
+        let stats = self.rest().stats();
         match stats {
             Ok(stats) => stats.state == NodeState::Running,
             Err(_) => false,
@@ -431,63 +272,26 @@ impl NodeController {
     }
 
     pub fn shutdown(&self) -> Result<()> {
-        let result = self.get("shutdown")?.text()?;
+        let message = self.rest().shutdown()?;
 
-        if result.is_empty() {
+        if message.is_empty() {
             self.progress_bar.log_info("shuting down");
             self.wait_for_shutdown()
         } else {
             Err(Error::NodeFailedToShutdown {
-                alias: self.alias().to_string(),
-                message: result,
+                alias: self.alias(),
+                message,
                 logs: self.logger().get_lines_as_string(),
             })
         }
     }
 
-    pub fn progress_bar(&self) -> &ProgressBarController {
-        &self.progress_bar
-    }
-
     pub fn logger(&self) -> &JormungandrLogger {
-        &self.logger
+        &self.process.logger
     }
 
     pub fn log_content(&self) -> String {
         self.logger().get_log_content()
-    }
-}
-
-impl Node {
-    pub fn alias(&self) -> &NodeAlias {
-        &self.alias
-    }
-
-    pub fn controller(mut self) -> NodeController {
-        let p2p_address = format!(
-            "{}",
-            self.node_settings.config.p2p.get_listen_addr().unwrap()
-        );
-        let rest_uri = uri_from_socket_addr(self.node_settings.config.rest.listen);
-
-        NodeController {
-            alias: self.alias().clone(),
-            logger: JormungandrLogger::new(self.process.stdout.take().unwrap()),
-            grpc_client: JormungandrClient::from_address(&p2p_address)
-                .expect("cannot setup grpc client"),
-            rest_client: JormungandrRest::new(rest_uri),
-            settings: self.node_settings,
-            status: self.status,
-            progress_bar: self.progress_bar,
-            process_id: self.process.id(),
-        }
-    }
-
-    pub fn spawn<'a, R: RngCore>(
-        context: &'a Context<R>,
-        node_settings: &'a mut NodeSetting,
-    ) -> SpawnBuilder<'a, R, Node> {
-        SpawnBuilder::new(context, node_settings)
     }
 
     pub fn progress_bar(&self) -> &ProgressBarController {
@@ -495,30 +299,11 @@ impl Node {
     }
 
     pub fn capture_logs(&mut self) {
-        let stderr = self.process.stderr.take().unwrap();
+        let stderr = self.process.child.stderr.take().unwrap();
         let reader = BufReader::new(stderr);
         for line_result in reader.lines() {
             let line = line_result.expect("failed to read a line from log output");
             self.progress_bar.log_info(&line);
-        }
-    }
-
-    pub fn wait(&mut self) {
-        match self.process.wait() {
-            Err(err) => {
-                self.progress_bar.log_err(&err);
-                self.progress_bar_failure();
-                self.set_status(Status::Failure);
-            }
-            Ok(status) => {
-                if status.success() {
-                    self.progress_bar_success();
-                } else {
-                    self.progress_bar.log_err(&status);
-                    self.progress_bar_failure()
-                }
-                self.set_status(Status::Exit(status));
-            }
         }
     }
 
@@ -533,7 +318,7 @@ impl Node {
             "{} {} ... [{}]",
             *style::icons::jormungandr,
             style::binary.apply_to(self.alias()),
-            self.node_settings.config.rest.listen,
+            self.process.rest_address(),
         ));
     }
 
@@ -623,7 +408,8 @@ pub struct SpawnBuilder<'a, R: RngCore, N> {
     progress_bar: ProgressBar,
     alias: String,
     node_settings: &'a mut NodeSetting,
-    block0: NodeBlock0,
+    block0: Option<Block0Configuration>,
+    block0_setting: NodeBlock0,
     working_dir: PathBuf,
     peristence_mode: PersistenceMode,
     faketime: Option<FaketimeConfig>,
@@ -638,7 +424,8 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
             progress_bar: ProgressBar::hidden(),
             alias: "".to_owned(),
             node_settings,
-            block0: NodeBlock0::Hash(TestGen::hash()),
+            block0_setting: NodeBlock0::Hash(TestGen::hash()),
+            block0: None,
             working_dir: PathBuf::new(),
             peristence_mode: PersistenceMode::Persistent,
             phantom_data: PhantomData,
@@ -665,8 +452,13 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
         self
     }
 
-    pub fn block0(&mut self, block0: NodeBlock0) -> &mut Self {
-        self.block0 = block0;
+    pub fn block0_setting(&mut self, block0: NodeBlock0) -> &mut Self {
+        self.block0_setting = block0;
+        self
+    }
+
+    pub fn block0(&mut self, block0: Block0Configuration) -> &mut Self {
+        self.block0 = Some(block0);
         self
     }
 
@@ -739,7 +531,7 @@ impl<'a, R: RngCore, N> SpawnBuilder<'a, R, N> {
         command.arg("--config");
         command.arg(config_file.as_ref());
 
-        match &self.block0 {
+        match &self.block0_setting {
             NodeBlock0::File(path) => {
                 command.arg("--genesis-block");
                 command.arg(&path);
@@ -782,12 +574,18 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, Node> {
             self.context.progress_bar_mode(),
         );
 
+        let process = JormungandrProcess::new(
+            process,
+            &self.node_settings.config,
+            self.block0.unwrap(),
+            None,
+            self.alias.clone(),
+        )?;
+
         let node = Node {
-            alias: self.alias.clone(),
             dir,
             process,
             progress_bar,
-            node_settings: self.node_settings.clone(),
             status: Arc::new(Mutex::new(Status::Running)),
         };
 
@@ -821,8 +619,15 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, LegacyNode> {
 
         let legacy_settngs = LegacySettings::from_settings(self.node_settings.clone(), version);
 
+        let process = JormungandrProcess::new(
+            process,
+            legacy_settngs.config(),
+            self.block0.unwrap(),
+            None,
+            self.alias.clone(),
+        )?;
+
         let node = LegacyNode {
-            alias: self.alias.clone(),
             dir,
             process,
             progress_bar,
