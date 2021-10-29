@@ -1,11 +1,17 @@
 use assert_fs::fixture::{PathChild, PathCreateDir};
 use assert_fs::TempDir;
+use chain_impl_mockchain::chaintypes::ConsensusType;
 use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::value::Value;
 use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion};
-use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::PersistentLog;
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, Mempool};
+use jormungandr_lib::interfaces::{InitialUTxO, SlotDuration};
 use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
+use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
+use jormungandr_testing_utils::testing::network::{
+    Blockchain, Node, SpawnParams, Topology, WalletTemplate,
+};
 use jormungandr_testing_utils::testing::{fragments::FragmentExporter, network::LeadershipMode};
 use jormungandr_testing_utils::testing::{
     jormungandr::{ConfigurationBuilder, Starter},
@@ -15,7 +21,9 @@ use jormungandr_testing_utils::testing::{
     node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentVerifier,
     MemPoolCheck,
 };
-use jormungandr_testing_utils::testing::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
+use jormungandr_testing_utils::testing::{
+    AdversaryFragmentSender, AdversaryFragmentSenderSetup, FragmentBuilder, FragmentNode,
+};
 use std::fs::metadata;
 use std::path::Path;
 use std::thread::sleep;
@@ -489,4 +497,78 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
     // By the time the rest of the transactions have been placed in blocks, the epoch should be over
     // and the transaction below should have expired.
     FragmentVerifier::wait_and_verify_is_rejected(Duration::from_secs(5), check, &passive).unwrap();
+}
+
+#[test]
+fn mempool_stats() {
+    const ALICE: &str = "Alice";
+    const BOB: &str = "Bob";
+    const LEADER: &str = "leader";
+    const PASSIVE: &str = "passive";
+    const SLOT_DURATION_SECS: u8 = 100;
+
+    let mut blockchain = Blockchain::default();
+    blockchain.add_wallet(WalletTemplate::new_account(
+        ALICE,
+        Value(100_000),
+        chain_addr::Discrimination::Test,
+    ));
+    blockchain.add_wallet(WalletTemplate::new_account(
+        BOB,
+        Value(100_000),
+        chain_addr::Discrimination::Test,
+    ));
+    blockchain.set_consensus(ConsensusType::GenesisPraos);
+    blockchain.set_slot_duration(SlotDuration::new(SLOT_DURATION_SECS).unwrap());
+
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
+        )
+        .blockchain_config(blockchain)
+        .build()
+        .unwrap();
+
+    let alice = controller.wallet(ALICE).unwrap();
+    let bob = controller.wallet(BOB).unwrap();
+
+    let leader = controller.spawn(SpawnParams::new(LEADER).leader()).unwrap();
+
+    let stats = leader.rest().stats().unwrap().stats.unwrap();
+
+    assert_eq!(stats.tx_pending, 0);
+    assert_eq!(stats.tx_pending_total_size, 0);
+
+    let fragment_builder = FragmentBuilder::new(
+        &leader.genesis_block_hash(),
+        &LinearFee::new(0, 0, 0),
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+    );
+
+    let mut pending_size = 0;
+    let mut pending_cnt = 0;
+
+    for i in 0..10 {
+        let transaction = fragment_builder
+            .transaction(&alice, bob.address(), i.into())
+            .unwrap();
+
+        pending_size += transaction.serialized_size();
+        pending_cnt += 1;
+
+        let status =
+            FragmentVerifier::fragment_status(leader.send_fragment(transaction).unwrap(), &leader)
+                .unwrap();
+
+        let stats = leader.rest().stats().unwrap().stats.unwrap();
+
+        assert!(status.is_pending());
+        assert_eq!(pending_cnt, stats.tx_pending);
+        assert_eq!(pending_size, stats.tx_pending_total_size as usize);
+    }
 }
