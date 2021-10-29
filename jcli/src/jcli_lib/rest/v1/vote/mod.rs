@@ -20,7 +20,7 @@ pub struct AccountVotes {
     /// Id of the voteplan for which we want to list proposals
     /// the account voted for
     #[structopt(short, long)]
-    vote_plan_id: String,
+    vote_plan_id: Option<String>,
 }
 
 #[derive(StructOpt)]
@@ -40,19 +40,33 @@ impl Vote {
 
 impl AccountVotes {
     fn exec(self) -> Result<(), Error> {
-        let response = self
-            .args
-            .client()?
-            .get(&[
-                "v1",
-                "votes",
-                "plan",
-                &self.vote_plan_id,
-                "account-votes",
-                &self.account_id.to_url_arg(),
-            ])
-            .execute()?
-            .json()?;
+        let response = match self.vote_plan_id {
+            Some(vote_plan_id) => self
+                .args
+                .client()?
+                .get(&[
+                    "v1",
+                    "votes",
+                    "plan",
+                    &vote_plan_id,
+                    "account-votes",
+                    &self.account_id.to_url_arg(),
+                ])
+                .execute()?
+                .json()?,
+            None => self
+                .args
+                .client()?
+                .get(&[
+                    "v1",
+                    "votes",
+                    "plan",
+                    "account-votes",
+                    &self.account_id.to_url_arg(),
+                ])
+                .execute()?
+                .json()?,
+        };
         let formatted = self.output_format.format_json(response)?;
         println!("{}", formatted);
         Ok(())
