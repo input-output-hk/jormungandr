@@ -259,7 +259,7 @@ paths:
         - in: path
           name: account_id
           required: true
-          description: Hex-encoded account ID the account to get the information from.
+          description: Hex-encoded account ID to get the information from.
           schema:
             type: string
             pattern: '[0-9a-f]+'
