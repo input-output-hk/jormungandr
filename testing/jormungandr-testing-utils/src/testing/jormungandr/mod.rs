@@ -2,6 +2,7 @@ mod configuration_builder;
 pub mod process;
 pub mod starter;
 
+use crate::testing::network::NodeAlias;
 use crate::testing::{FragmentNode, FragmentNodeError, MemPoolCheck};
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::Fragment;
@@ -25,7 +26,7 @@ pub enum JormungandrError {
 }
 
 impl FragmentNode for JormungandrProcess {
-    fn alias(&self) -> &str {
+    fn alias(&self) -> NodeAlias {
         self.alias()
     }
     fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError> {
@@ -38,7 +39,7 @@ impl FragmentNode for JormungandrProcess {
         self.rest().send_fragment(fragment.clone()).map_err(|e| {
             FragmentNodeError::CannotSendFragment {
                 reason: e.to_string(),
-                alias: self.alias().to_string(),
+                alias: self.alias(),
                 fragment_id: fragment.id(),
                 logs: self.log_content(),
             }
@@ -54,7 +55,7 @@ impl FragmentNode for JormungandrProcess {
             .send_fragment_batch(fragments.clone(), fail_fast)
             .map_err(|e| FragmentNodeError::CannotSendFragmentBatch {
                 reason: e.to_string(),
-                alias: self.alias().to_string(),
+                alias: self.alias(),
                 fragment_ids: fragments.iter().map(|x| x.id()).collect(),
                 logs: FragmentNode::log_content(self),
             })

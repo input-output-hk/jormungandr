@@ -6,9 +6,18 @@ pub use load::RestRequestGen;
 pub use raw::RawRest;
 pub use settings::RestSettings;
 
+use crate::testing::BlockDateGenerator;
+use crate::testing::FragmentChainSender;
+use crate::testing::FragmentSender;
+use crate::testing::FragmentSenderSetup;
+use crate::testing::RemoteJormungandr;
+use crate::testing::SyncNode;
 use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
 use chain_addr::Discrimination;
+use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use chain_impl_mockchain::header::BlockDate;
+use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{
     Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
 };
@@ -21,6 +30,7 @@ use jormungandr_lib::{
 };
 use std::collections::HashMap;
 use std::io::Read;
+use std::str::FromStr;
 use std::{fs::File, net::SocketAddr, path::Path};
 use thiserror::Error;
 
@@ -40,6 +50,8 @@ pub enum RestError {
         status: reqwest::StatusCode,
         checks: Vec<MemPoolCheck>,
     },
+    #[error(transparent)]
+    ReadBytes(#[from] chain_core::mempack::ReadError),
 }
 
 pub fn uri_from_socket_addr(addr: SocketAddr) -> String {
@@ -218,6 +230,20 @@ impl JormungandrRest {
         self.inner.send_raw_fragments(bytes).map_err(Into::into)
     }
 
+    pub fn block_as_bytes(&self, header_hash: &HeaderId) -> Result<Vec<u8>, RestError> {
+        self.inner.block(header_hash).map_err(Into::into)
+    }
+
+    pub fn shutdown(&self) -> Result<String, RestError> {
+        self.inner.shutdown().map_err(Into::into)
+    }
+
+    pub fn block(&self, header_hash: &HeaderId) -> Result<Block, RestError> {
+        use chain_core::mempack::{ReadBuf, Readable as _};
+        let bytes = self.block_as_bytes(header_hash)?;
+        Block::read(&mut ReadBuf::from(&bytes)).map_err(Into::into)
+    }
+
     pub fn fragments_statuses(
         &self,
         ids: Vec<String>,
@@ -251,5 +277,51 @@ impl JormungandrRest {
     ) -> Result<Vec<u8>, RestError> {
         serde_json::from_str(&self.inner.vote_plan_account_info(vote_plan_id, address)?)
             .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn fragment_sender<'a, S: SyncNode + Send>(
+        &self,
+        setup: FragmentSenderSetup<'a, S>,
+    ) -> Result<FragmentSender<'a, S>, RestError> {
+        let settings = self.settings()?;
+
+        Ok(FragmentSender::new(
+            Hash::from_str(&settings.block0_hash)?,
+            settings.fees,
+            self.default_block_date_generator(&settings),
+            setup,
+        ))
+    }
+
+    pub fn get_default_block_date_generator(&self) -> Result<BlockDateGenerator, RestError> {
+        let settings = self.settings()?;
+        Ok(self.default_block_date_generator(&settings))
+    }
+
+    pub fn default_block_date_generator(&self, settings: &SettingsDto) -> BlockDateGenerator {
+        BlockDateGenerator::rolling(
+            settings,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            false,
+        )
+    }
+
+    pub fn fragment_chain_sender<'a, S: SyncNode + Send>(
+        &self,
+        setup: FragmentSenderSetup<'a, S>,
+        remote: RemoteJormungandr,
+    ) -> Result<FragmentChainSender<'a, S>, RestError> {
+        let settings = self.settings()?;
+
+        Ok(FragmentChainSender::new(
+            Hash::from_str(&settings.block0_hash)?,
+            settings.fees,
+            self.default_block_date_generator(&settings),
+            setup,
+            remote,
+        ))
     }
 }

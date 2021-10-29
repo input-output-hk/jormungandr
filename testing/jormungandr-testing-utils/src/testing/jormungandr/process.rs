@@ -1,5 +1,7 @@
 use super::{starter::StartupError, JormungandrError};
 use crate::testing::jcli::{JCli, JCliCommand};
+use crate::testing::network::NodeAlias;
+use crate::testing::node::grpc::JormungandrClient;
 use crate::testing::{
     node::{
         uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
@@ -24,7 +26,6 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
 use std::process::Stdio;
-use std::str::FromStr;
 
 use std::time::{Duration, Instant};
 
@@ -42,35 +43,60 @@ pub enum Status {
 pub struct JormungandrProcess {
     pub child: Child,
     pub logger: JormungandrLogger,
+    grpc_client: JormungandrClient,
     temp_dir: Option<TempDir>,
     alias: String,
     p2p_public_address: Multiaddr,
+    p2p_listen_address: SocketAddr,
     rest_socket_addr: SocketAddr,
-    genesis_block_hash: Hash,
     block0_configuration: Block0Configuration,
-    fees: LinearFee,
 }
 
 impl JormungandrProcess {
     pub(crate) fn from_config<Conf: TestConfig>(
-        mut child: Child,
+        child: Child,
         params: &JormungandrParams<Conf>,
         temp_dir: Option<TempDir>,
         alias: String,
     ) -> Result<Self, StartupError> {
         let node_config = params.node_config();
+        Self::new(
+            child,
+            node_config,
+            params.block0_configuration().clone(),
+            temp_dir,
+            alias,
+        )
+    }
+
+    pub fn new<Conf: TestConfig>(
+        mut child: Child,
+        node_config: &Conf,
+        block0_configuration: Block0Configuration,
+        temp_dir: Option<TempDir>,
+        alias: String,
+    ) -> Result<Self, StartupError> {
         let stdout = child.stdout.take().unwrap();
+
         Ok(JormungandrProcess {
             child,
             temp_dir,
             alias,
+            grpc_client: JormungandrClient::new(node_config.p2p_listen_address()),
             logger: JormungandrLogger::new(stdout),
             p2p_public_address: node_config.p2p_public_address(),
+            p2p_listen_address: node_config.p2p_listen_address(),
             rest_socket_addr: node_config.rest_socket_addr(),
-            genesis_block_hash: Hash::from_str(params.genesis_block_hash())?,
-            block0_configuration: params.block0_configuration().clone(),
-            fees: params.fees(),
+            block0_configuration,
         })
+    }
+
+    pub fn process_id(&self) -> u32 {
+        self.child.id()
+    }
+
+    pub fn grpc(&self) -> JormungandrClient {
+        self.grpc_client.clone()
     }
 
     pub fn fragment_sender<'a, S: SyncNode + Send>(
@@ -215,8 +241,20 @@ impl JormungandrProcess {
         }
     }
 
-    pub fn alias(&self) -> &str {
-        &self.alias
+    pub fn p2p_listen_addr(&self) -> SocketAddr {
+        self.p2p_listen_address
+    }
+
+    pub fn p2p_public_address(&self) -> Multiaddr {
+        self.p2p_public_address.clone()
+    }
+
+    pub fn rest_address(&self) -> SocketAddr {
+        self.rest_socket_addr
+    }
+
+    pub fn alias(&self) -> NodeAlias {
+        self.alias.to_string()
     }
 
     pub fn rest(&self) -> JormungandrRest {
@@ -278,11 +316,13 @@ impl JormungandrProcess {
     }
 
     pub fn fees(&self) -> LinearFee {
-        self.fees
+        self.block0_configuration()
+            .blockchain_configuration
+            .linear_fees
     }
 
     pub fn genesis_block_hash(&self) -> Hash {
-        self.genesis_block_hash
+        self.block0_configuration.to_block().header().id().into()
     }
 
     pub fn block0_configuration(&self) -> &Block0Configuration {
@@ -352,7 +392,7 @@ impl Drop for JormungandrProcess {
 }
 
 impl SyncNode for JormungandrProcess {
-    fn alias(&self) -> &str {
+    fn alias(&self) -> NodeAlias {
         self.alias()
     }
 

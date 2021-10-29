@@ -39,13 +39,10 @@ pub fn ensure_node_is_in_sync_with_others(
 
     let other_nodes_records: Vec<SyncNodeRecord> = other_nodes
         .iter()
-        .map(|x| SyncNodeRecord::new(x.alias().to_string(), x.last_block_height()))
+        .map(|x| SyncNodeRecord::new(x.alias(), x.last_block_height()))
         .collect();
 
-    let target_node = SyncNodeRecord::new(
-        target_node.alias().to_string(),
-        target_node.last_block_height(),
-    );
+    let target_node = SyncNodeRecord::new(target_node.alias(), target_node.last_block_height());
 
     Err(SyncNodeError::TimeoutWhenSyncingTargetNode {
         target_node,

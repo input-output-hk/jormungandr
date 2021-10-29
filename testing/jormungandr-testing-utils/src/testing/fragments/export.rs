@@ -108,7 +108,7 @@ impl FragmentExporter {
         let now: DateTime<Utc> = Utc::now();
         let alias = {
             if via.alias().is_empty() {
-                "jormungandr"
+                "jormungandr".to_string()
             } else {
                 via.alias()
             }
@@ -131,7 +131,7 @@ impl FragmentExporter {
         let now: DateTime<Utc> = Utc::now();
         let alias = {
             if via.alias().is_empty() {
-                "jormungandr"
+                "jormungandr".to_string()
             } else {
                 via.alias()
             }

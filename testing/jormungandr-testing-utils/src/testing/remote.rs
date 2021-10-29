@@ -61,8 +61,8 @@ impl RemoteJormungandr {
 }
 
 impl SyncNode for RemoteJormungandr {
-    fn alias(&self) -> &str {
-        self.alias()
+    fn alias(&self) -> NodeAlias {
+        self.alias().to_string()
     }
 
     fn last_block_height(&self) -> u32 {
@@ -106,8 +106,8 @@ impl SyncNode for RemoteJormungandr {
 }
 
 impl FragmentNode for RemoteJormungandr {
-    fn alias(&self) -> &str {
-        self.alias()
+    fn alias(&self) -> NodeAlias {
+        self.alias().to_string()
     }
     fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError> {
         self.rest()

@@ -1,9 +1,9 @@
+use crate::testing::network::NodeAlias;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary},
 };
-
 use std::collections::HashMap;
 
 #[derive(custom_debug::Debug, thiserror::Error)]
@@ -50,7 +50,7 @@ impl FragmentNodeError {
 }
 
 pub trait FragmentNode {
-    fn alias(&self) -> &str;
+    fn alias(&self) -> NodeAlias;
     fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError>;
     fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, FragmentNodeError>;
     fn send_batch_fragments(

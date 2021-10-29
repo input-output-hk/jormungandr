@@ -153,7 +153,7 @@ impl FragmentVerifier {
     ) -> Result<(), FragmentVerifierError> {
         if !status.is_in_a_block() {
             return Err(FragmentVerifierError::FragmentNotInBlock {
-                alias: node.alias().to_string(),
+                alias: node.alias(),
                 status,
                 logs: node.log_content(),
             });
@@ -167,7 +167,7 @@ impl FragmentVerifier {
     ) -> Result<(), FragmentVerifierError> {
         if !status.is_rejected() {
             return Err(FragmentVerifierError::FragmentNotRejected {
-                alias: node.alias().to_string(),
+                alias: node.alias(),
                 status,
                 logs: node.log_content(),
             });
@@ -197,7 +197,7 @@ impl FragmentVerifier {
         }
 
         Err(FragmentVerifierError::FragmentNotInMemPoolLogs {
-            alias: node.alias().to_string(),
+            alias: node.alias(),
             fragment_id: *check.fragment_id(),
             logs: node.log_content(),
         })
@@ -232,7 +232,7 @@ impl FragmentVerifier {
         Err(FragmentVerifierError::FragmentIsPendingForTooLong {
             fragment_id: *check.fragment_id(),
             timeout: Duration::from_secs(duration.as_secs() * max_try),
-            alias: node.alias().to_string(),
+            alias: node.alias(),
             logs: node.log_content(),
         })
     }
@@ -267,7 +267,7 @@ impl FragmentVerifier {
 
         Err(FragmentVerifierError::FragmentsArePendingForTooLong {
             timeout: Duration::from_secs(duration.as_secs() * max_try),
-            alias: node.alias().to_string(),
+            alias: node.alias(),
             logs: node.log_content(),
         })
     }

@@ -5,6 +5,7 @@ use chain_core::property::Serialize;
 use chain_crypto::PublicKey;
 use chain_impl_mockchain::account;
 use chain_impl_mockchain::fragment::Fragment;
+use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{Address, FragmentsBatch, VotePlanId};
 use jortestkit::process::Wait;
 use reqwest::{
@@ -198,6 +199,14 @@ impl RawRest {
 
     pub fn settings(&self) -> Result<Response, reqwest::Error> {
         self.get("settings")
+    }
+
+    pub fn shutdown(&self) -> Result<Response, reqwest::Error> {
+        self.get("shutdown")
+    }
+
+    pub fn block(&self, header_hash: &HeaderId) -> Result<Response, reqwest::Error> {
+        self.get(&format!("block/{}", header_hash))
     }
 
     pub fn fragment_logs(&self) -> Result<Response, reqwest::Error> {
