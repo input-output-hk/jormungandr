@@ -247,7 +247,13 @@ async fn handle_sync_multiverse(
     let block0 = blockchain.block0();
 
     if checkpoints.is_empty() {
-        let block = storage.get(*block0).unwrap().unwrap();
+        let block = storage
+            .get(*block0)
+            .map_err(intercom::Error::failed)
+            .and_then(|maybe_block0| {
+                maybe_block0.ok_or_else(|| intercom::Error::failed("block0 not found in storage"))
+            })?;
+
         sink.send(Ok(chain_network::data::Block::from_bytes(
             block.serialize_as_vec().unwrap(),
         )))
