@@ -241,11 +241,23 @@ async fn handle_sync_multiverse(
 ) -> Result<(), intercom::Error> {
     let mut checkpoints = checkpoints
         .iter()
-        .map(|id| HeaderHash::deserialize(id.as_bytes()).map_err(intercom::Error::invalid_argument))
+        .map(|id| {
+            let deser = HeaderHash::deserialize(id.as_bytes())
+                .map_err(intercom::Error::invalid_argument)?;
+
+            let chain_length = storage
+                .get_chain_length(deser)
+                .ok_or_else(|| intercom::Error::invalid_argument("unknown checkpoint"))?;
+
+            Ok::<_, intercom::Error>((chain_length, deser))
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     let block0 = blockchain.block0();
 
+    // we are adding 1 to the lsb later, because it is present then we don't need to send it.
+    // but if the checkpoints are empty then it means the last stable block is the block0, and we
+    // send it here.
     if checkpoints.is_empty() {
         let block = storage
             .get(*block0)
@@ -261,12 +273,15 @@ async fn handle_sync_multiverse(
         .map_err(intercom::Error::failed)?;
     }
 
-    // assume the first checkpoint is the last_stable_block (for now, the docs don't require this)
-    let lsb = checkpoints.pop().unwrap_or(*block0);
+    checkpoints.sort_unstable();
+
+    // TODO: not sure if this is always true
+    const BLOCK0_CHAIN_LENGTH: u32 = 0;
+    let (lsb_chain_length, lsb) = checkpoints.pop().unwrap_or((BLOCK0_CHAIN_LENGTH, *block0));
 
     let mut known_unstable_blocks_by_client = HashSet::new();
 
-    for checkpoint in checkpoints {
+    for (_, checkpoint) in checkpoints {
         if !storage.is_ancestor(lsb, checkpoint) {
             return Err(intercom::Error::invalid_argument(
                 "invalid from/checkpoints",
@@ -285,7 +300,7 @@ async fn handle_sync_multiverse(
         }
     }
 
-    let mut current_length = storage.get_chain_length(lsb).unwrap() + 1;
+    let mut current_length = lsb_chain_length + 1;
 
     loop {
         let blocks = storage
