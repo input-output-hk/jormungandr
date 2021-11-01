@@ -13,8 +13,8 @@ use chain_impl_mockchain::{
 };
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 use jormungandr_lib::interfaces::{
-    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch, FragmentsProcessingSummary,
-    VotePlanId,
+    AccountVotes, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch,
+    FragmentsProcessingSummary, VotePlanId,
 };
 use std::{collections::HashMap, convert::TryInto, str::FromStr};
 use tracing::{span, Level};
@@ -168,7 +168,7 @@ pub async fn get_account_votes_with_plan(
 pub async fn get_account_votes(
     context: &Context,
     account_id_hex: String,
-) -> Result<Option<Vec<(VotePlanId, Vec<u8>)>>, Error> {
+) -> Result<Option<Vec<AccountVotes>>, Error> {
     let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes_with_plan", request = "get_account_votes_with_plan");
 
     let identifier =

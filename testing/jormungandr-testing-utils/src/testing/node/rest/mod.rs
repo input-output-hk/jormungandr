@@ -7,7 +7,7 @@ use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{
-    Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
+    AccountVotes, Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -121,10 +121,7 @@ impl JormungandrRest {
             .map_err(RestError::CannotDeserialize)
     }
 
-    pub fn account_votes(
-        &self,
-        address: Address,
-    ) -> Result<Option<Vec<(VotePlanId, Vec<u8>)>>, RestError> {
+    pub fn account_votes(&self, address: Address) -> Result<Option<Vec<AccountVotes>>, RestError> {
         serde_json::from_str(&self.inner.account_votes(address)?)
             .map_err(RestError::CannotDeserialize)
     }

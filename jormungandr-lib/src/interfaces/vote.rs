@@ -429,6 +429,8 @@ mod serde_proposals {
 
 pub type VotePlanId = Hash;
 
+pub type AccountVotes = (VotePlanId, Vec<u8>);
+
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct VotePlanStatus {
     pub id: VotePlanId,
