@@ -195,11 +195,9 @@ impl Watch for WatchClient {
 
         // there are two possible errors for the block_receiver.
         // one occurs when there are no more senders, but that won't happen here.
-        // the other is when the receiver is lagging.  I'm actually not sure
-        // what would be a sensible choice, so I just put some arbitrary error
-        // for now
+        // the other is when the receiver is lagging.
         let live_stream: SubscriptionTryStream<BroadcastStream<Block>> =
-            block_receiver.map_err(|e| chain_network::error::Error::new(Code::Internal, e));
+            block_receiver.map_err(|e| chain_network::error::Error::new(Code::Aborted, e));
 
         Ok(live_stream)
     }
