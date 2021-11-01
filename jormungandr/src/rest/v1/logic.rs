@@ -137,8 +137,6 @@ pub async fn get_account_votes_with_plan(
             parse_account_id(&account_id_hex)?,
         );
 
-    let vote_plan_id: chain_crypto::digest::DigestOf<_, _> = vote_plan_id.into_digest().into();
-
     async move {
         let maybe_vote_plan = context
             .blockchain_tip()?
@@ -147,7 +145,7 @@ pub async fn get_account_votes_with_plan(
             .ledger()
             .active_vote_plans()
             .into_iter()
-            .find(|x| x.id == vote_plan_id);
+            .find(|x| x.id == vote_plan_id.into_digest().into());
         let vote_plan = match maybe_vote_plan {
             Some(vote_plan) => vote_plan,
             None => return Ok(None),
@@ -176,29 +174,26 @@ pub async fn get_account_votes(
             parse_account_id(&account_id_hex)?,
         );
 
-    async move {
-        let mut result = Vec::new();
-
-        for vote_plan in context
+    async {
+        let result = context
             .blockchain_tip()?
             .get_ref()
             .await
             .ledger()
             .active_vote_plans()
             .into_iter()
-        {
-            let votes = vote_plan
-                .proposals
-                .into_iter()
-                .enumerate()
-                .filter(|(_, x)| x.votes.contains_key(&identifier))
-                .map(|(i, _)| i.try_into().unwrap())
-                .collect();
+            .map(|vote_plan| {
+                let votes = vote_plan
+                    .proposals
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(_, x)| x.votes.contains_key(&identifier))
+                    .map(|(i, _)| i.try_into().unwrap())
+                    .collect();
 
-            let vote_plan_id: VotePlanId = vote_plan.id.into();
-
-            result.push((vote_plan_id, votes));
-        }
+                (vote_plan.id.into(), votes)
+            })
+            .collect();
 
         Ok(Some(result))
     }
