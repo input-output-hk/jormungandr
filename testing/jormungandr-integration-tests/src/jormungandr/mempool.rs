@@ -3,8 +3,7 @@ use assert_fs::{
     TempDir,
 };
 use chain_impl_mockchain::{
-    block::BlockDate, chaintypes::ConsensusType, chaintypes::ConsensusVersion, fee::LinearFee,
-    value::Value,
+    block::BlockDate, chaintypes::ConsensusVersion, fee::LinearFee, value::Value,
 };
 use jormungandr_lib::interfaces::{
     BlockDate as BlockDateDto, InitialUTxO, Mempool, PersistentLog, SlotDuration,
@@ -502,28 +501,19 @@ fn pending_transaction_stats() {
     const ALICE: &str = "Alice";
     const BOB: &str = "Bob";
     const LEADER: &str = "leader";
-    const PASSIVE: &str = "passive";
-
-    let mut blockchain = Blockchain::default();
-    blockchain.add_wallet(WalletTemplate::new_account(
-        ALICE,
-        Value(100_000),
-        chain_addr::Discrimination::Test,
-    ));
-    blockchain.add_wallet(WalletTemplate::new_account(
-        BOB,
-        Value(100_000),
-        chain_addr::Discrimination::Test,
-    ));
-    blockchain.set_consensus(ConsensusType::GenesisPraos);
 
     let mut controller = NetworkBuilder::default()
-        .topology(
-            Topology::default()
-                .with_node(Node::new(LEADER))
-                .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
-        )
-        .blockchain_config(blockchain)
+        .topology(Topology::default().with_node(Node::new(LEADER)))
+        .wallet_template(WalletTemplate::new_account(
+            ALICE,
+            Value(100_000),
+            chain_addr::Discrimination::Test,
+        ))
+        .wallet_template(WalletTemplate::new_account(
+            BOB,
+            Value(100_000),
+            chain_addr::Discrimination::Test,
+        ))
         .build()
         .unwrap();
 
@@ -572,7 +562,7 @@ fn pending_transaction_stats() {
 #[test]
 /// Verifies the `block_content_size_avg` metric reported by the node converges under a steady flow
 /// of transactions.
-fn block_size_stats() {
+fn avg_block_size_stats() {
     const ALICE: &str = "Alice";
     const BOB: &str = "Bob";
     const LEADER: &str = "leader";
@@ -587,9 +577,7 @@ fn block_size_stats() {
 
     let mut controller = NetworkBuilder::default()
         .blockchain_config(blockchain)
-        .topology(
-            Topology::default().with_node(Node::new(LEADER)), // .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
-        )
+        .topology(Topology::default().with_node(Node::new(LEADER)))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(100_000)
@@ -613,7 +601,7 @@ fn block_size_stats() {
 
     let fragment_sender = FragmentSender::new(
         node.genesis_block_hash(),
-        LinearFee::new(0, 0, 0),
+        linear_fee,
         BlockDateGenerator::rolling_from_blockchain_config(
             &node.block0_configuration().blockchain_configuration,
             BlockDate {
