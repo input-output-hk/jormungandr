@@ -78,4 +78,4 @@ default = []
 property-test-api = [ ]
 
 [build-dependencies]
-tonic-build = "0.5"
+tonic-build = "0.6"

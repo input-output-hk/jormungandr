@@ -224,7 +224,7 @@ pub fn make_transaction(
         &WitnessType::Account,
         &block0_hash,
         &transaction_sign_data_hash,
-        Some(SpendingCounter::from(account_state.counter())),
+        Some(SpendingCounter::from(account_state.counters()[0])),
         &secret_key,
     )?;
 
