@@ -7,6 +7,9 @@ use jormungandr_testing_utils::testing::MemPoolCheck;
 const PASSIVE: &str = "PASSIVE";
 const LEADER: &str = "LEADER";
 
+const ALICE: &str = "ALICE";
+const BOB: &str = "BOB";
+
 #[test]
 pub fn two_nodes_communication() {
     let mut network_controller = NetworkBuilder::default()
@@ -16,12 +19,12 @@ pub fn two_nodes_communication() {
                 .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("alice")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(LEADER)
                 .build(),
         )
-        .wallet_template(WalletTemplateBuilder::new("bob").with(1_000_000).build())
+        .wallet_template(WalletTemplateBuilder::new(BOB).with(1_000_000).build())
         .build()
         .unwrap();
 
@@ -32,8 +35,8 @@ pub fn two_nodes_communication() {
         .spawn(SpawnParams::new(PASSIVE).in_memory().passive())
         .unwrap();
 
-    let mut alice = network_controller.wallet("alice").unwrap();
-    let mut bob = network_controller.wallet("bob").unwrap();
+    let mut alice = network_controller.wallet(ALICE).unwrap();
+    let mut bob = network_controller.wallet(BOB).unwrap();
 
     passive
         .fragment_sender(Default::default())
