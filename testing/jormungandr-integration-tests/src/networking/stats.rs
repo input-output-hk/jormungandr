@@ -48,7 +48,7 @@ pub fn passive_node_last_block_info() {
         .spawn(SpawnParams::new(LEADER).in_memory())
         .unwrap();
     let passive = network_controller
-        .spawn(SpawnParams::new(PASSIVE).in_memory().passive().in_memory())
+        .spawn(SpawnParams::new(PASSIVE).in_memory().passive())
         .unwrap();
 
     let mut alice = network_controller.wallet("alice").unwrap();
