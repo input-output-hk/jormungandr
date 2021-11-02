@@ -1,21 +1,25 @@
-use assert_fs::fixture::{PathChild, PathCreateDir};
-use assert_fs::TempDir;
-use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion};
-use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_lib::interfaces::PersistentLog;
-use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, Mempool};
-use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
-use jormungandr_testing_utils::testing::{fragments::FragmentExporter, network::LeadershipMode};
+use assert_fs::{
+    fixture::{PathChild, PathCreateDir},
+    TempDir,
+};
+use chain_impl_mockchain::{
+    block::BlockDate, chaintypes::ConsensusVersion, fee::LinearFee, value::Value,
+};
+use jormungandr_lib::interfaces::{
+    BlockDate as BlockDateDto, InitialUTxO, Mempool, PersistentLog, SlotDuration,
+};
 use jormungandr_testing_utils::testing::{
+    fragments::{FragmentExporter, PersistentLogViewer},
     jormungandr::{ConfigurationBuilder, Starter},
-    startup,
+    network::{
+        builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Blockchain,
+        LeadershipMode, Node, SpawnParams, Topology, WalletTemplate,
+    },
+    node::time,
+    startup, AdversaryFragmentSender, AdversaryFragmentSenderSetup, BlockDateGenerator,
+    FragmentBuilder, FragmentGenerator, FragmentNode, FragmentSender, FragmentSenderSetup,
+    FragmentVerifier, MemPoolCheck,
 };
-use jormungandr_testing_utils::testing::{
-    node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentVerifier,
-    MemPoolCheck,
-};
-use jormungandr_testing_utils::testing::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use std::fs::metadata;
 use std::path::Path;
 use std::thread::sleep;
@@ -489,4 +493,168 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
     // By the time the rest of the transactions have been placed in blocks, the epoch should be over
     // and the transaction below should have expired.
     FragmentVerifier::wait_and_verify_is_rejected(Duration::from_secs(5), check, &passive).unwrap();
+}
+
+#[test]
+/// Verifies `tx_pending` and `tx_pending_total_size` metrics reported by the node
+fn pending_transaction_stats() {
+    const ALICE: &str = "Alice";
+    const BOB: &str = "Bob";
+    const LEADER: &str = "leader";
+
+    let mut controller = NetworkBuilder::default()
+        .topology(Topology::default().with_node(Node::new(LEADER)))
+        .wallet_template(WalletTemplate::new_account(
+            ALICE,
+            Value(100_000),
+            chain_addr::Discrimination::Test,
+        ))
+        .wallet_template(WalletTemplate::new_account(
+            BOB,
+            Value(100_000),
+            chain_addr::Discrimination::Test,
+        ))
+        .build()
+        .unwrap();
+
+    let alice = controller.wallet(ALICE).unwrap();
+    let bob = controller.wallet(BOB).unwrap();
+
+    let leader = controller.spawn(SpawnParams::new(LEADER).leader()).unwrap();
+
+    let stats = leader.rest().stats().unwrap().stats.unwrap();
+
+    assert_eq!(stats.tx_pending, 0);
+    assert_eq!(stats.tx_pending_total_size, 0);
+
+    let fragment_builder = FragmentBuilder::new(
+        &leader.genesis_block_hash(),
+        &LinearFee::new(0, 0, 0),
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+    );
+
+    let mut pending_size = 0;
+    let mut pending_cnt = 0;
+
+    for i in 0..10 {
+        let transaction = fragment_builder
+            .transaction(&alice, bob.address(), i.into())
+            .unwrap();
+
+        pending_size += transaction.serialized_size();
+        pending_cnt += 1;
+
+        let status =
+            FragmentVerifier::fragment_status(leader.send_fragment(transaction).unwrap(), &leader)
+                .unwrap();
+
+        let stats = leader.rest().stats().unwrap().stats.unwrap();
+
+        assert!(status.is_pending());
+        assert_eq!(pending_cnt, stats.tx_pending);
+        assert_eq!(pending_size, stats.tx_pending_total_size as usize);
+    }
+}
+
+#[test]
+/// Verifies the `block_content_size_avg` metric reported by the node converges under a steady flow
+/// of transactions.
+fn avg_block_size_stats() {
+    const ALICE: &str = "Alice";
+    const BOB: &str = "Bob";
+    const LEADER: &str = "leader";
+    const SLOT_DURATION_SECS: u8 = 1;
+    const STABILITY_SLOTS: usize = 3; // Number of slots we expect `block_content_size_avg` to stay the same for
+    let linear_fee = LinearFee::new(0, 0, 0);
+
+    let mut blockchain = Blockchain::default();
+    blockchain.set_slot_duration(SlotDuration::new(SLOT_DURATION_SECS).unwrap());
+    blockchain.set_linear_fee(linear_fee);
+    blockchain.set_block_content_max_size(200.into()); // This should only fit one transaction
+
+    let mut controller = NetworkBuilder::default()
+        .blockchain_config(blockchain)
+        .topology(Topology::default().with_node(Node::new(LEADER)))
+        .wallet_template(
+            WalletTemplateBuilder::new(ALICE)
+                .with(100_000)
+                .discrimination(chain_addr::Discrimination::Test)
+                .build(),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(BOB)
+                .with(10_000)
+                .discrimination(chain_addr::Discrimination::Test)
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .build()
+        .unwrap();
+
+    let mut alice = controller.wallet(ALICE).unwrap();
+    let bob = controller.wallet(BOB).unwrap();
+
+    let node = controller.spawn(SpawnParams::new(LEADER).leader()).unwrap();
+
+    let fragment_sender = FragmentSender::new(
+        node.genesis_block_hash(),
+        linear_fee,
+        BlockDateGenerator::rolling_from_blockchain_config(
+            &node.block0_configuration().blockchain_configuration,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            false,
+        ),
+        FragmentSenderSetup::resend_3_times(),
+    );
+
+    let mut last_avg = node
+        .rest()
+        .stats()
+        .unwrap()
+        .stats
+        .unwrap()
+        .block_content_size_avg as usize;
+
+    let mut stability_counter = 0;
+
+    for i in 1..60 {
+        if stability_counter >= STABILITY_SLOTS {
+            return;
+        }
+
+        let curr_avg = node
+            .rest()
+            .stats()
+            .unwrap()
+            .stats
+            .unwrap()
+            .block_content_size_avg as usize;
+
+        if last_avg == curr_avg {
+            stability_counter += 1;
+        } else {
+            stability_counter = 0;
+        }
+
+        last_avg = curr_avg;
+
+        let check = fragment_sender
+            .send_transaction(&mut alice, &bob, &node, i.into())
+            .unwrap();
+
+        FragmentVerifier::wait_and_verify_is_in_block(
+            Duration::from_secs(SLOT_DURATION_SECS.into()),
+            check,
+            &node,
+        )
+        .unwrap();
+    }
+
+    panic!("`block_content_size_avg` did not converge");
 }

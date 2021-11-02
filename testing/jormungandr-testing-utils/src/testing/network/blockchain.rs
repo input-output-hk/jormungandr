@@ -16,6 +16,7 @@ use std::collections::HashMap;
 #[derive(Clone, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct Blockchain {
+    #[serde(default)]
     block0_date: SecondsSinceUnixEpoch,
     #[serde(default)]
     block_content_max_size: BlockContentMaxSize,
@@ -29,6 +30,7 @@ pub struct Blockchain {
     discrimination: Discrimination,
     #[serde(default)]
     external_committees: Vec<CommitteeIdDef>,
+    #[serde(default)]
     external_consensus_leader_ids: Vec<ConsensusLeaderId>,
     #[serde(default)]
     external_wallets: Vec<ExternalWalletTemplate>,
