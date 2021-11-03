@@ -310,8 +310,12 @@ async fn handle_sync_multiverse(
                 ));
             }
 
-        while current != lsb {
-            known_unstable_blocks_by_client.insert(current);
+            // if a block is in the set, then the predecesors should be also there (added by a
+            // previous iteration).
+            // and because this should be converging to the lsb then we can exit early.
+            if !known_unstable_blocks_by_client.insert(current) {
+                break;
+            }
 
             current = storage
                 .get_parent(current)
