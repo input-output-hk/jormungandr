@@ -194,8 +194,8 @@ impl ShowNodeStats {
             &self.alias,
             controller.nodes(),
             controller.legacy_nodes(),
-            |node| println!("{}: {:#?}", node.alias(), node.status()),
-            |node| println!("{}: {:#?}", node.alias(), node.status()),
+            |node| println!("{}: {:#?}", node.alias(), node.rest().stats()),
+            |node| println!("{}: {:#?}", node.alias(), node.rest().stats()),
         )
     }
 }

@@ -146,7 +146,7 @@ impl BackwardCompatibleRest {
         tip.parse().map_err(RestError::HashParseError)
     }
 
-    pub fn block(&self, header_hash: &HeaderId) -> Result<Vec<u8>, RestError> {
+    pub fn block_as_bytes(&self, header_hash: &HeaderId) -> Result<Vec<u8>, RestError> {
         let mut bytes = Vec::new();
         let mut resp = self.raw().block(header_hash)?;
         resp.copy_to(&mut bytes)?;

@@ -1,6 +1,5 @@
 use crate::node::SpawnBuilder;
 use crate::scenario::settings::Settings;
-use crate::Context;
 use crate::{
     legacy::LegacyNode,
     prepare_command,
@@ -43,7 +42,6 @@ use jormungandr_testing_utils::{
     wallet::Wallet,
     Version,
 };
-use rand_core::RngCore;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
@@ -386,7 +384,8 @@ impl Controller {
         let pb = ProgressBar::new_spinner();
         let pb = self.progress_bar.add(pb);
 
-        let mut spawn_builder = Self::legacy_spawn_builder(&self.context, &mut node_setting);
+        let mut spawn_builder: SpawnBuilder<_, LegacyNode> =
+            SpawnBuilder::new(&self.context, &mut node_setting);
         spawn_builder
             .path_to_jormungandr(jormungandr)
             .progress_bar(pb)
@@ -396,20 +395,6 @@ impl Controller {
             .working_dir(self.node_dir(params.get_alias()).path())
             .peristence_mode(params.get_persistence_mode());
         spawn_builder.build(version).map_err(Into::into)
-    }
-
-    fn legacy_spawn_builder<'a, R: RngCore>(
-        context: &'a Context<R>,
-        node_settings: &'a mut NodeSetting,
-    ) -> SpawnBuilder<'a, R, LegacyNode> {
-        SpawnBuilder::new(context, node_settings)
-    }
-
-    fn spawn_builder<'a, R: RngCore>(
-        context: &'a Context<R>,
-        node_settings: &'a mut NodeSetting,
-    ) -> SpawnBuilder<'a, R, Node> {
-        SpawnBuilder::new(context, node_settings)
     }
 
     pub fn spawn_node_custom(&mut self, params: SpawnParams) -> Result<Node> {
@@ -454,7 +439,8 @@ impl Controller {
         let pb = ProgressBar::new_spinner();
         let pb = self.progress_bar.add(pb);
 
-        let mut spawn_builder = Self::spawn_builder(&self.context, &mut node_setting);
+        let mut spawn_builder: SpawnBuilder<_, Node> =
+            SpawnBuilder::new(&self.context, &mut node_setting);
         spawn_builder
             .path_to_jormungandr(jormungandr)
             .progress_bar(pb)

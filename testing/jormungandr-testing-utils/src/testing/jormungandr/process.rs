@@ -7,7 +7,7 @@ use crate::testing::{
         uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
         JormungandrStateVerifier, LogLevel,
     },
-    utils, BlockDateGenerator, JormungandrParams, SyncNode, TestConfig,
+    utils, BlockDateGenerator, SyncNode, TestConfig,
 };
 use crate::testing::{
     FragmentChainSender, FragmentSender, FragmentSenderSetup, RemoteJormungandr,
@@ -53,22 +53,6 @@ pub struct JormungandrProcess {
 }
 
 impl JormungandrProcess {
-    pub(crate) fn from_config<Conf: TestConfig>(
-        child: Child,
-        params: &JormungandrParams<Conf>,
-        temp_dir: Option<TempDir>,
-        alias: String,
-    ) -> Result<Self, StartupError> {
-        let node_config = params.node_config();
-        Self::new(
-            child,
-            node_config,
-            params.block0_configuration().clone(),
-            temp_dir,
-            alias,
-        )
-    }
-
     pub fn new<Conf: TestConfig>(
         mut child: Child,
         node_config: &Conf,

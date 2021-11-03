@@ -381,9 +381,10 @@ where
     }
 
     fn start_async(self) -> Result<JormungandrProcess, StartupError> {
-        JormungandrProcess::from_config(
+        JormungandrProcess::new(
             self.start_process(),
-            &self.params,
+            self.params.node_config(),
+            self.params.block0_configuration().clone(),
             self.temp_dir,
             self.starter.alias.clone(),
         )
@@ -393,12 +394,15 @@ where
         let mut retry_counter = 1;
         loop {
             let process = self.start_process();
-            let mut jormungandr = JormungandrProcess::from_config(
+
+            let mut jormungandr = JormungandrProcess::new(
                 process,
-                &self.params,
+                self.params.node_config(),
+                self.params.block0_configuration().clone(),
                 self.temp_dir.take(),
                 self.starter.alias.clone(),
             )?;
+
             match (
                 jormungandr
                     .wait_for_bootstrap(&self.starter.verification_mode, self.starter.timeout),
