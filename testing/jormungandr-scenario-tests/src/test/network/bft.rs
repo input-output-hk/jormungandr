@@ -49,23 +49,23 @@ pub fn bft_cascade(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     controller.monitor_nodes();
 
-    let leader1 =
+    let mut leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader1.wait_for_bootstrap()?;
 
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader2.wait_for_bootstrap()?;
 
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader3.wait_for_bootstrap()?;
 
-    let leader4 =
+    let mut leader4 =
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader4.wait_for_bootstrap()?;
 
-    let leader5 =
+    let mut leader5 =
         controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader5.wait_for_bootstrap()?;
 
@@ -78,7 +78,7 @@ pub fn bft_cascade(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
         MeasurementReportInterval::Standard,
     )?;
 
-    // let leader5 =
+    // let mut leader5 =
     //     controller.spawn_node_custom(controller.new_spawn_params(PASSIVE).passive().explorer(Explorer{enabled: true}))?;
     // passive.wait_for_bootstrap()?;
 
@@ -136,16 +136,16 @@ pub fn bft_passive_propagation(mut context: Context<ChaChaRng>) -> Result<Scenar
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader1 =
+    let mut leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
-    let passive =
+    let mut passive =
         controller.spawn_node_custom(controller.new_spawn_params(PASSIVE).passive().in_memory())?;
 
     controller.monitor_nodes();

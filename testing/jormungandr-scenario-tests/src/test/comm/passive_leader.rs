@@ -40,10 +40,10 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader =
+    let mut leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader.wait_for_bootstrap()?;
-    let passive =
+    let mut passive =
         controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     passive.wait_for_bootstrap()?;
 
@@ -106,7 +106,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         quarantine_whitelist: None,
     };
 
-    let leader_2 = controller.spawn_node_custom(
+    let mut leader_2 = controller.spawn_node_custom(
         controller
             .new_spawn_params(LEADER_2)
             .policy(policy.clone())
@@ -114,11 +114,11 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     )?;
     leader_2.wait_for_bootstrap()?;
 
-    let leader =
+    let mut leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
 
-    let passive = controller.spawn_node_custom(
+    let mut passive = controller.spawn_node_custom(
         controller
             .new_spawn_params(PASSIVE)
             .policy(policy)
@@ -146,7 +146,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
             Duration::from_secs(3),
         )?;
 
-    let leader =
+    let mut leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
 
@@ -195,11 +195,11 @@ pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<Scenar
 
     controller.monitor_nodes();
 
-    let leader =
+    let mut leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader.wait_for_bootstrap()?;
 
-    let passive =
+    let mut passive =
         controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     passive.wait_for_bootstrap()?;
 

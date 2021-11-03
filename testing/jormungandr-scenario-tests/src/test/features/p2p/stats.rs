@@ -39,7 +39,7 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader1 =
+    let mut leader1 =
         controller.spawn_node(LEADER1, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader1.wait_for_bootstrap()?;
 
@@ -71,14 +71,14 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
         &format!("{} p2p_view", info_before),
     )?;
 
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node_custom(controller.new_spawn_params(LEADER2).no_listen_address())?;
     leader2.wait_for_bootstrap()?;
     utils::wait(20);
     super::assert_node_stats(&leader1, 1, 0, 1, "bootstrapped leader1")?;
     super::assert_node_stats(&leader2, 1, 0, 1, "bootstrapped leader2")?;
 
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node_custom(controller.new_spawn_params(LEADER3).no_listen_address())?;
 
     leader3.wait_for_bootstrap()?;
@@ -87,7 +87,7 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     super::assert_node_stats(&leader2, 2, 0, 2, "leader2: leader3 node is up")?;
     super::assert_node_stats(&leader3, 2, 0, 2, "leader3: leader3 node is up")?;
 
-    let leader4 =
+    let mut leader4 =
         controller.spawn_node_custom(controller.new_spawn_params(LEADER4).no_listen_address())?;
 
     leader4.wait_for_bootstrap()?;
@@ -105,6 +105,7 @@ pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
 
     leader1.shutdown()?;
     leader3.shutdown()?;
+    leader4.shutdown()?;
     controller.finalize();
     Ok(ScenarioResult::passed(name))
 }

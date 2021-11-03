@@ -39,7 +39,7 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader_1 = controller.spawn_node_custom(
+    let mut leader_1 = controller.spawn_node_custom(
         controller
             .new_spawn_params(LEADER_1)
             .leader()
@@ -48,15 +48,15 @@ pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<Sce
     )?;
     leader_1.wait_for_bootstrap()?;
 
-    let leader_2 =
+    let mut leader_2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader_2.wait_for_bootstrap()?;
 
-    let leader_3 =
+    let mut leader_3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader_3.wait_for_bootstrap()?;
 
-    let leader_4 =
+    let mut leader_4 =
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader_4.wait_for_bootstrap()?;
 

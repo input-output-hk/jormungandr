@@ -39,10 +39,10 @@ pub fn passive_leader_disruption_no_overlap(
 
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
-    let leader =
+    let mut leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
-    let passive = controller.spawn_node(
+    let mut passive = controller.spawn_node(
         PASSIVE,
         LeadershipMode::Passive,
         PersistenceMode::Persistent,
@@ -59,7 +59,7 @@ pub fn passive_leader_disruption_no_overlap(
     passive.shutdown()?;
 
     // 4. Only leader is up
-    let leader =
+    let mut leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
     utils::wait(5);
@@ -68,9 +68,9 @@ pub fn passive_leader_disruption_no_overlap(
     leader.shutdown()?;
 
     //6. Both nodes are up
-    let leader =
+    let mut leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
-    let passive = controller.spawn_node(
+    let mut passive = controller.spawn_node(
         PASSIVE,
         LeadershipMode::Passive,
         PersistenceMode::Persistent,
@@ -120,11 +120,11 @@ pub fn passive_leader_disruption_overlap(
 
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
-    let leader =
+    let mut leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
 
-    let passive = controller.spawn_node(
+    let mut passive = controller.spawn_node(
         PASSIVE,
         LeadershipMode::Passive,
         PersistenceMode::Persistent,
@@ -141,7 +141,7 @@ pub fn passive_leader_disruption_overlap(
     utils::wait(15);
 
     // 3. Both nodes are up
-    let passive = controller.spawn_node(
+    let mut passive = controller.spawn_node(
         PASSIVE,
         LeadershipMode::Passive,
         PersistenceMode::Persistent,
@@ -188,7 +188,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
 
-    let leader2 = controller.spawn_node(
+    let mut leader2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -199,7 +199,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
     utils::wait(5);
 
     // 2. Both nodes are up
-    let leader1 = controller.spawn_node(
+    let mut leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -212,7 +212,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
     utils::wait(15);
 
     // 4. both nodes are up
-    let leader2 = controller.spawn_node(
+    let mut leader2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -261,7 +261,7 @@ pub fn leader_leader_disruption_no_overlap(
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
 
-    let leader2 = controller.spawn_node(
+    let mut leader2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -269,7 +269,7 @@ pub fn leader_leader_disruption_no_overlap(
 
     leader2.wait_for_bootstrap()?;
 
-    let leader1 = controller.spawn_node(
+    let mut leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -288,14 +288,14 @@ pub fn leader_leader_disruption_no_overlap(
     // 4.- 5. is disabled due to restriction that trusted peer is down
     // 6. Both nodes are up
 
-    let leader2 = controller.spawn_node(
+    let mut leader2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
 
     leader2.wait_for_bootstrap()?;
-    let leader1 = controller.spawn_node(
+    let mut leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -345,17 +345,17 @@ pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
 
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
-    let leader2 = controller.spawn_node(
+    let mut leader2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader1 = controller.spawn_node(
+    let mut leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader3 = controller.spawn_node(
+    let mut leader3 = controller.spawn_node(
         LEADER_3,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -556,22 +556,22 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
 
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
-    let leader5 = controller.spawn_node(
+    let mut leader5 = controller.spawn_node(
         LEADER_5,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader4 = controller.spawn_node(
+    let mut leader4 = controller.spawn_node(
         LEADER_4,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader3 = controller.spawn_node(
+    let mut leader3 = controller.spawn_node(
         LEADER_3,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader2 = controller.spawn_node(
+    let mut leader2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -593,7 +593,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
         1_000.into(),
     )?;
 
-    let leader1 = controller.spawn_node(
+    let mut leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -610,7 +610,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
 
     leader2.shutdown()?;
 
-    let passive = controller.spawn_node(
+    let mut passive = controller.spawn_node(
         PASSIVE,
         LeadershipMode::Passive,
         PersistenceMode::Persistent,
@@ -670,7 +670,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
 
     //monitor node disabled due to unsupported operation: restart node
     //controller.monitor_nodes();
-    let leader4 = controller.spawn_node(
+    let mut leader4 = controller.spawn_node(
         LEADER_4,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -682,7 +682,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader3 = controller.spawn_node(
+    let mut leader3 = controller.spawn_node(
         LEADER_3,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -692,7 +692,7 @@ pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader1 = controller.spawn_node(
+    let mut leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,

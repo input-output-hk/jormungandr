@@ -50,13 +50,13 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader4 =
+    let mut leader4 =
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader1 =
+    let mut leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
     leader4.wait_for_bootstrap()?;
@@ -133,15 +133,15 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader5 =
+    let mut leader5 =
         controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader4 =
+    let mut leader4 =
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader1 =
+    let mut leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
     leader5.wait_for_bootstrap()?;
@@ -216,33 +216,33 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context)?;
 
-    controller.monitor_nodes();
-
-    let leader4 =
+    let mut leader4 =
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader4.wait_for_bootstrap()?;
 
-    let leader1 =
+    let mut leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader1.wait_for_bootstrap()?;
 
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader2.wait_for_bootstrap()?;
 
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader3.wait_for_bootstrap()?;
 
-    let leader5 =
+    let mut leader5 =
         controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader5.wait_for_bootstrap()?;
+
+    controller.monitor_nodes();
 
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
     controller.fragment_sender().send_transactions_round_trip(
-        40,
+        4,
         &mut wallet1,
         &mut wallet2,
         &leader1,
@@ -273,6 +273,9 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     leader3.shutdown()?;
     leader2.shutdown()?;
     leader1.shutdown()?;
+
+    controller.finalize();
+
     Ok(ScenarioResult::passed(name))
 }
 
@@ -303,13 +306,13 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader4 =
+    let mut leader4 =
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader1 =
+    let mut leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
     leader4.wait_for_bootstrap()?;
@@ -383,22 +386,22 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader4 = controller.spawn_node(
+    let mut leader4 = controller.spawn_node(
         LEADER_4,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader3 = controller.spawn_node(
+    let mut leader3 = controller.spawn_node(
         LEADER_3,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader2 = controller.spawn_node(
+    let mut leader2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
-    let leader1 = controller.spawn_node(
+    let mut leader1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -477,19 +480,19 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader1 =
+    let mut leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader4 =
+    let mut leader4 =
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader5 =
+    let mut leader5 =
         controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader6 =
+    let mut leader6 =
         controller.spawn_node(LEADER_6, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader7 =
+    let mut leader7 =
         controller.spawn_node(LEADER_7, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
     controller.monitor_nodes();
@@ -582,18 +585,18 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context)?;
 
-    let core =
+    let mut core =
         controller.spawn_node(CORE_NODE, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
     controller.monitor_nodes();
     core.wait_for_bootstrap()?;
 
-    let relay1 = controller.spawn_node(
+    let mut relay1 = controller.spawn_node(
         RELAY_NODE_1,
         LeadershipMode::Passive,
         PersistenceMode::InMemory,
     )?;
-    let relay2 = controller.spawn_node(
+    let mut relay2 = controller.spawn_node(
         RELAY_NODE_2,
         LeadershipMode::Passive,
         PersistenceMode::InMemory,
@@ -602,19 +605,19 @@ pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     relay2.wait_for_bootstrap()?;
     relay1.wait_for_bootstrap()?;
 
-    let leader1 =
+    let mut leader1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader4 =
+    let mut leader4 =
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader5 =
+    let mut leader5 =
         controller.spawn_node(LEADER_5, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader6 =
+    let mut leader6 =
         controller.spawn_node(LEADER_6, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let leader7 =
+    let mut leader7 =
         controller.spawn_node(LEADER_7, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
     leader1.wait_for_bootstrap()?;

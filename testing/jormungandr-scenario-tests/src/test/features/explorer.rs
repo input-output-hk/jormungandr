@@ -38,21 +38,21 @@ pub fn passive_node_explorer(mut context: Context<ChaChaRng>) -> Result<Scenario
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader_1 =
+    let mut leader_1 =
         controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader_1.wait_for_bootstrap()?;
 
     controller.monitor_nodes();
 
-    let leader_2 =
+    let mut leader_2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader_2.wait_for_bootstrap()?;
 
-    let leader_3 =
+    let mut leader_3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader_3.wait_for_bootstrap()?;
 
-    let passive = controller.spawn_node_custom(
+    let mut passive = controller.spawn_node_custom(
         controller
             .new_spawn_params(PASSIVE)
             .passive()

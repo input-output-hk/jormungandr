@@ -471,7 +471,7 @@ impl Controller {
 
     pub fn restart_node(
         &mut self,
-        node: Node,
+        mut node: Node,
         leadership_mode: LeadershipMode,
         persistence_mode: PersistenceMode,
     ) -> Result<Node> {
