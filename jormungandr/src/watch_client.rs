@@ -295,12 +295,6 @@ async fn handle_sync_multiverse(
         .map_err(intercom::Error::failed)?;
     }
 
-    checkpoints.sort_unstable();
-
-    // TODO: not sure if this is always true
-    const BLOCK0_CHAIN_LENGTH: u32 = 0;
-    let (lsb_chain_length, lsb) = checkpoints.pop().unwrap_or((BLOCK0_CHAIN_LENGTH, *block0));
-
     let mut known_unstable_blocks_by_client = HashSet::new();
 
     for (_, checkpoint) in checkpoints {
