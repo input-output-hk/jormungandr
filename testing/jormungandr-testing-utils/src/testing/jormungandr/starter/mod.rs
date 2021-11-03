@@ -409,6 +409,7 @@ where
                 self.starter.on_fail,
             ) {
                 (Ok(()), _) => {
+                    println!("jormungandr is up");
                     return Ok(jormungandr);
                 }
 

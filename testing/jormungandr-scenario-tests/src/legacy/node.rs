@@ -2,30 +2,26 @@
 /// Specialized node which is supposed to be compatible with 5 last jormungandr releases
 use crate::{
     legacy::LegacySettings,
-    node::{Error, ProgressBarController, Result, Status},
+    node::{Error, ProgressBarController, Result},
     style,
 };
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::multiaddr;
 pub use jormungandr_testing_utils::testing::{
-    jormungandr::JormungandrProcess,
+    jormungandr::{JormungandrProcess, StartupVerificationMode, Status},
     network::{LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings},
     node::{grpc::JormungandrClient, BackwardCompatibleRest, JormungandrLogger, JormungandrRest},
     FragmentNode, FragmentNodeError, MemPoolCheck,
 };
 use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::process::ExitStatus;
 use std::time::Duration;
 use yaml_rust::{Yaml, YamlLoader};
 
 pub struct LegacyNode {
     pub process: JormungandrProcess,
-    #[allow(unused)]
-    pub dir: PathBuf,
     pub progress_bar: ProgressBarController,
     pub node_settings: LegacySettings,
-    pub status: Arc<Mutex<Status>>,
 }
 
 impl LegacyNode {
@@ -34,7 +30,7 @@ impl LegacyNode {
     }
 
     pub fn status(&self) -> Status {
-        *self.status.lock().unwrap()
+        self.process.status(&StartupVerificationMode::Rest)
     }
 
     pub fn check_running(&self) -> bool {
@@ -73,47 +69,21 @@ impl LegacyNode {
     }
 
     pub fn wait_for_bootstrap(&self) -> Result<()> {
-        let max_try = 20;
-        let sleep = Duration::from_secs(8);
-        for _ in 0..max_try {
-            let stats = self.stats();
-            match stats {
-                Ok(stats) => {
-                    if stats["state"].as_str().unwrap() == "Running" {
-                        self.log_stats();
-                        return Ok(());
-                    }
-                }
-                Err(err) => self
-                    .progress_bar
-                    .log_info(format!("node stats failure({:?})", err)),
-            };
-            std::thread::sleep(sleep);
-        }
-        Err(Error::NodeFailedToBootstrap {
-            alias: self.process.alias(),
-            duration: Duration::from_secs(sleep.as_secs() * max_try),
-            logs: self.process.logger.get_lines_as_string(),
-        })
+        self.process
+            .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(150))
+            .map_err(|e| Error::NodeFailedToBootstrap {
+                alias: self.alias(),
+                e,
+            })
     }
 
-    pub fn wait_for_shutdown(&self) -> Result<()> {
-        let max_try = 2;
-        let sleep = Duration::from_secs(2);
-        for _ in 0..max_try {
-            if self.stats().is_err() && self.ports_are_opened() {
-                return Ok(());
-            };
-            std::thread::sleep(sleep);
-        }
-        Err(Error::NodeFailedToShutdown {
-            alias: self.alias(),
-            message: format!(
-                "node is still up after {} s from sending shutdown request",
-                sleep.as_secs()
-            ),
-            logs: self.process.logger.get_lines_as_string(),
-        })
+    pub fn wait_for_shutdown(&mut self) -> Result<Option<ExitStatus>> {
+        self.process
+            .wait_for_shutdown(Duration::from_secs(30))
+            .map_err(|e| Error::NodeFailedToShutdown {
+                alias: self.alias(),
+                e,
+            })
     }
 
     #[allow(deprecated)]
@@ -136,21 +106,16 @@ impl LegacyNode {
     }
 
     pub fn is_up(&self) -> bool {
-        let stats = self.stats();
-        match stats {
-            Ok(stats) => stats["state"].as_str().unwrap() == "Running",
-            Err(_) => false,
-        }
+        matches!(self.status(), Status::Running)
     }
 
-    pub fn shutdown(&self) -> Result<()> {
+    pub fn shutdown(&mut self) -> Result<Option<ExitStatus>> {
         let message = self.rest().shutdown()?;
-
         if message.is_empty() {
-            self.progress_bar.log_info("shuting down");
+            self.progress_bar.log_info("shuting down..");
             self.wait_for_shutdown()
         } else {
-            Err(Error::NodeFailedToShutdown {
+            Err(Error::ShutdownProcedure {
                 alias: self.alias(),
                 message,
                 logs: self.logger().get_lines_as_string(),
@@ -198,9 +163,5 @@ impl LegacyNode {
             style::binary.apply_to(self.alias()),
             style::success.apply_to(*style::icons::success)
         ));
-    }
-
-    fn set_status(&self, status: Status) {
-        *self.status.lock().unwrap() = status
     }
 }

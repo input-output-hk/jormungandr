@@ -25,7 +25,9 @@ use jortestkit::prelude::ProcessOutput;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
+use std::process::ExitStatus;
 use std::process::Stdio;
+use thiserror::Error;
 
 use std::time::{Duration, Instant};
 
@@ -34,10 +36,12 @@ pub enum StartupVerificationMode {
     Rest,
 }
 
+#[derive(PartialEq, Debug)]
 pub enum Status {
     Running,
     Starting,
     Stopped(JormungandrError),
+    Exited(ExitStatus),
 }
 
 pub struct JormungandrProcess {
@@ -151,15 +155,31 @@ impl JormungandrProcess {
             }
             match self.status(verification_mode) {
                 Status::Running => {
-                    println!("jormungandr is up");
                     return Ok(());
                 }
                 Status::Stopped(err) => {
-                    println!("attempt stopped due to error signal recieved");
-                    println!("Raw log:\n {}", self.logger.get_log_content());
                     return Err(StartupError::JormungandrError(err));
                 }
-                Status::Starting => {}
+                _ => {}
+            }
+            std::thread::sleep(Duration::from_secs(2));
+        }
+    }
+
+    pub fn wait_for_shutdown(
+        &mut self,
+        timeout: Duration,
+    ) -> Result<Option<ExitStatus>, ShutdownError> {
+        let start = Instant::now();
+        loop {
+            if start.elapsed() > timeout {
+                return Err(ShutdownError::Timeout {
+                    timeout: timeout.as_secs(),
+                    log_content: self.logger.get_log_content(),
+                });
+            }
+            if let Ok(maybe_exit_status) = self.child.try_wait() {
+                return Ok(maybe_exit_status);
             }
             std::thread::sleep(Duration::from_secs(2));
         }
@@ -174,7 +194,7 @@ impl JormungandrProcess {
         self.check_no_errors_in_log()
     }
 
-    fn status(&self, strategy: &StartupVerificationMode) -> Status {
+    pub fn status(&self, strategy: &StartupVerificationMode) -> Status {
         match strategy {
             StartupVerificationMode::Log => {
                 let bootstrap_completed_msgs = [
@@ -412,4 +432,14 @@ impl SyncNode for JormungandrProcess {
     fn is_running(&self) -> bool {
         matches!(self.status(&StartupVerificationMode::Log), Status::Running)
     }
+}
+
+#[derive(Debug, Error)]
+pub enum ShutdownError {
+    #[error("node wasn't properly shutdown after {timeout} s. Log file: {log_content}")]
+    Timeout { timeout: u64, log_content: String },
+    #[error("error(s) while starting")]
+    Jormungandr(#[from] JormungandrError),
+    #[error("process still active")]
+    ProcessStillActive(#[from] std::io::Error),
 }

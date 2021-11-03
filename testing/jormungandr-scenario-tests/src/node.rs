@@ -7,9 +7,11 @@ use crate::{
 };
 use chain_impl_mockchain::{fragment::FragmentId, testing::TestGen};
 use jormungandr_lib::interfaces::Block0Configuration;
-use jormungandr_lib::{crypto::hash::Hash, interfaces::NodeState, multiaddr};
-use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
-use jormungandr_testing_utils::testing::jormungandr::StartupError;
+use jormungandr_lib::{crypto::hash::Hash, multiaddr};
+use jormungandr_testing_utils::testing::jormungandr::ShutdownError;
+use jormungandr_testing_utils::testing::jormungandr::{
+    JormungandrProcess, StartupError, StartupVerificationMode, Status,
+};
 pub use jormungandr_testing_utils::testing::{
     network::{
         FaketimeConfig, LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode,
@@ -30,7 +32,6 @@ use std::net::SocketAddr;
 use std::io::{self, BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -78,19 +79,24 @@ pub enum Error {
     InvalidNetworkStats(#[source] serde_json::Error),
     #[error("leaders ids in an invalid format")]
     InvalidEnclaveLeaderIds(#[source] serde_json::Error),
-    #[error("node '{alias}' failed to start after {} s. Logs: {}", .duration.as_secs(), logs.join("\n"))]
+    #[error("node '{alias}' failed to start: {e}")]
     NodeFailedToBootstrap {
         alias: String,
-        duration: Duration,
-        #[debug(skip)]
-        logs: Vec<String>,
+        #[source]
+        e: StartupError,
     },
-    #[error("node '{alias}' failed to shutdown, message: {message}")]
-    NodeFailedToShutdown {
+    #[error("node '{alias}' failed to shutdown, due to: {message}")]
+    ShutdownProcedure {
         alias: String,
         message: String,
         #[debug(skip)]
         logs: Vec<String>,
+    },
+    #[error("node '{alias}' failed to shutdown: {e}")]
+    NodeFailedToShutdown {
+        alias: String,
+        #[source]
+        e: ShutdownError,
     },
     #[error("fragment '{fragment_id}' not in the mempool of the node '{alias}'")]
     FragmentNotInMemPoolLogs {
@@ -115,10 +121,9 @@ impl Error {
     pub fn logs(&self) -> impl Iterator<Item = &str> {
         use self::Error::*;
         let maybe_logs = match self {
-            NodeFailedToBootstrap { logs, .. }
-            | NodeFailedToShutdown { logs, .. }
-            | FragmentNotInMemPoolLogs { logs, .. }
-            | FragmentIsPendingForTooLong { logs, .. } => Some(logs),
+            FragmentNotInMemPoolLogs { logs, .. } | FragmentIsPendingForTooLong { logs, .. } => {
+                Some(logs)
+            }
             _ => None,
         };
         maybe_logs
@@ -127,13 +132,6 @@ impl Error {
             .flatten()
             .map(String::as_str)
     }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Status {
-    Running,
-    Failure,
-    Exit(ExitStatus),
 }
 
 #[derive(Clone)]
@@ -145,11 +143,8 @@ pub struct ProgressBarController {
 
 /// Node is going to be used by the `Controller` to monitor the node process
 pub struct Node {
-    dir: PathBuf,
     process: JormungandrProcess,
-
     progress_bar: ProgressBarController,
-    status: Arc<Mutex<Status>>,
 }
 
 const NODE_CONFIG: &str = "node_config.yaml";
@@ -162,12 +157,12 @@ impl Node {
         self.process.alias()
     }
 
-    pub fn status(&self) -> Status {
-        *self.status.lock().unwrap()
+    pub fn controller(self) -> JormungandrProcess {
+        self.process
     }
 
-    pub fn check_running(&self) -> bool {
-        self.status() == Status::Running
+    pub fn status(&self) -> Status {
+        self.process.status(&StartupVerificationMode::Rest)
     }
 
     pub fn address(&self) -> SocketAddr {
@@ -199,6 +194,7 @@ impl Node {
     pub fn grpc(&self) -> JormungandrClient {
         self.process.grpc()
     }
+
     pub fn log_stats(&self) {
         self.progress_bar
             .log_info(format!("node stats ({:?})", self.rest().stats()));
@@ -210,47 +206,30 @@ impl Node {
     }
 
     pub fn wait_for_bootstrap(&self) -> Result<()> {
-        let max_try = 20;
-        let sleep = Duration::from_secs(8);
-        for _ in 0..max_try {
-            let stats = self.rest().stats();
-            match stats {
-                Ok(stats) => {
-                    if stats.state == NodeState::Running {
-                        self.log_stats();
-                        return Ok(());
-                    }
-                }
-                Err(err) => self
-                    .progress_bar
-                    .log_info(format!("node stats failure({:?})", err)),
-            };
-            std::thread::sleep(sleep);
-        }
-        Err(Error::NodeFailedToBootstrap {
-            alias: self.alias(),
-            duration: Duration::from_secs(sleep.as_secs() * max_try),
-            logs: self.logger().get_lines_as_string(),
-        })
+        self.process
+            .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(150))
+            .map_err(|e| Error::NodeFailedToBootstrap {
+                alias: self.alias(),
+                e,
+            })
+            .map(|_| self.progress_bar.log_info("bootstapped successfully."))
     }
 
-    pub fn wait_for_shutdown(&self) -> Result<()> {
-        let max_try = 2;
-        let sleep = Duration::from_secs(2);
-        for _ in 0..max_try {
-            if self.rest().stats().is_err() && self.ports_are_opened() {
-                return Ok(());
-            };
-            std::thread::sleep(sleep);
-        }
-        Err(Error::NodeFailedToShutdown {
-            alias: self.alias(),
-            message: format!(
-                "node is still up after {} s from sending shutdown request",
-                sleep.as_secs()
-            ),
-            logs: self.logger().get_lines_as_string(),
-        })
+    pub fn wait_for_shutdown(&mut self) -> Result<Option<ExitStatus>> {
+        self.process
+            .wait_for_shutdown(Duration::from_secs(150))
+            .map_err(|e| {
+                self.progress_bar
+                    .log_info(format!("shutdown error: {}", e.to_string()));
+                Error::NodeFailedToShutdown {
+                    alias: self.alias(),
+                    e,
+                }
+            })
+            .map(|exit_status| {
+                self.progress_bar.log_info("shutdown successfully.");
+                exit_status
+            })
     }
 
     fn ports_are_opened(&self) -> bool {
@@ -264,21 +243,19 @@ impl Node {
     }
 
     pub fn is_up(&self) -> bool {
-        let stats = self.rest().stats();
-        match stats {
-            Ok(stats) => stats.state == NodeState::Running,
-            Err(_) => false,
-        }
+        matches!(self.status(), Status::Running)
     }
 
-    pub fn shutdown(&self) -> Result<()> {
+    pub fn shutdown(&mut self) -> Result<Option<ExitStatus>> {
         let message = self.rest().shutdown()?;
 
         if message.is_empty() {
-            self.progress_bar.log_info("shuting down");
-            self.wait_for_shutdown()
+            self.progress_bar.log_info("shuting down...");
+            let exit_status = self.wait_for_shutdown();
+            self.progress_bar.finish_with_message("shutdown");
+            exit_status
         } else {
-            Err(Error::NodeFailedToShutdown {
+            Err(Error::ShutdownProcedure {
                 alias: self.alias(),
                 message,
                 logs: self.logger().get_lines_as_string(),
@@ -339,10 +316,6 @@ impl Node {
             style::success.apply_to(*style::icons::success)
         ));
     }
-
-    fn set_status(&self, status: Status) {
-        *self.status.lock().unwrap() = status
-    }
 }
 
 use std::fmt::Display;
@@ -360,7 +333,7 @@ impl ProgressBarController {
     where
         M: Display,
     {
-        self.log(style::info.apply_to("INFO "), msg)
+        self.log(style::info.apply_to("INFO"), msg)
     }
 
     pub fn log_err<M>(&self, msg: M)
@@ -380,7 +353,30 @@ impl ProgressBarController {
                 println!("[{}][{}]: {}", lvl, &self.prefix, msg);
             }
             ProgressBarMode::Monitor => {
-                self.progress_bar.println(format!(
+                self.progress_bar.set_message(&format!(
+                    "[{}][{}{}]: {}",
+                    lvl,
+                    *style::icons::jormungandr,
+                    style::binary.apply_to(&self.prefix),
+                    msg,
+                ));
+            }
+            ProgressBarMode::None => (),
+        }
+    }
+
+    pub fn finish_with_message<M>(&self, msg: M)
+    where
+        M: Display,
+    {
+        let lvl = "INFO";
+
+        match self.logging_mode {
+            ProgressBarMode::Standard => {
+                println!("[{}][{}]: {}", lvl, &self.prefix, msg);
+            }
+            ProgressBarMode::Monitor => {
+                self.progress_bar.finish_with_message(&format!(
                     "[{}][{}{}]: {}",
                     lvl,
                     *style::icons::jormungandr,
@@ -583,14 +579,12 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, Node> {
         )?;
 
         let node = Node {
-            dir,
             process,
             progress_bar,
-            status: Arc::new(Mutex::new(Status::Running)),
         };
 
         node.progress_bar_start();
-        node.progress_bar
+        node.progress_bar()
             .log_info(&format!("{} bootstrapping: {:?}", self.alias, command));
         Ok(node)
     }
@@ -628,11 +622,9 @@ impl<'a, R: RngCore> SpawnBuilder<'a, R, LegacyNode> {
         )?;
 
         let node = LegacyNode {
-            dir,
             process,
             progress_bar,
             node_settings: legacy_settngs,
-            status: Arc::new(Mutex::new(Status::Running)),
         };
 
         node.progress_bar_start();
