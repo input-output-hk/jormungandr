@@ -16,8 +16,8 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     crypto::key::KeyPair,
     interfaces::{
-        ActiveSlotCoefficient, BlockDate as BlockDateDto, CommitteeIdDef, FeesGoTo, KesUpdateSpeed,
-        Tally, VotePlanStatus,
+        AccountVotes, ActiveSlotCoefficient, BlockDate as BlockDateDto, CommitteeIdDef, FeesGoTo,
+        KesUpdateSpeed, Tally, VotePlanStatus,
     },
 };
 use jormungandr_testing_utils::testing::asserts::VotePlanStatusAssert;
@@ -220,14 +220,38 @@ pub fn test_vote_flow_bft() {
         vec![0],
         jormungandr
             .rest()
-            .vote_plan_account_info(vote_plan.to_id().into(), alice.address())
+            .account_votes_with_plan_id(vote_plan.to_id().into(), alice.address())
+            .unwrap()
+            .unwrap()
+    );
+    assert_eq!(
+        vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![0]
+        }],
+        jormungandr
+            .rest()
+            .account_votes(alice.address())
+            .unwrap()
             .unwrap()
     );
     assert_eq!(
         vec![0],
         jormungandr
             .rest()
-            .vote_plan_account_info(vote_plan.to_id().into(), bob.address())
+            .account_votes_with_plan_id(vote_plan.to_id().into(), bob.address())
+            .unwrap()
+            .unwrap()
+    );
+    assert_eq!(
+        vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![0]
+        }],
+        jormungandr
+            .rest()
+            .account_votes(bob.address())
+            .unwrap()
             .unwrap()
     );
 
@@ -353,21 +377,57 @@ pub fn test_vote_flow_praos() {
         vec![0],
         jormungandr
             .rest()
-            .vote_plan_account_info(vote_plan.to_id().into(), alice.address())
+            .account_votes_with_plan_id(vote_plan.to_id().into(), alice.address())
+            .unwrap()
+            .unwrap()
+    );
+    assert_eq!(
+        vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![0]
+        }],
+        jormungandr
+            .rest()
+            .account_votes(alice.address())
+            .unwrap()
             .unwrap()
     );
     assert_eq!(
         vec![0],
         jormungandr
             .rest()
-            .vote_plan_account_info(vote_plan.to_id().into(), bob.address())
+            .account_votes_with_plan_id(vote_plan.to_id().into(), bob.address())
+            .unwrap()
+            .unwrap()
+    );
+    assert_eq!(
+        vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![0]
+        }],
+        jormungandr
+            .rest()
+            .account_votes(bob.address())
+            .unwrap()
             .unwrap()
     );
     assert_eq!(
         vec![0],
         jormungandr
             .rest()
-            .vote_plan_account_info(vote_plan.to_id().into(), clarice.address())
+            .account_votes_with_plan_id(vote_plan.to_id().into(), clarice.address())
+            .unwrap()
+            .unwrap()
+    );
+    assert_eq!(
+        vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![0]
+        }],
+        jormungandr
+            .rest()
+            .account_votes(clarice.address())
+            .unwrap()
             .unwrap()
     );
 

@@ -3,11 +3,17 @@ use crate::{
     intercom::{self, TransactionMsg},
     rest::Context,
 };
-use chain_crypto::{digest::Error as DigestError, hash::Error as HashError, PublicKeyFromStrError};
-use chain_impl_mockchain::{fragment::FragmentId, value::ValueError};
+use chain_crypto::{
+    digest::Error as DigestError, hash::Error as HashError, PublicKey, PublicKeyFromStrError,
+};
+use chain_impl_mockchain::{
+    account::{AccountAlg, Identifier},
+    fragment::FragmentId,
+    value::ValueError,
+};
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 use jormungandr_lib::interfaces::{
-    Address, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch,
+    AccountVotes, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch,
     FragmentsProcessingSummary, VotePlanId,
 };
 use std::{collections::HashMap, convert::TryInto, str::FromStr};
@@ -39,8 +45,12 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
     #[error("Could not process all fragments")]
     Fragments(FragmentsProcessingSummary),
-    #[error("Unexpected address type")]
-    UnexpectedAddressType,
+}
+
+fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
+    PublicKey::<AccountAlg>::from_str(id_hex)
+        .map(Into::into)
+        .map_err(Into::into)
 }
 
 pub async fn get_fragment_statuses<'a>(
@@ -115,25 +125,17 @@ pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Er
     .await
 }
 
-pub async fn get_account_votes(
+pub async fn get_account_votes_with_plan(
     context: &Context,
     vote_plan_id: VotePlanId,
-    address: Address,
+    account_id_hex: String,
 ) -> Result<Option<Vec<u8>>, Error> {
-    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes", request = "get_account_votes");
+    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes_with_plan", request = "get_account_votes_with_plan");
 
-    let address: chain_addr::Address = address.into();
-    let identifier = match address.kind() {
-        chain_addr::Kind::Account(pubkey) => {
-            let account_id = chain_impl_mockchain::account::Identifier::from(pubkey.clone());
-            chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
-                account_id,
-            )
-        }
-        _ => return Err(Error::UnexpectedAddressType),
-    };
-
-    let vote_plan_id: chain_crypto::digest::DigestOf<_, _> = vote_plan_id.into_digest().into();
+    let identifier =
+        chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
+            parse_account_id(&account_id_hex)?,
+        );
 
     async move {
         let maybe_vote_plan = context
@@ -143,7 +145,7 @@ pub async fn get_account_votes(
             .ledger()
             .active_vote_plans()
             .into_iter()
-            .find(|x| x.id == vote_plan_id);
+            .find(|x| x.id == vote_plan_id.into_digest().into());
         let vote_plan = match maybe_vote_plan {
             Some(vote_plan) => vote_plan,
             None => return Ok(None),
@@ -155,6 +157,47 @@ pub async fn get_account_votes(
             .filter(|(_, x)| x.votes.contains_key(&identifier))
             .map(|(i, _)| i.try_into().unwrap())
             .collect();
+        Ok(Some(result))
+    }
+    .instrument(span)
+    .await
+}
+
+pub async fn get_account_votes(
+    context: &Context,
+    account_id_hex: String,
+) -> Result<Option<Vec<AccountVotes>>, Error> {
+    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes", request = "get_account_votes");
+
+    let identifier =
+        chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
+            parse_account_id(&account_id_hex)?,
+        );
+
+    async {
+        let result = context
+            .blockchain_tip()?
+            .get_ref()
+            .await
+            .ledger()
+            .active_vote_plans()
+            .into_iter()
+            .map(|vote_plan| {
+                let votes = vote_plan
+                    .proposals
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(_, x)| x.votes.contains_key(&identifier))
+                    .map(|(i, _)| i.try_into().unwrap())
+                    .collect();
+
+                AccountVotes {
+                    vote_plan_id: vote_plan.id.into(),
+                    votes,
+                }
+            })
+            .collect();
+
         Ok(Some(result))
     }
     .instrument(span)

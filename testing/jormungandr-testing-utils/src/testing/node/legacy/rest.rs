@@ -82,14 +82,20 @@ impl BackwardCompatibleRest {
         self.account_state_by_pk(&wallet.identifier().to_bech32_str())
     }
 
-    pub fn account_votes(
+    pub fn account_votes(&self, wallet_address: Address) -> Result<String, reqwest::Error> {
+        let response_text = self.raw().account_votes(wallet_address)?.text()?;
+        self.print_response_text(&response_text);
+        Ok(response_text)
+    }
+
+    pub fn account_votes_with_plan_id(
         &self,
         vote_plan_id: VotePlanId,
-        wallet_address_bech32: String,
+        wallet_address: Address,
     ) -> Result<String, reqwest::Error> {
         let response_text = self
             .raw()
-            .account_votes(vote_plan_id, &wallet_address_bech32)?
+            .account_votes_with_plan_id(vote_plan_id, wallet_address)?
             .text()?;
         self.print_response_text(&response_text);
         Ok(response_text)
@@ -248,15 +254,5 @@ impl BackwardCompatibleRest {
 
     pub fn set_origin<S: Into<String>>(&mut self, origin: S) {
         self.raw.rest_settings_mut().cors = Some(origin.into());
-    }
-
-    pub fn vote_plan_account_info(
-        &self,
-        vote_plan_id: VotePlanId,
-        address: Address,
-    ) -> Result<String, reqwest::Error> {
-        self.raw()
-            .vote_plan_account_info(vote_plan_id, address)?
-            .text()
     }
 }

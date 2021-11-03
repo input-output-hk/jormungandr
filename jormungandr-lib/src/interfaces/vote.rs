@@ -430,6 +430,12 @@ mod serde_proposals {
 pub type VotePlanId = Hash;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+pub struct AccountVotes {
+    pub vote_plan_id: VotePlanId,
+    pub votes: Vec<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub struct VotePlanStatus {
     pub id: VotePlanId,
     #[serde(with = "PayloadTypeDef")]

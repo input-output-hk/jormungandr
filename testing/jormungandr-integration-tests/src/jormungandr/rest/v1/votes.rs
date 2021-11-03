@@ -2,6 +2,7 @@ use chain_addr::Discrimination;
 use chain_core::property::BlockDate;
 use chain_impl_mockchain::certificate::VoteTallyPayload;
 use chain_impl_mockchain::{certificate::VoteAction, fee::LinearFee, vote::Choice};
+use jormungandr_lib::interfaces::AccountVotes;
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use jormungandr_testing_utils::testing::VotePlanBuilder;
@@ -36,8 +37,12 @@ pub fn list_casted_votes_for_active_vote_plan() {
 
     assert!(jormungandr
         .rest()
-        .account_votes(vote_plan.to_id().into(), &alice, discrimination)
+        .account_votes_with_plan_id(vote_plan.to_id().into(), alice.address())
         .is_err());
+    assert_eq!(
+        Some(vec![]),
+        jormungandr.rest().account_votes(alice.address()).unwrap()
+    );
 
     let proposals_ids = vec![0u8, 1u8, 2u8];
 
@@ -62,18 +67,32 @@ pub fn list_casted_votes_for_active_vote_plan() {
         .unwrap();
 
     assert_eq!(
-        Some(proposals_ids),
+        Some(proposals_ids.clone()),
         jormungandr
             .rest()
-            .account_votes(vote_plan.to_id().into(), &alice, discrimination)
+            .account_votes_with_plan_id(vote_plan.to_id().into(), alice.address())
             .unwrap()
+    );
+    assert_eq!(
+        Some(vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: proposals_ids
+        }]),
+        jormungandr.rest().account_votes(alice.address()).unwrap()
     );
     assert_eq!(
         Some(vec![]),
         jormungandr
             .rest()
-            .account_votes(vote_plan.to_id().into(), &bob, discrimination)
+            .account_votes_with_plan_id(vote_plan.to_id().into(), bob.address())
             .unwrap()
+    );
+    assert_eq!(
+        Some(vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![]
+        }]),
+        jormungandr.rest().account_votes(bob.address()).unwrap()
     );
 }
 
@@ -129,11 +148,18 @@ pub fn list_casted_votes_for_already_finished_vote_plan() {
         .then_wait_for_epoch(3);
 
     assert_eq!(
-        Some(proposals_ids),
+        Some(proposals_ids.clone()),
         jormungandr
             .rest()
-            .account_votes(vote_plan.to_id().into(), &alice, discrimination)
+            .account_votes_with_plan_id(vote_plan.to_id().into(), alice.address())
             .unwrap()
+    );
+    assert_eq!(
+        Some(vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: proposals_ids
+        }]),
+        jormungandr.rest().account_votes(alice.address()).unwrap()
     );
 }
 
@@ -165,6 +191,10 @@ pub fn list_casted_votes_for_non_voted() {
 
     assert!(jormungandr
         .rest()
-        .account_votes(vote_plan.to_id().into(), &alice, discrimination)
+        .account_votes_with_plan_id(vote_plan.to_id().into(), alice.address())
         .is_err());
+    assert_eq!(
+        Some(vec![]),
+        jormungandr.rest().account_votes(alice.address()).unwrap()
+    );
 }

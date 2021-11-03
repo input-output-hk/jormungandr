@@ -242,10 +242,10 @@ paths:
                       },
                     ]
 
-  /api/v1/votes/plan/{votePlanId}/account-votes/{address}:
+  /api/v1/votes/plan/{votePlanId}/account-votes/{account_id}:
     get:
       description: Get numbers of proposals within a vote plan a given user have voted for.
-      operationId: AccountVotes
+      operationId: AccountVotesWithPlan
       tags:
         - vote
       parameters:
@@ -257,9 +257,9 @@ paths:
             type: string
             pattern: '[0-9a-f]+'
         - in: path
-          name: address
+          name: account_id
           required: true
-          description: The address of the account to get the information from.
+          description: Hex-encoded account ID to get the information from.
           schema:
             type: string
             pattern: '[0-9a-f]+'
@@ -274,6 +274,40 @@ paths:
                   type: integer
         '404':
           description: The requested vote plan does not exist or is not active.
+
+  /api/v1/votes/plan/account-votes/{account_id}:
+    get:
+      description: Get indexes of proposals a given user has voted for across all active vote plans.
+      operationId: AccountVotes
+      tags:
+        - vote
+      parameters:
+        - in: path
+          name: account_id
+          required: true
+          description: Hex-encoded account ID to get the information from.
+          schema:
+            type: string
+            pattern: '[0-9a-f]+'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    vote_plan_id:
+                      description: The ID of the vote plan.
+                      type: string
+                      pattern: '[0-9a-f]+'
+                    votes:
+                      description: Numbers of proposals within a vote plan.
+                      type: array
+                      items:
+                        type: integer
 
 components:
   schemas:

@@ -3,12 +3,11 @@ mod raw;
 mod settings;
 
 use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
-use chain_addr::Discrimination;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{
-    Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
+    AccountVotes, Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -122,24 +121,22 @@ impl JormungandrRest {
             .map_err(RestError::CannotDeserialize)
     }
 
-    pub fn account_votes(
-        &self,
-        vote_plan_id: VotePlanId,
-        wallet: &Wallet,
-        discrimination: Discrimination,
-    ) -> Result<Option<Vec<u8>>, RestError> {
-        let address_bech32 = wallet.address_bech32(discrimination);
-        serde_json::from_str(&self.inner.account_votes(vote_plan_id, address_bech32)?)
+    pub fn account_votes(&self, address: Address) -> Result<Option<Vec<AccountVotes>>, RestError> {
+        serde_json::from_str(&self.inner.account_votes(address)?)
             .map_err(RestError::CannotDeserialize)
     }
 
-    pub fn account_votes_by_bech32(
+    pub fn account_votes_with_plan_id(
         &self,
         vote_plan_id: VotePlanId,
-        address_bech32: String,
+        address: Address,
     ) -> Result<Option<Vec<u8>>, RestError> {
-        serde_json::from_str(&self.inner.account_votes(vote_plan_id, address_bech32)?)
-            .map_err(RestError::CannotDeserialize)
+        serde_json::from_str(
+            &self
+                .inner
+                .account_votes_with_plan_id(vote_plan_id, address)?,
+        )
+        .map_err(RestError::CannotDeserialize)
     }
 
     pub fn stake_pools(&self) -> Result<Vec<String>, RestError> {
@@ -259,14 +256,5 @@ impl JormungandrRest {
 
     pub fn set_origin<S: Into<String>>(&mut self, origin: S) {
         self.inner.set_origin(origin);
-    }
-
-    pub fn vote_plan_account_info(
-        &self,
-        vote_plan_id: VotePlanId,
-        address: Address,
-    ) -> Result<Vec<u8>, RestError> {
-        serde_json::from_str(&self.inner.vote_plan_account_info(vote_plan_id, address)?)
-            .map_err(RestError::CannotDeserialize)
     }
 }

@@ -133,7 +133,7 @@ impl RawRest {
     }
 
     pub fn account_state_by_pk(&self, bech32_str: &str) -> Result<Response, reqwest::Error> {
-        let key = hex::encode(Self::try_from_str(bech32_str).as_ref().as_ref());
+        let key = hex::encode(Self::try_from_str(bech32_str).as_ref());
         self.get(&format!("account/{}", key))
     }
 
@@ -148,15 +148,23 @@ impl RawRest {
         self.get("stake_pools")
     }
 
-    pub fn account_votes(
+    pub fn account_votes(&self, address: Address) -> Result<Response, reqwest::Error> {
+        let pk = address.1.public_key().unwrap();
+        let key = hex::encode(account::Identifier::from(pk.clone()).as_ref());
+
+        let request = format!("votes/plan/account-votes/{}", key);
+        self.client.get(&self.path(ApiVersion::V1, &request)).send()
+    }
+
+    pub fn account_votes_with_plan_id(
         &self,
         vote_plan_id: VotePlanId,
-        address_bech32: &str,
+        address: Address,
     ) -> Result<Response, reqwest::Error> {
-        let request = format!(
-            "votes/plan/{}/account-votes/{}",
-            vote_plan_id, address_bech32
-        );
+        let pk = address.1.public_key().unwrap();
+        let key = hex::encode(account::Identifier::from(pk.clone()).as_ref());
+
+        let request = format!("votes/plan/{}/account-votes/{}", vote_plan_id, key);
         self.client.get(&self.path(ApiVersion::V1, &request)).send()
     }
 
@@ -293,21 +301,6 @@ impl RawRest {
 
     pub fn vote_plan_statuses(&self) -> Result<Response, reqwest::Error> {
         self.get("vote/active/plans")
-    }
-
-    pub fn vote_plan_account_info(
-        &self,
-        vote_plan_id: VotePlanId,
-        address: Address,
-    ) -> Result<Response, reqwest::Error> {
-        let path = format!(
-            "votes/plan/{}/account-votes/{}",
-            vote_plan_id.to_string(),
-            address.to_string()
-        );
-        let request = self.path(ApiVersion::V1, &path);
-        self.print_request_path(&request);
-        self.client.get(request).send()
     }
 
     pub fn send_until_ok<F>(&self, action: F, mut wait: Wait) -> Result<(), RestError>
