@@ -167,7 +167,7 @@ pub async fn get_account_votes(
     context: &Context,
     account_id_hex: String,
 ) -> Result<Option<Vec<AccountVotes>>, Error> {
-    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes_with_plan", request = "get_account_votes_with_plan");
+    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes", request = "get_account_votes");
 
     let identifier =
         chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
