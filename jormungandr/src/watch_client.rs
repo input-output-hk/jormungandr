@@ -239,23 +239,45 @@ async fn handle_sync_multiverse(
     storage: &Storage,
     sink: &mut intercom::ReplyStreamSink<Block>,
 ) -> Result<(), intercom::Error> {
-    let mut checkpoints = checkpoints
-        .iter()
-        .map(|id| {
-            let deser = HeaderHash::deserialize(id.as_bytes())
-                .map_err(intercom::Error::invalid_argument)?;
-
-            let chain_length = storage
-                .get_chain_length(deser)
-                .ok_or_else(|| intercom::Error::invalid_argument("unknown checkpoint"))?;
-
-            Ok::<_, intercom::Error>((chain_length, deser))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
     let block0 = blockchain.block0();
 
-    // we are adding 1 to the lsb later, because it is present then we don't need to send it.
+    let (checkpoints, lsb_length, lsb_id) = {
+        let mut filtered = Vec::with_capacity(checkpoints.len());
+
+        let mut min_length = u32::MAX;
+        let mut min_index = None;
+
+        for id_raw in checkpoints.iter() {
+            let id = HeaderHash::deserialize(id_raw.as_bytes())
+                .map_err(intercom::Error::invalid_argument)?;
+
+            // the checkpoint could be unknown to the node because it was part of a branch that
+            // didn't survive the selection, in that case, we just ignore it and let the client
+            // realize that it can forget about it.
+            if let Some(chain_length) = storage.get_chain_length(id) {
+                filtered.push((chain_length, id));
+
+                // keep track of the min length in order to find the (expected) lsb
+                if chain_length < min_length {
+                    min_length = chain_length;
+
+                    // we called `push` up just before, so `len()` should be >= 1, and this won't
+                    // overflow
+                    min_index.replace(filtered.len() - 1);
+                }
+            }
+        }
+
+        // min_index will be None if there were no checkpoints, or if none of them were known to
+        // the node.
+        let (lsb_length, lsb_id) = min_index
+            .map(|idx| filtered.swap_remove(idx))
+            .unwrap_or((0, *block0));
+
+        (filtered, lsb_length, lsb_id)
+    };
+
+    // we are adding 1 to the lsb later, because if it is present then we don't need to send it.
     // but if the checkpoints are empty then it means the last stable block is the block0, and we
     // send it here.
     if checkpoints.is_empty() {
@@ -300,7 +322,7 @@ async fn handle_sync_multiverse(
         }
     }
 
-    let mut current_length = lsb_chain_length + 1;
+    let mut current_length = lsb_length + 1;
 
     loop {
         let blocks = storage
