@@ -245,7 +245,7 @@ paths:
   /api/v1/votes/plan/{votePlanId}/account-votes/{account_id}:
     get:
       description: Get numbers of proposals within a vote plan a given user have voted for.
-      operationId: AccountVotes
+      operationId: AccountVotesWithPlan
       tags:
         - vote
       parameters:
@@ -274,6 +274,40 @@ paths:
                   type: integer
         '404':
           description: The requested vote plan does not exist or is not active.
+
+  /api/v1/votes/plan/account-votes/{account_id}:
+    get:
+      description: Get numbers of proposals a given user have voted related to the each vote plan.
+      operationId: AccountVotes
+      tags:
+        - vote
+      parameters:
+        - in: path
+          name: account_id
+          required: true
+          description: Hex-encoded account ID to get the information from.
+          schema:
+            type: string
+            pattern: '[0-9a-f]+'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: tuple
+                  properties:
+                    first_item:
+                      description: The ID of the vote plan.
+                      type: string
+                      pattern: '[0-9a-f]+'
+                    second_item:
+                      description: Numbers of proposals within a vote plan.
+                      type: array
+                      items:
+                        type: integer
 
 components:
   schemas:
