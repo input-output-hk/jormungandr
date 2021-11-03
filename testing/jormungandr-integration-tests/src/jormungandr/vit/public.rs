@@ -16,8 +16,8 @@ use chain_impl_mockchain::{
 use jormungandr_lib::{
     crypto::key::KeyPair,
     interfaces::{
-        ActiveSlotCoefficient, BlockDate as BlockDateDto, CommitteeIdDef, FeesGoTo, KesUpdateSpeed,
-        Tally, VotePlanStatus,
+        AccountVotes, ActiveSlotCoefficient, BlockDate as BlockDateDto, CommitteeIdDef, FeesGoTo,
+        KesUpdateSpeed, Tally, VotePlanStatus,
     },
 };
 use jormungandr_testing_utils::testing::asserts::VotePlanStatusAssert;
@@ -225,7 +225,10 @@ pub fn test_vote_flow_bft() {
             .unwrap()
     );
     assert_eq!(
-        vec![(vote_plan.to_id().into(), vec![0])],
+        vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![0]
+        }],
         jormungandr
             .rest()
             .account_votes(alice.address())
@@ -241,7 +244,10 @@ pub fn test_vote_flow_bft() {
             .unwrap()
     );
     assert_eq!(
-        vec![(vote_plan.to_id().into(), vec![0])],
+        vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![0]
+        }],
         jormungandr
             .rest()
             .account_votes(bob.address())
@@ -376,7 +382,10 @@ pub fn test_vote_flow_praos() {
             .unwrap()
     );
     assert_eq!(
-        vec![(vote_plan.to_id().into(), vec![0])],
+        vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![0]
+        }],
         jormungandr
             .rest()
             .account_votes(alice.address())
@@ -392,7 +401,10 @@ pub fn test_vote_flow_praos() {
             .unwrap()
     );
     assert_eq!(
-        vec![(vote_plan.to_id().into(), vec![0])],
+        vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![0]
+        }],
         jormungandr
             .rest()
             .account_votes(bob.address())
@@ -408,7 +420,10 @@ pub fn test_vote_flow_praos() {
             .unwrap()
     );
     assert_eq!(
-        vec![(vote_plan.to_id().into(), vec![0])],
+        vec![AccountVotes {
+            vote_plan_id: vote_plan.to_id().into(),
+            votes: vec![0]
+        }],
         jormungandr
             .rest()
             .account_votes(clarice.address())

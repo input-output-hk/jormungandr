@@ -277,7 +277,7 @@ paths:
 
   /api/v1/votes/plan/account-votes/{account_id}:
     get:
-      description: Get numbers of proposals a given user have voted related to the each vote plan.
+      description: Get indexes of proposals a given user has voted for across all active vote plans.
       operationId: AccountVotes
       tags:
         - vote
@@ -297,13 +297,13 @@ paths:
               schema:
                 type: array
                 items:
-                  type: tuple
+                  type: object
                   properties:
-                    first_item:
+                    vote_plan_id:
                       description: The ID of the vote plan.
                       type: string
                       pattern: '[0-9a-f]+'
-                    second_item:
+                    votes:
                       description: Numbers of proposals within a vote plan.
                       type: array
                       items:

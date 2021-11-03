@@ -191,7 +191,10 @@ pub async fn get_account_votes(
                     .map(|(i, _)| i.try_into().unwrap())
                     .collect();
 
-                (vote_plan.id.into(), votes)
+                AccountVotes {
+                    vote_plan_id: vote_plan.id.into(),
+                    votes,
+                }
             })
             .collect();
 
