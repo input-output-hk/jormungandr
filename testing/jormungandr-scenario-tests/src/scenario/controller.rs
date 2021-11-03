@@ -1,12 +1,8 @@
 use crate::node::SpawnBuilder;
-use crate::scenario::settings::Settings;
 use crate::{
     legacy::LegacyNode,
     prepare_command,
-    scenario::{
-        settings::{Dotifier, PrepareSettings},
-        ContextChaCha, Error, ProgressBarMode, Result,
-    },
+    scenario::{dotifier::Dotifier, ContextChaCha, Error, ProgressBarMode, Result},
     style, Node, NodeBlock0,
 };
 use assert_fs::fixture::ChildPath;
@@ -25,6 +21,10 @@ use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_lib::interfaces::Log;
 use jormungandr_lib::interfaces::LogEntry;
 use jormungandr_lib::interfaces::LogOutput;
+use jormungandr_testing_utils::testing::network::Settings;
+use jormungandr_testing_utils::testing::network::{
+    builder::NetworkBuilder, controller::Controller as InnerController, VotePlanKey,
+};
 use jormungandr_testing_utils::testing::node::LogLevel;
 use jormungandr_testing_utils::testing::BlockDateGenerator;
 use jormungandr_testing_utils::{
@@ -50,14 +50,12 @@ use std::{
 pub struct ControllerBuilder {
     title: String,
     controller_progress: ProgressBar,
-
-    topology: Option<Topology>,
-    blockchain: Option<Blockchain>,
-    settings: Option<Settings>,
+    network_builder: NetworkBuilder,
+    topology: Topology,
 }
 
 pub struct Controller {
-    settings: Settings,
+    inner: InnerController,
 
     context: ContextChaCha,
 
@@ -70,7 +68,6 @@ pub struct Controller {
     progress_bar_thread: Option<std::thread::JoinHandle<()>>,
 
     topology: Topology,
-    blockchain: Blockchain,
 }
 
 impl ControllerBuilder {
@@ -88,38 +85,35 @@ impl ControllerBuilder {
         ControllerBuilder {
             title: title.to_owned(),
             controller_progress,
-            topology: None,
-            blockchain: None,
-            settings: None,
+            network_builder: Default::default(),
+            topology: Default::default(),
         }
     }
 
-    pub fn set_topology(&mut self, topology: Topology) {
+    pub fn topology(mut self, topology: Topology) -> Self {
         self.controller_progress.inc(1);
-        self.topology = Some(topology)
+        self.topology = topology.clone();
+        self.network_builder = self.network_builder.topology(topology);
+        self
     }
 
-    pub fn set_blockchain(&mut self, blockchain: Blockchain) {
+    pub fn blockchain(mut self, blockchain: Blockchain) -> Self {
         self.controller_progress.inc(1);
-        self.blockchain = Some(blockchain)
-    }
-
-    pub fn build_settings(&mut self, context: &mut ContextChaCha) {
-        self.controller_progress.inc(1);
-        let topology = self.topology.clone().expect("topology not set");
-        let blockchain = self.blockchain.clone().expect("blockchain not defined");
-        self.settings = Some(Settings::prepare(topology, blockchain, context));
-        self.controller_progress.inc(5);
+        self.network_builder = self.network_builder.blockchain_config(blockchain);
+        self
     }
 
     pub fn build(self, context: ContextChaCha) -> Result<Controller> {
+        self.controller_progress.inc(1);
         let working_directory = context.child_directory(&self.title);
         working_directory.create_dir_all()?;
+
+        let inner_controller = self.network_builder.build()?;
         if context.generate_documentation() {
-            self.document(working_directory.path())?;
+            document(working_directory.path(), &inner_controller)?;
         }
         self.controller_progress.finish_and_clear();
-        self.summary();
+        summary(&self.title);
 
         match context.progress_bar_mode() {
             ProgressBarMode::None => println!("nodes logging disabled"),
@@ -129,76 +123,65 @@ impl ControllerBuilder {
             _ => (),
         }
 
-        let settings = self.settings.unwrap();
-
-        Controller::new(
-            settings,
-            context,
-            working_directory,
-            self.blockchain.unwrap(),
-            self.topology.unwrap(),
-        )
+        self.controller_progress.inc(5);
+        Controller::new(inner_controller, context, working_directory, self.topology)
     }
+}
 
-    fn summary(&self) {
-        println!(
-            r###"
+fn summary(title: &str) {
+    println!(
+        r###"
 # Running {title}
-        "###,
-            title = style::scenario_title.apply_to(&self.title)
-        )
+    "###,
+        title = style::scenario_title.apply_to(title)
+    )
+}
+
+fn document(path: &Path, inner: &InnerController) -> Result<()> {
+    let file = std::fs::File::create(&path.join("initial_setup.dot"))?;
+
+    let dotifier = Dotifier;
+    dotifier.dottify(inner.settings(), file)?;
+
+    for wallet in inner.settings().wallets.values() {
+        wallet.save_to(path)?;
     }
 
-    fn document(&self, path: &Path) -> Result<()> {
-        if let Some(settings) = &self.settings {
-            let file = std::fs::File::create(&path.join("initial_setup.dot"))?;
+    let file = std::fs::File::create(&path.join("genesis.yaml"))?;
+    serde_yaml::to_writer(file, &inner.settings().block0).unwrap();
 
-            let dotifier = Dotifier;
-            dotifier.dottify(settings, file)?;
-
-            for wallet in settings.network_settings.wallets.values() {
-                wallet.save_to(path)?;
-            }
-
-            let file = std::fs::File::create(&path.join("genesis.yaml"))?;
-            serde_yaml::to_writer(file, &settings.network_settings.block0).unwrap();
-        }
-
-        Ok(())
-    }
+    Ok(())
 }
 
 impl Controller {
     fn new(
-        settings: Settings,
+        controller: InnerController,
         context: ContextChaCha,
         working_directory: ChildPath,
-        blockchain: Blockchain,
         topology: Topology,
     ) -> Result<Self> {
         use chain_core::property::Serialize as _;
 
-        let block0 = settings.network_settings.block0.to_block();
+        let block0 = controller.settings().block0.to_block();
         let block0_file = working_directory.child("block0.bin").path().into();
         let file = std::fs::File::create(&block0_file)?;
         block0.serialize(file)?;
         let progress_bar = Arc::new(MultiProgress::new());
 
         Ok(Controller {
-            block0: settings.network_settings.block0.clone(),
-            settings,
+            block0: controller.settings().block0.clone(),
+            inner: controller,
             context,
             block0_file,
             progress_bar,
             progress_bar_thread: None,
             working_directory,
-            blockchain,
             topology,
         })
     }
 
     pub fn stake_pool(&mut self, node_alias: &str) -> Result<StakePool> {
-        if let Some(stake_pool) = self.settings.network_settings.stake_pools.get(node_alias) {
+        if let Some(stake_pool) = self.inner.settings().stake_pools.get(node_alias) {
             Ok(stake_pool.clone())
         } else {
             Err(Error::StakePoolNotFound(node_alias.to_owned()))
@@ -210,30 +193,34 @@ impl Controller {
     }
 
     pub fn nodes(&self) -> impl Iterator<Item = (&NodeAlias, &NodeSetting)> {
-        self.settings.network_settings.nodes.iter()
+        self.inner.settings().nodes.iter()
     }
 
     pub fn vote_plan(&self, alias: &str) -> Result<VotePlanDef> {
-        if let Some(vote_plan) = self.settings.network_settings.vote_plans.get(alias) {
-            Ok(self.convert_to_def(alias, vote_plan))
+        if let Some((key, vote_plan)) = self
+            .inner
+            .settings()
+            .vote_plans
+            .iter()
+            .find(|(x, _y)| x.alias == alias)
+        {
+            Ok(self.convert_to_def(key, &vote_plan.vote_plan().into()))
         } else {
             Err(Error::VotePlanNotFound(alias.to_owned()))
         }
     }
 
     pub fn vote_plans(&self) -> Vec<VotePlanDef> {
-        self.settings
-            .network_settings
+        self.inner
+            .settings()
             .vote_plans
             .iter()
-            .map(|(x, y)| self.convert_to_def(x, y))
+            .map(|(x, y)| self.convert_to_def(x, &y.vote_plan().into()))
             .collect()
     }
 
-    fn convert_to_def(&self, alias: &str, vote_plan: &VotePlan) -> VotePlanDef {
-        let templates = self.blockchain.vote_plans();
-        let key = templates.keys().find(|key| key.alias == alias).unwrap();
-        let mut builder = VotePlanDefBuilder::new(alias);
+    fn convert_to_def(&self, key: &VotePlanKey, vote_plan: &VotePlan) -> VotePlanDef {
+        let mut builder = VotePlanDefBuilder::new(&key.alias);
         builder
             .owner(&key.owner_alias)
             .payload_type(vote_plan.payload_type())
@@ -284,13 +271,13 @@ impl Controller {
     }
 
     pub fn wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSetting)> {
-        self.settings.network_settings.wallets.iter()
+        self.inner.settings().wallets.iter()
     }
 
     pub fn get_all_wallets(&mut self) -> Vec<Wallet> {
         let mut wallets = vec![];
 
-        for alias in self.settings.network_settings.wallets.clone().keys() {
+        for alias in self.inner.settings().wallets.keys() {
             wallets.push(self.wallet(alias).unwrap());
         }
         wallets
@@ -301,7 +288,7 @@ impl Controller {
     }
 
     pub fn settings(&self) -> &Settings {
-        &self.settings
+        self.inner.settings()
     }
 
     pub fn context(&self) -> &ContextChaCha {
@@ -328,7 +315,7 @@ impl Controller {
     }
 
     pub fn wallet(&self, wallet: &str) -> Result<Wallet> {
-        if let Some(wallet) = self.settings.network_settings.wallets.get(wallet) {
+        if let Some(wallet) = self.settings().wallets.get(wallet) {
             Ok(wallet.clone().into())
         } else {
             Err(Error::WalletNotFound(wallet.to_owned()))
@@ -349,8 +336,7 @@ impl Controller {
         version: &Version,
     ) -> Result<LegacyNode> {
         let mut node_setting = self
-            .settings
-            .network_settings
+            .settings()
             .nodes
             .get(params.get_alias())
             .ok_or_else(|| Error::NodeNotFound(params.get_alias().clone()))?
@@ -399,8 +385,7 @@ impl Controller {
 
     pub fn spawn_node_custom(&mut self, params: SpawnParams) -> Result<Node> {
         let mut node_setting = self
-            .settings
-            .network_settings
+            .settings()
             .nodes
             .get(params.get_alias())
             .ok_or_else(|| Error::NodeNotFound(params.get_alias().clone()))?
@@ -509,12 +494,7 @@ impl Controller {
         builder.dump_fragments_into(root_dir.join("fragments"));
         let hash = Hash::from_hash(self.block0.to_block().header().hash());
 
-        let blockchain_configuration = self
-            .settings
-            .network_settings
-            .block0
-            .blockchain_configuration
-            .clone();
+        let blockchain_configuration = self.settings().block0.blockchain_configuration.clone();
 
         let block_date_generator = BlockDateGenerator::rolling_from_blockchain_config(
             &blockchain_configuration,
