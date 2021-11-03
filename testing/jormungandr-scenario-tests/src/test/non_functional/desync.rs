@@ -38,19 +38,19 @@ pub fn bft_forks(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader_1 = controller.spawn_node(
+    let mut leader_1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
     leader_1.wait_for_bootstrap()?;
-    let leader_2 = controller.spawn_node(
+    let mut leader_2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
     leader_2.wait_for_bootstrap()?;
-    let leader_3 = controller.spawn_node_custom(
+    let mut leader_3 = controller.spawn_node_custom(
         controller
             .new_spawn_params(LEADER_3)
             .leadership_mode(LeadershipMode::Leader)

@@ -78,10 +78,10 @@ fn test_legacy_release(
     let mut controller = scenario_settings.build(context)?;
 
     controller.monitor_nodes();
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader3.wait_for_bootstrap()?;
-    let leader1 = controller.spawn_legacy_node(
+    let mut leader1 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_1)
             .persistence_mode(PersistenceMode::Persistent)
@@ -89,11 +89,11 @@ fn test_legacy_release(
         &version,
     )?;
     leader1.wait_for_bootstrap()?;
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
 
     leader2.wait_for_bootstrap()?;
-    let leader4 =
+    let mut leader4 =
         controller.spawn_node(LEADER_4, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader4.wait_for_bootstrap()?;
 
@@ -188,14 +188,14 @@ fn test_legacy_disruption_release(
     )?;
     leader1.wait_for_bootstrap()?;
 
-    let leader2 = controller.spawn_node(
+    let mut leader2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
     )?;
     leader2.wait_for_bootstrap()?;
 
-    let leader3 = controller.spawn_node(
+    let mut leader3 = controller.spawn_node(
         LEADER_3,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -299,7 +299,7 @@ pub fn newest_node_enters_legacy_network(
 
     controller.monitor_nodes();
 
-    let leader1 = controller.spawn_legacy_node(
+    let mut leader1 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_1)
             .persistence_mode(PersistenceMode::Persistent)
@@ -308,7 +308,7 @@ pub fn newest_node_enters_legacy_network(
     )?;
     leader1.wait_for_bootstrap()?;
 
-    let leader2 = controller.spawn_legacy_node(
+    let mut leader2 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_2)
             .persistence_mode(PersistenceMode::Persistent)
@@ -317,7 +317,7 @@ pub fn newest_node_enters_legacy_network(
     )?;
     leader2.wait_for_bootstrap()?;
 
-    let leader3 = controller.spawn_legacy_node(
+    let mut leader3 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_3)
             .persistence_mode(PersistenceMode::Persistent)
@@ -335,7 +335,7 @@ pub fn newest_node_enters_legacy_network(
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
 
     // new node enters the network
-    let leader4 = controller.spawn_node(
+    let mut leader4 = controller.spawn_node(
         LEADER_4,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -363,7 +363,7 @@ pub fn newest_node_enters_legacy_network(
     leader4.shutdown()?;
 
     //let assume that we are not satisfied how newest node behaves and we want to rollback
-    let old_leader4 = controller.spawn_legacy_node(
+    let mut old_leader4 = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER_4)
             .persistence_mode(PersistenceMode::Persistent)

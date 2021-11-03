@@ -37,22 +37,22 @@ pub fn max_connections(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
 
     let mut controller = scenario_settings.build(context)?;
 
-    let leader1 = controller.spawn_node_custom(
+    let mut leader1 = controller.spawn_node_custom(
         controller
             .new_spawn_params(LEADER1)
             .max_inbound_connections(2),
     )?;
     leader1.wait_for_bootstrap()?;
 
-    let leader2 =
+    let mut leader2 =
         controller.spawn_node(LEADER2, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader2.wait_for_bootstrap()?;
 
-    let leader3 =
+    let mut leader3 =
         controller.spawn_node_custom(controller.new_spawn_params(LEADER3).max_connections(1))?;
     leader3.wait_for_bootstrap()?;
 
-    let leader4 =
+    let mut leader4 =
         controller.spawn_node(LEADER4, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader4.wait_for_bootstrap()?;
 

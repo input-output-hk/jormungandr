@@ -40,7 +40,7 @@ pub fn leader_restart_preserves_leadership_log(
 
     let now = SystemTime::now();
 
-    let leader_1 = controller.spawn_node(
+    let mut leader_1 = controller.spawn_node(
         LEADER_1,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,
@@ -55,7 +55,7 @@ pub fn leader_restart_preserves_leadership_log(
     }
 
     //start bft node 2
-    let leader_2 = controller.spawn_node(
+    let mut leader_2 = controller.spawn_node(
         LEADER_2,
         LeadershipMode::Leader,
         PersistenceMode::Persistent,

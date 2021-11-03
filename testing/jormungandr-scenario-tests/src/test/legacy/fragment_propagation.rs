@@ -44,11 +44,11 @@ pub fn legacy_current_node_fragment_propagation(
     let mut controller = scenario_settings.build(context)?;
     controller.monitor_nodes();
 
-    let leader =
+    let mut leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader.wait_for_bootstrap()?;
 
-    let passive = controller.spawn_legacy_node(
+    let mut passive = controller.spawn_legacy_node(
         controller
             .new_spawn_params(PASSIVE)
             .leadership_mode(LeadershipMode::Passive)
@@ -98,7 +98,7 @@ pub fn current_node_legacy_fragment_propagation(
     let mut controller = scenario_settings.build(context)?;
     controller.monitor_nodes();
 
-    let leader = controller.spawn_legacy_node(
+    let mut leader = controller.spawn_legacy_node(
         controller
             .new_spawn_params(LEADER)
             .leadership_mode(LeadershipMode::Leader)
@@ -108,7 +108,7 @@ pub fn current_node_legacy_fragment_propagation(
     )?;
     leader.wait_for_bootstrap()?;
 
-    let passive =
+    let mut passive =
         controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     passive.wait_for_bootstrap()?;
 
@@ -150,11 +150,11 @@ pub fn current_node_fragment_propagation(
     let mut controller = scenario_settings.build(context)?;
     controller.monitor_nodes();
 
-    let leader =
+    let mut leader =
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
     leader.wait_for_bootstrap()?;
 
-    let passive =
+    let mut passive =
         controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
     passive.wait_for_bootstrap()?;
 

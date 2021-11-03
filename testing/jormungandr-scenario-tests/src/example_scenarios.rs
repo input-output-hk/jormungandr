@@ -33,9 +33,9 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context)?;
 
-    let node1 =
+    let mut node1 =
         controller.spawn_node("node1", LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let node2 =
+    let mut node2 =
         controller.spawn_node("node2", LeadershipMode::Passive, PersistenceMode::InMemory)?;
 
     controller.monitor_nodes();
@@ -84,19 +84,19 @@ pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 
     let mut controller = scenario_settings.build(context).unwrap();
 
-    let leader1 =
+    let mut leader1 =
         controller.spawn_node("Leader1", LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    let passive1 = controller.spawn_node(
+    let mut passive1 = controller.spawn_node(
         "Passive1",
         LeadershipMode::Passive,
         PersistenceMode::InMemory,
     )?;
-    let passive2 = controller.spawn_node(
+    let mut passive2 = controller.spawn_node(
         "Passive2",
         LeadershipMode::Passive,
         PersistenceMode::InMemory,
     )?;
-    let passive3 = controller.spawn_node(
+    let mut passive3 = controller.spawn_node(
         "Passive3",
         LeadershipMode::Passive,
         PersistenceMode::InMemory,
