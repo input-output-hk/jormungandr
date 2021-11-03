@@ -321,6 +321,12 @@ async fn handle_sync_multiverse(
                 .get_parent(current)
                 .map_err(intercom::Error::failed_precondition)?
                 .ok_or_else(|| intercom::Error::aborted("reached block0"))?;
+
+            // current_length is not 0 because we know that current != lsb, and
+            //
+            // a) the chain lengths come from the storage, not the client.
+            // b) there should be only one block with a chain length of 0 in the storage.
+            current_length -= 1;
         }
     }
 
