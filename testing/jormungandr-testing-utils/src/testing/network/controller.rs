@@ -10,12 +10,11 @@ use crate::{
     },
     wallet::Wallet,
 };
-use chain_impl_mockchain::header::HeaderId;
-use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
-
 use assert_fs::fixture::FixtureError;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
+use chain_impl_mockchain::header::HeaderId;
+use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 use std::path::PathBuf;
 use thiserror::Error;
 
@@ -75,6 +74,10 @@ impl Controller {
 
     pub fn node_config(&self, alias: &str) -> Result<NodeConfig, ControllerError> {
         Ok(self.node_settings(alias)?.config.clone())
+    }
+
+    pub fn settings(&self) -> &Settings {
+        &self.settings
     }
 
     pub fn node_settings(&self, alias: &str) -> Result<&NodeSetting, ControllerError> {

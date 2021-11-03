@@ -4,7 +4,9 @@ use crate::{
     testing::{
         ensure_node_is_in_sync_with_others,
         fragments::node::{FragmentNode, MemPoolCheck},
-        FragmentSenderSetup, FragmentVerifier, SyncNode, SyncNodeError, SyncWaitParams,
+        network::Settings,
+        DummySyncNode, FragmentSenderSetup, FragmentVerifier, SyncNode, SyncNodeError,
+        SyncWaitParams,
     },
     wallet::Wallet,
 };
@@ -558,6 +560,24 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
             self.setup.sync_nodes(),
             SyncWaitParams::network_size(nodes_length, 2).into(),
             "waiting for node to be in sync before sending transaction",
+        )
+    }
+}
+
+impl<'a> From<&Settings> for FragmentSender<'a, DummySyncNode> {
+    fn from(settings: &Settings) -> Self {
+        Self::new(
+            settings.block0.to_block().header().hash().into(),
+            settings.block0.blockchain_configuration.linear_fees,
+            BlockDateGenerator::rolling_from_blockchain_config(
+                &settings.block0.blockchain_configuration,
+                BlockDate {
+                    epoch: 1,
+                    slot_id: 0,
+                },
+                false,
+            ),
+            Default::default(),
         )
     }
 }

@@ -5,17 +5,22 @@ use jormungandr_testing_utils::testing::{
         SpawnParams, Topology,
     },
     node::LogLevel,
+    FragmentSender,
 };
 
 use jormungandr_lib::{
-    interfaces::{PeerRecord, Policy, TrustedPeer},
+    interfaces::{PeerRecord, Policy, TopicsOfInterest, TrustedPeer},
     time::Duration,
 };
+use jormungandr_testing_utils::testing::DummySyncNode;
 use jormungandr_testing_utils::testing::FragmentNode;
 use jortestkit::process as process_utils;
 
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
+
+const ALICE: &str = "alice";
+const BOB: &str = "bob";
 
 pub fn assert_empty_quarantine(node: &JormungandrProcess, info: &str) {
     let quarantine = node
@@ -126,13 +131,13 @@ pub fn node_whitelist_itself() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -167,13 +172,13 @@ pub fn node_does_not_quarantine_whitelisted_node() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -221,13 +226,13 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -272,13 +277,13 @@ pub fn node_does_not_quarantine_trusted_node() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -315,13 +320,13 @@ pub fn node_trust_itself() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -359,13 +364,13 @@ fn gossip_interval() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -455,6 +460,91 @@ fn network_stuck_check() {
             }
         }
     }
+}
+
+#[test]
+pub fn topics_of_interest_influences_node_sync_ability() {
+    const FAST_CLIENT: &str = "FAST_CLIENT";
+    const SLOW_CLIENT: &str = "SLOW_CLIENT";
+
+    let mut network_controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER))
+                .with_node(Node::new(FAST_CLIENT).with_trusted_peer(SERVER))
+                .with_node(Node::new(SLOW_CLIENT).with_trusted_peer(SERVER)),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(ALICE)
+                .with(1_000_000)
+                .delegated_to(SERVER)
+                .build(),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(BOB)
+                .with(1_000_000)
+                .delegated_to(SERVER)
+                .build(),
+        )
+        .build()
+        .unwrap();
+
+    let server = network_controller
+        .spawn(SpawnParams::new(SERVER).in_memory())
+        .unwrap();
+
+    let fast_client = network_controller
+        .spawn(
+            SpawnParams::new(FAST_CLIENT)
+                .in_memory()
+                .topics_of_interest(TopicsOfInterest {
+                    messages: "high".to_string(),
+                    blocks: "high".to_string(),
+                }),
+        )
+        .unwrap();
+    let slow_client = network_controller
+        .spawn(
+            SpawnParams::new(SLOW_CLIENT)
+                .in_memory()
+                .topics_of_interest(TopicsOfInterest {
+                    messages: "low".to_string(),
+                    blocks: "low".to_string(),
+                }),
+        )
+        .unwrap();
+
+    let mut alice = network_controller.wallet(ALICE).unwrap();
+    let mut bob = network_controller.wallet(BOB).unwrap();
+
+    let fragment_sender: FragmentSender<DummySyncNode> =
+        FragmentSender::from(network_controller.settings());
+    fragment_sender
+        .send_transactions_round_trip(40, &mut alice, &mut bob, &server, 100.into())
+        .unwrap();
+
+    let fast_client_block_recv_cnt = fast_client
+        .rest()
+        .stats()
+        .unwrap()
+        .stats
+        .unwrap()
+        .block_recv_cnt;
+    let slow_client_block_recv_cnt = slow_client
+        .rest()
+        .stats()
+        .unwrap()
+        .stats
+        .unwrap()
+        .block_recv_cnt;
+    assert!(
+        fast_client_block_recv_cnt >= slow_client_block_recv_cnt,
+        "node with high block topic of interest should have more recieved blocks fast:{} vs slow:{}",fast_client_block_recv_cnt,slow_client_block_recv_cnt
+    );
+
+    server.assert_no_errors_in_log();
+    fast_client.assert_no_errors_in_log();
+    slow_client.assert_no_errors_in_log();
 }
 
 #[test]
