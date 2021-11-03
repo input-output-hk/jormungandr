@@ -14,7 +14,7 @@ use jormungandr_testing_utils::testing::{
 use std::io::Write;
 
 #[test]
-fn dummy_change_config_test() {
+fn basic_change_config_test() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
