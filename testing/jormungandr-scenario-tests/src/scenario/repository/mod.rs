@@ -132,9 +132,6 @@ impl ScenariosRepository {
                 )
             });
         let scenario_to_run = scenario.method();
-
-        println!("Running '{}' scenario", scenario.name());
-
         let result = {
             if self.print_panics {
                 Ok(Ok(scenario_to_run(context.clone().derive()).unwrap()))

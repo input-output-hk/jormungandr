@@ -115,9 +115,6 @@ impl Settings {
         settings.populate_block0_blockchain_initials(blockchain.wallets(), rng);
         settings.populate_block0_blockchain_configuration(&blockchain, rng);
         settings.populate_block0_blockchain_external(blockchain.external_wallets());
-
-        println!("{:#?}", settings);
-
         settings
     }
 

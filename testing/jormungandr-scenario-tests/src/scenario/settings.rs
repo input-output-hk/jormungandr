@@ -80,9 +80,6 @@ impl Settings {
             blockchain.committees(),
             rng.rng_mut(),
         );
-
-        println!("{:?}", settings);
-
         settings
     }
 
