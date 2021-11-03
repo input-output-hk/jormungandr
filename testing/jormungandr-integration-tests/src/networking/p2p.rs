@@ -5,17 +5,22 @@ use jormungandr_testing_utils::testing::{
         SpawnParams, Topology,
     },
     node::LogLevel,
+    FragmentSender,
 };
 
 use jormungandr_lib::{
     interfaces::{PeerRecord, Policy, TopicsOfInterest, TrustedPeer},
     time::Duration,
 };
+use jormungandr_testing_utils::testing::DummySyncNode;
 use jormungandr_testing_utils::testing::FragmentNode;
 use jortestkit::process as process_utils;
 
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
+
+const ALICE: &str = "alice";
+const BOB: &str = "bob";
 
 pub fn assert_empty_quarantine(node: &JormungandrProcess, info: &str) {
     let quarantine = node
@@ -126,13 +131,13 @@ pub fn node_whitelist_itself() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -167,13 +172,13 @@ pub fn node_does_not_quarantine_whitelisted_node() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -221,13 +226,13 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -272,13 +277,13 @@ pub fn node_does_not_quarantine_trusted_node() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -315,13 +320,13 @@ pub fn node_trust_itself() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -359,13 +364,13 @@ fn gossip_interval() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated1")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(CLIENT)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("delegated2")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -470,13 +475,13 @@ pub fn topics_of_interest_influences_node_sync_ability() {
                 .with_node(Node::new(SLOW_CLIENT).with_trusted_peer(SERVER)),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("alice")
+            WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
         )
         .wallet_template(
-            WalletTemplateBuilder::new("bob")
+            WalletTemplateBuilder::new(BOB)
                 .with(1_000_000)
                 .delegated_to(SERVER)
                 .build(),
@@ -509,11 +514,12 @@ pub fn topics_of_interest_influences_node_sync_ability() {
         )
         .unwrap();
 
-    let mut alice = network_controller.wallet("alice").unwrap();
-    let mut bob = network_controller.wallet("bob").unwrap();
+    let mut alice = network_controller.wallet(ALICE).unwrap();
+    let mut bob = network_controller.wallet(BOB).unwrap();
 
-    network_controller
-        .fragment_sender()
+    let fragment_sender: FragmentSender<DummySyncNode> =
+        FragmentSender::from(network_controller.settings());
+    fragment_sender
         .send_transactions_round_trip(40, &mut alice, &mut bob, &server, 100.into())
         .unwrap();
 

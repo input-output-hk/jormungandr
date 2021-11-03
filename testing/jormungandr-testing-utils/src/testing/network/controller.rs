@@ -1,6 +1,3 @@
-use crate::testing::BlockDateGenerator;
-use crate::testing::DummySyncNode;
-use crate::testing::FragmentSenderSetup;
 use crate::testing::{
     jormungandr::starter::{Starter, StartupError},
     jormungandr::JormungandrProcess,
@@ -9,14 +6,13 @@ use crate::testing::{
 use crate::{
     testing::{
         network::{NodeSetting, PersistenceMode, Settings, SpawnParams},
-        FragmentSender, JormungandrParams,
+        JormungandrParams,
     },
     wallet::Wallet,
 };
 use assert_fs::fixture::FixtureError;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
-use chain_impl_mockchain::header::BlockDate;
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 use std::path::PathBuf;
@@ -80,31 +76,15 @@ impl Controller {
         Ok(self.node_settings(alias)?.config.clone())
     }
 
+    pub fn settings(&self) -> &Settings {
+        &self.settings
+    }
+
     pub fn node_settings(&self, alias: &str) -> Result<&NodeSetting, ControllerError> {
         self.settings
             .nodes
             .get(alias)
             .ok_or_else(|| ControllerError::NodeNotFound(alias.to_string()))
-    }
-
-    pub fn fragment_sender<'a>(&self) -> FragmentSender<'a, DummySyncNode> {
-        FragmentSender::new(
-            self.settings.block0.to_block().header().hash().into(),
-            self.settings.block0.blockchain_configuration.linear_fees,
-            self.default_block_date_generator(),
-            FragmentSenderSetup::resend_3_times(),
-        )
-    }
-
-    pub fn default_block_date_generator(&self) -> BlockDateGenerator {
-        BlockDateGenerator::rolling_from_blockchain_config(
-            &self.settings.block0.blockchain_configuration,
-            BlockDate {
-                epoch: 1,
-                slot_id: 0,
-            },
-            false,
-        )
     }
 
     pub fn spawn_node_async(&mut self, alias: &str) -> Result<JormungandrProcess, ControllerError> {
