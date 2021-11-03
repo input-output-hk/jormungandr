@@ -314,7 +314,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
             FragmentStatus::Rejected { .. } => Ok(()),
             FragmentStatus::InABlock { date, block } => {
                 Err(AdversaryFragmentSenderError::FragmentNotRejected {
-                    alias: FragmentNode::alias(node).to_string(),
+                    alias: FragmentNode::alias(node),
                     date,
                     block,
                     logs: FragmentNode::log_content(node),

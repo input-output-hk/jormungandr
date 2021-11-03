@@ -1,5 +1,5 @@
 use super::FragmentNode;
-use crate::testing::SyncNode;
+use crate::testing::{network::NodeAlias, SyncNode};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -14,11 +14,11 @@ impl<'a> fmt::Debug for VerifyStrategy<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             VerifyStrategy::AnyOf(nodes) => {
-                let aliases: Vec<String> = nodes.iter().map(|x| x.alias().to_string()).collect();
+                let aliases: Vec<String> = nodes.iter().map(|x| x.alias()).collect();
                 write!(f, "Any of {:?}", aliases)
             }
             VerifyStrategy::AllOf(nodes) => {
-                let aliases: Vec<String> = nodes.iter().map(|x| x.alias().to_string()).collect();
+                let aliases: Vec<String> = nodes.iter().map(|x| x.alias()).collect();
                 write!(f, "All of {:?}", aliases)
             }
             VerifyStrategy::Single(node) => write!(f, "{}", node.alias()),
@@ -101,7 +101,7 @@ pub struct DummySyncNode;
 use crate::testing::fragments::Hash;
 
 impl SyncNode for DummySyncNode {
-    fn alias(&self) -> &str {
+    fn alias(&self) -> NodeAlias {
         unimplemented!()
     }
 

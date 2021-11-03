@@ -7,6 +7,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{
     Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
 };
@@ -143,6 +144,17 @@ impl BackwardCompatibleRest {
     pub fn tip(&self) -> Result<Hash, RestError> {
         let tip = self.raw().tip()?.text()?;
         tip.parse().map_err(RestError::HashParseError)
+    }
+
+    pub fn block_as_bytes(&self, header_hash: &HeaderId) -> Result<Vec<u8>, RestError> {
+        let mut bytes = Vec::new();
+        let mut resp = self.raw().block(header_hash)?;
+        resp.copy_to(&mut bytes)?;
+        Ok(bytes)
+    }
+
+    pub fn shutdown(&self) -> Result<String, reqwest::Error> {
+        self.raw().shutdown()?.text()
     }
 
     pub fn settings(&self) -> Result<String, reqwest::Error> {

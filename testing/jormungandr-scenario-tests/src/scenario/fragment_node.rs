@@ -1,32 +1,42 @@
-use crate::node::NodeController;
+use crate::node::Node;
+use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary};
+use jormungandr_testing_utils::testing::network::NodeAlias;
 use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError, MemPoolCheck};
 use std::collections::HashMap;
 
-impl FragmentNode for NodeController {
-    fn alias(&self) -> &str {
+impl FragmentNode for Node {
+    fn alias(&self) -> NodeAlias {
         self.alias()
     }
     fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError> {
         //TODO: implement conversion
-        self.fragment_logs()
+        self.rest()
+            .fragment_logs()
             .map_err(|_| FragmentNodeError::UnknownError)
     }
     fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, FragmentNodeError> {
         //TODO: implement conversion
-        self.send_fragment(fragment)
+        self.rest()
+            .send_fragment(fragment)
             .map_err(|_| FragmentNodeError::UnknownError)
     }
 
     fn send_batch_fragments(
         &self,
-        _fragments: Vec<Fragment>,
-        _fail_fast: bool,
+        fragments: Vec<Fragment>,
+        fail_fast: bool,
     ) -> std::result::Result<FragmentsProcessingSummary, FragmentNodeError> {
-        //TODO implement
-        unimplemented!()
+        self.rest()
+            .send_fragment_batch(fragments.clone(), fail_fast)
+            .map_err(|e| FragmentNodeError::CannotSendFragmentBatch {
+                reason: e.to_string(),
+                alias: self.alias(),
+                fragment_ids: fragments.iter().map(|x| x.id()).collect(),
+                logs: FragmentNode::log_content(self),
+            })
     }
 
     fn log_pending_fragment(&self, fragment_id: FragmentId) {

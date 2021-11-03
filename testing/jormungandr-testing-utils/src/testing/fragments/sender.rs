@@ -448,7 +448,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
             node,
         )? {
             FragmentStatus::Rejected { reason } => Err(FragmentSenderError::FragmentNotInBlock {
-                alias: FragmentNode::alias(node).to_string(),
+                alias: FragmentNode::alias(node),
                 reason,
                 logs: FragmentNode::log_content(node),
             }),
@@ -534,7 +534,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
 
         Err(FragmentSenderError::TooManyAttemptsFailed {
             attempts: self.setup.attempts_count(),
-            alias: FragmentNode::alias(node).to_string(),
+            alias: FragmentNode::alias(node),
         })
     }
 

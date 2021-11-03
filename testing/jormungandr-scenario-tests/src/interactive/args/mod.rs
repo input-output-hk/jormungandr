@@ -1,5 +1,5 @@
-use crate::{legacy::LegacyNodeController, test::Result};
-use crate::{node::NodeController, scenario::Controller};
+use crate::{legacy::LegacyNode, test::Result};
+use crate::{node::Node, scenario::Controller};
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::Value;
 use jormungandr_testing_utils::wallet::Wallet;
@@ -15,8 +15,8 @@ pub mod spawn;
 pub struct UserInteractionController {
     controller: Controller,
     wallets: Vec<Wallet>,
-    nodes: Vec<NodeController>,
-    legacy_nodes: Vec<LegacyNodeController>,
+    nodes: Vec<Node>,
+    legacy_nodes: Vec<LegacyNode>,
 }
 
 impl UserInteractionController {
@@ -38,18 +38,18 @@ impl UserInteractionController {
         &mut self.wallets
     }
 
-    pub fn nodes(&self) -> &[NodeController] {
+    pub fn nodes(&self) -> &[Node] {
         &self.nodes
     }
 
-    pub fn legacy_nodes(&self) -> &[LegacyNodeController] {
+    pub fn legacy_nodes(&self) -> &[LegacyNode] {
         &self.legacy_nodes
     }
 
-    pub fn legacy_nodes_mut(&mut self) -> &mut Vec<LegacyNodeController> {
+    pub fn legacy_nodes_mut(&mut self) -> &mut Vec<LegacyNode> {
         &mut self.legacy_nodes
     }
-    pub fn nodes_mut(&mut self) -> &mut Vec<NodeController> {
+    pub fn nodes_mut(&mut self) -> &mut Vec<Node> {
         &mut self.nodes
     }
 
@@ -221,10 +221,10 @@ pub enum InteractiveCommand {
     Send(send::Send),
 }
 
-fn do_for_all_alias<F: Fn(&NodeController), G: Fn(&LegacyNodeController)>(
+fn do_for_all_alias<F: Fn(&Node), G: Fn(&LegacyNode)>(
     alias: &Option<String>,
-    nodes: &[NodeController],
-    legacy_nodes: &[LegacyNodeController],
+    nodes: &[Node],
+    legacy_nodes: &[LegacyNode],
     f: F,
     g: G,
 ) {

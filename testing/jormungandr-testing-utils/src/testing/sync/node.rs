@@ -1,9 +1,10 @@
+use crate::testing::network::NodeAlias;
 use jormungandr_lib::crypto::hash::Hash;
 use std::{fmt, time::Duration};
 use thiserror::Error;
 
 pub trait SyncNode {
-    fn alias(&self) -> &str;
+    fn alias(&self) -> NodeAlias;
     fn last_block_height(&self) -> u32;
     fn log_stats(&self);
     fn tip(&self) -> Hash;

@@ -1,3 +1,4 @@
+use crate::testing::network::NodeAlias;
 use crate::testing::node::grpc::{
     client::MockClientError,
     server::{
@@ -68,8 +69,8 @@ impl AdversaryNode {
         )
     }
 
-    pub fn alias(&self) -> &str {
-        &self.alias
+    pub fn alias(&self) -> NodeAlias {
+        self.alias.to_string()
     }
 
     pub fn address(&self) -> SocketAddr {

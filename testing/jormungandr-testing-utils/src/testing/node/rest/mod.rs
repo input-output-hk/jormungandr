@@ -2,13 +2,11 @@ mod load;
 mod raw;
 mod settings;
 
-pub use load::RestRequestGen;
-pub use raw::RawRest;
-pub use settings::RestSettings;
-
 use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
 use chain_addr::Discrimination;
+use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{
     Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
 };
@@ -19,6 +17,9 @@ use jormungandr_lib::{
         PeerStats, SettingsDto, StakeDistributionDto, VotePlanStatus,
     },
 };
+pub use load::RestRequestGen;
+pub use raw::RawRest;
+pub use settings::RestSettings;
 use std::collections::HashMap;
 use std::io::Read;
 use std::{fs::File, net::SocketAddr, path::Path};
@@ -40,6 +41,8 @@ pub enum RestError {
         status: reqwest::StatusCode,
         checks: Vec<MemPoolCheck>,
     },
+    #[error(transparent)]
+    ReadBytes(#[from] chain_core::mempack::ReadError),
 }
 
 pub fn uri_from_socket_addr(addr: SocketAddr) -> String {
@@ -216,6 +219,20 @@ impl JormungandrRest {
 
     pub fn send_raw_fragments(&self, bytes: Vec<Vec<u8>>) -> Result<(), RestError> {
         self.inner.send_raw_fragments(bytes).map_err(Into::into)
+    }
+
+    pub fn block_as_bytes(&self, header_hash: &HeaderId) -> Result<Vec<u8>, RestError> {
+        self.inner.block_as_bytes(header_hash).map_err(Into::into)
+    }
+
+    pub fn shutdown(&self) -> Result<String, RestError> {
+        self.inner.shutdown().map_err(Into::into)
+    }
+
+    pub fn block(&self, header_hash: &HeaderId) -> Result<Block, RestError> {
+        use chain_core::mempack::{ReadBuf, Readable as _};
+        let bytes = self.block_as_bytes(header_hash)?;
+        Block::read(&mut ReadBuf::from(&bytes)).map_err(Into::into)
     }
 
     pub fn fragments_statuses(

@@ -10,7 +10,7 @@ pub mod report;
 pub mod test;
 
 pub use jortestkit::console::style;
-pub use node::{Node, NodeBlock0, NodeController};
+pub use node::{Node, NodeBlock0};
 pub use programs::prepare_command;
 pub use scenario::{
     parse_progress_bar_mode_from_str,
