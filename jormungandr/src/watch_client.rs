@@ -297,14 +297,18 @@ async fn handle_sync_multiverse(
 
     let mut known_unstable_blocks_by_client = HashSet::new();
 
-    for (_, checkpoint) in checkpoints {
-        if !storage.is_ancestor(lsb, checkpoint) {
-            return Err(intercom::Error::invalid_argument(
-                "invalid from/checkpoints",
-            ));
-        }
-
+    for (checkpoint_length, checkpoint) in checkpoints {
         let mut current = checkpoint;
+        let mut current_length = checkpoint_length;
+
+        while current != lsb_id {
+            // this would mean the lsb is not an ancestor of the checkpoint
+            // which shouldn't happen.
+            if current_length < lsb_length {
+                return Err(intercom::Error::invalid_argument(
+                    "checkpoint is not a succesor of the last stable block",
+                ));
+            }
 
         while current != lsb {
             known_unstable_blocks_by_client.insert(current);
