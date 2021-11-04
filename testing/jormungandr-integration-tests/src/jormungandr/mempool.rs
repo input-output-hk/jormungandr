@@ -492,7 +492,8 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
 
     // By the time the rest of the transactions have been placed in blocks, the epoch should be over
     // and the transaction below should have expired.
-    FragmentVerifier::wait_and_verify_is_rejected(Duration::from_secs(5), check, &passive).unwrap();
+    FragmentVerifier::wait_and_verify_is_rejected(Duration::from_secs(30), check, &passive)
+        .unwrap();
 }
 
 #[test]
