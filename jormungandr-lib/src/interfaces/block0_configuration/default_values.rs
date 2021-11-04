@@ -35,6 +35,9 @@ pub const MINIMUM_SLOT_DURATION: u8 = 1;
 /// maximum slot duration in seconds (here is it max of u8: 255)
 pub const MAXIMUM_SLOT_DURATION: u8 = u8::max_value();
 
+/// default proposal expiration in epochs
+pub const DEFAULT_PROPOSAL_EXPIRATION: u32 = 100;
+
 /// when generating arbitrary values for property testing this will be the maximum
 /// number of entries we will generate in an `Initial` fragment. This is in order
 /// to avoid testing too large values that may not make sense. Updating this value

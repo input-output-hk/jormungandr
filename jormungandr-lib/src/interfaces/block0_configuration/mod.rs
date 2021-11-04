@@ -8,6 +8,7 @@ mod initial_fragment;
 mod kes_update_speed;
 mod leader_id;
 mod number_of_slots_per_epoch;
+mod proposal_expiration;
 mod reward_constraint;
 mod slots_duration;
 
@@ -25,6 +26,7 @@ pub use self::kes_update_speed::KesUpdateSpeed;
 pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
 pub use self::number_of_slots_per_epoch::TryFromNumberOfSlotsPerEpochError;
+pub use self::proposal_expiration::ProposalExpiration;
 pub use self::reward_constraint::{PoolParticipationCapping, RewardConstraints};
 pub use self::slots_duration::SlotDuration;
 pub use self::slots_duration::TryFromSlotDurationError;
