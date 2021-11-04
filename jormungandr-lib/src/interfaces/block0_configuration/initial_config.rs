@@ -2,7 +2,8 @@ use crate::{
     interfaces::{
         ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
         EpochStabilityDepth, FeesGoTo, KesUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch,
-        PoolParticipationCapping, RewardConstraints, RewardParams, SlotDuration, TaxType, Value,
+        PoolParticipationCapping, ProposalExpiration, RewardConstraints, RewardParams,
+        SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -61,6 +62,11 @@ pub struct BlockchainConfiguration {
     ///
     #[serde(with = "LinearFeeDef")]
     pub linear_fees: LinearFee,
+
+    /// the proposal expiration settings. The default value is `100`.
+    ///
+    #[serde(default)]
+    pub proposal_expiration: ProposalExpiration,
 
     /// number of slots in one given epoch. The default value is `720`.
     ///
@@ -186,6 +192,7 @@ impl BlockchainConfiguration {
             discrimination,
             block0_consensus,
             linear_fees,
+            proposal_expiration: ProposalExpiration::default(),
             consensus_leader_ids: Vec::default(),
             slots_per_epoch: NumberOfSlotsPerEpoch::default(),
             slot_duration: SlotDuration::default(),
@@ -219,6 +226,7 @@ impl BlockchainConfiguration {
         let mut consensus_genesis_praos_active_slot_coeff = None;
         let mut block_content_max_size = None;
         let mut linear_fees = None;
+        let mut proposal_expiration = None;
         let mut kes_update_speed = None;
         let mut treasury = None;
         let mut treasury_parameters = None;
@@ -268,7 +276,9 @@ impl BlockchainConfiguration {
                 ConfigParam::RemoveBftLeader(_) => {
                     panic!("block 0 attempts to remove a BFT leader")
                 }
-                ConfigParam::ProposalExpiration(_param) => unimplemented!(),
+                ConfigParam::ProposalExpiration(param) => proposal_expiration
+                    .replace(param.into())
+                    .map(|_| "proposal_expiration"),
                 ConfigParam::BlockContentMaxSize(param) => block_content_max_size
                     .replace(param.into())
                     .map(|_| "block_content_max_size"),
@@ -340,6 +350,8 @@ impl BlockchainConfiguration {
             consensus_genesis_praos_active_slot_coeff: consensus_genesis_praos_active_slot_coeff
                 .ok_or_else(|| param_missing_error("consensus_genesis_praos_active_slot_coeff"))?,
             linear_fees: linear_fees.ok_or_else(|| param_missing_error("linear_fees"))?,
+            proposal_expiration: proposal_expiration
+                .ok_or_else(|| param_missing_error("proposal_expiration"))?,
             kes_update_speed: kes_update_speed
                 .ok_or_else(|| param_missing_error("kes_update_speed"))?,
             epoch_stability_depth: epoch_stability_depth
@@ -364,6 +376,7 @@ impl BlockchainConfiguration {
             discrimination,
             block0_consensus,
             linear_fees,
+            proposal_expiration,
             consensus_leader_ids,
             slots_per_epoch,
             slot_duration,
@@ -397,6 +410,7 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::EpochStabilityDepth(
             epoch_stability_depth.into(),
         ));
+        params.push(ConfigParam::ProposalExpiration(proposal_expiration.into()));
 
         if let Some(fees_go_to) = fees_go_to {
             params.push(ConfigParam::from(fees_go_to));
@@ -523,6 +537,7 @@ mod test {
                     ConsensusVersion::GenesisPraos
                 },
                 linear_fees,
+                proposal_expiration: Arbitrary::arbitrary(g),
                 consensus_leader_ids: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
                     .take(counter_leaders)
                     .collect(),

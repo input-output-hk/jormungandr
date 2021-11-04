@@ -134,6 +134,7 @@ pub fn block0_configuration_documented_example() -> String {
         default_kes_update_speed = KesUpdateSpeed::default(),
         default_block_content_max_size = BlockContentMaxSize::default(),
         default_epoch_stability_depth = EpochStabilityDepth::default(),
+        default_proposal_expiration = ProposalExpiration::default(),
         leader_1 = leader_1_pk,
         leader_2 = leader_2_pk,
         initial_funds_address = initial_funds_address

@@ -84,6 +84,11 @@ blockchain_configuration:
       # the one set by linear_fees.certificate. Uncomment to set the owner stake
       # delegation to `1` instead of default `4`:
       # certificate_owner_stake_delegation: 1
+  
+  # Proposal expiration in epochs
+  #
+  # default value: {default_proposal_expiration}
+  proposal_expiration: {default_proposal_expiration}
 
   # The speed to update the KES Key in seconds
   #

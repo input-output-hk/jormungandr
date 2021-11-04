@@ -7,8 +7,8 @@ use jormungandr_lib::{
     interfaces::{
         ActiveSlotCoefficient, Block0Configuration, BlockContentMaxSize, BlockchainConfiguration,
         CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, FeesGoTo, Initial, InitialUTxO,
-        KesUpdateSpeed, NumberOfSlotsPerEpoch, Ratio, RewardConstraints, RewardParams,
-        SlotDuration, TaxType, Value,
+        KesUpdateSpeed, NumberOfSlotsPerEpoch, ProposalExpiration, Ratio, RewardConstraints,
+        RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -50,6 +50,7 @@ impl Block0ConfigurationBuilder {
                 consensus_leader_ids: vec![],
                 consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,
                 linear_fees: LinearFee::new(0, 0, 0),
+                proposal_expiration: ProposalExpiration::default(),
                 kes_update_speed: KesUpdateSpeed::new(12 * 3600).unwrap(),
                 treasury: Some(1_000_000.into()),
                 treasury_parameters: Some(TaxType {
@@ -143,6 +144,14 @@ impl Block0ConfigurationBuilder {
 
     pub fn with_linear_fees(&mut self, linear_fees: LinearFee) -> &mut Self {
         self.blockchain_configuration.linear_fees = linear_fees;
+        self
+    }
+
+    pub fn with_proposal_expiration(
+        &mut self,
+        proposal_expiration: ProposalExpiration,
+    ) -> &mut Self {
+        self.blockchain_configuration.proposal_expiration = proposal_expiration;
         self
     }
 
