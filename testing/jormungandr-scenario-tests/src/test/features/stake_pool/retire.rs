@@ -12,7 +12,7 @@ const LEADER_4: &str = "Leader_4";
 use function_name::named;
 
 #[named]
-pub fn retire_stake_pool_explorer(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn retire_stake_pool_explorer(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

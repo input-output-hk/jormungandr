@@ -80,10 +80,6 @@ impl Controller {
         Ok(self.node_settings(alias)?.config.clone())
     }
 
-    pub fn settings(&self) -> &Settings {
-        &self.settings
-    }
-
     pub fn node_settings(&self, alias: &str) -> Result<&NodeSetting, ControllerError> {
         self.settings
             .nodes

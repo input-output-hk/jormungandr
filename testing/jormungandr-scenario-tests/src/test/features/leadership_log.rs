@@ -14,7 +14,7 @@ const LEADER_2: &str = "Leader2";
 
 #[named]
 pub fn leader_restart_preserves_leadership_log(
-    mut context: Context<ChaChaRng>,
+    context: Context<ChaChaRng>,
 ) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {

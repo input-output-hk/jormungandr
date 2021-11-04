@@ -122,9 +122,7 @@ pub fn current_node_legacy_fragment_propagation(
 }
 
 #[named]
-pub fn current_node_fragment_propagation(
-    mut context: Context<ChaChaRng>,
-) -> Result<ScenarioResult> {
+pub fn current_node_fragment_propagation(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let title = "test_legacy_current_node_fragment_propagation";
     let scenario_settings = prepare_scenario! {
         title,

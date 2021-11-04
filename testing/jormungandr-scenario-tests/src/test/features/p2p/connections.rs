@@ -11,7 +11,7 @@ const LEADER3: &str = "LEADER3";
 const LEADER4: &str = "LEADER4";
 
 #[named]
-pub fn max_connections(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn max_connections(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

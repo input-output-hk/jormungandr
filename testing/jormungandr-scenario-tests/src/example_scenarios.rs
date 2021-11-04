@@ -10,7 +10,7 @@ use function_name::named;
 use rand_chacha::ChaChaRng;
 
 #[named]
-pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn scenario_1(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -56,7 +56,7 @@ pub fn scenario_1(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn scenario_2(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn scenario_2(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

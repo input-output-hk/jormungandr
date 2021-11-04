@@ -43,7 +43,6 @@ fn prepare_real_scenario(
     relay_nodes_count: u32,
     nodes_count_per_relay: u32,
     legacy_nodes_count_per_relay: u32,
-    context: &Context<ChaChaRng>,
     consensus: ConsensusVersion,
 ) -> ControllerBuilder {
     let mut builder = ControllerBuilder::new(title);
@@ -87,7 +86,7 @@ fn prepare_real_scenario(
         }
     }
 
-    builder.set_topology(topology);
+    builder = builder.topology(topology);
 
     // adds all nodes as leaders
     blockchain.add_leader(CORE_NODE);
@@ -114,9 +113,7 @@ fn prepare_real_scenario(
         blockchain.add_wallet(wallet);
     }
 
-    builder.set_blockchain(blockchain);
-    builder.build_settings(&mut context.clone());
-    builder
+    builder.blockchain(blockchain)
 }
 
 pub fn real_praos_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
@@ -167,12 +164,11 @@ pub fn real_network(
         relay_nodes_count,
         leaders_per_relay,
         legacies_per_relay,
-        &context,
         consensus,
     );
     let mut controller = scenario_settings.build(context)?;
 
-    let core = controller.spawn_node(CORE_NODE, LeadershipMode::Leader, persistence_mode)?;
+    let mut core = controller.spawn_node(CORE_NODE, LeadershipMode::Leader, persistence_mode)?;
 
     let mut relays = vec![];
     for i in 0..relay_nodes_count {
@@ -245,6 +241,7 @@ pub fn real_network(
         MeasurementReportInterval::Standard,
     )?;
 
+    core.shutdown()?;
     controller.finalize();
     Ok(ScenarioResult::passed(name))
 }
