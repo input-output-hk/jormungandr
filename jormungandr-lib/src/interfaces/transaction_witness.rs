@@ -161,7 +161,7 @@ mod test {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
             match u8::arbitrary(g) % 3 {
                 0 => Witness::Utxo(Arbitrary::arbitrary(g)).into(),
-                1 => Witness::Account(Arbitrary::arbitrary(g), Arbitrary::arbitrary(g)).into(),
+                1 => Witness::Account(Arbitrary::arbitrary(g)).into(),
                 2 => {
                     use crate::crypto::key::KeyPair;
                     use chain_crypto::Ed25519Bip32;

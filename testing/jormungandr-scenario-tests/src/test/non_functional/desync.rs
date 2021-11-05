@@ -77,11 +77,9 @@ pub fn bft_forks(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
             (transaction_amount + i).into(),
         )?;
         let state = leader_1.rest().account_state(&alice).unwrap();
-        // The fragment sender currently only uses the counter in lane 0
-        let updated_counter = state.counters()[0];
         if let Wallet::Account(account) = &alice {
             let counter: u32 = account.internal_counter().into();
-            if counter < updated_counter {
+            if counter < state.counter() {
                 alice.confirm_transaction();
             }
         }
