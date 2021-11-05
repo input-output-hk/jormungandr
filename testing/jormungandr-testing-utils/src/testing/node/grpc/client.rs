@@ -73,8 +73,7 @@ impl JormungandrClient {
             NodeClient::new(
                 tonic::transport::Endpoint::from_shared(format!("http://{}", addr))
                     .unwrap()
-                    .connect_lazy()
-                    .unwrap(),
+                    .connect_lazy(),
             )
         });
 
