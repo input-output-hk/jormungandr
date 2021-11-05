@@ -31,7 +31,7 @@ jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch
 rand = "0.8"
 rand_core = "0.6"
 rand_chacha = "0.3"
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4.19", features = ["serde"] }
 humantime = "2.0"
 custom_debug = "0.5"
 thiserror = "1.0"

@@ -21,7 +21,7 @@ typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branc
 rand = "0.8"
 rand_core = "0.6"
 rand_chacha = "0.3"
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4.19", features = ["serde"] }
 humantime = "2.0"
 thiserror = "1.0"
 multiaddr = { package = "parity-multiaddr", version = "0.11", default-features = false }
