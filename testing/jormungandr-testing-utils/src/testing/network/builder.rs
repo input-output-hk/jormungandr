@@ -9,12 +9,61 @@ use assert_fs::TempDir;
 use jormungandr_lib::crypto::key::SigningKey;
 use jormungandr_lib::interfaces::NodeSecret;
 use std::collections::HashMap;
+use std::rc::Rc;
+
+use std::rc::Weak;
+
+#[derive(Debug, Clone)]
+pub struct Event {
+    pub message: String,
+}
+
+impl Event {
+    pub fn new<S: Into<String>>(s: S) -> Self {
+        Self { message: s.into() }
+    }
+}
+
+pub trait Observable {
+    fn register(self, observer: &Rc<dyn Observer>) -> Self;
+    fn notify_all(&self, event: Event);
+    fn finish_all(&self);
+}
+
+pub trait Observer {
+    fn notify(&self, event: Event);
+    fn finished(&self);
+}
 
 #[derive(Default)]
 pub struct NetworkBuilder {
     topology: Topology,
     blockchain: Blockchain,
     wallet_templates: Vec<WalletTemplate>,
+    observers: Vec<Weak<dyn Observer>>,
+}
+
+impl Observable for NetworkBuilder {
+    fn register(mut self, observer: &Rc<dyn Observer>) -> Self {
+        self.observers.push(Rc::downgrade(observer));
+        self
+    }
+
+    fn notify_all(&self, event: Event) {
+        for observer in &self.observers {
+            if let Some(observer_listener) = observer.upgrade() {
+                observer_listener.notify(event.clone());
+            }
+        }
+    }
+
+    fn finish_all(&self) {
+        for observer in &self.observers {
+            if let Some(observer_listener) = observer.upgrade() {
+                observer_listener.finished();
+            }
+        }
+    }
 }
 
 impl NetworkBuilder {
@@ -35,6 +84,7 @@ impl NetworkBuilder {
 
     pub fn build(mut self) -> Result<Controller, ControllerError> {
         let temp_dir = TempDir::new().unwrap();
+        self.notify_all(Event::new("building topology..."));
         let nodes: HashMap<NodeAlias, NodeSetting> = self
             .topology
             .nodes
@@ -56,6 +106,7 @@ impl NetworkBuilder {
                 )
             })
             .collect();
+
         let seed = Seed::generate(rand::rngs::OsRng);
         let mut random = Random::new(seed);
 
@@ -68,7 +119,10 @@ impl NetworkBuilder {
             self.blockchain.add_wallet(wallet.clone());
         }
 
-        let settings = Settings::new(nodes, self.blockchain, &mut random);
+        self.notify_all(Event::new("building block0.."));
+        let settings = Settings::new(nodes, self.blockchain.clone(), &mut random);
+
+        self.finish_all();
         Controller::new(settings, temp_dir)
     }
 }

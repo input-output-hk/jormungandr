@@ -21,6 +21,7 @@ use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_lib::interfaces::Log;
 use jormungandr_lib::interfaces::LogEntry;
 use jormungandr_lib::interfaces::LogOutput;
+use jormungandr_testing_utils::testing::network::builder::{Event, Observable, Observer};
 use jormungandr_testing_utils::testing::network::Settings;
 use jormungandr_testing_utils::testing::network::{
     builder::NetworkBuilder, controller::Controller as InnerController, VotePlanKey,
@@ -44,14 +45,13 @@ use jormungandr_testing_utils::{
 };
 use std::{
     path::{Path, PathBuf},
+    rc::Rc,
     sync::Arc,
 };
 
 pub struct ControllerBuilder {
     title: String,
-    controller_progress: ProgressBar,
     network_builder: NetworkBuilder,
-    topology: Topology,
 }
 
 pub struct Controller {
@@ -66,53 +66,35 @@ pub struct Controller {
 
     progress_bar: Arc<MultiProgress>,
     progress_bar_thread: Option<std::thread::JoinHandle<()>>,
-
-    topology: Topology,
 }
 
 impl ControllerBuilder {
     pub fn new(title: &str) -> Self {
-        let controller_progress = ProgressBar::new(10);
-        controller_progress.set_prefix(&format!("{} {}", *style::icons::scenario, title));
-        controller_progress.set_message("building...");
-        controller_progress.set_style(
-            indicatif::ProgressStyle::default_spinner()
-                .template("{spinner:.green} {prefix:.bold.dim} [{bar:10.cyan/blue}] [{elapsed_precise}] {wide_msg}")
-                .tick_chars(style::TICKER)
-        );
-        controller_progress.enable_steady_tick(100);
-
         ControllerBuilder {
             title: title.to_owned(),
-            controller_progress,
             network_builder: Default::default(),
-            topology: Default::default(),
         }
     }
 
     pub fn topology(mut self, topology: Topology) -> Self {
-        self.controller_progress.inc(1);
-        self.topology = topology.clone();
         self.network_builder = self.network_builder.topology(topology);
         self
     }
 
     pub fn blockchain(mut self, blockchain: Blockchain) -> Self {
-        self.controller_progress.inc(1);
         self.network_builder = self.network_builder.blockchain_config(blockchain);
         self
     }
 
     pub fn build(self, context: ContextChaCha) -> Result<Controller> {
-        self.controller_progress.inc(1);
         let working_directory = context.child_directory(&self.title);
         working_directory.create_dir_all()?;
 
-        let inner_controller = self.network_builder.build()?;
+        let observer: Rc<dyn Observer> = Rc::new(NetworkBuilderObserver::new(&self.title));
+        let inner_controller = self.network_builder.register(&observer).build()?;
         if context.generate_documentation() {
             document(working_directory.path(), &inner_controller)?;
         }
-        self.controller_progress.finish_and_clear();
         summary(&self.title);
 
         match context.progress_bar_mode() {
@@ -122,9 +104,39 @@ impl ControllerBuilder {
             }
             _ => (),
         }
+        Controller::new(inner_controller, context, working_directory)
+    }
+}
 
-        self.controller_progress.inc(5);
-        Controller::new(inner_controller, context, working_directory, self.topology)
+struct NetworkBuilderObserver {
+    controller_progress: ProgressBar,
+}
+
+impl NetworkBuilderObserver {
+    pub fn new<S: Into<String>>(title: S) -> Self {
+        let controller_progress = ProgressBar::new(3);
+        controller_progress.set_prefix(&format!("{} {}", *style::icons::scenario, title.into()));
+        controller_progress.set_message("building...");
+        controller_progress.set_style(
+            indicatif::ProgressStyle::default_spinner()
+                .template("{spinner:.green} {prefix:.bold.dim} [{bar:10.cyan/blue}] [{elapsed_precise}] {wide_msg}")
+                .tick_chars(style::TICKER)
+        );
+        controller_progress.enable_steady_tick(250);
+        Self {
+            controller_progress,
+        }
+    }
+}
+
+impl Observer for NetworkBuilderObserver {
+    fn notify(&self, event: Event) {
+        self.controller_progress.inc(1);
+        self.controller_progress.set_message(&event.message);
+    }
+
+    fn finished(&self) {
+        self.controller_progress.finish_and_clear();
     }
 }
 
@@ -158,7 +170,6 @@ impl Controller {
         controller: InnerController,
         context: ContextChaCha,
         working_directory: ChildPath,
-        topology: Topology,
     ) -> Result<Self> {
         use chain_core::property::Serialize as _;
 
@@ -176,7 +187,6 @@ impl Controller {
             progress_bar,
             progress_bar_thread: None,
             working_directory,
-            topology,
         })
     }
 
@@ -281,10 +291,6 @@ impl Controller {
             wallets.push(self.wallet(alias).unwrap());
         }
         wallets
-    }
-
-    pub fn topology(&self) -> &Topology {
-        &self.topology
     }
 
     pub fn settings(&self) -> &Settings {
