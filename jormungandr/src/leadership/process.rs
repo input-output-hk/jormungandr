@@ -486,7 +486,7 @@ impl Module {
         let ledger_parameters = leadership.ledger_parameters.clone();
 
         let ledger = ledger
-            .begin_block((*ledger_parameters).clone(), chain_length, event.date)
+            .begin_block(chain_length, event.date)
             .map_err(Box::new)?;
 
         let (contents, ledger) = prepare_block(
