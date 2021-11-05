@@ -3,11 +3,10 @@ use chain_impl_mockchain::{
     block::{builder, BlockDate, BlockVersion, Contents, ContentsBuilder},
     chaintypes::{ConsensusType, ConsensusVersion},
     fee::LinearFee,
-    key::BftLeaderId,
 };
 use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::{
-    adversary::process::AdversaryNodeBuilder,
+    adversary::{self, process::AdversaryNodeBuilder},
     jormungandr::{ConfigurationBuilder, Starter},
     network::{builder::NetworkBuilder, Blockchain, Node, SpawnParams, Topology},
     startup, FragmentBuilder,
@@ -25,34 +24,19 @@ fn block_with_incorrect_signature() {
         .with_leader_key_pair(keys.clone())
         .build(&temp_dir);
 
-    let bft_leader_id = BftLeaderId::from(keys.identifier().into_public_key());
-
     let block0 = node_params.block0_configuration().to_block();
 
     let jormungandr = Starter::default().config(node_params).start().unwrap();
 
-    let block = builder(
-        BlockVersion::Ed25519Signed,
-        Contents::empty(),
-        |hdr_builder| {
-            Ok::<_, ()>({
-                let builder = hdr_builder
-                    .set_parent(&block0.header().id(), 1.into())
-                    .set_date(BlockDate {
-                        epoch: 0,
-                        slot_id: 1,
-                    })
-                    .into_bft_builder()
-                    .unwrap()
-                    .set_consensus_data(&bft_leader_id);
-
-                let signature = keys.signing_key().into_secret_key().sign_slice(&[42u8]);
-
-                builder.set_signature(signature.into()).generalize()
-            })
+    let block = adversary::block::block_with_incorrect_signature(
+        &keys,
+        block0.header(),
+        BlockDate {
+            epoch: 0,
+            slot_id: 1,
         },
-    )
-    .unwrap();
+        ConsensusType::Bft,
+    );
 
     assert!(AdversaryNodeBuilder::new(block0)
         .build()
