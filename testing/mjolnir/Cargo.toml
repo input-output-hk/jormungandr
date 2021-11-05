@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 jormungandr-lib = { path = "../../jormungandr-lib" }
-jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "config-builder" }
+jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-integration-tests = { path = "../jormungandr-integration-tests" }
 thiserror = "1.0"
