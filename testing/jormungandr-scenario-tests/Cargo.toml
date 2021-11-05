@@ -18,7 +18,7 @@ chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.gi
 chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
-jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "config-builder" }
+jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 tokio = { version = "1.4", features = ["macros","rt","rt-multi-thread"] }
 poldercast = "1.2"
 rand = "0.8"
