@@ -373,7 +373,7 @@ impl ExplorerTransaction {
             .map(|i| i.to_enum())
             .zip(witnesses)
             .filter_map(|input_with_witness| match input_with_witness {
-                (InputEnum::AccountInput(id, value), Witness::Account(_)) => {
+                (InputEnum::AccountInput(id, value), Witness::Account(_, _)) => {
                     let kind = chain_addr::Kind::Account(
                         id.to_single_account()
                             .expect("the input to be validated")
@@ -382,7 +382,7 @@ impl ExplorerTransaction {
                     let address = ExplorerAddress::New(Address(context.discrimination, kind));
                     Some(ExplorerInput { address, value })
                 }
-                (InputEnum::AccountInput(id, value), Witness::Multisig(_)) => {
+                (InputEnum::AccountInput(id, value), Witness::Multisig(_, _)) => {
                     let kind = chain_addr::Kind::Multisig(
                         id.to_multi_account()
                             .as_ref()
