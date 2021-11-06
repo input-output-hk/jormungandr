@@ -58,7 +58,7 @@ fn basic_change_config_test() {
 
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
-        .config(config.clone())
+        .config(config)
         .start()
         .unwrap();
 
