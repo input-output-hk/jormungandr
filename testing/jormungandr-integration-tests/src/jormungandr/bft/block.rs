@@ -6,10 +6,10 @@ use chain_impl_mockchain::{
 };
 use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::{
-    adversary::{self, process::AdversaryNodeBuilder},
-    jormungandr::{ConfigurationBuilder, Starter},
+    adversary::{block::BlockBuilder, process::AdversaryNodeBuilder},
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
     network::{builder::NetworkBuilder, Blockchain, Node, SpawnParams, Topology},
-    startup, FragmentBuilder,
+    startup, FragmentBuilder, FragmentNode,
 };
 
 #[test]
@@ -28,15 +28,16 @@ fn block_with_incorrect_signature() {
 
     let jormungandr = Starter::default().config(node_params).start().unwrap();
 
-    let block = adversary::block::block_with_incorrect_signature(
-        &keys,
-        block0.header(),
+    let block = BlockBuilder::bft(
         BlockDate {
             epoch: 0,
             slot_id: 1,
         },
-        ConsensusType::Bft,
-    );
+        block0.header().clone(),
+    )
+    .key_pair(keys)
+    .invalid_signature()
+    .build();
 
     assert!(AdversaryNodeBuilder::new(block0)
         .build()
@@ -240,4 +241,10 @@ fn block_with_invalid_fragment() {
         .build()
         .send_block_to_peer(jormungandr.address(), block)
         .is_err());
+}
+
+fn print_logs(node: JormungandrProcess) {
+    for each in node.log_content() {
+        println!("{}", each);
+    }
 }

@@ -123,7 +123,7 @@ impl BlockBuilder {
             let builder = hdr_builder
                 .set_parent(
                     &parent_block_header.id(),
-                    parent_block_header.chain_length(),
+                    parent_block_header.chain_length().increase(),
                 )
                 .set_date(block_date);
 
