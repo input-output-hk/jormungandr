@@ -1,6 +1,6 @@
 use assert_fs::TempDir;
 use chain_impl_mockchain::{
-    block::{builder, BlockDate, BlockVersion, Contents, ContentsBuilder},
+    block::{builder, BlockDate, BlockVersion, ContentsBuilder},
     chaintypes::{ConsensusType, ConsensusVersion},
     fee::LinearFee,
 };
@@ -122,8 +122,6 @@ fn block_with_wrong_leader() {
     assert!(adversary
         .send_block_to_peer(leader.address(), correct_leader_block)
         .is_ok());
-
-    print_logs(&leader);
 }
 
 #[test]
@@ -140,23 +138,14 @@ fn block_with_nonexistent_leader() {
 
     let jormungandr = Starter::default().config(node_params).start().unwrap();
 
-    let contents = Contents::empty();
-
-    let block = builder(BlockVersion::Ed25519Signed, contents, |hdr_builder| {
-        Ok::<_, ()>({
-            hdr_builder
-                .set_parent(&block0.header().id(), 1.into())
-                .set_date(BlockDate {
-                    epoch: 0,
-                    slot_id: 1,
-                })
-                .into_bft_builder()
-                .unwrap()
-                .sign_using(startup::create_new_key_pair().0.private_key())
-                .generalize()
-        })
-    })
-    .unwrap();
+    let block = BlockBuilder::bft(
+        BlockDate {
+            epoch: 0,
+            slot_id: 1,
+        },
+        block0.header().clone(),
+    )
+    .build();
 
     assert!(AdversaryNodeBuilder::new(block0)
         .build()
