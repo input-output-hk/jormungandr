@@ -1,15 +1,15 @@
 use assert_fs::TempDir;
 use chain_impl_mockchain::{
-    block::{builder, BlockDate, BlockVersion, ContentsBuilder},
+    block::{BlockDate, ContentsBuilder},
     chaintypes::{ConsensusType, ConsensusVersion},
     fee::LinearFee,
 };
 use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::{
     adversary::{block::BlockBuilder, process::AdversaryNodeBuilder},
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
+    jormungandr::{ConfigurationBuilder, Starter},
     network::{builder::NetworkBuilder, Blockchain, Node, SpawnParams, Topology},
-    startup, FragmentBuilder, FragmentNode,
+    startup, FragmentBuilder,
 };
 
 #[test]
@@ -186,34 +186,19 @@ fn block_with_invalid_fragment() {
         .unwrap(),
     );
 
-    let block = builder(
-        BlockVersion::Ed25519Signed,
-        contents_builder.into(),
-        |hdr_builder| {
-            Ok::<_, ()>({
-                hdr_builder
-                    .set_parent(&block0.header().id(), 1.into())
-                    .set_date(BlockDate {
-                        epoch: 0,
-                        slot_id: 1,
-                    })
-                    .into_bft_builder()
-                    .unwrap()
-                    .sign_using(keys.0.private_key())
-                    .generalize()
-            })
+    let block = BlockBuilder::bft(
+        BlockDate {
+            epoch: 0,
+            slot_id: 1,
         },
+        block0.header().clone(),
     )
-    .unwrap();
+    .signing_key(keys.signing_key())
+    .contents(contents_builder.into())
+    .build();
 
     assert!(AdversaryNodeBuilder::new(block0)
         .build()
         .send_block_to_peer(jormungandr.address(), block)
         .is_err());
-}
-
-fn print_logs(node: &JormungandrProcess) {
-    for each in node.log_content() {
-        println!("{}", each);
-    }
 }
