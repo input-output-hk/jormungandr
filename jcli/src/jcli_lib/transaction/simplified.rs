@@ -9,6 +9,7 @@ use chain_addr::Kind;
 use chain_core::property::FromStr;
 use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
 use chain_impl_mockchain::account::SpendingCounter;
+use chain_impl_mockchain::fee::FeeAlgorithm;
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::transaction::Output;
 use jormungandr_lib::interfaces;
@@ -34,7 +35,7 @@ pub struct MakeTransaction {
     #[structopt(name = "VALUE")]
     pub value: interfaces::Value,
 
-    /// the account to debit the funds from
+    /// the account to send funds to
     #[structopt(long)]
     pub receiver: Option<interfaces::Address>,
 
@@ -181,7 +182,8 @@ pub fn make_transaction(
     let settings = rest::v0::settings::request_settings(rest_args.clone())?;
     let fee = common_fee_from_settings(&settings);
 
-    let transfer_value = value.saturating_add(transaction.fees(&settings.fees).into());
+    let fees = settings.fees.calculate(None, 1, 1);
+    let transfer_value = value.saturating_add(fees.into());
 
     // ask for user confirmation after adding fees
     if !force {
