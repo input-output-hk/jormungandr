@@ -11,7 +11,8 @@ use jormungandr_testing_utils::testing::{
     jormungandr::{ConfigurationBuilder, Starter},
     node::time::{get_current_date, wait_for_epoch},
 };
-use std::io::Write;
+use jortestkit::process::Wait;
+use std::{io::Write, time::Duration};
 
 #[test]
 fn basic_change_config_test() {
@@ -66,21 +67,27 @@ fn basic_change_config_test() {
 
     let current_epoch = get_current_date(&mut jormungandr.rest()).epoch();
 
+    let wait = Wait::new(Duration::from_secs(5), 10);
+
     let fragment = jcli
         .votes()
         .update_proposal(change_param_path, sk_file_path1.clone());
     let check = jcli.fragment_sender(&jormungandr).send(fragment.as_str());
-    check.assert_in_block();
+    check.assert_in_block_with_wait(&wait);
     let proposal_id = check.fragment_id();
 
     let fragment = jcli
         .votes()
         .update_vote(proposal_id.to_string(), sk_file_path1);
-    jcli.fragment_sender(&jormungandr).send(fragment.as_str());
+    jcli.fragment_sender(&jormungandr)
+        .send(fragment.as_str())
+        .assert_in_block_with_wait(&wait);
     let fragment = jcli
         .votes()
         .update_vote(proposal_id.to_string(), sk_file_path2);
-    jcli.fragment_sender(&jormungandr).send(fragment.as_str());
+    jcli.fragment_sender(&jormungandr)
+        .send(fragment.as_str())
+        .assert_in_block_with_wait(&wait);
 
     wait_for_epoch(current_epoch + 2, jormungandr.rest());
 
