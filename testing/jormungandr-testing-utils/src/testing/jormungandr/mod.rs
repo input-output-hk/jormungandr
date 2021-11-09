@@ -17,7 +17,7 @@ pub use starter::*;
 use std::collections::HashMap;
 use thiserror::Error;
 
-#[derive(Error, Debug, Eq, PartialEq)]
+#[derive(Error, Debug, Eq, PartialEq, Clone)]
 pub enum JormungandrError {
     #[error("error in logs. Error lines: {error_lines}, full content:{logs}")]
     ErrorInLogs { logs: String, error_lines: String },
