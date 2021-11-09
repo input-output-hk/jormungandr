@@ -6,6 +6,7 @@ mod blockdate;
 mod certificate;
 mod committee;
 mod config;
+mod config_params;
 mod fragment;
 mod fragment_log;
 mod fragment_log_persistent;
@@ -42,6 +43,7 @@ pub use self::certificate::{
 };
 pub use self::committee::CommitteeIdDef;
 pub use self::config::*;
+pub use self::config_params::{ConfigParam, ConfigParams};
 pub use self::fragment::FragmentDef;
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
 pub use self::fragment_log_persistent::{
@@ -53,7 +55,7 @@ pub use self::fragments_processing_summary::{
     FragmentRejectionReason, FragmentsProcessingSummary, RejectedFragmentInfo,
 };
 pub use self::leadership_log::{LeadershipLog, LeadershipLogId, LeadershipLogStatus};
-pub use self::linear_fee::LinearFeeDef;
+pub use self::linear_fee::{LinearFeeDef, PerCertificateFeeDef, PerVoteCertificateFeeDef};
 pub use self::old_address::OldAddress;
 pub use self::peer_stats::{PeerRecord, PeerStats, Subscription};
 pub use self::ratio::{ParseRatioError, Ratio};

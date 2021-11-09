@@ -21,6 +21,8 @@ pub enum Error {
     },
     #[error("could not decode secretkey: {0}")]
     SecretKeyMalformed(#[from] bech32::Error),
+    #[error("error requesting user input")]
+    UserInputError(#[from] std::io::Error),
 }
 
 pub fn parse_pub_key<A: AsymmetricPublicKey>(
@@ -44,6 +46,17 @@ where
         source,
         path: io::path_to_path_buf(path),
     })
+}
+
+pub fn read_secret_key(secret_key_path: Option<PathBuf>) -> Result<EitherEd25519SecretKey, Error> {
+    match secret_key_path {
+        Some(path) => read_ed25519_secret_key_from_file(&Some(path)),
+        None => {
+            let key =
+                rpassword::prompt_password_stdout("Introduce the bech32 format secret key:\n")?;
+            parse_ed25519_secret_key(&key)
+        }
+    }
 }
 
 pub fn read_ed25519_secret_key_from_file<P: AsRef<Path>>(
