@@ -1,5 +1,5 @@
 use super::{starter::StartupError, JormungandrError};
-use crate::testing::jcli::{JCli, JCliCommand};
+use crate::testing::jcli::JCli;
 use crate::testing::network::NodeAlias;
 use crate::testing::node::grpc::JormungandrClient;
 use crate::testing::{
@@ -17,19 +17,17 @@ use ::multiaddr::Multiaddr;
 use assert_fs::TempDir;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use chain_time::TimeEra;
+use jormungandr_lib::interfaces::NodeState;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Block0Configuration, TrustedPeer},
 };
-use jortestkit::prelude::ProcessOutput;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
 use std::process::ExitStatus;
-use std::process::Stdio;
-use thiserror::Error;
-
 use std::time::{Duration, Instant};
+use thiserror::Error;
 
 pub enum StartupVerificationMode {
     Log,
@@ -42,6 +40,15 @@ pub enum Status {
     Starting,
     Stopped(JormungandrError),
     Exited(ExitStatus),
+}
+
+impl From<NodeState> for Status {
+    fn from(node_state: NodeState) -> Self {
+        match node_state {
+            NodeState::Running => Self::Running,
+            _ => Self::Starting,
+        }
+    }
 }
 
 pub struct JormungandrProcess {
@@ -192,39 +199,16 @@ impl JormungandrProcess {
                     Status::Starting
                 }
             }
-            StartupVerificationMode::Rest => {
-                let jcli: JCli = Default::default();
-
-                let output = JCliCommand::new(std::process::Command::new(jcli.path()))
-                    .rest()
-                    .v0()
-                    .node()
-                    .stats(&self.rest_uri())
-                    .build()
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .spawn()
-                    .unwrap()
-                    .wait_with_output()
-                    .expect("failed to execute get_rest_stats command");
-
-                let output = output.try_as_single_node_yaml();
-                match output
-                    .ok()
-                    .as_ref()
-                    .and_then(|x| x.get("state"))
-                    .map(|x| x.as_str())
-                {
-                    Some("Running") => Status::Running,
-                    _ => {
-                        if let Err(err) = self.check_startup_errors_in_logs() {
-                            Status::Stopped(err)
-                        } else {
-                            Status::Starting
-                        }
+            StartupVerificationMode::Rest => match self.rest().stats() {
+                Ok(stats) => stats.state.into(),
+                Err(_) => {
+                    if let Err(err) = self.check_startup_errors_in_logs() {
+                        Status::Stopped(err)
+                    } else {
+                        Status::Starting
                     }
                 }
-            }
+            },
         }
     }
 
