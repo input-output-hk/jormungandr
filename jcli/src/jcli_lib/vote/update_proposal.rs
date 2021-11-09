@@ -17,7 +17,7 @@ use structopt::StructOpt;
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct UpdateProposal {
-    /// the file path to the config file defining the config param changes.
+    /// the file path to the config file defining the config param changes
     /// If omitted it will be read from the standard input.
     #[structopt(name = "CONFIG_UPDATE")]
     config_file: Option<PathBuf>,

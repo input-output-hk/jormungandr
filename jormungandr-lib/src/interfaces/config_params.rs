@@ -17,7 +17,13 @@ use std::convert::TryFrom;
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ConfigParams(pub Vec<ConfigParam>);
+pub struct ConfigParams(Vec<ConfigParam>);
+
+impl ConfigParams {
+    pub fn new(vec: Vec<ConfigParam>) -> Self {
+        Self(vec)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConfigParam {
@@ -115,17 +121,6 @@ impl From<ConfigParam> for ConfigParamLib {
     }
 }
 
-impl TryFrom<ConfigParamsLib> for ConfigParams {
-    type Error = FromConfigParamError;
-    fn try_from(config: ConfigParamsLib) -> Result<Self, Self::Error> {
-        let mut res = Self(Vec::new());
-        for el in config.iter() {
-            res.0.push(ConfigParam::try_from(el.clone())?);
-        }
-        Ok(res)
-    }
-}
-
 impl TryFrom<ConfigParamLib> for ConfigParam {
     type Error = FromConfigParamError;
     fn try_from(config: ConfigParamLib) -> Result<Self, Self::Error> {
@@ -193,27 +188,12 @@ mod test {
         }
     }
 
-    // impl Arbitrary for ConfigParams {
-    //     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-    //         let config = ConfigParamsLib::arbitrary(g);
-    //         Self::from(config)
-    //     }
-    // }
-
     quickcheck! {
-        fn serde_config_param_encode_decode(config: ConfigParam) -> bool {
+        fn serde_encode_decode(config: ConfigParam) -> bool {
             let s = serde_yaml::to_string(&config).unwrap();
             let config_dec: ConfigParam = serde_yaml::from_str(&s).unwrap();
 
             config == config_dec
         }
-
-        // fn serde_config_params_encode_decode(config: ConfigParams) -> bool {
-        //     let s = serde_yaml::to_string(&config).unwrap();
-        //     println!("{}", s);
-        //     let config_dec: ConfigParams = serde_yaml::from_str(&s).unwrap();
-
-        //     config == config_dec
-        // }
     }
 }

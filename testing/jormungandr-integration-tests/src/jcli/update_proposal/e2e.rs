@@ -48,7 +48,7 @@ fn basic_change_config_test() {
         .build(&temp_dir);
 
     let new_block_context_max_size = 1000;
-    let change_params = ConfigParams(vec![ConfigParam::BlockContentMaxSize(
+    let change_params = ConfigParams::new(vec![ConfigParam::BlockContentMaxSize(
         BlockContentMaxSize::from(new_block_context_max_size),
     )]);
     let change_param_path = temp_dir.child("change_param_file.yaml");
