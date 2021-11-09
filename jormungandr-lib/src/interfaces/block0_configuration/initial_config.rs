@@ -158,8 +158,6 @@ pub enum FromConfigParamsError {
     ),
     #[error("Invalid slot duration value")]
     SlotDuration(#[from] super::slots_duration::TryFromSlotDurationError),
-    #[error("Invalid consensus leader id")]
-    ConsensusLeaderId(#[from] super::leader_id::TryFromConsensusLeaderIdError),
     #[error("Invalid active slot coefficient value")]
     ActiveSlotCoefficient(
         #[from] super::active_slot_coefficient::TryFromActiveSlotCoefficientError,
@@ -250,8 +248,8 @@ impl BlockchainConfiguration {
                 cp @ ConfigParam::SlotDuration(_) => slot_duration
                     .replace(SlotDuration::try_from(cp)?)
                     .map(|_| "slot_duration"),
-                cp @ ConfigParam::AddBftLeader(_) => {
-                    consensus_leader_ids.push(ConsensusLeaderId::try_from(cp)?);
+                ConfigParam::AddBftLeader(val) => {
+                    consensus_leader_ids.push(val.into());
                     None
                 }
                 cp @ ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(_) => {

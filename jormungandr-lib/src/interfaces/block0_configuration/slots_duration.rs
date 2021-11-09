@@ -8,7 +8,7 @@ use std::{convert::TryFrom, fmt, str::FromStr as _};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-pub struct SlotDuration(pub(crate) u8);
+pub struct SlotDuration(u8);
 
 impl SlotDuration {
     /// minimal value for the slot duration

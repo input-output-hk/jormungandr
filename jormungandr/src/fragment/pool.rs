@@ -13,6 +13,7 @@ use crate::{
     utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
+use chain_crypto::Verification;
 use chain_impl_mockchain::{
     block::BlockDate, fragment::Contents, setting::Settings, transaction::Transaction,
 };
@@ -350,8 +351,8 @@ fn is_fragment_valid(fragment: &Fragment) -> bool {
         Fragment::PoolRetirement(ref tx) => is_transaction_valid(tx),
         Fragment::PoolUpdate(ref tx) => is_transaction_valid(tx),
         // vote stuff
-        Fragment::UpdateProposal(_) => false, // TODO: enable when ready
-        Fragment::UpdateVote(_) => false,     // TODO: enable when ready
+        Fragment::UpdateProposal(ref tx) => tx.verify() == Verification::Success,
+        Fragment::UpdateVote(ref tx) => tx.verify() == Verification::Success,
         Fragment::VotePlan(ref tx) => is_transaction_valid(tx),
         Fragment::VoteCast(ref tx) => is_transaction_valid(tx),
         Fragment::VoteTally(ref tx) => is_transaction_valid(tx),
