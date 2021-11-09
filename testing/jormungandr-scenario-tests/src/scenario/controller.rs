@@ -21,12 +21,12 @@ use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_lib::interfaces::Log;
 use jormungandr_lib::interfaces::LogEntry;
 use jormungandr_lib::interfaces::LogOutput;
-use jormungandr_testing_utils::testing::network::builder::{Event, Observable, Observer};
 use jormungandr_testing_utils::testing::network::Settings;
 use jormungandr_testing_utils::testing::network::{
     builder::NetworkBuilder, controller::Controller as InnerController, VotePlanKey,
 };
 use jormungandr_testing_utils::testing::node::LogLevel;
+use jormungandr_testing_utils::testing::utils::{Event, Observable, Observer};
 use jormungandr_testing_utils::testing::BlockDateGenerator;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,

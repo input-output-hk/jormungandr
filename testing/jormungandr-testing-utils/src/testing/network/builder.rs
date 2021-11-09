@@ -1,3 +1,4 @@
+use crate::testing::utils::{Event, Observable, Observer};
 use crate::testing::{
     network::{
         controller::{Controller, ControllerError},
@@ -10,30 +11,7 @@ use jormungandr_lib::crypto::key::SigningKey;
 use jormungandr_lib::interfaces::NodeSecret;
 use std::collections::HashMap;
 use std::rc::Rc;
-
 use std::rc::Weak;
-
-#[derive(Debug, Clone)]
-pub struct Event {
-    pub message: String,
-}
-
-impl Event {
-    pub fn new<S: Into<String>>(s: S) -> Self {
-        Self { message: s.into() }
-    }
-}
-
-pub trait Observable {
-    fn register(self, observer: &Rc<dyn Observer>) -> Self;
-    fn notify_all(&self, event: Event);
-    fn finish_all(&self);
-}
-
-pub trait Observer {
-    fn notify(&self, event: Event);
-    fn finished(&self);
-}
 
 #[derive(Default)]
 pub struct NetworkBuilder {

@@ -1,5 +1,8 @@
+mod observer;
+
 use assert_fs::TempDir;
 use fs_extra::dir::{move_dir, CopyOptions};
+pub use observer::{Event, Observable, Observer};
 use std::thread::panicking;
 
 pub fn persist_dir_on_panic(temp_dir: Option<TempDir>, additional_contents: Vec<(&str, &str)>) {
