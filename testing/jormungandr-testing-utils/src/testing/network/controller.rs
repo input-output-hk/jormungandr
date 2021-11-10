@@ -119,7 +119,7 @@ impl Controller {
         Ok(self.make_starter_for(spawn_params)?.start()?)
     }
 
-    fn make_starter_for(
+    pub fn make_starter_for(
         &mut self,
         mut spawn_params: SpawnParams,
     ) -> Result<Starter, ControllerError> {

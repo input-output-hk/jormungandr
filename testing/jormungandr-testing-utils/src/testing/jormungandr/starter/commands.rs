@@ -1,5 +1,7 @@
 use crate::testing::{
-    jormungandr::starter::FromGenesis, network::LeadershipMode, JormungandrParams, TestConfig,
+    jormungandr::starter::FromGenesis,
+    network::{FaketimeConfig, LeadershipMode},
+    JormungandrParams, TestConfig,
 };
 use serde::Serialize;
 use std::path::Path;
@@ -12,6 +14,7 @@ pub struct CommandBuilder<'a> {
     secret: Option<&'a Path>,
     log_file: Option<&'a Path>,
     rewards_history: bool,
+    faketime: Option<FaketimeConfig>,
 }
 
 enum GenesisBlockOption<'a> {
@@ -29,11 +32,17 @@ impl<'a> CommandBuilder<'a> {
             secret: None,
             log_file: None,
             rewards_history: false,
+            faketime: None,
         }
     }
 
     pub fn config(mut self, path: &'a Path) -> Self {
         self.config = Some(path);
+        self
+    }
+
+    pub fn faketime(mut self, faketime: FaketimeConfig) -> Self {
+        self.faketime = Some(faketime);
         self
     }
 
@@ -63,7 +72,15 @@ impl<'a> CommandBuilder<'a> {
     }
 
     pub fn command(self) -> Command {
-        let mut command = Command::new(self.bin);
+        let mut command = if let Some(faketime) = &self.faketime {
+            let mut cmd = Command::new("faketime");
+            cmd.args(&["-f", &format!("{:+}s", faketime.offset)]);
+            cmd.arg(self.bin);
+            cmd
+        } else {
+            Command::new(self.bin)
+        };
+
         if let Some(secret_path) = self.secret {
             command.arg("--secret").arg(secret_path);
         }
