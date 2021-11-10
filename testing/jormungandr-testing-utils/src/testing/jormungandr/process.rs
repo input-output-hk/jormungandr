@@ -1,5 +1,6 @@
 use super::{starter::StartupError, JormungandrError};
 use crate::testing::jcli::{JCli, JCliCommand};
+use crate::testing::jormungandr::TestingDirectory;
 use crate::testing::network::NodeAlias;
 use crate::testing::node::grpc::JormungandrClient;
 use crate::testing::{
@@ -14,7 +15,6 @@ use crate::testing::{
     RemoteJormungandrBuilder,
 };
 use ::multiaddr::Multiaddr;
-use assert_fs::TempDir;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use chain_time::TimeEra;
 use jormungandr_lib::{
@@ -48,7 +48,7 @@ pub struct JormungandrProcess {
     pub child: Child,
     pub logger: JormungandrLogger,
     grpc_client: JormungandrClient,
-    temp_dir: Option<TempDir>,
+    temp_dir: Option<TestingDirectory>,
     alias: String,
     p2p_public_address: Multiaddr,
     p2p_listen_address: SocketAddr,
@@ -61,7 +61,7 @@ impl JormungandrProcess {
         mut child: Child,
         node_config: &Conf,
         block0_configuration: Block0Configuration,
-        temp_dir: Option<TempDir>,
+        temp_dir: Option<TestingDirectory>,
         alias: String,
     ) -> Result<Self, StartupError> {
         let stdout = child.stdout.take().unwrap();
@@ -350,7 +350,7 @@ impl JormungandrProcess {
         builder.build()
     }
 
-    pub fn steal_temp_dir(&mut self) -> Option<TempDir> {
+    pub fn steal_temp_dir(&mut self) -> Option<TestingDirectory> {
         self.temp_dir.take()
     }
 

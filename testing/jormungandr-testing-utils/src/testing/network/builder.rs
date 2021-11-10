@@ -1,3 +1,4 @@
+use crate::testing::jormungandr::TestingDirectory;
 use crate::testing::utils::{Event, Observable, Observer};
 use crate::testing::{
     network::{
@@ -6,7 +7,6 @@ use crate::testing::{
     },
     NodeConfigBuilder,
 };
-use assert_fs::TempDir;
 use jormungandr_lib::crypto::key::SigningKey;
 use jormungandr_lib::interfaces::NodeSecret;
 use std::collections::HashMap;
@@ -18,6 +18,7 @@ pub struct NetworkBuilder {
     topology: Topology,
     blockchain: Blockchain,
     wallet_templates: Vec<WalletTemplate>,
+    testing_directory: TestingDirectory,
     observers: Vec<Weak<dyn Observer>>,
 }
 
@@ -60,8 +61,12 @@ impl NetworkBuilder {
         self
     }
 
+    pub fn testing_directory(mut self, testing_directory: TestingDirectory) -> Self {
+        self.testing_directory = testing_directory;
+        self
+    }
+
     pub fn build(mut self) -> Result<Controller, ControllerError> {
-        let temp_dir = TempDir::new().unwrap();
         self.notify_all(Event::new("building topology..."));
         let nodes: HashMap<NodeAlias, NodeSetting> = self
             .topology
@@ -101,6 +106,6 @@ impl NetworkBuilder {
         let settings = Settings::new(nodes, self.blockchain.clone(), &mut random);
 
         self.finish_all();
-        Controller::new(settings, temp_dir)
+        Controller::new(settings, self.testing_directory)
     }
 }

@@ -1,6 +1,7 @@
 mod commands;
 pub use commands::{get_command, CommandBuilder};
 
+mod testing_directory;
 use super::process::StartupVerificationMode;
 use super::ConfigurationBuilder;
 use super::JormungandrError;
@@ -16,17 +17,21 @@ use crate::{
     Version,
 };
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::{fixture::FixtureError, TempDir};
+use assert_fs::fixture::FixtureError;
+use assert_fs::TempDir;
 use jormungandr_lib::interfaces::NodeConfig;
 use jortestkit::process::{self as process_utils, ProcessError};
 use serde::Serialize;
 use std::fmt::Debug;
+use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 use std::process::Stdio;
 use std::{
     process::Child,
     time::{Duration, Instant},
 };
+pub use testing_directory::TestingDirectory;
 
 use thiserror::Error;
 
@@ -81,7 +86,7 @@ pub struct Starter {
     from_genesis: FromGenesis,
     verification_mode: StartupVerificationMode,
     on_fail: OnFail,
-    temp_dir: Option<TempDir>,
+    temp_dir: Option<TestingDirectory>,
     legacy: Option<Version>,
     config: Option<JormungandrParams>,
     benchmark: Option<SpeedBenchmarkDef>,
@@ -177,7 +182,17 @@ impl Starter {
     }
 
     pub fn temp_dir(&mut self, temp_dir: TempDir) -> &mut Self {
-        self.temp_dir = Some(temp_dir);
+        self.temp_dir = Some(TestingDirectory::from_temp(temp_dir));
+        self
+    }
+
+    pub fn working_dir(&mut self, path: &Path) -> &mut Self {
+        self.temp_dir = Some(path.to_path_buf().into());
+        self
+    }
+
+    pub fn testing_dir(&mut self, testing_directory: TestingDirectory) -> &mut Self {
+        self.temp_dir = Some(testing_directory);
         self
     }
 
