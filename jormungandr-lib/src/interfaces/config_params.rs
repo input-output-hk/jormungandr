@@ -187,8 +187,39 @@ mod test {
 
     impl Arbitrary for ConfigParam {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            let config = ConfigParamLib::arbitrary(g);
-            Self::try_from(config).unwrap()
+            match u8::arbitrary(g) % 30 {
+                0 => Self::Block0Date(Arbitrary::arbitrary(g)),
+                1 => Self::Discrimination(Arbitrary::arbitrary(g)),
+                2 => Self::ConsensusVersion(Arbitrary::arbitrary(g)),
+                3 => Self::SlotsPerEpoch(Arbitrary::arbitrary(g)),
+                4 => Self::SlotDuration(Arbitrary::arbitrary(g)),
+                5 => Self::ConsensusGenesisPraosActiveSlotsCoeff(Arbitrary::arbitrary(g)),
+                6 => Self::BlockContentMaxSize(Arbitrary::arbitrary(g)),
+                7 => Self::AddBftLeader(Arbitrary::arbitrary(g)),
+                8 => Self::RemoveBftLeader(Arbitrary::arbitrary(g)),
+                9 => Self::LinearFee(Arbitrary::arbitrary(g)),
+                10 => Self::ProposalExpiration(Arbitrary::arbitrary(g)),
+                11 => Self::TreasuryAdd(Arbitrary::arbitrary(g)),
+                12 => Self::RewardPot(Arbitrary::arbitrary(g)),
+                13 => Self::RewardParams(Arbitrary::arbitrary(g)),
+                14 => Self::PerCertificateFees(Arbitrary::arbitrary(g)),
+                15 => Self::FeesInTreasury(Arbitrary::arbitrary(g)),
+                16 => Self::AddCommitteeId(Arbitrary::arbitrary(g)),
+                17 => Self::RemoveCommitteeId(Arbitrary::arbitrary(g)),
+                18 => Self::PerVoteCertificateFees(Arbitrary::arbitrary(g)),
+                19 => Self::RewardPot(Arbitrary::arbitrary(g)),
+                20 => Self::RewardParams(Arbitrary::arbitrary(g)),
+                21 => Self::RewardParams(Arbitrary::arbitrary(g)),
+                22 => Self::FeesInTreasury(Arbitrary::arbitrary(g)),
+                23 => Self::RewardLimitNone,
+                24 => Self::RewardLimitByAbsoluteStake(Arbitrary::arbitrary(g)),
+                25 => Self::PoolRewardParticipationCapping(Arbitrary::arbitrary(g)),
+                26 => Self::AddCommitteeId(Arbitrary::arbitrary(g)),
+                27 => Self::RemoveCommitteeId(Arbitrary::arbitrary(g)),
+                28 => Self::PerCertificateFees(Arbitrary::arbitrary(g)),
+                29 => Self::TransactionMaxExpiryEpochs(Arbitrary::arbitrary(g)),
+                _ => unreachable!(),
+            }
         }
     }
 
