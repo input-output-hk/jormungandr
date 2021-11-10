@@ -621,12 +621,6 @@ pub enum TopologyMsg {
     ListQuarantined(ReplyHandle<Vec<TopologyPeerInfo>>),
 }
 
-/// Messages to the explorer task
-pub enum ExplorerMsg {
-    NewBlock(Box<Block>),
-    NewTip(HeaderHash),
-}
-
 /// Messages to the notifier task
 pub enum WatchMsg {
     NewBlock(Block),

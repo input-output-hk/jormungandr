@@ -1,7 +1,6 @@
 //! REST API of the node
 
 pub mod context;
-pub mod explorer;
 #[cfg(feature = "prometheus-metrics")]
 mod prometheus;
 pub mod v0;
@@ -19,7 +18,6 @@ pub struct Config {
     pub listen: SocketAddr,
     pub tls: Option<Tls>,
     pub cors: Option<Cors>,
-    pub enable_explorer: bool,
     #[cfg(feature = "prometheus-metrics")]
     pub enable_prometheus: bool,
 }
@@ -70,14 +68,13 @@ pub async fn start_rest_server(config: Config, context: ContextLock) {
             span
         }));
 
-    setup_prometheus(api, config, context, stopper_rx).await;
+    setup_prometheus(api, config, stopper_rx).await;
 }
 
 #[cfg(feature = "prometheus-metrics")]
 async fn setup_prometheus<App>(
     app: App,
     config: Config,
-    context: ContextLock,
     shutdown_signal: impl Future<Output = ()> + Send + 'static,
 ) where
     App: Filter<Error = warp::Rejection> + Clone + Send + Sync + 'static,
@@ -85,9 +82,9 @@ async fn setup_prometheus<App>(
 {
     if config.enable_prometheus {
         let prometheus = prometheus::filter(context.clone());
-        setup_explorer(app.or(prometheus), config, context, shutdown_signal).await;
+        setup_cors(app.or(prometheus), config, shutdown_signal).await;
     } else {
-        setup_explorer(app, config, context, shutdown_signal).await;
+        setup_cors(app, config, shutdown_signal).await;
     }
 }
 
@@ -95,30 +92,12 @@ async fn setup_prometheus<App>(
 async fn setup_prometheus<App>(
     app: App,
     config: Config,
-    context: ContextLock,
     shutdown_signal: impl Future<Output = ()> + Send + 'static,
 ) where
     App: Filter<Error = warp::Rejection> + Clone + Send + Sync + 'static,
     App::Extract: warp::Reply,
 {
-    setup_explorer(app, config, context, shutdown_signal).await;
-}
-
-async fn setup_explorer<App>(
-    app: App,
-    config: Config,
-    context: ContextLock,
-    shutdown_signal: impl Future<Output = ()> + Send + 'static,
-) where
-    App: Filter<Error = warp::Rejection> + Clone + Send + Sync + 'static,
-    App::Extract: warp::Reply,
-{
-    if config.enable_explorer {
-        let explorer = explorer::filter(context);
-        setup_cors(app.or(explorer), config, shutdown_signal).await;
-    } else {
-        setup_cors(app, config, shutdown_signal).await;
-    }
+    setup_cors(app, config, shutdown_signal).await;
 }
 
 async fn setup_cors<App>(

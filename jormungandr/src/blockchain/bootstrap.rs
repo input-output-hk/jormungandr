@@ -42,7 +42,6 @@ where
         blockchain.clone(),
         None,
         None,
-        None,
         Metrics::builder().build(),
     );
 
