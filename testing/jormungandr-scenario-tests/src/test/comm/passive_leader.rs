@@ -16,7 +16,7 @@ const PASSIVE: &str = "Passive";
 use function_name::named;
 
 #[named]
-pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn transaction_to_passive(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -74,7 +74,7 @@ pub fn transaction_to_passive(mut context: Context<ChaChaRng>) -> Result<Scenari
 const LEADER_2: &str = "LEADER_2";
 
 #[named]
-pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn leader_restart(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -170,7 +170,7 @@ pub fn leader_restart(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
 }
 
 #[named]
-pub fn passive_node_is_updated(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn passive_node_is_updated(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

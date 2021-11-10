@@ -45,7 +45,7 @@ pub fn last_nth_release(context: Context<ChaChaRng>, n: u32) -> Result<ScenarioR
 }
 
 fn test_legacy_release(
-    mut context: Context<ChaChaRng>,
+    context: Context<ChaChaRng>,
     legacy_app: PathBuf,
     version: Version,
     name: impl AsRef<str>,
@@ -145,7 +145,7 @@ pub fn disruption_last_nth_release(context: Context<ChaChaRng>, n: u32) -> Resul
 }
 
 fn test_legacy_disruption_release(
-    mut context: Context<ChaChaRng>,
+    context: Context<ChaChaRng>,
     legacy_app: PathBuf,
     version: Version,
     name: impl AsRef<str>,
@@ -263,9 +263,7 @@ fn test_legacy_disruption_release(
     Ok(ScenarioResult::passed(name))
 }
 
-pub fn newest_node_enters_legacy_network(
-    mut context: Context<ChaChaRng>,
-) -> Result<ScenarioResult> {
+pub fn newest_node_enters_legacy_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let title = last_nth_release_title(1);
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();

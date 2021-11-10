@@ -14,7 +14,7 @@ pub mod startup;
 pub mod storage;
 pub mod sync;
 pub mod transaction_utils;
-mod utils;
+pub mod utils;
 pub mod verify;
 pub mod vit;
 pub mod witness;

@@ -14,7 +14,7 @@ use std::ffi::OsStr;
 use structopt::StructOpt;
 
 #[named]
-pub fn interactive(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn interactive(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

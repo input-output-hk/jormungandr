@@ -12,7 +12,7 @@ const LEADER_3: &str = "Leader_3";
 const PASSIVE: &str = "Passive";
 
 #[named]
-pub fn passive_node_explorer(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn passive_node_explorer(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

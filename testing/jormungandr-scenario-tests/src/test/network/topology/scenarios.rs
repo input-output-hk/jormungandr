@@ -24,7 +24,7 @@ const RELAY_NODE_2: &str = "Relay2";
 use function_name::named;
 
 #[named]
-pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn fully_connected(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         "T3001_Fully-Connected",
@@ -106,7 +106,7 @@ pub fn fully_connected(mut context: Context<ChaChaRng>) -> Result<ScenarioResult
 }
 
 #[named]
-pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn star(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -190,7 +190,7 @@ pub fn star(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn mesh(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -280,7 +280,7 @@ pub fn mesh(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn point_to_point(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -360,7 +360,7 @@ pub fn point_to_point(mut context: Context<ChaChaRng>) -> Result<ScenarioResult>
 }
 
 #[named]
-pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn point_to_point_on_file_storage(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -452,7 +452,7 @@ pub fn point_to_point_on_file_storage(mut context: Context<ChaChaRng>) -> Result
 }
 
 #[named]
-pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn tree(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -549,7 +549,7 @@ pub fn tree(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn relay(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn relay(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

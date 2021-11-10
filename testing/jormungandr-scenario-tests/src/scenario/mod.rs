@@ -1,8 +1,8 @@
 mod context;
 mod controller;
+pub mod dotifier;
 mod fragment_node;
 pub mod repository;
-pub mod settings;
 
 pub use self::{
     context::{Context, ContextChaCha},
@@ -14,11 +14,11 @@ pub use chain_impl_mockchain::{
 pub use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
-pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
-
 pub use jormungandr_testing_utils::testing::network::{
-    Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, Wallet, WalletAlias, WalletType,
+    controller::ControllerError, Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, Wallet,
+    WalletAlias, WalletType,
 };
+pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -51,6 +51,9 @@ pub enum Error {
 
     #[error("VotePlan '{0}' was not found. Used before or never initialize")]
     VotePlanNotFound(String),
+
+    #[error(transparent)]
+    Controller(#[from] ControllerError),
 }
 
 pub type Result<T> = ::core::result::Result<T, Error>;
@@ -92,7 +95,7 @@ macro_rules! prepare_scenario {
             )*
             topology = topology.with_node(node);
         )*
-        builder.set_topology(topology);
+        builder = builder.topology(topology);
 
         let mut blockchain = crate::scenario::Blockchain::default();
         blockchain.set_consensus(crate::scenario::ConsensusVersion::$blockchain_consensus);
@@ -199,10 +202,6 @@ macro_rules! prepare_scenario {
             )*
         )?
 
-        builder.set_blockchain(blockchain);
-
-        builder.build_settings($context);
-
-        builder
+        builder.blockchain(blockchain)
     }};
 }

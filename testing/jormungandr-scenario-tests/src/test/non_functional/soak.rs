@@ -16,7 +16,7 @@ const RELAY_NODE_2: &str = "Relay2";
 use function_name::named;
 
 #[named]
-pub fn relay_soak(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn relay_soak(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
