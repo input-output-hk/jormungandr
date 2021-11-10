@@ -9,7 +9,7 @@ use std::{convert::TryFrom, fmt, str::FromStr as _};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-pub struct KesUpdateSpeed(pub(crate) u32);
+pub struct KesUpdateSpeed(u32);
 
 impl KesUpdateSpeed {
     /// minimal value for the KES Update Speed

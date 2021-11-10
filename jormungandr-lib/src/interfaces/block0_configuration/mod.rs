@@ -13,6 +13,7 @@ mod reward_constraint;
 mod slots_duration;
 
 pub use self::active_slot_coefficient::ActiveSlotCoefficient;
+pub use self::active_slot_coefficient::TryFromActiveSlotCoefficientError;
 pub use self::block_content_max_size::BlockContentMaxSize;
 pub use self::default_values::*;
 pub use self::epoch_stability_depth::EpochStabilityDepth;
@@ -23,6 +24,7 @@ pub use self::initial_fragment::{
     try_initials_vec_from_messages, Initial, InitialUTxO, LegacyUTxO,
 };
 pub use self::kes_update_speed::KesUpdateSpeed;
+pub use self::kes_update_speed::TryFromKesUpdateSpeedError;
 pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
 pub use self::number_of_slots_per_epoch::TryFromNumberOfSlotsPerEpochError;
