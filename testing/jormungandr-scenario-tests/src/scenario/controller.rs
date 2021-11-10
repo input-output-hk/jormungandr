@@ -1,9 +1,8 @@
-use crate::node::SpawnBuilder;
+use crate::node::ProgressBarController;
 use crate::{
-    legacy::LegacyNode,
-    prepare_command,
+    node::LegacyNode,
     scenario::{dotifier::Dotifier, ContextChaCha, Error, ProgressBarMode, Result},
-    style, Node, NodeBlock0,
+    style, Node,
 };
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
@@ -18,16 +17,15 @@ use chain_impl_mockchain::testing::scenario::template::{
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::Block0Configuration;
-use jormungandr_lib::interfaces::Log;
-use jormungandr_lib::interfaces::LogEntry;
-use jormungandr_lib::interfaces::LogOutput;
+use jormungandr_testing_utils::testing::jormungandr::ConfiguredStarter;
+use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
 use jormungandr_testing_utils::testing::network::Settings;
 use jormungandr_testing_utils::testing::network::{
     builder::NetworkBuilder, controller::Controller as InnerController, VotePlanKey,
 };
-use jormungandr_testing_utils::testing::node::LogLevel;
 use jormungandr_testing_utils::testing::utils::{Event, Observable, Observer};
 use jormungandr_testing_utils::testing::BlockDateGenerator;
+use jormungandr_testing_utils::testing::LegacyNodeConfigConverter;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
@@ -43,6 +41,7 @@ use jormungandr_testing_utils::{
     wallet::Wallet,
     Version,
 };
+use std::net::SocketAddr;
 use std::{
     path::{Path, PathBuf},
     rc::Rc,
@@ -60,9 +59,6 @@ pub struct Controller {
     context: ContextChaCha,
 
     working_directory: ChildPath,
-
-    block0_file: PathBuf,
-    block0: Block0Configuration,
 
     progress_bar: Arc<MultiProgress>,
     progress_bar_thread: Option<std::thread::JoinHandle<()>>,
@@ -171,19 +167,11 @@ impl Controller {
         context: ContextChaCha,
         working_directory: ChildPath,
     ) -> Result<Self> {
-        use chain_core::property::Serialize as _;
-
-        let block0 = controller.settings().block0.to_block();
-        let block0_file = working_directory.child("block0.bin").path().into();
-        let file = std::fs::File::create(&block0_file)?;
-        block0.serialize(file)?;
         let progress_bar = Arc::new(MultiProgress::new());
 
         Ok(Controller {
-            block0: controller.settings().block0.clone(),
             inner: controller,
             context,
-            block0_file,
             progress_bar,
             progress_bar_thread: None,
             working_directory,
@@ -280,6 +268,10 @@ impl Controller {
         builder.build()
     }
 
+    pub fn block0_conf(&self) -> Block0Configuration {
+        self.inner.settings().block0.clone()
+    }
+
     pub fn wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSetting)> {
         self.inner.settings().wallets.iter()
     }
@@ -306,7 +298,7 @@ impl Controller {
     }
 
     pub fn block0_file(&self) -> PathBuf {
-        self.block0_file.clone()
+        self.inner.block0_file()
     }
 
     pub fn start_monitor_resources(
@@ -336,115 +328,67 @@ impl Controller {
         self.working_directory.child(alias)
     }
 
-    pub fn spawn_legacy_node(
-        &mut self,
-        params: SpawnParams,
-        version: &Version,
-    ) -> Result<LegacyNode> {
-        let mut node_setting = self
-            .settings()
-            .nodes
-            .get(params.get_alias())
-            .ok_or_else(|| Error::NodeNotFound(params.get_alias().clone()))?
-            .clone();
-        params.override_settings(&mut node_setting.config);
+    pub fn spawn_node_custom(&mut self, input_params: SpawnParams) -> Result<Node> {
+        let alias = input_params.get_alias().clone();
+        let mut starter = self.inner.make_starter_for(input_params.clone())?;
+        let (params, working_dir) = starter.build_configuration()?;
+        let node_config = params.node_config().clone();
 
-        let log_file_path = self
-            .node_dir(params.get_alias())
-            .child("node.log")
-            .path()
-            .to_path_buf();
-        node_setting.config.log = Some(Log(LogEntry {
-            format: "json".into(),
-            level: params
-                .get_log_level()
-                .unwrap_or(&LogLevel::DEBUG)
-                .to_string(),
-            output: LogOutput::File(log_file_path),
-        }));
+        let configurer_starter = ConfiguredStarter::new(&starter, params, working_dir);
 
-        let block0_setting = match params.get_leadership_mode() {
-            LeadershipMode::Leader => NodeBlock0::File(self.block0_file.as_path().into()),
-            LeadershipMode::Passive => NodeBlock0::Hash(self.block0.to_block().header().hash()),
-        };
+        let mut command = configurer_starter.command();
+        let process = command.spawn().map_err(Error::CannotSpawnNode)?;
 
-        let jormungandr = match &params.get_jormungandr() {
-            Some(jormungandr) => prepare_command(&jormungandr),
-            None => self.context.jormungandr().to_path_buf(),
-        };
+        let progress_bar =
+            self.build_progress_bar(input_params.get_alias(), node_config.rest.listen);
 
-        let pb = ProgressBar::new_spinner();
-        let pb = self.progress_bar.add(pb);
+        let process =
+            JormungandrProcess::new(process, &node_config, self.block0_conf(), None, alias)?;
 
-        let mut spawn_builder: SpawnBuilder<_, LegacyNode> =
-            SpawnBuilder::new(&self.context, &mut node_setting);
-        spawn_builder
-            .path_to_jormungandr(jormungandr)
-            .progress_bar(pb)
-            .alias(params.get_alias())
-            .block0(self.block0.clone())
-            .block0_setting(block0_setting)
-            .working_dir(self.node_dir(params.get_alias()).path())
-            .peristence_mode(params.get_persistence_mode());
-        spawn_builder.build(version).map_err(Into::into)
+        Ok(Node::new(process, progress_bar))
     }
 
-    pub fn spawn_node_custom(&mut self, params: SpawnParams) -> Result<Node> {
-        let mut node_setting = self
-            .settings()
-            .nodes
-            .get(params.get_alias())
-            .ok_or_else(|| Error::NodeNotFound(params.get_alias().clone()))?
-            .clone();
-        params.override_settings(&mut node_setting.config);
+    pub fn spawn_legacy_node(
+        &mut self,
+        input_params: SpawnParams,
+        version: &Version,
+    ) -> Result<LegacyNode> {
+        let alias = input_params.get_alias().clone();
+        let mut starter = self.inner.make_starter_for(input_params.clone())?;
+        let (params, working_dir) = starter.build_configuration()?;
+        let node_config = params.node_config().clone();
 
-        let log_file_path = self
-            .node_dir(params.get_alias())
-            .child("node.log")
-            .path()
-            .to_path_buf();
-        node_setting.config.log = Some(Log(LogEntry {
-            format: "json".into(),
-            level: params
-                .get_log_level()
-                .unwrap_or(&LogLevel::DEBUG)
-                .to_string(),
-            output: LogOutput::File(log_file_path),
-        }));
+        let configurer_starter =
+            ConfiguredStarter::legacy(&starter, version.clone(), params, working_dir)?;
 
-        // remove all id from trusted peers for current version
-        for trusted_peer in node_setting.config.p2p.trusted_peers.iter_mut() {
-            trusted_peer.id = None;
-        }
+        let mut command = configurer_starter.command();
+        let process = command.spawn().map_err(Error::CannotSpawnNode)?;
 
-        let block0_setting = match params.get_leadership_mode() {
-            LeadershipMode::Leader => NodeBlock0::File(self.block0_file.as_path().into()),
-            LeadershipMode::Passive => NodeBlock0::Hash(self.block0.to_block().header().hash()),
-        };
+        let progress_bar =
+            self.build_progress_bar(input_params.get_alias(), node_config.rest.listen);
 
-        let jormungandr = match &params.get_jormungandr() {
-            Some(jormungandr) => prepare_command(&jormungandr),
-            None => self.context.jormungandr().to_path_buf(),
-        };
+        let legacy_node_config =
+            LegacyNodeConfigConverter::new(version.clone()).convert(&node_config)?;
 
+        let process = JormungandrProcess::new(
+            process,
+            &legacy_node_config,
+            self.block0_conf(),
+            None,
+            alias,
+        )?;
+
+        Ok(LegacyNode::new(process, progress_bar, legacy_node_config))
+    }
+
+    fn build_progress_bar(&mut self, alias: &str, listen: SocketAddr) -> ProgressBarController {
         let pb = ProgressBar::new_spinner();
-        let pb = self.progress_bar.add(pb);
-
-        let mut spawn_builder: SpawnBuilder<_, Node> =
-            SpawnBuilder::new(&self.context, &mut node_setting);
-        spawn_builder
-            .path_to_jormungandr(jormungandr)
-            .progress_bar(pb)
-            .alias(params.get_alias())
-            .block0(self.block0.clone())
-            .block0_setting(block0_setting)
-            .working_dir(self.node_dir(params.get_alias()).path())
-            .peristence_mode(params.get_persistence_mode());
-        if let Some(faketime) = params.get_faketime().take() {
-            spawn_builder.faketime(faketime.clone());
-        }
-
-        spawn_builder.build().map_err(Into::into)
+        let pb = self.add_to_progress_bar(pb);
+        ProgressBarController::new(
+            pb,
+            format!("{}@{}", alias, listen),
+            self.context.progress_bar_mode(),
+        )
     }
 
     pub fn spawn_node(
@@ -456,7 +400,8 @@ impl Controller {
         self.spawn_node_custom(
             self.new_spawn_params(node_alias)
                 .leadership_mode(leadership_mode)
-                .persistence_mode(persistence_mode),
+                .persistence_mode(persistence_mode)
+                .jormungandr(self.context.jormungandr().to_path_buf()),
         )
     }
 
@@ -498,7 +443,7 @@ impl Controller {
         let mut builder = FragmentSenderSetupBuilder::from(setup);
         let root_dir: PathBuf = PathBuf::from(self.working_directory().path());
         builder.dump_fragments_into(root_dir.join("fragments"));
-        let hash = Hash::from_hash(self.block0.to_block().header().hash());
+        let hash = Hash::from_hash(self.block0_conf().to_block().header().hash());
 
         let blockchain_configuration = self.settings().block0.blockchain_configuration.clone();
 
