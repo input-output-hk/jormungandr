@@ -17,7 +17,13 @@ use std::convert::TryFrom;
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ConfigParams(pub(crate) Vec<ConfigParam>);
+pub struct ConfigParams(Vec<ConfigParam>);
+
+impl ConfigParams {
+    pub fn new(vec: Vec<ConfigParam>) -> Self {
+        Self(vec)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConfigParam {
