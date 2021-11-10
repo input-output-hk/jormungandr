@@ -32,7 +32,6 @@ pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
 pub mod diagnostic;
-pub mod explorer;
 pub mod fragment;
 pub mod intercom;
 pub mod leadership;
