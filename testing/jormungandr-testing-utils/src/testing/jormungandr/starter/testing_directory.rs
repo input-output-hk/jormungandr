@@ -10,7 +10,6 @@ pub enum TestingDirectory {
 }
 
 impl TestingDirectory {
-
     pub fn path(&self) -> &Path {
         match self {
             TestingDirectory::User(path_buf) => path_buf,

@@ -1,4 +1,4 @@
-use crate::legacy::LegacyNode;
+use crate::node::LegacyNode;
 use crate::{
     node::{FragmentNode, Node},
     scenario::Controller,
