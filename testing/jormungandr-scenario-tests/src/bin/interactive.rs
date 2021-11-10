@@ -12,10 +12,6 @@ struct CommandArgs {
     #[structopt(long = "jormungandr", default_value = "jormungandr")]
     jormungandr: PathBuf,
 
-    /// path or name of the jcli to test
-    #[structopt(long = "jcli", default_value = "jcli")]
-    jcli: PathBuf,
-
     /// set a directory in which the tests will be run, allowing every details
     /// to be save persistently. By default it will create temporary directories
     /// and will delete the files and documents
@@ -56,7 +52,6 @@ fn main() -> Result<(), jormungandr_scenario_tests::test::Error> {
     std::env::set_var("RUST_BACKTRACE", "full");
 
     let jormungandr = prepare_command(&command_args.jormungandr);
-    let jcli = prepare_command(&command_args.jcli);
     let progress_bar_mode = command_args.progress_bar_mode;
     let seed = command_args
         .seed
@@ -68,7 +63,6 @@ fn main() -> Result<(), jormungandr_scenario_tests::test::Error> {
     let context = Context::new(
         seed,
         jormungandr,
-        jcli,
         testing_directory,
         generate_documentation,
         progress_bar_mode,

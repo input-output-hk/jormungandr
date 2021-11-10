@@ -22,7 +22,6 @@ pub fn print<R: rand_core::RngCore>(context: &Context<R>, name: &str) {
                         \_
 
  {}jormungandr: {}
- {}jcli:        {}
  {}seed:        {}
 
 ###############################################################################
@@ -30,8 +29,6 @@ pub fn print<R: rand_core::RngCore>(context: &Context<R>, name: &str) {
         style::binary.apply_to(name),
         *style::icons::jormungandr,
         style::binary.apply_to(context.jormungandr().to_string_lossy()),
-        *style::icons::jcli,
-        style::binary.apply_to(context.jcli().to_string_lossy()),
         *style::icons::seed,
         style::seed.apply_to(context.seed()),
     )
