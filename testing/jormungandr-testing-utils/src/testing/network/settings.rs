@@ -1,11 +1,21 @@
+use crate::testing::network::VotePlanKey;
+use crate::testing::network::VotePlanSettings;
 use crate::testing::network::{
     Blockchain as BlockchainTemplate, ExternalWalletTemplate, Node as NodeTemplate, NodeAlias,
     Random, Wallet, WalletAlias, WalletTemplate, WalletType,
 };
+use crate::wallet::PrivateVoteCommitteeDataManager;
 use crate::{stake_pool::StakePool, testing::signed_stake_pool_cert, wallet::Wallet as WalletLib};
+use assert_fs::fixture::ChildPath;
+use assert_fs::fixture::PathChild;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::block::BlockDate;
-use chain_impl_mockchain::{certificate::VotePlan, chaintypes::ConsensusVersion, fee::LinearFee};
+use chain_impl_mockchain::testing::create_initial_vote_plan;
+use chain_impl_mockchain::{
+    certificate::VotePlan, chaintypes::ConsensusVersion, fee::LinearFee, vote::PayloadType,
+};
+use jormungandr_lib::crypto::account::Identifier;
+use jormungandr_lib::interfaces::{try_initials_vec_from_messages, VotePlan as VotePLanLib};
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
@@ -16,8 +26,6 @@ use jormungandr_lib::{
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
-
-pub type VotePlanAlias = String;
 
 /// contains all the data to start or interact with a node
 #[derive(Debug, Clone)]
@@ -84,7 +92,7 @@ pub struct Settings {
 
     pub stake_pools: HashMap<NodeAlias, StakePool>,
 
-    pub vote_plans: HashMap<VotePlanAlias, VotePlan>,
+    pub vote_plans: HashMap<VotePlanKey, VotePlanSettings>,
 }
 
 impl Settings {
@@ -115,6 +123,11 @@ impl Settings {
         settings.populate_block0_blockchain_initials(blockchain.wallets(), rng);
         settings.populate_block0_blockchain_configuration(&blockchain, rng);
         settings.populate_block0_blockchain_external(blockchain.external_wallets());
+        settings.populate_block0_blockchain_vote_plans(
+            blockchain.vote_plans(),
+            blockchain.committees(),
+            rng.rng_mut(),
+        );
         settings
     }
 
@@ -300,6 +313,82 @@ impl Settings {
             node.config.skip_bootstrap = Some(trusted_peers.is_empty());
             node.config.bootstrap_from_trusted_peers = Some(!trusted_peers.is_empty());
             node.config.p2p.trusted_peers = trusted_peers;
+        }
+    }
+
+    fn populate_block0_blockchain_vote_plans<RNG>(
+        &mut self,
+        mut vote_plans: HashMap<VotePlanKey, VotePLanLib>,
+        committees_aliases: Vec<WalletAlias>,
+        rng: &mut RNG,
+    ) where
+        RNG: RngCore + CryptoRng,
+    {
+        let mut vote_plans_fragments = Vec::new();
+
+        for (vote_plan_key, vote_plan) in vote_plans.iter_mut() {
+            let owner = self
+                .wallets
+                .get(&vote_plan_key.owner_alias)
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Owner {} of {} is unknown wallet ",
+                        vote_plan_key.owner_alias, vote_plan_key.alias
+                    )
+                });
+
+            // workaround beacuse vote_plan_def does not expose payload_type
+            let tmp_vote_plan: VotePlan = vote_plan.clone().into();
+
+            let vote_plan_settings: VotePlanSettings = match tmp_vote_plan.payload_type() {
+                PayloadType::Public => VotePlanSettings::from_public_vote_plan(vote_plan.clone()),
+                PayloadType::Private => {
+                    let mut wallets = self.wallets.clone();
+                    let committees: Vec<(WalletAlias, Identifier)> = committees_aliases
+                        .iter()
+                        .map(|x| {
+                            let wallet = wallets.get_mut(x).unwrap();
+                            (x.clone(), wallet.identifier().into())
+                        })
+                        .collect();
+                    let threshold = committees.len();
+                    let keys = PrivateVoteCommitteeDataManager::new(rng, committees, threshold);
+
+                    vote_plan
+                        .committee_member_public_keys
+                        .extend(keys.member_public_keys());
+                    VotePlanSettings::Private {
+                        keys,
+                        vote_plan: vote_plan.clone(),
+                    }
+                }
+            };
+
+            vote_plans_fragments.push(create_initial_vote_plan(
+                &vote_plan_settings.vote_plan().into(),
+                &[owner.clone().into()],
+            ));
+
+            self.vote_plans
+                .insert(vote_plan_key.clone(), vote_plan_settings);
+        }
+        self.block0
+            .initial
+            .extend(try_initials_vec_from_messages(vote_plans_fragments.iter()).unwrap())
+    }
+
+    pub fn dump_private_vote_keys(&self, directory: ChildPath) {
+        for (vote_plan_alias, data) in self.vote_plans.iter() {
+            if let VotePlanSettings::Private { keys, vote_plan: _ } = data {
+                let (_, vote_plan) = self
+                    .vote_plans
+                    .iter()
+                    .find(|(alias, _)| *alias == vote_plan_alias)
+                    .unwrap();
+
+                let vote_plan_dir = directory.child(format!("{}_committees", vote_plan.to_id()));
+                keys.write_to(vote_plan_dir).unwrap();
+            }
         }
     }
 }

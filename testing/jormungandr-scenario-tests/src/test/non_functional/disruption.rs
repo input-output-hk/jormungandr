@@ -12,9 +12,7 @@ use function_name::named;
 use rand_chacha::ChaChaRng;
 
 #[named]
-pub fn passive_leader_disruption_no_overlap(
-    mut context: Context<ChaChaRng>,
-) -> Result<ScenarioResult> {
+pub fn passive_leader_disruption_no_overlap(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -93,9 +91,7 @@ pub fn passive_leader_disruption_no_overlap(
 }
 
 #[named]
-pub fn passive_leader_disruption_overlap(
-    mut context: Context<ChaChaRng>,
-) -> Result<ScenarioResult> {
+pub fn passive_leader_disruption_overlap(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -162,7 +158,7 @@ pub fn passive_leader_disruption_overlap(
 }
 
 #[named]
-pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn leader_leader_disruption_overlap(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -233,9 +229,7 @@ pub fn leader_leader_disruption_overlap(mut context: Context<ChaChaRng>) -> Resu
 }
 
 #[named]
-pub fn leader_leader_disruption_no_overlap(
-    mut context: Context<ChaChaRng>,
-) -> Result<ScenarioResult> {
+pub fn leader_leader_disruption_no_overlap(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -316,7 +310,7 @@ pub fn leader_leader_disruption_no_overlap(
 }
 
 #[named]
-pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn point_to_point_disruption(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -389,9 +383,7 @@ pub fn point_to_point_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
 }
 
 #[named]
-pub fn point_to_point_disruption_overlap(
-    mut context: Context<ChaChaRng>,
-) -> Result<ScenarioResult> {
+pub fn point_to_point_disruption_overlap(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -525,7 +517,7 @@ pub fn point_to_point_disruption_overlap(
 }
 
 #[named]
-pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn custom_network_disruption(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -642,7 +634,7 @@ pub fn custom_network_disruption(mut context: Context<ChaChaRng>) -> Result<Scen
 }
 
 #[named]
-pub fn mesh_disruption(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn mesh_disruption(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

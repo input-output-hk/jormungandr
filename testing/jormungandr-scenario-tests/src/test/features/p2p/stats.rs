@@ -12,7 +12,7 @@ const LEADER4: &str = "LEADER4";
 use function_name::named;
 
 #[named]
-pub fn p2p_stats_test(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn p2p_stats_test(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

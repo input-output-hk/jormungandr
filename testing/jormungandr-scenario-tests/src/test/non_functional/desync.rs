@@ -9,7 +9,7 @@ use jormungandr_testing_utils::{testing::network::FaketimeConfig, wallet::Wallet
 use rand_chacha::ChaChaRng;
 
 #[named]
-pub fn bft_forks(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn bft_forks(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
 
     let n_transactions = 5;

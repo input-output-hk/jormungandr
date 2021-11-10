@@ -1,12 +1,9 @@
 use assert_fs::fixture::{ChildPath, PathChild};
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
-use multiaddr::Multiaddr;
 use rand_chacha::ChaChaRng;
 use rand_core::RngCore;
-use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{self, AtomicU16};
 use std::sync::Arc;
 
 use crate::scenario::ProgressBarMode;
@@ -28,9 +25,6 @@ pub struct Context<RNG: RngCore + Sized = ChaChaRng> {
 
     jormungandr: PathBuf,
     jcli: PathBuf,
-
-    next_available_rest_port_number: Arc<AtomicU16>,
-    next_available_grpc_port_number: Arc<AtomicU16>,
 
     testing_directory: TestingDirectory,
     generate_documentation: bool,
@@ -58,8 +52,6 @@ impl Context<ChaChaRng> {
 
         Context {
             rng,
-            next_available_rest_port_number: Arc::new(AtomicU16::new(8_000)),
-            next_available_grpc_port_number: Arc::new(AtomicU16::new(12_000)),
             jormungandr,
             jcli,
             testing_directory,
@@ -77,8 +69,6 @@ impl Context<ChaChaRng> {
 
         Context {
             rng,
-            next_available_rest_port_number: Arc::clone(&self.next_available_rest_port_number),
-            next_available_grpc_port_number: Arc::clone(&self.next_available_grpc_port_number),
             jormungandr: self.jormungandr.clone(),
             jcli: self.jcli.clone(),
             testing_directory: self.testing_directory.clone(),
@@ -118,29 +108,6 @@ impl<RNG: RngCore> Context<RNG> {
 
     pub fn log_level(&self) -> String {
         self.log_level.clone()
-    }
-
-    pub fn generate_new_rest_listen_address(&mut self) -> SocketAddr {
-        use std::net::{IpAddr, Ipv4Addr};
-
-        let port_number = self.generate_new_unique_port();
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port_number)
-    }
-
-    pub fn generate_new_unique_port(&mut self) -> u16 {
-        self.next_available_rest_port_number
-            .fetch_add(1, atomic::Ordering::SeqCst)
-    }
-
-    pub fn generate_new_grpc_public_address(&mut self) -> Multiaddr {
-        use std::net::{IpAddr, Ipv4Addr};
-
-        let port_number = self.generate_new_unique_port();
-        let address = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
-
-        format!("/ip4/{}/tcp/{}", address, port_number)
-            .parse()
-            .unwrap()
     }
 
     /// retrieve the original seed of the pseudo random generator

@@ -15,7 +15,7 @@ const LEADER_2: &str = "Leader2";
 use function_name::named;
 
 #[named]
-pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn two_transaction_to_two_leaders(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -71,8 +71,8 @@ pub fn two_transaction_to_two_leaders(mut context: Context<ChaChaRng>) -> Result
 
     monitor.snapshot()?;
     monitor.stop().print();
-    leader_2.shutdown()?;
     leader_1.shutdown()?;
+    leader_2.shutdown()?;
     controller.finalize();
     Ok(ScenarioResult::passed(name))
 }

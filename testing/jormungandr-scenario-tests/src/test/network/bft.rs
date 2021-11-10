@@ -21,7 +21,7 @@ const LEADER_5: &str = "Leader5";
 const PASSIVE: &str = "Passive";
 
 #[named]
-pub fn bft_cascade(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn bft_cascade(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -111,7 +111,7 @@ pub fn bft_cascade(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn bft_passive_propagation(mut context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn bft_passive_propagation(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         "bft_passive_propagation",
