@@ -68,13 +68,14 @@ pub async fn start_rest_server(config: Config, context: ContextLock) {
             span
         }));
 
-    setup_prometheus(api, config, stopper_rx).await;
+    setup_prometheus(api, config, context, stopper_rx).await;
 }
 
 #[cfg(feature = "prometheus-metrics")]
 async fn setup_prometheus<App>(
     app: App,
     config: Config,
+    context: ContextLock,
     shutdown_signal: impl Future<Output = ()> + Send + 'static,
 ) where
     App: Filter<Error = warp::Rejection> + Clone + Send + Sync + 'static,
@@ -92,6 +93,7 @@ async fn setup_prometheus<App>(
 async fn setup_prometheus<App>(
     app: App,
     config: Config,
+    _context: ContextLock,
     shutdown_signal: impl Future<Output = ()> + Send + 'static,
 ) where
     App: Filter<Error = warp::Rejection> + Clone + Send + Sync + 'static,
