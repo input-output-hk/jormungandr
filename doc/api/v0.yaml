@@ -1159,7 +1159,7 @@ paths:
                       },
                     ]
 
-  '/api/v0/rewards/remaining/':
+  '/api/v0/rewards/remaining':
     get:
       description: 'returns the remaining funds to be distributed as rewards'
       operationId: RewardsRemaining
