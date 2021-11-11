@@ -14,13 +14,13 @@ impl fmt::Display for EpochStabilityDepth {
 
 impl Default for EpochStabilityDepth {
     fn default() -> Self {
-        EpochStabilityDepth(DEFAULT_EPOCH_STABILITY_DEPTH)
+        Self(DEFAULT_EPOCH_STABILITY_DEPTH)
     }
 }
 
 impl From<u32> for EpochStabilityDepth {
     fn from(v: u32) -> Self {
-        EpochStabilityDepth(v)
+        Self(v)
     }
 }
 

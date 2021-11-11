@@ -7,6 +7,7 @@
 - Support parallel lanes in spending counters on account outputs. This allows
   submitting transactions that can spend from the same account without
   requiring any particular order between the transactions.
+- add new setting proposal expiration into the initial config/genesis
 
 ## Release 0.13.0
 
