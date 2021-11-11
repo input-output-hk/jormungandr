@@ -1379,8 +1379,7 @@ impl VotePlanStatus {
                         }
                         ExplorerVoteTally::Private { results, options } => {
                             TallyStatus::Private(TallyPrivateStatus {
-                                results: results
-                                    .map(|res| res.iter().map(Into::into).collect()),
+                                results: results.map(|res| res.iter().map(Into::into).collect()),
                                 options: options.into(),
                             })
                         }
