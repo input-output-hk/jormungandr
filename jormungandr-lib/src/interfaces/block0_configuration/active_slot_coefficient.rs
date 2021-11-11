@@ -8,7 +8,7 @@ use std::{convert::TryFrom, fmt, str::FromStr as _};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct ActiveSlotCoefficient(pub(crate) Milli);
+pub struct ActiveSlotCoefficient(Milli);
 
 impl ActiveSlotCoefficient {
     /// minimal value for the active slot coefficient

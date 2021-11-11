@@ -8,10 +8,12 @@ mod initial_fragment;
 mod kes_update_speed;
 mod leader_id;
 mod number_of_slots_per_epoch;
+mod proposal_expiration;
 mod reward_constraint;
 mod slots_duration;
 
 pub use self::active_slot_coefficient::ActiveSlotCoefficient;
+pub use self::active_slot_coefficient::TryFromActiveSlotCoefficientError;
 pub use self::block_content_max_size::BlockContentMaxSize;
 pub use self::default_values::*;
 pub use self::epoch_stability_depth::EpochStabilityDepth;
@@ -22,9 +24,11 @@ pub use self::initial_fragment::{
     try_initials_vec_from_messages, Initial, InitialUTxO, LegacyUTxO,
 };
 pub use self::kes_update_speed::KesUpdateSpeed;
+pub use self::kes_update_speed::TryFromKesUpdateSpeedError;
 pub use self::leader_id::ConsensusLeaderId;
 pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
 pub use self::number_of_slots_per_epoch::TryFromNumberOfSlotsPerEpochError;
+pub use self::proposal_expiration::ProposalExpiration;
 pub use self::reward_constraint::{PoolParticipationCapping, RewardConstraints};
 pub use self::slots_duration::SlotDuration;
 pub use self::slots_duration::TryFromSlotDurationError;
@@ -132,6 +136,7 @@ pub fn block0_configuration_documented_example() -> String {
         default_kes_update_speed = KesUpdateSpeed::default(),
         default_block_content_max_size = BlockContentMaxSize::default(),
         default_epoch_stability_depth = EpochStabilityDepth::default(),
+        default_proposal_expiration = ProposalExpiration::default(),
         leader_1 = leader_1_pk,
         leader_2 = leader_2_pk,
         initial_funds_address = initial_funds_address
