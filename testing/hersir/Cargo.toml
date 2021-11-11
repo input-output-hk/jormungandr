@@ -16,3 +16,4 @@ serde_derive = "1.0"
 serde_yaml = "0.8.21"
 structopt = "0.3.23"
 thiserror = "1.0"
+tokio = { version = "1", features = ["full"] }
