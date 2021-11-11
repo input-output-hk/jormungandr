@@ -36,10 +36,10 @@
   # block header).
 - BlockContentMaxSize: 96
 
-  # TODO
+  # Add a new bft leader
 - AddBftLeader: ed25519_pk1g53asm6l4gcwk2pm5ylr092umaur5yes47rqv7ng5yl525x8g8mq5nk7x7
 
-  # TODO
+  # Remove a bft leader
 - RemoveBftLeader: ed25519_pk1a3sjcg6gt4d05k5u6uqyzmsap8cjw37ul9cgztz8m697lvkz26uqg49nm3
 
   # The fee calculations settings
@@ -75,10 +75,8 @@
   # The speed to update the KES Key in seconds
 - KesUpdateSpeed: 120
 
-  # initial value the treasury will start with, if not set the treasury
-  # starts at 0
-  # TODO
-- TreasuryAdd: 7
+  # Increase the treasury amount
+- TreasuryAdd: 10000
 
   # Set the total reward supply available for monetary creation
 - RewardPot: 100000000000000
@@ -146,7 +144,6 @@
   # It is possible to send all the generated fees to the "treasury"
 - FeesInTreasury: rewards
 
-  # TODO
 - RewardLimitNone
 
   # Limit the epoch total reward drawing limit to a portion of the total
@@ -169,16 +166,15 @@
     min: 8
     max: 52
 
-  # TODO
+  # Add a new committee id
 - AddCommitteeId: 8103973beaa56f4e9440004ee8e8f8359ea18499d4199c1b018c072e7f503ea0
 
-  # TODO
+  # Remove a committee id
 - RemoveCommitteeId: 6375dcdd714e69c197e99c32486ec28f166a50da7a1e3694807cd8a76f1c8175
 
-  # TODO
 - PerVoteCertificateFees:
     certificate_vote_plan: 52
     certificate_vote_cast: 57
 
-  # TODO
+  # The transaction max expiry epochs
 - TransactionMaxExpiryEpochs: 91
