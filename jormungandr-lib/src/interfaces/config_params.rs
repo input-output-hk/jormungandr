@@ -180,6 +180,10 @@ impl TryFrom<ConfigParamLib> for ConfigParam {
     }
 }
 
+pub fn config_params_documented_example() -> String {
+    format!(include_str!("CONFIG_PARAMS_DOCUMENTED_EXAMPLE.yaml"),)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -221,6 +225,11 @@ mod test {
                 _ => unreachable!(),
             }
         }
+    }
+
+    #[test]
+    fn documented_example_decodes() {
+        let _: ConfigParams = serde_yaml::from_str(&config_params_documented_example()).unwrap();
     }
 
     quickcheck! {

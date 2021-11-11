@@ -10,7 +10,7 @@ blockchain_configuration:
   block0_date: {default_block0_date}
 
   # This is the type of discrimination of the blockchain
-  # of this blockchain is meant for production then
+  # if this blockchain is meant for production then
   # use 'production' instead.
   #
   # otherwise leave as this

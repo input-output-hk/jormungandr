@@ -8,6 +8,8 @@
   submitting transactions that can spend from the same account without
   requiring any particular order between the transactions.
 - add new setting proposal expiration into the initial config/genesis
+- add UpdateProposal feature for changing blockchain config. Add new jcli
+  commands `votes/update-proposal` for creating proposals of and `votes/update-vote`
 
 ## Release 0.13.0
 
