@@ -3802,7 +3802,7 @@ checksum = "8049cf85f0e715d6af38dde439cb0ccb91f67fb9f5f63c80f8b43e48356e1a3f"
 [[package]]
 name = "symmetric-cipher"
 version = "0.5.0"
-source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=catalyst-fund7#ca46a95e6ed3b6f8e9d8228c1157c4bb0588e7ca"
+source = "git+https://github.com/input-output-hk/chain-wallet-libs.git?branch=catalyst-fund7#c2883f6fe2e9d2062d27bd2b2ec76c8bbb17a18d"
 dependencies = [
  "cryptoxide",
  "rand 0.8.4",
