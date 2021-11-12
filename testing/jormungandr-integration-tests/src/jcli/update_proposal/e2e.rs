@@ -3,7 +3,7 @@ use assert_fs::{
     TempDir,
 };
 use chain_addr::Discrimination;
-use chain_crypto::{bech32::Bech32};
+use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::value::Value;
 use jormungandr_lib::interfaces::{
     BlockContentMaxSize, BlockDate, ConfigParam, ConfigParams, ConsensusLeaderId,
@@ -18,7 +18,7 @@ use jormungandr_testing_utils::{
 };
 use jortestkit::process::Wait;
 use rand_core::OsRng;
-use std::{time::Duration};
+use std::time::Duration;
 
 #[test]
 fn basic_change_config_test() {
