@@ -13,7 +13,6 @@ use crate::{
     utils::async_msg::MessageBox,
 };
 use chain_core::property::Fragment as _;
-use chain_crypto::Verification;
 use chain_impl_mockchain::{
     block::BlockDate, fragment::Contents, setting::Settings, transaction::Transaction,
 };
@@ -351,8 +350,8 @@ fn is_fragment_valid(fragment: &Fragment) -> bool {
         Fragment::PoolRetirement(ref tx) => is_transaction_valid(tx),
         Fragment::PoolUpdate(ref tx) => is_transaction_valid(tx),
         // vote stuff
-        Fragment::UpdateProposal(ref tx) => tx.verify() == Verification::Success,
-        Fragment::UpdateVote(ref tx) => tx.verify() == Verification::Success,
+        Fragment::UpdateProposal(ref tx) => is_transaction_valid(tx),
+        Fragment::UpdateVote(ref tx) => is_transaction_valid(tx),
         Fragment::VotePlan(ref tx) => is_transaction_valid(tx),
         Fragment::VoteCast(ref tx) => is_transaction_valid(tx),
         Fragment::VoteTally(ref tx) => is_transaction_valid(tx),
@@ -374,8 +373,8 @@ fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
         Fragment::PoolRegistration(tx) => Some(tx.as_slice().valid_until()),
         Fragment::PoolRetirement(tx) => Some(tx.as_slice().valid_until()),
         Fragment::PoolUpdate(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::UpdateProposal(_) => None,
-        Fragment::UpdateVote(_) => None,
+        Fragment::UpdateProposal(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::UpdateVote(tx) => Some(tx.as_slice().valid_until()),
         Fragment::VotePlan(tx) => Some(tx.as_slice().valid_until()),
         Fragment::VoteCast(tx) => Some(tx.as_slice().valid_until()),
         Fragment::VoteTally(tx) => Some(tx.as_slice().valid_until()),

@@ -3,11 +3,11 @@ use crate::jcli_lib::{
     utils::key_parser::{self, parse_ed25519_secret_key},
 };
 use chain_crypto::{Ed25519, PublicKey};
-use chain_impl_mockchain::certificate::{EncryptedVoteTally, EncryptedVoteTallyProof};
 use chain_impl_mockchain::{
     certificate::{
-        Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate,
-        StakeDelegation, TallyProof, VotePlan, VotePlanProof, VoteTally,
+        Certificate, EncryptedVoteTally, EncryptedVoteTallyProof, PoolOwnersSigned,
+        PoolRegistration, PoolSignature, SignedCertificate, StakeDelegation, TallyProof,
+        UpdateProposal, UpdateVote, VotePlan, VotePlanProof, VoteTally,
     },
     key::EitherEd25519SecretKey,
     transaction::{
@@ -90,6 +90,14 @@ impl Sign {
                 committee_vote_plan_sign(vp, &keys_str, txbuilder)?
             }
             Certificate::VoteCast(_) => return Err(Error::VoteCastDoesntNeedSignature),
+            Certificate::UpdateProposal(up) => {
+                let txbuilder = Transaction::block0_payload_builder(&up);
+                update_proposal_sign(up, &keys_str, txbuilder)?
+            }
+            Certificate::UpdateVote(uv) => {
+                let txbuilder = Transaction::block0_payload_builder(&uv);
+                update_vote_sign(uv, &keys_str, txbuilder)?
+            }
         };
         write_signed_cert(self.output.as_deref(), signedcert.into())
     }
@@ -200,14 +208,14 @@ pub(crate) fn stake_delegation_account_binding_sign(
 pub(crate) fn pool_owner_sign<F, P: Payload>(
     payload: P,
     mreg: Option<&PoolRegistration>, // if present we verify the secret key against the expectations
-    keys: &[String],
+    keys_str: &[String],
     builder: TxBuilderState<SetAuthData<P>>,
     to_signed_certificate: F,
 ) -> Result<SignedCertificate, Error>
 where
     F: FnOnce(P, PoolOwnersSigned) -> SignedCertificate,
 {
-    let keys: Result<Vec<EitherEd25519SecretKey>, key_parser::Error> = keys
+    let keys: Result<Vec<EitherEd25519SecretKey>, key_parser::Error> = keys_str
         .iter()
         .map(|sk| parse_ed25519_secret_key(sk.clone().trim()))
         .collect();
@@ -243,4 +251,47 @@ where
     }
     let sig = PoolOwnersSigned { signatures: sigs };
     Ok(to_signed_certificate(payload, sig))
+}
+
+pub(crate) fn update_proposal_sign<P: Payload>(
+    update_proposal: UpdateProposal,
+    keys_str: &[String],
+    builder: TxBuilderState<SetAuthData<P>>,
+) -> Result<SignedCertificate, Error> {
+    if keys_str.len() > 1 {
+        return Err(Error::ExpectingOnlyOneSigningKey {
+            got: keys_str.len(),
+        });
+    }
+
+    let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
+
+    let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
+        private_key.sign_slice(d.0)
+    });
+
+    Ok(SignedCertificate::UpdateProposal(
+        update_proposal,
+        signature,
+    ))
+}
+
+pub(crate) fn update_vote_sign<P: Payload>(
+    update_vote: UpdateVote,
+    keys_str: &[String],
+    builder: TxBuilderState<SetAuthData<P>>,
+) -> Result<SignedCertificate, Error> {
+    if keys_str.len() > 1 {
+        return Err(Error::ExpectingOnlyOneSigningKey {
+            got: keys_str.len(),
+        });
+    }
+
+    let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
+
+    let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
+        private_key.sign_slice(d.0)
+    });
+
+    Ok(SignedCertificate::UpdateVote(update_vote, signature))
 }

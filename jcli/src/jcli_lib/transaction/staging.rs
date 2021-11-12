@@ -1,8 +1,8 @@
-use crate::jcli_lib::certificate::committee_encrypted_vote_tally_sign;
 use crate::jcli_lib::{
     certificate::{
-        committee_vote_plan_sign, committee_vote_tally_sign, pool_owner_sign,
-        stake_delegation_account_binding_sign,
+        committee_encrypted_vote_tally_sign, committee_vote_plan_sign, committee_vote_tally_sign,
+        pool_owner_sign, stake_delegation_account_binding_sign, update_proposal_sign,
+        update_vote_sign,
     },
     transaction::Error,
     utils::io,
@@ -232,6 +232,18 @@ impl Staging {
                         .map_err(|e| Error::CertificateError { error: e })?;
                     self.extra_authed = Some(sc.into())
                 }
+                Certificate::UpdateProposal(up) => {
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&up))?;
+                    let sc = update_proposal_sign(up, keys, builder)
+                        .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into())
+                }
+                Certificate::UpdateVote(uv) => {
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&uv))?;
+                    let sc = update_vote_sign(uv, keys, builder)
+                        .map_err(|e| Error::CertificateError { error: e })?;
+                    self.extra_authed = Some(sc.into())
+                }
             },
         };
         self.kind = StagingKind::Authed;
@@ -331,6 +343,13 @@ impl Staging {
                 Certificate::EncryptedVoteTally(vt) => {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
+                Certificate::UpdateProposal(vt) => {
+                    self.finalize_payload(&vt, fee_algorithm, output_policy)
+                }
+                Certificate::UpdateVote(vt) => {
+                    self.finalize_payload(&vt, fee_algorithm, output_policy)
+                }
+
                 Certificate::OwnerStakeDelegation(c) => {
                     let balance = self.finalize_payload(&c, fee_algorithm, output_policy)?;
                     match self.inputs() {
@@ -470,6 +489,12 @@ impl Staging {
                     SignedCertificate::EncryptedVoteTally(vt, a) => {
                         self.make_fragment(&vt, &a, Fragment::EncryptedVoteTally)
                     }
+                    SignedCertificate::UpdateProposal(vt, a) => {
+                        self.make_fragment(&vt, &a, Fragment::UpdateProposal)
+                    }
+                    SignedCertificate::UpdateVote(vt, a) => {
+                        self.make_fragment(&vt, &a, Fragment::UpdateVote)
+                    }
                 }
             }
         }
@@ -526,6 +551,12 @@ impl Staging {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
                 Certificate::EncryptedVoteTally(vt) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
+                }
+                Certificate::UpdateProposal(vt) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
+                }
+                Certificate::UpdateVote(vt) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
             },
