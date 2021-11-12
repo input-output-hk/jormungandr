@@ -10,14 +10,14 @@ use structopt::StructOpt;
 
 #[derive(StructOpt)]
 pub struct UpdateProposal {
-    /// the file path to the config file defining the config param changes
-    /// If omitted it will be read from the standard input.
-    #[structopt(name = "CONFIG_UPDATE")]
-    config_file: Option<PathBuf>,
-
     /// the proposer ID.
     #[structopt(name = "PROPOSER_ID", parse(try_from_str = parse_pub_key))]
     proposer_id: PublicKey<Ed25519>,
+
+    /// the file path to the config file defining the config param changes
+    /// If omitted it will be read from the standard input.
+    #[structopt(name = "CONFIG_FILE")]
+    config_file: Option<PathBuf>,
 
     /// print the output signed certificate in the given file, if no file given
     /// the output will be printed in the standard output
