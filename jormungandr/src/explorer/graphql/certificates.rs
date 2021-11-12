@@ -4,7 +4,7 @@ use chain_impl_mockchain::certificate;
 use std::convert::TryFrom;
 
 use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
-use super::{Address, BlockDate, ExplorerAddress, Pool, Proposal, TaxType};
+use super::{Address, BftLeader, BlockDate, ExplorerAddress, Pool, Proposal, TaxType};
 use crate::rest::explorer::EContext as RestContext;
 
 // interface for grouping certificates as a graphl union
@@ -256,27 +256,24 @@ impl EncryptedVoteTally {
 
 #[Object]
 impl UpdateProposal {
-    pub async fn changes(&self) -> u64 {
-        // TODO: implement
-        unimplemented!()
-    }
+    // TODO: implement ConfigParam graphql object and return ConfigParams(Vec<ConfigParam>) here
+    // pub async fn changes(&self) -> () {
+    //     unimplemented!()
+    // }
 
-    pub async fn proposer_id(&self) -> u64 {
-        // TODO: implement
-        unimplemented!()
+    pub async fn proposer_id(&self) -> BftLeader {
+        self.0.proposer_id().clone().into()
     }
 }
 
 #[Object]
 impl UpdateVote {
-    pub async fn proposal_id(&self) -> u64 {
-        // TODO: implement
-        unimplemented!()
+    pub async fn proposal_id(&self) -> String {
+        format!("{}", self.0.proposal_id())
     }
 
-    pub async fn voter_id(&self) -> u64 {
-        // TODO: implement
-        unimplemented!()
+    pub async fn voter_id(&self) -> BftLeader {
+        self.0.voter_id().clone().into()
     }
 }
 

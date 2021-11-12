@@ -3,6 +3,8 @@ mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
 mod new_stake_pool_retirement;
+mod new_update_proposal;
+mod new_update_vote;
 mod new_vote_cast;
 mod new_vote_plan;
 mod new_vote_tally;
@@ -113,6 +115,8 @@ pub enum Error {
     PrivateTallyExpected { found: &'static str },
     #[error(transparent)]
     PrivateTallyError(#[from] DecryptedPrivateTallyError),
+    #[error("config file corrupted")]
+    ConfigFileCorrupted(#[source] serde_yaml::Error),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -165,6 +169,10 @@ pub enum NewArgs {
     VoteTally(new_vote_tally::VoteTallyRegistration),
     /// create a new encrypted vote tally certificate
     EncryptedVoteTally(new_encrypted_vote_tally::EncryptedVoteTally),
+    /// create a new update vote certificate
+    UpdateVote(new_update_vote::UpdateVote),
+    /// create a new update proposal certificate
+    UpdateProposal(new_update_proposal::UpdateProposal),
     /// create a vote cast certificate
     VoteCast(new_vote_cast::VoteCastCmd),
 }
@@ -198,6 +206,8 @@ impl NewArgs {
             NewArgs::VoteTally(args) => args.exec()?,
             NewArgs::VoteCast(args) => args.exec()?,
             NewArgs::EncryptedVoteTally(args) => args.exec()?,
+            NewArgs::UpdateVote(args) => args.exec()?,
+            NewArgs::UpdateProposal(args) => args.exec()?,
         }
         Ok(())
     }

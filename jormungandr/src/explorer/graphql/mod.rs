@@ -700,6 +700,12 @@ pub struct BftLeader {
     id: BftLeaderId,
 }
 
+impl From<BftLeaderId> for BftLeader {
+    fn from(id: BftLeaderId) -> Self {
+        Self { id }
+    }
+}
+
 #[Object]
 impl BftLeader {
     async fn id(&self) -> PublicKey {

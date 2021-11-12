@@ -1,5 +1,7 @@
-use crate::jcli_lib::certificate::{write_cert, Error};
-use crate::jcli_lib::utils;
+use crate::jcli_lib::{
+    certificate::{write_cert, Error},
+    utils,
+};
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::{
     certificate::{Certificate, VoteCast, VotePlanId},
