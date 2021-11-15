@@ -141,7 +141,7 @@ impl Sign {
 
 pub(crate) fn committee_vote_tally_sign(
     vote_tally: VoteTally,
-    key_str: &String,
+    key_str: &str,
     builder: TxBuilderState<SetAuthData<VoteTally>>,
 ) -> Result<SignedCertificate, Error> {
     use chain_impl_mockchain::vote::PayloadType;
@@ -162,7 +162,7 @@ pub(crate) fn committee_vote_tally_sign(
 
 pub(crate) fn committee_encrypted_vote_tally_sign(
     vote_tally: EncryptedVoteTally,
-    key_str: &String,
+    key_str: &str,
     builder: TxBuilderState<SetAuthData<EncryptedVoteTally>>,
 ) -> Result<SignedCertificate, Error> {
     let private_key = parse_ed25519_secret_key(key_str.trim())?;
@@ -178,7 +178,7 @@ pub(crate) fn committee_encrypted_vote_tally_sign(
 
 pub(crate) fn committee_vote_plan_sign(
     vote_plan: VotePlan,
-    key_str: &String,
+    key_str: &str,
     builder: TxBuilderState<SetAuthData<VotePlan>>,
 ) -> Result<SignedCertificate, Error> {
     let private_key = parse_ed25519_secret_key(key_str.trim())?;
@@ -195,7 +195,7 @@ pub(crate) fn committee_vote_plan_sign(
 
 pub(crate) fn stake_delegation_account_binding_sign(
     delegation: StakeDelegation,
-    key_str: &String,
+    key_str: &str,
     builder: TxBuilderState<SetAuthData<StakeDelegation>>,
 ) -> Result<SignedCertificate, Error> {
     let private_key = parse_ed25519_secret_key(key_str.trim())?;
@@ -269,7 +269,7 @@ where
 
 pub(crate) fn update_proposal_sign<P: Payload>(
     update_proposal: UpdateProposal,
-    key_str: &String,
+    key_str: &str,
     builder: TxBuilderState<SetAuthData<P>>,
 ) -> Result<SignedCertificate, Error> {
     let private_key = parse_ed25519_secret_key(key_str.trim())?;
@@ -284,7 +284,7 @@ pub(crate) fn update_proposal_sign<P: Payload>(
 
 pub(crate) fn update_vote_sign<P: Payload>(
     update_vote: UpdateVote,
-    key_str: &String,
+    key_str: &str,
     builder: TxBuilderState<SetAuthData<P>>,
 ) -> Result<SignedCertificate, Error> {
     let private_key = parse_ed25519_secret_key(key_str.trim())?;
