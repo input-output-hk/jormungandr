@@ -1,9 +1,10 @@
-//! Functionality for building invalid blocks and timing their transmission.
+//! Functionality for building invalid blocks
 use crate::testing::startup;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
     block::{builder, Block, BlockDate, BlockVersion, Contents, Header},
     chaintypes::ConsensusVersion,
+    header::HeaderBuilder,
     key::BftLeaderId,
     testing::{data::StakePool, TestGen},
 };
@@ -14,6 +15,7 @@ pub struct BlockBuilder {
     consensus_protocol: ConsensusVersion,
     contents: Option<Contents>,
     signing_key: Option<SigningKey<Ed25519>>,
+    invalid_hash: bool,
     invalid_signature: bool,
     parent_block_header: Header,
     stake_pool: Option<StakePool>,
@@ -26,6 +28,7 @@ impl BlockBuilder {
             consensus_protocol: ConsensusVersion::Bft,
             contents: None,
             signing_key: None,
+            invalid_hash: false,
             invalid_signature: false,
             parent_block_header,
             stake_pool: None,
@@ -38,6 +41,7 @@ impl BlockBuilder {
             consensus_protocol: ConsensusVersion::GenesisPraos,
             contents: None,
             signing_key: None,
+            invalid_hash: false,
             invalid_signature: false,
             parent_block_header,
             stake_pool: None,
@@ -54,6 +58,13 @@ impl BlockBuilder {
     pub fn signing_key(self, signing_key: SigningKey<Ed25519>) -> Self {
         Self {
             signing_key: Some(signing_key),
+            ..self
+        }
+    }
+
+    pub fn invalid_hash(self) -> Self {
+        Self {
+            invalid_hash: true,
             ..self
         }
     }
@@ -78,6 +89,7 @@ impl BlockBuilder {
             consensus_protocol,
             contents,
             signing_key,
+            invalid_hash,
             invalid_signature,
             parent_block_header,
             stake_pool,
@@ -85,13 +97,20 @@ impl BlockBuilder {
 
         let contents = contents.unwrap_or_else(Contents::empty);
 
-        builder(BlockVersion::Ed25519Signed, contents, |hdr_builder| {
-            let builder = hdr_builder
-                .set_parent(
-                    &parent_block_header.id(),
-                    parent_block_header.chain_length().increase(),
-                )
-                .set_date(block_date);
+        let (mut content_hash, content_size) = contents.compute_hash_size();
+
+        if invalid_hash {
+            content_hash = TestGen::hash();
+        }
+
+        builder(BlockVersion::Ed25519Signed, contents, |_| {
+            let builder =
+                HeaderBuilder::new_raw(BlockVersion::Ed25519Signed, &content_hash, content_size)
+                    .set_parent(
+                        &parent_block_header.id(),
+                        parent_block_header.chain_length().increase(),
+                    )
+                    .set_date(block_date);
 
             let header = match consensus_protocol {
                 ConsensusVersion::Bft => {

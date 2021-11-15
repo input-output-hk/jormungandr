@@ -41,6 +41,21 @@ impl fmt::Display for Level {
     }
 }
 
+impl std::str::FromStr for Level {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s.trim().to_lowercase().as_str() {
+            "trace" => Self::TRACE,
+            "debug" => Self::DEBUG,
+            "info" => Self::INFO,
+            "warn" => Self::WARN,
+            "error" => Self::ERROR,
+            _ => return Err(format!("'{}' is not a valid log level", s)),
+        })
+    }
+}
+
 const SUCCESFULLY_CREATED_BLOCK_MSG: &str = "block from leader event successfully stored";
 type RawFields = HashMap<String, String>;
 
