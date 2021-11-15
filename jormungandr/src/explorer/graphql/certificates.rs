@@ -256,11 +256,6 @@ impl EncryptedVoteTally {
 
 #[Object]
 impl UpdateProposal {
-    // TODO: implement ConfigParam graphql object and return ConfigParams(Vec<ConfigParam>) here
-    // pub async fn changes(&self) -> () {
-    //     unimplemented!()
-    // }
-
     pub async fn proposer_id(&self) -> BftLeader {
         self.0.proposer_id().clone().into()
     }
