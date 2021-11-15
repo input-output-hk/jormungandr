@@ -14,7 +14,7 @@ pub struct UpdateVote {
     proposal_id: UpdateProposalId,
 
     /// the voter ID.
-    #[structopt(name = "UPDATE_VOTER_ID", parse(try_from_str = parse_pub_key))]
+    #[structopt(name = "VOTER_ID", parse(try_from_str = parse_pub_key))]
     voter_id: PublicKey<Ed25519>,
 
     /// print the output signed certificate in the given file, if no file given

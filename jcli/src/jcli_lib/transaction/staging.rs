@@ -1,8 +1,8 @@
 use crate::jcli_lib::{
     certificate::{
-        committee_encrypted_vote_tally_sign, committee_vote_plan_sign, committee_vote_tally_sign,
-        pool_owner_sign, stake_delegation_account_binding_sign, update_proposal_sign,
-        update_vote_sign,
+        self, committee_encrypted_vote_tally_sign, committee_vote_plan_sign,
+        committee_vote_tally_sign, pool_owner_sign, stake_delegation_account_binding_sign,
+        update_proposal_sign, update_vote_sign,
     },
     transaction::Error,
     utils::io,
@@ -180,8 +180,15 @@ impl Staging {
             Some(c) => match c.clone().into() {
                 Certificate::StakeDelegation(s) => {
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&s))?;
-                    let sc = stake_delegation_account_binding_sign(s, keys, builder)
-                        .map_err(|e| Error::CertificateError { error: e })?;
+                    let sc = keys
+                        .len()
+                        .eq(&1)
+                        .then(|| {
+                            stake_delegation_account_binding_sign(s, &keys[0], builder)
+                                .map_err(|e| Error::CertificateError { error: e })
+                        })
+                        .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
+                        .map_err(|error| Error::CertificateError { error })??;
                     self.extra_authed = Some(sc.into());
                 }
                 Certificate::PoolRegistration(s) => {
@@ -215,33 +222,68 @@ impl Staging {
                 Certificate::OwnerStakeDelegation(_) => unreachable!(),
                 Certificate::VotePlan(vp) => {
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&vp))?;
-                    let sc = committee_vote_plan_sign(vp, keys, builder)
-                        .map_err(|e| Error::CertificateError { error: e })?;
+                    let sc = keys
+                        .len()
+                        .eq(&1)
+                        .then(|| {
+                            committee_vote_plan_sign(vp, &keys[0], builder)
+                                .map_err(|e| Error::CertificateError { error: e })
+                        })
+                        .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
+                        .map_err(|error| Error::CertificateError { error })??;
                     self.extra_authed = Some(sc.into())
                 }
                 Certificate::VoteCast(_) => unreachable!(),
                 Certificate::VoteTally(vt) => {
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&vt))?;
-                    let sc = committee_vote_tally_sign(vt, keys, builder)
-                        .map_err(|e| Error::CertificateError { error: e })?;
+                    let sc = keys
+                        .len()
+                        .eq(&1)
+                        .then(|| {
+                            committee_vote_tally_sign(vt, &keys[0], builder)
+                                .map_err(|e| Error::CertificateError { error: e })
+                        })
+                        .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
+                        .map_err(|error| Error::CertificateError { error })??;
                     self.extra_authed = Some(sc.into())
                 }
                 Certificate::EncryptedVoteTally(vt) => {
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&vt))?;
-                    let sc = committee_encrypted_vote_tally_sign(vt, keys, builder)
-                        .map_err(|e| Error::CertificateError { error: e })?;
+                    let sc = keys
+                        .len()
+                        .eq(&1)
+                        .then(|| {
+                            committee_encrypted_vote_tally_sign(vt, &keys[0], builder)
+                                .map_err(|e| Error::CertificateError { error: e })
+                        })
+                        .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
+                        .map_err(|error| Error::CertificateError { error })??;
                     self.extra_authed = Some(sc.into())
                 }
                 Certificate::UpdateProposal(up) => {
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&up))?;
-                    let sc = update_proposal_sign(up, keys, builder)
-                        .map_err(|e| Error::CertificateError { error: e })?;
+                    let sc = keys
+                        .len()
+                        .eq(&1)
+                        .then(|| {
+                            update_proposal_sign(up, &keys[0], builder)
+                                .map_err(|e| Error::CertificateError { error: e })
+                        })
+                        .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
+                        .map_err(|error| Error::CertificateError { error })??;
                     self.extra_authed = Some(sc.into())
                 }
                 Certificate::UpdateVote(uv) => {
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&uv))?;
-                    let sc = update_vote_sign(uv, keys, builder)
-                        .map_err(|e| Error::CertificateError { error: e })?;
+                    let sc = keys
+                        .len()
+                        .eq(&1)
+                        .then(|| {
+                            update_vote_sign(uv, &keys[0], builder)
+                                .map_err(|e| Error::CertificateError { error: e })
+                        })
+                        .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
+                        .map_err(|error| Error::CertificateError { error })??;
                     self.extra_authed = Some(sc.into())
                 }
             },
