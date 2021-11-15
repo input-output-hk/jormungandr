@@ -3,11 +3,11 @@ use crate::jcli_lib::{
     utils::key_parser::{self, parse_ed25519_secret_key},
 };
 use chain_crypto::{Ed25519, PublicKey};
-use chain_impl_mockchain::certificate::{EncryptedVoteTally, EncryptedVoteTallyProof};
 use chain_impl_mockchain::{
     certificate::{
-        Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate,
-        StakeDelegation, TallyProof, VotePlan, VotePlanProof, VoteTally,
+        BftLeaderBindingSignature, Certificate, EncryptedVoteTally, EncryptedVoteTallyProof,
+        PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate, StakeDelegation,
+        TallyProof, UpdateProposal, UpdateVote, VotePlan, VotePlanProof, VoteTally,
     },
     key::EitherEd25519SecretKey,
     transaction::{
@@ -52,8 +52,14 @@ impl Sign {
 
         let signedcert = match cert.into() {
             Certificate::StakeDelegation(s) => {
-                let builder = Transaction::block0_payload_builder(&s);
-                stake_delegation_account_binding_sign(s, &keys_str, builder)?
+                let txbuilder = Transaction::block0_payload_builder(&s);
+                keys_str
+                    .len()
+                    .eq(&1)
+                    .then(|| stake_delegation_account_binding_sign(s, &keys_str[0], txbuilder))
+                    .ok_or(Error::ExpectingOnlyOneSigningKey {
+                        got: keys_str.len(),
+                    })??
             }
             Certificate::PoolRegistration(s) => {
                 let sclone = s.clone();
@@ -76,20 +82,58 @@ impl Sign {
             }
             Certificate::VoteTally(vt) => {
                 let txbuilder = Transaction::block0_payload_builder(&vt);
-                committee_vote_tally_sign(vt, &keys_str, txbuilder)?
+                keys_str
+                    .len()
+                    .eq(&1)
+                    .then(|| committee_vote_tally_sign(vt, &keys_str[0], txbuilder))
+                    .ok_or(Error::ExpectingOnlyOneSigningKey {
+                        got: keys_str.len(),
+                    })??
             }
             Certificate::EncryptedVoteTally(vt) => {
                 let txbuilder = Transaction::block0_payload_builder(&vt);
-                committee_encrypted_vote_tally_sign(vt, &keys_str, txbuilder)?
+                keys_str
+                    .len()
+                    .eq(&1)
+                    .then(|| committee_encrypted_vote_tally_sign(vt, &keys_str[0], txbuilder))
+                    .ok_or(Error::ExpectingOnlyOneSigningKey {
+                        got: keys_str.len(),
+                    })??
             }
             Certificate::OwnerStakeDelegation(_) => {
                 return Err(Error::OwnerStakeDelegationDoesntNeedSignature)
             }
             Certificate::VotePlan(vp) => {
                 let txbuilder = Transaction::block0_payload_builder(&vp);
-                committee_vote_plan_sign(vp, &keys_str, txbuilder)?
+                keys_str
+                    .len()
+                    .eq(&1)
+                    .then(|| committee_vote_plan_sign(vp, &keys_str[0], txbuilder))
+                    .ok_or(Error::ExpectingOnlyOneSigningKey {
+                        got: keys_str.len(),
+                    })??
             }
             Certificate::VoteCast(_) => return Err(Error::VoteCastDoesntNeedSignature),
+            Certificate::UpdateProposal(up) => {
+                let txbuilder = Transaction::block0_payload_builder(&up);
+                keys_str
+                    .len()
+                    .eq(&1)
+                    .then(|| update_proposal_sign(up, &keys_str[0], txbuilder))
+                    .ok_or(Error::ExpectingOnlyOneSigningKey {
+                        got: keys_str.len(),
+                    })??
+            }
+            Certificate::UpdateVote(uv) => {
+                let txbuilder = Transaction::block0_payload_builder(&uv);
+                keys_str
+                    .len()
+                    .eq(&1)
+                    .then(|| update_vote_sign(uv, &keys_str[0], txbuilder))
+                    .ok_or(Error::ExpectingOnlyOneSigningKey {
+                        got: keys_str.len(),
+                    })??
+            }
         };
         write_signed_cert(self.output.as_deref(), signedcert.into())
     }
@@ -97,17 +141,12 @@ impl Sign {
 
 pub(crate) fn committee_vote_tally_sign(
     vote_tally: VoteTally,
-    keys_str: &[String],
+    key_str: &str,
     builder: TxBuilderState<SetAuthData<VoteTally>>,
 ) -> Result<SignedCertificate, Error> {
     use chain_impl_mockchain::vote::PayloadType;
 
-    if keys_str.len() > 1 {
-        return Err(Error::ExpectingOnlyOneSigningKey {
-            got: keys_str.len(),
-        });
-    }
-    let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
+    let private_key = parse_ed25519_secret_key(key_str.trim())?;
     let id = private_key.to_public().as_ref().try_into().unwrap();
 
     let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
@@ -123,15 +162,10 @@ pub(crate) fn committee_vote_tally_sign(
 
 pub(crate) fn committee_encrypted_vote_tally_sign(
     vote_tally: EncryptedVoteTally,
-    keys_str: &[String],
+    key_str: &str,
     builder: TxBuilderState<SetAuthData<EncryptedVoteTally>>,
 ) -> Result<SignedCertificate, Error> {
-    if keys_str.len() > 1 {
-        return Err(Error::ExpectingOnlyOneSigningKey {
-            got: keys_str.len(),
-        });
-    }
-    let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
+    let private_key = parse_ed25519_secret_key(key_str.trim())?;
     let id = private_key.to_public().as_ref().try_into().unwrap();
 
     let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
@@ -144,16 +178,10 @@ pub(crate) fn committee_encrypted_vote_tally_sign(
 
 pub(crate) fn committee_vote_plan_sign(
     vote_plan: VotePlan,
-    keys_str: &[String],
+    key_str: &str,
     builder: TxBuilderState<SetAuthData<VotePlan>>,
 ) -> Result<SignedCertificate, Error> {
-    if keys_str.len() > 1 {
-        return Err(Error::ExpectingOnlyOneSigningKey {
-            got: keys_str.len(),
-        });
-    }
-
-    let private_key = parse_ed25519_secret_key(keys_str[0].trim())?;
+    let private_key = parse_ed25519_secret_key(key_str.trim())?;
     let id = private_key.to_public().as_ref().try_into().unwrap();
 
     let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
@@ -167,15 +195,9 @@ pub(crate) fn committee_vote_plan_sign(
 
 pub(crate) fn stake_delegation_account_binding_sign(
     delegation: StakeDelegation,
-    keys_str: &[String],
+    key_str: &str,
     builder: TxBuilderState<SetAuthData<StakeDelegation>>,
 ) -> Result<SignedCertificate, Error> {
-    if keys_str.len() > 1 {
-        return Err(Error::ExpectingOnlyOneSigningKey {
-            got: keys_str.len(),
-        });
-    }
-    let key_str = keys_str[0].clone();
     let private_key = parse_ed25519_secret_key(key_str.trim())?;
 
     // check that it match the stake delegation account
@@ -200,14 +222,14 @@ pub(crate) fn stake_delegation_account_binding_sign(
 pub(crate) fn pool_owner_sign<F, P: Payload>(
     payload: P,
     mreg: Option<&PoolRegistration>, // if present we verify the secret key against the expectations
-    keys: &[String],
+    keys_str: &[String],
     builder: TxBuilderState<SetAuthData<P>>,
     to_signed_certificate: F,
 ) -> Result<SignedCertificate, Error>
 where
     F: FnOnce(P, PoolOwnersSigned) -> SignedCertificate,
 {
-    let keys: Result<Vec<EitherEd25519SecretKey>, key_parser::Error> = keys
+    let keys: Result<Vec<EitherEd25519SecretKey>, key_parser::Error> = keys_str
         .iter()
         .map(|sk| parse_ed25519_secret_key(sk.clone().trim()))
         .collect();
@@ -243,4 +265,32 @@ where
     }
     let sig = PoolOwnersSigned { signatures: sigs };
     Ok(to_signed_certificate(payload, sig))
+}
+
+pub(crate) fn update_proposal_sign<P: Payload>(
+    update_proposal: UpdateProposal,
+    key_str: &str,
+    builder: TxBuilderState<SetAuthData<P>>,
+) -> Result<SignedCertificate, Error> {
+    let private_key = parse_ed25519_secret_key(key_str.trim())?;
+    let signature =
+        BftLeaderBindingSignature::new(&builder.get_auth_data(), |d| private_key.sign_slice(d.0));
+
+    Ok(SignedCertificate::UpdateProposal(
+        update_proposal,
+        signature,
+    ))
+}
+
+pub(crate) fn update_vote_sign<P: Payload>(
+    update_vote: UpdateVote,
+    key_str: &str,
+    builder: TxBuilderState<SetAuthData<P>>,
+) -> Result<SignedCertificate, Error> {
+    let private_key = parse_ed25519_secret_key(key_str.trim())?;
+
+    let signature =
+        BftLeaderBindingSignature::new(&builder.get_auth_data(), |d| private_key.sign_slice(d.0));
+
+    Ok(SignedCertificate::UpdateVote(update_vote, signature))
 }

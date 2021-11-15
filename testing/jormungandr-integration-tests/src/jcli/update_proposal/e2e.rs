@@ -2,49 +2,54 @@ use assert_fs::{
     fixture::{FileWriteStr, PathChild},
     TempDir,
 };
-use chain_crypto::{bech32::Bech32, Ed25519Extended, SecretKey};
+use chain_addr::Discrimination;
+use chain_crypto::bech32::Bech32;
+use chain_impl_mockchain::value::Value;
 use jormungandr_lib::interfaces::{
-    BlockContentMaxSize, ConfigParam, ConfigParams, ConsensusLeaderId,
+    BlockContentMaxSize, BlockDate, ConfigParam, ConfigParams, ConsensusLeaderId,
 };
-use jormungandr_testing_utils::testing::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Starter},
-    node::time::{get_current_date, wait_for_epoch},
+use jormungandr_testing_utils::{
+    testing::{
+        jcli::JCli,
+        jormungandr::{ConfigurationBuilder, Starter},
+        node::time::{get_current_date, wait_for_epoch},
+    },
+    wallet::Wallet,
 };
 use jortestkit::process::Wait;
-use std::{io::Write, time::Duration};
+use rand_core::OsRng;
+use std::time::Duration;
 
 #[test]
 fn basic_change_config_test() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
+    let mut rng = OsRng;
+    let wallet_initial_funds = 1_000_000;
 
-    let private_key1 = jcli.key().generate_default();
-    let private_key2 = jcli.key().generate_default();
-    assert_ne!(private_key1, private_key2);
+    let mut alice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Test);
+    let alice_address = alice.address();
+    let alice_pk = alice_address.1.public_key().unwrap();
+    let alice_sk = temp_dir.child("alice_sk");
+    alice.save_to_path(alice_sk.path()).unwrap();
 
-    let sk_file_path1 = temp_dir.join("leader1.sk");
-    {
-        let mut sk_file1 = std::fs::File::create(&sk_file_path1).unwrap();
-        sk_file1.write_all(private_key1.as_bytes()).unwrap();
-    }
-    let sk_file_path2 = temp_dir.join("leader2.sk");
-    {
-        let mut sk_file2 = std::fs::File::create(&sk_file_path2).unwrap();
-        sk_file2.write_all(private_key2.as_bytes()).unwrap();
-    }
+    let mut bob = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Test);
+    let bob_address = bob.address();
+    let bob_pk = bob_address.1.public_key().unwrap();
+    let bob_sk = temp_dir.child("bob_sk");
+    bob.save_to_path(bob_sk.path()).unwrap();
 
-    let private_key1 =
-        <SecretKey<Ed25519Extended>>::try_from_bech32_str(private_key1.as_str()).unwrap();
-    let public_key1 = private_key1.to_public();
-    let leader_id1 = ConsensusLeaderId::from(public_key1);
-    let private_key2 =
-        <SecretKey<Ed25519Extended>>::try_from_bech32_str(private_key2.as_str()).unwrap();
-    let public_key2 = private_key2.to_public();
-    let leader_id2 = ConsensusLeaderId::from(public_key2);
+    assert_ne!(alice_address, bob_address);
 
     let config = ConfigurationBuilder::new()
-        .with_consensus_leaders_ids(vec![leader_id1, leader_id2])
+        .with_funds(vec![
+            alice.to_initial_fund(wallet_initial_funds),
+            bob.to_initial_fund(wallet_initial_funds),
+        ])
+        .with_consensus_leaders_ids(vec![
+            ConsensusLeaderId::from(bob_pk.clone()),
+            ConsensusLeaderId::from(alice_pk.clone()),
+        ])
         .build(&temp_dir);
 
     let new_block_context_max_size = 1000;
@@ -69,24 +74,58 @@ fn basic_change_config_test() {
 
     let wait = Wait::new(Duration::from_secs(5), 10);
 
-    let fragment = jcli
-        .votes()
-        .update_proposal(change_param_path, sk_file_path1.clone());
-    let check = jcli.fragment_sender(&jormungandr).send(fragment.as_str());
+    let update_proposal_cert = jcli
+        .certificate()
+        .new_update_proposal(&alice_pk.to_bech32_str(), change_param_path);
+    let tx = jcli
+        .transaction_builder(jormungandr.genesis_block_hash())
+        .new_transaction()
+        .add_account(&alice_address.to_string(), &Value::zero().into())
+        .add_certificate(&update_proposal_cert)
+        .set_expiry_date(BlockDate::new(3, 0))
+        .finalize()
+        .seal_with_witness_for_address(&alice)
+        .add_auth(alice_sk.path())
+        .to_message();
+    alice.confirm_transaction();
+    let check = jcli.fragment_sender(&jormungandr).send(tx.as_str());
     check.assert_in_block_with_wait(&wait);
     let proposal_id = check.fragment_id();
 
-    let fragment = jcli
-        .votes()
-        .update_vote(proposal_id.to_string(), sk_file_path1);
+    let update_vote_cert = jcli
+        .certificate()
+        .new_update_vote(&proposal_id.to_string(), &alice_pk.to_bech32_str());
+    let tx = jcli
+        .transaction_builder(jormungandr.genesis_block_hash())
+        .new_transaction()
+        .add_account(&alice_address.to_string(), &Value::zero().into())
+        .add_certificate(&update_vote_cert)
+        .set_expiry_date(BlockDate::new(3, 0))
+        .finalize()
+        .seal_with_witness_for_address(&alice)
+        .add_auth(&alice_sk.path())
+        .to_message();
+    alice.confirm_transaction();
     jcli.fragment_sender(&jormungandr)
-        .send(fragment.as_str())
+        .send(tx.as_str())
         .assert_in_block_with_wait(&wait);
-    let fragment = jcli
-        .votes()
-        .update_vote(proposal_id.to_string(), sk_file_path2);
+
+    let update_vote_cert = jcli
+        .certificate()
+        .new_update_vote(&proposal_id.to_string(), &bob_pk.to_bech32_str());
+    let tx = jcli
+        .transaction_builder(jormungandr.genesis_block_hash())
+        .new_transaction()
+        .add_account(&bob_address.to_string(), &Value::zero().into())
+        .add_certificate(&update_vote_cert)
+        .set_expiry_date(BlockDate::new(3, 0))
+        .finalize()
+        .seal_with_witness_for_address(&bob)
+        .add_auth(bob_sk.path())
+        .to_message();
+    bob.confirm_transaction();
     jcli.fragment_sender(&jormungandr)
-        .send(fragment.as_str())
+        .send(tx.as_str())
         .assert_in_block_with_wait(&wait);
 
     wait_for_epoch(current_epoch + 2, jormungandr.rest());

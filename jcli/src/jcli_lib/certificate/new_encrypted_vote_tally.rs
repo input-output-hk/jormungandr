@@ -1,6 +1,5 @@
 use crate::jcli_lib::certificate::{write_cert, Error};
-use chain_impl_mockchain::certificate;
-use chain_impl_mockchain::certificate::{Certificate, VotePlanId};
+use chain_impl_mockchain::certificate::{self, Certificate, VotePlanId};
 use std::path::PathBuf;
 use structopt::StructOpt;
 

@@ -172,6 +172,32 @@ impl CertificateCommand {
         self
     }
 
+    pub fn update_proposal<P: Into<String>, S: AsRef<Path>>(
+        mut self,
+        proposer_id: P,
+        config: S,
+    ) -> Self {
+        self.command
+            .arg("new")
+            .arg("update-proposal")
+            .arg(proposer_id.into())
+            .arg(config.as_ref());
+        self
+    }
+
+    pub fn update_vote<P: Into<String>, S: Into<String>>(
+        mut self,
+        proposal_id: P,
+        voter_id: S,
+    ) -> Self {
+        self.command
+            .arg("new")
+            .arg("update-vote")
+            .arg(proposal_id.into())
+            .arg(voter_id.into());
+        self
+    }
+
     pub fn stake_pool_id<P: AsRef<Path>, Q: AsRef<Path>>(
         mut self,
         input_file: P,

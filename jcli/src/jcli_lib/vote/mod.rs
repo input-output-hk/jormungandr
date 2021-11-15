@@ -4,10 +4,6 @@ use crate::jcli_lib::utils::{
     vote::{SharesError, VotePlanError},
 };
 use crate::rest;
-use crate::utils::io;
-use chain_core::property::Serialize;
-use chain_impl_mockchain::fragment::Fragment;
-use std::io::Write;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -15,8 +11,6 @@ use thiserror::Error;
 mod committee;
 mod election_public_key;
 mod tally;
-mod update_proposal;
-mod update_vote;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -98,10 +92,6 @@ pub enum Vote {
     ElectionKey(election_public_key::ElectionPublicKey),
     /// Perform decryption of private voting tally
     Tally(tally::Tally),
-    /// Create proposal for updating chain config
-    UpdateProposal(update_proposal::UpdateProposal),
-    /// Vote for the update proposal
-    UpdateVote(update_vote::UpdateVote),
 }
 
 impl Vote {
@@ -110,8 +100,6 @@ impl Vote {
             Vote::Committee(cmd) => cmd.exec(),
             Vote::ElectionKey(cmd) => cmd.exec(),
             Vote::Tally(cmd) => cmd.exec(),
-            Vote::UpdateProposal(cmd) => cmd.exec(),
-            Vote::UpdateVote(cmd) => cmd.exec(),
         }
     }
 }
@@ -132,28 +120,4 @@ impl std::str::FromStr for Seed {
         bytes.copy_from_slice(&vec);
         Ok(Seed(bytes))
     }
-}
-
-fn write_fragment_into_file(
-    fragment: Fragment,
-    fragment_file: Option<PathBuf>,
-) -> Result<(), Error> {
-    let fragment_bytes = fragment.serialize_as_vec()?;
-
-    let hex = hex::encode(&fragment_bytes);
-
-    let mut writer =
-        io::open_file_write(&fragment_file).map_err(|source| Error::FragmentFileOpenFailed {
-            source,
-            path: io::path_to_path_buf(&fragment_file),
-        })?;
-
-    writer
-        .write_all(hex.as_bytes())
-        .map_err(|source| Error::FragmentFileWriteFailed {
-            source,
-            path: io::path_to_path_buf(&fragment_file),
-        })?;
-
-    Ok(())
 }
