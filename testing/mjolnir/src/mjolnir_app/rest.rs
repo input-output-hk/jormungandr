@@ -1,10 +1,10 @@
 use crate::mjolnir_app::MjolnirError;
 use jormungandr_testing_utils::testing::node::{JormungandrRest, RestRequestGen};
 use jortestkit::{
-    load::Configuration,
-    load::Monitor,
+    load::{ConfigurationBuilder, Monitor},
     prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
 };
+use std::time::Duration;
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -24,9 +24,9 @@ pub struct RestLoadCommand {
     #[structopt(short = "e", long = "endpoint")]
     pub endpoint: String,
 
-    /// amount of delay [seconds] between sync attempts
-    #[structopt(short = "p", long = "pace", default_value = "2")]
-    pub pace: u64,
+    /// amount of delay [milliseconds] between sync attempts
+    #[structopt(long = "delay", default_value = "50")]
+    pub delay: u64,
 
     /// amount of delay [seconds] between sync attempts
     #[structopt(short = "d", long = "duration")]
@@ -52,14 +52,11 @@ impl RestLoadCommand {
         let mut request_gen = RestRequestGen::new(rest_client);
         request_gen.do_setup(Vec::new()).unwrap();
 
-        let config = Configuration::duration(
-            self.count,
-            std::time::Duration::from_secs(self.duration),
-            self.pace,
-            self.build_monitor(),
-            0,
-            1,
-        );
+        let config = ConfigurationBuilder::duration(Duration::from_secs(self.duration))
+            .thread_no(self.count)
+            .step_delay(Duration::from_millis(self.delay))
+            .monitor(self.build_monitor())
+            .build();
         let stats = jortestkit::load::start_sync(request_gen, config, "rest load test");
         if self.measure {
             assert!((stats.calculate_passrate() as u32) > 95);

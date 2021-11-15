@@ -1,7 +1,9 @@
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
-use jormungandr_testing_utils::testing::node::RestRequestGen;
-use jormungandr_testing_utils::testing::{jormungandr::ConfigurationBuilder, startup};
-use jortestkit::load::{self, Configuration, Monitor};
+use jormungandr_testing_utils::testing::{
+    jormungandr::ConfigurationBuilder, node::RestRequestGen, startup,
+};
+use jortestkit::load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor};
+use std::time::Duration;
 
 #[test]
 pub fn rest_load_quick() {
@@ -23,14 +25,12 @@ pub fn rest_load_quick() {
 
     let rest_client = jormungandr.rest();
     let request = RestRequestGen::new(rest_client);
-    let config = Configuration::duration(
-        5,
-        std::time::Duration::from_secs(40),
-        10,
-        Monitor::Progress(100),
-        0,
-        1_000,
-    );
+    let config = LoadConfigurationBuilder::duration(Duration::from_secs(40))
+        .thread_no(5)
+        .step_delay(Duration::from_millis(10))
+        .monitor(Monitor::Progress(100))
+        .status_pace(Duration::from_secs(1_000))
+        .build();
     let stats = load::start_sync(request, config, "Jormungandr rest load test");
     assert!((stats.calculate_passrate() as u32) > 95);
 }

@@ -1,21 +1,20 @@
-use crate::mjolnir_app::args::parse_shift;
-use crate::mjolnir_app::build_monitor;
-use crate::mjolnir_app::MjolnirError;
+use crate::mjolnir_app::{args::parse_shift, build_monitor, MjolnirError};
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_testing_utils::testing::block0::get_block;
-use jormungandr_testing_utils::testing::block0::Block0ConfigurationExtension;
-use jormungandr_testing_utils::testing::fragments::BlockDateGenerator;
-use jormungandr_testing_utils::testing::{
-    AdversaryVoteCastsGenerator, FragmentSender, FragmentStatusProvider,
-};
 use jormungandr_testing_utils::{
-    testing::{FragmentSenderSetup, RemoteJormungandrBuilder},
+    testing::{
+        block0::{get_block, Block0ConfigurationExtension},
+        fragments::BlockDateGenerator,
+        AdversaryVoteCastsGenerator, FragmentSender, FragmentSenderSetup, FragmentStatusProvider,
+        RemoteJormungandrBuilder,
+    },
     wallet::Wallet,
 };
-use jortestkit::prelude::parse_progress_bar_mode_from_str;
-use jortestkit::{load::Configuration, prelude::ProgressBarMode};
-use std::{path::PathBuf, str::FromStr};
+use jortestkit::{
+    load::ConfigurationBuilder,
+    prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
+};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -29,9 +28,9 @@ pub struct VotesOnly {
     #[structopt(short = "a", long = "address")]
     pub endpoint: String,
 
-    /// amount of delay [seconds] between sync attempts
-    #[structopt(short = "p", long = "pace", default_value = "2")]
-    pub pace: u64,
+    /// amount of delay [milliseconds] between sync attempts
+    #[structopt(long = "delay", default_value = "50")]
+    pub delay: u64,
 
     /// amount of delay [seconds] between sync attempts
     #[structopt(short = "d", long = "duration")]
@@ -106,14 +105,13 @@ impl VotesOnly {
             transaction_sender,
         );
 
-        let adversary_noise_config = Configuration::duration(
-            self.count,
-            std::time::Duration::from_secs(self.duration),
-            self.pace,
-            build_monitor(&self.progress_bar_mode),
-            30,
-            1,
-        );
+        let adversary_noise_config =
+            ConfigurationBuilder::duration(Duration::from_secs(self.duration))
+                .thread_no(self.count)
+                .step_delay(Duration::from_millis(self.delay))
+                .monitor(build_monitor(&self.progress_bar_mode))
+                .shutdown_grace_period(Duration::from_secs(30))
+                .build();
 
         let noise_stats = jortestkit::load::start_background_async(
             generator,

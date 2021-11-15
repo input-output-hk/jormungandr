@@ -688,6 +688,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "console"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a28b32d32ca44b70c3e4acd7db1babf555fa026e385fb95f18028f88848b3c31"
+dependencies = [
+ "encode_unicode",
+ "libc",
+ "once_cell",
+ "regex",
+ "terminal_size",
+ "unicode-width",
+ "winapi",
+]
+
+[[package]]
 name = "const_format"
 version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1005,7 +1020,19 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c9dd058f8b65922819fabb4a41e7d1964e56344042c26efbccd465202c23fa0c"
 dependencies = [
- "console",
+ "console 0.14.1",
+ "lazy_static",
+ "tempfile",
+ "zeroize",
+]
+
+[[package]]
+name = "dialoguer"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61579ada4ec0c6031cfac3f86fdba0d195a7ebeb5e36693bd53cb5999a25beeb"
+dependencies = [
+ "console 0.15.0",
  "lazy_static",
  "tempfile",
  "zeroize",
@@ -1800,7 +1827,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7baab56125e25686df467fe470785512329883aab42696d661247aca2a2896e4"
 dependencies = [
- "console",
+ "console 0.14.1",
  "lazy_static",
  "number_prefix",
  "regex",
@@ -2033,9 +2060,9 @@ dependencies = [
  "chain-impl-mockchain",
  "chain-time",
  "chrono",
- "console",
+ "console 0.14.1",
  "custom_debug",
- "dialoguer",
+ "dialoguer 0.8.0",
  "function_name",
  "futures",
  "hex",
@@ -2133,17 +2160,17 @@ dependencies = [
 [[package]]
 name = "jortestkit"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#50bce3125a6ba520e238d210e7636819a54e4477"
+source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#fc57b9117aa530eaeb26937437dfa0a05fe55470"
 dependencies = [
  "assert_fs",
  "base64",
  "bech32 0.8.1",
  "bytesize",
  "chrono",
- "console",
+ "console 0.14.1",
  "csv",
  "custom_debug",
- "dialoguer",
+ "dialoguer 0.9.0",
  "flate2",
  "fs_extra",
  "hex",

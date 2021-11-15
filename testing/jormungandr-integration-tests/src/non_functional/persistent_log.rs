@@ -1,15 +1,16 @@
-use assert_fs::fixture::PathChild;
-use assert_fs::TempDir;
+use std::time::Duration;
+
+use assert_fs::{fixture::PathChild, TempDir};
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{Mempool, PersistentLog};
-use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::startup;
 use jormungandr_testing_utils::testing::{
+    fragments::PersistentLogViewer, jormungandr::ConfigurationBuilder, startup,
     BatchFragmentGenerator, BlockDateGenerator, FragmentSenderSetup, FragmentStatusProvider,
 };
-pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
-use jortestkit::load::{self, Configuration, Monitor};
+pub use jortestkit::{
+    console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode},
+    load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor},
+};
 
 #[test]
 pub fn persistent_log_load_test() {
@@ -37,14 +38,13 @@ pub fn persistent_log_load_test() {
     let requests_per_thread = 50;
     let threads_count = 1;
 
-    let configuration = Configuration::requests_per_thread(
-        threads_count,
-        requests_per_thread,
-        1,
-        Monitor::Standard(100),
-        1,
-        30,
-    );
+    let configuration = LoadConfigurationBuilder::requests_per_thread(requests_per_thread)
+        .thread_no(threads_count)
+        .step_delay(Duration::from_secs(1))
+        .monitor(Monitor::Standard(100))
+        .shutdown_grace_period(Duration::from_secs(1))
+        .status_pace(Duration::from_millis(30))
+        .build();
 
     let settings = jormungandr.rest().settings().unwrap();
 
