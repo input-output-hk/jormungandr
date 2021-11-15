@@ -148,6 +148,28 @@ impl Certificate {
             .as_single_line()
     }
 
+    pub fn new_update_proposal<P: AsRef<Path>>(self, proposer_id: &str, config: P) -> String {
+        println!("Running new update proposal...");
+        self.command
+            .update_proposal(proposer_id, config)
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
+    }
+
+    pub fn new_update_vote(self, proposal_id: &str, voter_id: &str) -> String {
+        println!("Running new update vote...");
+        self.command
+            .update_vote(proposal_id, voter_id)
+            .build()
+            .assert()
+            .success()
+            .get_output()
+            .as_single_line()
+    }
+
     pub fn stake_pool_id<P: AsRef<Path>>(self, input_file: P) -> String {
         println!("Running get stake pool id...");
         let temp_file = NamedTempFile::new("stake_pool.id").unwrap();

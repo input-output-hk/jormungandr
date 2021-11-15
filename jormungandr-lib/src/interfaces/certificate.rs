@@ -53,6 +53,12 @@ impl SignedCertificate {
             certificate::SignedCertificate::EncryptedVoteTally(c, _) => {
                 Certificate(certificate::Certificate::EncryptedVoteTally(c))
             }
+            certificate::SignedCertificate::UpdateProposal(c, _) => {
+                Certificate(certificate::Certificate::UpdateProposal(c))
+            }
+            certificate::SignedCertificate::UpdateVote(c, _) => {
+                Certificate(certificate::Certificate::UpdateVote(c))
+            }
         }
     }
 }
@@ -95,6 +101,14 @@ impl property::Serialize for Certificate {
             }
             certificate::Certificate::EncryptedVoteTally(c) => {
                 writer.write_all(&[9])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
+            certificate::Certificate::UpdateProposal(c) => {
+                writer.write_all(&[10])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
+            certificate::Certificate::UpdateVote(c) => {
+                writer.write_all(&[11])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
         };
@@ -147,6 +161,14 @@ impl Readable for Certificate {
                     cert,
                 )))
             }
+            10 => {
+                let cert = certificate::UpdateProposal::read(buf)?;
+                Ok(Certificate(certificate::Certificate::UpdateProposal(cert)))
+            }
+            11 => {
+                let cert = certificate::UpdateVote::read(buf)?;
+                Ok(Certificate(certificate::Certificate::UpdateVote(cert)))
+            }
             t => Err(ReadError::UnknownTag(t as u32)),
         }
     }
@@ -192,6 +214,16 @@ impl property::Serialize for SignedCertificate {
             }
             certificate::SignedCertificate::EncryptedVoteTally(c, a) => {
                 writer.write_all(&[9])?;
+                writer.write_all(c.serialize().as_slice())?;
+                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+            }
+            certificate::SignedCertificate::UpdateProposal(c, a) => {
+                writer.write_all(&[10])?;
+                writer.write_all(c.serialize().as_slice())?;
+                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+            }
+            certificate::SignedCertificate::UpdateVote(c, a) => {
+                writer.write_all(&[11])?;
                 writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
@@ -256,6 +288,20 @@ impl Readable for SignedCertificate {
                 let auth = Readable::read(buf)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::EncryptedVoteTally(cert, auth),
+                ))
+            }
+            10 => {
+                let cert = certificate::UpdateProposal::read(buf)?;
+                let auth = Readable::read(buf)?;
+                Ok(SignedCertificate(
+                    certificate::SignedCertificate::UpdateProposal(cert, auth),
+                ))
+            }
+            11 => {
+                let cert = certificate::UpdateVote::read(buf)?;
+                let auth = Readable::read(buf)?;
+                Ok(SignedCertificate(
+                    certificate::SignedCertificate::UpdateVote(cert, auth),
                 ))
             }
             t => Err(ReadError::UnknownTag(t as u32)),
