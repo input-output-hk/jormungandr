@@ -1,4 +1,3 @@
-use jormungandr_testing_utils::testing::node::LogLevel;
 use std::{net::SocketAddr, path::PathBuf};
 use structopt::StructOpt;
 
@@ -16,8 +15,4 @@ pub struct Args {
     /// Specifies the address the node will listen.
     #[structopt(short = "a", long = "listen-address")]
     pub listen_address: Option<SocketAddr>,
-
-    /// Log level
-    #[structopt(long, short, default_value = "info")]
-    pub log_level: LogLevel,
 }

@@ -41,7 +41,7 @@ pub enum ControllerError {
 pub struct Controller {
     settings: Settings,
     working_directory: TempDir,
-    pub block0_file: PathBuf,
+    block0_file: PathBuf,
     block0_hash: HeaderId,
 }
 

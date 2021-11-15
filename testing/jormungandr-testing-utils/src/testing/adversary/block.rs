@@ -1,4 +1,3 @@
-//! Functionality for building invalid blocks
 use crate::testing::startup;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{

@@ -11,7 +11,7 @@ use std::{
 };
 use warp::Filter;
 
-pub type State = Arc<Mutex<AdversaryRest>>;
+pub type Context = Arc<Mutex<AdversaryRest>>;
 
 pub struct AdversaryRest {
     address: Option<SocketAddr>,

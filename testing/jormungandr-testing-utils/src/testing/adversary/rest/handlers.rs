@@ -7,18 +7,18 @@ use reqwest::StatusCode;
 use std::net::SocketAddr;
 use warp::{reply::WithStatus, Reply};
 
-use super::{Request, State};
+use super::{Context, Request};
 
-pub(super) fn invalid_signature(request: Request, state: State) -> impl Reply {
+pub(super) fn invalid_signature(request: Request, context: Context) -> impl Reply {
     let Request { address, parent } = request;
 
-    let block = if let Ok(state) = state.lock() {
-        let block0_config = state
+    let block = if let Ok(context) = context.lock() {
+        let block0_config = context
             .adversary
             .block0_configuration()
             .blockchain_configuration;
 
-        let parent = parent.get_header(&state.adversary);
+        let parent = parent.get_header(&context.adversary);
 
         let parent_block_date = parent.block_date();
 
@@ -31,7 +31,7 @@ pub(super) fn invalid_signature(request: Request, state: State) -> impl Reply {
 
         match block0_config.block0_consensus {
             ConsensusType::Bft => {
-                if let Some(key) = state.signing_key.clone() {
+                if let Some(key) = context.signing_key.clone() {
                     BlockBuilder::bft(block_date, parent)
                         .signing_key(key)
                         .invalid_signature()
@@ -44,7 +44,7 @@ pub(super) fn invalid_signature(request: Request, state: State) -> impl Reply {
                 }
             }
             ConsensusType::GenesisPraos => {
-                if let Some(stake_pool) = state.stake_pool.clone() {
+                if let Some(stake_pool) = context.stake_pool.clone() {
                     BlockBuilder::genesis_praos(block_date, parent)
                         .stake_pool(stake_pool)
                         .invalid_signature()
@@ -61,23 +61,24 @@ pub(super) fn invalid_signature(request: Request, state: State) -> impl Reply {
         panic!("Mutex poisoned");
     };
 
-    send_block(state, address, block)
+    send_block(context, address, block)
 }
 
-pub(super) fn wrong_leader(_: Request, _: State) -> impl Reply {
+pub(super) fn wrong_leader(_: Request, _: Context) -> impl Reply {
+    // TODO: Implement
     warp::reply::with_status("", StatusCode::NOT_IMPLEMENTED)
 }
 
-pub(super) fn invalid_fragment(request: Request, state: State) -> impl Reply {
+pub(super) fn invalid_fragment(request: Request, context: Context) -> impl Reply {
     let Request { address, parent } = request;
 
-    let block = if let Ok(state) = state.lock() {
-        let block0_config = state
+    let block = if let Ok(context) = context.lock() {
+        let block0_config = context
             .adversary
             .block0_configuration()
             .blockchain_configuration;
 
-        let parent = parent.get_header(&state.adversary);
+        let parent = parent.get_header(&context.adversary);
 
         let parent_block_date = parent.block_date();
 
@@ -92,7 +93,7 @@ pub(super) fn invalid_fragment(request: Request, state: State) -> impl Reply {
 
         contents_builder.push(
             FragmentBuilder::new(
-                &state
+                &context
                     .adversary
                     .block0_configuration()
                     .to_block()
@@ -112,7 +113,7 @@ pub(super) fn invalid_fragment(request: Request, state: State) -> impl Reply {
 
         match block0_config.block0_consensus {
             ConsensusType::Bft => {
-                if let Some(key) = state.signing_key.clone() {
+                if let Some(key) = context.signing_key.clone() {
                     BlockBuilder::bft(block_date, parent)
                         .contents(contents_builder.into())
                         .signing_key(key)
@@ -125,7 +126,7 @@ pub(super) fn invalid_fragment(request: Request, state: State) -> impl Reply {
                 }
             }
             ConsensusType::GenesisPraos => {
-                if let Some(stake_pool) = state.stake_pool.clone() {
+                if let Some(stake_pool) = context.stake_pool.clone() {
                     BlockBuilder::genesis_praos(block_date, parent)
                         .contents(contents_builder.into())
                         .stake_pool(stake_pool)
@@ -142,19 +143,19 @@ pub(super) fn invalid_fragment(request: Request, state: State) -> impl Reply {
         panic!("Mutex poisoned");
     };
 
-    send_block(state, address, block)
+    send_block(context, address, block)
 }
 
-pub(super) fn invalid_hash(request: Request, state: State) -> impl Reply {
+pub(super) fn invalid_hash(request: Request, context: Context) -> impl Reply {
     let Request { address, parent } = request;
 
-    let block = if let Ok(state) = state.lock() {
-        let block0_config = state
+    let block = if let Ok(context) = context.lock() {
+        let block0_config = context
             .adversary
             .block0_configuration()
             .blockchain_configuration;
 
-        let parent = parent.get_header(&state.adversary);
+        let parent = parent.get_header(&context.adversary);
 
         let parent_block_date = parent.block_date();
 
@@ -167,7 +168,7 @@ pub(super) fn invalid_hash(request: Request, state: State) -> impl Reply {
 
         match block0_config.block0_consensus {
             ConsensusType::Bft => {
-                if let Some(key) = state.signing_key.clone() {
+                if let Some(key) = context.signing_key.clone() {
                     BlockBuilder::bft(block_date, parent)
                         .signing_key(key)
                         .invalid_hash()
@@ -180,7 +181,7 @@ pub(super) fn invalid_hash(request: Request, state: State) -> impl Reply {
                 }
             }
             ConsensusType::GenesisPraos => {
-                if let Some(stake_pool) = state.stake_pool.clone() {
+                if let Some(stake_pool) = context.stake_pool.clone() {
                     BlockBuilder::genesis_praos(block_date, parent)
                         .stake_pool(stake_pool)
                         .invalid_hash()
@@ -197,18 +198,18 @@ pub(super) fn invalid_hash(request: Request, state: State) -> impl Reply {
         panic!("Mutex poisoned");
     };
 
-    send_block(state, address, block)
+    send_block(context, address, block)
 }
 
-pub(super) fn nonexistent_leader(request: Request, state: State) -> impl Reply {
+pub(super) fn nonexistent_leader(request: Request, context: Context) -> impl Reply {
     let Request { address, parent } = request;
 
-    let block = if let Ok(state) = state.lock() {
-        let parent = parent.get_header(&state.adversary);
+    let block = if let Ok(context) = context.lock() {
+        let parent = parent.get_header(&context.adversary);
 
         let parent_block_date = parent.block_date();
 
-        let block0_config = state
+        let block0_config = context
             .adversary
             .block0_configuration()
             .blockchain_configuration;
@@ -228,14 +229,14 @@ pub(super) fn nonexistent_leader(request: Request, state: State) -> impl Reply {
         panic!("Mutex poisoned");
     };
 
-    send_block(state, address, block)
+    send_block(context, address, block)
 }
 
-fn send_block(state: State, address: SocketAddr, block: Block) -> WithStatus<String> {
+fn send_block(context: Context, address: SocketAddr, block: Block) -> WithStatus<String> {
     // Separate thread since `JormungandrClient` will spawn a new tokio runtime
     std::thread::spawn(move || {
         warp::reply::with_status(
-            state
+            context
                 .lock()
                 .expect("Mutex poisoned")
                 .adversary
