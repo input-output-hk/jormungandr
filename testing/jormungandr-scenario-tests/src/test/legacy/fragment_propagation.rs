@@ -14,6 +14,7 @@ use jormungandr_testing_utils::{
 use rand_chacha::ChaChaRng;
 use std::path::PathBuf;
 
+#[allow(unused_macros)]
 #[named]
 pub fn legacy_current_node_fragment_propagation(
     mut context: Context<ChaChaRng>,
@@ -67,6 +68,7 @@ pub fn legacy_current_node_fragment_propagation(
     Ok(ScenarioResult::passed(title))
 }
 
+#[allow(unused_macros)]
 #[named]
 pub fn current_node_legacy_fragment_propagation(
     mut context: Context<ChaChaRng>,
@@ -121,6 +123,7 @@ pub fn current_node_legacy_fragment_propagation(
     Ok(ScenarioResult::passed(title))
 }
 
+#[allow(unused_macros)]
 #[named]
 pub fn current_node_fragment_propagation(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
     let title = "test_legacy_current_node_fragment_propagation";
