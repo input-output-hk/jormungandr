@@ -1,11 +1,14 @@
 mod observer;
 
-use assert_fs::TempDir;
+use crate::testing::jormungandr::TestingDirectory;
 use fs_extra::dir::{move_dir, CopyOptions};
 pub use observer::{Event, Observable, Observer};
 use std::thread::panicking;
 
-pub fn persist_dir_on_panic(temp_dir: Option<TempDir>, additional_contents: Vec<(&str, &str)>) {
+pub fn persist_dir_on_panic(
+    temp_dir: Option<TestingDirectory>,
+    additional_contents: Vec<(&str, &str)>,
+) {
     if panicking() {
         let logs_dir = match tempfile::Builder::new().prefix("jormungandr_").tempdir() {
             Ok(dir) => dir.into_path(),

@@ -1,6 +1,7 @@
 mod commands;
 pub use commands::{get_command, CommandBuilder};
 
+mod testing_directory;
 use super::process::StartupVerificationMode;
 use super::ConfigurationBuilder;
 use super::JormungandrError;
@@ -16,17 +17,21 @@ use crate::{
     Version,
 };
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::{fixture::FixtureError, TempDir};
+use assert_fs::fixture::FixtureError;
+use assert_fs::TempDir;
 use jormungandr_lib::interfaces::NodeConfig;
 use jortestkit::process::{self as process_utils, ProcessError};
 use serde::Serialize;
 use std::fmt::Debug;
+use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 use std::process::Stdio;
 use std::{
     process::Child,
     time::{Duration, Instant},
 };
+pub use testing_directory::TestingDirectory;
 
 use thiserror::Error;
 
@@ -81,7 +86,7 @@ pub struct Starter {
     from_genesis: FromGenesis,
     verification_mode: StartupVerificationMode,
     on_fail: OnFail,
-    temp_dir: Option<TempDir>,
+    temp_dir: Option<TestingDirectory>,
     legacy: Option<Version>,
     config: Option<JormungandrParams>,
     benchmark: Option<SpeedBenchmarkDef>,
@@ -177,7 +182,17 @@ impl Starter {
     }
 
     pub fn temp_dir(&mut self, temp_dir: TempDir) -> &mut Self {
-        self.temp_dir = Some(temp_dir);
+        self.temp_dir = Some(TestingDirectory::from_temp(temp_dir));
+        self
+    }
+
+    pub fn working_dir(&mut self, path: &Path) -> &mut Self {
+        self.temp_dir = Some(path.to_path_buf().into());
+        self
+    }
+
+    pub fn testing_dir(&mut self, testing_directory: TestingDirectory) -> &mut Self {
+        self.temp_dir = Some(testing_directory);
         self
     }
 
@@ -186,14 +201,14 @@ impl Starter {
         self
     }
 
-    fn build_configuration(
+    pub fn build_configuration(
         &mut self,
-    ) -> Result<(JormungandrParams, Option<TempDir>), StartupError> {
+    ) -> Result<(JormungandrParams, Option<TestingDirectory>), StartupError> {
         let optional_temp_dir = self.temp_dir.take();
         match &self.config {
             Some(params) => Ok((params.clone(), optional_temp_dir)),
             None => {
-                let temp_dir = optional_temp_dir.map_or_else(TempDir::new, Ok)?;
+                let temp_dir = optional_temp_dir.map_or_else(TestingDirectory::new_temp, Ok)?;
                 let params = ConfigurationBuilder::new().build(&temp_dir);
                 Ok((params, Some(temp_dir)))
             }
@@ -262,17 +277,17 @@ impl Starter {
     }
 }
 
-struct ConfiguredStarter<'a, Conf> {
+pub struct ConfiguredStarter<'a, Conf> {
     starter: &'a Starter,
     params: JormungandrParams<Conf>,
-    temp_dir: Option<TempDir>,
+    temp_dir: Option<TestingDirectory>,
 }
 
 impl<'a> ConfiguredStarter<'a, NodeConfig> {
-    fn new(
+    pub fn new(
         starter: &'a Starter,
         params: JormungandrParams<NodeConfig>,
-        temp_dir: Option<TempDir>,
+        temp_dir: Option<TestingDirectory>,
     ) -> Self {
         ConfiguredStarter {
             starter,
@@ -283,11 +298,11 @@ impl<'a> ConfiguredStarter<'a, NodeConfig> {
 }
 
 impl<'a> ConfiguredStarter<'a, legacy::NodeConfig> {
-    fn legacy(
+    pub fn legacy(
         starter: &'a Starter,
         version: Version,
         params: JormungandrParams<NodeConfig>,
-        temp_dir: Option<TempDir>,
+        temp_dir: Option<TestingDirectory>,
     ) -> Result<Self, StartupError> {
         let params = LegacyConfigConverter::new(version).convert(params)?;
         params.write_node_config();
@@ -363,7 +378,16 @@ where
         cond_println!(verbose, "Node settings configuration:");
         cond_println!(verbose, "{:#?}", self.params.node_config());
 
-        let mut command = get_command(
+        let mut command = self.command();
+        cond_println!(verbose, "Running start command: {:?}", command);
+        cond_println!(verbose, "Bootstrapping...");
+        command
+            .spawn()
+            .expect("failed to execute 'start jormungandr node'")
+    }
+
+    pub fn command(&self) -> Command {
+        get_command(
             &self.params,
             self.starter
                 .jormungandr_app_path
@@ -371,13 +395,7 @@ where
                 .unwrap_or_else(get_jormungandr_app),
             self.starter.leadership_mode,
             self.starter.from_genesis,
-        );
-
-        cond_println!(verbose, "Running start command: {:?}", command);
-        cond_println!(verbose, "Bootstrapping...");
-        command
-            .spawn()
-            .expect("failed to execute 'start jormungandr node'")
+        )
     }
 
     fn start_async(self) -> Result<JormungandrProcess, StartupError> {

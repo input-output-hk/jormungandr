@@ -19,10 +19,6 @@ struct CommandArgs {
     #[structopt(long = "jormungandr", default_value = "jormungandr")]
     jormungandr: PathBuf,
 
-    /// path or name of the jcli to test
-    #[structopt(long = "jcli", default_value = "jcli")]
-    jcli: PathBuf,
-
     /// scenario name
     #[structopt(long = "scenario", default_value = "*")]
     scenario: String,
@@ -97,7 +93,6 @@ fn main() {
     std::env::set_var("RUST_BACKTRACE", "full");
 
     let jormungandr = prepare_command(&command_args.jormungandr);
-    let jcli = prepare_command(&command_args.jcli);
     let progress_bar_mode = command_args.progress_bar_mode;
     let seed = command_args
         .seed
@@ -109,7 +104,6 @@ fn main() {
     let context = Context::new(
         seed,
         jormungandr,
-        jcli,
         testing_directory,
         generate_documentation,
         progress_bar_mode,

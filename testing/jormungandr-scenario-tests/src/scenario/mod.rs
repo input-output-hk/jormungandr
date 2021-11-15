@@ -3,7 +3,6 @@ mod controller;
 pub mod dotifier;
 mod fragment_node;
 pub mod repository;
-
 pub use self::{
     context::{Context, ContextChaCha},
     controller::{Controller, ControllerBuilder},
@@ -14,10 +13,12 @@ pub use chain_impl_mockchain::{
 pub use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
+use jormungandr_testing_utils::testing::jormungandr::StartupError;
 pub use jormungandr_testing_utils::testing::network::{
     controller::ControllerError, Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, Wallet,
     WalletAlias, WalletType,
 };
+use jormungandr_testing_utils::testing::LegacyConfigConverterError;
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 
 #[derive(Debug, thiserror::Error)]
@@ -54,6 +55,15 @@ pub enum Error {
 
     #[error(transparent)]
     Controller(#[from] ControllerError),
+
+    #[error(transparent)]
+    Startup(#[from] StartupError),
+
+    #[error("cannot spawn the node")]
+    CannotSpawnNode(#[source] std::io::Error),
+
+    #[error(transparent)]
+    LegacyConfigConverter(#[from] LegacyConfigConverterError),
 }
 
 pub type Result<T> = ::core::result::Result<T, Error>;

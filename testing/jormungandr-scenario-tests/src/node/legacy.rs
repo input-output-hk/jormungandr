@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 /// Specialized node which is supposed to be compatible with 5 last jormungandr releases
 use crate::{
-    legacy::LegacySettings,
     node::{Error, ProgressBarController, Result},
     style,
 };
@@ -13,6 +12,9 @@ pub use jormungandr_testing_utils::testing::{
     node::{grpc::JormungandrClient, BackwardCompatibleRest, JormungandrLogger, JormungandrRest},
     FragmentNode, FragmentNodeError, MemPoolCheck,
 };
+
+use jormungandr_testing_utils::testing::node::configuration::legacy::NodeConfig as LegacyConfig;
+
 use std::io::{BufRead, BufReader};
 use std::process::ExitStatus;
 use std::time::Duration;
@@ -21,10 +23,24 @@ use yaml_rust::{Yaml, YamlLoader};
 pub struct LegacyNode {
     pub process: JormungandrProcess,
     pub progress_bar: ProgressBarController,
-    pub node_settings: LegacySettings,
+    pub legacy_settings: LegacyConfig,
 }
 
 impl LegacyNode {
+    pub fn new(
+        process: JormungandrProcess,
+        progress_bar: ProgressBarController,
+        legacy_settings: LegacyConfig,
+    ) -> Self {
+        let node = LegacyNode {
+            process,
+            progress_bar,
+            legacy_settings,
+        };
+        node.progress_bar_start();
+        node
+    }
+
     pub fn alias(&self) -> NodeAlias {
         self.process.alias()
     }
@@ -88,9 +104,9 @@ impl LegacyNode {
 
     #[allow(deprecated)]
     fn ports_are_opened(&self) -> bool {
-        self.port_opened(self.node_settings.config.rest.listen.port())
+        self.port_opened(self.legacy_settings.rest.listen.port())
             && self.port_opened(
-                multiaddr::to_tcp_socket_addr(&self.node_settings.config.p2p.public_address)
+                multiaddr::to_tcp_socket_addr(&self.legacy_settings.p2p.public_address)
                     .unwrap()
                     .port(),
             )
@@ -143,7 +159,7 @@ impl LegacyNode {
             "{} {} ... [{}]",
             *style::icons::jormungandr,
             style::binary.apply_to(self.alias()),
-            self.node_settings.config().rest.listen,
+            self.legacy_settings.rest.listen,
         ));
     }
 

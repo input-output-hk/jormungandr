@@ -1,5 +1,4 @@
 pub mod introduction;
-pub mod legacy;
 pub mod node;
 pub mod programs;
 #[macro_use]

@@ -1,21 +1,13 @@
+use crate::scenario::ProgressBarMode;
 use assert_fs::fixture::{ChildPath, PathChild};
 use assert_fs::prelude::*;
-use assert_fs::TempDir;
+use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
+use jormungandr_testing_utils::testing::network::{Random, Seed};
 use rand_chacha::ChaChaRng;
 use rand_core::RngCore;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-
-use crate::scenario::ProgressBarMode;
-use jormungandr_testing_utils::testing::network::{Random, Seed};
 
 pub type ContextChaCha = Context<ChaChaRng>;
-
-#[derive(Clone)]
-enum TestingDirectory {
-    Temp(Arc<TempDir>),
-    User(PathBuf),
-}
 
 /// scenario context with all the details to setup the necessary port number
 /// a pseudo random number generator (and its original seed).
@@ -24,7 +16,6 @@ pub struct Context<RNG: RngCore + Sized = ChaChaRng> {
     rng: Random<RNG>,
 
     jormungandr: PathBuf,
-    jcli: PathBuf,
 
     testing_directory: TestingDirectory,
     generate_documentation: bool,
@@ -36,7 +27,6 @@ impl Context<ChaChaRng> {
     pub fn new(
         seed: Seed,
         jormungandr: PathBuf,
-        jcli: PathBuf,
         testing_directory: Option<PathBuf>,
         generate_documentation: bool,
         progress_bar_mode: ProgressBarMode,
@@ -44,17 +34,10 @@ impl Context<ChaChaRng> {
     ) -> Self {
         let rng = Random::<ChaChaRng>::new(seed);
 
-        let testing_directory = if let Some(testing_directory) = testing_directory {
-            TestingDirectory::User(testing_directory)
-        } else {
-            TestingDirectory::Temp(Arc::new(TempDir::new().unwrap()))
-        };
-
         Context {
             rng,
             jormungandr,
-            jcli,
-            testing_directory,
+            testing_directory: testing_directory.into(),
             generate_documentation,
             progress_bar_mode,
             log_level,
@@ -70,7 +53,6 @@ impl Context<ChaChaRng> {
         Context {
             rng,
             jormungandr: self.jormungandr.clone(),
-            jcli: self.jcli.clone(),
             testing_directory: self.testing_directory.clone(),
             generate_documentation: self.generate_documentation,
             progress_bar_mode: self.progress_bar_mode,
@@ -98,10 +80,6 @@ impl<RNG: RngCore> Context<RNG> {
         self.testing_directory.child(path)
     }
 
-    pub fn jcli(&self) -> &Path {
-        &self.jcli
-    }
-
     pub fn random(&mut self) -> &mut Random<RNG> {
         &mut self.rng
     }
@@ -118,27 +96,5 @@ impl<RNG: RngCore> Context<RNG> {
 
     pub fn progress_bar_mode(&self) -> ProgressBarMode {
         self.progress_bar_mode
-    }
-}
-
-impl TestingDirectory {
-    #[allow(dead_code)]
-    pub fn path(&self) -> &Path {
-        match self {
-            TestingDirectory::User(path_buf) => path_buf,
-            TestingDirectory::Temp(temp_dir) => temp_dir.path(),
-        }
-    }
-}
-
-impl PathChild for TestingDirectory {
-    fn child<P>(&self, path: P) -> ChildPath
-    where
-        P: AsRef<Path>,
-    {
-        match self {
-            TestingDirectory::User(dir_path) => ChildPath::new(dir_path.join(path)),
-            TestingDirectory::Temp(temp_dir) => temp_dir.child(path),
-        }
     }
 }

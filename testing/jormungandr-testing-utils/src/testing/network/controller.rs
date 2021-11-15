@@ -1,3 +1,4 @@
+use crate::testing::jormungandr::TestingDirectory;
 use crate::testing::{
     jormungandr::starter::{Starter, StartupError},
     jormungandr::JormungandrProcess,
@@ -12,7 +13,6 @@ use crate::{
 };
 use assert_fs::fixture::FixtureError;
 use assert_fs::prelude::*;
-use assert_fs::TempDir;
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 use std::path::PathBuf;
@@ -40,13 +40,16 @@ pub enum ControllerError {
 
 pub struct Controller {
     settings: Settings,
-    working_directory: TempDir,
+    working_directory: TestingDirectory,
     block0_file: PathBuf,
     block0_hash: HeaderId,
 }
 
 impl Controller {
-    pub fn new(settings: Settings, working_directory: TempDir) -> Result<Self, ControllerError> {
+    pub fn new(
+        settings: Settings,
+        working_directory: TestingDirectory,
+    ) -> Result<Self, ControllerError> {
         use chain_core::property::Serialize as _;
 
         let block0 = settings.block0.to_block();
@@ -70,6 +73,10 @@ impl Controller {
         } else {
             Err(ControllerError::WalletNotFound(wallet.to_owned()))
         }
+    }
+
+    pub fn block0_file(&self) -> PathBuf {
+        self.block0_file.to_path_buf()
     }
 
     pub fn settings(&self) -> &Settings {
@@ -112,7 +119,7 @@ impl Controller {
         Ok(self.make_starter_for(spawn_params)?.start()?)
     }
 
-    fn make_starter_for(
+    pub fn make_starter_for(
         &mut self,
         mut spawn_params: SpawnParams,
     ) -> Result<Starter, ControllerError> {

@@ -1,4 +1,4 @@
-use crate::{legacy::LegacyNode, test::Result};
+use crate::{node::LegacyNode, test::Result};
 use crate::{node::Node, scenario::Controller};
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::Value;

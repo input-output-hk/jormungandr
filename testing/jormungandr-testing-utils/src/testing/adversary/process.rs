@@ -1,3 +1,4 @@
+use crate::testing::jormungandr::TestingDirectory;
 use crate::testing::network::NodeAlias;
 use crate::testing::node::grpc::{
     client::MockClientError,
@@ -7,9 +8,7 @@ use crate::testing::node::grpc::{
     JormungandrClient,
 };
 use crate::testing::{utils, FragmentSender, FragmentSenderSetup, SyncNode};
-
 use ::multiaddr::{Multiaddr, Protocol};
-use assert_fs::TempDir;
 use chain_impl_mockchain::{
     block::{Block, BlockDate},
     fee::LinearFee,
@@ -34,7 +33,7 @@ use std::sync::{Arc, RwLock};
 /// JormungandrProcess in terms of functionalities, but we start from what is
 /// currently needed.
 pub struct AdversaryNode {
-    temp_dir: Option<TempDir>,
+    temp_dir: Option<TestingDirectory>,
     alias: String,
     node_data: Arc<RwLock<NodeData>>,
     server: Option<MockController>,
@@ -43,7 +42,7 @@ pub struct AdversaryNode {
 
 impl AdversaryNode {
     pub(crate) fn new(
-        temp_dir: Option<TempDir>,
+        temp_dir: Option<TestingDirectory>,
         alias: String,
         node_data: Arc<RwLock<NodeData>>,
         server: Option<MockController>,
@@ -105,7 +104,7 @@ impl AdversaryNode {
         TrustedPeer { address, id: None }
     }
 
-    pub fn steal_temp_dir(&mut self) -> Option<TempDir> {
+    pub fn steal_temp_dir(&mut self) -> Option<TestingDirectory> {
         self.temp_dir.take()
     }
 
@@ -150,7 +149,7 @@ impl Drop for AdversaryNode {
 
 pub struct AdversaryNodeBuilder {
     alias: String,
-    temp_dir: Option<TempDir>,
+    temp_dir: Option<TestingDirectory>,
     server_enabled: bool,
     protocol_version: ProtocolVersion,
     genesis_block: Block,
@@ -175,7 +174,7 @@ impl AdversaryNodeBuilder {
         Self { alias, ..self }
     }
 
-    pub fn with_temp_dir(self, temp_dir: TempDir) -> Self {
+    pub fn with_temp_dir(self, temp_dir: TestingDirectory) -> Self {
         Self {
             temp_dir: Some(temp_dir),
             ..self
