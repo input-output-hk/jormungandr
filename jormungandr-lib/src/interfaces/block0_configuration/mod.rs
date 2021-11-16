@@ -127,7 +127,7 @@ pub fn block0_configuration_documented_example() -> String {
     let leader_2_pk = leader_2.public_key().to_bech32_str();
 
     format!(
-        include_str!("DOCUMENTED_EXAMPLE.yaml"),
+        include_str!("BLOCKCHAIN_CONFIGURATION_DOCUMENTED_EXAMPLE.yaml"),
         discrimination = DISCRIMINATION,
         default_block0_date = crate::time::SecondsSinceUnixEpoch::default(),
         default_slots_per_epoch = NumberOfSlotsPerEpoch::default(),
