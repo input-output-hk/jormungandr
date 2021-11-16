@@ -116,13 +116,13 @@
       # However in linear formula the meaning is just a scaling factor for the epoch zone
       # (current_epoch - start_epoch / epoch_rate). Further requirement is that this ratio
       # is expressed in fractional form (e.g. 1/2), which allow calculation in integer form.
-      ratio: 3/68  
+      ratio: 3/68
 
       # indicates when this contribution start. note that if the epoch is not
       # the same or after the epoch_start, the overall contribution is zero.
       epoch_start: 89
 
-      # the rate at which the contribution is tweaked related to epoch.      
+      # the rate at which the contribution is tweaked related to epoch.
       epoch_rate: 20
 
   # Fees for different types of certificates, to override the one

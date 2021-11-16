@@ -181,7 +181,7 @@ impl TryFrom<ConfigParamLib> for ConfigParam {
 }
 
 pub fn config_params_documented_example() -> String {
-    format!(include_str!("CONFIG_PARAMS_DOCUMENTED_EXAMPLE.yaml"),)
+    include_str!("CONFIG_PARAMS_DOCUMENTED_EXAMPLE.yaml").to_string()
 }
 
 #[cfg(test)]
