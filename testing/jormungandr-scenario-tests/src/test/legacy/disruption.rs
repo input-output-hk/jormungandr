@@ -14,8 +14,6 @@ use jormungandr_testing_utils::{
     Version,
 };
 
-use rand_chacha::ChaChaRng;
-
 use super::{LEADER_1, LEADER_2, LEADER_3, LEADER_4};
 use std::borrow::Cow;
 use std::path::PathBuf;
@@ -36,7 +34,7 @@ pub fn last_nth_release_title(n: u32) -> Cow<'static, str> {
     }
 }
 
-pub fn last_nth_release(context: Context<ChaChaRng>, n: u32) -> Result<ScenarioResult> {
+pub fn last_nth_release(context: Context, n: u32) -> Result<ScenarioResult> {
     let title = last_nth_release_title(n);
     let releases = download_last_n_releases(n);
     let last_release = releases.last().unwrap();
@@ -45,7 +43,7 @@ pub fn last_nth_release(context: Context<ChaChaRng>, n: u32) -> Result<ScenarioR
 }
 
 fn test_legacy_release(
-    context: Context<ChaChaRng>,
+    context: Context,
     legacy_app: PathBuf,
     version: Version,
     name: impl AsRef<str>,
@@ -136,7 +134,7 @@ pub fn disruption_last_nth_release_title(n: u32) -> Cow<'static, str> {
     }
 }
 
-pub fn disruption_last_nth_release(context: Context<ChaChaRng>, n: u32) -> Result<ScenarioResult> {
+pub fn disruption_last_nth_release(context: Context, n: u32) -> Result<ScenarioResult> {
     let title = disruption_last_nth_release_title(n);
     let releases = download_last_n_releases(n);
     let last_release = releases.last().unwrap();
@@ -145,7 +143,7 @@ pub fn disruption_last_nth_release(context: Context<ChaChaRng>, n: u32) -> Resul
 }
 
 fn test_legacy_disruption_release(
-    context: Context<ChaChaRng>,
+    context: Context,
     legacy_app: PathBuf,
     version: Version,
     name: impl AsRef<str>,
@@ -263,7 +261,7 @@ fn test_legacy_disruption_release(
     Ok(ScenarioResult::passed(name))
 }
 
-pub fn newest_node_enters_legacy_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn newest_node_enters_legacy_network(context: Context) -> Result<ScenarioResult> {
     let title = last_nth_release_title(1);
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();

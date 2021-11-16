@@ -7,7 +7,6 @@ use crate::{
     Context,
 };
 use jormungandr_testing_utils::testing::{ensure_nodes_are_in_sync, FragmentVerifier};
-use rand_chacha::ChaChaRng;
 use std::time::{Duration, SystemTime};
 
 const CORE_NODE: &str = "Core";
@@ -16,7 +15,7 @@ const RELAY_NODE_2: &str = "Relay2";
 use function_name::named;
 
 #[named]
-pub fn relay_soak(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn relay_soak(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

@@ -4,7 +4,7 @@ use jormungandr_scenario_tests::{
     scenario::{
         parse_progress_bar_mode_from_str,
         repository::{parse_tag_from_str, ScenariosRepository, Tag},
-        Context, ProgressBarMode, Seed,
+        Context, ProgressBarMode,
     },
 };
 pub use jortestkit::console::style;
@@ -62,10 +62,6 @@ struct CommandArgs {
     #[structopt(long = "set-exit-code")]
     set_exit_code: bool,
 
-    /// to set if to reproduce an existing test
-    #[structopt(long = "seed")]
-    seed: Option<Seed>,
-
     /// level for all nodes
     #[structopt(long = "log-level", default_value = "info")]
     log_level: String,
@@ -94,15 +90,11 @@ fn main() {
 
     let jormungandr = prepare_command(&command_args.jormungandr);
     let progress_bar_mode = command_args.progress_bar_mode;
-    let seed = command_args
-        .seed
-        .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng));
     let testing_directory = command_args.testing_directory;
     let generate_documentation = command_args.generate_documentation;
     let log_level = command_args.log_level;
 
     let context = Context::new(
-        seed,
         jormungandr,
         testing_directory,
         generate_documentation,

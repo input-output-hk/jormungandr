@@ -8,14 +8,12 @@ use std::time::SystemTime;
 
 use function_name::named;
 use jortestkit::process::sleep;
-use rand_chacha::ChaChaRng;
+
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
 
 #[named]
-pub fn leader_restart_preserves_leadership_log(
-    context: Context<ChaChaRng>,
-) -> Result<ScenarioResult> {
+pub fn leader_restart_preserves_leadership_log(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

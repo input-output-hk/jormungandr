@@ -3,7 +3,7 @@ use crate::{
     test::{utils, Result},
     Context, ScenarioResult,
 };
-use rand_chacha::ChaChaRng;
+
 const LEADER1: &str = "LEADER1";
 const LEADER2: &str = "LEADER2";
 const LEADER3: &str = "LEADER3";
@@ -12,7 +12,7 @@ const LEADER4: &str = "LEADER4";
 use function_name::named;
 
 #[named]
-pub fn p2p_stats_test(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn p2p_stats_test(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

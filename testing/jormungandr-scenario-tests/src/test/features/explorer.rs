@@ -5,14 +5,13 @@ use crate::{
 };
 use function_name::named;
 use jormungandr_lib::interfaces::Explorer;
-use rand_chacha::ChaChaRng;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
 const LEADER_3: &str = "Leader_3";
 const PASSIVE: &str = "Passive";
 
 #[named]
-pub fn passive_node_explorer(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn passive_node_explorer(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

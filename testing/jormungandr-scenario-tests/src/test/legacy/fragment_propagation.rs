@@ -1,5 +1,6 @@
 use super::{LEADER, PASSIVE};
-use crate::scenario::{repository::ScenarioResult, Context, Controller};
+use crate::controller::MonitorController;
+use crate::scenario::{repository::ScenarioResult, Context};
 use crate::test::Result;
 use function_name::named;
 use jormungandr_testing_utils::{
@@ -11,14 +12,12 @@ use jormungandr_testing_utils::{
     },
     version_0_8_19, Version,
 };
-use rand_chacha::ChaChaRng;
+
 use std::path::PathBuf;
 
 #[allow(unused_macros)]
 #[named]
-pub fn legacy_current_node_fragment_propagation(
-    mut context: Context<ChaChaRng>,
-) -> Result<ScenarioResult> {
+pub fn legacy_current_node_fragment_propagation(mut context: Context) -> Result<ScenarioResult> {
     let title = "test_legacy_current_node_fragment_propagation";
     let scenario_settings = prepare_scenario! {
         title,
@@ -70,9 +69,7 @@ pub fn legacy_current_node_fragment_propagation(
 
 #[allow(unused_macros)]
 #[named]
-pub fn current_node_legacy_fragment_propagation(
-    mut context: Context<ChaChaRng>,
-) -> Result<ScenarioResult> {
+pub fn current_node_legacy_fragment_propagation(mut context: Context) -> Result<ScenarioResult> {
     let title = "test_legacy_current_node_fragment_propagation";
     let scenario_settings = prepare_scenario! {
         title,
@@ -125,7 +122,7 @@ pub fn current_node_legacy_fragment_propagation(
 
 #[allow(unused_macros)]
 #[named]
-pub fn current_node_fragment_propagation(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn current_node_fragment_propagation(context: Context) -> Result<ScenarioResult> {
     let title = "test_legacy_current_node_fragment_propagation";
     let scenario_settings = prepare_scenario! {
         title,
@@ -168,7 +165,7 @@ pub fn current_node_fragment_propagation(context: Context<ChaChaRng>) -> Result<
     Ok(ScenarioResult::passed(title))
 }
 
-fn get_legacy_data(title: &str, context: &mut Context<ChaChaRng>) -> (PathBuf, Version) {
+fn get_legacy_data(title: &str, context: &mut Context) -> (PathBuf, Version) {
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release, &context.child_directory(title));
@@ -176,7 +173,7 @@ fn get_legacy_data(title: &str, context: &mut Context<ChaChaRng>) -> (PathBuf, V
 }
 
 fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized + Send>(
-    controller: &mut Controller,
+    controller: &mut MonitorController,
     passive: &A,
     version: Option<Version>,
 ) {

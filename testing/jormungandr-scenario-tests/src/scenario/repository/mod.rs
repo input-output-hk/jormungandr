@@ -9,8 +9,8 @@ pub use suite_result::ScenarioSuiteResult;
 pub use tag::{parse_tag_from_str, Tag};
 
 use crate::{
+    controller::interactive_scenario,
     example_scenarios::scenario_2,
-    interactive::interactive,
     test::{
         comm::leader_leader::*,
         comm::passive_leader::*,
@@ -31,8 +31,7 @@ use crate::{
     Context,
 };
 
-use rand_chacha::ChaChaRng;
-type ScenarioMethod = fn(Context<ChaChaRng>) -> Result<ScenarioResult>;
+type ScenarioMethod = fn(Context) -> Result<ScenarioResult>;
 
 pub struct ScenariosRepository {
     repository: Vec<Scenario>,
@@ -59,7 +58,7 @@ impl ScenariosRepository {
         }
     }
 
-    pub fn run(&self, context: &Context<ChaChaRng>) -> ScenarioSuiteResult {
+    pub fn run(&self, context: &Context) -> ScenarioSuiteResult {
         let available_scenarios = self.scenarios_tagged_by(self.tag);
 
         if self.should_run_all() {
@@ -91,7 +90,7 @@ impl ScenariosRepository {
     fn run_all_scenarios(
         &self,
         available_scenarios: &[Scenario],
-        mut context: &mut Context<ChaChaRng>,
+        mut context: &mut Context,
     ) -> ScenarioSuiteResult {
         let mut suite_result = ScenarioSuiteResult::new();
         for scenario_to_run in available_scenarios {
@@ -119,7 +118,7 @@ impl ScenariosRepository {
         &self,
         scenario_name: &str,
         scenarios_to_run: &[Scenario],
-        context: &mut Context<ChaChaRng>,
+        context: &mut Context,
     ) -> ScenarioResult {
         let scenario = self
             .repository
@@ -134,9 +133,9 @@ impl ScenariosRepository {
         let scenario_to_run = scenario.method();
         let result = {
             if self.print_panics {
-                Ok(Ok(scenario_to_run(context.clone().derive()).unwrap()))
+                Ok(Ok(scenario_to_run(context.clone()).unwrap()))
             } else {
-                std::panic::catch_unwind(|| scenario_to_run(context.clone().derive()))
+                std::panic::catch_unwind(|| scenario_to_run(context.clone()))
             }
         };
         let scenario_result = ScenarioResult::from_result(scenario.name(), result);
@@ -178,7 +177,7 @@ fn scenarios_repository() -> Vec<Scenario> {
             crate::test::non_functional::desync::bft_forks,
             vec![Tag::Desync],
         ),
-        Scenario::new("interactive", interactive, vec![Tag::Interactive]),
+        Scenario::new("interactive", interactive_scenario, vec![Tag::Interactive]),
         Scenario::new("example", scenario_2, vec![Tag::Example]),
         Scenario::new("leader_restart", leader_restart, vec![Tag::Short]),
         Scenario::new(
