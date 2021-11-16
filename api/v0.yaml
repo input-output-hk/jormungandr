@@ -335,97 +335,6 @@ paths:
                       },
                     ]
 
-  /api/v0/leaders:
-    get:
-      description: Gets leader IDs
-      operationId: Leaders
-      tags:
-        - leaders
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                description: IDs of leaders
-                type: array
-                items:
-                  description: ID of the leader
-                  type: integer
-                  minimum: 0
-              examples:
-                'SingleLeader':
-                  value: [1]
-                'MultiLeader':
-                  value: [1, 2, 3]
-    post:
-      description: Registers new leader
-      operationId: NewLeader
-      tags:
-        - leaders
-      requestBody:
-        description: Leader secret
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                bft:
-                  description: Secret key for BFT node
-                  type: object
-                  required:
-                    - signing_key
-                  properties:
-                    signing_key:
-                      description: Bech32-encoded BFT signing key
-                      type: string
-                genesis:
-                  description: Secret key for genesis node
-                  type: object
-                  required:
-                    - node_id
-                    - sig_key
-                    - vrf_key
-                  properties:
-                    node_id:
-                      description: Hex-encoded node ID
-                      type: string
-                      pattern: '[0-9a-fA-F]+'
-                    sig_key:
-                      description: Bech32-encoded KES signing key
-                      type: string
-                    vrf_key:
-                      description: Bech32-encoded VRF signing key
-                      type: string
-            examples:
-              bft:
-                value: |
-                  {
-                    "bft": {
-                      "signing_key": "ed25519_sk185kghuwsgjmznumrd60ytnw84fn00cpn0mqa2428hj6mvnf5edqqkv40lg"
-                    }
-                  }
-              genesis:
-                value: |
-                  {
-                    "genesis": {
-                      "node_id": "ea830e5d9647af89a5e9a4d4089e6e855891a533316adf4a42b7bf1372389b74",
-                      "sig_key": "kes25519-12-sk1qqqqqqq2avmtk06hwh68c9nthtu5f66wxsghf8h5hvk37d58zeux9sqt8a86vc5uy3z470jpy4yk72fp6vd9c9rw2smnh4hxnsa3puaz35h8znqwnz33u0tclwpxfy7hxw43lxe4tpxmjcz8mfrlhdm0lj9qc30uaeefnw909txczqstmf4x2kgege5adlaytgx3surq78tx4gnxxt5xh6pwkj23kkpqt99hqg637ld8h0fd7uwf0c7d8t29tjfu5ltaew4gn93z2pp20drtc9dq724lltepn52yrp6dchhjezqws4737kglz3ch7qgls3k0gjynxcyrdtn3ldm95mjn56es4l3nzs25349ahmahxm079f0uhf4m9v0whaye3kq9kr74x4mpw52w8tndtnyh3cyxuqws4fqhsfeczewkku70unu3wr5460hemw205mc9pl684rx2hxmhvexgu93qwgglzq60n582lt243sduvuatq9skpstazytl4srp7n0958xkf3vcyh3xj6tl0fnp55el7teqzpj5u02vqh9rfhg2tx55z2uqna0dnnsa4tejk46cnr9m2e39cldp3f35mlp3qlrnn53f87pankta4x9aj3rv6ghzvr52gc3s4j6ncsz4j4he6xm9n8z6uq0ht3kztgfqnwwm893xcd4za0ph2zl4954xxgfwk9yvpzkuq3a2y2d6t70rtj27zdt07qvm8cjqgthe76zqmm80fuwkw4qh2qeah0y634a8svatj8tjr8j7ykczm5dfzh734hwwz457djt7227220sm5eg7gh9tamkhem43huysprdjvm43swmxptsq9krwa4eqzlq76ftsam83mqmzmnuyl0s7qn0qfzyturkkwhqvxlml0zg6dwkt6rhaj8w0r45qnpvksu0qvdtpggqerw6stqxgx885sslrs53nr3u4azqhwjf9vgpztw6hm2eex7c8kqy7hx3cnmzlq5m89lrvj5g5fxggk09nmvsnqv54x5q2ktf0dk6d0aavp9vy7g0vpm4wfmln6c03dlmwjgk3ket9np8n62k48j640a0sew52j7tsq7ysl35ggrxthdeu54dd229pedtnyqa0jehn0zurr3e599yjuneh7kzw5792rfzp4kq3dz82rjd48q6yp59wvddnjn2cd0wes66hx8jhjw3gmdhxjlxtggedg65nnz00qfav65fx8d35lfnznsjy2he7gyj5jmefy8f35hq5de2rww7ku6wrky8n52xjuu2e25jezj6sr82wmwqguq0y6qruh3phqr4fxk3pwctqsdefpkftxdpzz2ql2yvtuch29sr98zwzztmegjl8fdk93j7q7r6raclxl8t5rfnu8djemu0xlw8l7s60ju4y77zrsqm3dwe4xxk79tcl9nvd5ks4ysxxkyrvtjg5546ccq78cyfrzx0lyrwtma2dgdprcq0yganfwxmq7t0mcl33r3wy37qjjh7zplrm5zrsnyak84zqxvkkw9ncr06ysykcrz8dyxmjj9hw6nstchzkk2cqtlq9hclhz0p8nxeqjqp26eda7u8kv8kp5d5k7wflncpyjj7vgugmv43kjtyyuaejnlw7378qf6nqp2zpcchmfy746hupfejh6upe3aegmztmhq3s2d8vslf0cqsr8esgy9vxymezl6w897ysjjx4q28falljdseh87eveukg0mtq33t8j77zzjanvc27wnxmayefgk7xeus3mvgn4g7u0z6sa3ucyj49h2485pu96mjmle889ncz2c4djr8w34054hxr3qqk29xty4n3e7858t694zcqh7ff2885vvpjuqf78waulr04alj99q25j958urm6qdsxsyg2f9ldeqw00ff4sz837xnhkaxlnqw3kchzsqjzmhwyj5ygjmwn2t4ypn950k",
-                      "vrf_key": "vrf_sk1mxv9dqw2xwdkygkkgw54e2qez699amw0ujqvxhzz9vfdaarw2qyq39p5qr"
-                    }
-                  }
-      responses:
-        '200':
-          description: Success
-          content:
-            application/json:
-              schema:
-                description: ID of the created leader
-                type: integer
-                minimum: 0
-              example: 5
-
   /api/v0/leaders/logs:
     get:
       description: Gets leader logs
@@ -447,7 +356,6 @@ paths:
                     - created_at_time
                     - scheduled_at_time
                     - scheduled_at_date
-                    - enclave_leader_id
                   properties:
                     created_at_time:
                       description: Timestamp of when this log entry was created
@@ -471,10 +379,6 @@ paths:
                       type: string
                       format: date-time
                       nullable: true
-                    enclave_leader_id:
-                      description: ID of leadership event that produced this log entry
-                      type: integer
-                      minimum: 0
                     status:
                       description: Status of the leadership event
                       oneOf:
@@ -529,7 +433,6 @@ paths:
                         'scheduled_at_date': '0.3923',
                         'wake_at_time': null,
                         'finished_at_time': null,
-                        'enclave_leader_id': 1,
                         'status': 'Pending',
                       },
                     ]
@@ -542,7 +445,6 @@ paths:
                         'scheduled_at_date': '0.3923',
                         'wake_at_time': '2019-08-19T23:18:35.001254555+00:00',
                         'finished_at_time': '2019-08-19T23:19:05.010113333+00:00',
-                        'enclave_leader_id': 1,
                         'status':
                           {
                             'Block':
@@ -563,7 +465,6 @@ paths:
                         'scheduled_at_date': '0.3923',
                         'wake_at_time': '2019-08-19T23:18:35.001254555+00:00',
                         'finished_at_time': '2019-08-19T23:19:05.010113333+00:00',
-                        'enclave_leader_id': 1,
                         'status':
                           {
                             'Rejected':
@@ -573,26 +474,6 @@ paths:
                           },
                       },
                     ]
-
-  '/api/v0/leaders/{leader_id}':
-    delete:
-      description: Deletes leader
-      operationId: DeleteLeaderByID
-      tags:
-        - leaders
-      parameters:
-        - name: leader_id
-          in: path
-          required: true
-          schema:
-            description: Leader ID
-            type: integer
-            minimum: 0
-      responses:
-        '200':
-          description: Success
-        '404':
-          description: Leader with given ID does not exist
 
   /api/v0/message:
     post:
@@ -704,6 +585,9 @@ paths:
                   - lastBlockTx
                   - state
                   - txRecvCnt
+                  - txRejectedCnt
+                  - txPending
+                  - votesCast
                   - uptime
                   - version
                   - peerAvailableCnt
@@ -776,6 +660,18 @@ paths:
                       - Running
                   txRecvCnt:
                     description: Number of transactions received by node
+                    type: integer
+                    minimum: 0
+                  txRejectedCnt:
+                    description: Number of transactions rejected by the ledger
+                    type: integer
+                    minimum: 0
+                  txPending:
+                    description: Number of pending transactions in the mempool
+                    type: integer
+                    minimum: 0
+                  votesCast:
+                    description: Number of successful vote cast fragments processed by this node
                     type: integer
                     minimum: 0
                   uptime:
