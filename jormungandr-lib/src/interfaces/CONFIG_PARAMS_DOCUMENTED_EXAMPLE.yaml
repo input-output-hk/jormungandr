@@ -1,0 +1,180 @@
+
+  # The block0-date defines the date the blockchain starts
+  # expected value in seconds since UNIX_EPOCH
+  #
+  # By default the value will be the current date and time. Or you can
+  # add a specific time by entering the number of seconds since UNIX
+  # Epoch
+- Block0Date: 17
+
+  # This is the type of discrimination of the blockchain
+  # if this blockchain is meant for production then
+  # use 'production' otherwise use 'test'.
+- Discrimination: test
+
+  # The initial consensus version:
+  #
+  # * BFT consensus: bft
+  # * Genesis Praos consensus: genesis
+- ConsensusVersion: bft
+
+  # Number of slots in each epoch.
+- SlotsPerEpoch: 42
+
+  # The slot duration, in seconds, is the time between the creation
+  # of 2 blocks
+- SlotDuration: 79
+
+  # Epoch stability depth
+- EpochStabilityDepth: 12
+
+  # Genesis praos active slot coefficient
+  # Determines minimum stake required to try becoming slot leader, must be in range (0,1]
+- ConsensusGenesisPraosActiveSlotsCoeff: "0.004"
+
+  # This is the size, in bytes, of all the contents of the block (excluding the
+  # block header).
+- BlockContentMaxSize: 96
+
+  # Add a new bft leader
+- AddBftLeader: ed25519_pk1g53asm6l4gcwk2pm5ylr092umaur5yes47rqv7ng5yl525x8g8mq5nk7x7
+
+  # Remove a bft leader
+- RemoveBftLeader: ed25519_pk1a3sjcg6gt4d05k5u6uqyzmsap8cjw37ul9cgztz8m697lvkz26uqg49nm3
+
+  # The fee calculations settings
+  #
+  # total fees: constant + (num_inputs + num_outputs) * coefficient [+ certificate]
+- LinearFee:
+    # this is the minimum value to pay for every transaction
+    constant: 57
+    # the additional fee to pay for every inputs and outputs
+    coefficient: 14
+    # the additional fee to pay if the transaction embeds a certificate
+    certificate: 95
+    # (optional) fees for different types of certificates, to override the one
+    # given in `certificate` just above
+    #
+    # here: all certificate fees are set to `4` except for pool registration
+    # and stake delegation which are respectively `5` and `2`.
+    per_certificate_fees:
+      # (optional) if not specified, the pool registration certificate fee will be
+      # the one set by linear_fees.certificate
+      certificate_pool_registration: 5
+      # (optional) if not specified, the delegation certificate fee will be
+      # the one set by linear_fees.certificate
+      certificate_stake_delegation: 2
+      # (optional) if not specified, the owner delegation certificate fee will be
+      # the one set by linear_fees.certificate. Uncomment to set the owner stake
+      # delegation to `1` instead of default `4`:
+      certificate_owner_stake_delegation: 1
+
+  # Proposal expiration in epochs
+- ProposalExpiration: 68
+
+  # The speed to update the KES Key in seconds
+- KesUpdateSpeed: 120
+
+  # Increase the treasury amount
+- TreasuryAdd: 10000
+
+  # Set the total reward supply available for monetary creation
+- RewardPot: 100000000000000
+
+  # Set the treasury parameters, this is the tax type, just as in stake pool
+  # registration certificate parameters.
+  #
+  # When distributing the rewards, the treasury will be first serve as per
+  # the incentive specification document
+- TreasuryParams:
+    # the fix value the treasury will take from the total reward pot of the epoch
+    fixed: 1000
+    # the extra percentage the the treasury will take from the reward pot of the epoch
+    ratio: "1/10"
+    # it is possible to add a max bound to the total value the treasury takes
+    # at each reward distribution. For example, one could cap the treasury tax
+    # to 10000. Uncomment the following line to apply a max limit:
+    max_limit: 10000
+
+  # set the reward supply consumption. These parameters will define how the
+  # total_reward_supply is consumed for the stake pool reward
+  #
+  # There's fundamentally many potential choices for how rewards are contributed back, and here's two potential valid examples:
+  #
+  # Linear formula: constant - ratio * (#epoch after epoch_start / epoch_rate)
+  # Halving formula: constant * ratio ^ (#epoch after epoch_start / epoch_rate)
+- RewardParams:
+    halving: # or use "linear" for the linear formula
+      # In the linear formula, it represents the starting point of the contribution
+      # at #epoch=0, whereas in halving formula is used as starting constant for
+      # the calculation.
+      constant: 2
+
+      # In the halving formula, an effective value between 0.0 to 1.0 indicates a
+      # reducing contribution, whereas above 1.0 it indicate an acceleration of contribution.
+      #
+      # However in linear formula the meaning is just a scaling factor for the epoch zone
+      # (current_epoch - start_epoch / epoch_rate). Further requirement is that this ratio
+      # is expressed in fractional form (e.g. 1/2), which allow calculation in integer form.
+      ratio: 3/68
+
+      # indicates when this contribution start. note that if the epoch is not
+      # the same or after the epoch_start, the overall contribution is zero.
+      epoch_start: 89
+
+      # the rate at which the contribution is tweaked related to epoch.
+      epoch_rate: 20
+
+  # Fees for different types of certificates, to override the one
+  # given in `certificate` just above.
+- PerCertificateFees:
+    # (optional) if not specified, the pool registration certificate fee will be
+    # the one set by linear_fees.certificate
+    certificate_pool_registration: 5
+    # (optional) if not specified, the delegation certificate fee will be
+    # the one set by linear_fees.certificate
+    certificate_stake_delegation: 2
+    # (optional) if not specified, the owner delegation certificate fee will be
+    # the one set by linear_fees.certificate. Uncomment to set the owner stake
+    # delegation to `1` instead of default `4`:
+    certificate_owner_stake_delegation: 1
+
+  # Set where to send the fees generated by transactions activity.
+  #
+  # It is possible to send all the generated fees to the "treasury"
+- FeesInTreasury: rewards
+
+- RewardLimitNone
+
+  # Limit the epoch total reward drawing limit to a portion of the total
+  # active stake of the system.
+  #
+  # for example, if set to 10%, the reward drawn will be bounded by the
+  # 10% of the total active stake.
+- RewardLimitByAbsoluteStake: 22/72
+
+  # Settings to incentivize the numbers of stake pool to be registered
+  # on the blockchain.
+  #
+  # These settings does not prevent more stake pool to be added. For example
+  # if there is already 1000 stake pools, someone can still register a new
+  # stake pool and affect the rewards of everyone else too.
+  #
+  # if the threshold is reached, the pool doesn't really have incentive to
+  # create more blocks than 1 / set-value-of-pools % of stake.
+- PoolRewardParticipationCapping:
+    min: 8
+    max: 52
+
+  # Add a new committee id
+- AddCommitteeId: 8103973beaa56f4e9440004ee8e8f8359ea18499d4199c1b018c072e7f503ea0
+
+  # Remove a committee id
+- RemoveCommitteeId: 6375dcdd714e69c197e99c32486ec28f166a50da7a1e3694807cd8a76f1c8175
+
+- PerVoteCertificateFees:
+    certificate_vote_plan: 52
+    certificate_vote_cast: 57
+
+  # The transaction max expiry epochs
+- TransactionMaxExpiryEpochs: 91
