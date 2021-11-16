@@ -1,23 +1,16 @@
+use crate::controller::MonitorController;
 use crate::node::LegacyNode;
 use crate::{
     node::{FragmentNode, Node},
-    scenario::Controller,
     test::Result,
 };
+use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog, NodeState},
 };
 use jormungandr_testing_utils::testing::network::NodeAlias;
-pub use jormungandr_testing_utils::testing::{SyncNode, SyncWaitParams};
-use jormungandr_testing_utils::{
-    testing::{Speed, Thresholds},
-    wallet::Wallet,
-};
-use std::{collections::HashMap, time::Duration};
-
-use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 pub use jormungandr_testing_utils::testing::{
     assert, assert_equals,
     node::LogLevel,
@@ -27,13 +20,19 @@ pub use jormungandr_testing_utils::testing::{
     },
     FragmentNodeError, MeasurementReportInterval, MemPoolCheck,
 };
+pub use jormungandr_testing_utils::testing::{SyncNode, SyncWaitParams};
+use jormungandr_testing_utils::{
+    testing::{Speed, Thresholds},
+    wallet::Wallet,
+};
+use std::{collections::HashMap, time::Duration};
 
 pub fn wait(seconds: u64) {
     std::thread::sleep(Duration::from_secs(seconds));
 }
 
 pub fn measure_single_transaction_propagation_speed<A: SyncNode + FragmentNode + Send + Sized>(
-    controller: &mut Controller,
+    controller: &mut MonitorController,
     mut wallet1: &mut Wallet,
     wallet2: &Wallet,
     leaders: &[&A],

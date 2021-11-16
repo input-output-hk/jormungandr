@@ -1,29 +1,33 @@
-use crate::{node::LegacyNode, test::Result};
-use crate::{node::Node, scenario::Controller};
+use crate::controller::spawn_legacy_node;
+use crate::controller::spawn_node;
+use crate::scenario::{Error, Result};
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::Value;
+use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
+use jormungandr_testing_utils::testing::network::controller::Controller;
+use jormungandr_testing_utils::testing::network::SpawnParams;
+use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::wallet::Wallet;
+use jormungandr_testing_utils::Version;
 use jortestkit::prelude::InteractiveCommandError;
-use structopt::{clap::AppSettings, StructOpt};
-
-pub mod describe;
-pub mod explorer;
-pub mod send;
-pub mod show;
-pub mod spawn;
 
 pub struct UserInteractionController {
     controller: Controller,
     wallets: Vec<Wallet>,
-    nodes: Vec<Node>,
-    legacy_nodes: Vec<LegacyNode>,
+    nodes: Vec<JormungandrProcess>,
+    legacy_nodes: Vec<JormungandrProcess>,
 }
 
 impl UserInteractionController {
-    pub fn new(mut controller: Controller) -> Self {
-        let wallets = controller.get_all_wallets();
+    pub fn new(inner: Controller) -> Self {
+        let wallets = inner
+            .defined_wallets()
+            .map(|(_, wallet)| wallet.clone())
+            .map(Into::into)
+            .collect();
+
         Self {
-            controller,
+            controller: inner,
             wallets,
             nodes: Vec::new(),
             legacy_nodes: Vec::new(),
@@ -38,18 +42,18 @@ impl UserInteractionController {
         &mut self.wallets
     }
 
-    pub fn nodes(&self) -> &[Node] {
+    pub fn nodes(&self) -> &[JormungandrProcess] {
         &self.nodes
     }
 
-    pub fn legacy_nodes(&self) -> &[LegacyNode] {
+    pub fn legacy_nodes(&self) -> &[JormungandrProcess] {
         &self.legacy_nodes
     }
 
-    pub fn legacy_nodes_mut(&mut self) -> &mut Vec<LegacyNode> {
+    pub fn legacy_nodes_mut(&mut self) -> &mut Vec<JormungandrProcess> {
         &mut self.legacy_nodes
     }
-    pub fn nodes_mut(&mut self) -> &mut Vec<Node> {
+    pub fn nodes_mut(&mut self) -> &mut Vec<JormungandrProcess> {
         &mut self.nodes
     }
 
@@ -59,6 +63,14 @@ impl UserInteractionController {
 
     pub fn controller_mut(&mut self) -> &mut Controller {
         &mut self.controller
+    }
+
+    pub fn wallet(&self, wallet: &str) -> Result<Wallet> {
+        if let Some(wallet) = self.controller.settings().wallets.get(wallet) {
+            Ok(wallet.clone().into())
+        } else {
+            Err(Error::WalletNotFound(wallet.to_owned()))
+        }
     }
 
     // It is easier to convert to test::Result with ?, or we would have to individually
@@ -71,7 +83,7 @@ impl UserInteractionController {
         node_alias: &str,
     ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
         let committee_address = self.controller.wallet(committee_alias)?.address();
-        let vote_plan_def = self.controller.vote_plan(vote_plan_alias)?;
+        let vote_plan_def = self.controller.defined_vote_plan(vote_plan_alias)?;
 
         let mut temp_wallets = self.wallets_mut().clone();
         let committee = temp_wallets
@@ -82,17 +94,15 @@ impl UserInteractionController {
         let node = self.nodes.iter().find(|x| x.alias() == node_alias);
         let legacy_node = self.legacy_nodes.iter().find(|x| x.alias() == node_alias);
 
+        let fragment_sender = FragmentSender::from(self.controller.settings());
+
         let check = match (node, legacy_node) {
-            (Some(node), None) => self.controller.fragment_sender().send_public_vote_tally(
-                committee,
-                &vote_plan_def.into(),
-                node,
-            )?,
-            (None, Some(node)) => self.controller.fragment_sender().send_public_vote_tally(
-                committee,
-                &vote_plan_def.into(),
-                node,
-            )?,
+            (Some(node), None) => {
+                fragment_sender.send_public_vote_tally(committee, &vote_plan_def.into(), node)?
+            }
+            (None, Some(node)) => {
+                fragment_sender.send_public_vote_tally(committee, &vote_plan_def.into(), node)?
+            }
             _ => Err(InteractiveCommandError::UserError(format!(
                 "alias not found {}",
                 node_alias
@@ -115,7 +125,7 @@ impl UserInteractionController {
         choice: u8,
     ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
         let address = self.controller.wallet(wallet_alias)?.address();
-        let vote_plan_def = self.controller.vote_plan(vote_plan_alias)?;
+        let vote_plan_def = self.controller.defined_vote_plan(vote_plan_alias)?;
 
         let mut temp_wallets = self.wallets_mut().clone();
         let wallet = temp_wallets
@@ -126,15 +136,16 @@ impl UserInteractionController {
         let node = self.nodes.iter().find(|x| x.alias() == node_alias);
         let legacy_node = self.legacy_nodes.iter().find(|x| x.alias() == node_alias);
 
+        let fragment_sender = FragmentSender::from(self.controller.settings());
         let check = match (node, legacy_node) {
-            (Some(node), None) => self.controller.fragment_sender().send_vote_cast(
+            (Some(node), None) => fragment_sender.send_vote_cast(
                 wallet,
                 &vote_plan_def.into(),
                 proposal_index as u8,
                 &Choice::new(choice),
                 node,
             )?,
-            (None, Some(node)) => self.controller.fragment_sender().send_vote_cast(
+            (None, Some(node)) => fragment_sender.send_vote_cast(
                 wallet,
                 &vote_plan_def.into(),
                 proposal_index as u8,
@@ -180,15 +191,11 @@ impl UserInteractionController {
         let node = self.nodes.iter().find(|x| x.alias() == node_alias);
         let legacy_node = self.legacy_nodes.iter().find(|x| x.alias() == node_alias);
 
+        let fragment_sender = FragmentSender::from(self.controller.settings());
+
         let check = match (node, legacy_node) {
-            (Some(node), None) => self
-                .controller
-                .fragment_sender()
-                .send_transaction(from, &to, node, value)?,
-            (None, Some(node)) => self
-                .controller
-                .fragment_sender()
-                .send_transaction(from, &to, node, value)?,
+            (Some(node), None) => fragment_sender.send_transaction(from, &to, node, value)?,
+            (None, Some(node)) => fragment_sender.send_transaction(from, &to, node, value)?,
             _ => Err(InteractiveCommandError::UserError(format!(
                 "alias not found {}",
                 node_alias
@@ -199,32 +206,25 @@ impl UserInteractionController {
         Ok(check)
     }
 
-    pub fn finalize(self) {
-        self.controller.finalize();
+    pub fn spawn_node_custom(&mut self, input_params: SpawnParams) -> Result<JormungandrProcess> {
+        spawn_node(&mut self.controller, input_params)
+    }
+
+    pub fn spawn_legacy_node(
+        &mut self,
+        input_params: SpawnParams,
+        version: &Version,
+    ) -> Result<JormungandrProcess> {
+        spawn_legacy_node(&mut self.controller, input_params, version)
+            .map(|(process, _settings)| process)
+            .map_err(Into::into)
     }
 }
 
-#[derive(StructOpt, Debug)]
-#[structopt(setting = AppSettings::NoBinaryName)]
-pub enum InteractiveCommand {
-    /// Prints nodes related data, like stats,fragments etc.
-    Show(show::Show),
-    /// Spawn leader or passive node (also legacy)
-    Spawn(spawn::Spawn),
-    /// Sends Explorer queries
-    Explorer(explorer::Explorer),
-    /// Exit interactive mode
-    Exit,
-    /// Prints wallets, nodes which can be used. Draw topology
-    Describe(describe::Describe),
-    /// send fragments
-    Send(send::Send),
-}
-
-fn do_for_all_alias<F: Fn(&Node), G: Fn(&LegacyNode)>(
+pub fn do_for_all_alias<F: Fn(&JormungandrProcess), G: Fn(&JormungandrProcess)>(
     alias: &Option<String>,
-    nodes: &[Node],
-    legacy_nodes: &[LegacyNode],
+    nodes: &[JormungandrProcess],
+    legacy_nodes: &[JormungandrProcess],
     f: F,
     g: G,
 ) {
