@@ -1,12 +1,12 @@
 use super::{FragmentExporter, FragmentExporterError};
+use crate::testing::network::Settings;
+use crate::testing::DummySyncNode;
 use crate::{
     stake_pool::StakePool,
     testing::{
         ensure_node_is_in_sync_with_others,
         fragments::node::{FragmentNode, MemPoolCheck},
-        network::Settings,
-        DummySyncNode, FragmentSenderSetup, FragmentVerifier, SyncNode, SyncNodeError,
-        SyncWaitParams,
+        FragmentSenderSetup, FragmentVerifier, SyncNode, SyncNodeError, SyncWaitParams,
     },
     wallet::Wallet,
 };
