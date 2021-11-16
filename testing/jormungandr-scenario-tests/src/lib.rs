@@ -3,8 +3,8 @@ pub mod node;
 pub mod programs;
 #[macro_use]
 pub mod scenario;
+pub mod controller;
 pub mod example_scenarios;
-pub mod interactive;
 pub mod report;
 pub mod test;
 

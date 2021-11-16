@@ -1,6 +1,6 @@
 use crate::{style, test::Result};
 
-use super::UserInteractionController;
+use crate::controller::UserInteractionController;
 use chain_impl_mockchain::certificate::VotePlan;
 use structopt::StructOpt;
 
@@ -67,7 +67,7 @@ pub struct DescribeWallets {
 impl DescribeWallets {
     pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         println!("Wallets:");
-        for (alias, wallet) in controller.controller().wallets() {
+        for (alias, wallet) in controller.controller().defined_wallets() {
             println!(
                 "\t{}: address: {}, initial_funds: {}, delegated to: {:?}",
                 alias,
@@ -89,7 +89,7 @@ pub struct DescribeVotePlans {
 impl DescribeVotePlans {
     pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         println!("Vote Plans:");
-        for vote_plan in controller.controller().vote_plans() {
+        for vote_plan in controller.controller().defined_vote_plans() {
             let chain_vote_plan: VotePlan = vote_plan.clone().into();
             println!(
                 "\t{}:\n\t - owner: {}\n\t - id: {}\n\t - start: {}\n\t - tally: {}\n\t - end: {}\n",
@@ -118,7 +118,7 @@ pub struct DescribeNodes {
 impl DescribeNodes {
     pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         println!("Nodes:");
-        for (alias, node) in controller.controller().nodes() {
+        for (alias, node) in controller.controller().defined_nodes() {
             println!("\t{}: rest api: {}", alias, node.config.rest.listen);
         }
         Ok(())

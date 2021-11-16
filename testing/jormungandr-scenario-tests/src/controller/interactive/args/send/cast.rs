@@ -26,7 +26,7 @@ impl CastVote {
         let proposal_index = self.proposal_index.unwrap_or_else(|| {
             let vote_plan = controller
                 .controller()
-                .vote_plan(&self.vote_plan)
+                .defined_vote_plan(&self.vote_plan)
                 .expect("cannot find vote plan");
             if let Some(id) = &self.proposal_id {
                 let (index, _) = vote_plan

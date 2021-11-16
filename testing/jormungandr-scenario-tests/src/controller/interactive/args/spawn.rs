@@ -1,13 +1,15 @@
-use super::UserInteractionController;
+use crate::controller::UserInteractionController;
 use crate::{style, test::Result};
 use jormungandr_testing_utils::{
     testing::{
+        jormungandr::StartupVerificationMode,
         network::{LeadershipMode, PersistenceMode, SpawnParams},
         node::download_last_n_releases,
     },
     Version,
 };
 use jortestkit::console::InteractiveCommandError;
+use std::time::Duration;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -89,9 +91,7 @@ fn spawn_node(
             .find(|x| x.version() == version)
             .ok_or_else(|| InteractiveCommandError::UserError(version.to_string()))?;
 
-        let node = controller
-            .controller_mut()
-            .spawn_legacy_node(spawn_params, &legacy_release.version())?;
+        let node = controller.spawn_legacy_node(spawn_params, &legacy_release.version())?;
         println!(
             "{}",
             style::info.apply_to(format!("node '{}' spawned", alias))
@@ -102,7 +102,7 @@ fn spawn_node(
                 "{}",
                 style::info.apply_to("waiting for bootstap...".to_string())
             );
-            node.wait_for_bootstrap()?;
+            node.wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(60))?;
             println!(
                 "{}",
                 style::info.apply_to("node bootstrapped successfully.".to_string())
@@ -113,9 +113,7 @@ fn spawn_node(
         return Ok(());
     }
 
-    let node = controller
-        .controller_mut()
-        .spawn_node_custom(spawn_params)?;
+    let node = controller.spawn_node_custom(spawn_params)?;
     println!(
         "{}",
         style::info.apply_to(format!("node '{}' spawned", alias))
@@ -126,7 +124,7 @@ fn spawn_node(
             "{}",
             style::info.apply_to("waiting for bootstap...".to_string())
         );
-        node.wait_for_bootstrap()?;
+        node.wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(60))?;
         println!(
             "{}",
             style::info.apply_to("node bootstrapped successfully.".to_string())

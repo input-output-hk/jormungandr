@@ -12,7 +12,6 @@ pub struct Context {
     testing_directory: TestingDirectory,
     generate_documentation: bool,
     progress_bar_mode: ProgressBarMode,
-    log_level: String,
 }
 
 impl Context {
@@ -21,14 +20,12 @@ impl Context {
         testing_directory: Option<PathBuf>,
         generate_documentation: bool,
         progress_bar_mode: ProgressBarMode,
-        log_level: String,
     ) -> Self {
         Context {
             jormungandr,
             testing_directory: testing_directory.into(),
             generate_documentation,
             progress_bar_mode,
-            log_level,
         }
     }
 

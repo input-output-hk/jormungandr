@@ -62,10 +62,6 @@ struct CommandArgs {
     #[structopt(long = "set-exit-code")]
     set_exit_code: bool,
 
-    /// level for all nodes
-    #[structopt(long = "log-level", default_value = "info")]
-    log_level: String,
-
     /// report statuses for all unstable tests
     #[structopt(long = "report-unstable")]
     report_unstable: bool,
@@ -92,14 +88,12 @@ fn main() {
     let progress_bar_mode = command_args.progress_bar_mode;
     let testing_directory = command_args.testing_directory;
     let generate_documentation = command_args.generate_documentation;
-    let log_level = command_args.log_level;
 
     let context = Context::new(
         jormungandr,
         testing_directory,
         generate_documentation,
         progress_bar_mode,
-        log_level,
     );
 
     jormungandr_scenario_tests::introduction::print(&context, "SCENARIO TEST SUITE");
