@@ -176,7 +176,8 @@ impl GlobalState {
         rand::thread_rng().fill(&mut rng_seed);
         let mut prng = ChaChaRng::from_seed(rng_seed);
 
-        let keypair = NodeKeyPair::generate(&mut prng);
+        //TODO: move this to a secure enclave
+        let keypair = NodeKeyPair::from(config.node_key);
 
         GlobalState {
             block0_hash,

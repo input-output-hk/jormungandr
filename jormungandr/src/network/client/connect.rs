@@ -3,8 +3,9 @@ use crate::blockcfg::HeaderHash;
 use crate::network::{
     grpc, p2p::comm::PeerComms, security_params::NONCE_LEN, Channels, ConnectionState,
 };
+use crate::topology::NodeId;
 use chain_core::mempack::{self, ReadBuf, Readable};
-use chain_network::data::{AuthenticatedNodeId, NodeId};
+use chain_network::data::AuthenticatedNodeId;
 use chain_network::error::{self as net_error, HandshakeError};
 
 use futures::channel::oneshot;
@@ -51,6 +52,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         match_block0(expected, block0_hash)?;
 
         // Validate the server's node ID
+        //TODO: check id is the expected one
         let peer_id = validate_peer_auth(hr.auth, &nonce)?;
 
         tracing::debug!(node_id = ?peer_id, "authenticated server peer node");
@@ -62,8 +64,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
             .await
             .map_err(ConnectError::ClientAuth)?;
 
-        let mut comms = PeerComms::new();
-        comms.set_node_id(peer_id);
+        let mut comms = PeerComms::new(peer.address());
         let (block_sub, fragment_sub, gossip_sub) = future::try_join3(
             grpc_client
                 .clone()
@@ -78,7 +79,8 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         .await
         .map_err(ConnectError::Subscription)?;
         let inbound = InboundSubscriptions {
-            peer_address: peer.connection,
+            peer_id,
+            peer_addr: peer.connection,
             block_events: block_sub,
             fragments: fragment_sub,
             gossip: gossip_sub,
@@ -107,9 +109,12 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
 
 // Validate the server peer's node ID
 fn validate_peer_auth(auth: AuthenticatedNodeId, nonce: &[u8]) -> Result<NodeId, ConnectError> {
+    use super::super::convert::Decode;
     auth.verify(nonce)
         .map_err(ConnectError::PeerSignatureVerificationFailed)?;
-    Ok(auth.into())
+    chain_network::data::NodeId::from(auth)
+        .decode()
+        .map_err(ConnectError::InvalidNodeId)
 }
 
 /// Handle used to monitor the P2P client in process of
@@ -162,7 +167,7 @@ pub enum ConnectError {
         peer_responded: HeaderHash,
     },
     #[error("invalid node ID in server Handshake response")]
-    InvalidNodeId(#[source] chain_crypto::PublicKeyError),
+    InvalidNodeId(#[source] chain_network::error::Error),
     #[error("invalid signature data in server Handshake response")]
     InvalidNodeSignature(#[source] chain_crypto::SignatureError),
     #[error("signature verification failed for peer node ID")]

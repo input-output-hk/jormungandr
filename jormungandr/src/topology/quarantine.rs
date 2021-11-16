@@ -107,7 +107,7 @@ impl ReportRecords {
             }
 
             self.report_records.put(
-                peer_info.id.clone(),
+                peer_info.id,
                 ReportRecord {
                     peer_info,
                     report_time: Instant::now(),
