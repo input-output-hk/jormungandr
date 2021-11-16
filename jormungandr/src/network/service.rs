@@ -11,7 +11,8 @@ use crate::utils::async_msg::MessageBox;
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
 use chain_network::data::p2p::{AuthenticatedNodeId, Peer};
 use chain_network::data::{
-    Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, HandshakeResponse, Header,
+    self as net_data, Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, HandshakeResponse,
+    Header,
 };
 use chain_network::error::{Code as ErrorCode, Error};
 
@@ -69,7 +70,10 @@ impl Node for NodeService {
             )
         })?;
         auth.verify(&nonce[..])?;
-        self.global_state.peers.set_node_id(addr, auth.into()).await;
+        self.global_state
+            .peers
+            .server_complete_handshake(addr, net_data::NodeId::from(auth).decode()?)
+            .await;
         Ok(())
     }
 
@@ -122,6 +126,15 @@ where
         reply.err_into::<Error>(),
     )?;
     Ok(())
+}
+
+macro_rules! check_handshake {
+    ($maybe_res:expr) => {
+        $maybe_res.ok_or(Error::new(
+            ErrorCode::FailedPrecondition,
+            "handshake not performed",
+        ))?
+    };
 }
 
 #[async_trait]
@@ -227,12 +240,12 @@ impl BlockService for NodeService {
         subscriber: Peer,
         stream: PushStream<Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
-        let addr = subscriber.addr();
+        let peer_id = check_handshake!(self.global_state.peers.client_id(subscriber.addr()).await);
         self.global_state.spawn(
             subscription::process_block_announcements(
                 stream,
                 self.channels.block_box.clone(),
-                addr,
+                peer_id,
                 self.global_state.clone(),
             )
             .in_current_span(),
@@ -241,9 +254,9 @@ impl BlockService for NodeService {
         let outbound = self
             .global_state
             .peers
-            .subscribe_to_block_events(addr)
+            .subscribe_to_block_events(&peer_id)
             .await;
-        Ok(serve_subscription(outbound))
+        Ok(serve_subscription(check_handshake!(outbound)))
     }
 }
 
@@ -262,20 +275,24 @@ impl FragmentService for NodeService {
         subscriber: Peer,
         stream: PushStream<Fragment>,
     ) -> Result<Self::SubscriptionStream, Error> {
-        let addr = subscriber.addr();
+        let peer_id = check_handshake!(self.global_state.peers.client_id(subscriber.addr()).await);
 
         self.global_state.spawn(
             subscription::process_fragments(
                 stream,
                 self.channels.transaction_box.clone(),
-                addr,
+                peer_id,
                 self.global_state.clone(),
             )
             .in_current_span(),
         );
 
-        let outbound = self.global_state.peers.subscribe_to_fragments(addr).await;
-        Ok(serve_subscription(outbound))
+        let outbound = self
+            .global_state
+            .peers
+            .subscribe_to_fragments(&peer_id)
+            .await;
+        Ok(serve_subscription(check_handshake!(outbound)))
     }
 }
 
@@ -289,19 +306,19 @@ impl GossipService for NodeService {
         subscriber: Peer,
         stream: PushStream<Gossip>,
     ) -> Result<Self::SubscriptionStream, Error> {
-        let addr = subscriber.addr();
+        let peer_id = check_handshake!(self.global_state.peers.client_id(subscriber.addr()).await);
         self.global_state.spawn(
             subscription::process_gossip(
                 stream,
                 self.channels.topology_box.clone(),
-                addr,
+                peer_id,
                 self.global_state.clone(),
             )
             .in_current_span(),
         );
 
-        let outbound = self.global_state.peers.subscribe_to_gossip(addr).await;
-        Ok(serve_subscription(outbound))
+        let outbound = self.global_state.peers.subscribe_to_gossip(&peer_id).await;
+        Ok(serve_subscription(check_handshake!(outbound)))
     }
 
     #[instrument(level = "debug", skip(self))]

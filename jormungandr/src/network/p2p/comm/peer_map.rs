@@ -1,19 +1,68 @@
 use crate::network::{
     client::ConnectHandle,
-    p2p::{
-        comm::{PeerComms, PeerInfo, PeerStats},
-        Address,
-    },
+    p2p::comm::{Address, PeerComms, PeerInfo, PeerStats},
+    security_params::NONCE_LEN,
 };
-use chain_network::data::NodeId;
+use crate::topology::NodeId;
 use linked_hash_map::LinkedHashMap;
+use rand::Rng;
+
+pub enum PeerAuth {
+    Authenticated(NodeId),
+    ServerNonce([u8; NONCE_LEN]),
+}
+
+impl PeerAuth {
+    pub fn generate_auth_nonce() -> (Self, [u8; NONCE_LEN]) {
+        let mut nonce = [0u8; NONCE_LEN];
+        rand::thread_rng().fill(&mut nonce[..]);
+        let auth = PeerAuth::ServerNonce(nonce);
+        (auth, nonce)
+    }
+    pub fn auth_nonce(&self) -> Option<&[u8; NONCE_LEN]> {
+        match self {
+            PeerAuth::ServerNonce(nonce) => Some(nonce),
+            _ => None,
+        }
+    }
+
+    pub fn set_node_id(&mut self, id: NodeId) {
+        *self = Self::Authenticated(id);
+    }
+
+    pub fn id(&self) -> Option<&NodeId> {
+        match self {
+            Self::Authenticated(id) => Some(id),
+            _ => None,
+        }
+    }
+}
+
+/// Peer authentication is checked during the handshake. For client connections, we simply
+/// do not add a peer to the map if the authentication fails.
+/// On the server side instead, we need to keep track of in progress handshakes until we have
+/// authenticated reliably a node by its id.
+/// FIXME: In addition, until a better solution is implemented, a correspondence between addresses
+/// and ids is needed to handle subscriptions. However, this is subject to ip spoofing
+/// attacks and should not be used in an open network.
+pub struct ClientAuth {
+    address_to_id: LinkedHashMap<Address, PeerAuth>,
+}
+
+impl Default for ClientAuth {
+    fn default() -> Self {
+        Self {
+            address_to_id: LinkedHashMap::new(),
+        }
+    }
+}
 
 pub struct PeerMap {
-    map: LinkedHashMap<Address, PeerData>,
+    map: LinkedHashMap<NodeId, PeerData>,
+    client_auth: ClientAuth,
     capacity: usize,
 }
 
-#[derive(Default)]
 struct PeerData {
     comms: PeerComms,
     stats: PeerStats,
@@ -26,6 +75,14 @@ pub enum CommStatus<'a> {
 }
 
 impl PeerData {
+    fn new(remote_addr: Address) -> Self {
+        Self {
+            comms: PeerComms::new(remote_addr),
+            stats: Default::default(),
+            connecting: Default::default(),
+        }
+    }
+
     fn update_comm_status(&mut self) -> CommStatus<'_> {
         if let Some(ref mut handle) = self.connecting {
             match handle.try_complete() {
@@ -56,14 +113,6 @@ impl PeerData {
 }
 
 impl<'a> CommStatus<'a> {
-    #[allow(dead_code)]
-    pub fn node_id(&self) -> Option<NodeId> {
-        match self {
-            CommStatus::Established(comms) => comms.node_id(),
-            CommStatus::Connecting(_) => None,
-        }
-    }
-
     fn comms(self) -> &'a mut PeerComms {
         match self {
             CommStatus::Connecting(comms) => comms,
@@ -76,16 +125,26 @@ impl PeerMap {
     pub fn new(capacity: usize) -> Self {
         PeerMap {
             map: LinkedHashMap::new(),
+            client_auth: ClientAuth::default(),
             capacity,
         }
     }
 
-    pub fn entry(&mut self, id: Address) -> Option<Entry<'_>> {
+    pub fn entry(&mut self, id: NodeId) -> Option<Entry<'_>> {
         use linked_hash_map::Entry::*;
 
         match self.map.entry(id) {
             Vacant(_) => None,
-            Occupied(entry) => Some(Entry { inner: entry }),
+            Occupied(entry) => {
+                let auth_info = self
+                    .client_auth
+                    .address_to_id
+                    .entry(entry.get().comms.remote_addr);
+                Some(Entry {
+                    inner: entry,
+                    auth_info,
+                })
+            }
         }
     }
 
@@ -94,35 +153,59 @@ impl PeerMap {
         self.map.clear()
     }
 
-    pub fn refresh_peer(&mut self, id: &Address) -> Option<&mut PeerStats> {
+    pub fn refresh_peer(&mut self, id: &NodeId) -> Option<&mut PeerStats> {
         self.map.get_refresh(id).map(|data| &mut data.stats)
     }
 
-    pub fn peer_comms(&mut self, id: &Address) -> Option<&mut PeerComms> {
+    pub fn peer_comms(&mut self, id: &NodeId) -> Option<&mut PeerComms> {
         self.map
             .get_mut(id)
             .map(|data| data.update_comm_status().comms())
     }
 
-    fn ensure_peer(&mut self, id: Address) -> &mut PeerData {
+    fn ensure_peer(&mut self, id: NodeId, remote_addr: Address) -> &mut PeerData {
         if !self.map.contains_key(&id) {
             self.evict_if_full();
         }
-        self.map.entry(id).or_insert_with(Default::default)
+        self.map
+            .entry(id)
+            .or_insert_with(|| PeerData::new(remote_addr))
     }
 
-    pub fn server_comms(&mut self, id: Address) -> &mut PeerComms {
-        self.ensure_peer(id).server_comms()
+    pub fn server_comms(&mut self, id: &NodeId) -> Option<&mut PeerComms> {
+        self.map.get_mut(id).map(|peer| peer.server_comms())
     }
 
-    pub fn add_connecting(&mut self, id: Address, handle: ConnectHandle) -> &mut PeerComms {
-        let data = self.ensure_peer(id);
+    pub fn generate_auth_nonce(&mut self, addr: Address) -> [u8; NONCE_LEN] {
+        let (peer_auth, nonce) = PeerAuth::generate_auth_nonce();
+        self.client_auth.address_to_id.insert(addr, peer_auth);
+        nonce
+    }
+
+    pub fn client_auth(&mut self, addr: Address) -> Option<&mut PeerAuth> {
+        self.client_auth.address_to_id.get_mut(&addr)
+    }
+
+    // This is called when connecting as a client to another node
+    pub fn add_connecting(
+        &mut self,
+        id: NodeId,
+        remote_addr: Address,
+        handle: ConnectHandle,
+    ) -> &mut PeerComms {
+        let data = self.ensure_peer(id, remote_addr);
         data.connecting = Some(handle);
         data.update_comm_status().comms()
     }
 
-    pub fn remove_peer(&mut self, id: Address) -> Option<PeerComms> {
-        self.map.remove(&id).map(|mut data| {
+    // This is called when accepting client connections as a server
+    pub fn add_client(&mut self, id: NodeId, remote_addr: Address) -> &mut PeerComms {
+        let data = self.ensure_peer(id, remote_addr);
+        data.update_comm_status().comms()
+    }
+
+    pub fn remove_peer(&mut self, id: &NodeId) -> Option<PeerComms> {
+        self.map.remove(id).map(|mut data| {
             // A bit tricky here: use PeerData::update_comm_status for the
             // side effect, then return the up-to-date member.
             data.update_comm_status();
@@ -130,13 +213,13 @@ impl PeerMap {
         })
     }
 
-    pub fn next_peer_for_block_fetch(&mut self) -> Option<(Address, &mut PeerComms)> {
+    pub fn next_peer_for_block_fetch(&mut self) -> Option<(NodeId, &mut PeerComms)> {
         let mut iter = self.map.iter_mut();
         while let Some((id, data)) = iter.next_back() {
             match data.update_comm_status() {
                 CommStatus::Established(comms) => return Some((*id, comms)),
                 CommStatus::Connecting(_) => {}
-            }
+            };
         }
         None
     }
@@ -144,8 +227,9 @@ impl PeerMap {
     pub fn infos(&self) -> Vec<PeerInfo> {
         self.map
             .iter()
-            .map(|(addr, data)| PeerInfo {
-                addr: Some(*addr),
+            .map(|(&id, data)| PeerInfo {
+                id,
+                addr: None,
                 stats: data.stats.clone(),
             })
             .collect()
@@ -170,7 +254,8 @@ impl PeerMap {
 }
 
 pub struct Entry<'a> {
-    inner: linked_hash_map::OccupiedEntry<'a, Address, PeerData>,
+    inner: linked_hash_map::OccupiedEntry<'a, NodeId, PeerData>,
+    auth_info: linked_hash_map::Entry<'a, Address, PeerAuth>,
 }
 
 impl<'a> Entry<'a> {
@@ -179,6 +264,10 @@ impl<'a> Entry<'a> {
     }
 
     pub fn remove(self) {
+        use linked_hash_map::Entry::*;
         self.inner.remove();
+        if let Occupied(entry) = self.auth_info {
+            entry.remove();
+        }
     }
 }

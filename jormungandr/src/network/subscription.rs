@@ -1,9 +1,9 @@
-use super::{buffer_sizes, convert::Decode, p2p::Address, GlobalStateR};
+use super::{buffer_sizes, convert::Decode, GlobalStateR};
 use crate::{
     blockcfg::Fragment,
     intercom::{self, BlockMsg, TopologyMsg, TransactionMsg},
     settings::start::network::Configuration,
-    topology::Gossip,
+    topology::{Gossip, NodeId},
     utils::async_msg::{self, MessageBox},
 };
 use chain_network::data as net_data;
@@ -39,7 +39,7 @@ fn handle_mbox_error(err: async_msg::SendError) -> Error {
 pub async fn process_block_announcements<S>(
     stream: S,
     mbox: MessageBox<BlockMsg>,
-    node_id: Address,
+    node_id: NodeId,
     global_state: GlobalStateR,
 ) where
     S: TryStream<Ok = net_data::Header, Error = Error>,
@@ -57,7 +57,7 @@ pub async fn process_block_announcements<S>(
 pub async fn process_gossip<S>(
     stream: S,
     mbox: MessageBox<TopologyMsg>,
-    node_id: Address,
+    node_id: NodeId,
     global_state: GlobalStateR,
 ) where
     S: TryStream<Ok = net_data::Gossip, Error = Error>,
@@ -78,7 +78,7 @@ pub async fn process_gossip<S>(
 pub async fn process_fragments<S>(
     stream: S,
     mbox: MessageBox<TransactionMsg>,
-    node_id: Address,
+    node_id: NodeId,
     global_state: GlobalStateR,
 ) where
     S: TryStream<Ok = net_data::Fragment, Error = Error>,
@@ -96,7 +96,7 @@ pub async fn process_fragments<S>(
 #[must_use = "sinks do nothing unless polled"]
 pub struct BlockAnnouncementProcessor {
     mbox: MessageBox<BlockMsg>,
-    node_id: Address,
+    node_id: NodeId,
     global_state: GlobalStateR,
     pending_processing: PendingProcessing,
 }
@@ -104,7 +104,7 @@ pub struct BlockAnnouncementProcessor {
 impl BlockAnnouncementProcessor {
     pub(super) fn new(
         mbox: MessageBox<BlockMsg>,
-        node_id: Address,
+        node_id: NodeId,
         global_state: GlobalStateR,
     ) -> Self {
         BlockAnnouncementProcessor {
@@ -123,7 +123,7 @@ impl BlockAnnouncementProcessor {
         let state = self.global_state.clone();
         let node_id = self.node_id;
         let fut = async move {
-            let refreshed = state.peers.refresh_peer_on_block(node_id).await;
+            let refreshed = state.peers.refresh_peer_on_block(&node_id).await;
             if !refreshed {
                 tracing::debug!("received block from node that is not in the peer map");
             }
@@ -144,7 +144,7 @@ impl BlockAnnouncementProcessor {
 #[must_use = "sinks do nothing unless polled"]
 pub struct FragmentProcessor {
     mbox: MessageBox<TransactionMsg>,
-    node_id: Address,
+    node_id: NodeId,
     global_state: GlobalStateR,
     buffered_fragments: Vec<Fragment>,
     pending_processing: PendingProcessing,
@@ -153,7 +153,7 @@ pub struct FragmentProcessor {
 impl FragmentProcessor {
     pub(super) fn new(
         mbox: MessageBox<TransactionMsg>,
-        node_id: Address,
+        node_id: NodeId,
         global_state: GlobalStateR,
     ) -> Self {
         FragmentProcessor {
@@ -169,7 +169,7 @@ impl FragmentProcessor {
         let state = self.global_state.clone();
         let node_id = self.node_id;
         let fut = async move {
-            let refreshed = state.peers.refresh_peer_on_fragment(node_id).await;
+            let refreshed = state.peers.refresh_peer_on_fragment(&node_id).await;
             if !refreshed {
                 tracing::debug!("received fragment from node that is not in the peer map",);
             }
@@ -183,7 +183,7 @@ impl FragmentProcessor {
 
 pub struct GossipProcessor {
     mbox: MessageBox<TopologyMsg>,
-    node_id: Address,
+    node_id: NodeId,
     global_state: GlobalStateR,
     pending_processing: PendingProcessing,
 }
@@ -191,7 +191,7 @@ pub struct GossipProcessor {
 impl GossipProcessor {
     pub(super) fn new(
         mbox: MessageBox<TopologyMsg>,
-        node_id: Address,
+        node_id: NodeId,
         global_state: GlobalStateR,
     ) -> Self {
         GossipProcessor {
@@ -393,7 +393,7 @@ impl Sink<net_data::Gossip> for GossipProcessor {
         let node_id = self.node_id;
         let fut = future::join(
             async move {
-                let refreshed = state1.peers.refresh_peer_on_gossip(node_id).await;
+                let refreshed = state1.peers.refresh_peer_on_gossip(&node_id).await;
                 if !refreshed {
                     tracing::debug!("received gossip from node that is not in the peer map",);
                 }

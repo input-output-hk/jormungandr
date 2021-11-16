@@ -9,7 +9,7 @@ use crate::{
     blockchain::Checkpoints,
     intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg, WatchMsg},
     metrics::{Metrics, MetricsBackend},
-    network::p2p::Address,
+    topology::NodeId,
     utils::{
         async_msg::{self, MessageBox, MessageQueue},
         fire_forget_scheduler::{
@@ -26,8 +26,8 @@ use tracing_futures::Instrument;
 
 use std::{sync::Arc, time::Duration};
 
-type PullHeadersScheduler = FireForgetScheduler<HeaderHash, Address, Checkpoints>;
-type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, Address, ()>;
+type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
+type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, NodeId, ()>;
 
 const TIP_UPDATE_QUEUE_SIZE: usize = 5;
 
@@ -89,11 +89,11 @@ fn spawn_pull_headers_scheduler(
 ) -> PullHeadersScheduler {
     let scheduler_future = FireForgetSchedulerFuture::new(
         &PULL_HEADERS_SCHEDULER_CONFIG,
-        move |to, node_address, from| {
+        move |to, node_id, from| {
             network_mbox
                 .clone()
                 .try_send(NetworkMsg::PullHeaders {
-                    node_address,
+                    node_id,
                     from,
                     to,
                 })
@@ -243,7 +243,7 @@ impl Process {
                     hash = %header.hash(),
                     parent = %header.parent_id(),
                     date = %header.block_date(),
-                    peer = %node_id
+                    peer = ?node_id
                 );
                 let _enter = span.enter();
                 tracing::debug!("received block announcement from network");
@@ -403,7 +403,7 @@ async fn process_block_announcement(
     blockchain: Blockchain,
     blockchain_tip: Tip,
     header: Header,
-    node_id: Address,
+    node_id: NodeId,
     mut pull_headers_scheduler: PullHeadersScheduler,
     mut get_next_block_scheduler: GetNextBlockScheduler,
 ) -> Result<(), Error> {

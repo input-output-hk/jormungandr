@@ -3,7 +3,7 @@ use crate::blockcfg::{
 };
 use crate::blockchain::{Checkpoints, LeadershipBlock, StorageError};
 use crate::fragment::selection::FragmentSelectionAlgorithmParams;
-use crate::network::p2p::{comm::PeerInfo, Address};
+use crate::network::p2p::comm::PeerInfo;
 use crate::topology::{Gossips, NodeId, Peer, PeerInfo as TopologyPeerInfo, View};
 use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
@@ -579,7 +579,7 @@ pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
     LeadershipBlock(Box<LeadershipBlock>),
     /// A untrusted block Header has been received from the network task
-    AnnouncedBlock(Box<Header>, Address),
+    AnnouncedBlock(Box<Header>, NodeId),
     /// A stream of untrusted blocks has been received from the network task.
     NetworkBlocks(RequestStreamHandle<Block, ()>),
     /// The stream of headers for missing chain blocks has been received
@@ -601,9 +601,9 @@ pub enum PropagateMsg {
 pub enum NetworkMsg {
     Propagate(Box<PropagateMsg>),
     GetBlocks(Vec<HeaderHash>),
-    GetNextBlock(Address, HeaderHash),
+    GetNextBlock(NodeId, HeaderHash),
     PullHeaders {
-        node_address: Address,
+        node_id: NodeId,
         from: Checkpoints,
         to: HeaderHash,
     },

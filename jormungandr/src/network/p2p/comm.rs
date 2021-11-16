@@ -1,14 +1,14 @@
 mod peer_map;
 use super::Address;
 use crate::network::{client::ConnectHandle, security_params::NONCE_LEN};
+use crate::topology::NodeId;
 use chain_network::data::block::{BlockEvent, ChainPullRequest};
-use chain_network::data::{BlockId, BlockIds, Fragment, Gossip, Header, NodeId};
+use chain_network::data::{BlockId, BlockIds, Fragment, Gossip, Header};
 use futures::channel::mpsc;
 use futures::lock::{Mutex, MutexLockFuture};
 use futures::prelude::*;
 use futures::stream;
 use peer_map::{CommStatus, PeerMap};
-use rand::Rng;
 use std::fmt::Debug;
 use tracing::debug_span;
 
@@ -18,6 +18,7 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::SystemTime;
+use tracing::Span;
 use tracing_futures::Instrument;
 
 // Buffer size determines the number of stream items pending processing that
@@ -222,68 +223,38 @@ enum SubscriptionState<T> {
     Subscribed(mpsc::Sender<T>),
 }
 
-enum PeerAuth {
-    None,
-    Authenticated(NodeId),
-    ServerNonce([u8; NONCE_LEN]),
-}
-
-impl Default for PeerAuth {
-    fn default() -> Self {
-        PeerAuth::None
-    }
-}
-
 /// State of the communication streams that a single peer connection polls
 /// for outbound data and commands.
 ///
 /// Dropping a `PeerComms` instance results in the client-side connection to
 /// be closed if it was established, or all outbound subscription streams of a
 /// server-side connection to be closed.
-#[derive(Default)]
 pub struct PeerComms {
+    // Needed if this is handled by the server, useful anyway for debugging
+    remote_addr: Address,
     block_announcements: CommHandle<Header>,
     block_solicitations: CommHandle<BlockIds>,
     chain_pulls: CommHandle<ChainPullRequest>,
     fragments: CommHandle<Fragment>,
     gossip: CommHandle<Gossip>,
-    auth: PeerAuth,
 }
 
 impl PeerComms {
-    pub fn new() -> PeerComms {
-        Default::default()
+    pub fn new(remote_addr: Address) -> PeerComms {
+        Self {
+            remote_addr,
+            block_announcements: Default::default(),
+            block_solicitations: Default::default(),
+            chain_pulls: Default::default(),
+            fragments: Default::default(),
+            gossip: Default::default(),
+        }
     }
 
     pub fn has_client_subscriptions(&self) -> bool {
         self.block_announcements.is_client()
             || self.fragments.is_client()
             || self.gossip.is_client()
-    }
-
-    pub fn node_id(&self) -> Option<NodeId> {
-        match &self.auth {
-            PeerAuth::Authenticated(id) => Some(id.clone()),
-            _ => None,
-        }
-    }
-
-    pub fn auth_nonce(&self) -> Option<[u8; NONCE_LEN]> {
-        match self.auth {
-            PeerAuth::ServerNonce(nonce) => Some(nonce),
-            _ => None,
-        }
-    }
-
-    pub fn generate_auth_nonce(&mut self) -> [u8; NONCE_LEN] {
-        let mut nonce = [0u8; NONCE_LEN];
-        rand::thread_rng().fill(&mut nonce[..]);
-        self.auth = PeerAuth::ServerNonce(nonce);
-        nonce
-    }
-
-    pub fn set_node_id(&mut self, id: NodeId) {
-        self.auth = PeerAuth::Authenticated(id);
     }
 
     pub fn update(&mut self, newer: PeerComms) {
@@ -295,7 +266,6 @@ impl PeerComms {
         self.gossip.update(newer.gossip);
         self.block_solicitations.update(newer.block_solicitations);
         self.chain_pulls.update(newer.chain_pulls);
-        self.auth = newer.auth;
     }
 
     pub fn clear_pending(&mut self) {
@@ -476,6 +446,7 @@ fn update_last_timestamp(field: &mut Option<SystemTime>, timestamp: SystemTime) 
 
 #[derive(Debug)]
 pub struct PeerInfo {
+    pub id: NodeId,
     pub addr: Option<SocketAddr>,
     pub stats: PeerStats,
 }
@@ -506,7 +477,8 @@ impl Peers {
 
     pub async fn add_connecting(
         &self,
-        peer: Address,
+        peer: NodeId,
+        remote_addr: Address,
         handle: ConnectHandle,
         options: ConnectOptions,
     ) {
@@ -515,7 +487,7 @@ impl Peers {
         }
         let mut map = self.inner().await;
         map.evict_clients(options.evict_clients);
-        let comms = map.add_connecting(peer, handle);
+        let comms = map.add_connecting(peer, remote_addr, handle);
         if let Some(header) = options.pending_block_announcement {
             comms.set_pending_block_announcement(header);
         }
@@ -527,59 +499,76 @@ impl Peers {
         }
     }
 
-    pub async fn update_entry(&self, peer: Address) {
+    pub async fn update_entry(&self, peer: NodeId) {
         if let Some(ref mut peer) = self.inner().await.entry(peer) {
             peer.update_comm_status();
         }
     }
 
-    pub async fn remove_peer(&self, peer: Address) -> Option<PeerComms> {
+    pub async fn remove_peer(&self, peer: &NodeId) -> Option<PeerComms> {
         let mut map = self.inner().await;
         map.remove_peer(peer)
     }
 
-    pub async fn generate_auth_nonce(&self, peer: Address) -> [u8; NONCE_LEN] {
+    pub async fn generate_auth_nonce(&self, peer_addr: Address) -> [u8; NONCE_LEN] {
         let mut map = self.inner().await;
-        let comms = map.server_comms(peer);
-        comms.generate_auth_nonce()
+        map.generate_auth_nonce(peer_addr)
     }
 
-    pub async fn get_auth_nonce(&self, peer: Address) -> Option<[u8; NONCE_LEN]> {
+    pub async fn get_auth_nonce(&self, peer_addr: Address) -> Option<[u8; NONCE_LEN]> {
         let mut map = self.inner().await;
-        let comms = map.server_comms(peer);
-        comms.auth_nonce()
+        map.client_auth(peer_addr)
+            .and_then(|auth| auth.auth_nonce().cloned())
     }
 
-    pub async fn set_node_id(&self, peer: Address, id: NodeId) {
+    pub async fn server_complete_handshake(&self, peer_addr: Address, id: NodeId) {
         tracing::debug!(
-            peer = %peer,
+            peer_addr = %peer_addr,
             node_id = ?id,
             "authenticated client peer node"
         );
         let mut map = self.inner().await;
-        let comms = map.server_comms(peer);
-        comms.set_node_id(id);
+        if let Some(auth) = map.client_auth(peer_addr) {
+            auth.set_node_id(id);
+        } else {
+            tracing::warn!(
+                %peer_addr,
+                ?id,
+                "peer is not known to the node, was the handshake procedure skipped?",
+            );
+        }
+        map.add_client(id, peer_addr);
     }
 
-    pub async fn subscribe_to_block_events(&self, peer: Address) -> BlockEventSubscription {
+    pub async fn client_id(&self, peer_addr: Address) -> Option<NodeId> {
+        self.inner()
+            .await
+            .client_auth(peer_addr)
+            .and_then(|peer| peer.id().cloned())
+    }
+
+    /// returns `None` if the handshake process was not completed successfully
+    pub async fn subscribe_to_block_events(&self, peer: &NodeId) -> Option<BlockEventSubscription> {
         let mut map = self.inner().await;
-        let comms = map.server_comms(peer);
-        comms.subscribe_to_block_events()
+        map.server_comms(peer)
+            .map(|comms| comms.subscribe_to_block_events())
     }
 
-    pub async fn subscribe_to_fragments(&self, peer: Address) -> FragmentSubscription {
+    /// returns `None` if the handshake process was not completed successfully
+    pub async fn subscribe_to_fragments(&self, peer: &NodeId) -> Option<FragmentSubscription> {
         let mut map = self.inner().await;
-        let comms = map.server_comms(peer);
-        comms.subscribe_to_fragments()
+        map.server_comms(peer)
+            .map(|comms| comms.subscribe_to_fragments())
     }
 
-    pub async fn subscribe_to_gossip(&self, peer: Address) -> GossipSubscription {
+    /// returns `None` if the handshake process was not completed successfully
+    pub async fn subscribe_to_gossip(&self, peer: &NodeId) -> Option<GossipSubscription> {
         let mut map = self.inner().await;
-        let comms = map.server_comms(peer);
-        comms.subscribe_to_gossip()
+        map.server_comms(peer)
+            .map(|comms| comms.subscribe_to_gossip())
     }
 
-    async fn propagate_with<T, F>(&self, peer: Address, f: F) -> Result<(), Address>
+    async fn propagate_with<T, F>(&self, peer: NodeId, f: F) -> Result<(), NodeId>
     where
         for<'a> F: Fn(CommStatus<'a>) -> Result<(), PropagateError<T>>,
     {
@@ -604,7 +593,7 @@ impl Peers {
         Err(peer)
     }
 
-    pub async fn propagate_block(&self, peer: Address, header: Header) -> Result<(), Address> {
+    pub async fn propagate_block(&self, peer: NodeId, header: Header) -> Result<(), NodeId> {
         tracing::debug!("sending block");
         self.propagate_with(peer, move |status| match status {
             CommStatus::Established(comms) => comms.try_send_block_announcement(header.clone()),
@@ -616,11 +605,7 @@ impl Peers {
         .await
     }
 
-    pub async fn propagate_fragment(
-        &self,
-        peer: Address,
-        fragment: Fragment,
-    ) -> Result<(), Address> {
+    pub async fn propagate_fragment(&self, peer: NodeId, fragment: Fragment) -> Result<(), NodeId> {
         tracing::debug!("sending fragment");
         self.propagate_with(peer, move |status| match status {
             CommStatus::Established(comms) => comms.try_send_fragment(fragment.clone()),
@@ -632,7 +617,7 @@ impl Peers {
         .await
     }
 
-    pub async fn propagate_gossip_to(&self, peer: Address, gossip: Gossip) -> Result<(), Gossip> {
+    pub async fn propagate_gossip_to(&self, peer: NodeId, gossip: Gossip) -> Result<(), Gossip> {
         tracing::debug!("sending gossip");
         let mut map = self.inner().await;
         if let Some(mut entry) = map.entry(peer) {
@@ -656,10 +641,10 @@ impl Peers {
         }
     }
 
-    pub async fn refresh_peer_on_block(&self, peer: Address) -> bool {
+    pub async fn refresh_peer_on_block(&self, peer: &NodeId) -> bool {
         let timestamp = SystemTime::now();
         let mut map = self.inner().await;
-        match map.refresh_peer(&peer) {
+        match map.refresh_peer(peer) {
             Some(stats) => {
                 stats.update_last_block_received(timestamp);
                 true
@@ -668,10 +653,10 @@ impl Peers {
         }
     }
 
-    pub async fn refresh_peer_on_fragment(&self, peer: Address) -> bool {
+    pub async fn refresh_peer_on_fragment(&self, peer: &NodeId) -> bool {
         let timestamp = SystemTime::now();
         let mut map = self.inner().await;
-        match map.refresh_peer(&peer) {
+        match map.refresh_peer(peer) {
             Some(stats) => {
                 stats.update_last_fragment_received(timestamp);
                 true
@@ -680,10 +665,10 @@ impl Peers {
         }
     }
 
-    pub async fn refresh_peer_on_gossip(&self, peer: Address) -> bool {
+    pub async fn refresh_peer_on_gossip(&self, peer: &NodeId) -> bool {
         let timestamp = SystemTime::now();
         let mut map = self.inner().await;
-        match map.refresh_peer(&peer) {
+        match map.refresh_peer(peer) {
             Some(stats) => {
                 stats.update_last_gossip_received(timestamp);
                 true
@@ -696,22 +681,24 @@ impl Peers {
         let mut map = self.inner().await;
         if let Some((peer, _)) = map.next_peer_for_block_fetch() {
             drop(map); // do not hold the lock
-            self.solicit_blocks_peer(peer, hashes).await;
+            self.solicit_blocks_peer(&peer, hashes).await;
         } else {
             tracing::warn!("no peers to fetch blocks from");
         }
     }
 
-    pub async fn solicit_blocks_peer(&self, peer: Address, hashes: BlockIds) {
+    pub async fn solicit_blocks_peer(&self, peer: &NodeId, hashes: BlockIds) {
         let span = debug_span!(
             "block solicitation",
-            %peer,
+            ?peer,
+            peer_addr = tracing::field::Empty,
             hashes = %format!("[{}]", hashes.iter().map(hex::encode).collect::<Vec<_>>().join(", "))
         );
         async move {
             let mut map = self.inner().await;
-            match map.peer_comms(&peer) {
+            match map.peer_comms(peer) {
                 Some(comms) => {
+                    Span::current().record("peer_addr", &format_args!("{}", comms.remote_addr));
                     tracing::debug!("sending block solicitation");
                     comms
                         .block_solicitations
@@ -734,17 +721,19 @@ impl Peers {
         .await
     }
 
-    pub async fn pull_headers(&self, peer: Address, from: BlockIds, to: BlockId) {
+    pub async fn pull_headers(&self, peer: &NodeId, from: BlockIds, to: BlockId) {
         let span = debug_span!(
             "pull_header",
-            %peer,
+            ?peer,
+            peer_addr = tracing::field::Empty,
             from = %format!("[{}]", from.iter().map(hex::encode).collect::<Vec<_>>().join(", ")),
             to = %hex::encode(to)
         );
         async {
             let mut map = self.inner().await;
-            match map.peer_comms(&peer) {
+            match map.peer_comms(peer) {
                 Some(comms) => {
+                    Span::current().record("peer_addr", &format_args!("{}", comms.remote_addr));
                     tracing::debug!("sending header pull request");
                     comms
                         .chain_pulls
@@ -760,7 +749,7 @@ impl Peers {
                 None => {
                     // TODO: connect and request on demand, or select another peer?
                     tracing::info!(
-                        peer = %peer,
+                        peer = ?peer,
                         "peer not available to pull headers from"
                     );
                 }
