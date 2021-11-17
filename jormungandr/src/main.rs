@@ -47,6 +47,7 @@ pub mod state;
 pub mod stuck_notifier;
 pub mod topology;
 pub mod utils;
+pub mod watch_client;
 
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_futures::Instrument;
@@ -77,6 +78,7 @@ const NETWORK_TASK_QUEUE_LEN: usize = 64;
 const EXPLORER_TASK_QUEUE_LEN: usize = 32;
 const CLIENT_TASK_QUEUE_LEN: usize = 32;
 const TOPOLOGY_TASK_QUEUE_LEN: usize = 32;
+const WATCH_CLIENT_TASK_QUEUE_LEN: usize = 32;
 const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
@@ -148,6 +150,22 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         }
     };
 
+    let (watch_msgbox, watch_client) = {
+        let (msgbox, queue) = async_msg::channel(WATCH_CLIENT_TASK_QUEUE_LEN);
+
+        let blockchain_tip = blockchain_tip.clone();
+        let current_tip = block_on(async { blockchain_tip.get_ref().await.header().clone() });
+
+        let (client, message_processor) =
+            watch_client::WatchClient::new(current_tip, blockchain.clone());
+
+        services.spawn_future("watch_client", move |info| async move {
+            message_processor.start(info, queue).await
+        });
+
+        (msgbox, client)
+    };
+
     {
         let blockchain = blockchain.clone();
         let blockchain_tip = blockchain_tip.clone();
@@ -165,6 +183,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 network_msgbox,
                 fragment_msgbox,
                 explorer_msgbox,
+                watch_msgbox,
                 garbage_collection_interval: block_cache_ttl,
             };
             blockchain::start(task_data, info, block_queue)
@@ -206,6 +225,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 global_state,
                 input: network_queue,
                 channels,
+                watch: watch_client,
             };
             network::start(params)
         });
