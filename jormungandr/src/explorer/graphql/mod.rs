@@ -1,12 +1,8 @@
 mod certificates;
+mod config_param;
 mod connections;
 mod error;
 mod scalars;
-
-use async_graphql::connection::{query, Connection, Edge, EmptyFields};
-use async_graphql::{
-    Context, EmptyMutation, FieldError, FieldResult, Object, SimpleObject, Subscription,
-};
 
 use self::connections::{
     compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
@@ -25,6 +21,10 @@ use super::persistent_sequence::PersistentSequence;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use crate::explorer::indexing::ExplorerVote;
 use crate::explorer::{ExplorerDb, Settings as ChainSettings};
+use async_graphql::connection::{query, Connection, Edge, EmptyFields};
+use async_graphql::{
+    Context, EmptyMutation, FieldError, FieldResult, Object, SimpleObject, Subscription, Union,
+};
 use cardano_legacy_address::Addr as OldAddress;
 use certificates::*;
 use chain_impl_mockchain::certificate;
@@ -703,6 +703,7 @@ impl Block {
     }
 }
 
+#[derive(Clone)]
 pub struct BftLeader {
     id: BftLeaderId,
 }
@@ -720,7 +721,7 @@ impl BftLeader {
     }
 }
 
-#[derive(async_graphql::Union)]
+#[derive(Union)]
 pub enum Leader {
     StakePool(Pool),
     BftLeader(BftLeader),
@@ -1340,7 +1341,7 @@ impl VotePayloadPrivateStatus {
     }
 }
 
-#[derive(Clone, async_graphql::Union)]
+#[derive(Clone, Union)]
 pub enum VotePayloadStatus {
     Public(VotePayloadPublicStatus),
     Private(VotePayloadPrivateStatus),
@@ -1359,7 +1360,7 @@ pub struct TallyPrivateStatus {
     options: VoteOptionRange,
 }
 
-#[derive(Clone, async_graphql::Union)]
+#[derive(Clone, Union)]
 pub enum TallyStatus {
     Public(TallyPublicStatus),
     Private(TallyPrivateStatus),
