@@ -7,5 +7,5 @@ edition = "2018"
 [dependencies]
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-thiserror = "1.0.26"
+thiserror = "1.0.30"
 lru       = "0.6.6"
