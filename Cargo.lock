@@ -2154,6 +2154,7 @@ dependencies = [
  "tracing-subscriber",
  "typed-bytes",
  "url",
+ "warp",
  "zip",
 ]
 
@@ -2277,6 +2278,20 @@ checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if 1.0.0",
  "serde",
+]
+
+[[package]]
+name = "loki"
+version = "0.1.0"
+dependencies = [
+ "chain-addr",
+ "chain-core",
+ "chain-impl-mockchain",
+ "jormungandr-lib",
+ "jormungandr-testing-utils",
+ "serde_yaml",
+ "structopt",
+ "thiserror",
 ]
 
 [[package]]
@@ -4044,9 +4059,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.9.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b7b349f11a7047e6d1276853e612d152f5e8a352c61917887cc2169e2366b4c"
+checksum = "588b2d10a336da58d877567cd8fb8a14b463e2104910f8132cd054b4b96e29ee"
 dependencies = [
  "autocfg",
  "bytes",

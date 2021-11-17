@@ -135,6 +135,10 @@ impl AdversaryNode {
     pub fn builder(genesis_block: Block) -> AdversaryNodeBuilder {
         AdversaryNodeBuilder::new(genesis_block)
     }
+
+    pub fn node_data(&self) -> Arc<RwLock<NodeData>> {
+        self.node_data.clone()
+    }
 }
 
 impl Drop for AdversaryNode {

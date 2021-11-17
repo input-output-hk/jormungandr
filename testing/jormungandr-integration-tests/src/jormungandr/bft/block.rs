@@ -1,13 +1,12 @@
 use assert_fs::TempDir;
 use chain_impl_mockchain::{
-    block::{builder, BlockDate, BlockVersion, Contents, ContentsBuilder},
+    block::{BlockDate, ContentsBuilder},
     chaintypes::{ConsensusType, ConsensusVersion},
     fee::LinearFee,
-    key::BftLeaderId,
 };
 use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::{
-    adversary::process::AdversaryNodeBuilder,
+    adversary::{block::BlockBuilder, process::AdversaryNodeBuilder},
     jormungandr::{ConfigurationBuilder, Starter},
     network::{builder::NetworkBuilder, Blockchain, Node, SpawnParams, Topology},
     startup, FragmentBuilder,
@@ -25,34 +24,20 @@ fn block_with_incorrect_signature() {
         .with_leader_key_pair(keys.clone())
         .build(&temp_dir);
 
-    let bft_leader_id = BftLeaderId::from(keys.identifier().into_public_key());
-
     let block0 = node_params.block0_configuration().to_block();
 
     let jormungandr = Starter::default().config(node_params).start().unwrap();
 
-    let block = builder(
-        BlockVersion::Ed25519Signed,
-        Contents::empty(),
-        |hdr_builder| {
-            Ok::<_, ()>({
-                let builder = hdr_builder
-                    .set_parent(&block0.header().id(), 1.into())
-                    .set_date(BlockDate {
-                        epoch: 0,
-                        slot_id: 1,
-                    })
-                    .into_bft_builder()
-                    .unwrap()
-                    .set_consensus_data(&bft_leader_id);
-
-                let signature = keys.signing_key().into_secret_key().sign_slice(&[42u8]);
-
-                builder.set_signature(signature.into()).generalize()
-            })
+    let block = BlockBuilder::bft(
+        BlockDate {
+            epoch: 0,
+            slot_id: 1,
         },
+        block0.header().clone(),
     )
-    .unwrap();
+    .signing_key(keys.signing_key())
+    .invalid_signature()
+    .build();
 
     assert!(AdversaryNodeBuilder::new(block0)
         .build()
@@ -88,67 +73,45 @@ fn block_with_wrong_leader() {
 
     let block0 = leader.block0_configuration().to_block();
 
-    let wrong_leader_block = builder(
-        BlockVersion::Ed25519Signed,
-        Contents::empty(),
-        |hdr_builder| {
-            Ok::<_, ()>({
-                hdr_builder
-                    .set_parent(&block0.header().id(), 1.into())
-                    .set_date(BlockDate {
-                        epoch: 0,
-                        slot_id: 1,
-                    })
-                    .into_bft_builder()
-                    .unwrap()
-                    .sign_using(
-                        &controller
-                            .node_settings(LEADER_1)
-                            .unwrap()
-                            .secret
-                            .bft
-                            .as_ref()
-                            .unwrap()
-                            .signing_key
-                            .clone()
-                            .into_secret_key(),
-                    )
-                    .generalize()
-            })
+    let wrong_leader_block = BlockBuilder::bft(
+        BlockDate {
+            epoch: 0,
+            slot_id: 1,
         },
+        block0.header().clone(),
     )
-    .unwrap();
+    .signing_key(
+        controller
+            .node_settings(LEADER_1)
+            .unwrap()
+            .secret
+            .bft
+            .as_ref()
+            .unwrap()
+            .signing_key
+            .clone(),
+    )
+    .build();
 
-    let correct_leader_block = builder(
-        BlockVersion::Ed25519Signed,
-        Contents::empty(),
-        |hdr_builder| {
-            Ok::<_, ()>({
-                hdr_builder
-                    .set_parent(&block0.header().id(), 1.into())
-                    .set_date(BlockDate {
-                        epoch: 0,
-                        slot_id: 1,
-                    })
-                    .into_bft_builder()
-                    .unwrap()
-                    .sign_using(
-                        &controller
-                            .node_settings(LEADER_2)
-                            .unwrap()
-                            .secret
-                            .bft
-                            .as_ref()
-                            .unwrap()
-                            .signing_key
-                            .clone()
-                            .into_secret_key(),
-                    )
-                    .generalize()
-            })
+    let correct_leader_block = BlockBuilder::bft(
+        BlockDate {
+            epoch: 0,
+            slot_id: 1,
         },
+        block0.header().clone(),
     )
-    .unwrap();
+    .signing_key(
+        controller
+            .node_settings(LEADER_2)
+            .unwrap()
+            .secret
+            .bft
+            .as_ref()
+            .unwrap()
+            .signing_key
+            .clone(),
+    )
+    .build();
 
     let mut adversary = AdversaryNodeBuilder::new(block0).build();
 
@@ -175,23 +138,14 @@ fn block_with_nonexistent_leader() {
 
     let jormungandr = Starter::default().config(node_params).start().unwrap();
 
-    let contents = Contents::empty();
-
-    let block = builder(BlockVersion::Ed25519Signed, contents, |hdr_builder| {
-        Ok::<_, ()>({
-            hdr_builder
-                .set_parent(&block0.header().id(), 1.into())
-                .set_date(BlockDate {
-                    epoch: 0,
-                    slot_id: 1,
-                })
-                .into_bft_builder()
-                .unwrap()
-                .sign_using(startup::create_new_key_pair().0.private_key())
-                .generalize()
-        })
-    })
-    .unwrap();
+    let block = BlockBuilder::bft(
+        BlockDate {
+            epoch: 0,
+            slot_id: 1,
+        },
+        block0.header().clone(),
+    )
+    .build();
 
     assert!(AdversaryNodeBuilder::new(block0)
         .build()
@@ -232,25 +186,16 @@ fn block_with_invalid_fragment() {
         .unwrap(),
     );
 
-    let block = builder(
-        BlockVersion::Ed25519Signed,
-        contents_builder.into(),
-        |hdr_builder| {
-            Ok::<_, ()>({
-                hdr_builder
-                    .set_parent(&block0.header().id(), 1.into())
-                    .set_date(BlockDate {
-                        epoch: 0,
-                        slot_id: 1,
-                    })
-                    .into_bft_builder()
-                    .unwrap()
-                    .sign_using(keys.0.private_key())
-                    .generalize()
-            })
+    let block = BlockBuilder::bft(
+        BlockDate {
+            epoch: 0,
+            slot_id: 1,
         },
+        block0.header().clone(),
     )
-    .unwrap();
+    .signing_key(keys.signing_key())
+    .contents(contents_builder.into())
+    .build();
 
     assert!(AdversaryNodeBuilder::new(block0)
         .build()
