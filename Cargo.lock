@@ -2060,7 +2060,7 @@ dependencies = [
  "chain-impl-mockchain",
  "chain-time",
  "chrono",
- "console 0.14.1",
+ "console 0.15.0",
  "custom_debug",
  "dialoguer 0.8.0",
  "function_name",
