@@ -6,10 +6,9 @@ use crate::{
 };
 use function_name::named;
 use jormungandr_testing_utils::{testing::network::FaketimeConfig, wallet::Wallet};
-use rand_chacha::ChaChaRng;
 
 #[named]
-pub fn bft_forks(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn bft_forks(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
 
     let n_transactions = 5;

@@ -7,7 +7,6 @@ use crate::{
     Context, ScenarioResult,
 };
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
-use rand_chacha::ChaChaRng;
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
@@ -15,7 +14,7 @@ const LEADER_2: &str = "Leader2";
 use function_name::named;
 
 #[named]
-pub fn two_transaction_to_two_leaders(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn two_transaction_to_two_leaders(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

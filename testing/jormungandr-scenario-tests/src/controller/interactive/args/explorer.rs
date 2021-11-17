@@ -1,4 +1,4 @@
-use super::UserInteractionController;
+use crate::controller::UserInteractionController;
 use crate::test::Result;
 use jortestkit::prelude::InteractiveCommandError;
 use structopt::StructOpt;
@@ -26,7 +26,7 @@ pub struct ExplorerTip {
 impl ExplorerTip {
     pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
         let node = controller
-            .nodes
+            .nodes()
             .iter()
             .find(|x| *x.alias() == self.alias)
             .ok_or_else(|| {

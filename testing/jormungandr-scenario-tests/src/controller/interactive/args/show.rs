@@ -1,7 +1,9 @@
-use super::{do_for_all_alias, UserInteractionController};
+use crate::controller::{do_for_all_alias, UserInteractionController};
+use jormungandr_testing_utils::testing::node::BackwardCompatibleRest;
 use jormungandr_testing_utils::testing::node::{JormungandrLogger, LogLevel};
 use jormungandr_testing_utils::testing::FragmentNode;
 use structopt::StructOpt;
+use yaml_rust::Yaml;
 
 #[derive(StructOpt, Debug)]
 pub enum Show {
@@ -166,11 +168,17 @@ impl ShowBlockHeight {
                 )
             },
             |node| {
-                println!(
-                    "{}: {:?}",
-                    node.alias(),
-                    node.stats().unwrap()["stats"]["last_block_height"].to_owned()
-                )
+                println!("{}: {:?}", node.alias(), {
+                    let stats = Yaml::from_str(
+                        &BackwardCompatibleRest::new(
+                            node.rest_address().to_string(),
+                            Default::default(),
+                        )
+                        .stats()
+                        .unwrap(),
+                    );
+                    stats["stats"]["last_block_height"].to_owned()
+                })
             },
         )
     }
@@ -251,7 +259,7 @@ impl ShowLogs {
                     &self.contains,
                     &node.alias(),
                     self.tail,
-                    node.logger(),
+                    &node.logger,
                 )
             },
             |node| {
@@ -260,7 +268,7 @@ impl ShowLogs {
                     &self.contains,
                     &node.alias(),
                     self.tail,
-                    node.logger(),
+                    &node.logger,
                 )
             },
         )

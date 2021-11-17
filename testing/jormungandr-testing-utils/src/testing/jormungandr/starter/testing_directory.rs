@@ -45,6 +45,12 @@ impl PathChild for TestingDirectory {
     }
 }
 
+impl From<ChildPath> for TestingDirectory {
+    fn from(child_path: ChildPath) -> Self {
+        Self::User(child_path.path().to_path_buf())
+    }
+}
+
 impl From<PathBuf> for TestingDirectory {
     fn from(path: PathBuf) -> Self {
         Self::User(path)

@@ -1,6 +1,6 @@
 use jormungandr_scenario_tests::{
     programs::prepare_command,
-    scenario::{parse_progress_bar_mode_from_str, Context, ProgressBarMode, Seed},
+    scenario::{parse_progress_bar_mode_from_str, Context, ProgressBarMode},
 };
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -36,14 +36,6 @@ struct CommandArgs {
         parse(from_str = parse_progress_bar_mode_from_str)
     )]
     progress_bar_mode: ProgressBarMode,
-
-    /// to set if to reproduce an existing test
-    #[structopt(long = "seed")]
-    seed: Option<Seed>,
-
-    /// level for all nodes
-    #[structopt(long = "log-level", default_value = "info")]
-    log_level: String,
 }
 
 fn main() -> Result<(), jormungandr_scenario_tests::test::Error> {
@@ -53,22 +45,16 @@ fn main() -> Result<(), jormungandr_scenario_tests::test::Error> {
 
     let jormungandr = prepare_command(&command_args.jormungandr);
     let progress_bar_mode = command_args.progress_bar_mode;
-    let seed = command_args
-        .seed
-        .unwrap_or_else(|| Seed::generate(rand::rngs::OsRng));
     let testing_directory = command_args.testing_directory;
     let generate_documentation = command_args.generate_documentation;
-    let log_level = command_args.log_level;
 
     let context = Context::new(
-        seed,
         jormungandr,
         testing_directory,
         generate_documentation,
         progress_bar_mode,
-        log_level,
     );
 
     jormungandr_scenario_tests::introduction::print(&context, "INTERACTIVE SCENARIO");
-    jormungandr_scenario_tests::interactive::interactive(context).map(|_| ())
+    jormungandr_scenario_tests::controller::interactive_scenario(context).map(|_| ())
 }

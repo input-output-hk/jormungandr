@@ -4,14 +4,13 @@ use crate::{
     Context, ScenarioResult,
 };
 use function_name::named;
-use rand_chacha::ChaChaRng;
 const LEADER1: &str = "LEADER1";
 const LEADER2: &str = "LEADER2";
 const LEADER3: &str = "LEADER3";
 const LEADER4: &str = "LEADER4";
 
 #[named]
-pub fn max_connections(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn max_connections(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

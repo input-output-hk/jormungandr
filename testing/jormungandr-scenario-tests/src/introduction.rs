@@ -1,7 +1,7 @@
 use crate::Context;
 pub use jortestkit::console::style;
 
-pub fn print<R: rand_core::RngCore>(context: &Context<R>, name: &str) {
+pub fn print(context: &Context, name: &str) {
     println!(
         r###"
         ---_ ......._-_--.
@@ -22,14 +22,11 @@ pub fn print<R: rand_core::RngCore>(context: &Context<R>, name: &str) {
                         \_
 
  {}jormungandr: {}
- {}seed:        {}
 
 ###############################################################################
     "###,
         style::binary.apply_to(name),
         *style::icons::jormungandr,
         style::binary.apply_to(context.jormungandr().to_string_lossy()),
-        *style::icons::seed,
-        style::seed.apply_to(context.seed()),
     )
 }

@@ -4,7 +4,7 @@ use crate::{
     Context, ScenarioResult,
 };
 use jormungandr_lib::interfaces::Explorer;
-use rand_chacha::ChaChaRng;
+
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
 const LEADER_3: &str = "Leader_3";
@@ -12,7 +12,7 @@ const LEADER_4: &str = "Leader_4";
 use function_name::named;
 
 #[named]
-pub fn retire_stake_pool_explorer(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn retire_stake_pool_explorer(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

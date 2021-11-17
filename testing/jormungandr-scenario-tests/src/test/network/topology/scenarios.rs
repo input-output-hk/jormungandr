@@ -7,7 +7,6 @@ use crate::{
     Context, ScenarioResult,
 };
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
-use rand_chacha::ChaChaRng;
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
@@ -24,7 +23,7 @@ const RELAY_NODE_2: &str = "Relay2";
 use function_name::named;
 
 #[named]
-pub fn fully_connected(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn fully_connected(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         "T3001_Fully-Connected",
@@ -106,7 +105,7 @@ pub fn fully_connected(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn star(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn star(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -190,7 +189,7 @@ pub fn star(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn mesh(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn mesh(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -280,7 +279,7 @@ pub fn mesh(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn point_to_point(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn point_to_point(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -360,7 +359,7 @@ pub fn point_to_point(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn point_to_point_on_file_storage(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn point_to_point_on_file_storage(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -452,7 +451,7 @@ pub fn point_to_point_on_file_storage(context: Context<ChaChaRng>) -> Result<Sce
 }
 
 #[named]
-pub fn tree(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn tree(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -549,7 +548,7 @@ pub fn tree(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn relay(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn relay(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

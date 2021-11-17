@@ -1,8 +1,9 @@
 use crate::{
+    controller::MonitorControllerBuilder,
     node::{LeadershipMode, PersistenceMode},
     scenario::{
-        repository::ScenarioResult, ActiveSlotCoefficient, ConsensusVersion, ControllerBuilder,
-        Milli, Node, SlotDuration, Value,
+        repository::ScenarioResult, ActiveSlotCoefficient, ConsensusVersion, Milli, Node,
+        SlotDuration, Value,
     },
     test::{
         utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
@@ -14,8 +15,6 @@ use jormungandr_testing_utils::testing::{
     network::{Blockchain, Topology, WalletTemplate},
     node::{download_last_n_releases, get_jormungandr_bin},
 };
-
-use rand_chacha::ChaChaRng;
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE: &str = "Relay";
@@ -44,8 +43,8 @@ fn prepare_real_scenario(
     nodes_count_per_relay: u32,
     legacy_nodes_count_per_relay: u32,
     consensus: ConsensusVersion,
-) -> ControllerBuilder {
-    let mut builder = ControllerBuilder::new(title);
+) -> MonitorControllerBuilder {
+    let mut builder = MonitorControllerBuilder::new(title);
     let mut topology = Topology::default().with_node(Node::new(CORE_NODE));
 
     let mut blockchain = Blockchain::default();
@@ -116,7 +115,7 @@ fn prepare_real_scenario(
     builder.blockchain(blockchain)
 }
 
-pub fn real_praos_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn real_praos_network(context: Context) -> Result<ScenarioResult> {
     let relay_nodes_count = 3;
     let leaders_per_relay = 11;
     let legacies_per_relay = 0;
@@ -133,7 +132,7 @@ pub fn real_praos_network(context: Context<ChaChaRng>) -> Result<ScenarioResult>
     )
 }
 
-pub fn real_bft_network(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn real_bft_network(context: Context) -> Result<ScenarioResult> {
     let relay_nodes_count = 3;
     let leaders_per_relay = 11;
     let legacies_per_relay = 0;
@@ -154,7 +153,7 @@ pub fn real_network(
     relay_nodes_count: u32,
     leaders_per_relay: u32,
     legacies_per_relay: u32,
-    context: Context<ChaChaRng>,
+    context: Context,
     consensus: ConsensusVersion,
     persistence_mode: PersistenceMode,
     name: String,

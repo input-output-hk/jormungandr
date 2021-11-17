@@ -1,4 +1,6 @@
 use crate::testing::jormungandr::TestingDirectory;
+use crate::testing::network::VotePlanKey;
+use crate::testing::network::WalletAlias;
 use crate::testing::{
     jormungandr::starter::{Starter, StartupError},
     jormungandr::JormungandrProcess,
@@ -6,14 +8,23 @@ use crate::testing::{
 };
 use crate::{
     testing::{
-        network::{NodeSetting, PersistenceMode, Settings, SpawnParams},
+        network::{
+            NodeAlias, NodeSetting, PersistenceMode, Settings, SpawnParams,
+            Wallet as WalletSettings,
+        },
         JormungandrParams,
     },
     wallet::Wallet,
 };
 use assert_fs::fixture::FixtureError;
 use assert_fs::prelude::*;
-use chain_impl_mockchain::header::HeaderId;
+use chain_impl_mockchain::certificate::{VoteAction, VotePlan};
+use chain_impl_mockchain::ledger::governance::{
+    ParametersGovernanceAction, TreasuryGovernanceAction,
+};
+use chain_impl_mockchain::testing::scenario::template::{
+    ProposalDefBuilder, VotePlanDef, VotePlanDefBuilder,
+};
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -36,13 +47,14 @@ pub enum ControllerError {
     Serialization(#[from] serde_yaml::Error),
     #[error("node startup error")]
     Spawn(#[from] StartupError),
+    #[error("VotePlan '{0}' was not found. Used before or never initialize")]
+    VotePlanNotFound(String),
 }
 
 pub struct Controller {
     settings: Settings,
     working_directory: TestingDirectory,
     block0_file: PathBuf,
-    block0_hash: HeaderId,
 }
 
 impl Controller {
@@ -52,18 +64,14 @@ impl Controller {
     ) -> Result<Self, ControllerError> {
         use chain_core::property::Serialize as _;
 
-        let block0 = settings.block0.to_block();
-        let block0_hash = block0.header().hash();
-
         let block0_file = working_directory.child("block0.bin").path().into();
         let file = std::fs::File::create(&block0_file)?;
-        block0.serialize(file)?;
+        settings.block0.to_block().serialize(file)?;
 
         Ok(Controller {
             settings,
             working_directory,
             block0_file,
-            block0_hash,
         })
     }
 
@@ -73,6 +81,10 @@ impl Controller {
         } else {
             Err(ControllerError::WalletNotFound(wallet.to_owned()))
         }
+    }
+
+    pub fn working_directory(&self) -> &TestingDirectory {
+        &self.working_directory
     }
 
     pub fn block0_file(&self) -> PathBuf {
@@ -92,6 +104,86 @@ impl Controller {
             .nodes
             .get(alias)
             .ok_or_else(|| ControllerError::NodeNotFound(alias.to_string()))
+    }
+
+    pub fn defined_wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSettings)> {
+        self.settings().wallets.iter()
+    }
+
+    pub fn defined_nodes(&self) -> impl Iterator<Item = (&NodeAlias, &NodeSetting)> {
+        self.settings().nodes.iter()
+    }
+
+    pub fn defined_vote_plan(&self, alias: &str) -> Result<VotePlanDef, ControllerError> {
+        if let Some((key, vote_plan)) = self
+            .settings()
+            .vote_plans
+            .iter()
+            .find(|(x, _y)| x.alias == alias)
+        {
+            Ok(self.convert_to_def(key, &vote_plan.vote_plan().into()))
+        } else {
+            Err(ControllerError::VotePlanNotFound(alias.to_owned()))
+        }
+    }
+
+    pub fn defined_vote_plans(&self) -> Vec<VotePlanDef> {
+        self.settings()
+            .vote_plans
+            .iter()
+            .map(|(x, y)| self.convert_to_def(x, &y.vote_plan().into()))
+            .collect()
+    }
+
+    fn convert_to_def(&self, key: &VotePlanKey, vote_plan: &VotePlan) -> VotePlanDef {
+        let mut builder = VotePlanDefBuilder::new(&key.alias);
+        builder
+            .owner(&key.owner_alias)
+            .payload_type(vote_plan.payload_type())
+            .committee_keys(vote_plan.committee_public_keys().to_vec())
+            .vote_phases(
+                vote_plan.vote_start().epoch,
+                vote_plan.committee_start().epoch,
+                vote_plan.committee_end().epoch,
+            );
+
+        for proposal in vote_plan.proposals().iter() {
+            let mut proposal_builder = ProposalDefBuilder::new(proposal.external_id().clone());
+
+            let length = proposal
+                .options()
+                .choice_range()
+                .end
+                .checked_sub(proposal.options().choice_range().start)
+                .unwrap();
+
+            proposal_builder.options(length);
+
+            match proposal.action() {
+                VoteAction::OffChain => {
+                    proposal_builder.action_off_chain();
+                }
+                VoteAction::Treasury { action } => match action {
+                    TreasuryGovernanceAction::TransferToRewards { value } => {
+                        proposal_builder.action_rewards_add(value.0);
+                    }
+                    TreasuryGovernanceAction::NoOp => {
+                        unimplemented!();
+                    }
+                },
+                VoteAction::Parameters { action } => match action {
+                    ParametersGovernanceAction::RewardAdd { value } => {
+                        proposal_builder.action_transfer_to_rewards(value.0);
+                    }
+                    ParametersGovernanceAction::NoOp => {
+                        proposal_builder.action_parameters_no_op();
+                    }
+                },
+            };
+
+            builder.with_proposal(&mut proposal_builder);
+        }
+        builder.build()
     }
 
     pub fn spawn_node_async(&mut self, alias: &str) -> Result<JormungandrProcess, ControllerError> {
@@ -172,7 +264,7 @@ impl Controller {
             config,
             config_file.path(),
             &self.block0_file,
-            self.block0_hash.to_string(),
+            self.settings.block0.to_block().header().hash().to_string(),
             secret_file.path(),
             self.settings.block0.clone(),
             false,

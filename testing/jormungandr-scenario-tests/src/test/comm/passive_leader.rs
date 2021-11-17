@@ -8,7 +8,6 @@ use jormungandr_lib::interfaces::Policy;
 use std::time::Duration;
 
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
-use rand_chacha::ChaChaRng;
 
 const LEADER: &str = "Leader";
 const PASSIVE: &str = "Passive";
@@ -16,7 +15,7 @@ const PASSIVE: &str = "Passive";
 use function_name::named;
 
 #[named]
-pub fn transaction_to_passive(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn transaction_to_passive(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -74,7 +73,7 @@ pub fn transaction_to_passive(context: Context<ChaChaRng>) -> Result<ScenarioRes
 const LEADER_2: &str = "LEADER_2";
 
 #[named]
-pub fn leader_restart(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn leader_restart(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,
@@ -170,7 +169,7 @@ pub fn leader_restart(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
 }
 
 #[named]
-pub fn passive_node_is_updated(context: Context<ChaChaRng>) -> Result<ScenarioResult> {
+pub fn passive_node_is_updated(context: Context) -> Result<ScenarioResult> {
     let name = function_name!();
     let scenario_settings = prepare_scenario! {
         name,

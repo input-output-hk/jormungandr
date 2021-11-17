@@ -6,7 +6,7 @@ use cast::CastVote;
 use tally::VoteTally;
 use tx::SendTransaction;
 
-use super::UserInteractionController;
+use crate::controller::UserInteractionController;
 use crate::test::Result;
 use structopt::StructOpt;
 
