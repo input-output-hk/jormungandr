@@ -70,6 +70,10 @@ impl MessageProcessor {
                                     handle_sync_multiverse(from, &blockchain, &storage, &mut sink)
                                         .await
                                 {
+                                    tracing::warn!(
+                                        "sync multiverse call finished with error: {:?}",
+                                        e
+                                    );
                                     let _ = sink.feed(Err(e)).await;
                                 }
 
