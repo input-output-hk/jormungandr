@@ -21,12 +21,12 @@ use std::num::{NonZeroU32, NonZeroU64};
 
 #[derive(SimpleObject)]
 pub struct Block0Date {
-    block_0_date: u64,
+    block0_date: u64,
 }
 
 impl From<&Block0DateLib> for Block0Date {
     fn from(v: &Block0DateLib) -> Self {
-        Self { block_0_date: v.0 }
+        Self { block0_date: v.0 }
     }
 }
 

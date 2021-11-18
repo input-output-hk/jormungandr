@@ -4,6 +4,7 @@ mod connections;
 mod error;
 mod scalars;
 
+use self::config_param::{EpochStabilityDepth, LinearFee};
 use self::connections::{
     compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
     ValidatedPaginationArguments,
@@ -1179,59 +1180,18 @@ pub struct Settings {}
 
 #[Object]
 impl Settings {
-    pub async fn fees(&self, context: &Context<'_>) -> FeeSettings {
-        let chain_impl_mockchain::fee::LinearFee {
-            constant,
-            coefficient,
-            certificate,
-            per_certificate_fees,
-            per_vote_certificate_fees,
-        } = extract_context(context).await.db.blockchain_config.fees;
-
-        FeeSettings {
-            constant: Value::from(constant),
-            coefficient: Value::from(coefficient),
-            certificate: Value::from(certificate),
-            certificate_pool_registration: Value::from(
-                per_certificate_fees
-                    .certificate_pool_registration
-                    .map(|v| v.get())
-                    .unwrap_or(certificate),
-            ),
-            certificate_stake_delegation: Value::from(
-                per_certificate_fees
-                    .certificate_stake_delegation
-                    .map(|v| v.get())
-                    .unwrap_or(certificate),
-            ),
-            certificate_owner_stake_delegation: Value::from(
-                per_certificate_fees
-                    .certificate_owner_stake_delegation
-                    .map(|v| v.get())
-                    .unwrap_or(certificate),
-            ),
-            certificate_vote_plan: Value::from(
-                per_vote_certificate_fees
-                    .certificate_vote_plan
-                    .map(|v| v.get())
-                    .unwrap_or(certificate),
-            ),
-            certificate_vote_cast: Value::from(
-                per_vote_certificate_fees
-                    .certificate_vote_cast
-                    .map(|v| v.get())
-                    .unwrap_or(certificate),
-            ),
-        }
+    pub async fn fees(&self, context: &Context<'_>) -> LinearFee {
+        let res = &extract_context(context).await.db.blockchain_config.fees;
+        res.into()
     }
 
-    pub async fn epoch_stability_depth(&self, context: &Context<'_>) -> String {
-        extract_context(context)
+    pub async fn epoch_stability_depth(&self, context: &Context<'_>) -> EpochStabilityDepth {
+        let res = &extract_context(context)
             .await
             .db
             .blockchain_config
-            .epoch_stability_depth
-            .to_string()
+            .epoch_stability_depth;
+        res.into()
     }
 }
 
