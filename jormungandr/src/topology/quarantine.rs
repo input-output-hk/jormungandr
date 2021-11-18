@@ -76,16 +76,16 @@ impl ReportRecords {
         if self.report_whitelist.contains(&node.address()) {
             tracing::debug!(
                 node = %node.address(),
-                id=?node.id(),
+                id=%node.id(),
                 "quarantine whitelists prevents this node from being reported",
             );
             ReportNodeStatus::Ok
         } else if self.report_grace.contains(&node.id()) {
-            tracing::trace!(node = %node.address(), id=?node.id(), "not reporting node in grace list");
+            tracing::trace!(node = %node.address(), id=%node.id(), "not reporting node in grace list");
             ReportNodeStatus::Ok
         } else {
             let mut peer_info = PeerInfo::from(node);
-            tracing::debug!(node = %peer_info.address, id=?peer_info.id, ?self.report_duration, "reporting node");
+            tracing::debug!(node = %peer_info.address, id=%peer_info.id, ?self.report_duration, "reporting node");
             // If we'll handle report reasons other that a connectivity issue in the future, we may want to
             // demote a peer all the way down to dirty in case of a serious violation.
             topology.remove_peer(peer_info.id.as_ref());
@@ -102,7 +102,7 @@ impl ReportRecords {
             // nodes again after some time if we haven't heard from them sooner (and avoid network splits).
             if topology.peers().dirty().contains(peer_info.id.as_ref()) {
                 peer_info.quarantined = Some(SystemTime::now().into());
-                tracing::debug!(node = %peer_info.address, id=?peer_info.id, "node has been quarantined");
+                tracing::debug!(node = %peer_info.address, id=%peer_info.id, "node has been quarantined");
                 result = ReportNodeStatus::Quarantine;
             }
 

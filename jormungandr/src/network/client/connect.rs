@@ -55,7 +55,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         //TODO: check id is the expected one
         let peer_id = validate_peer_auth(hr.auth, &nonce)?;
 
-        tracing::debug!(node_id = ?peer_id, "authenticated server peer node");
+        tracing::debug!(node_id = %peer_id, "authenticated server peer node");
 
         // Send client authentication
         let auth = keypair.sign(&hr.nonce);

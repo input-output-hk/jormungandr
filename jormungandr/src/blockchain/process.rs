@@ -243,7 +243,7 @@ impl Process {
                     hash = %header.hash(),
                     parent = %header.parent_id(),
                     date = %header.block_date(),
-                    peer = ?node_id
+                    %node_id
                 );
                 let _enter = span.enter();
                 tracing::debug!("received block announcement from network");

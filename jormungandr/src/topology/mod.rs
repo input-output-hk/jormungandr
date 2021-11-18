@@ -7,6 +7,7 @@ use jormungandr_lib::time::SystemTime;
 use serde::Serialize;
 use serde::Serializer;
 use std::convert::{TryFrom, TryInto};
+use std::fmt;
 use std::hash::{Hash, Hasher};
 
 mod gossip;
@@ -72,6 +73,12 @@ impl TryFrom<&[u8]> for NodeId {
             PublicKey::<Ed25519>::from_binary(bytes)
                 .map(jormungandr_lib::interfaces::NodeId::from)?,
         ))
+    }
+}
+
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

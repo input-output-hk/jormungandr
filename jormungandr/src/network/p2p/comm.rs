@@ -524,7 +524,7 @@ impl Peers {
     pub async fn server_complete_handshake(&self, peer_addr: Address, id: NodeId) {
         tracing::debug!(
             peer_addr = %peer_addr,
-            node_id = ?id,
+            node_id = %id,
             "authenticated client peer node"
         );
         let mut map = self.inner().await;
@@ -533,7 +533,7 @@ impl Peers {
         } else {
             tracing::warn!(
                 %peer_addr,
-                ?id,
+                %id,
                 "peer is not known to the node, was the handshake procedure skipped?",
             );
         }
@@ -690,7 +690,7 @@ impl Peers {
     pub async fn solicit_blocks_peer(&self, peer: &NodeId, hashes: BlockIds) {
         let span = debug_span!(
             "block solicitation",
-            ?peer,
+            %peer,
             peer_addr = tracing::field::Empty,
             hashes = %format!("[{}]", hashes.iter().map(hex::encode).collect::<Vec<_>>().join(", "))
         );
@@ -724,7 +724,7 @@ impl Peers {
     pub async fn pull_headers(&self, peer: &NodeId, from: BlockIds, to: BlockId) {
         let span = debug_span!(
             "pull_header",
-            ?peer,
+            %peer,
             peer_addr = tracing::field::Empty,
             from = %format!("[{}]", from.iter().map(hex::encode).collect::<Vec<_>>().join(", ")),
             to = %hex::encode(to)
@@ -749,7 +749,7 @@ impl Peers {
                 None => {
                     // TODO: connect and request on demand, or select another peer?
                     tracing::info!(
-                        peer = ?peer,
+                        peer = %peer,
                         "peer not available to pull headers from"
                     );
                 }

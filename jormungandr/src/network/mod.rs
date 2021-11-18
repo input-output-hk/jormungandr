@@ -16,8 +16,6 @@ mod subscription;
 use self::convert::Encode;
 
 use futures::{future, prelude::*};
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaChaRng;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 
@@ -172,12 +170,9 @@ impl GlobalState {
     ) -> Self {
         let peers = Peers::new(config.max_connections);
 
-        let mut rng_seed = [0; 32];
-        rand::thread_rng().fill(&mut rng_seed);
-        let mut prng = ChaChaRng::from_seed(rng_seed);
-
         //TODO: move this to a secure enclave
-        let keypair = NodeKeyPair::from(config.node_key);
+        let keypair =
+            NodeKeyPair::from(<chain_crypto::SecretKey<_>>::from(config.node_key.clone()));
 
         GlobalState {
             block0_hash,
@@ -368,7 +363,7 @@ where
     let mut res = Vec::new();
     for peer in peers {
         if f(peer.id(), arg.clone())
-            .instrument(span!(Level::DEBUG, "p2p_comm", peer = %peer.address(), id = ?peer.id()))
+            .instrument(span!(Level::DEBUG, "p2p_comm", peer = %peer.address(), id = %peer.id()))
             .await
             .is_err()
         {
@@ -469,14 +464,14 @@ fn connect_and_propagate(
     let _enter = state.span.enter();
     options.evict_clients = state.num_clients_to_bump();
     if let Some(self_addr) = state.node_address() {
-        if node_addr == self_addr {
-            tracing::error!(peer = %node_addr, "topology tells the node to connect to itself, ignoring");
+        if addr == self_addr {
+            tracing::error!(peer = %addr, "topology tells the node to connect to itself, ignoring");
             return;
         }
     }
     drop(_enter);
-    let peer = Peer::new(node_addr);
-    let conn_span = span!(parent: &state.span, Level::DEBUG, "client", addr = %node_addr);
+    let peer = Peer::new(addr);
+    let conn_span = span!(parent: &state.span, Level::DEBUG, "client", addr = %addr);
     let spawn_state = state.clone();
     let cf = async move {
         let conn_state = ConnectionState::new(state.clone(), &peer, Span::current());
@@ -506,24 +501,24 @@ fn connect_and_propagate(
                 if !benign {
                     channels
                         .topology_box
-                        .send(TopologyMsg::DemotePeer(node_id))
+                        .send(TopologyMsg::DemotePeer(id))
                         .await
                         .unwrap_or_else(|e| {
                             tracing::error!("Error sending message to topology task: {}", e)
                         });
-                    state.peers.remove_peer(&node_id).await;
+                    state.peers.remove_peer(&id).await;
                 }
             }
             Ok(client) => {
                 // This enforce processing any pending operation that could
                 // have been scheduled on this peer
-                state.peers.update_entry(node_id).await;
+                state.peers.update_entry(id).await;
 
                 state.inc_client_count();
 
                 channels
                     .topology_box
-                    .send(TopologyMsg::PromotePeer(node_id))
+                    .send(TopologyMsg::PromotePeer(id))
                     .await
                     .unwrap_or_else(|e| {
                         tracing::error!("Error sending message to topology task: {}", e)

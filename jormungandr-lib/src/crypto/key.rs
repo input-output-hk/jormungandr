@@ -414,6 +414,12 @@ impl<A: AsymmetricKey> From<SecretKey<A>> for SigningKey<A> {
     }
 }
 
+impl<A: AsymmetricKey> From<SigningKey<A>> for SecretKey<A> {
+    fn from(key: SigningKey<A>) -> Self {
+        key.0
+    }
+}
+
 impl<A: AsymmetricPublicKey> From<PublicKey<A>> for Identifier<A> {
     fn from(key: PublicKey<A>) -> Self {
         Identifier(key)

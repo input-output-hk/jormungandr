@@ -209,7 +209,7 @@ impl P2pTopology {
     }
 
     /// register a strike against the given peer
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip_all, level = "debug", fields(%node_id))]
     pub fn report_node(&mut self, node_id: &NodeId) {
         if let Some(node) = self.topology.get(node_id.as_ref()).cloned() {
             let result = self
