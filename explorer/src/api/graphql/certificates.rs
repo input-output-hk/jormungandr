@@ -262,6 +262,8 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             certificate::Certificate::EncryptedVoteTally(c) => {
                 Ok(Certificate::EncryptedVoteTally(EncryptedVoteTally(c)))
             }
+            certificate::Certificate::UpdateProposal(c) => todo!("port this from jormungandr"),
+            certificate::Certificate::UpdateVote(c) => todo!("port this from jormungandr"),
         }
     }
 }
