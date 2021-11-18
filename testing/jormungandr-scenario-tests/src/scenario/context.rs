@@ -4,8 +4,8 @@ use assert_fs::prelude::*;
 use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
 use std::path::{Path, PathBuf};
 
-pub type ContextChaCha = Context;
-
+/// scenario context with all the details to setup the necessary port number
+/// a pseudo random number generator (and its original seed).
 #[derive(Clone)]
 pub struct Context {
     jormungandr: PathBuf,
