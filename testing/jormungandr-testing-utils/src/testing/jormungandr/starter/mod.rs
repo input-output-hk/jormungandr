@@ -427,7 +427,7 @@ where
                 self.starter.on_fail,
             ) {
                 (Ok(()), _) => {
-                    println!("jormungandr is up");
+                    cond_println!(self.starter.verbose, "jormungandr is up");
                     return Ok(jormungandr);
                 }
 

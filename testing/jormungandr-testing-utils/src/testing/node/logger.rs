@@ -41,6 +41,12 @@ impl fmt::Display for Level {
     }
 }
 
+impl Default for Level {
+    fn default() -> Self {
+        Self::INFO
+    }
+}
+
 impl std::str::FromStr for Level {
     type Err = String;
 

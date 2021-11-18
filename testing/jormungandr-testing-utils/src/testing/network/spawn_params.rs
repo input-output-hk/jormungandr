@@ -38,6 +38,8 @@ pub struct SpawnParams {
     topics_of_interest: Option<TopicsOfInterest>,
     trusted_peers: Option<Vec<TrustedPeer>>,
     version: Option<Version>,
+    #[serde(default)]
+    verbose: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -75,6 +77,7 @@ impl SpawnParams {
             topics_of_interest: None,
             trusted_peers: None,
             version: None,
+            verbose: true,
         }
     }
 
@@ -108,6 +111,10 @@ impl SpawnParams {
         &self.version
     }
 
+    pub fn get_verbose(&self) -> bool {
+        self.verbose
+    }
+
     pub fn topics_of_interest(mut self, topics_of_interest: TopicsOfInterest) -> Self {
         self.topics_of_interest = Some(topics_of_interest);
         self
@@ -115,6 +122,11 @@ impl SpawnParams {
 
     pub fn public_address(mut self, public_address: Multiaddr) -> Self {
         self.public_address = Some(public_address);
+        self
+    }
+
+    pub fn verbose(mut self, verbose: bool) -> Self {
+        self.verbose = verbose;
         self
     }
 
