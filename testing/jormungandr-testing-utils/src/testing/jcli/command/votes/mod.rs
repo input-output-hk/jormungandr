@@ -51,28 +51,6 @@ impl VotesCommand {
         TallyCommand::new(self.command)
     }
 
-    pub fn update_proposal<P: AsRef<Path>, Q: AsRef<Path>>(mut self, config: P, secret: Q) -> Self {
-        self.command
-            .arg("update-proposal")
-            .arg(config.as_ref())
-            .arg("--secret")
-            .arg(secret.as_ref());
-        self
-    }
-
-    pub fn update_vote<R: Into<String>, P: AsRef<Path>>(
-        mut self,
-        proposal_id: R,
-        secret: P,
-    ) -> Self {
-        self.command
-            .arg("update-vote")
-            .arg(proposal_id.into())
-            .arg("--secret")
-            .arg(secret.as_ref());
-        self
-    }
-
     pub fn build(self) -> Command {
         self.command
     }

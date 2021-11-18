@@ -546,7 +546,9 @@ impl Block {
         last: Option<i32>,
         before: Option<String>,
         after: Option<String>,
-    ) -> FieldResult<Connection<IndexCursor, Transaction, EmptyFields, EmptyFields>> {
+    ) -> FieldResult<
+        Connection<IndexCursor, Transaction, ConnectionFields<TransactionCount>, EmptyFields>,
+    > {
         let explorer_block = self
             .fetch_explorer_block(&extract_context(context).await.db)
             .await?;
@@ -588,8 +590,13 @@ impl Block {
                 };
 
                 let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
-                let mut connection =
-                    Connection::new(page_meta.has_previous_page, page_meta.has_next_page);
+                let mut connection = Connection::with_additional_fields(
+                    page_meta.has_previous_page,
+                    page_meta.has_next_page,
+                    ConnectionFields {
+                        total_count: page_meta.total_count,
+                    },
+                );
 
                 let edges = match range {
                     PaginationInterval::Empty => vec![],
@@ -698,6 +705,12 @@ impl Block {
 
 pub struct BftLeader {
     id: BftLeaderId,
+}
+
+impl From<BftLeaderId> for BftLeader {
+    fn from(id: BftLeaderId) -> Self {
+        Self { id }
+    }
 }
 
 #[Object]
