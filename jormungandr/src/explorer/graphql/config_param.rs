@@ -123,7 +123,7 @@ pub struct Milli {
 impl From<&MilliLib> for Milli {
     fn from(v: &MilliLib) -> Self {
         Self {
-            milli: v.clone().to_millis(),
+            milli: (*v).to_millis(),
         }
     }
 }
@@ -263,7 +263,7 @@ pub struct TreasuryAdd {
 impl From<&ValueLib> for TreasuryAdd {
     fn from(v: &ValueLib) -> Self {
         Self {
-            treasury_add: Value(v.clone()),
+            treasury_add: Value(*v),
         }
     }
 }
@@ -276,7 +276,7 @@ pub struct TreasuryParams {
 impl From<&TaxTypeLib> for TreasuryParams {
     fn from(v: &TaxTypeLib) -> Self {
         Self {
-            treasury_params: TaxType(v.clone()),
+            treasury_params: TaxType(*v),
         }
     }
 }
@@ -289,7 +289,7 @@ pub struct RewardPot {
 impl From<&ValueLib> for RewardPot {
     fn from(v: &ValueLib) -> Self {
         Self {
-            reward_pot: Value(v.clone()),
+            reward_pot: Value(*v),
         }
     }
 }
@@ -380,7 +380,7 @@ pub struct RewardLimitByAbsoluteStake {
 impl From<&RatioLib> for RewardLimitByAbsoluteStake {
     fn from(v: &RatioLib) -> Self {
         Self {
-            reward_limit_by_absolute_stake: Ratio(v.clone()),
+            reward_limit_by_absolute_stake: Ratio(*v),
         }
     }
 }
