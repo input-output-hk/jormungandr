@@ -62,7 +62,7 @@ pub async fn process_gossip<S>(
 ) where
     S: TryStream<Ok = net_data::Gossip, Error = Error>,
 {
-    let processor = GossipProcessor::new(mbox, node_id, global_state);
+    let processor = GossipProcessor::new(mbox, node_id, global_state, Direction::Server);
     stream
         .into_stream()
         .forward(processor)
@@ -181,11 +181,25 @@ impl FragmentProcessor {
     }
 }
 
+pub enum Direction {
+    Server,
+    Client,
+}
+
 pub struct GossipProcessor {
     mbox: MessageBox<TopologyMsg>,
     node_id: NodeId,
     global_state: GlobalStateR,
     pending_processing: PendingProcessing,
+    // To keep a healthy pool of p2p peers, we need to keep track of nodes we were able
+    // to connect to successfully.
+    // However, a server may need to accomodate peers which are not publicy reachable
+    // (e.g. private nodes, full wallets, ...) and embedding this process in the handshake
+    // procedure is not the best idea.
+    // Instead, a peer is "promoted" (i.e. marked as successfully connected in poldercast terminology)
+    // after the first gossip is received, which signals interest in participating in the dissemination
+    // overlay.
+    peer_promoted: bool,
 }
 
 impl GossipProcessor {
@@ -193,12 +207,16 @@ impl GossipProcessor {
         mbox: MessageBox<TopologyMsg>,
         node_id: NodeId,
         global_state: GlobalStateR,
+        direction: Direction,
     ) -> Self {
         GossipProcessor {
             mbox,
             node_id,
             global_state,
             pending_processing: Default::default(),
+            // client will handle promotion after handshake since they are connecting to a public
+            // node by construction
+            peer_promoted: matches!(direction, Direction::Client),
         }
     }
 }
@@ -388,6 +406,7 @@ impl Sink<net_data::Gossip> for GossipProcessor {
         if !filtered_out.is_empty() {
             tracing::debug!("nodes dropped from gossip: {:?}", filtered_out);
         }
+        let peer_promoted = std::mem::replace(&mut self.peer_promoted, true);
         let state1 = self.global_state.clone();
         let mut mbox = self.mbox.clone();
         let node_id = self.node_id;
@@ -404,6 +423,14 @@ impl Sink<net_data::Gossip> for GossipProcessor {
                     .unwrap_or_else(|err| {
                         tracing::error!("cannot send gossips to topology: {}", err)
                     });
+                if !peer_promoted {
+                    tracing::info!(%node_id, "promoting peer");
+                    mbox.send(TopologyMsg::PromotePeer(node_id))
+                        .await
+                        .unwrap_or_else(|e| {
+                            tracing::error!("Error sending message to topology task: {}", e)
+                        });
+                }
             },
         )
         .in_current_span()
