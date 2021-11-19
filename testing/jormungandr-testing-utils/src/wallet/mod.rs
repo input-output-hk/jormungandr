@@ -15,7 +15,7 @@ use chain_crypto::{Ed25519, Ed25519Extended, SecretKey, Signature};
 pub use chain_impl_mockchain::{
     account::SpendingCounter,
     block::Block,
-    certificate::{PoolId, SignedCertificate},
+    certificate::{PoolId, SignedCertificate, UpdateProposal, UpdateVote},
     chaintypes::ConsensusVersion,
     fee::LinearFee,
     fragment::Fragment,
@@ -461,6 +461,27 @@ impl Wallet {
     ) -> Result<Fragment, WalletError> {
         Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
             .vote_tally(self, vote_plan, tally_type))
+    }
+
+    pub fn issue_update_proposal(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        valid_until: BlockDate,
+        update_proposal: UpdateProposal,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
+            .update_proposal(self, update_proposal))
+    }
+
+    pub fn issue_update_vote(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        valid_until: BlockDate,
+        update_vote: UpdateVote,
+    ) -> Result<Fragment, WalletError> {
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).update_vote(self, update_vote))
     }
 
     pub fn to_committee_id(&self) -> CommitteeIdDef {
