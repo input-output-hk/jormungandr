@@ -4,7 +4,6 @@ use crate::{
     blockcfg::{ApplyBlockLedger, Contents, ContentsBuilder, LedgerParameters},
     fragment::{Fragment, FragmentId},
 };
-use chain_core::property::Fragment as _;
 use jormungandr_lib::interfaces::{BlockDate, FragmentStatus};
 
 use async_trait::async_trait;
@@ -161,8 +160,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
 
         let soft_deadline_future = soft_deadline_future.shared();
         let hard_deadline_future = hard_deadline_future.shared();
-        while let Some(fragment) = pool.remove_oldest() {
-            let id = fragment.id();
+        while let Some((fragment, id)) = pool.remove_oldest() {
             let span = debug_span!("fragment", hash=%id.to_string());
 
             async {
@@ -187,7 +185,7 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                     }
                     Err(ApplyFragmentError::DoesNotFit)
                     | Err(ApplyFragmentError::SoftDeadlineReached) => {
-                        return_to_pool.push(fragment);
+                        return_to_pool.push((fragment, id));
                     }
                     Err(ApplyFragmentError::Rejected(reason)) => {
                         tracing::debug!(%reason, "fragment is rejected");

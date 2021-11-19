@@ -12,7 +12,6 @@ use crate::{
     metrics::{Metrics, MetricsBackend},
     utils::async_msg::MessageBox,
 };
-use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
     block::BlockDate, fragment::Contents, setting::Settings, transaction::Transaction,
 };
@@ -100,10 +99,10 @@ impl Pool {
     async fn filter_fragment(
         &mut self,
         fragment: &Fragment,
+        id: FragmentId,
         ledger_settings: &Settings,
         block_date: BlockDate,
     ) -> Result<(), FragmentRejectionReason> {
-        let id = fragment.id();
         if self.logs.exists(id) {
             tracing::debug!("fragment is already logged");
             return Err(FragmentRejectionReason::FragmentAlreadyInLog);
@@ -154,7 +153,7 @@ impl Pool {
     pub async fn insert_and_propagate_all(
         &mut self,
         origin: FragmentOrigin,
-        fragments: Vec<Fragment>,
+        fragments: Vec<(Fragment, FragmentId)>,
         fail_fast: bool,
     ) -> Result<FragmentsProcessingSummary, Error> {
         tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
@@ -169,13 +168,11 @@ impl Pool {
         let ledger_settings = ledger.settings();
         let block_date = get_current_block_date(&tip);
 
-        for fragment in fragments.by_ref() {
-            let id = fragment.id();
-
+        for (fragment, id) in fragments.by_ref() {
             let span = tracing::debug_span!("pool_incoming_fragment", fragment_id=?id);
 
             match self
-                .filter_fragment(&fragment, ledger_settings, block_date)
+                .filter_fragment(&fragment, id, ledger_settings, block_date)
                 .instrument(span)
                 .await
             {
@@ -187,7 +184,7 @@ impl Pool {
                     }
                 }
                 Err(reason) => rejected.push(RejectedFragmentInfo { id, reason }),
-                Ok(()) => filtered_fragments.push(fragment),
+                Ok(()) => filtered_fragments.push((fragment, id)),
             }
         }
 
@@ -199,8 +196,7 @@ impl Pool {
         }
 
         if fail_fast {
-            for fragment in fragments {
-                let id = fragment.id();
+            for (_, id) in fragments {
                 tracing::error!(
                     %id, "rejected due to fail_fast and one of previous fragments being invalid"
                 );
@@ -220,7 +216,7 @@ impl Pool {
         tracing::debug!("{} of the received fragments were added to the pool", count);
         let fragment_logs: Vec<_> = new_fragments
             .iter()
-            .map(move |fragment| FragmentLog::new(fragment.id(), origin))
+            .map(move |(_, id)| FragmentLog::new(*id, origin))
             .collect();
         self.logs.insert_all_pending(fragment_logs);
 
@@ -228,8 +224,7 @@ impl Pool {
 
         let mut accepted = Vec::new();
         let mut network_msg_box = self.network_msg_box.clone();
-        for fragment in new_fragments {
-            let id = fragment.id();
+        for (fragment, id) in new_fragments {
             tracing::debug!(fragment_id=?id, "inserted fragment to the pool");
             accepted.push(id);
             let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
@@ -239,8 +234,7 @@ impl Pool {
                 .map_err(Error::CannotPropagate)?;
         }
 
-        for fragment in fragments {
-            let id = fragment.id();
+        for (_, id) in fragments {
             tracing::debug!(fragment_id=?id, "rejecting fragment due to pool overflow");
             rejected.push(RejectedFragmentInfo {
                 id,
@@ -568,19 +562,18 @@ pub(super) mod internal {
         /// Returns clones of registered fragments
         pub fn insert_all(
             &mut self,
-            fragments: impl IntoIterator<Item = Fragment>,
-        ) -> Vec<Fragment> {
+            fragments: impl IntoIterator<Item = (Fragment, FragmentId)>,
+        ) -> Vec<(Fragment, FragmentId)> {
             let max_fragments = self.max_entries - self.entries.len();
             fragments
                 .into_iter()
-                .filter(|fragment| {
-                    let fragment_id = fragment.id();
-                    if self.entries.contains(&fragment_id) {
+                .filter(|(fragment, id)| {
+                    if self.entries.contains(id) {
                         false
                     } else {
                         self.total_size_bytes += fragment.serialized_size();
-                        self.timeout_queue_insert(fragment);
-                        self.entries.push_front(fragment_id, fragment.clone());
+                        self.timeout_queue_insert(fragment, *id);
+                        self.entries.push_front(*id, fragment.clone());
                         true
                     }
                 })
@@ -592,43 +585,40 @@ pub(super) mod internal {
             for fragment_id in fragment_ids {
                 let maybe_fragment = self.entries.remove(fragment_id);
                 if let Some(fragment) = maybe_fragment {
-                    self.timeout_queue_remove(&fragment);
+                    self.timeout_queue_remove(&fragment, *fragment_id);
                     self.total_size_bytes -= fragment.serialized_size();
                 }
             }
         }
 
-        pub fn remove_oldest(&mut self) -> Option<Fragment> {
-            let fragment = self.entries.pop_back().map(|(_, value)| value)?;
-            self.timeout_queue_remove(&fragment);
+        pub fn remove_oldest(&mut self) -> Option<(Fragment, FragmentId)> {
+            let (id, fragment) = self.entries.pop_back().map(|(id, value)| (id, value))?;
+            self.timeout_queue_remove(&fragment, id);
             self.total_size_bytes -= fragment.serialized_size();
-            Some(fragment)
+            Some((fragment, id))
         }
 
-        pub fn return_to_pool(&mut self, fragments: impl IntoIterator<Item = Fragment>) {
-            for fragment in fragments.into_iter() {
-                self.timeout_queue_insert(&fragment);
+        pub fn return_to_pool(
+            &mut self,
+            fragments: impl IntoIterator<Item = (Fragment, FragmentId)>,
+        ) {
+            for (fragment, id) in fragments.into_iter() {
+                self.timeout_queue_insert(&fragment, id);
                 self.total_size_bytes += fragment.serialized_size();
-                self.entries.push_back(fragment.id(), fragment);
+                self.entries.push_back(id, fragment);
             }
         }
 
-        fn timeout_queue_insert(&mut self, fragment: &Fragment) {
+        fn timeout_queue_insert(&mut self, fragment: &Fragment, id: FragmentId) {
             if let Some(valid_until) = get_transaction_expiry_date(fragment) {
-                let item = TimeoutQueueItem {
-                    valid_until,
-                    id: fragment.id(),
-                };
+                let item = TimeoutQueueItem { valid_until, id };
                 self.timeout_queue.insert(item);
             }
         }
 
-        fn timeout_queue_remove(&mut self, fragment: &Fragment) {
+        fn timeout_queue_remove(&mut self, fragment: &Fragment, id: FragmentId) {
             if let Some(valid_until) = get_transaction_expiry_date(fragment) {
-                let item = TimeoutQueueItem {
-                    valid_until,
-                    id: fragment.id(),
-                };
+                let item = TimeoutQueueItem { valid_until, id };
                 self.timeout_queue.remove(&item);
             }
         }

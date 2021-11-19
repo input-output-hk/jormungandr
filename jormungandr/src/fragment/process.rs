@@ -9,6 +9,7 @@ use crate::{
     },
 };
 
+use chain_core::property::Fragment;
 use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -134,7 +135,10 @@ impl Process {
                                     async {
                                         let stats_counter = stats_counter.clone();
                                         let summary = pool
-                                            .insert_and_propagate_all(origin, fragments, fail_fast)
+                                            .insert_and_propagate_all(origin, fragments.into_iter().map(|el| {
+                                                let id = el.id();
+                                                (el, id)
+                                            }).collect(), fail_fast)
                                             .await?;
 
                                         stats_counter.add_tx_recv_cnt(summary.accepted.len());
