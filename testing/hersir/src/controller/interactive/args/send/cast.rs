@@ -1,5 +1,6 @@
 use super::UserInteractionController;
-use crate::{style, test::Result};
+use crate::controller::Error;
+use crate::style;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -22,7 +23,7 @@ pub struct CastVote {
 }
 
 impl CastVote {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         let proposal_index = self.proposal_index.unwrap_or_else(|| {
             let vote_plan = controller
                 .controller()

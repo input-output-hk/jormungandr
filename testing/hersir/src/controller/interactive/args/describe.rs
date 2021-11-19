@@ -1,6 +1,5 @@
-use crate::{style, test::Result};
-
-use crate::controller::UserInteractionController;
+use crate::controller::{Error, UserInteractionController};
+use crate::style;
 use chain_impl_mockchain::certificate::VotePlan;
 use structopt::StructOpt;
 
@@ -21,7 +20,7 @@ pub enum Describe {
 }
 
 impl Describe {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         match self {
             Describe::Wallets(wallets) => wallets.exec(controller),
             Describe::Nodes(desc_nodes) => desc_nodes.exec(controller),
@@ -39,7 +38,7 @@ pub struct DescribeTopology {
 }
 
 impl DescribeTopology {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         println!(
             "{}",
             style::info.apply_to("Legend: '->' means trust direction".to_owned())
@@ -65,7 +64,7 @@ pub struct DescribeWallets {
 }
 
 impl DescribeWallets {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         println!("Wallets:");
         for (alias, wallet) in controller.controller().defined_wallets() {
             println!(
@@ -87,7 +86,7 @@ pub struct DescribeVotePlans {
 }
 
 impl DescribeVotePlans {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         println!("Vote Plans:");
         for vote_plan in controller.controller().defined_vote_plans() {
             let chain_vote_plan: VotePlan = vote_plan.clone().into();
@@ -116,7 +115,7 @@ pub struct DescribeNodes {
 }
 
 impl DescribeNodes {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         println!("Nodes:");
         for (alias, node) in controller.controller().defined_nodes() {
             println!("\t{}: rest api: {}", alias, node.config.rest.listen);
@@ -132,7 +131,7 @@ pub struct DescribeAll {
 }
 
 impl DescribeAll {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         let describe_wallets = DescribeWallets { alias: None };
         describe_wallets.exec(controller)?;
         let describe_nodes = DescribeNodes { alias: None };

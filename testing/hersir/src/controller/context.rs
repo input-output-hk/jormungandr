@@ -1,8 +1,23 @@
-use crate::scenario::ProgressBarMode;
+use crate::config::SessionMode;
+use crate::config::SessionSettings;
 use assert_fs::fixture::{ChildPath, PathChild};
 use assert_fs::prelude::*;
 use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
 use std::path::{Path, PathBuf};
+
+impl From<SessionSettings> for Context {
+    fn from(session: SessionSettings) -> Self {
+        Self {
+            jormungandr: session
+                .jormungandr
+                .unwrap_or_else(|| Path::new("jormungandr").to_path_buf()),
+            testing_directory: session.root.into(),
+            generate_documentation: false,
+            session_mode: session.mode,
+            log_level: session.log.to_string(),
+        }
+    }
+}
 
 /// scenario context with all the details to setup the necessary port number
 /// a pseudo random number generator (and its original seed).
@@ -11,7 +26,8 @@ pub struct Context {
     jormungandr: PathBuf,
     testing_directory: TestingDirectory,
     generate_documentation: bool,
-    progress_bar_mode: ProgressBarMode,
+    session_mode: SessionMode,
+    log_level: String,
 }
 
 impl Context {
@@ -19,13 +35,15 @@ impl Context {
         jormungandr: PathBuf,
         testing_directory: Option<PathBuf>,
         generate_documentation: bool,
-        progress_bar_mode: ProgressBarMode,
+        session_mode: SessionMode,
+        log_level: String,
     ) -> Self {
         Context {
             jormungandr,
             testing_directory: testing_directory.into(),
             generate_documentation,
-            progress_bar_mode,
+            session_mode,
+            log_level
         }
     }
 
@@ -53,7 +71,11 @@ impl Context {
         &self.testing_directory
     }
 
-    pub fn progress_bar_mode(&self) -> ProgressBarMode {
-        self.progress_bar_mode
+    pub fn session_mode(&self) -> SessionMode {
+        self.session_mode
+    }
+
+    pub fn log_level(&self) -> String {
+        self.log_level.to_string()
     }
 }

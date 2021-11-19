@@ -2,13 +2,12 @@ mod cast;
 mod tally;
 mod tx;
 
+use crate::controller::Error;
+use crate::controller::UserInteractionController;
 use cast::CastVote;
+use structopt::StructOpt;
 use tally::VoteTally;
 use tx::SendTransaction;
-
-use crate::controller::UserInteractionController;
-use crate::test::Result;
-use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 pub enum Send {
@@ -21,7 +20,7 @@ pub enum Send {
 }
 
 impl Send {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         match self {
             Send::Tx(transaction) => transaction.exec(controller),
             Send::Tally(vote_tally) => vote_tally.exec(controller),

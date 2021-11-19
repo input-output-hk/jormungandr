@@ -1,5 +1,5 @@
-use crate::controller::UserInteractionController;
-use crate::{style, test::Result};
+use crate::controller::{Error, UserInteractionController};
+use crate::style;
 use jormungandr_testing_utils::{
     testing::{
         jormungandr::StartupVerificationMode,
@@ -19,7 +19,7 @@ pub enum Spawn {
 }
 
 impl Spawn {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         match self {
             Spawn::Passive(spawn_passive) => spawn_passive.exec(controller),
             Spawn::Leader(spawn_leader) => spawn_leader.exec(controller),
@@ -40,7 +40,7 @@ pub struct SpawnPassiveNode {
 }
 
 impl SpawnPassiveNode {
-    pub fn exec(&self, mut controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, mut controller: &mut UserInteractionController) -> Result<(), Error> {
         spawn_node(
             &mut controller,
             LeadershipMode::Passive,
@@ -71,7 +71,7 @@ fn spawn_node(
     alias: &str,
     legacy: Option<Version>,
     wait: bool,
-) -> Result<()> {
+) -> Result<(), Error> {
     let persistence_mode = {
         if storage {
             PersistenceMode::Persistent
@@ -136,7 +136,7 @@ fn spawn_node(
 }
 
 impl SpawnLeaderNode {
-    pub fn exec(&self, mut controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, mut controller: &mut UserInteractionController) -> Result<(), Error> {
         spawn_node(
             &mut controller,
             LeadershipMode::Leader,

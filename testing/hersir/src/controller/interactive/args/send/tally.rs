@@ -1,5 +1,6 @@
 use super::UserInteractionController;
-use crate::{style, test::Result};
+use crate::controller::Error;
+use crate::style;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -13,7 +14,7 @@ pub struct VoteTally {
 }
 
 impl VoteTally {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         let mem_pool_check = controller.tally_vote(&self.committee, &self.vote_plan, &self.via)?;
         println!(
             "{}",

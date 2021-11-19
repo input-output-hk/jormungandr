@@ -1,17 +1,14 @@
 use crate::{args::Args, config::Config, error::Error};
+use jormungandr_testing_utils::testing::network::Topology;
 use jormungandr_testing_utils::testing::{
     jormungandr::JormungandrProcess,
     network::{builder::NetworkBuilder, NodeAlias},
 };
-use std::{collections::HashMap, fs::File};
+use std::collections::HashMap;
+use std::time::Duration;
 
-pub fn spawn_network(args: Args) -> Result<HashMap<NodeAlias, JormungandrProcess>, Error> {
-    let config: Config = serde_yaml::from_reader(File::open(args.config)?)?;
-
+pub fn spawn_network(config: Config, mut topology: Topology, args: Args) -> Result<(), Error> {
     println!("Building network...");
-
-    let mut topology = config.build_topology();
-
     let mut controller = NetworkBuilder::default()
         .topology(topology.clone())
         .testing_directory(config.testing_directory())
@@ -44,6 +41,10 @@ pub fn spawn_network(args: Args) -> Result<HashMap<NodeAlias, JormungandrProcess
     }
 
     println!("Network is started");
-
-    Ok(processes)
+    loop {
+        for node in processes.values() {
+            let _result = node.rest().network_stats()?;
+        }
+        std::thread::sleep(Duration::from_secs(1));
+    }
 }

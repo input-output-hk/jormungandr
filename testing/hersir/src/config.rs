@@ -64,14 +64,25 @@ pub struct NodeConfig {
     pub trusted_peers: HashSet<NodeAlias>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct SessionSettings {
-    jormungandr: Option<PathBuf>,
-    root: Option<PathBuf>,
-    #[allow(dead_code)]
-    mode: SessionMode,
+    pub jormungandr: Option<PathBuf>,
+    pub root: Option<PathBuf>,
     #[serde(default)]
-    log: LogLevel,
+    pub generate_documentation: bool,
+    pub mode: SessionMode,
+    #[serde(default = "default_log_level")]
+    pub log: LogLevel,
+    #[serde(default = "default_title")]
+    pub title: String,
+}
+
+fn default_log_level() -> LogLevel {
+    LogLevel::INFO
+}
+
+fn default_title() -> String {
+    "unnamed_scenario".to_owned()
 }
 
 impl Default for SessionSettings {
@@ -80,15 +91,26 @@ impl Default for SessionSettings {
             jormungandr: None,
             root: None,
             mode: SessionMode::Standard,
-            log: LogLevel::INFO,
+            log: default_log_level(),
+            generate_documentation: false,
+            title: default_title(),
         }
     }
 }
 
-//TODO implmement proper reporting by using below settings
 #[derive(Debug, Copy, Clone, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SessionMode {
     Monitor,
     Standard,
     Interactive,
+}
+
+pub fn parse_session_mode_from_str(session_mode: &str) -> SessionMode {
+    let session_mode_lowercase: &str = &session_mode.to_lowercase();
+    match session_mode_lowercase {
+        "interactive" => SessionMode::Interactive,
+        "monitor" => SessionMode::Monitor,
+        _ => SessionMode::Standard,
+    }
 }

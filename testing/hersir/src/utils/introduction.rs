@@ -1,7 +1,7 @@
-use crate::Context;
+use crate::controller::Context;
 pub use jortestkit::console::style;
 
-pub fn print(context: &Context, name: &str) {
+pub fn print_intro(context: &Context, name: &str) {
     println!(
         r###"
         ---_ ......._-_--.

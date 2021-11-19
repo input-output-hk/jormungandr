@@ -861,6 +861,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctrlc"
+version = "3.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a19c6cedffdc8c03a3346d723eb20bd85a13362bb96dc2ac000842c6381ec7bf"
+dependencies = [
+ "nix",
+ "winapi",
+]
+
+[[package]]
 name = "curve25519-dalek"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1620,15 +1630,26 @@ dependencies = [
 name = "hersir"
 version = "0.1.0"
 dependencies = [
+ "assert_fs",
  "chain-addr",
+ "chain-core",
+ "chain-crypto",
  "chain-impl-mockchain",
+ "ctrlc",
+ "custom_debug",
+ "hex",
+ "indicatif",
  "jormungandr-lib",
  "jormungandr-testing-utils",
+ "jortestkit",
+ "reqwest",
  "serde",
  "serde_derive",
+ "serde_json",
  "serde_yaml",
  "structopt",
  "thiserror",
+ "yaml-rust",
 ]
 
 [[package]]
@@ -2065,6 +2086,7 @@ dependencies = [
  "dialoguer 0.8.0",
  "function_name",
  "futures",
+ "hersir",
  "hex",
  "indicatif",
  "jormungandr-lib",
