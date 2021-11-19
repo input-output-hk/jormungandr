@@ -10,6 +10,7 @@
 - add new setting proposal expiration into the initial config/genesis
 - add feature for changing blockchain config during the network run. Add new certificates `UpdateProposal` and `UpdateVote`, updated `jcli` with these new transactions.
 - Add new grpc watch service implementation for external (non-node) clients.
+- update explorer, add new GraphQL objects as `UpdateProposal`, `UpdateVote`, `ConfigParam` etc.
 
 ## Release 0.13.0
 
