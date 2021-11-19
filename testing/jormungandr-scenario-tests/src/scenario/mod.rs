@@ -1,77 +1,19 @@
-mod context;
-pub mod dotifier;
-mod fragment_node;
 pub mod repository;
-pub use self::context::Context;
 pub use chain_impl_mockchain::{
     block::Block, chaintypes::ConsensusVersion, header::HeaderId, milli::Milli, value::Value,
 };
+pub use hersir::controller::Context;
 pub use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, KesUpdateSpeed, NumberOfSlotsPerEpoch, SlotDuration,
 };
 
-use jormungandr_testing_utils::testing::jormungandr::StartupError;
 pub use jormungandr_testing_utils::testing::network::{
     controller::ControllerError, Blockchain, Node, NodeAlias, Seed, SpawnParams, Topology, Wallet,
     WalletAlias, WalletType,
 };
-use jormungandr_testing_utils::testing::FragmentSenderError;
-use jormungandr_testing_utils::testing::LegacyConfigConverterError;
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
-use jortestkit::prelude::InteractiveCommandError;
 
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error(transparent)]
-    Node(#[from] crate::node::Error),
-
-    #[error(transparent)]
-    Wallet(#[from] jormungandr_testing_utils::wallet::WalletError),
-
-    #[error(transparent)]
-    FsFixture(#[from] assert_fs::fixture::FixtureError),
-
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-
-    #[error(transparent)]
-    Reqwest(#[from] reqwest::Error),
-
-    #[error(transparent)]
-    BlockFormatError(#[from] chain_core::mempack::ReadError),
-
-    #[error("No node with alias {0}")]
-    NodeNotFound(String),
-
-    #[error("Wallet '{0}' was not found. Used before or never initialize")]
-    WalletNotFound(String),
-
-    #[error("StakePool '{0}' was not found. Used before or never initialize")]
-    StakePoolNotFound(String),
-
-    #[error("VotePlan '{0}' was not found. Used before or never initialize")]
-    VotePlanNotFound(String),
-
-    #[error(transparent)]
-    Controller(#[from] ControllerError),
-
-    #[error(transparent)]
-    Startup(#[from] StartupError),
-
-    #[error("cannot spawn the node")]
-    CannotSpawnNode(#[source] std::io::Error),
-
-    #[error(transparent)]
-    LegacyConfigConverter(#[from] LegacyConfigConverterError),
-
-    #[error(transparent)]
-    InteractiveCommand(#[from] InteractiveCommandError),
-
-    #[error(transparent)]
-    FragmentSender(#[from] FragmentSenderError),
-}
-
-pub type Result<T> = ::core::result::Result<T, Error>;
+pub type Result<T> = ::core::result::Result<T, hersir::controller::Error>;
 
 #[macro_export]
 macro_rules! prepare_scenario {
@@ -100,7 +42,7 @@ macro_rules! prepare_scenario {
             )*],)?
         }
     ) => {{
-        let mut builder = $crate::controller::MonitorControllerBuilder::new($title);
+        let mut builder = hersir::controller::MonitorControllerBuilder::new($title);
         let mut topology = jormungandr_testing_utils::testing::network::Topology::default();
         $(
             #[allow(unused_mut)]

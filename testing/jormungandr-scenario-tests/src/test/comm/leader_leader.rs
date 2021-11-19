@@ -1,12 +1,12 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
     test::{
         utils::{self, MeasurementReportInterval, SyncWaitParams},
         Result,
     },
     Context, ScenarioResult,
 };
-use jormungandr_testing_utils::testing::FragmentSenderSetup;
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
@@ -52,8 +52,7 @@ pub fn two_transaction_to_two_leaders(context: Context) -> Result<ScenarioResult
     let mut wallet1 = controller.wallet("delegated2")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    let fragment_sender =
-        controller.fragment_sender_with_setup(FragmentSenderSetup::resend_3_times());
+    let fragment_sender = FragmentSender::from(controller.settings());
 
     for _ in 0..10 {
         fragment_sender.send_transaction(&mut wallet1, &wallet2, &leader_1, 1_000.into())?;

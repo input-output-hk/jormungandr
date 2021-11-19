@@ -1,11 +1,12 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
     test::{
         utils::{self, MeasurementReportInterval, SyncWaitParams},
         Result,
     },
     Context, ScenarioResult,
 };
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
 
 const LEADER_1: &str = "Leader1";
@@ -66,7 +67,7 @@ pub fn fully_connected(context: Context) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    let fragment_sender = controller.fragment_sender();
+    let fragment_sender = FragmentSender::from(controller.settings());
 
     fragment_sender.send_transactions_round_trip(
         10,
@@ -152,7 +153,7 @@ pub fn star(context: Context) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    FragmentSender::from(controller.settings()).send_transactions_round_trip(
         40,
         &mut wallet1,
         &mut wallet2,
@@ -240,7 +241,7 @@ pub fn mesh(context: Context) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    FragmentSender::from(controller.settings()).send_transactions_round_trip(
         4,
         &mut wallet1,
         &mut wallet2,
@@ -322,7 +323,7 @@ pub fn point_to_point(context: Context) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    FragmentSender::from(controller.settings()).send_transactions_round_trip(
         40,
         &mut wallet1,
         &mut wallet2,
@@ -414,7 +415,7 @@ pub fn point_to_point_on_file_storage(context: Context) -> Result<ScenarioResult
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    FragmentSender::from(controller.settings()).send_transactions_round_trip(
         40,
         &mut wallet1,
         &mut wallet2,
@@ -506,7 +507,7 @@ pub fn tree(context: Context) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    FragmentSender::from(controller.settings()).send_transactions_round_trip(
         40,
         &mut wallet1,
         &mut wallet2,
@@ -632,8 +633,8 @@ pub fn relay(context: Context) -> Result<ScenarioResult> {
 
     let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&core, &relay1, &relay2]);
 
-    controller
-        .fragment_sender_with_setup(setup)
+    FragmentSender::from(controller.settings())
+        .clone_with_setup(setup)
         .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())?;
 
     let leaders = [

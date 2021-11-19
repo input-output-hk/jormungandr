@@ -1,16 +1,7 @@
-use crate::controller::MonitorController;
-use crate::node::LegacyNode;
-use crate::{
-    node::{FragmentNode, Node},
-    test::Result,
-};
-use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_lib::interfaces::FragmentsProcessingSummary;
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{BlockDate, FragmentLog, NodeState},
-};
-use jormungandr_testing_utils::testing::network::NodeAlias;
+use crate::test::Result;
+use hersir::controller::MonitorController;
+use jormungandr_testing_utils::testing::FragmentNode;
+use jormungandr_testing_utils::testing::FragmentSender;
 pub use jormungandr_testing_utils::testing::{
     assert, assert_equals,
     node::LogLevel,
@@ -25,7 +16,7 @@ use jormungandr_testing_utils::{
     testing::{Speed, Thresholds},
     wallet::Wallet,
 };
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 pub fn wait(seconds: u64) {
     std::thread::sleep(Duration::from_secs(seconds));
@@ -41,7 +32,7 @@ pub fn measure_single_transaction_propagation_speed<A: SyncNode + FragmentNode +
     report_node_stats_interval: MeasurementReportInterval,
 ) -> Result<()> {
     let node = leaders.iter().next().unwrap();
-    let check = controller.fragment_sender().send_transaction(
+    let check = FragmentSender::from(controller.settings()).send_transaction(
         &mut wallet1,
         wallet2,
         *node,
@@ -55,132 +46,4 @@ pub fn measure_single_transaction_propagation_speed<A: SyncNode + FragmentNode +
         info,
         report_node_stats_interval,
     )?)
-}
-
-impl SyncNode for Node {
-    fn alias(&self) -> NodeAlias {
-        self.alias()
-    }
-
-    fn last_block_height(&self) -> u32 {
-        self.rest()
-            .stats()
-            .unwrap()
-            .stats
-            .unwrap()
-            .last_block_height
-            .unwrap()
-            .parse()
-            .unwrap()
-    }
-
-    fn log_stats(&self) {
-        println!("Node: {} -> {:?}", self.alias(), self.rest().stats());
-    }
-
-    fn tip(&self) -> Hash {
-        self.tip().expect("cannot get tip from rest")
-    }
-
-    fn is_running(&self) -> bool {
-        self.rest().stats().unwrap().state == NodeState::Running
-    }
-
-    fn log_content(&self) -> String {
-        self.logger().get_log_content()
-    }
-
-    fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
-        self.logger()
-            .get_lines_with_level(LogLevel::ERROR)
-            .map(|x| x.to_string())
-            .collect()
-    }
-}
-
-impl FragmentNode for LegacyNode {
-    fn alias(&self) -> NodeAlias {
-        self.alias()
-    }
-    fn fragment_logs(
-        &self,
-    ) -> std::result::Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError> {
-        //TODO: implement conversion
-        self.rest()
-            .fragment_logs()
-            .map_err(|_| FragmentNodeError::UnknownError)
-    }
-    fn send_fragment(
-        &self,
-        fragment: Fragment,
-    ) -> std::result::Result<MemPoolCheck, FragmentNodeError> {
-        //TODO: implement conversion
-        self.rest()
-            .send_fragment(fragment)
-            .map_err(|_| FragmentNodeError::UnknownError)
-    }
-
-    fn send_batch_fragments(
-        &self,
-        _fragments: Vec<Fragment>,
-        _fail_fast: bool,
-    ) -> std::result::Result<FragmentsProcessingSummary, FragmentNodeError> {
-        //TODO implement
-        unimplemented!()
-    }
-
-    fn log_pending_fragment(&self, fragment_id: FragmentId) {
-        self.progress_bar()
-            .log_info(format!("Fragment '{}' is still pending", fragment_id));
-    }
-    fn log_rejected_fragment(&self, fragment_id: FragmentId, reason: String) {
-        self.progress_bar()
-            .log_info(format!("Fragment '{}' rejected: {}", fragment_id, reason));
-    }
-    fn log_in_block_fragment(&self, fragment_id: FragmentId, date: BlockDate, block: Hash) {
-        self.progress_bar().log_info(format!(
-            "Fragment '{}' in block: {} ({})",
-            fragment_id, block, date
-        ));
-    }
-    fn log_content(&self) -> Vec<String> {
-        self.logger().get_lines_as_string()
-    }
-}
-
-impl SyncNode for LegacyNode {
-    fn alias(&self) -> NodeAlias {
-        self.alias()
-    }
-
-    fn last_block_height(&self) -> u32 {
-        self.stats().unwrap()["lastBlockHeight"]
-            .as_str()
-            .unwrap()
-            .parse()
-            .unwrap()
-    }
-
-    fn log_stats(&self) {
-        println!("Node: {} -> {:?}", self.alias(), self.stats());
-    }
-
-    fn tip(&self) -> Hash {
-        self.rest().tip().expect("cannot get tip from rest")
-    }
-
-    fn log_content(&self) -> String {
-        self.logger().get_log_content()
-    }
-
-    fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
-        self.logger()
-            .get_lines_with_level(LogLevel::ERROR)
-            .map(|x| x.to_string())
-            .collect()
-    }
-
-    fn is_running(&self) -> bool {
-        self.stats().unwrap()["state"].as_str().unwrap() == "Running"
-    }
 }

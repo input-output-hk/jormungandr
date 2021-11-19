@@ -6,10 +6,9 @@ pub mod stats;
 pub use connections::max_connections;
 pub use stats::p2p_stats_test;
 
-use crate::{
-    node::Node,
-    test::{utils, Result},
-};
+use crate::test::{utils, Result};
+
+use hersir::controller::MonitorNode as Node;
 
 use jormungandr_lib::interfaces::PeerRecord;
 

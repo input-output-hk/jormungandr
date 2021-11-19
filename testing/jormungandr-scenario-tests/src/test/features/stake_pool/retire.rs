@@ -1,10 +1,11 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
     test::{utils, Result},
     Context, ScenarioResult,
 };
-use jormungandr_lib::interfaces::Explorer;
 
+use jormungandr_lib::interfaces::Explorer;
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
 const LEADER_3: &str = "Leader_3";
@@ -82,13 +83,11 @@ pub fn retire_stake_pool_explorer(context: Context) -> Result<ScenarioResult> {
     let mut david = controller.wallet("david")?;
     let mut spo_3 = stake_pool_3.owner().clone();
 
-    controller
-        .fragment_sender()
-        .send_transaction(&mut david, &spo_3, &leader_1, 100.into())?;
+    let fragment_sender = FragmentSender::from(controller.settings());
 
-    controller
-        .fragment_sender()
-        .send_pool_retire(&mut spo_3, &stake_pool_3, &leader_1)?;
+    fragment_sender.send_transaction(&mut david, &spo_3, &leader_1, 100.into())?;
+
+    fragment_sender.send_pool_retire(&mut spo_3, &stake_pool_3, &leader_1)?;
 
     std::thread::sleep(std::time::Duration::from_secs(70));
 

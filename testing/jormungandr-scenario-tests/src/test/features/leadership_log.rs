@@ -1,9 +1,9 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
     test::{utils, Result},
     Context, ScenarioResult,
 };
 
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
 use std::time::SystemTime;
 
 use function_name::named;

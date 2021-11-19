@@ -1,11 +1,13 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
     test::{
         utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
         Result,
     },
     Context, ScenarioResult,
 };
+
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::{
     testing::{
         node::{download_last_n_releases, get_jormungandr_bin},
@@ -98,7 +100,7 @@ fn test_legacy_release(
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    FragmentSender::from(controller.settings()).send_transactions_round_trip(
         10,
         &mut wallet1,
         &mut wallet2,
@@ -210,16 +212,16 @@ fn test_legacy_disruption_release(
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller
-        .fragment_sender_with_setup(FragmentSenderSetup::resend_3_times())
-        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
+    let sender = FragmentSender::from(controller.settings());
+    sender.send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
 
     leader4 =
         controller.restart_node(leader4, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
-    let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&leader2]);
-    controller
-        .fragment_sender_with_setup(setup)
+    sender
+        .clone_with_setup(FragmentSenderSetup::resend_3_times_and_sync_with(vec![
+            &leader2,
+        ]))
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader3, 1_000.into())?;
 
     leader1.shutdown()?;
@@ -232,13 +234,7 @@ fn test_legacy_disruption_release(
     )?;
     leader1.wait_for_bootstrap()?;
 
-    controller.fragment_sender().send_transactions_round_trip(
-        10,
-        &mut wallet1,
-        &mut wallet2,
-        &leader2,
-        1_000.into(),
-    )?;
+    sender.send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
 
     utils::measure_and_log_sync_time(
         &[
@@ -326,9 +322,9 @@ pub fn newest_node_enters_legacy_network(context: Context) -> Result<ScenarioRes
     let mut wallet2 = controller.wallet("delegated1")?;
 
     // do some transaction and allow network to spin off a bit
-    controller
-        .fragment_sender_with_setup(FragmentSenderSetup::resend_3_times())
-        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
+    let sender = FragmentSender::from(controller.settings())
+        .clone_with_setup(FragmentSenderSetup::resend_3_times());
+    sender.send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())?;
 
     // new node enters the network
     let mut leader4 = controller.spawn_node(
@@ -339,10 +335,11 @@ pub fn newest_node_enters_legacy_network(context: Context) -> Result<ScenarioRes
     leader4.wait_for_bootstrap()?;
 
     // force newest node to keep up and talk to legacy nodes
-    let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&leader2]);
-    controller
-        .fragment_sender_with_setup(setup)
-        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader3, 1_000.into())?;
+    let sender = FragmentSender::from(controller.settings()).clone_with_setup(
+        FragmentSenderSetup::resend_3_times_and_sync_with(vec![&leader2]),
+    );
+
+    sender.send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader3, 1_000.into())?;
 
     utils::measure_and_log_sync_time(
         &[
@@ -369,10 +366,7 @@ pub fn newest_node_enters_legacy_network(context: Context) -> Result<ScenarioRes
     old_leader4.wait_for_bootstrap()?;
 
     // repeat sync
-    let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&leader2]);
-    controller
-        .fragment_sender_with_setup(setup)
-        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader3, 1_000.into())?;
+    sender.send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader3, 1_000.into())?;
 
     utils::measure_and_log_sync_time(
         &[&leader1, &leader2, &leader3, &old_leader4],

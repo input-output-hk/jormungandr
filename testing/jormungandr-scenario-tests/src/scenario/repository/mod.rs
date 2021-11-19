@@ -8,28 +8,23 @@ pub use scenario::Scenario;
 pub use suite_result::ScenarioSuiteResult;
 pub use tag::{parse_tag_from_str, Tag};
 
-use crate::{
-    controller::interactive_scenario,
-    example_scenarios::scenario_2,
-    test::{
-        comm::leader_leader::*,
-        comm::passive_leader::*,
-        features::{
-            explorer::passive_node_explorer,
-            leadership_log::leader_restart_preserves_leadership_log, p2p::*,
-            stake_pool::retire::retire_stake_pool_explorer,
-        },
-        legacy,
-        network::{
-            bft::{bft_cascade, bft_passive_propagation},
-            real::{real_bft_network, real_praos_network},
-            topology::scenarios::*,
-        },
-        non_functional::{disruption::*, soak::*},
-        Result,
+use crate::test::{
+    comm::leader_leader::*,
+    comm::passive_leader::*,
+    features::{
+        explorer::passive_node_explorer, leadership_log::leader_restart_preserves_leadership_log,
+        p2p::*, stake_pool::retire::retire_stake_pool_explorer,
     },
-    Context,
+    legacy,
+    network::{
+        bft::{bft_cascade, bft_passive_propagation},
+        real::{real_bft_network, real_praos_network},
+        topology::scenarios::*,
+    },
+    non_functional::{disruption::*, soak::*},
+    Result,
 };
+use hersir::controller::Context;
 
 type ScenarioMethod = fn(Context) -> Result<ScenarioResult>;
 
@@ -177,8 +172,6 @@ fn scenarios_repository() -> Vec<Scenario> {
             crate::test::non_functional::desync::bft_forks,
             vec![Tag::Desync],
         ),
-        Scenario::new("interactive", interactive_scenario, vec![Tag::Interactive]),
-        Scenario::new("example", scenario_2, vec![Tag::Example]),
         Scenario::new("leader_restart", leader_restart, vec![Tag::Short]),
         Scenario::new(
             "passive_node_is_updated",

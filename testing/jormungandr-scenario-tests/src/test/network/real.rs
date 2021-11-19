@@ -1,6 +1,4 @@
 use crate::{
-    controller::MonitorControllerBuilder,
-    node::{LeadershipMode, PersistenceMode},
     scenario::{
         repository::ScenarioResult, ActiveSlotCoefficient, ConsensusVersion, Milli, Node,
         SlotDuration, Value,
@@ -11,6 +9,8 @@ use crate::{
     },
     Context, Node as NodeController,
 };
+use hersir::controller::MonitorControllerBuilder;
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
 use jormungandr_testing_utils::testing::{
     network::{Blockchain, Topology, WalletTemplate},
     node::{download_last_n_releases, get_jormungandr_bin},

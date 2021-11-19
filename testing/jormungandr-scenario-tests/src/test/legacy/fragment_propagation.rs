@@ -1,18 +1,18 @@
 use super::{LEADER, PASSIVE};
-use crate::controller::MonitorController;
 use crate::scenario::{repository::ScenarioResult, Context};
 use crate::test::Result;
 use function_name::named;
+use hersir::controller::MonitorController;
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
-        network::{LeadershipMode, PersistenceMode},
         node::{download_last_n_releases, get_jormungandr_bin},
         FragmentNode, SyncNode,
     },
     version_0_8_19, Version,
 };
-
 use std::path::PathBuf;
 
 #[allow(unused_macros)]
@@ -185,7 +185,7 @@ fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized + Send>(
     let leader_stake_pool = controller.stake_pool(LEADER).unwrap();
     let david_stake_pool = StakePool::new(&david);
 
-    let sender = controller.fragment_sender();
+    let sender = FragmentSender::from(controller.settings());
 
     sender
         .send_transaction(&mut alice, &bob, passive, 10.into())

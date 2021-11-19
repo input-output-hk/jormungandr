@@ -1,22 +1,22 @@
 use crate::controller::spawn_legacy_node;
 use crate::controller::spawn_node;
 use crate::node::ProgressBarController;
-use crate::Context;
 use crate::{
     node::LegacyNode,
-    scenario::{dotifier::Dotifier, Error, ProgressBarMode, Result},
+    scenario::{dotifier::Dotifier, ContextChaCha, Error, ProgressBarMode, Result},
     style, Node,
 };
 use assert_fs::fixture::ChildPath;
-use assert_fs::fixture::PathChild;
-use assert_fs::fixture::PathCreateDir;
+use assert_fs::prelude::*;
 use chain_impl_mockchain::block::BlockDate;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
+use jormungandr_testing_utils::testing::network::Settings;
+use jormungandr_testing_utils::testing::network::WalletAlias;
 use jormungandr_testing_utils::testing::network::{
-    builder::NetworkBuilder, controller::Controller as InnerController, Settings, WalletAlias,
+    builder::NetworkBuilder, controller::Controller as InnerController,
 };
 use jormungandr_testing_utils::testing::utils::{Event, Observable, Observer};
 use jormungandr_testing_utils::testing::BlockDateGenerator;
@@ -49,7 +49,7 @@ pub struct MonitorControllerBuilder {
 
 pub struct MonitorController {
     inner: InnerController,
-    context: Context,
+    context: ContextChaCha,
     progress_bar: Arc<MultiProgress>,
     progress_bar_thread: Option<std::thread::JoinHandle<()>>,
 }
@@ -72,7 +72,7 @@ impl MonitorControllerBuilder {
         self
     }
 
-    pub fn build(self, context: Context) -> Result<MonitorController> {
+    pub fn build(self, context: ContextChaCha) -> Result<MonitorController> {
         let testing_directory = context.child_directory(&self.title);
         testing_directory.create_dir_all()?;
         let generate_documentation_path = testing_directory.path().to_path_buf();
@@ -156,7 +156,7 @@ fn document(path: &Path, inner: &InnerController) -> Result<()> {
 }
 
 impl MonitorController {
-    fn new(controller: InnerController, context: Context) -> Result<Self> {
+    fn new(controller: InnerController, context: ContextChaCha) -> Result<Self> {
         let progress_bar = Arc::new(MultiProgress::new());
 
         Ok(Self {
@@ -200,7 +200,7 @@ impl MonitorController {
         self.inner.settings()
     }
 
-    pub fn context(&self) -> &Context {
+    pub fn context(&self) -> &ContextChaCha {
         &self.context
     }
 

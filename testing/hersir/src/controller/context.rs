@@ -43,7 +43,7 @@ impl Context {
             testing_directory: testing_directory.into(),
             generate_documentation,
             session_mode,
-            log_level
+            log_level,
         }
     }
 

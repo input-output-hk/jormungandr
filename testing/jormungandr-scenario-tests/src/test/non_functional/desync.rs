@@ -1,10 +1,11 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
     scenario::repository::ScenarioResult,
     test::{non_functional::*, Result},
     Context,
 };
 use function_name::named;
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::{testing::network::FaketimeConfig, wallet::Wallet};
 
 #[named]
@@ -68,7 +69,7 @@ pub fn bft_forks(context: Context) -> Result<ScenarioResult> {
         // Sooner or later this will fail because a transaction will settle
         // in the fork and the spending counter will not be correct anymore
         let mut alice_clone = alice.clone();
-        controller.fragment_sender().send_transaction(
+        FragmentSender::from(controller.settings()).send_transaction(
             &mut alice_clone,
             &bob,
             &leader_1,

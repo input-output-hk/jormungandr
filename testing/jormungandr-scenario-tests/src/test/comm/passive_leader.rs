@@ -1,10 +1,11 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
     test::utils::{self, MeasurementReportInterval, SyncWaitParams},
     test::Result,
     Context, ScenarioResult,
 };
 use jormungandr_lib::interfaces::Policy;
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
 use std::time::Duration;
 
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
@@ -49,7 +50,7 @@ pub fn transaction_to_passive(context: Context) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    FragmentSender::from(controller.settings()).send_transactions_round_trip(
         10,
         &mut wallet1,
         &mut wallet2,
@@ -128,14 +129,14 @@ pub fn leader_restart(context: Context) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller
-        .fragment_sender_with_setup(FragmentSenderSetup::resend_3_times())
+    FragmentSender::from(controller.settings())
+        .clone_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &passive, 1_000.into())?;
 
     leader.shutdown()?;
 
-    controller
-        .fragment_sender_with_setup(FragmentSenderSetup::resend_3_times())
+    FragmentSender::from(controller.settings())
+        .clone_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_with_iteration_delay(
             10,
             &mut wallet1,
@@ -149,8 +150,8 @@ pub fn leader_restart(context: Context) -> Result<ScenarioResult> {
         controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
     leader.wait_for_bootstrap()?;
 
-    controller
-        .fragment_sender_with_setup(FragmentSenderSetup::resend_3_times())
+    FragmentSender::from(controller.settings())
+        .clone_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &passive, 1_000.into())?;
 
     utils::measure_and_log_sync_time(
@@ -205,7 +206,7 @@ pub fn passive_node_is_updated(context: Context) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    FragmentSender::from(controller.settings()).send_transactions_round_trip(
         40,
         &mut wallet1,
         &mut wallet2,
