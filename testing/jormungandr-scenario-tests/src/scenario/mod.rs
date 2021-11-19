@@ -2,7 +2,7 @@ mod context;
 pub mod dotifier;
 mod fragment_node;
 pub mod repository;
-pub use self::context::{Context, ContextChaCha};
+pub use self::context::Context;
 pub use chain_impl_mockchain::{
     block::Block, chaintypes::ConsensusVersion, header::HeaderId, milli::Milli, value::Value,
 };

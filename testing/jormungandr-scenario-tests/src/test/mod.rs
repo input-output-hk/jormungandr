@@ -7,7 +7,7 @@ pub mod utils;
 
 use jormungandr_lib::interfaces::FragmentStatus;
 use jormungandr_testing_utils::testing::jormungandr::StartupError;
-
+use jormungandr_testing_utils::testing::network::controller::ControllerError;
 use std::time::Duration;
 
 #[derive(Debug, thiserror::Error)]
@@ -58,6 +58,9 @@ pub enum Error {
 
     #[error(transparent)]
     Startup(#[from] StartupError),
+
+    #[error(transparent)]
+    Controller(#[from] ControllerError),
 }
 
 pub type Result<T> = ::core::result::Result<T, Error>;

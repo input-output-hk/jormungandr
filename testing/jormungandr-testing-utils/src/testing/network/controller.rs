@@ -274,6 +274,7 @@ impl Controller {
         let mut starter = Starter::new();
         starter
             .config(params)
+            .verbose(spawn_params.get_verbose())
             .alias(spawn_params.get_alias().clone())
             .from_genesis(spawn_params.get_leadership_mode().into())
             .leadership_mode(spawn_params.get_leadership_mode());
