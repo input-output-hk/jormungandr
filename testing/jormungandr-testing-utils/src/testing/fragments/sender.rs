@@ -11,6 +11,8 @@ use crate::{
     wallet::Wallet,
 };
 use chain_core::property::Fragment as _;
+use chain_crypto::Ed25519;
+use chain_crypto::SecretKey;
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate::{DecryptedPrivateTally, UpdateProposal, UpdateVote, VotePlan, VoteTallyPayload},
@@ -340,12 +342,14 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     pub fn send_update_proposal<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,
+        bft_secret: &SecretKey<Ed25519>,
         update_proposal: UpdateProposal,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         let fragment = from.issue_update_proposal(
             &self.block0_hash,
             &self.fees,
+            bft_secret,
             self.expiry_generator.block_date(),
             update_proposal,
         )?;
@@ -356,12 +360,14 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     pub fn send_update_vote<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,
+        bft_secret: &SecretKey<Ed25519>,
         update_vote: UpdateVote,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         let fragment = from.issue_update_vote(
             &self.block0_hash,
             &self.fees,
+            bft_secret,
             self.expiry_generator.block_date(),
             update_vote,
         )?;

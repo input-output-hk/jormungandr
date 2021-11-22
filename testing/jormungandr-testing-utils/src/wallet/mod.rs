@@ -110,6 +110,10 @@ impl Wallet {
         ))
     }
 
+    pub fn discrimination(&self) -> Discrimination {
+        self.address().1 .0
+    }
+
     pub fn to_initial_fund(&self, value: u64) -> InitialUTxO {
         InitialUTxO {
             address: self.address(),
@@ -471,21 +475,34 @@ impl Wallet {
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        bft_secret: &SecretKey<Ed25519>,
         valid_until: BlockDate,
         update_proposal: UpdateProposal,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
-            .update_proposal(self, update_proposal))
+        Ok(
+            FragmentBuilder::new(block0_hash, fees, valid_until).update_proposal(
+                self,
+                update_proposal,
+                bft_secret,
+            ),
+        )
     }
 
     pub fn issue_update_vote(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        bft_secret: &SecretKey<Ed25519>,
         valid_until: BlockDate,
         update_vote: UpdateVote,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).update_vote(self, update_vote))
+        Ok(
+            FragmentBuilder::new(block0_hash, fees, valid_until).update_vote(
+                self,
+                update_vote,
+                bft_secret,
+            ),
+        )
     }
 
     pub fn to_committee_id(&self) -> CommitteeIdDef {
@@ -522,5 +539,11 @@ impl From<Wallet> for WalletLib {
         };
         let address_data_value = AddressDataValue::new(address_data, ValueLib(0));
         WalletLib::from_address_data_value(address_data_value)
+    }
+}
+
+impl From<account::Wallet> for Wallet {
+    fn from(account: account::Wallet) -> Self {
+        Self::Account(account)
     }
 }
