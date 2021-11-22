@@ -66,7 +66,7 @@ impl TxOnly {
         let title = "standard load only transactions";
         let mut faucet = Wallet::import_account(
             self.faucet_key_file.clone(),
-            Some(self.faucet_spending_counter),
+            Some(self.faucet_spending_counter.into()),
         );
         let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
         builder.with_rest(self.endpoint.parse().unwrap());

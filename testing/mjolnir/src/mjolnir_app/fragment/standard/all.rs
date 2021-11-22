@@ -73,8 +73,10 @@ pub struct AllFragments {
 impl AllFragments {
     pub fn exec(&self) -> Result<(), MjolnirError> {
         let title = "all fragment load test";
-        let faucet =
-            Wallet::import_account(&self.faucet_key_file, Some(self.faucet_spending_counter));
+        let faucet = Wallet::import_account(
+            &self.faucet_key_file,
+            Some(self.faucet_spending_counter.into()),
+        );
         let receiver = startup::create_new_account_address();
         let mut builder = RemoteJormungandrBuilder::new("node".to_string());
         builder.with_rest(self.endpoint.parse().unwrap());

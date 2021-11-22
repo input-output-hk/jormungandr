@@ -63,6 +63,8 @@ pub enum WalletError {
     InvalidBech32Key { expected: String, actual: String },
 }
 
+const DEFAULT_LANE: usize = 0;
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum Wallet {
@@ -81,7 +83,7 @@ impl Wallet {
 
     pub fn import_account<P: AsRef<Path>>(
         secret_key_file: P,
-        spending_counter: Option<u32>,
+        spending_counter: Option<SpendingCounter>,
     ) -> Wallet {
         let bech32_str = jortestkit::file::read_file(secret_key_file);
         Wallet::Account(account::Wallet::from_existing_account(
@@ -102,7 +104,7 @@ impl Wallet {
 
     pub fn from_existing_account(
         signing_key_bech32: &str,
-        spending_counter: Option<u32>,
+        spending_counter: Option<SpendingCounter>,
     ) -> Wallet {
         Wallet::Account(account::Wallet::from_existing_account(
             signing_key_bech32,
@@ -270,14 +272,14 @@ impl Wallet {
 
     pub fn confirm_transaction(&mut self) {
         match self {
-            Wallet::Account(account) => account.increment_counter(),
+            Wallet::Account(account) => account.increment_counter(DEFAULT_LANE),
             _ => unimplemented!(),
         }
     }
 
     pub fn decrement_counter(&mut self) {
         match self {
-            Wallet::Account(account) => account.decrement_counter(),
+            Wallet::Account(account) => account.decrement_counter(DEFAULT_LANE),
             _ => unimplemented!(),
         }
     }
@@ -469,7 +471,7 @@ impl Wallet {
         ))
     }
 
-    pub fn update_counter(&mut self, counter: u32) {
+    pub fn update_counter(&mut self, counter: SpendingCounter) {
         if let Wallet::Account(account) = self {
             account.set_counter(counter)
         }

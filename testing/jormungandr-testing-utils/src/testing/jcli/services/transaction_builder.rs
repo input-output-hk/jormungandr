@@ -5,7 +5,7 @@ use crate::wallet::Wallet;
 use assert_fs::fixture::ChildPath;
 use assert_fs::{prelude::*, TempDir};
 use chain_core::property::Deserialize;
-use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
+use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::BlockDate,
@@ -199,7 +199,7 @@ impl TransactionBuilder {
         &mut self,
         private_key: &str,
         transaction_type: &str,
-        spending_key: Option<u32>,
+        spending_key: Option<SpendingCounter>,
     ) -> &mut Self {
         let witness = self.create_witness_from_key(private_key, transaction_type, spending_key);
         self.seal_with_witness(&witness);
@@ -230,7 +230,7 @@ impl TransactionBuilder {
             Wallet::Account(account) => self.create_witness_from_key(
                 &account.signing_key().to_bech32_str(),
                 "account",
-                Some(account.internal_counter().into()),
+                Some(account.internal_counter()),
             ),
             Wallet::UTxO(utxo) => {
                 self.create_witness_from_key(&utxo.last_signing_key().to_bech32_str(), "utxo", None)
@@ -247,7 +247,7 @@ impl TransactionBuilder {
         &self,
         private_key: &str,
         addr_type: &str,
-        spending_key: Option<u32>,
+        spending_key: Option<SpendingCounter>,
     ) -> Witness {
         let transaction_id = self.transaction_id();
         Witness::new(
@@ -260,7 +260,11 @@ impl TransactionBuilder {
         )
     }
 
-    pub fn create_witness_default(&self, addr_type: &str, spending_key: Option<u32>) -> Witness {
+    pub fn create_witness_default(
+        &self,
+        addr_type: &str,
+        spending_key: Option<SpendingCounter>,
+    ) -> Witness {
         let private_key = self.jcli.key().generate_default();
         self.create_witness_from_key(&private_key, addr_type, spending_key)
     }
