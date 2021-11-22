@@ -11,7 +11,7 @@ use crate::{
 };
 use chain_addr::AddressReadable;
 use chain_addr::Discrimination;
-use chain_crypto::{Ed25519, Ed25519Extended, SecretKey, Signature};
+use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Signature};
 pub use chain_impl_mockchain::{
     account::SpendingCounter,
     block::Block,
@@ -189,6 +189,10 @@ impl Wallet {
             Wallet::UTxO(utxo) => utxo.address(),
             Wallet::Delegation(delegation) => delegation.address(),
         }
+    }
+
+    pub fn public_key(&self) -> PublicKey<Ed25519> {
+        self.address().1.public_key().unwrap().clone()
     }
 
     pub fn address_bech32(&self, discrimination: Discrimination) -> String {
