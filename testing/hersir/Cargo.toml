@@ -7,8 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7", features = [ "property-test-api" ] }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 serde = "1.0"
