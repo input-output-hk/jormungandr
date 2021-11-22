@@ -665,6 +665,7 @@ pub(super) mod internal {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use chain_core::property::Fragment as _;
         use chain_impl_mockchain::transaction::TxBuilder;
         use quickcheck_macros::quickcheck;
 
@@ -674,21 +675,21 @@ pub(super) mod internal {
             fragments2_in: (Fragment, Fragment),
         ) {
             let fragments1 = vec![
-                fragments1_in.0.clone(),
-                fragments1_in.1.clone(),
-                fragments1_in.2.clone(),
+                (fragments1_in.0.clone(), fragments1_in.0.id()),
+                (fragments1_in.1.clone(), fragments1_in.1.id()),
+                (fragments1_in.2.clone(), fragments1_in.2.id()),
             ];
             let fragments2 = vec![
-                fragments1_in.2.clone(),
-                fragments2_in.0.clone(),
-                fragments2_in.1.clone(),
+                (fragments1_in.2.clone(), fragments1_in.2.id()),
+                (fragments2_in.0.clone(), fragments2_in.0.id()),
+                (fragments2_in.1.clone(), fragments2_in.1.id()),
             ];
-            let fragments2_expected = vec![fragments2_in.0.clone()];
+            let fragments2_expected = vec![(fragments2_in.0.clone(), fragments2_in.0.id())];
             let final_expected = vec![
-                fragments1_in.0,
-                fragments1_in.1,
-                fragments1_in.2,
-                fragments2_in.0,
+                (fragments1_in.0.clone(), fragments1_in.0.id()),
+                (fragments1_in.1.clone(), fragments1_in.1.id()),
+                (fragments1_in.2.clone(), fragments1_in.2.id()),
+                (fragments2_in.0.clone(), fragments2_in.0.id()),
             ];
             let mut pool = Pool::new(4);
             assert_eq!(fragments1, pool.insert_all(fragments1.clone()));
@@ -696,7 +697,7 @@ pub(super) mod internal {
                 pool.total_size_bytes,
                 fragments1
                     .iter()
-                    .map(|f| f.to_raw().size_bytes_plus_size())
+                    .map(|(f, _)| f.to_raw().size_bytes_plus_size())
                     .sum::<usize>()
             );
             assert_eq!(fragments2_expected, pool.insert_all(fragments2));
@@ -722,7 +723,7 @@ pub(super) mod internal {
                     .set_payload_auth(&()),
             );
 
-            pool.insert_all([tx]);
+            pool.insert_all([(tx.clone(), tx.id())]);
 
             assert_eq!(pool.entries.len(), 1, "Fragment should be in pool");
 
