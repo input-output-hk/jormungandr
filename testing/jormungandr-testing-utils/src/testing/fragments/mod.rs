@@ -18,7 +18,9 @@ pub use self::{
 use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload};
 use chain_impl_mockchain::{
-    certificate::{EncryptedVoteTally, PoolId, VoteCast, VotePlan, VoteTally},
+    certificate::{
+        EncryptedVoteTally, PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally,
+    },
     fee::LinearFee,
     fragment::Fragment,
     testing::{
@@ -318,5 +320,17 @@ impl FragmentBuilder {
         };
         self.fragment_factory()
             .vote_tally(self.valid_until, &inner_wallet, vote_tally)
+    }
+
+    pub fn update_proposal(&self, wallet: &Wallet, update_proposal: UpdateProposal) -> Fragment {
+        let inner_wallet = wallet.clone().into();
+        self.fragment_factory()
+            .update_proposal(self.valid_until, &inner_wallet, update_proposal)
+    }
+
+    pub fn update_vote(&self, wallet: &Wallet, update_vote: UpdateVote) -> Fragment {
+        let inner_wallet = wallet.clone().into();
+        self.fragment_factory()
+            .update_vote(self.valid_until, &inner_wallet, update_vote)
     }
 }
