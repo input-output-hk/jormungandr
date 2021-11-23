@@ -1,8 +1,9 @@
-use crate::controller::{spawn_legacy_node, spawn_node, Error};
+use crate::controller::Error;
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::Value;
 use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
 use jormungandr_testing_utils::testing::network::controller::{Controller, ControllerError};
+
 use jormungandr_testing_utils::testing::network::SpawnParams;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::wallet::Wallet;
@@ -68,6 +69,7 @@ impl UserInteractionController {
             Ok(wallet.clone().into())
         } else {
             Err(ControllerError::WalletNotFound(wallet.to_owned())).map_err(Into::into)
+
         }
     }
 
@@ -204,11 +206,8 @@ impl UserInteractionController {
         Ok(check)
     }
 
-    pub fn spawn_node_custom(
-        &mut self,
-        input_params: SpawnParams,
-    ) -> Result<JormungandrProcess, Error> {
-        spawn_node(&mut self.controller, input_params).map_err(Into::into)
+    pub fn spawn_node(&mut self, input_params: SpawnParams) -> Result<JormungandrProcess,Error> {
+        self.controller.spawn(input_params).map_err(Into::into)
     }
 
     pub fn spawn_legacy_node(
@@ -216,7 +215,8 @@ impl UserInteractionController {
         input_params: SpawnParams,
         version: &Version,
     ) -> Result<JormungandrProcess, Error> {
-        spawn_legacy_node(&mut self.controller, input_params, version)
+        self.controller
+            .spawn_legacy(input_params, version)
             .map(|(process, _settings)| process)
             .map_err(Into::into)
     }

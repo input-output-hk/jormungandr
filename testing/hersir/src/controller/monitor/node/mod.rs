@@ -168,7 +168,7 @@ impl Node {
         self.process
     }
 
-    pub fn status(&self) -> Status {
+    pub fn status(&self) -> Result<Status, StartupError> {
         self.process.status(&StartupVerificationMode::Rest)
     }
 
@@ -178,10 +178,6 @@ impl Node {
 
     pub fn explorer(&self) -> Explorer {
         self.process.explorer()
-    }
-
-    pub fn as_named_process(&self) -> NamedProcess {
-        NamedProcess::new(self.alias(), self.process.process_id() as usize)
     }
 
     pub fn log(&self, info: &str) {
@@ -250,7 +246,10 @@ impl Node {
     }
 
     pub fn is_up(&self) -> bool {
-        matches!(self.status(), Status::Running)
+        match self.status() {
+            Ok(status) => status == Status::Running,
+            Err(_) => false,
+        }
     }
 
     pub fn shutdown(&mut self) -> Result<Option<ExitStatus>, Error> {
