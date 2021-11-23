@@ -1,188 +1,179 @@
-use jormungandr_testing_utils::testing::data::witness::Witness;
+use chain_addr::Discrimination;
+use chain_impl_mockchain::{account::SpendingCounter, header::BlockDate, testing::TestGen};
+use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::testing::startup;
+use jormungandr_testing_utils::testing::{jcli::JCli, witness::Witness};
 use std::path::PathBuf;
-use jormungandr_testing_utils::testing::jcli::JCli;
-use jortestkit::file::make_readonly;
-use chain_impl_mockchain::key::Hash;
-use assert_fs::TempDir;
 
-const FAKE_INPUT_TRANSACTION_ID: &str =
-    "19c9852ca0a68f15d0f7de5d1a26acd67a3a3251640c6066bdb91d22e2000193";
-const FAKE_GENESIS_HASH: &str = "19c9852ca0a68f15d0f7de5d1a26acd67a3a3251640c6066bdb91d22e2000193";
+lazy_static::lazy_static! {
+    static ref FAKE_GENESIS_HASH: Hash = TestGen::hash().into();
+    static ref FAKE_INPUT_TRANSACTION_ID: Hash = TestGen::hash().into();
+}
 
 #[test]
 pub fn test_utxo_transation_with_more_than_one_witness_per_input_is_rejected() {
-    let reciever = startup::create_new_utxo_address();
+    let receiver = startup::create_new_utxo_address();
 
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
+    let mut transaction_wrapper = JCli::default().transaction_builder(TestGen::hash().into());
     transaction_wrapper
-        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
-        .assert_add_output(&reciever.address, &100)
-        .assert_finalize();
+        .new_transaction()
+        .add_input(&*FAKE_INPUT_TRANSACTION_ID, 0, "100")
+        .add_output(&receiver.address_bech32(Discrimination::Test), 100.into())
+        .set_expiry_date(BlockDate::first().into())
+        .finalize();
 
-    let witness1 = transaction_wrapper.create_witness_default("utxo");
-    let witness2 = transaction_wrapper.create_witness_default("utxo");
-
+    let witness1 = transaction_wrapper.create_witness_default("utxo", None);
     transaction_wrapper
-        .assert_make_witness(&witness1)
-        .assert_add_witness(&witness1)
-        .assert_make_witness(&witness2)
-        .assert_add_witness_fail(&witness2, "cannot add anymore witnesses");
+        .make_witness(&witness1)
+        .add_witness(&witness1);
+
+    let witness2 = transaction_wrapper.create_witness_default("utxo", None);
+    transaction_wrapper
+        .make_witness(&witness2)
+        .add_witness_expect_fail(
+            &witness2,
+            "too many witnesses in transaction to add another: 1, maximum is 1",
+        );
 }
 
 #[test]
+#[ignore]
 pub fn test_utxo_transation_with_address_type_witness_is_rejected() {
-    let reciever = startup::create_new_utxo_address();
+    let receiver = startup::create_new_utxo_address();
 
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
-    let witness = transaction_wrapper.create_witness_default("account");
+    let mut transaction_wrapper = JCli::default().transaction_builder(TestGen::hash().into());
 
     transaction_wrapper
-        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
-        .assert_add_output(&reciever.address, &100)
-        .assert_finalize()
+        .new_transaction()
+        .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, "100")
+        .add_output(&receiver.address_bech32(Discrimination::Test), 100.into())
+        .set_expiry_date(BlockDate::first().into())
+        .finalize();
+
+    let witness = transaction_wrapper.create_witness_default("account", None);
+    transaction_wrapper
         .seal_with_witness(&witness)
-        .assert_transaction_to_message_fails("cannot seal: Invalid witness type at index 0");
+        .to_message_expect_fail("cannot seal: Invalid witness type at index 0");
 }
 
 #[test]
+#[ignore]
 pub fn test_account_transation_with_utxo_type_witness_is_rejected() {
-    let reciever = startup::create_new_account_address();
+    let receiver = startup::create_new_account_address();
     let sender = startup::create_new_account_address();
 
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
-    let witness = transaction_wrapper.create_witness_default("utxo");
+    let mut transaction_wrapper = JCli::default().transaction_builder(TestGen::hash().into());
     transaction_wrapper
-        .assert_add_account(&sender.address, &100)
-        .assert_add_output(&reciever.address, &100)
-        .assert_finalize()
+        .new_transaction()
+        .add_account(&sender.address_bech32(Discrimination::Test), &100.into())
+        .add_output(&receiver.address_bech32(Discrimination::Test), 100.into())
+        .set_expiry_date(BlockDate::first().into())
+        .finalize();
+    let witness = transaction_wrapper.create_witness_default("utxo", None);
+    transaction_wrapper
         .seal_with_witness(&witness)
-        .assert_transaction_to_message_fails("cannot seal: Invalid witness type at index 0");
+        .to_message_expect_fail("cannot seal: Invalid witness type at index 0");
 }
 
 #[test]
 pub fn test_make_witness_with_unknown_type_fails() {
-    let reciever = startup::create_new_utxo_address();
-
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
-    let witness = transaction_wrapper.create_witness_default("Unknown");
+    let receiver = startup::create_new_utxo_address();
+    let mut transaction_wrapper = JCli::default().transaction_builder(TestGen::hash().into());
     transaction_wrapper
-        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
-        .assert_add_output(&reciever.address, &100)
-        .assert_finalize()
-        .assert_make_witness_fails(&witness, "Invalid witness type");
+        .new_transaction()
+        .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, "100")
+        .add_output(&receiver.address_bech32(Discrimination::Test), 100.into())
+        .set_expiry_date(BlockDate::first().into())
+        .finalize();
+    let witness = transaction_wrapper.create_witness_default("Unknown", None);
+    transaction_wrapper.make_witness_expect_fail(&witness, "Invalid witness type");
 }
 
 #[test]
 pub fn test_make_witness_with_invalid_private_key_fails() {
-    let reciever = startup::create_new_utxo_address();
+    let receiver = startup::create_new_utxo_address();
     let jcli: JCli = Default::default();
 
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
+    let mut transaction_wrapper = JCli::default().transaction_builder(TestGen::hash().into());
 
     let mut private_key = jcli.key().generate_default();
     private_key.push('3');
 
-    let witness = Witness::new(
-        FAKE_GENESIS_HASH,
-        FAKE_INPUT_TRANSACTION_ID,
-        "utxo",
-        &private_key,
-        &0,
-    );
-
     transaction_wrapper
-        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
-        .assert_add_output(&reciever.address, &100)
-        .assert_finalize()
-        .assert_make_witness_fails(&witness, "Invalid Bech32");
+        .new_transaction()
+        .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, "100")
+        .add_output(&receiver.address_bech32(Discrimination::Test), 100.into())
+        .set_expiry_date(BlockDate::first().into())
+        .finalize();
+
+    let witness = transaction_wrapper.create_witness_from_key(&private_key, "utxo", None);
+    transaction_wrapper
+        .make_witness_expect_fail(&witness, "Failed to parse bech32, invalid data format");
 }
 
 #[test]
 pub fn test_make_witness_with_non_existing_private_key_file_fails() {
     let jcli: JCli = Default::default();
-    let reciever = startup::create_new_utxo_address();
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
+    let receiver = startup::create_new_utxo_address();
+    let mut transaction_wrapper = jcli.transaction_builder(TestGen::hash().into());
     let private_key = jcli.key().generate_default();
-
+    transaction_wrapper
+        .new_transaction()
+        .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, "100")
+        .add_output(&receiver.address_bech32(Discrimination::Test), 100.into())
+        .set_expiry_date(BlockDate::first().into())
+        .finalize();
     let mut witness = Witness::new(
-        FAKE_GENESIS_HASH,
-        FAKE_INPUT_TRANSACTION_ID,
+        transaction_wrapper.staging_dir(),
+        &FAKE_GENESIS_HASH,
+        &FAKE_INPUT_TRANSACTION_ID,
         "utxo",
         &private_key,
-        &0,
+        None,
     );
     witness.private_key_path = PathBuf::from("a");
-    transaction_wrapper
-        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
-        .assert_add_output(&reciever.address, &100)
-        .assert_finalize()
-        .assert_make_witness_fails(&witness, "NotFound");
+    transaction_wrapper.make_witness_expect_fail(&witness, "No such file or directory");
 }
 
 #[test]
 #[cfg(not(target_os = "linux"))]
 pub fn test_make_witness_with_readonly_private_key_file_fails() {
+    use jortestkit::file::make_readonly;
     let jcli: JCli = Default::default();
-    let reciever = startup::create_new_utxo_address();
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
+    let receiver = startup::create_new_utxo_address();
+    let mut transaction_wrapper = JCli::default().transaction_builder(TestGen::hash().into());
     let private_key = jcli.key().generate_default();
-
+    transaction_wrapper
+        .new_transaction()
+        .add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
+        .add_output(&receiver.address_bech32(Discrimination::Test), &100)
+        .set_expiry_date(BlockDate::first().into())
+        .finalize();
     let witness = Witness::new(
-        FAKE_GENESIS_HASH,
-        FAKE_INPUT_TRANSACTION_ID,
+        transaction_wrapper.staging_dir(),
+        &FAKE_GENESIS_HASH,
+        &FAKE_INPUT_TRANSACTION_ID,
         "utxo",
         &private_key,
-        &0,
+        None,
     );
-    make_readonly(&witness.file);
-    transaction_wrapper
-        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
-        .assert_add_output(&reciever.address, &100)
-        .assert_finalize()
-        .assert_make_witness_fails(&witness, "denied");
+    make_readonly(&witness.private_key_path);
+    transaction_wrapper.make_witness_expect_fail(&witness, "denied");
 }
 
 #[test]
-pub fn test_make_witness_with_wrong_block_hash_fails() {
-    let jcli: JCli = Default::default();
-    let reciever = startup::create_new_utxo_address();
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
-    let private_key = jcli.key().generate_default();
+pub fn test_account_transaction_different_lane_is_accepted() {
+    let receiver = startup::create_new_utxo_address();
 
-    let witness = Witness::new(
-        "FAKE_GENESIS_HASH",
-        FAKE_INPUT_TRANSACTION_ID,
-        "utxo",
-        &private_key,
-        &0,
-    );
+    let mut transaction_wrapper = JCli::default().transaction_builder(TestGen::hash().into());
+
     transaction_wrapper
-        .assert_add_input(&FAKE_INPUT_TRANSACTION_ID, 0, 100.into())
-        .assert_add_output(&reciever.address(), 100.into())
-        .assert_finalize()
-        .assert_make_witness_fails(&witness, "invalid hex encoding for hash value");
-}
-
-#[test]
-pub fn test_make_witness_with_wrong_transaction_id_hash_fails() {
-    let jcli: JCli = Default::default();
-    let temp_dir = TempDir::new().unwrap();
-    let reciever = startup::create_new_utxo_address();
-    let mut transaction_wrapper = JCLITransactionWrapper::new_transaction(FAKE_GENESIS_HASH);
-    let private_key = jcli.key().generate_default();
-
-    let witness = Witness::new(
-        &temp_dir,
-        FAKE_GENESIS_HASH,
-        "FAKE_INPUT_TRANSACTION_ID",
-        "utxo",
-        &private_key,
-        &0,
-    );
-    transaction_wrapper
-        .assert_add_input(Hash::from_str(&FAKE_INPUT_TRANSACTION_ID).unwrap(),0, 100.into())
-        .assert_add_output(&reciever.address(), 100.into())
-        .assert_finalize()
-        .assert_make_witness_fails(&witness, "invalid hex encoding for hash value");
+        .new_transaction()
+        .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, "100")
+        .add_output(&receiver.address_bech32(Discrimination::Test), 100.into())
+        .set_expiry_date(BlockDate::first().into())
+        .finalize();
+    let witness =
+        transaction_wrapper.create_witness_default("account", Some(SpendingCounter::new(2, 0)));
+    transaction_wrapper.seal_with_witness(&witness).to_message();
 }
