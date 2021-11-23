@@ -87,7 +87,7 @@ fn proposal_expired_after_proposal_expiration_deadline() {
 }
 
 #[test]
-fn proposal_changes_immutable_setting() {
+fn not_a_bft_leader() {
     let temp_dir = TempDir::new().unwrap();
     let mut alice = startup::create_new_account_address();
     let bft_secret = create_new_key_pair::<Ed25519>();
@@ -97,6 +97,52 @@ fn proposal_changes_immutable_setting() {
         .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
         .with_discrimination(Discrimination::Test)
         .with_consensus_leaders_ids(vec![ConsensusLeaderId::from(alice.public_key())])
+        .with_slots_per_epoch(10)
+        .build(&temp_dir);
+
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config)
+        .start()
+        .unwrap();
+
+    let change_params = ConfigParams::new(vec![ConfigParam::Discrimination(
+        Discrimination::Production,
+    )]);
+
+    let fragment_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        jormungandr.default_block_date_generator(),
+        FragmentSenderSetup::resend_3_times(),
+    );
+    let update_proposal = UpdateProposal::new(
+        change_params.into(),
+        bft_secret.identifier().into_public_key().into(),
+    );
+    assert!(fragment_sender
+        .send_update_proposal(
+            &mut alice,
+            &bft_secret.signing_key().into_secret_key(),
+            update_proposal,
+            &jormungandr,
+        )
+        .is_err());
+}
+
+#[test]
+fn proposal_changes_immutable_setting() {
+    let temp_dir = TempDir::new().unwrap();
+    let mut alice = startup::create_new_account_address();
+    let bft_secret = create_new_key_pair::<Ed25519>();
+    let wallet_initial_funds = 1_000_000;
+
+    let config = ConfigurationBuilder::new()
+        .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
+        .with_discrimination(Discrimination::Test)
+        .with_consensus_leaders_ids(vec![ConsensusLeaderId::from(
+            bft_secret.identifier().into_public_key(),
+        )])
         .with_slots_per_epoch(10)
         .build(&temp_dir);
 
@@ -121,7 +167,10 @@ fn proposal_changes_immutable_setting() {
         FragmentSenderSetup::resend_3_times(),
     );
 
-    let update_proposal = UpdateProposal::new(change_params.into(), alice.public_key().into());
+    let update_proposal = UpdateProposal::new(
+        change_params.into(),
+        bft_secret.identifier().into_public_key().into(),
+    );
     let check = fragment_sender
         .send_update_proposal(
             &mut alice,
@@ -130,7 +179,10 @@ fn proposal_changes_immutable_setting() {
             &jormungandr,
         )
         .unwrap();
-    let update_vote = UpdateVote::new(*check.fragment_id(), alice.public_key().into());
+    let update_vote = UpdateVote::new(
+        *check.fragment_id(),
+        bft_secret.identifier().into_public_key().into(),
+    );
     fragment_sender
         .send_update_vote(
             &mut alice,
