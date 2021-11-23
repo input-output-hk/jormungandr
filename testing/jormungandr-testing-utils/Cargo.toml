@@ -17,15 +17,15 @@ bech32 = "0.8"
 bytesize = "1.0.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates", features = [ "property-test-api" ] }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates", features = [ "property-test-api" ] }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
-chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates", features = ["with-bench"] }
-chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
-cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
-typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7", features = [ "property-test-api" ] }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7", features = [ "property-test-api" ] }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7", features = ["with-bench"] }
+chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 rand = "0.8"

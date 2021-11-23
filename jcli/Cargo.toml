@@ -24,12 +24,12 @@ bech32 = "0.8"
 hex = "0.4.2"
 rayon = "1.5"
 base64 = "0.13.0"
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
-chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.6.0"
 ed25519-bip32 = "0.4"

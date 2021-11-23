@@ -5,7 +5,7 @@ authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
 edition = "2018"
 
 [dependencies]
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates" }
-chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "backport_proposal_updates"}
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7" }
+chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund7"}
 thiserror = "1.0.26"
 lru       = "0.6.6"
