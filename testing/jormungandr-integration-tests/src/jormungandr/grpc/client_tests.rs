@@ -1,5 +1,5 @@
 use super::setup;
-use chain_core::property::FromStr;
+use chain_core::property::{Block as _, FromStr};
 use chain_crypto::{Ed25519, PublicKey, Signature, Verification};
 use chain_impl_mockchain::{
     block::{BlockDate, Header},
@@ -395,4 +395,100 @@ pub fn pull_blocks_hashes_wrong_order() {
     );
 
     assert!(result.is_err());
+}
+
+#[test]
+pub fn test_watch_block_subscription_blocks_are_in_logs() {
+    use std::collections::HashSet;
+
+    let setup = setup::client::default();
+
+    let watch_client = setup.watch_client;
+
+    let (sender, receiver) = std::sync::mpsc::channel();
+
+    watch_client.block_subscription(sender);
+
+    let mut ids = HashSet::new();
+
+    const BLOCKS_TO_TEST: usize = 20;
+
+    while let Ok(block) = receiver.recv() {
+        assert!(ids.insert(block.id()));
+
+        if ids.len() == BLOCKS_TO_TEST {
+            break;
+        }
+    }
+
+    let block_hashes_from_logs: HashSet<Hash> = setup
+        .server
+        .logger
+        .get_created_blocks_hashes()
+        .into_iter()
+        .collect();
+
+    assert!(ids.is_subset(&block_hashes_from_logs));
+}
+
+#[test]
+pub fn test_watch_tip_subscription_is_current_tip() {
+    let setup = setup::client::default();
+    let rest = setup.server.rest();
+    let watch_client = setup.watch_client;
+
+    let (sender, receiver) = std::sync::mpsc::channel();
+    watch_client.tip_subscription(sender);
+
+    let mut blocks_to_test: usize = 20;
+
+    while let Ok(header) = receiver.recv() {
+        blocks_to_test -= 1;
+
+        if blocks_to_test == 0 {
+            break;
+        }
+
+        let tip = rest.tip().unwrap();
+
+        assert_eq!(header.id(), tip.into_hash());
+    }
+}
+
+#[test]
+pub fn test_watch_sync_multiverse_full() {
+    use std::collections::HashSet;
+
+    let setup = setup::client::default();
+    let watch_client = setup.watch_client;
+
+    setup
+        .client
+        .wait_for_chain_length(15.into(), CHAIN_GROWTH_TIMEOUT);
+
+    let blocks = watch_client.sync_multiverse(vec![]);
+
+    let block_hashes_from_logs: HashSet<Hash> = setup
+        .server
+        .logger
+        .get_created_blocks_hashes()
+        .into_iter()
+        .collect();
+
+    let mut block_set: HashSet<Hash> = Default::default();
+
+    let genesis = blocks[0].clone();
+
+    for block in blocks {
+        if !block_set.is_empty() {
+            assert!(block_set.contains(&block.header().block_parent_hash()))
+        }
+
+        assert!(block_set.insert(block.id()));
+    }
+
+    // the genesis block is not in the logs
+    block_set.remove(&genesis.id());
+
+    assert_eq!(block_set, block_hashes_from_logs);
 }
