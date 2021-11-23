@@ -1,5 +1,6 @@
 use super::UserInteractionController;
-use crate::{style, test::Result};
+use crate::controller::Error;
+use crate::style;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
@@ -15,7 +16,7 @@ pub struct SendTransaction {
 }
 
 impl SendTransaction {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         let mem_pool_check = controller.send_transaction(
             &self.from,
             &self.to,

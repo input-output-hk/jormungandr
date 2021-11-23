@@ -1,19 +1,27 @@
 #![allow(dead_code)]
-/// Specialized node which is supposed to be compatible with 5 last jormungandr releases
-use crate::{
-    node::{Error, ProgressBarController, Result},
-    style,
-};
+
+use super::Error;
+use crate::controller::monitor::ProgressBarController;
+use crate::style;
+use chain_impl_mockchain::fragment::Fragment;
+use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::header::HeaderId;
+use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jormungandr_lib::multiaddr;
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{BlockDate, FragmentLog},
+};
+use jormungandr_testing_utils::testing::node::configuration::legacy::NodeConfig as LegacyConfig;
+use jormungandr_testing_utils::testing::node::LogLevel;
+use jormungandr_testing_utils::testing::SyncNode;
 pub use jormungandr_testing_utils::testing::{
     jormungandr::{JormungandrProcess, StartupVerificationMode, Status},
     network::{LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings},
     node::{grpc::JormungandrClient, BackwardCompatibleRest, JormungandrLogger, JormungandrRest},
     FragmentNode, FragmentNodeError, MemPoolCheck,
 };
-
-use jormungandr_testing_utils::testing::node::configuration::legacy::NodeConfig as LegacyConfig;
+use std::collections::HashMap;
 
 use std::io::{BufRead, BufReader};
 use std::process::ExitStatus;
@@ -61,7 +69,7 @@ impl LegacyNode {
         self.progress_bar.log_info(info);
     }
 
-    pub fn genesis_block_hash(&self) -> Result<HeaderId> {
+    pub fn genesis_block_hash(&self) -> Result<HeaderId, Error> {
         Ok(self.process.grpc().get_genesis_block_hash())
     }
 
@@ -73,7 +81,7 @@ impl LegacyNode {
         self.process.rest()
     }
 
-    pub fn stats(&self) -> Result<Yaml> {
+    pub fn stats(&self) -> Result<Yaml, Error> {
         let stats = self.legacy_rest().stats()?;
         let docs = YamlLoader::load_from_str(&stats)?;
         Ok(docs.get(0).unwrap().clone())
@@ -84,7 +92,7 @@ impl LegacyNode {
             .log_info(format!("node stats ({:?})", self.stats()));
     }
 
-    pub fn wait_for_bootstrap(&self) -> Result<()> {
+    pub fn wait_for_bootstrap(&self) -> Result<(), Error> {
         self.process
             .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(150))
             .map_err(|e| Error::NodeFailedToBootstrap {
@@ -93,7 +101,7 @@ impl LegacyNode {
             })
     }
 
-    pub fn wait_for_shutdown(&mut self) -> Result<Option<ExitStatus>> {
+    pub fn wait_for_shutdown(&mut self) -> Result<Option<ExitStatus>, Error> {
         self.process
             .wait_for_shutdown(Duration::from_secs(30))
             .map_err(|e| Error::NodeFailedToShutdown {
@@ -125,10 +133,10 @@ impl LegacyNode {
         matches!(self.status(), Status::Running)
     }
 
-    pub fn shutdown(&mut self) -> Result<Option<ExitStatus>> {
+    pub fn shutdown(&mut self) -> Result<Option<ExitStatus>, Error> {
+        self.progress_bar.log_info("shutting down..");
         let message = self.rest().shutdown()?;
         if message.is_empty() {
-            self.progress_bar.log_info("shuting down..");
             self.wait_for_shutdown()
         } else {
             Err(Error::ShutdownProcedure {
@@ -179,5 +187,92 @@ impl LegacyNode {
             style::binary.apply_to(self.alias()),
             style::success.apply_to(*style::icons::success)
         ));
+    }
+}
+
+impl FragmentNode for LegacyNode {
+    fn alias(&self) -> NodeAlias {
+        self.alias()
+    }
+    fn fragment_logs(
+        &self,
+    ) -> std::result::Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError> {
+        //TODO: implement conversion
+        self.rest()
+            .fragment_logs()
+            .map_err(|_| FragmentNodeError::UnknownError)
+    }
+    fn send_fragment(
+        &self,
+        fragment: Fragment,
+    ) -> std::result::Result<MemPoolCheck, FragmentNodeError> {
+        //TODO: implement conversion
+        self.rest()
+            .send_fragment(fragment)
+            .map_err(|_| FragmentNodeError::UnknownError)
+    }
+
+    fn send_batch_fragments(
+        &self,
+        _fragments: Vec<Fragment>,
+        _fail_fast: bool,
+    ) -> std::result::Result<FragmentsProcessingSummary, FragmentNodeError> {
+        //TODO implement
+        unimplemented!()
+    }
+
+    fn log_pending_fragment(&self, fragment_id: FragmentId) {
+        self.progress_bar()
+            .log_info(format!("Fragment '{}' is still pending", fragment_id));
+    }
+    fn log_rejected_fragment(&self, fragment_id: FragmentId, reason: String) {
+        self.progress_bar()
+            .log_info(format!("Fragment '{}' rejected: {}", fragment_id, reason));
+    }
+    fn log_in_block_fragment(&self, fragment_id: FragmentId, date: BlockDate, block: Hash) {
+        self.progress_bar().log_info(format!(
+            "Fragment '{}' in block: {} ({})",
+            fragment_id, block, date
+        ));
+    }
+    fn log_content(&self) -> Vec<String> {
+        self.logger().get_lines_as_string()
+    }
+}
+
+impl SyncNode for LegacyNode {
+    fn alias(&self) -> NodeAlias {
+        self.alias()
+    }
+
+    fn last_block_height(&self) -> u32 {
+        self.stats().unwrap()["lastBlockHeight"]
+            .as_str()
+            .unwrap()
+            .parse()
+            .unwrap()
+    }
+
+    fn log_stats(&self) {
+        println!("Node: {} -> {:?}", self.alias(), self.stats());
+    }
+
+    fn tip(&self) -> Hash {
+        self.rest().tip().expect("cannot get tip from rest")
+    }
+
+    fn log_content(&self) -> String {
+        self.logger().get_log_content()
+    }
+
+    fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
+        self.logger()
+            .get_lines_with_level(LogLevel::ERROR)
+            .map(|x| x.to_string())
+            .collect()
+    }
+
+    fn is_running(&self) -> bool {
+        self.stats().unwrap()["state"].as_str().unwrap() == "Running"
     }
 }

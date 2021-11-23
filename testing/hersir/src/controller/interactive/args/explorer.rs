@@ -1,5 +1,4 @@
-use crate::controller::UserInteractionController;
-use crate::test::Result;
+use crate::controller::{Error, UserInteractionController};
 use jortestkit::prelude::InteractiveCommandError;
 use structopt::StructOpt;
 
@@ -10,7 +9,7 @@ pub enum Explorer {
 }
 
 impl Explorer {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         match self {
             Explorer::Tip(tip) => tip.exec(controller),
         }
@@ -24,7 +23,7 @@ pub struct ExplorerTip {
 }
 
 impl ExplorerTip {
-    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<()> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         let node = controller
             .nodes()
             .iter()

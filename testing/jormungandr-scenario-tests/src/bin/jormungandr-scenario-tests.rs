@@ -1,14 +1,13 @@
+use hersir::config::{parse_session_mode_from_str, SessionMode};
 use jormungandr_scenario_tests::{
     programs::prepare_command,
     report::Reporter,
     scenario::{
-        parse_progress_bar_mode_from_str,
         repository::{parse_tag_from_str, ScenariosRepository, Tag},
-        Context, ProgressBarMode,
+        Context,
     },
 };
 pub use jortestkit::console::style;
-
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -53,10 +52,10 @@ struct CommandArgs {
     /// no progress bar, only simple console output
     #[structopt(
         long = "progress-bar-mode",
-        default_value = "Monitor",
-        parse(from_str = parse_progress_bar_mode_from_str)
+        default_value = "monitor",
+        parse(from_str = parse_session_mode_from_str)
     )]
-    progress_bar_mode: ProgressBarMode,
+    progress_bar_mode: SessionMode,
 
     /// set exit code based on test result
     #[structopt(long = "set-exit-code")]
@@ -94,9 +93,10 @@ fn main() {
         testing_directory,
         generate_documentation,
         progress_bar_mode,
+        "DEBUG".to_string(),
     );
 
-    jormungandr_scenario_tests::introduction::print(&context, "SCENARIO TEST SUITE");
+    hersir::utils::print_intro(&context, "SCENARIO TEST SUITE");
     let scenarios_repo = ScenariosRepository::new(
         command_args.scenario,
         command_args.tag,

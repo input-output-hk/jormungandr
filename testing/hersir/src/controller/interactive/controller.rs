@@ -1,5 +1,4 @@
-use crate::controller::{spawn_legacy_node, spawn_node};
-use crate::test::Result;
+use crate::controller::{spawn_legacy_node, spawn_node, Error};
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::Value;
 use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
@@ -64,7 +63,7 @@ impl UserInteractionController {
         &mut self.controller
     }
 
-    pub fn wallet(&self, wallet: &str) -> Result<Wallet> {
+    pub fn wallet(&self, wallet: &str) -> Result<Wallet, Error> {
         if let Some(wallet) = self.controller.settings().wallets.get(wallet) {
             Ok(wallet.clone().into())
         } else {
@@ -80,7 +79,7 @@ impl UserInteractionController {
         committee_alias: &str,
         vote_plan_alias: &str,
         node_alias: &str,
-    ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
+    ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck, Error> {
         let committee_address = self.controller.wallet(committee_alias)?.address();
         let vote_plan_def = self.controller.defined_vote_plan(vote_plan_alias)?;
 
@@ -122,7 +121,7 @@ impl UserInteractionController {
         node_alias: &str,
         proposal_index: usize,
         choice: u8,
-    ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
+    ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck, Error> {
         let address = self.controller.wallet(wallet_alias)?.address();
         let vote_plan_def = self.controller.defined_vote_plan(vote_plan_alias)?;
 
@@ -170,7 +169,7 @@ impl UserInteractionController {
         to_str: &str,
         node_alias: &str,
         value: Value,
-    ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck> {
+    ) -> Result<jormungandr_testing_utils::testing::MemPoolCheck, Error> {
         let from_address = self.controller.wallet(from_str)?.address();
         let to_address = self.controller.wallet(to_str)?.address();
 
@@ -205,7 +204,10 @@ impl UserInteractionController {
         Ok(check)
     }
 
-    pub fn spawn_node_custom(&mut self, input_params: SpawnParams) -> Result<JormungandrProcess> {
+    pub fn spawn_node_custom(
+        &mut self,
+        input_params: SpawnParams,
+    ) -> Result<JormungandrProcess, Error> {
         spawn_node(&mut self.controller, input_params).map_err(Into::into)
     }
 
@@ -213,7 +215,7 @@ impl UserInteractionController {
         &mut self,
         input_params: SpawnParams,
         version: &Version,
-    ) -> Result<JormungandrProcess> {
+    ) -> Result<JormungandrProcess, Error> {
         spawn_legacy_node(&mut self.controller, input_params, version)
             .map(|(process, _settings)| process)
             .map_err(Into::into)

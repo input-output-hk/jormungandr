@@ -1,11 +1,10 @@
 use crate::test::non_functional::*;
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
-    scenario::repository::ScenarioResult,
-    test::utils::SyncWaitParams,
-    test::Result,
-    Context,
+    scenario::repository::ScenarioResult, test::utils::SyncWaitParams, test::Result, Context,
 };
+
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::{ensure_nodes_are_in_sync, FragmentVerifier};
 use std::time::{Duration, SystemTime};
 
@@ -104,7 +103,7 @@ pub fn relay_soak(context: Context) -> Result<ScenarioResult> {
 
     let now = SystemTime::now();
 
-    let fragment_sender = controller.fragment_sender();
+    let fragment_sender = FragmentSender::from(controller.settings());
 
     loop {
         let check1 =

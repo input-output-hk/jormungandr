@@ -1,16 +1,25 @@
 #![allow(dead_code)]
+
 mod legacy;
 
 pub use legacy::LegacyNode;
 
-use crate::{scenario::ProgressBarMode, style};
-use chain_impl_mockchain::fragment::FragmentId;
+use chain_core::property::Fragment as _;
+use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use jormungandr_lib::interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary};
+use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError};
+use std::collections::HashMap;
+
+use crate::style;
+use jormungandr_lib::interfaces::NodeState;
 use jormungandr_lib::{crypto::hash::Hash, multiaddr};
 use jormungandr_testing_utils::testing::jormungandr::ShutdownError;
 use jormungandr_testing_utils::testing::jormungandr::{
     JormungandrProcess, StartupError, StartupVerificationMode, Status,
 };
 use jormungandr_testing_utils::testing::node::Explorer;
+use jormungandr_testing_utils::testing::node::LogLevel;
+use jormungandr_testing_utils::testing::SyncNode;
 pub use jormungandr_testing_utils::testing::{
     network::{
         FaketimeConfig, LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode,
@@ -20,7 +29,7 @@ pub use jormungandr_testing_utils::testing::{
         grpc::{client::MockClientError, JormungandrClient},
         uri_from_socket_addr, JormungandrLogger, JormungandrRest, RestError,
     },
-    FragmentNode, MemPoolCheck, NamedProcess,
+    MemPoolCheck, NamedProcess,
 };
 
 use indicatif::ProgressBar;
@@ -30,8 +39,6 @@ use std::io::{self, BufRead, BufReader};
 use std::path::PathBuf;
 use std::process::ExitStatus;
 use std::time::Duration;
-
-pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(custom_debug::Debug, thiserror::Error)]
 pub enum Error {
@@ -135,7 +142,6 @@ impl Error {
 pub struct ProgressBarController {
     progress_bar: ProgressBar,
     prefix: String,
-    logging_mode: ProgressBarMode,
 }
 
 /// Node is going to be used by the `Controller` to monitor the node process
@@ -182,7 +188,7 @@ impl Node {
         self.progress_bar.log_info(info);
     }
 
-    pub fn tip(&self) -> Result<Hash> {
+    pub fn tip(&self) -> Result<Hash, Error> {
         let hash = self.rest().tip()?;
         self.progress_bar.log_info(format!("tip '{}'", hash));
         Ok(hash)
@@ -206,7 +212,7 @@ impl Node {
             .log_info(format!("{:?}", self.rest().leaders_log().unwrap()));
     }
 
-    pub fn wait_for_bootstrap(&self) -> Result<()> {
+    pub fn wait_for_bootstrap(&self) -> Result<(), Error> {
         self.process
             .wait_for_bootstrap(&StartupVerificationMode::Rest, Duration::from_secs(150))
             .map_err(|e| Error::NodeFailedToBootstrap {
@@ -216,7 +222,7 @@ impl Node {
             .map(|_| self.progress_bar.log_info("bootstapped successfully."))
     }
 
-    pub fn wait_for_shutdown(&mut self) -> Result<Option<ExitStatus>> {
+    pub fn wait_for_shutdown(&mut self) -> Result<Option<ExitStatus>, Error> {
         self.process
             .wait_for_shutdown(Duration::from_secs(150))
             .map_err(|e| {
@@ -247,13 +253,12 @@ impl Node {
         matches!(self.status(), Status::Running)
     }
 
-    pub fn shutdown(&mut self) -> Result<Option<ExitStatus>> {
+    pub fn shutdown(&mut self) -> Result<Option<ExitStatus>, Error> {
+        self.progress_bar.log_info("shutting down...");
         let message = self.rest().shutdown()?;
-
         if message.is_empty() {
-            self.progress_bar.log_info("shuting down...");
             let exit_status = self.wait_for_shutdown();
-            self.progress_bar.finish_with_message("shutdown");
+            self.finish_monitoring();
             exit_status
         } else {
             Err(Error::ShutdownProcedure {
@@ -262,6 +267,10 @@ impl Node {
                 logs: self.logger().get_lines_as_string(),
             })
         }
+    }
+
+    pub fn finish_monitoring(&self) {
+        self.progress_bar.finish_with_message("monitoring shutdown");
     }
 
     pub fn logger(&self) -> &JormungandrLogger {
@@ -293,7 +302,7 @@ impl Node {
         );
         self.progress_bar.enable_steady_tick(100);
         self.progress_bar.set_message(&format!(
-            "{} {} ... [{}]",
+            "{} {} ... [{}] Node is up",
             *style::icons::jormungandr,
             style::binary.apply_to(self.alias()),
             self.process.rest_address(),
@@ -322,11 +331,10 @@ impl Node {
 use std::fmt::Display;
 
 impl ProgressBarController {
-    pub fn new(progress_bar: ProgressBar, prefix: String, logging_mode: ProgressBarMode) -> Self {
+    pub fn new(progress_bar: ProgressBar, prefix: String) -> Self {
         ProgressBarController {
             progress_bar,
             prefix,
-            logging_mode,
         }
     }
 
@@ -349,21 +357,13 @@ impl ProgressBarController {
         L: Display,
         M: Display,
     {
-        match self.logging_mode {
-            ProgressBarMode::Standard => {
-                println!("[{}][{}]: {}", lvl, &self.prefix, msg);
-            }
-            ProgressBarMode::Monitor => {
-                self.progress_bar.set_message(&format!(
-                    "[{}][{}{}]: {}",
-                    lvl,
-                    *style::icons::jormungandr,
-                    style::binary.apply_to(&self.prefix),
-                    msg,
-                ));
-            }
-            ProgressBarMode::None => (),
-        }
+        self.progress_bar.set_message(&format!(
+            "[{}][{}{}]: {}",
+            lvl,
+            *style::icons::jormungandr,
+            style::binary.apply_to(&self.prefix),
+            msg,
+        ));
     }
 
     pub fn finish_with_message<M>(&self, msg: M)
@@ -372,21 +372,13 @@ impl ProgressBarController {
     {
         let lvl = "INFO";
 
-        match self.logging_mode {
-            ProgressBarMode::Standard => {
-                println!("[{}][{}]: {}", lvl, &self.prefix, msg);
-            }
-            ProgressBarMode::Monitor => {
-                self.progress_bar.finish_with_message(&format!(
-                    "[{}][{}{}]: {}",
-                    lvl,
-                    *style::icons::jormungandr,
-                    style::binary.apply_to(&self.prefix),
-                    msg,
-                ));
-            }
-            ProgressBarMode::None => (),
-        }
+        self.progress_bar.finish_with_message(&format!(
+            "[{}][{}{}]: {}",
+            lvl,
+            *style::icons::jormungandr,
+            style::binary.apply_to(&self.prefix),
+            msg,
+        ));
     }
 }
 
@@ -394,5 +386,97 @@ impl std::ops::Deref for ProgressBarController {
     type Target = ProgressBar;
     fn deref(&self) -> &Self::Target {
         &self.progress_bar
+    }
+}
+
+impl FragmentNode for Node {
+    fn alias(&self) -> NodeAlias {
+        self.alias()
+    }
+    fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError> {
+        //TODO: implement conversion
+        self.rest()
+            .fragment_logs()
+            .map_err(|_| FragmentNodeError::UnknownError)
+    }
+    fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, FragmentNodeError> {
+        //TODO: implement conversion
+        self.rest()
+            .send_fragment(fragment)
+            .map_err(|_| FragmentNodeError::UnknownError)
+    }
+
+    fn send_batch_fragments(
+        &self,
+        fragments: Vec<Fragment>,
+        fail_fast: bool,
+    ) -> std::result::Result<FragmentsProcessingSummary, FragmentNodeError> {
+        self.rest()
+            .send_fragment_batch(fragments.clone(), fail_fast)
+            .map_err(|e| FragmentNodeError::CannotSendFragmentBatch {
+                reason: e.to_string(),
+                alias: self.alias(),
+                fragment_ids: fragments.iter().map(|x| x.id()).collect(),
+                logs: FragmentNode::log_content(self),
+            })
+    }
+
+    fn log_pending_fragment(&self, fragment_id: FragmentId) {
+        self.progress_bar()
+            .log_info(format!("Fragment '{}' is still pending", fragment_id));
+    }
+    fn log_rejected_fragment(&self, fragment_id: FragmentId, reason: String) {
+        self.progress_bar()
+            .log_info(format!("Fragment '{}' rejected: {}", fragment_id, reason));
+    }
+    fn log_in_block_fragment(&self, fragment_id: FragmentId, date: BlockDate, block: Hash) {
+        self.progress_bar().log_info(format!(
+            "Fragment '{}' in block: {} ({})",
+            fragment_id, block, date
+        ));
+    }
+    fn log_content(&self) -> Vec<String> {
+        self.logger().get_lines_as_string()
+    }
+}
+
+impl SyncNode for Node {
+    fn alias(&self) -> NodeAlias {
+        self.alias()
+    }
+
+    fn last_block_height(&self) -> u32 {
+        self.rest()
+            .stats()
+            .unwrap()
+            .stats
+            .unwrap()
+            .last_block_height
+            .unwrap()
+            .parse()
+            .unwrap()
+    }
+
+    fn log_stats(&self) {
+        println!("Node: {} -> {:?}", self.alias(), self.rest().stats());
+    }
+
+    fn tip(&self) -> Hash {
+        self.tip().expect("cannot get tip from rest")
+    }
+
+    fn is_running(&self) -> bool {
+        self.rest().stats().unwrap().state == NodeState::Running
+    }
+
+    fn log_content(&self) -> String {
+        self.logger().get_log_content()
+    }
+
+    fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
+        self.logger()
+            .get_lines_with_level(LogLevel::ERROR)
+            .map(|x| x.to_string())
+            .collect()
     }
 }

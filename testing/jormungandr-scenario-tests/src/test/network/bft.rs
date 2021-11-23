@@ -1,14 +1,15 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
     test::{
         utils::{self, MeasurementReportInterval, SyncWaitParams},
         Result,
     },
     Context, ScenarioResult,
 };
-use function_name::named;
-use jormungandr_testing_utils::testing::FragmentVerifier;
 
+use function_name::named;
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
+use jormungandr_testing_utils::testing::FragmentVerifier;
 use std::time::Duration;
 
 const ALICE: &str = "Alice";
@@ -87,7 +88,7 @@ pub fn bft_cascade(context: Context) -> Result<ScenarioResult> {
 
     std::thread::sleep(std::time::Duration::from_secs(60));
 
-    controller.fragment_sender().send_transactions_round_trip(
+    FragmentSender::from(controller.settings()).send_transactions_round_trip(
         40,
         &mut alice,
         &mut bob,
@@ -167,7 +168,7 @@ pub fn bft_passive_propagation(context: Context) -> Result<ScenarioResult> {
     let mut alice_wallet = controller.wallet(ALICE)?;
     let bob_wallet = controller.wallet(BOB)?;
 
-    let mem_pool_check = controller.fragment_sender().send_transaction(
+    let mem_pool_check = FragmentSender::from(controller.settings()).send_transaction(
         &mut alice_wallet,
         &bob_wallet,
         &leader2,

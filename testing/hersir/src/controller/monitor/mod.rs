@@ -1,16 +1,12 @@
-use crate::controller::spawn_legacy_node;
-use crate::controller::spawn_node;
-use crate::node::ProgressBarController;
-use crate::{
-    node::LegacyNode,
-    scenario::{dotifier::Dotifier, ContextChaCha, Error, ProgressBarMode, Result},
-    style, Node,
-};
+mod node;
+
+use super::{spawn_legacy_node, spawn_node};
+use crate::controller::{Context, Error};
+use crate::style;
+use crate::utils::Dotifier;
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
-use chain_impl_mockchain::block::BlockDate;
 use indicatif::{MultiProgress, ProgressBar};
-use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
 use jormungandr_testing_utils::testing::network::Settings;
@@ -19,22 +15,20 @@ use jormungandr_testing_utils::testing::network::{
     builder::NetworkBuilder, controller::Controller as InnerController,
 };
 use jormungandr_testing_utils::testing::utils::{Event, Observable, Observer};
-use jormungandr_testing_utils::testing::BlockDateGenerator;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
         benchmark_consumption,
-        fragments::DummySyncNode,
         network::{
             Blockchain, LeadershipMode, PersistenceMode, SpawnParams, Topology,
             Wallet as WalletSetting,
         },
-        ConsumptionBenchmarkRun, FragmentSender, FragmentSenderSetup, FragmentSenderSetupBuilder,
-        SyncNode,
+        ConsumptionBenchmarkRun,
     },
     wallet::Wallet,
     Version,
 };
+pub use node::{Error as NodeError, LegacyNode, Node, ProgressBarController};
 use std::net::SocketAddr;
 use std::{
     path::{Path, PathBuf},
@@ -49,7 +43,7 @@ pub struct MonitorControllerBuilder {
 
 pub struct MonitorController {
     inner: InnerController,
-    context: ContextChaCha,
+    context: Context,
     progress_bar: Arc<MultiProgress>,
     progress_bar_thread: Option<std::thread::JoinHandle<()>>,
 }
@@ -72,7 +66,7 @@ impl MonitorControllerBuilder {
         self
     }
 
-    pub fn build(self, context: ContextChaCha) -> Result<MonitorController> {
+    pub fn build(self, context: Context) -> Result<MonitorController, Error> {
         let testing_directory = context.child_directory(&self.title);
         testing_directory.create_dir_all()?;
         let generate_documentation_path = testing_directory.path().to_path_buf();
@@ -85,15 +79,8 @@ impl MonitorControllerBuilder {
         if context.generate_documentation() {
             document(&generate_documentation_path, &inner_controller)?;
         }
-        summary(&self.title);
 
-        match context.progress_bar_mode() {
-            ProgressBarMode::None => println!("nodes logging disabled"),
-            ProgressBarMode::Standard => {
-                println!("nodes monitoring disabled due to legacy logging setting enabled")
-            }
-            _ => (),
-        }
+        summary(&self.title);
         MonitorController::new(inner_controller, context)
     }
 }
@@ -139,7 +126,7 @@ fn summary(title: &str) {
     )
 }
 
-fn document(path: &Path, inner: &InnerController) -> Result<()> {
+fn document(path: &Path, inner: &InnerController) -> Result<(), Error> {
     let file = std::fs::File::create(&path.join("initial_setup.dot"))?;
 
     let dotifier = Dotifier;
@@ -156,7 +143,7 @@ fn document(path: &Path, inner: &InnerController) -> Result<()> {
 }
 
 impl MonitorController {
-    fn new(controller: InnerController, context: ContextChaCha) -> Result<Self> {
+    fn new(controller: InnerController, context: Context) -> Result<Self, Error> {
         let progress_bar = Arc::new(MultiProgress::new());
 
         Ok(Self {
@@ -167,7 +154,7 @@ impl MonitorController {
         })
     }
 
-    pub fn stake_pool(&mut self, node_alias: &str) -> Result<StakePool> {
+    pub fn stake_pool(&mut self, node_alias: &str) -> Result<StakePool, Error> {
         if let Some(stake_pool) = self.inner.settings().stake_pools.get(node_alias) {
             Ok(stake_pool.clone())
         } else {
@@ -200,7 +187,7 @@ impl MonitorController {
         self.inner.settings()
     }
 
-    pub fn context(&self) -> &ContextChaCha {
+    pub fn context(&self) -> &Context {
         &self.context
     }
 
@@ -223,7 +210,7 @@ impl MonitorController {
             .start()
     }
 
-    pub fn wallet(&self, wallet: &str) -> Result<Wallet> {
+    pub fn wallet(&self, wallet: &str) -> Result<Wallet, Error> {
         if let Some(wallet) = self.settings().wallets.get(wallet) {
             Ok(wallet.clone().into())
         } else {
@@ -242,11 +229,7 @@ impl MonitorController {
     fn build_progress_bar(&mut self, alias: &str, listen: SocketAddr) -> ProgressBarController {
         let pb = ProgressBar::new_spinner();
         let pb = self.add_to_progress_bar(pb);
-        ProgressBarController::new(
-            pb,
-            format!("{}@{}", alias, listen),
-            self.context.progress_bar_mode(),
-        )
+        ProgressBarController::new(pb, format!("{}@{}", alias, listen))
     }
 
     pub fn spawn_node(
@@ -254,7 +237,7 @@ impl MonitorController {
         node_alias: &str,
         leadership_mode: LeadershipMode,
         persistence_mode: PersistenceMode,
-    ) -> Result<Node> {
+    ) -> Result<Node, Error> {
         self.spawn_node_custom(
             self.new_spawn_params(node_alias)
                 .leadership_mode(leadership_mode)
@@ -263,7 +246,7 @@ impl MonitorController {
         )
     }
 
-    pub fn spawn_node_custom(&mut self, input_params: SpawnParams) -> Result<Node> {
+    pub fn spawn_node_custom(&mut self, input_params: SpawnParams) -> Result<Node, Error> {
         let jormungandr_process = spawn_node(&mut self.inner, input_params.clone())?;
 
         let progress_bar =
@@ -276,7 +259,7 @@ impl MonitorController {
         &mut self,
         input_params: SpawnParams,
         version: &Version,
-    ) -> Result<LegacyNode> {
+    ) -> Result<LegacyNode, Error> {
         let (jormungandr_process, legacy_node_config) =
             spawn_legacy_node(&mut self.inner, input_params.clone(), version)?;
         let progress_bar =
@@ -293,7 +276,7 @@ impl MonitorController {
         mut node: Node,
         leadership_mode: LeadershipMode,
         persistence_mode: PersistenceMode,
-    ) -> Result<Node> {
+    ) -> Result<Node, Error> {
         node.shutdown()?;
         let new_node = self.spawn_node(&node.alias(), leadership_mode, persistence_mode)?;
         new_node.wait_for_bootstrap()?;
@@ -301,50 +284,16 @@ impl MonitorController {
     }
 
     pub fn monitor_nodes(&mut self) {
-        if let ProgressBarMode::Monitor = self.context.progress_bar_mode() {
-            let pb = Arc::clone(&self.progress_bar);
-            self.progress_bar_thread = Some(std::thread::spawn(move || {
-                pb.join().unwrap();
-            }));
-        }
+        let pb = Arc::clone(&self.progress_bar);
+        self.progress_bar_thread = Some(std::thread::spawn(move || {
+            pb.join().unwrap();
+        }));
     }
 
     pub fn finalize(self) {
         if let Some(thread) = self.progress_bar_thread {
             thread.join().unwrap()
         }
-    }
-
-    pub fn fragment_sender(&self) -> FragmentSender<DummySyncNode> {
-        self.fragment_sender_with_setup(FragmentSenderSetup::default())
-    }
-
-    pub fn fragment_sender_with_setup<'a, S: SyncNode + Send>(
-        &self,
-        setup: FragmentSenderSetup<'a, S>,
-    ) -> FragmentSender<'a, S> {
-        let mut builder = FragmentSenderSetupBuilder::from(setup);
-        let root_dir: PathBuf = PathBuf::from(self.working_directory().path());
-        builder.dump_fragments_into(root_dir.join("fragments"));
-        let hash = Hash::from_hash(self.block0_conf().to_block().header().hash());
-
-        let blockchain_configuration = self.settings().block0.blockchain_configuration.clone();
-
-        let block_date_generator = BlockDateGenerator::rolling_from_blockchain_config(
-            &blockchain_configuration,
-            BlockDate {
-                epoch: 1,
-                slot_id: 0,
-            },
-            false,
-        );
-
-        FragmentSender::new(
-            hash,
-            blockchain_configuration.linear_fees,
-            block_date_generator,
-            builder.build(),
-        )
     }
 }
 

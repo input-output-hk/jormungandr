@@ -1,5 +1,4 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
     scenario::repository::ScenarioResult,
     test::{
         non_functional::*,
@@ -9,6 +8,8 @@ use crate::{
     Context,
 };
 use function_name::named;
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
 
 #[named]
 pub fn passive_leader_disruption_no_overlap(context: Context) -> Result<ScenarioResult> {
@@ -358,7 +359,7 @@ pub fn point_to_point_disruption(context: Context) -> Result<ScenarioResult> {
     leader1.wait_for_bootstrap()?;
     leader3.wait_for_bootstrap()?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    FragmentSender::from(controller.settings()).send_transactions_round_trip(
         40,
         &mut wallet1,
         &mut wallet2,
@@ -576,7 +577,9 @@ pub fn custom_network_disruption(context: Context) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("delegated1")?;
     let mut wallet3 = controller.wallet("delegated3")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    let fragment_sender = FragmentSender::from(controller.settings());
+
+    fragment_sender.send_transactions_round_trip(
         2,
         &mut wallet1,
         &mut wallet3,
@@ -591,7 +594,7 @@ pub fn custom_network_disruption(context: Context) -> Result<ScenarioResult> {
     )?;
     leader1.wait_for_bootstrap()?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    fragment_sender.send_transactions_round_trip(
         2,
         &mut wallet1,
         &mut wallet3,
@@ -608,7 +611,7 @@ pub fn custom_network_disruption(context: Context) -> Result<ScenarioResult> {
     )?;
     passive.wait_for_bootstrap()?;
 
-    controller.fragment_sender().send_transactions_round_trip(
+    fragment_sender.send_transactions_round_trip(
         2,
         &mut wallet1,
         &mut wallet3,
@@ -697,35 +700,19 @@ pub fn mesh_disruption(context: Context) -> Result<ScenarioResult> {
     let mut wallet1 = controller.wallet("unassigned1")?;
     let mut wallet2 = controller.wallet("delegated1")?;
 
-    controller.fragment_sender().send_transactions_round_trip(
-        10,
-        &mut wallet1,
-        &mut wallet2,
-        &leader1,
-        1_000.into(),
-    )?;
+    let sender = FragmentSender::from(controller.settings());
+
+    sender.send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader1, 1_000.into())?;
 
     leader2 =
         controller.restart_node(leader2, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
-    controller.fragment_sender().send_transactions_round_trip(
-        10,
-        &mut wallet1,
-        &mut wallet2,
-        &leader1,
-        1_000.into(),
-    )?;
+    sender.send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader1, 1_000.into())?;
 
     leader5 =
         controller.restart_node(leader5, LeadershipMode::Leader, PersistenceMode::Persistent)?;
 
-    controller.fragment_sender().send_transactions_round_trip(
-        10,
-        &mut wallet1,
-        &mut wallet2,
-        &leader1,
-        1_000.into(),
-    )?;
+    sender.send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader1, 1_000.into())?;
 
     utils::measure_and_log_sync_time(
         &[&leader1, &leader2, &leader3, &leader4, &leader5],

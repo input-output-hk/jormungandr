@@ -1,10 +1,11 @@
 use crate::{
-    node::{LeadershipMode, PersistenceMode},
     test::{utils, Result},
     Context, ScenarioResult,
 };
 use function_name::named;
 use jormungandr_lib::interfaces::Explorer;
+use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::FragmentSender;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
 const LEADER_3: &str = "Leader_3";
@@ -63,10 +64,12 @@ pub fn passive_node_explorer(context: Context) -> Result<ScenarioResult> {
     let mut alice = controller.wallet("alice")?;
     let bob = controller.wallet("bob")?;
 
-    let mem_pool_check =
-        controller
-            .fragment_sender()
-            .send_transaction(&mut alice, &bob, &leader_1, 1_000.into())?;
+    let mem_pool_check = FragmentSender::from(controller.settings()).send_transaction(
+        &mut alice,
+        &bob,
+        &leader_1,
+        1_000.into(),
+    )?;
 
     // give some time to update explorer
     jortestkit::process::sleep(60);
