@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+import "types.proto";
+
+package iohk.chain.watch;
+
+message BlockSubscriptionRequest {}
+
+message TipSubscriptionRequest {}
+
+message MempoolSubscriptionRequest {}
+
+message SyncMultiverseRequest {
+  // Block IDs to start synchronization from.
+  //
+  // The client should examine previously synchronized blockchain storage,
+  // and include the ID of the latest block at or earlier than
+  // the stability depth in that saved state, as well as tips of all valid
+  // branches existing in that state.
+  //
+  // The server should prune the block IDs in the list, discarding any block IDs
+  // not found in the blockchain storage (which might be on discarded branches),
+  // as well as any blocks that are ancestors of other blocks identified in
+  // the list. The server responds with a stream sending any
+  // valid blocks on the (possibly forked) chain that are descendants of
+  // the remaining blocks in the list, unless the list is empty, in which case
+  // the server sends all blocks starting from genesis.
+  // The stream should uphold the parent-to-child order of the blocks,
+  // i.e. no block gets sent before its parent.
+  repeated bytes from = 1;
+}
+
+service Watch {
+  // get a stream of blocks succesfully processed by the node, this means they
+  // are already validated.
+  // the parent of a block will always be streamed before the block itself.
+  rpc BlockSubscription(BlockSubscriptionRequest) returns (stream types.Block);
+
+  // get tip updates
+  rpc TipSubscription(TipSubscriptionRequest) returns (stream types.Header);
+
+  // Fetch all blocks from the blockchain storage that are descendant from
+  // the given checkpoints, The blocks are fetched from all possible branches,
+  // observing parent-to-child order. The order in which any two blocks from
+  // divergent branches are sent is not specified and
+  // should not be relied upon.
+  rpc SyncMultiverse(SyncMultiverseRequest) returns (stream types.Block);
+}

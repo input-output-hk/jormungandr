@@ -1,10 +1,10 @@
 use crate::testing::node::grpc::read_into;
 
-use super::proto::{
-    node_client::NodeClient, Block, BlockIds, Fragment, FragmentIds, HandshakeRequest,
-    HandshakeResponse, Header, PullBlocksRequest, PullBlocksToTipRequest, PullHeadersRequest,
-    TipRequest,
+use super::node::{
+    node_client::NodeClient, HandshakeRequest, HandshakeResponse, PullBlocksRequest,
+    PullBlocksToTipRequest, PullHeadersRequest, TipRequest,
 };
+use super::types::{Block, BlockIds, Fragment, FragmentIds, Header};
 
 use chain_core::property::FromStr;
 use chain_core::property::Serialize;
