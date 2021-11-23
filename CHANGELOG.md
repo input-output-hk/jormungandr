@@ -11,6 +11,7 @@
 - add feature for changing blockchain config during the network run. Add new certificates `UpdateProposal` and `UpdateVote`, updated `jcli` with these new transactions.
 - Add new grpc watch service implementation for external (non-node) clients.
 - update explorer, add new GraphQL objects as `UpdateProposal`, `UpdateVote`, `ConfigParam` etc.
+- Add jcli option to specify a spending counter lane in a user-friendly way
 
 ## Release 0.13.0
 
