@@ -1,4 +1,5 @@
 use super::{FragmentExporter, FragmentExporterError};
+use crate::testing::network::controller::Controller;
 use crate::testing::network::Settings;
 use crate::testing::DummySyncNode;
 use crate::{
@@ -579,6 +580,12 @@ impl<'a> From<&Settings> for FragmentSender<'a, DummySyncNode> {
             ),
             Default::default(),
         )
+    }
+}
+
+impl<'a> From<&Controller> for FragmentSender<'a, DummySyncNode> {
+    fn from(controller: &Controller) -> Self {
+        FragmentSender::from(controller.settings())
     }
 }
 

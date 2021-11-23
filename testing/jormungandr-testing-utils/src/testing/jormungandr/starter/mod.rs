@@ -5,6 +5,7 @@ mod testing_directory;
 use super::process::StartupVerificationMode;
 use super::ConfigurationBuilder;
 use super::JormungandrError;
+use crate::testing::node::RestError;
 use crate::testing::{
     configuration::get_jormungandr_app, jormungandr::process::JormungandrProcess,
 };
@@ -26,6 +27,7 @@ use std::fmt::Debug;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
+use std::process::ExitStatus;
 use std::process::Stdio;
 use std::{
     process::Child,
@@ -53,6 +55,10 @@ pub enum StartupError {
     TooManyAttempts,
     #[error("Block0 hash is not valid")]
     InvalidBlock0Hash(#[from] chain_crypto::hash::Error),
+    #[error("Process exited with status {0}")]
+    ProcessExited(ExitStatus),
+    #[error("Cannot get rest status")]
+    CannotGetRestStatus(#[from] RestError),
 }
 
 #[derive(Clone, Debug, Copy)]
@@ -455,7 +461,7 @@ where
                 (Err(err), _) => {
                     cond_println!(
                         self.starter.verbose,
-                        "Jormungandr failed to start due to error {}. Retrying... ",
+                        "Jormungandr failed to start due to error {:?}. Retrying... ",
                         err
                     );
                     retry_counter -= 1;
