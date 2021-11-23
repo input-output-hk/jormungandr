@@ -1,4 +1,3 @@
-use crate::test::utils;
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
@@ -37,20 +36,17 @@ pub fn leader_restart_preserves_leadership_log() {
 
     //start bft node 2
     let leader_2 = controller.spawn(SpawnParams::new(LEADER_2)).unwrap();
-
     // logs during epoch 0 should be empty
-    utils::assert(
+    assert!(
         !leader_2.rest().leaders_log().unwrap().is_empty(),
-        "leadeship log should NOT be empty in current epoch",
-    )
-    .unwrap();
+        "leadership log should NOT be empty in current epoch",
+    );
 
     time::wait_for_date(BlockDate::new(1, 0), leader_1.rest());
 
     // logs during epoch 0 should be empty
-    utils::assert(
+    assert!(
         !leader_2.rest().leaders_log().unwrap().is_empty(),
-        "leadeship log should NOT be empty in new epoch",
-    )
-    .unwrap();
+        "leadership log should NOT be empty in new epoch",
+    );
 }

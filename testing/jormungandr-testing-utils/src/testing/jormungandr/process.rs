@@ -144,15 +144,19 @@ impl JormungandrProcess {
                 });
             }
 
-            match self.status(verification_mode)? {
-                Status::Running => {
-                    return Ok(());
+            let stauts_result = self.status(verification_mode);
+
+            if let Ok(status) = stauts_result {
+                match status {
+                    Status::Running => {
+                        return Ok(());
+                    }
+                    Status::Exited(exit_status) => {
+                        return Err(StartupError::ProcessExited(exit_status))
+                    }
+                    Status::Starting => (),
                 }
-                Status::Exited(exit_status) => {
-                    return Err(StartupError::ProcessExited(exit_status))
-                }
-                Status::Starting => (),
-            }
+            }           
             std::thread::sleep(Duration::from_secs(2));
         }
     }

@@ -111,11 +111,7 @@ pub fn bft_passive_propagation() {
         .topology(
             Topology::default()
                 .with_node(Node::new(LEADER_3))
-                .with_node(
-                    Node::new(LEADER_1)
-                        .with_trusted_peer(LEADER_3)
-                        .with_trusted_peer(PASSIVE),
-                )
+                .with_node(Node::new(LEADER_1).with_trusted_peer(LEADER_3))
                 .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_1))
                 .with_node(
                     Node::new(PASSIVE)
@@ -137,6 +133,10 @@ pub fn bft_passive_propagation() {
         .build()
         .unwrap();
 
+    let leader3 = controller
+        .spawn(SpawnParams::new(LEADER_3).in_memory())
+        .unwrap();
+
     let leader1 = controller
         .spawn(SpawnParams::new(LEADER_1).in_memory())
         .unwrap();
@@ -145,12 +145,8 @@ pub fn bft_passive_propagation() {
         .spawn(SpawnParams::new(LEADER_2).in_memory())
         .unwrap();
 
-    let leader3 = controller
-        .spawn(SpawnParams::new(LEADER_3).in_memory())
-        .unwrap();
-
     let passive = controller
-        .spawn(SpawnParams::new(LEADER_4).passive().in_memory())
+        .spawn(SpawnParams::new(PASSIVE).passive().in_memory())
         .unwrap();
 
     let nodes = [&leader1, &leader2, &leader3, &passive];

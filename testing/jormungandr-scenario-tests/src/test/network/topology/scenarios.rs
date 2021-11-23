@@ -32,11 +32,7 @@ pub fn fully_connected() {
         .topology(
             Topology::default()
                 .with_node(Node::new(LEADER_3))
-                .with_node(
-                    Node::new(LEADER_1)
-                        .with_trusted_peer(LEADER_3)
-                        .with_trusted_peer(LEADER_4),
-                )
+                .with_node(Node::new(LEADER_1).with_trusted_peer(LEADER_3))
                 .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_1))
                 .with_node(
                     Node::new(LEADER_4)
@@ -58,17 +54,20 @@ pub fn fully_connected() {
         .build()
         .unwrap();
 
-    let leader4 = controller
-        .spawn(SpawnParams::new(LEADER_4).in_memory())
-        .unwrap();
     let leader3 = controller
-        .spawn(SpawnParams::new(LEADER_2).in_memory())
+        .spawn(SpawnParams::new(LEADER_3).in_memory())
         .unwrap();
+
+    let leader1 = controller
+        .spawn(SpawnParams::new(LEADER_1).in_memory())
+        .unwrap();
+
     let leader2 = controller
         .spawn(SpawnParams::new(LEADER_2).in_memory())
         .unwrap();
-    let leader1 = controller
-        .spawn(SpawnParams::new(LEADER_1).in_memory())
+
+    let leader4 = controller
+        .spawn(SpawnParams::new(LEADER_4).in_memory())
         .unwrap();
 
     let mut wallet1 = controller.wallet(ALICE).unwrap();

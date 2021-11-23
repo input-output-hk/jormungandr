@@ -234,8 +234,8 @@ pub fn point_to_point_disruption() {
         .build()
         .unwrap();
 
-    let mut wallet1 = controller.wallet("unassigned1").unwrap();
-    let mut wallet2 = controller.wallet("delegated1").unwrap();
+    let mut wallet1 = controller.wallet(ALICE).unwrap();
+    let mut wallet2 = controller.wallet(BOB).unwrap();
 
     let leader2 = controller.spawn(SpawnParams::new(LEADER_2)).unwrap();
     let leader1 = controller.spawn(SpawnParams::new(LEADER_1)).unwrap();
@@ -386,8 +386,8 @@ pub fn custom_network_disruption() {
     let leader3 = controller.spawn(SpawnParams::new(LEADER_3)).unwrap();
     let leader2 = controller.spawn(SpawnParams::new(LEADER_2)).unwrap();
 
-    let mut wallet1 = controller.wallet("delegated1").unwrap();
-    let mut wallet3 = controller.wallet("delegated3").unwrap();
+    let mut wallet1 = controller.wallet(ALICE).unwrap();
+    let mut wallet3 = controller.wallet(BOB).unwrap();
 
     let fragment_sender = FragmentSender::from(controller.settings());
 
@@ -431,7 +431,7 @@ pub fn mesh_disruption() {
                         .with_trusted_peer(LEADER_4),
                 )
                 .with_node(
-                    Node::new(LEADER_5)
+                    Node::new(LEADER_3)
                         .with_trusted_peer(LEADER_1)
                         .with_trusted_peer(LEADER_2),
                 )
@@ -456,10 +456,10 @@ pub fn mesh_disruption() {
         .unwrap();
 
     let leader4 = controller.spawn(SpawnParams::new(LEADER_4)).unwrap();
+    let leader1 = controller.spawn(SpawnParams::new(LEADER_1)).unwrap();
+    let mut leader2 = controller.spawn(SpawnParams::new(LEADER_2)).unwrap();
     let mut leader5 = controller.spawn(SpawnParams::new(LEADER_5)).unwrap();
     let leader3 = controller.spawn(SpawnParams::new(LEADER_3)).unwrap();
-    let mut leader2 = controller.spawn(SpawnParams::new(LEADER_2)).unwrap();
-    let leader1 = controller.spawn(SpawnParams::new(LEADER_1)).unwrap();
 
     let mut wallet1 = controller.wallet(ALICE).unwrap();
     let mut wallet2 = controller.wallet(BOB).unwrap();
