@@ -1,81 +1,78 @@
-use crate::{
-    scenario::repository::ScenarioResult,
-    test::{non_functional::*, Result},
-    Context,
-};
+use crate::test::non_functional::*;
+use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use function_name::named;
-use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
+use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
+use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
+use jormungandr_testing_utils::testing::network::Node;
+use jormungandr_testing_utils::testing::network::SpawnParams;
+use jormungandr_testing_utils::testing::network::Topology;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::{testing::network::FaketimeConfig, wallet::Wallet};
-
 #[named]
-pub fn bft_forks(context: Context) -> Result<ScenarioResult> {
-    let name = function_name!();
-
+pub fn bft_forks() {
     let n_transactions = 5;
     let transaction_amount = 1_000_000;
     let starting_funds = 100_000_000;
 
-    let scenario_settings = prepare_scenario! {
-        name,
-        &mut context,
-        topology [
-            LEADER_1,
-            LEADER_2 -> LEADER_1,
-            LEADER_3 -> LEADER_1,
-        ]
-        blockchain {
-            consensus = Bft,
-            number_of_slots_per_epoch = 60,
-            slot_duration = 5,
-            leaders = [ LEADER_1, LEADER_2, LEADER_3 ],
-            initials = [
-                "account" "alice" with starting_funds,
-                "account" "bob" with starting_funds,
-            ],
-        }
-    };
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER_3))
+                .with_node(
+                    Node::new(LEADER_1)
+                        .with_trusted_peer(LEADER_3)
+                        .with_trusted_peer(LEADER_4),
+                )
+                .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_1))
+                .with_node(
+                    Node::new(LEADER_4)
+                        .with_trusted_peer(LEADER_2)
+                        .with_trusted_peer(LEADER_3),
+                ),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(ALICE)
+                .with(2_500_000_000)
+                .build(),
+        )
+        .wallet_template(WalletTemplateBuilder::new(BOB).with(2_000_000_000).build())
+        .blockchain_config(
+            BlockchainBuilder::default()
+                .consensus(ConsensusVersion::Bft)
+                .slots_per_epoch(60)
+                .slot_duration(5)
+                .build(),
+        )
+        .build()
+        .unwrap();
 
-    let mut controller = scenario_settings.build(context)?;
+    let leader_1 = controller.spawn(SpawnParams::new(LEADER_1)).unwrap();
 
-    let mut leader_1 = controller.spawn_node(
-        LEADER_1,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
-    leader_1.wait_for_bootstrap()?;
-    let mut leader_2 = controller.spawn_node(
-        LEADER_2,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
-    leader_2.wait_for_bootstrap()?;
-    let mut leader_3 = controller.spawn_node_custom(
-        controller
-            .new_spawn_params(LEADER_3)
-            .leadership_mode(LeadershipMode::Leader)
-            .persistence_mode(PersistenceMode::Persistent)
-            .faketime(FaketimeConfig {
-                offset: -2,
-                drift: 0.0,
-            }),
-    )?;
-    leader_3.wait_for_bootstrap()?;
+    let _leader_2 = controller.spawn(SpawnParams::new(LEADER_2)).unwrap();
+    let _leader_3 = controller
+        .spawn(SpawnParams::new(LEADER_3).faketime(FaketimeConfig {
+            offset: -2,
+            drift: 0.0,
+        }))
+        .unwrap();
 
-    let mut alice = controller.wallet("alice")?;
-    let bob = controller.wallet("bob")?;
+    let mut alice = controller.wallet(ALICE).unwrap();
+    let bob = controller.wallet(BOB).unwrap();
 
     for i in 0..n_transactions {
         // Sooner or later this will fail because a transaction will settle
         // in the fork and the spending counter will not be correct anymore
         let mut alice_clone = alice.clone();
-        FragmentSender::from(controller.settings()).send_transaction(
-            &mut alice_clone,
-            &bob,
-            &leader_1,
-            // done so each transaction is different even if the spending counter remains the same
-            (transaction_amount + i).into(),
-        )?;
+        FragmentSender::from(controller.settings())
+            .send_transaction(
+                &mut alice_clone,
+                &bob,
+                &leader_1,
+                // done so each transaction is different even if the spending counter remains the same
+                (transaction_amount + i).into(),
+            )
+            .unwrap();
         let state = leader_1.rest().account_state(&alice).unwrap();
         // The fragment sender currently only uses the counter in lane 0
         let updated_counter = state.counters()[0];
@@ -95,10 +92,4 @@ pub fn bft_forks(context: Context) -> Result<ScenarioResult> {
         "found {}",
         account_value
     );
-
-    leader_1.shutdown()?;
-    leader_2.shutdown()?;
-    leader_3.shutdown()?;
-    controller.finalize();
-    Ok(ScenarioResult::passed(name))
 }

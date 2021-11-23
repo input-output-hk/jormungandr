@@ -1,9 +1,13 @@
 use super::{LEADER, PASSIVE};
-use crate::scenario::{repository::ScenarioResult, Context};
-use crate::test::Result;
+use crate::test::legacy::{ALICE, BOB, CLARICE, DAVID};
 use function_name::named;
-use hersir::controller::MonitorController;
-use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use hersir::controller::Context;
+use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
+use jormungandr_testing_utils::testing::network::controller::Controller;
+use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
+use jormungandr_testing_utils::testing::network::Node;
+use jormungandr_testing_utils::testing::network::SpawnParams;
+use jormungandr_testing_utils::testing::network::Topology;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
@@ -15,154 +19,135 @@ use jormungandr_testing_utils::{
 };
 use std::path::PathBuf;
 
-#[allow(unused_macros)]
+#[test]
 #[named]
-pub fn legacy_current_node_fragment_propagation(mut context: Context) -> Result<ScenarioResult> {
-    let title = "test_legacy_current_node_fragment_propagation";
-    let scenario_settings = prepare_scenario! {
-        title,
-        &mut context,
-        topology [
-            LEADER,
-            PASSIVE -> LEADER,
-        ]
-        blockchain {
-            consensus = GenesisPraos,
-            number_of_slots_per_epoch = 60,
-            slot_duration = 1,
-            leaders = [ LEADER],
-            initials = [
-                "account" "alice" with  2_000_000_000 delegates to LEADER,
-                "account" "bob" with   500_000_000,
-                "account" "clarice" with   500_000_000,
-                "account" "david" with   500_000_000,
-            ],
-        }
-    };
+pub fn legacy_current_node_fragment_propagation() {
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(ALICE)
+                .with(2_500_000_000)
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .wallet_template(WalletTemplateBuilder::new(BOB).with(2_000_000_000).build())
+        .wallet_template(
+            WalletTemplateBuilder::new(CLARICE)
+                .with(2_000_000_000)
+                .build(),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(DAVID)
+                .with(2_000_000_000)
+                .build(),
+        )
+        .build()
+        .unwrap();
+    let mut context = Context::default();
+    let (legacy_app, version) = get_legacy_data(function_name!(), &mut context);
 
-    let (legacy_app, version) = get_legacy_data(title, &mut context);
-    let mut controller = scenario_settings.build(context)?;
-    controller.monitor_nodes();
+    let _leader = controller
+        .spawn(SpawnParams::new(LEADER).in_memory())
+        .unwrap();
 
-    let mut leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader.wait_for_bootstrap()?;
-
-    let mut passive = controller.spawn_legacy_node(
-        controller
-            .new_spawn_params(PASSIVE)
-            .leadership_mode(LeadershipMode::Passive)
-            .persistence_mode(PersistenceMode::InMemory)
-            .jormungandr(legacy_app),
-        &version,
-    )?;
-    passive.wait_for_bootstrap()?;
+    let (passive, _) = controller
+        .spawn_legacy(
+            SpawnParams::new(PASSIVE)
+                .in_memory()
+                .jormungandr(legacy_app),
+            &version,
+        )
+        .unwrap();
 
     send_all_fragment_types(&mut controller, &passive, Some(version));
-
-    leader.shutdown()?;
-    passive.shutdown()?;
-
-    controller.finalize();
-    Ok(ScenarioResult::passed(title))
 }
 
-#[allow(unused_macros)]
+#[test]
 #[named]
-pub fn current_node_legacy_fragment_propagation(mut context: Context) -> Result<ScenarioResult> {
-    let title = "test_legacy_current_node_fragment_propagation";
-    let scenario_settings = prepare_scenario! {
-        title,
-        &mut context,
-        topology [
-            LEADER,
-            PASSIVE -> LEADER,
-        ]
-        blockchain {
-            consensus = GenesisPraos,
-            number_of_slots_per_epoch = 60,
-            slot_duration = 1,
-            leaders = [ LEADER],
-            initials = [
-                "account" "alice" with  2_000_000_000 delegates to LEADER,
-                "account" "bob" with   500_000_000,
-                "account" "clarice" with   500_000_000,
-                "account" "david" with   500_000_000,
-            ],
-        }
-    };
+pub fn current_node_legacy_fragment_propagation() {
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(ALICE)
+                .with(2_500_000_000)
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .wallet_template(WalletTemplateBuilder::new(BOB).with(2_000_000_000).build())
+        .wallet_template(
+            WalletTemplateBuilder::new(CLARICE)
+                .with(2_000_000_000)
+                .build(),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(DAVID)
+                .with(2_000_000_000)
+                .build(),
+        )
+        .build()
+        .unwrap();
+    let mut context = Context::default();
+    let (legacy_app, version) = get_legacy_data(function_name!(), &mut context);
 
-    let (legacy_app, version) = get_legacy_data(title, &mut context);
+    let _leader = controller
+        .spawn_legacy(
+            SpawnParams::new(LEADER).in_memory().jormungandr(legacy_app),
+            &version,
+        )
+        .unwrap();
 
-    let mut controller = scenario_settings.build(context)?;
-    controller.monitor_nodes();
-
-    let mut leader = controller.spawn_legacy_node(
-        controller
-            .new_spawn_params(LEADER)
-            .leadership_mode(LeadershipMode::Leader)
-            .persistence_mode(PersistenceMode::InMemory)
-            .jormungandr(legacy_app),
-        &version,
-    )?;
-    leader.wait_for_bootstrap()?;
-
-    let mut passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
-    passive.wait_for_bootstrap()?;
+    let passive = controller
+        .spawn(SpawnParams::new(PASSIVE).in_memory())
+        .unwrap();
 
     send_all_fragment_types(&mut controller, &passive, Some(version));
-
-    leader.shutdown()?;
-    passive.shutdown()?;
-
-    controller.finalize();
-    Ok(ScenarioResult::passed(title))
 }
 
-#[allow(unused_macros)]
-#[named]
-pub fn current_node_fragment_propagation(context: Context) -> Result<ScenarioResult> {
-    let title = "test_legacy_current_node_fragment_propagation";
-    let scenario_settings = prepare_scenario! {
-        title,
-        &mut context,
-        topology [
-            LEADER,
-            PASSIVE -> LEADER,
-        ]
-        blockchain {
-            consensus = GenesisPraos,
-            number_of_slots_per_epoch = 60,
-            slot_duration = 1,
-            leaders = [ LEADER],
-            initials = [
-                "account" "alice" with  2_000_000_000 delegates to LEADER,
-                "account" "bob" with   500_000_000,
-                "account" "clarice" with   500_000_000,
-                "account" "david" with   500_000_000,
-            ],
-        }
-    };
+#[test]
+pub fn current_node_fragment_propagation() {
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(ALICE)
+                .with(2_500_000_000)
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .wallet_template(WalletTemplateBuilder::new(BOB).with(2_000_000_000).build())
+        .wallet_template(
+            WalletTemplateBuilder::new(CLARICE)
+                .with(2_000_000_000)
+                .build(),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(DAVID)
+                .with(2_000_000_000)
+                .build(),
+        )
+        .build()
+        .unwrap();
 
-    let mut controller = scenario_settings.build(context)?;
-    controller.monitor_nodes();
+    let _leader = controller
+        .spawn(SpawnParams::new(LEADER).in_memory())
+        .unwrap();
 
-    let mut leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader.wait_for_bootstrap()?;
-
-    let mut passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
-    passive.wait_for_bootstrap()?;
+    let passive = controller
+        .spawn(SpawnParams::new(PASSIVE).in_memory())
+        .unwrap();
 
     send_all_fragment_types(&mut controller, &passive, None);
-
-    leader.shutdown()?;
-    passive.shutdown()?;
-
-    controller.finalize();
-    Ok(ScenarioResult::passed(title))
 }
 
 fn get_legacy_data(title: &str, context: &mut Context) -> (PathBuf, Version) {
@@ -173,14 +158,14 @@ fn get_legacy_data(title: &str, context: &mut Context) -> (PathBuf, Version) {
 }
 
 fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized + Send>(
-    controller: &mut MonitorController,
+    controller: &mut Controller,
     passive: &A,
     version: Option<Version>,
 ) {
-    let mut alice = controller.wallet("alice").unwrap();
-    let mut bob = controller.wallet("bob").unwrap();
-    let clarice = controller.wallet("clarice").unwrap();
-    let mut david = controller.wallet("david").unwrap();
+    let mut alice = controller.wallet(ALICE).unwrap();
+    let mut bob = controller.wallet(BOB).unwrap();
+    let clarice = controller.wallet(CLARICE).unwrap();
+    let mut david = controller.wallet(DAVID).unwrap();
 
     let leader_stake_pool = controller.stake_pool(LEADER).unwrap();
     let david_stake_pool = StakePool::new(&david);
@@ -197,10 +182,10 @@ fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized + Send>(
         .send_owner_delegation(&mut david, &david_stake_pool, passive)
         .expect("send owner delegation");
     sender
-        .send_full_delegation(&mut bob, &leader_stake_pool, passive)
+        .send_full_delegation(&mut bob, leader_stake_pool, passive)
         .expect("send full delegation failed");
 
-    let distribution: Vec<(&StakePool, u8)> = vec![(&leader_stake_pool, 1), (&david_stake_pool, 1)];
+    let distribution: Vec<(&StakePool, u8)> = vec![(leader_stake_pool, 1), (&david_stake_pool, 1)];
     sender
         .send_split_delegation(&mut bob, &distribution, passive)
         .expect("send split delegation failed");

@@ -3,7 +3,6 @@ name = "jormungandr-scenario-tests"
 version = "0.13.0"
 authors = [ "dev@iohk.io" ]
 edition = "2018"
-default-run = "jormungandr-scenario-tests"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -29,6 +28,7 @@ json = "0.12.4"
 function_name = "0.2.0"
 chrono = "0.4.19"
 regex = "1.4"
+rstest = "0.11.0"
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"

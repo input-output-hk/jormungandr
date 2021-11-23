@@ -1,76 +1,79 @@
-use crate::{
-    test::{
-        utils::{self, MeasurementReportInterval, SyncWaitParams},
-        Result,
-    },
-    Context, ScenarioResult,
+use crate::test::start_resources_monitor;
+use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
+use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
+use jormungandr_testing_utils::testing::network::Node;
+use jormungandr_testing_utils::testing::network::SpawnParams;
+use jormungandr_testing_utils::testing::network::Topology;
+use jormungandr_testing_utils::testing::sync::{
+    measure_and_log_sync_time, MeasurementReportInterval,
 };
-use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
 use jormungandr_testing_utils::testing::FragmentSender;
+use jormungandr_testing_utils::testing::SyncWaitParams;
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
 
-use function_name::named;
+const ALICE: &str = "ALICE";
+const BOB: &str = "BOB";
 
-#[named]
-pub fn two_transaction_to_two_leaders(context: Context) -> Result<ScenarioResult> {
-    let name = function_name!();
-    let scenario_settings = prepare_scenario! {
-        name,
-        &mut context,
-        topology [
-            LEADER_1 -> LEADER_2,
-            LEADER_2
-        ]
-        blockchain {
-            consensus = GenesisPraos,
-            number_of_slots_per_epoch = 60,
-            slot_duration = 1,
-            leaders = [ LEADER_1 ],
-            initials = [
-                "account" "delegated1" with  2_500_000_000 delegates to LEADER_2,
-                "account" "delegated2" with  2_000_000_000 delegates to LEADER_1,
-            ],
-        }
-    };
+#[test]
+pub fn two_transaction_to_two_leaders() {
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER_2))
+                .with_node(Node::new(LEADER_1).with_trusted_peer(LEADER_2)),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(ALICE)
+                .with(2_500_000_000)
+                .delegated_to(LEADER_2)
+                .build(),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(BOB)
+                .with(2_000_000_000)
+                .delegated_to(LEADER_1)
+                .build(),
+        )
+        .build()
+        .unwrap();
 
-    let mut controller = scenario_settings.build(context)?;
+    let leader_2 = controller
+        .spawn(SpawnParams::new(LEADER_2).in_memory())
+        .unwrap();
 
-    let mut leader_2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader_2.wait_for_bootstrap()?;
-    let mut leader_1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader_1.wait_for_bootstrap()?;
-    controller.monitor_nodes();
-    let mut monitor = controller
-        .start_monitor_resources("two_transaction_to_two_leaders", vec![&leader_1, &leader_2]);
+    let leader_1 = controller
+        .spawn(SpawnParams::new(LEADER_1).in_memory())
+        .unwrap();
 
-    monitor.snapshot()?;
+    let mut monitor =
+        start_resources_monitor("two_transaction_to_two_leaders", vec![&leader_1, &leader_2]);
+    monitor.snapshot().unwrap();
 
-    let mut wallet1 = controller.wallet("delegated2")?;
-    let mut wallet2 = controller.wallet("delegated1")?;
+    let mut alice = controller.wallet(ALICE).unwrap();
+    let mut bob = controller.wallet(BOB).unwrap();
 
-    let fragment_sender = FragmentSender::from(controller.settings());
+    let fragment_sender = FragmentSender::from(&controller);
 
     for _ in 0..10 {
-        fragment_sender.send_transaction(&mut wallet1, &wallet2, &leader_1, 1_000.into())?;
-        fragment_sender.send_transaction(&mut wallet2, &wallet1, &leader_2, 1_000.into())?;
-        monitor.snapshot()?;
+        fragment_sender
+            .send_transaction(&mut alice, &bob, &leader_1, 1_000.into())
+            .unwrap();
+        fragment_sender
+            .send_transaction(&mut bob, &alice, &leader_2, 1_000.into())
+            .unwrap();
+        monitor.snapshot().unwrap();
     }
 
-    utils::measure_and_log_sync_time(
+    measure_and_log_sync_time(
         &[&leader_1, &leader_2],
         SyncWaitParams::two_nodes().into(),
         "two_transaction_to_two_leaders_sync",
         MeasurementReportInterval::Standard,
-    )?;
+    )
+    .unwrap();
 
-    monitor.snapshot()?;
+    monitor.snapshot().unwrap();
     monitor.stop().print();
-    leader_1.shutdown()?;
-    leader_2.shutdown()?;
-    controller.finalize();
-    Ok(ScenarioResult::passed(name))
 }

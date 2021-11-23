@@ -40,7 +40,6 @@ pub struct Context {
 }
 
 impl Context {
-
     pub fn jormungandr(&self) -> &Path {
         &self.jormungandr
     }
@@ -66,5 +65,4 @@ impl Context {
     pub fn session_mode(&self) -> SessionMode {
         self.session_mode
     }
-
 }

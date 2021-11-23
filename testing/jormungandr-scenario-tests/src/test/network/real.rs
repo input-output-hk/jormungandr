@@ -1,18 +1,20 @@
-use crate::{
-    scenario::{
-        repository::ScenarioResult, ActiveSlotCoefficient, ConsensusVersion, Milli, Node,
-        SlotDuration, Value,
-    },
-    test::{
-        utils::{self, MeasurementReportInterval, SyncNode, SyncWaitParams},
-        Result,
-    },
-    Context, Node as NodeController,
-};
-use hersir::controller::MonitorControllerBuilder;
-use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use crate::test::utils;
+use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use chain_impl_mockchain::milli::Milli;
+use chain_impl_mockchain::value::Value;
+use function_name::named;
+use jormungandr_lib::interfaces::ActiveSlotCoefficient;
+use jormungandr_lib::interfaces::SlotDuration;
+use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
+use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
+use jormungandr_testing_utils::testing::network::Node;
+use jormungandr_testing_utils::testing::network::PersistenceMode;
+use jormungandr_testing_utils::testing::network::SpawnParams;
+use jormungandr_testing_utils::testing::sync::MeasurementReportInterval;
+use jormungandr_testing_utils::testing::SyncNode;
+use jormungandr_testing_utils::testing::SyncWaitParams;
 use jormungandr_testing_utils::testing::{
-    network::{Blockchain, Topology, WalletTemplate},
+    network::{controller::Controller, Blockchain, Topology, WalletTemplate},
     node::{download_last_n_releases, get_jormungandr_bin},
 };
 
@@ -38,13 +40,12 @@ fn wallet_name(i: u32) -> String {
 }
 
 fn prepare_real_scenario(
-    title: &str,
     relay_nodes_count: u32,
     nodes_count_per_relay: u32,
     legacy_nodes_count_per_relay: u32,
     consensus: ConsensusVersion,
-) -> MonitorControllerBuilder {
-    let mut builder = MonitorControllerBuilder::new(title);
+) -> Controller {
+    let mut builder = NetworkBuilder::default();
     let mut topology = Topology::default().with_node(Node::new(CORE_NODE));
 
     let mut blockchain = Blockchain::default();
@@ -112,40 +113,40 @@ fn prepare_real_scenario(
         blockchain.add_wallet(wallet);
     }
 
-    builder.blockchain(blockchain)
+    builder.blockchain_config(blockchain).build().unwrap()
 }
 
-pub fn real_praos_network(context: Context) -> Result<ScenarioResult> {
+#[test]
+#[named]
+pub fn real_praos_network() {
     let relay_nodes_count = 3;
     let leaders_per_relay = 11;
     let legacies_per_relay = 0;
-    let name = "real_praos_Network".to_owned();
 
     real_network(
         relay_nodes_count,
         leaders_per_relay,
         legacies_per_relay,
-        context,
         ConsensusVersion::GenesisPraos,
         PersistenceMode::Persistent,
-        name,
+        function_name!(),
     )
 }
 
-pub fn real_bft_network(context: Context) -> Result<ScenarioResult> {
+#[test]
+#[named]
+pub fn real_bft_network() {
     let relay_nodes_count = 3;
     let leaders_per_relay = 11;
     let legacies_per_relay = 0;
-    let name = "real_bft_Network".to_owned();
 
     real_network(
         relay_nodes_count,
         leaders_per_relay,
         legacies_per_relay,
-        context,
         ConsensusVersion::Bft,
         PersistenceMode::Persistent,
-        name,
+        function_name!(),
     )
 }
 
@@ -153,38 +154,35 @@ pub fn real_network(
     relay_nodes_count: u32,
     leaders_per_relay: u32,
     legacies_per_relay: u32,
-    context: Context,
     consensus: ConsensusVersion,
     persistence_mode: PersistenceMode,
-    name: String,
-) -> Result<ScenarioResult> {
-    let scenario_settings = prepare_real_scenario(
-        &name,
+    name: &str,
+) {
+    let mut controller = prepare_real_scenario(
         relay_nodes_count,
         leaders_per_relay,
         legacies_per_relay,
         consensus,
     );
-    let mut controller = scenario_settings.build(context)?;
 
-    let mut core = controller.spawn_node(CORE_NODE, LeadershipMode::Leader, persistence_mode)?;
+    let _core = controller.spawn(SpawnParams::new(CORE_NODE)).unwrap();
 
     let mut relays = vec![];
     for i in 0..relay_nodes_count {
-        relays.push(controller.spawn_node(
-            &relay_name(i + 1),
-            LeadershipMode::Leader,
-            persistence_mode,
-        )?);
+        relays.push(
+            controller
+                .spawn(SpawnParams::new(&relay_name(i + 1)).persistence_mode(persistence_mode))
+                .unwrap(),
+        );
     }
 
     let mut leaders = vec![];
     for i in 0..(relay_nodes_count * leaders_per_relay) {
-        leaders.push(controller.spawn_node(
-            &leader_name(i + 1),
-            LeadershipMode::Leader,
-            persistence_mode,
-        )?);
+        leaders.push(
+            controller
+                .spawn(SpawnParams::new(&leader_name(i + 1)).persistence_mode(persistence_mode))
+                .unwrap(),
+        );
     }
 
     let releases = download_last_n_releases(1);
@@ -196,20 +194,17 @@ pub fn real_network(
 
     for i in 0..(relay_nodes_count * legacies_per_relay) {
         legacy_leaders.push(
-            controller.spawn_legacy_node(
-                controller
-                    .new_spawn_params(&legacy_name(i + 1))
-                    .leadership_mode(LeadershipMode::Leader)
-                    .persistence_mode(persistence_mode)
-                    .jormungandr(legacy_app.clone()),
-                &version,
-            )?,
+            controller
+                .spawn_legacy(
+                    SpawnParams::new(&legacy_name(i + 1))
+                        .persistence_mode(persistence_mode)
+                        .jormungandr(legacy_app.clone()),
+                    &version,
+                )
+                .unwrap()
+                .0,
         );
     }
-
-    controller.monitor_nodes();
-    core.wait_for_bootstrap()?;
-    leaders.last().unwrap().wait_for_bootstrap()?;
 
     let mut sync_nodes: Vec<&dyn SyncNode> =
         leaders.iter().map(|node| node as &dyn SyncNode).collect();
@@ -223,12 +218,13 @@ pub fn real_network(
         SyncWaitParams::large_network(leaders_count).into(),
         &format!("{}_sync", name),
         MeasurementReportInterval::Long,
-    )?;
+    )
+    .unwrap();
 
     let mut wallet = controller.wallet(&wallet_name(1)).unwrap();
     let wallet2 = controller.wallet(&wallet_name(2)).unwrap();
 
-    let fragment_nodes: Vec<&NodeController> = leaders.iter().collect();
+    let fragment_nodes: Vec<&JormungandrProcess> = leaders.iter().collect();
 
     utils::measure_single_transaction_propagation_speed(
         &mut controller,
@@ -238,9 +234,5 @@ pub fn real_network(
         SyncWaitParams::large_network(leaders_count).into(),
         &format!("{}_single_transaction_propagation", name),
         MeasurementReportInterval::Standard,
-    )?;
-
-    core.shutdown()?;
-    controller.finalize();
-    Ok(ScenarioResult::passed(name))
+    )
 }

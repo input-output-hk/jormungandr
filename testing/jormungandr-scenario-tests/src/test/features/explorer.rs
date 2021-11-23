@@ -1,97 +1,103 @@
-use crate::{
-    test::{utils, Result},
-    Context, ScenarioResult,
-};
-use function_name::named;
+use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::Explorer;
-use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
+use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
+use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
+use jormungandr_testing_utils::testing::network::Node;
+use jormungandr_testing_utils::testing::network::SpawnParams;
+use jormungandr_testing_utils::testing::network::Topology;
+use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::FragmentSender;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
 const LEADER_3: &str = "Leader_3";
 const PASSIVE: &str = "Passive";
 
-#[named]
-pub fn passive_node_explorer(context: Context) -> Result<ScenarioResult> {
-    let name = function_name!();
-    let scenario_settings = prepare_scenario! {
-        name,
-        &mut context,
-        topology [
-            LEADER_1,
-            LEADER_2 -> LEADER_1,
-            LEADER_3 -> LEADER_1,
-            PASSIVE -> LEADER_1,LEADER_2,LEADER_3
-        ]
-        blockchain {
-            consensus = GenesisPraos,
-            number_of_slots_per_epoch = 60,
-            slot_duration = 1,
-            leaders = [ LEADER_1 ],
-            initials = [
-                "account" "alice" with   500_000_000,
-                "account" "bob" with  2_000_000_000 delegates to LEADER_1,
-                "account" "clarice" with  2_000_000_000 delegates to LEADER_2,
-            ],
-        }
-    };
+const ALICE: &str = "ALICE";
+const BOB: &str = "BOB";
+const CLARICE: &str = "CLARICE";
 
-    let mut controller = scenario_settings.build(context)?;
+#[test]
+pub fn passive_node_explorer() {
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER_1))
+                .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_1))
+                .with_node(Node::new(LEADER_3).with_trusted_peer(LEADER_1))
+                .with_node(
+                    Node::new(PASSIVE)
+                        .with_trusted_peer(LEADER_1)
+                        .with_trusted_peer(LEADER_2)
+                        .with_trusted_peer(LEADER_3),
+                ),
+        )
+        .blockchain_config(
+            BlockchainBuilder::default()
+                .slots_per_epoch(60)
+                .slot_duration(2)
+                .build(),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(ALICE)
+                .with(2_000_000_000)
+                .build(),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(BOB)
+                .with(2_000_000_000)
+                .delegated_to(LEADER_1)
+                .build(),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(CLARICE)
+                .with(2_000_000_000)
+                .delegated_to(LEADER_2)
+                .build(),
+        )
+        .build()
+        .unwrap();
 
-    let mut leader_1 =
-        controller.spawn_node(LEADER_1, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader_1.wait_for_bootstrap()?;
+    let leader_1 = controller
+        .spawn(SpawnParams::new(LEADER_1).in_memory())
+        .unwrap();
+    let _leader_2 = controller
+        .spawn(SpawnParams::new(LEADER_2).in_memory())
+        .unwrap();
+    let _leader_3 = controller
+        .spawn(SpawnParams::new(LEADER_3).in_memory())
+        .unwrap();
 
-    controller.monitor_nodes();
+    let passive = controller
+        .spawn(
+            SpawnParams::new(PASSIVE)
+                .passive()
+                .in_memory()
+                .explorer(Explorer { enabled: true }),
+        )
+        .unwrap();
+    let mut alice = controller.wallet(ALICE).unwrap();
+    let bob = controller.wallet(BOB).unwrap();
 
-    let mut leader_2 =
-        controller.spawn_node(LEADER_2, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader_2.wait_for_bootstrap()?;
-
-    let mut leader_3 =
-        controller.spawn_node(LEADER_3, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader_3.wait_for_bootstrap()?;
-
-    let mut passive = controller.spawn_node_custom(
-        controller
-            .new_spawn_params(PASSIVE)
-            .passive()
-            .in_memory()
-            .explorer(Explorer { enabled: true }),
-    )?;
-    passive.wait_for_bootstrap()?;
-
-    let mut alice = controller.wallet("alice")?;
-    let bob = controller.wallet("bob")?;
-
-    let mem_pool_check = FragmentSender::from(controller.settings()).send_transaction(
-        &mut alice,
-        &bob,
-        &leader_1,
-        1_000.into(),
-    )?;
+    let mem_pool_check = FragmentSender::from(&controller)
+        .send_transaction(&mut alice, &bob, &leader_1, 1_000.into())
+        .unwrap();
 
     // give some time to update explorer
-    jortestkit::process::sleep(60);
+    time::wait_for_date(BlockDate::new(0, 30), leader_1.rest());
 
     let transaction_id = passive
         .explorer()
-        .transaction((*mem_pool_check.fragment_id()).into())?
+        .transaction((*mem_pool_check.fragment_id()).into())
+        .unwrap()
         .data
         .unwrap()
         .transaction
         .id;
-    utils::assert_equals(
+
+    assert_eq!(
         &transaction_id,
         &mem_pool_check.fragment_id().to_string(),
         "Wrong transaction id in explorer",
-    )?;
-
-    leader_1.shutdown()?;
-    leader_2.shutdown()?;
-    leader_3.shutdown()?;
-    passive.shutdown()?;
-
-    controller.finalize();
-    Ok(ScenarioResult::passed(name))
+    );
 }

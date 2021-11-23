@@ -69,7 +69,6 @@ impl UserInteractionController {
             Ok(wallet.clone().into())
         } else {
             Err(ControllerError::WalletNotFound(wallet.to_owned())).map_err(Into::into)
-
         }
     }
 
@@ -206,7 +205,7 @@ impl UserInteractionController {
         Ok(check)
     }
 
-    pub fn spawn_node(&mut self, input_params: SpawnParams) -> Result<JormungandrProcess,Error> {
+    pub fn spawn_node(&mut self, input_params: SpawnParams) -> Result<JormungandrProcess, Error> {
         self.controller.spawn(input_params).map_err(Into::into)
     }
 

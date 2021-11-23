@@ -2,6 +2,9 @@ pub mod desync;
 pub mod disruption;
 pub mod soak;
 
+const ALICE: &str = "ALICE";
+const BOB: &str = "BOB";
+
 const PASSIVE: &str = "Passive";
 const LEADER: &str = "Leader";
 const LEADER_1: &str = "Leader1";

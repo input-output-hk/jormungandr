@@ -100,7 +100,7 @@ commands:
       - run:
           name: Build scenario tests
           command: |
-            cargo build -p jormungandr-scenario-tests --bin jormungandr-scenario-tests << parameters.mode >> << parameters.cargo_behavior >>
+            cargo build -p jormungandr-scenario-tests << parameters.mode >> << parameters.cargo_behavior >>
       - run:
           name: Run tests
           environment:

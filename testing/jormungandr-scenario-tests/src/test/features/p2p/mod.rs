@@ -6,180 +6,192 @@ pub mod stats;
 pub use connections::max_connections;
 pub use stats::p2p_stats_test;
 
-use crate::test::{utils, Result};
-
-use hersir::controller::MonitorNode as Node;
+use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
 
 use jormungandr_lib::interfaces::PeerRecord;
 
-pub fn assert_connected_cnt(node: &Node, peer_connected_cnt: usize, info: &str) -> Result<()> {
-    let stats = node.rest().stats()?.stats.expect("empty stats");
-    Ok(utils::assert_equals(
+pub fn assert_connected_cnt(node: &JormungandrProcess, peer_connected_cnt: usize, info: &str) {
+    let stats = node.rest().stats().unwrap().stats.expect("empty stats");
+    assert_eq!(
         &peer_connected_cnt,
         &stats.peer_connected_cnt.clone(),
-        &format!("{}: peer_connected_cnt, Node {}", info, node.alias()),
-    )?)
+        "{}: peer_connected_cnt, Node {}",
+        info,
+        node.alias()
+    );
 }
 
 pub fn assert_node_stats(
-    node: &Node,
+    node: &JormungandrProcess,
     peer_available_cnt: usize,
     peer_quarantined_cnt: usize,
     peer_total_cnt: usize,
     info: &str,
-) -> Result<()> {
+) {
     node.log_stats();
-    let stats = node.rest().stats()?.stats.expect("empty stats");
-    utils::assert_equals(
+    let stats = node.rest().stats().unwrap().stats.expect("empty stats");
+    assert_eq!(
         &peer_available_cnt,
         &stats.peer_available_cnt.clone(),
-        &format!("{}: peer_available_cnt, Node {}", info, node.alias()),
-    )?;
+        "{}: peer_available_cnt, Node {}",
+        info,
+        node.alias()
+    );
 
-    utils::assert_equals(
+    assert_eq!(
         &peer_quarantined_cnt,
         &stats.peer_quarantined_cnt,
-        &format!("{}: peer_quarantined_cnt, Node {}", info, node.alias()),
-    )?;
-    utils::assert_equals(
+        "{}: peer_quarantined_cnt, Node {}",
+        info,
+        node.alias()
+    );
+    assert_eq!(
         &peer_total_cnt,
         &stats.peer_total_cnt,
-        &format!("{}: peer_total_cnt, Node {}", info, node.alias()),
-    )?;
-
-    Ok(())
+        "{}: peer_total_cnt, Node {}",
+        info,
+        node.alias()
+    );
 }
 
-pub fn assert_are_in_network_view(node: &Node, peers: Vec<&Node>, info: &str) -> Result<()> {
-    let network_view = node.rest().p2p_view()?;
+pub fn assert_are_in_network_view(
+    node: &JormungandrProcess,
+    peers: Vec<&JormungandrProcess>,
+    info: &str,
+) {
+    let network_view = node.rest().p2p_view().unwrap();
     for peer in peers {
-        utils::assert(
+        assert!(
             network_view
                 .iter()
                 .any(|address| *address == peer.address().to_string()),
-            &format!(
-                "{}: Peer {} is not present in network view list",
-                info,
-                peer.alias()
-            ),
-        )?;
+            "{}: Peer {} is not present in network view list",
+            info,
+            peer.alias()
+        );
     }
-    Ok(())
 }
 
-pub fn assert_are_not_in_network_view(node: &Node, peers: Vec<&Node>, info: &str) -> Result<()> {
-    let network_view = node.rest().network_stats()?;
+pub fn assert_are_not_in_network_view(
+    node: &JormungandrProcess,
+    peers: Vec<&JormungandrProcess>,
+    info: &str,
+) {
+    let network_view = node.rest().network_stats().unwrap();
     for peer in peers {
-        utils::assert(
+        assert!(
             network_view
                 .iter()
                 .any(|info| info.addr == Some(peer.address())),
-            &format!(
-                "{}: Peer {} is present in network view list, while it should not",
-                info,
-                peer.alias()
-            ),
-        )?;
-    }
-    Ok(())
-}
-
-pub fn assert_are_in_network_stats(node: &Node, peers: Vec<&Node>, info: &str) -> Result<()> {
-    let network_stats = node.rest().network_stats()?;
-    for peer in peers {
-        utils::assert(
-            network_stats.iter().any(|x| x.addr == Some(peer.address())),
-            &format!(
-                "{}: Peer {} is not present in network_stats list",
-                info,
-                peer.alias()
-            ),
-        )?;
-    }
-    Ok(())
-}
-
-pub fn assert_are_not_in_network_stats(node: &Node, peers: Vec<&Node>, info: &str) -> Result<()> {
-    let network_stats = node.rest().network_stats()?;
-    for peer in peers {
-        utils::assert(
-            !network_stats.iter().any(|x| x.addr == Some(peer.address())),
-            &format!(
-                "{}: Peer {} is present in network_stats list, while it should not",
-                info,
-                peer.alias()
-            ),
-        )?;
-    }
-    Ok(())
-}
-
-pub fn assert_are_available(node: &Node, peers: Vec<&Node>, info: &str) -> Result<()> {
-    let available_list = node.rest().p2p_available()?;
-    assert_record_is_present(available_list, peers, "available", info)
-}
-
-pub fn assert_are_not_available(node: &Node, peers: Vec<&Node>, info: &str) -> Result<()> {
-    let available_list = node.rest().p2p_available()?;
-    assert_record_is_present(available_list, peers, "available", info)
-}
-
-pub fn assert_empty_quarantine(node: &Node, info: &str) -> Result<()> {
-    let quarantine = node.rest().p2p_quarantined()?;
-    Ok(utils::assert_equals(
-        &vec![],
-        &quarantine,
-        &format!(
-            "{}: Peer {} has got non empty quarantine list",
+            "{}: Peer {} is present in network view list, while it should not",
             info,
-            node.alias()
-        ),
-    )?)
+            peer.alias()
+        );
+    }
 }
 
-pub fn assert_are_in_quarantine(node: &Node, peers: Vec<&Node>, info: &str) -> Result<()> {
-    let available_list = node.rest().p2p_quarantined()?;
+pub fn assert_are_in_network_stats(
+    node: &JormungandrProcess,
+    peers: Vec<&JormungandrProcess>,
+    info: &str,
+) {
+    let network_stats = node.rest().network_stats().unwrap();
+    for peer in peers {
+        assert!(
+            network_stats.iter().any(|x| x.addr == Some(peer.address())),
+            "{}: Peer {} is not present in network_stats list",
+            info,
+            peer.alias()
+        );
+    }
+}
+
+pub fn assert_are_not_in_network_stats(
+    node: &JormungandrProcess,
+    peers: Vec<&JormungandrProcess>,
+    info: &str,
+) {
+    let network_stats = node.rest().network_stats().unwrap();
+    for peer in peers {
+        assert!(
+            !network_stats.iter().any(|x| x.addr == Some(peer.address())),
+            "{}: Peer {} is present in network_stats list, while it should not",
+            info,
+            peer.alias()
+        );
+    }
+}
+
+pub fn assert_are_available(
+    node: &JormungandrProcess,
+    peers: Vec<&JormungandrProcess>,
+    info: &str,
+) {
+    let available_list = node.rest().p2p_available().unwrap();
+    assert_record_is_present(available_list, peers, "available", info)
+}
+
+pub fn assert_are_not_available(
+    node: &JormungandrProcess,
+    peers: Vec<&JormungandrProcess>,
+    info: &str,
+) {
+    let available_list = node.rest().p2p_available().unwrap();
+    assert_record_is_present(available_list, peers, "available", info)
+}
+
+pub fn assert_empty_quarantine(node: &JormungandrProcess, info: &str) {
+    let quarantine = node.rest().p2p_quarantined().unwrap();
+    assert_eq!(
+        quarantine,
+        vec![],
+        "{}: Peer {} has got non empty quarantine list",
+        info,
+        node.alias()
+    )
+}
+
+pub fn assert_are_in_quarantine(
+    node: &JormungandrProcess,
+    peers: Vec<&JormungandrProcess>,
+    info: &str,
+) {
+    let available_list = node.rest().p2p_quarantined().unwrap();
     assert_record_is_present(available_list, peers, "quarantine", info)
 }
 
 pub fn assert_record_is_present(
     peer_list: Vec<PeerRecord>,
-    peers: Vec<&Node>,
+    peers: Vec<&JormungandrProcess>,
     list_name: &str,
     info: &str,
-) -> Result<()> {
+) {
     for peer in peers {
-        utils::assert(
+        assert!(
             peer_list
                 .iter()
                 .any(|x| x.address == peer.address().to_string()),
-            &format!(
-                "{}: Peer {} is not present in {} list",
-                info,
-                peer.alias(),
-                list_name
-            ),
-        )?;
+            "{}: Peer {} is not present in {} list",
+            info,
+            peer.alias(),
+            list_name
+        );
     }
-    Ok(())
 }
 
 pub fn assert_record_is_not_present(
     peer_list: Vec<PeerRecord>,
-    peers: Vec<&Node>,
+    peers: Vec<&JormungandrProcess>,
     list_name: &str,
-) -> Result<()> {
+) {
     for peer in peers {
-        utils::assert(
+        assert!(
             !peer_list
                 .iter()
                 .any(|x| x.address == peer.address().to_string()),
-            &format!(
-                "Peer {} is present in {} list, while should not",
-                peer.alias(),
-                list_name
-            ),
-        )?;
+            "Peer {} is present in {} list, while should not",
+            peer.alias(),
+            list_name
+        );
     }
-    Ok(())
 }

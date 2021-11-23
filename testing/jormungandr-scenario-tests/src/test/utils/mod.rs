@@ -1,5 +1,4 @@
-use crate::test::Result;
-use hersir::controller::MonitorController;
+use jormungandr_testing_utils::testing::network::controller::Controller;
 use jormungandr_testing_utils::testing::FragmentNode;
 use jormungandr_testing_utils::testing::FragmentSender;
 pub use jormungandr_testing_utils::testing::{
@@ -23,27 +22,25 @@ pub fn wait(seconds: u64) {
 }
 
 pub fn measure_single_transaction_propagation_speed<A: SyncNode + FragmentNode + Send + Sized>(
-    controller: &mut MonitorController,
+    controller: &mut Controller,
     mut wallet1: &mut Wallet,
     wallet2: &Wallet,
     leaders: &[&A],
     sync_wait: Thresholds<Speed>,
     info: &str,
     report_node_stats_interval: MeasurementReportInterval,
-) -> Result<()> {
+) {
     let node = leaders.iter().next().unwrap();
-    let check = FragmentSender::from(controller.settings()).send_transaction(
-        &mut wallet1,
-        wallet2,
-        *node,
-        1_000.into(),
-    )?;
+    let check = FragmentSender::from(controller.settings())
+        .send_transaction(&mut wallet1, wallet2, *node, 1_000.into())
+        .unwrap();
     let fragment_id = check.fragment_id();
-    Ok(measure_fragment_propagation_speed(
+    measure_fragment_propagation_speed(
         *fragment_id,
         leaders,
         sync_wait,
         info,
         report_node_stats_interval,
-    )?)
+    )
+    .unwrap()
 }

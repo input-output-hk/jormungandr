@@ -1,229 +1,200 @@
-use crate::{
-    test::utils::{self, MeasurementReportInterval, SyncWaitParams},
-    test::Result,
-    Context, ScenarioResult,
-};
 use jormungandr_lib::interfaces::Policy;
-use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
+use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
+use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
+use jormungandr_testing_utils::testing::network::Node;
+use jormungandr_testing_utils::testing::network::SpawnParams;
+use jormungandr_testing_utils::testing::network::Topology;
+use jormungandr_testing_utils::testing::sync::{
+    measure_and_log_sync_time, MeasurementReportInterval,
+};
 use jormungandr_testing_utils::testing::FragmentSender;
-use std::time::Duration;
-
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
+use jormungandr_testing_utils::testing::SyncWaitParams;
+use std::time::Duration;
 
 const LEADER: &str = "Leader";
 const PASSIVE: &str = "Passive";
 
-use function_name::named;
+const ALICE: &str = "ALICE";
+const BOB: &str = "BOB";
 
-#[named]
-pub fn transaction_to_passive(context: Context) -> Result<ScenarioResult> {
-    let name = function_name!();
-    let scenario_settings = prepare_scenario! {
-        name,
-        &mut context,
-        topology [
-            LEADER,
-            PASSIVE -> LEADER,
-        ]
-        blockchain {
-            consensus = GenesisPraos,
-            number_of_slots_per_epoch = 60,
-            slot_duration = 1,
-            leaders = [ LEADER],
-            initials = [
-                "account" "unassigned1" with   500_000_000,
-                "account" "delegated1" with  2_000_000_000 delegates to LEADER,
-            ],
-        }
-    };
+#[test]
+pub fn transaction_to_passive() {
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
+        )
+        .wallet_template(WalletTemplateBuilder::new(ALICE).with(500_000_000).build())
+        .wallet_template(
+            WalletTemplateBuilder::new(BOB)
+                .with(2_000_000_000)
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .build()
+        .unwrap();
 
-    let mut controller = scenario_settings.build(context)?;
+    let leader = controller
+        .spawn(SpawnParams::new(LEADER).in_memory())
+        .unwrap();
 
-    controller.monitor_nodes();
-    let mut leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader.wait_for_bootstrap()?;
-    let mut passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
-    passive.wait_for_bootstrap()?;
+    let passive = controller
+        .spawn(SpawnParams::new(PASSIVE).in_memory().passive())
+        .unwrap();
 
-    let mut wallet1 = controller.wallet("unassigned1")?;
-    let mut wallet2 = controller.wallet("delegated1")?;
+    let mut alice = controller.wallet(ALICE).unwrap();
+    let mut bob = controller.wallet(BOB).unwrap();
 
-    FragmentSender::from(controller.settings()).send_transactions_round_trip(
-        10,
-        &mut wallet1,
-        &mut wallet2,
-        &passive,
-        1_000.into(),
-    )?;
+    FragmentSender::from(controller.settings())
+        .send_transactions_round_trip(10, &mut alice, &mut bob, &passive, 1_000.into())
+        .unwrap();
 
-    utils::measure_and_log_sync_time(
+    measure_and_log_sync_time(
         &[&passive, &leader],
         SyncWaitParams::two_nodes().into(),
         "transaction_to_passive_sync",
         MeasurementReportInterval::Standard,
-    )?;
-
-    passive.shutdown()?;
-    leader.shutdown()?;
-    controller.finalize();
-    Ok(ScenarioResult::passed(name))
+    )
+    .unwrap();
 }
 
 const LEADER_2: &str = "LEADER_2";
+const CLARICE: &str = "CLARICE";
 
-#[named]
-pub fn leader_restart(context: Context) -> Result<ScenarioResult> {
-    let name = function_name!();
-    let scenario_settings = prepare_scenario! {
-        name,
-        &mut context,
-        topology [
-            LEADER_2,
-            LEADER -> LEADER_2,
-            PASSIVE -> LEADER -> LEADER_2
-        ]
-        blockchain {
-            consensus = GenesisPraos,
-            number_of_slots_per_epoch = 60,
-            slot_duration = 1,
-            leaders = [ LEADER, LEADER_2],
-            initials = [
-                "account" "unassigned1" with   500_000_000,
-                "account" "delegated1" with  2_000_000_000 delegates to LEADER,
-                "account" "delegated1" with  2_000_000_000 delegates to LEADER_2,
-            ],
-        }
-    };
-
-    let mut controller = scenario_settings.build(context)?;
-    //monitor node disabled due to unsupported operation: restart node
-    //controller.monitor_nodes();
+#[test]
+pub fn leader_restart() {
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER_2))
+                .with_node(Node::new(LEADER).with_trusted_peer(LEADER_2))
+                .with_node(
+                    Node::new(PASSIVE)
+                        .with_trusted_peer(LEADER)
+                        .with_trusted_peer(LEADER_2),
+                ),
+        )
+        .wallet_template(WalletTemplateBuilder::new(ALICE).with(500_000_000).build())
+        .wallet_template(
+            WalletTemplateBuilder::new(BOB)
+                .with(2_000_000_000)
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(CLARICE)
+                .with(2_000_000_000)
+                .delegated_to(LEADER_2)
+                .build(),
+        )
+        .build()
+        .unwrap()
+        .into_persistent();
 
     let policy = Policy {
         quarantine_duration: Some(Duration::new(5, 0).into()),
         quarantine_whitelist: None,
     };
 
-    let mut leader_2 = controller.spawn_node_custom(
-        controller
-            .new_spawn_params(LEADER_2)
-            .policy(policy.clone())
-            .leader(),
-    )?;
-    leader_2.wait_for_bootstrap()?;
+    let leader_2 = controller
+        .spawn(
+            SpawnParams::new(LEADER_2)
+                .in_memory()
+                .policy(policy.clone()),
+        )
+        .unwrap();
 
-    let mut leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
-    leader.wait_for_bootstrap()?;
+    let mut leader = controller.spawn(SpawnParams::new(LEADER)).unwrap();
 
-    let mut passive = controller.spawn_node_custom(
-        controller
-            .new_spawn_params(PASSIVE)
-            .policy(policy)
-            .passive(),
-    )?;
-    passive.wait_for_bootstrap()?;
+    let passive = controller
+        .spawn(
+            SpawnParams::new(PASSIVE)
+                .policy(policy)
+                .passive()
+                .in_memory(),
+        )
+        .unwrap();
 
-    let mut wallet1 = controller.wallet("unassigned1")?;
-    let mut wallet2 = controller.wallet("delegated1")?;
+    let mut alice = controller.wallet(ALICE).unwrap();
+    let mut bob = controller.wallet(BOB).unwrap();
 
     FragmentSender::from(controller.settings())
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
-        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &passive, 1_000.into())?;
+        .send_transactions_round_trip(10, &mut alice, &mut bob, &passive, 1_000.into())
+        .unwrap();
 
-    leader.shutdown()?;
-
+    leader.shutdown();
+    leader
+        .wait_for_shutdown(std::time::Duration::from_secs(10))
+        .unwrap();
     FragmentSender::from(controller.settings())
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_with_iteration_delay(
             10,
-            &mut wallet1,
-            &mut wallet2,
+            &mut alice,
+            &mut bob,
             &passive,
             1_000.into(),
             Duration::from_secs(3),
-        )?;
-
-    let mut leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::Persistent)?;
-    leader.wait_for_bootstrap()?;
-
+        )
+        .unwrap();
+    let leader = controller
+        .spawn(SpawnParams::new(LEADER).verbose(true))
+        .unwrap();
     FragmentSender::from(controller.settings())
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
-        .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &passive, 1_000.into())?;
+        .send_transactions_round_trip(10, &mut alice, &mut bob, &passive, 1_000.into())
+        .unwrap();
 
-    utils::measure_and_log_sync_time(
+    measure_and_log_sync_time(
         &[&passive, &leader, &leader_2],
         SyncWaitParams::nodes_restart(2).into(),
         "leader_restart",
         MeasurementReportInterval::Standard,
-    )?;
-
-    passive.shutdown()?;
-    leader.shutdown()?;
-    leader_2.shutdown()?;
-
-    controller.finalize();
-    Ok(ScenarioResult::passed(name))
+    )
+    .unwrap();
 }
 
-#[named]
-pub fn passive_node_is_updated(context: Context) -> Result<ScenarioResult> {
-    let name = function_name!();
-    let scenario_settings = prepare_scenario! {
-        name,
-        &mut context,
-        topology [
-            LEADER,
-            PASSIVE -> LEADER,
-        ]
-        blockchain {
-            consensus = GenesisPraos,
-            number_of_slots_per_epoch = 60,
-            slot_duration = 1,
-            leaders = [ LEADER],
-            initials = [
-                "account" "unassigned1" with   500_000_000,
-                "account" "delegated1" with  2_000_000_000 delegates to LEADER,
-            ],
-        }
-    };
+#[test]
+pub fn passive_node_is_updated() {
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
+        )
+        .wallet_template(WalletTemplateBuilder::new(ALICE).with(500_000_000).build())
+        .wallet_template(
+            WalletTemplateBuilder::new(BOB)
+                .with(2_000_000_000)
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .build()
+        .unwrap();
 
-    let mut controller = scenario_settings.build(context)?;
+    let leader = controller
+        .spawn(SpawnParams::new(LEADER).in_memory())
+        .unwrap();
 
-    controller.monitor_nodes();
+    let passive = controller
+        .spawn(SpawnParams::new(PASSIVE).in_memory().passive())
+        .unwrap();
 
-    let mut leader =
-        controller.spawn_node(LEADER, LeadershipMode::Leader, PersistenceMode::InMemory)?;
-    leader.wait_for_bootstrap()?;
+    let mut alice = controller.wallet(ALICE).unwrap();
+    let mut bob = controller.wallet(BOB).unwrap();
 
-    let mut passive =
-        controller.spawn_node(PASSIVE, LeadershipMode::Passive, PersistenceMode::InMemory)?;
-    passive.wait_for_bootstrap()?;
+    FragmentSender::from(controller.settings())
+        .send_transactions_round_trip(40, &mut alice, &mut bob, &leader, 1_000.into())
+        .unwrap();
 
-    let mut wallet1 = controller.wallet("unassigned1")?;
-    let mut wallet2 = controller.wallet("delegated1")?;
-
-    FragmentSender::from(controller.settings()).send_transactions_round_trip(
-        40,
-        &mut wallet1,
-        &mut wallet2,
-        &leader,
-        1_000.into(),
-    )?;
-
-    utils::measure_and_log_sync_time(
+    measure_and_log_sync_time(
         &[&passive, &leader],
         SyncWaitParams::nodes_restart(2).into(),
         "passive_node_is_updated_sync",
         MeasurementReportInterval::Standard,
-    )?;
-
-    passive.shutdown()?;
-    leader.shutdown()?;
-
-    controller.finalize();
-    Ok(ScenarioResult::passed(name))
+    )
+    .unwrap();
 }

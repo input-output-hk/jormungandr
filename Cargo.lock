@@ -2016,7 +2016,7 @@ dependencies = [
  "rand_core 0.6.3",
  "regex",
  "reqwest",
- "rstest",
+ "rstest 0.10.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -2096,6 +2096,7 @@ dependencies = [
  "rand_core 0.6.3",
  "regex",
  "reqwest",
+ "rstest 0.11.0",
  "serde",
  "serde_derive",
  "serde_json",
@@ -3383,6 +3384,19 @@ dependencies = [
  "proc-macro2 1.0.28",
  "quote 1.0.9",
  "rustc_version 0.3.3",
+ "syn 1.0.74",
+]
+
+[[package]]
+name = "rstest"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2288c66aeafe3b2ed227c981f364f9968fa952ef0b30e84ada4486e7ee24d00a"
+dependencies = [
+ "cfg-if 1.0.0",
+ "proc-macro2 1.0.28",
+ "quote 1.0.9",
+ "rustc_version 0.4.0",
  "syn 1.0.74",
 ]
 

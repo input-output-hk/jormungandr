@@ -1,83 +1,56 @@
-use crate::{
-    test::{utils, Result},
-    Context, ScenarioResult,
-};
-
-use jormungandr_testing_utils::testing::network::{LeadershipMode, PersistenceMode};
-use std::time::SystemTime;
-
-use function_name::named;
-use jortestkit::process::sleep;
-
+use crate::test::utils;
+use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use jormungandr_lib::interfaces::BlockDate;
+use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
+use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
+use jormungandr_testing_utils::testing::network::Node;
+use jormungandr_testing_utils::testing::network::SpawnParams;
+use jormungandr_testing_utils::testing::network::Topology;
+use jormungandr_testing_utils::testing::node::time;
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
 
-#[named]
-pub fn leader_restart_preserves_leadership_log(context: Context) -> Result<ScenarioResult> {
-    let name = function_name!();
-    let scenario_settings = prepare_scenario! {
-        name,
-        &mut context,
-        topology [
-            LEADER_1,
-            LEADER_2 -> LEADER_1,
-        ]
-        blockchain {
-            consensus = Bft,
-            number_of_slots_per_epoch = 120,
-            slot_duration = 2,
-            leaders = [ LEADER_1, LEADER_2 ],
-            initials = [
-                "account" "alice" with   500_000_000,
-                "account" "bob" with   500_000_000,
-            ],
-        }
-    };
+#[test]
+pub fn leader_restart_preserves_leadership_log() {
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER_1))
+                .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_1)),
+        )
+        .blockchain_config(
+            BlockchainBuilder::default()
+                .consensus(ConsensusVersion::Bft)
+                .slots_per_epoch(120)
+                .slot_duration(2)
+                .leader(LEADER_1)
+                .leader(LEADER_2)
+                .build(),
+        )
+        .build()
+        .unwrap();
 
-    let mut controller = scenario_settings.build(context)?;
-
-    let now = SystemTime::now();
-
-    let mut leader_1 = controller.spawn_node(
-        LEADER_1,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
-    leader_1.wait_for_bootstrap()?;
-
-    controller.monitor_nodes();
+    let leader_1 = controller.spawn(SpawnParams::new(LEADER_1)).unwrap();
 
     //wait more than half an epoch
-    while now.elapsed().unwrap().as_secs() < 200 {
-        sleep(1);
-    }
+    time::wait_for_date(BlockDate::new(0, 60), leader_1.rest());
 
     //start bft node 2
-    let mut leader_2 = controller.spawn_node(
-        LEADER_2,
-        LeadershipMode::Leader,
-        PersistenceMode::Persistent,
-    )?;
-    leader_2.wait_for_bootstrap()?;
+    let leader_2 = controller.spawn(SpawnParams::new(LEADER_2)).unwrap();
 
     // logs during epoch 0 should be empty
     utils::assert(
-        !leader_2.rest().leaders_log()?.is_empty(),
+        !leader_2.rest().leaders_log().unwrap().is_empty(),
         "leadeship log should NOT be empty in current epoch",
-    )?;
+    )
+    .unwrap();
 
-    while now.elapsed().unwrap().as_secs() < 250 {
-        sleep(1);
-    }
+    time::wait_for_date(BlockDate::new(1, 0), leader_1.rest());
 
     // logs during epoch 0 should be empty
     utils::assert(
-        !leader_2.rest().leaders_log()?.is_empty(),
+        !leader_2.rest().leaders_log().unwrap().is_empty(),
         "leadeship log should NOT be empty in new epoch",
-    )?;
-
-    leader_2.shutdown()?;
-    leader_1.shutdown()?;
-    controller.finalize();
-    Ok(ScenarioResult::passed(name))
+    )
+    .unwrap();
 }
