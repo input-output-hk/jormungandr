@@ -295,7 +295,7 @@ impl From<&ValueLib> for RewardPot {
 }
 
 #[derive(SimpleObject)]
-pub struct Linear {
+pub struct LinearRewardParams {
     constant: u64,
     ratio: Ratio,
     epoch_start: u32,
@@ -303,7 +303,7 @@ pub struct Linear {
 }
 
 #[derive(SimpleObject)]
-pub struct Halving {
+pub struct HalvingRewardParams {
     constant: u64,
     ratio: Ratio,
     epoch_start: u32,
@@ -312,8 +312,8 @@ pub struct Halving {
 
 #[derive(Union)]
 pub enum RewardParamsUnion {
-    Linear(Linear),
-    Halving(Halving),
+    Linear(LinearRewardParams),
+    Halving(HalvingRewardParams),
 }
 
 #[derive(SimpleObject)]
@@ -330,7 +330,7 @@ impl From<&RewardParamsLib> for RewardParams {
                 epoch_start,
                 epoch_rate,
             } => Self {
-                reward_params: RewardParamsUnion::Linear(Linear {
+                reward_params: RewardParamsUnion::Linear(LinearRewardParams {
                     constant: *constant,
                     ratio: Ratio(*ratio),
                     epoch_start: *epoch_start,
@@ -343,7 +343,7 @@ impl From<&RewardParamsLib> for RewardParams {
                 epoch_start,
                 epoch_rate,
             } => Self {
-                reward_params: RewardParamsUnion::Halving(Halving {
+                reward_params: RewardParamsUnion::Halving(HalvingRewardParams {
                     constant: *constant,
                     ratio: Ratio(*ratio),
                     epoch_start: *epoch_start,
