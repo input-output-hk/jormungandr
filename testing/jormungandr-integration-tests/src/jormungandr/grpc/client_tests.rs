@@ -443,15 +443,15 @@ pub fn test_watch_tip_subscription_is_current_tip() {
     let mut blocks_to_test: usize = 20;
 
     while let Ok(header) = receiver.recv() {
-        blocks_to_test -= 1;
+        let tip = rest.tip().unwrap();
+
+        assert_eq!(header.id(), tip.into_hash());
 
         if blocks_to_test == 0 {
             break;
         }
 
-        let tip = rest.tip().unwrap();
-
-        assert_eq!(header.id(), tip.into_hash());
+        blocks_to_test -= 1;
     }
 }
 
