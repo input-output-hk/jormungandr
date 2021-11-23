@@ -1,3 +1,4 @@
+use super::config_param::ConfigParams;
 use super::error::ApiError;
 use async_graphql::{Context, FieldResult, Object, Union};
 use chain_impl_mockchain::certificate;
@@ -256,6 +257,10 @@ impl EncryptedVoteTally {
 
 #[Object]
 impl UpdateProposal {
+    pub async fn changes(&self) -> ConfigParams {
+        self.0.changes().into()
+    }
+
     pub async fn proposer_id(&self) -> BftLeader {
         self.0.proposer_id().clone().into()
     }
