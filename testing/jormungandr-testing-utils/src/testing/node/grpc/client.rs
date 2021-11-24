@@ -358,7 +358,10 @@ impl JormungandrWatchClient {
         self.inner_client.clone()
     }
 
-    pub fn tip_subscription(&self, sender: std::sync::mpsc::Sender<LibHeader>) {
+    pub fn tip_subscription(
+        &self,
+        sender: std::sync::mpsc::Sender<Result<LibHeader, tonic::Status>>,
+    ) {
         use futures::StreamExt;
 
         let rt = Arc::clone(&self.rt);
@@ -375,7 +378,10 @@ impl JormungandrWatchClient {
                 let mut stream = stream.fuse();
 
                 while let Some(header) = stream.next().await {
-                    if sender.send(read_into(&header.unwrap().content)).is_err() {
+                    if sender
+                        .send(header.map(|header| read_into(&header.content)))
+                        .is_err()
+                    {
                         break;
                     }
                 }
@@ -383,7 +389,10 @@ impl JormungandrWatchClient {
         });
     }
 
-    pub fn block_subscription(&self, sender: std::sync::mpsc::Sender<LibBlock>) {
+    pub fn block_subscription(
+        &self,
+        sender: std::sync::mpsc::Sender<Result<LibBlock, tonic::Status>>,
+    ) {
         use futures::StreamExt;
 
         let rt = Arc::clone(&self.rt);
@@ -400,7 +409,10 @@ impl JormungandrWatchClient {
                 let mut stream = stream.fuse();
 
                 while let Some(block) = stream.next().await {
-                    if sender.send(read_into(&block.unwrap().content)).is_err() {
+                    if sender
+                        .send(block.map(|block| read_into(&block.content)))
+                        .is_err()
+                    {
                         break;
                     }
                 }

@@ -414,7 +414,7 @@ pub fn test_watch_block_subscription_blocks_are_in_logs() {
     const BLOCKS_TO_TEST: usize = 20;
 
     while let Ok(block) = receiver.recv() {
-        assert!(ids.insert(block.id()));
+        assert!(ids.insert(block.unwrap().id()));
 
         if ids.len() == BLOCKS_TO_TEST {
             break;
@@ -445,7 +445,7 @@ pub fn test_watch_tip_subscription_is_current_tip() {
     while let Ok(header) = receiver.recv() {
         let tip = rest.tip().unwrap();
 
-        assert_eq!(header.id(), tip.into_hash());
+        assert_eq!(header.unwrap().id(), tip.into_hash());
 
         if blocks_to_test == 0 {
             break;
