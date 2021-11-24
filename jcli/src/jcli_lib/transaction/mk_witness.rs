@@ -33,7 +33,7 @@ pub struct MkWitness {
     #[structopt(long = "genesis-block-hash", parse(try_from_str))]
     pub genesis_block_hash: HeaderId,
 
-    /// value is mandatory is `--type=account' It is the counter value for
+    /// value is mandatory if `--type=account`. It is the counter value for
     /// every time the account is being utilized.
     #[structopt(long = "account-spending-counter")]
     pub account_spending_counter: Option<u32>,
