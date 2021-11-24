@@ -476,19 +476,35 @@ pub fn test_watch_sync_multiverse_full() {
         .collect();
 
     let mut block_set: HashSet<Hash> = Default::default();
+    let mut max_length = None;
 
-    let genesis = blocks[0].clone();
-
-    for block in blocks {
+    for block in &blocks {
         if !block_set.is_empty() {
             assert!(block_set.contains(&block.header().block_parent_hash()))
         }
+
+        max_length.replace(block.header().chain_length());
 
         assert!(block_set.insert(block.id()));
     }
 
     // the genesis block is not in the logs
+    let genesis = blocks[0].clone();
     block_set.remove(&genesis.id());
 
-    assert_eq!(block_set, block_hashes_from_logs);
+    assert!(block_set.is_subset(&block_hashes_from_logs));
+
+    // There is a possibility of new blocks produced between `sync_multiverse` and
+    // `get_created_blocks_hashes`, so here we assert they were produced after.  This is actually
+    // not necessary for bft, because we are already checking the order by checking the parents,
+    // but for genesis praos we need this to be sure that we are sending all the branches.
+    //
+    // This test currently uses bft, though, so the checks are mostly as a precaution.
+    let rest = setup.server.rest();
+
+    for hash in block_hashes_from_logs.difference(&block_set) {
+        let missing_block = rest.block(hash).unwrap();
+
+        assert!(missing_block.header().chain_length() > max_length.unwrap());
+    }
 }
