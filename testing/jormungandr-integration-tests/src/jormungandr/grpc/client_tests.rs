@@ -428,7 +428,7 @@ pub fn test_watch_block_subscription_blocks_are_in_logs() {
         .into_iter()
         .collect();
 
-    assert!(ids.is_subset(&block_hashes_from_logs));
+    assert!(dbg!(ids).is_subset(&dbg!(block_hashes_from_logs)));
 }
 
 #[test]
