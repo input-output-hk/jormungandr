@@ -4,6 +4,7 @@ use crate::network::{client::ConnectHandle, security_params::NONCE_LEN};
 use crate::topology::NodeId;
 use chain_network::data::block::{BlockEvent, ChainPullRequest};
 use chain_network::data::{BlockId, BlockIds, Fragment, Gossip, Header};
+use chain_network::error::Error;
 use futures::channel::mpsc;
 use futures::lock::{Mutex, MutexLockFuture};
 use futures::prelude::*;
@@ -249,6 +250,10 @@ impl PeerComms {
             fragments: Default::default(),
             gossip: Default::default(),
         }
+    }
+
+    pub fn remote_addr(&self) -> Address {
+        self.remote_addr
     }
 
     pub fn has_client_subscriptions(&self) -> bool {
@@ -515,36 +520,21 @@ impl Peers {
         map.generate_auth_nonce(peer_addr)
     }
 
-    pub async fn get_auth_nonce(&self, peer_addr: Address) -> Option<[u8; NONCE_LEN]> {
+    pub async fn server_complete_handshake<F>(
+        &self,
+        peer_addr: Address,
+        id: NodeId,
+        verify: F,
+    ) -> Result<(), Error>
+    where
+        F: FnOnce([u8; NONCE_LEN]) -> Result<(), Error>,
+    {
         let mut map = self.inner().await;
-        map.client_auth(peer_addr)
-            .and_then(|auth| auth.auth_nonce().cloned())
-    }
-
-    pub async fn server_complete_handshake(&self, peer_addr: Address, id: NodeId) {
-        tracing::debug!(
-            peer_addr = %peer_addr,
-            node_id = %id,
-            "authenticated client peer node"
-        );
-        let mut map = self.inner().await;
-        if let Some(auth) = map.client_auth(peer_addr) {
-            auth.set_node_id(id);
-        } else {
-            tracing::warn!(
-                %peer_addr,
-                %id,
-                "peer is not known to the node, was the handshake procedure skipped?",
-            );
-        }
-        map.add_client(id, peer_addr);
+        map.complete_handshake(peer_addr, id, verify)
     }
 
     pub async fn client_id(&self, peer_addr: Address) -> Option<NodeId> {
-        self.inner()
-            .await
-            .client_auth(peer_addr)
-            .and_then(|peer| peer.id().cloned())
+        self.inner().await.client_id(peer_addr).cloned()
     }
 
     /// returns `None` if the handshake process was not completed successfully

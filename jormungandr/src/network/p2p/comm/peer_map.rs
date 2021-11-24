@@ -4,39 +4,10 @@ use crate::network::{
     security_params::NONCE_LEN,
 };
 use crate::topology::NodeId;
+use chain_network::error::{Code as ErrorCode, Error as NetworkError};
 use linked_hash_map::LinkedHashMap;
+use lru::LruCache;
 use rand::Rng;
-
-pub enum PeerAuth {
-    Authenticated(NodeId),
-    ServerNonce([u8; NONCE_LEN]),
-}
-
-impl PeerAuth {
-    pub fn generate_auth_nonce() -> (Self, [u8; NONCE_LEN]) {
-        let mut nonce = [0u8; NONCE_LEN];
-        rand::thread_rng().fill(&mut nonce[..]);
-        let auth = PeerAuth::ServerNonce(nonce);
-        (auth, nonce)
-    }
-    pub fn auth_nonce(&self) -> Option<&[u8; NONCE_LEN]> {
-        match self {
-            PeerAuth::ServerNonce(nonce) => Some(nonce),
-            _ => None,
-        }
-    }
-
-    pub fn set_node_id(&mut self, id: NodeId) {
-        *self = Self::Authenticated(id);
-    }
-
-    pub fn id(&self) -> Option<&NodeId> {
-        match self {
-            Self::Authenticated(id) => Some(id),
-            _ => None,
-        }
-    }
-}
 
 /// Peer authentication is checked during the handshake. For client connections, we simply
 /// do not add a peer to the map if the authentication fails.
@@ -46,14 +17,59 @@ impl PeerAuth {
 /// and ids is needed to handle subscriptions. However, this is subject to ip spoofing
 /// attacks and should not be used in an open network.
 pub struct ClientAuth {
-    address_to_id: LinkedHashMap<Address, PeerAuth>,
+    // Avoid keeping open handshakes forever
+    in_progress: LruCache<Address, [u8; NONCE_LEN]>,
+    established: LinkedHashMap<Address, NodeId>,
 }
 
 impl Default for ClientAuth {
     fn default() -> Self {
         Self {
-            address_to_id: LinkedHashMap::new(),
+            in_progress: LruCache::new(ClientAuth::DEFAULT_OPEN_HANDSHAKED_LIMIT),
+            established: LinkedHashMap::new(),
         }
+    }
+}
+
+impl ClientAuth {
+    const DEFAULT_OPEN_HANDSHAKED_LIMIT: usize = 32;
+
+    pub fn generate_auth_nonce(&mut self, addr: Address) -> [u8; NONCE_LEN] {
+        let mut nonce = [0u8; NONCE_LEN];
+        rand::thread_rng().fill(&mut nonce[..]);
+
+        self.established.remove(&addr);
+        self.in_progress.put(addr, nonce);
+        nonce
+    }
+
+    pub fn complete_handshake<F>(
+        &mut self,
+        addr: Address,
+        id: NodeId,
+        verify: F,
+    ) -> Result<(), NetworkError>
+    where
+        F: FnOnce([u8; NONCE_LEN]) -> Result<(), NetworkError>,
+    {
+        if let Some(nonce) = self.in_progress.pop(&addr) {
+            verify(nonce)?;
+            self.established.insert(addr, id);
+            Ok(())
+        } else {
+            Err(NetworkError::new(
+                ErrorCode::FailedPrecondition,
+                "nonce missing, perform handshake first",
+            ))
+        }
+    }
+
+    pub fn remove(&mut self, addr: Address) -> Option<NodeId> {
+        self.established.remove(&addr)
+    }
+
+    pub fn client_id(&self, addr: Address) -> Option<&NodeId> {
+        self.established.get(&addr)
     }
 }
 
@@ -138,7 +154,7 @@ impl PeerMap {
             Occupied(entry) => {
                 let auth_info = self
                     .client_auth
-                    .address_to_id
+                    .established
                     .entry(entry.get().comms.remote_addr);
                 Some(Entry {
                     inner: entry,
@@ -177,13 +193,25 @@ impl PeerMap {
     }
 
     pub fn generate_auth_nonce(&mut self, addr: Address) -> [u8; NONCE_LEN] {
-        let (peer_auth, nonce) = PeerAuth::generate_auth_nonce();
-        self.client_auth.address_to_id.insert(addr, peer_auth);
-        nonce
+        self.client_auth.generate_auth_nonce(addr)
     }
 
-    pub fn client_auth(&mut self, addr: Address) -> Option<&mut PeerAuth> {
-        self.client_auth.address_to_id.get_mut(&addr)
+    pub fn client_id(&self, peer_addr: Address) -> Option<&NodeId> {
+        self.client_auth.client_id(peer_addr)
+    }
+
+    pub fn complete_handshake<F>(
+        &mut self,
+        addr: Address,
+        id: NodeId,
+        verify: F,
+    ) -> Result<(), NetworkError>
+    where
+        F: FnOnce([u8; NONCE_LEN]) -> Result<(), NetworkError>,
+    {
+        self.client_auth.complete_handshake(addr, id, verify)?;
+        self.add_client(id, addr);
+        Ok(())
     }
 
     // This is called when connecting as a client to another node
@@ -209,6 +237,7 @@ impl PeerMap {
             // A bit tricky here: use PeerData::update_comm_status for the
             // side effect, then return the up-to-date member.
             data.update_comm_status();
+            self.client_auth.remove(data.comms.remote_addr());
             data.comms
         })
     }
@@ -248,14 +277,16 @@ impl PeerMap {
 
     fn evict_if_full(&mut self) {
         if self.map.len() >= self.capacity {
-            self.map.pop_front();
+            if let Some((_, v)) = self.map.pop_front() {
+                self.client_auth.remove(v.comms.remote_addr());
+            }
         }
     }
 }
 
 pub struct Entry<'a> {
     inner: linked_hash_map::OccupiedEntry<'a, NodeId, PeerData>,
-    auth_info: linked_hash_map::Entry<'a, Address, PeerAuth>,
+    auth_info: linked_hash_map::Entry<'a, Address, NodeId>,
 }
 
 impl<'a> Entry<'a> {

@@ -1,18 +1,20 @@
 use super::{
     buffer_sizes,
     convert::{self, Decode, Encode, ResponseStream},
-    p2p::comm::{BlockEventSubscription, FragmentSubscription, GossipSubscription},
+    p2p::{
+        comm::{BlockEventSubscription, FragmentSubscription, GossipSubscription},
+        Address,
+    },
     subscription, Channels, GlobalStateR,
 };
 use crate::blockcfg as app_data;
 use crate::intercom::{self, BlockMsg, ClientMsg, RequestSink, TopologyMsg};
-use crate::topology::{self, Gossips};
+use crate::topology::{self, Gossips, NodeId};
 use crate::utils::async_msg::MessageBox;
 use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
 use chain_network::data::p2p::{AuthenticatedNodeId, Peer};
 use chain_network::data::{
-    self as net_data, Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, HandshakeResponse,
-    Header,
+    Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, HandshakeResponse, Header,
 };
 use chain_network::error::{Code as ErrorCode, Error};
 
@@ -70,18 +72,11 @@ impl Node for NodeService {
     /// Handles client ID authentication.
     async fn client_auth(&self, peer: Peer, auth: AuthenticatedNodeId) -> Result<(), Error> {
         let addr = peer.addr();
-        let nonce = self.global_state.peers.get_auth_nonce(addr).await;
-        let nonce = nonce.ok_or_else(|| {
-            Error::new(
-                ErrorCode::FailedPrecondition,
-                "nonce is missing, perform Handshake first",
-            )
-        })?;
-        auth.verify(&nonce[..])?;
+        let id = auth.id().clone().decode()?;
         self.global_state
             .peers
-            .server_complete_handshake(addr, net_data::NodeId::from(auth).decode()?)
-            .await;
+            .server_complete_handshake(addr, id, |nonce| auth.verify(&nonce[..]))
+            .await?;
         Ok(())
     }
 
