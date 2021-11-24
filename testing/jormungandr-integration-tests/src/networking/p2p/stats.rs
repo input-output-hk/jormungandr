@@ -1,4 +1,4 @@
-use crate::test::utils;
+use crate::networking::utils;
 use jormungandr_lib::interfaces::Policy;
 use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
 use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;

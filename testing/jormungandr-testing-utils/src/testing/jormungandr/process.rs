@@ -156,7 +156,7 @@ impl JormungandrProcess {
                     }
                     Status::Starting => (),
                 }
-            }           
+            }
             std::thread::sleep(Duration::from_secs(2));
         }
     }

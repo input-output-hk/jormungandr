@@ -1,4 +1,3 @@
-use crate::test::start_resources_monitor;
 use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
 use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
 use jormungandr_testing_utils::testing::network::Node;
@@ -47,10 +46,6 @@ pub fn two_transaction_to_two_leaders() {
         .spawn(SpawnParams::new(LEADER_1).in_memory())
         .unwrap();
 
-    let mut monitor =
-        start_resources_monitor("two_transaction_to_two_leaders", vec![&leader_1, &leader_2]);
-    monitor.snapshot().unwrap();
-
     let mut alice = controller.wallet(ALICE).unwrap();
     let mut bob = controller.wallet(BOB).unwrap();
 
@@ -63,7 +58,6 @@ pub fn two_transaction_to_two_leaders() {
         fragment_sender
             .send_transaction(&mut bob, &alice, &leader_2, 1_000.into())
             .unwrap();
-        monitor.snapshot().unwrap();
     }
 
     measure_and_log_sync_time(
@@ -73,7 +67,4 @@ pub fn two_transaction_to_two_leaders() {
         MeasurementReportInterval::Standard,
     )
     .unwrap();
-
-    monitor.snapshot().unwrap();
-    monitor.stop().print();
 }

@@ -1,4 +1,4 @@
-use crate::test::non_functional::*;
+use crate::non_functional::network::*;
 use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
 use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
 use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;

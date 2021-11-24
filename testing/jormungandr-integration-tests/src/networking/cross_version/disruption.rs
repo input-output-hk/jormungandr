@@ -1,5 +1,6 @@
 use super::{ALICE, BOB, LEADER_1, LEADER_2, LEADER_3, LEADER_4};
-use crate::test::utils;
+
+use crate::networking::utils;
 use function_name::named;
 use hersir::controller::Context;
 use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;

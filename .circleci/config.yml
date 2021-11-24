@@ -98,10 +98,6 @@ commands:
           command: |
             cargo build --workspace --tests --all-features << parameters.mode >> << parameters.cargo_behavior >>
       - run:
-          name: Build scenario tests
-          command: |
-            cargo build -p jormungandr-scenario-tests << parameters.mode >> << parameters.cargo_behavior >>
-      - run:
           name: Run tests
           environment:
             RUST_BACKTRACE: 1

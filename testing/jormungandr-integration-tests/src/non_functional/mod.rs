@@ -1,3 +1,6 @@
+#[cfg(feature = "network-non-functional")]
+pub mod network;
+
 #[cfg(feature = "sanity-non-functional")]
 pub mod compatibility;
 /*

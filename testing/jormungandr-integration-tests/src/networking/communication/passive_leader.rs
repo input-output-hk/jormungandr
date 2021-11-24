@@ -1,22 +1,71 @@
 use jormungandr_lib::interfaces::Policy;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
+use jormungandr_testing_utils::testing::network::{
+    builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder,
+};
+use jormungandr_testing_utils::testing::network::{Node, SpawnParams, Topology};
 use jormungandr_testing_utils::testing::sync::{
     measure_and_log_sync_time, MeasurementReportInterval,
 };
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
+use jormungandr_testing_utils::testing::MemPoolCheck;
 use jormungandr_testing_utils::testing::SyncWaitParams;
 use std::time::Duration;
 
-const LEADER: &str = "Leader";
-const PASSIVE: &str = "Passive";
+const PASSIVE: &str = "PASSIVE";
+const LEADER: &str = "LEADER";
+const LEADER_2: &str = "Leader2";
 
 const ALICE: &str = "ALICE";
 const BOB: &str = "BOB";
+const CLARICE: &str = "CLARICE";
+
+#[test]
+pub fn two_nodes_communication() {
+    let mut network_controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER))
+                .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(ALICE)
+                .with(1_000_000)
+                .delegated_to(LEADER)
+                .build(),
+        )
+        .wallet_template(WalletTemplateBuilder::new(BOB).with(1_000_000).build())
+        .build()
+        .unwrap();
+
+    let leader = network_controller
+        .spawn(SpawnParams::new(LEADER).in_memory())
+        .unwrap();
+    let passive = network_controller
+        .spawn(SpawnParams::new(PASSIVE).in_memory().passive())
+        .unwrap();
+
+    let mut alice = network_controller.wallet(ALICE).unwrap();
+    let mut bob = network_controller.wallet(BOB).unwrap();
+
+    passive
+        .fragment_sender(Default::default())
+        .send_transactions_round_trip(5, &mut alice, &mut bob, &passive, 100.into())
+        .expect("fragment send error");
+
+    let fragment_ids: Vec<MemPoolCheck> = passive
+        .rest()
+        .fragment_logs()
+        .unwrap()
+        .iter()
+        .map(|(id, _)| MemPoolCheck::new(*id))
+        .collect();
+
+    leader
+        .correct_state_verifier()
+        .fragment_logs()
+        .assert_all_valid(&fragment_ids);
+}
 
 #[test]
 pub fn transaction_to_passive() {
@@ -59,9 +108,6 @@ pub fn transaction_to_passive() {
     )
     .unwrap();
 }
-
-const LEADER_2: &str = "LEADER_2";
-const CLARICE: &str = "CLARICE";
 
 #[test]
 pub fn leader_restart() {

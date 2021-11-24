@@ -1,4 +1,4 @@
-use crate::test::utils;
+use crate::networking::utils;
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::milli::Milli;
 use chain_impl_mockchain::value::Value;

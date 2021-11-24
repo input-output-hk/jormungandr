@@ -1,5 +1,5 @@
+use super::{ALICE, BOB, CLARICE, DAVID};
 use super::{LEADER, PASSIVE};
-use crate::test::legacy::{ALICE, BOB, CLARICE, DAVID};
 use function_name::named;
 use hersir::controller::Context;
 use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
