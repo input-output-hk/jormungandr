@@ -435,6 +435,6 @@ impl JormungandrWatchClient {
             }
         });
 
-        return blocks;
+        blocks
     }
 }
