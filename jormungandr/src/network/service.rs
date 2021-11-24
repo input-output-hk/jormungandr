@@ -37,6 +37,14 @@ impl NodeService {
             global_state,
         }
     }
+
+    async fn peer_id(&self, addr: Address) -> Result<NodeId, Error> {
+        self.global_state
+            .peers
+            .client_id(addr)
+            .await
+            .ok_or_else(|| Error::new(ErrorCode::FailedPrecondition, "handshake not performed"))
+    }
 }
 
 #[async_trait]
@@ -103,8 +111,10 @@ async fn send_message<T>(mut mbox: MessageBox<T>, msg: T) -> Result<(), Error> {
 type SubscriptionStream<S> =
     stream::Map<S, fn(<S as Stream>::Item) -> Result<<S as Stream>::Item, Error>>;
 
-fn serve_subscription<S: Stream>(sub: S) -> SubscriptionStream<S> {
-    sub.map(Ok)
+fn serve_subscription<S: Stream>(sub: Option<S>) -> Result<SubscriptionStream<S>, Error> {
+    Ok(sub
+        .ok_or_else(|| Error::new(ErrorCode::FailedPrecondition, "handshake not performed"))?
+        .map(Ok))
 }
 
 // extracted as an external function as a workaround for
@@ -126,15 +136,6 @@ where
         reply.err_into::<Error>(),
     )?;
     Ok(())
-}
-
-macro_rules! check_handshake {
-    ($maybe_res:expr) => {
-        $maybe_res.ok_or(Error::new(
-            ErrorCode::FailedPrecondition,
-            "handshake not performed",
-        ))?
-    };
 }
 
 #[async_trait]
@@ -240,7 +241,7 @@ impl BlockService for NodeService {
         subscriber: Peer,
         stream: PushStream<Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
-        let peer_id = check_handshake!(self.global_state.peers.client_id(subscriber.addr()).await);
+        let peer_id = self.peer_id(subscriber.addr()).await?;
         self.global_state.spawn(
             subscription::process_block_announcements(
                 stream,
@@ -256,7 +257,7 @@ impl BlockService for NodeService {
             .peers
             .subscribe_to_block_events(&peer_id)
             .await;
-        Ok(serve_subscription(check_handshake!(outbound)))
+        Ok(serve_subscription(outbound)?)
     }
 }
 
@@ -275,8 +276,7 @@ impl FragmentService for NodeService {
         subscriber: Peer,
         stream: PushStream<Fragment>,
     ) -> Result<Self::SubscriptionStream, Error> {
-        let peer_id = check_handshake!(self.global_state.peers.client_id(subscriber.addr()).await);
-
+        let peer_id = self.peer_id(subscriber.addr()).await?;
         self.global_state.spawn(
             subscription::process_fragments(
                 stream,
@@ -292,7 +292,7 @@ impl FragmentService for NodeService {
             .peers
             .subscribe_to_fragments(&peer_id)
             .await;
-        Ok(serve_subscription(check_handshake!(outbound)))
+        Ok(serve_subscription(outbound)?)
     }
 }
 
@@ -306,7 +306,7 @@ impl GossipService for NodeService {
         subscriber: Peer,
         stream: PushStream<Gossip>,
     ) -> Result<Self::SubscriptionStream, Error> {
-        let peer_id = check_handshake!(self.global_state.peers.client_id(subscriber.addr()).await);
+        let peer_id = self.peer_id(subscriber.addr()).await?;
         self.global_state.spawn(
             subscription::process_gossip(
                 stream,
@@ -318,7 +318,7 @@ impl GossipService for NodeService {
         );
 
         let outbound = self.global_state.peers.subscribe_to_gossip(&peer_id).await;
-        Ok(serve_subscription(check_handshake!(outbound)))
+        Ok(serve_subscription(outbound)?)
     }
 
     #[instrument(level = "debug", skip(self))]
