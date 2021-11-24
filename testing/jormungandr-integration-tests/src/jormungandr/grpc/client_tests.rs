@@ -421,6 +421,9 @@ pub fn test_watch_block_subscription_blocks_are_in_logs() {
         }
     }
 
+    // wait a bit in case are not flushed yet
+    std::thread::sleep(Duration::from_millis(250));
+
     let block_hashes_from_logs: HashSet<Hash> = setup
         .server
         .logger
