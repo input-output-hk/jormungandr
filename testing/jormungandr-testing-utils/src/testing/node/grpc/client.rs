@@ -19,7 +19,7 @@ use chain_impl_mockchain::{
 use futures::stream;
 use std::fmt;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 use tokio::runtime::{Builder, Runtime};
 use tonic::transport::Channel;
@@ -358,14 +358,13 @@ impl JormungandrWatchClient {
         self.inner_client.clone()
     }
 
-    pub fn tip_subscription(
-        &self,
-        sender: std::sync::mpsc::Sender<Result<LibHeader, tonic::Status>>,
-    ) {
+    pub fn tip_subscription(&self) -> Arc<(Mutex<Result<LibHeader, tonic::Status>>, Condvar)> {
         use futures::StreamExt;
 
         let rt = Arc::clone(&self.rt);
         let mut client = self.client();
+
+        let (sender, receiver) = std::sync::mpsc::sync_channel(1);
 
         std::thread::spawn(move || {
             rt.block_on(async {
@@ -377,16 +376,30 @@ impl JormungandrWatchClient {
 
                 let mut stream = stream.fuse();
 
+                let mut cond_var: Option<Arc<(Mutex<Result<LibHeader, tonic::Status>>, Condvar)>> =
+                    None;
+
                 while let Some(header) = stream.next().await {
-                    if sender
-                        .send(header.map(|header| read_into(&header.content)))
-                        .is_err()
-                    {
-                        break;
+                    let new_tip: Result<LibHeader, tonic::Status> =
+                        header.map(|header| read_into(&header.content));
+
+                    if let Some(signal) = &cond_var {
+                        let (guard, signal) = &**signal;
+                        *guard.lock().unwrap() = new_tip;
+
+                        signal.notify_one();
+                    } else {
+                        let pair = Arc::new((Mutex::new(new_tip), Condvar::new()));
+
+                        sender.send(Arc::clone(&pair)).unwrap();
+
+                        cond_var = Some(pair);
                     }
                 }
             })
         });
+
+        receiver.recv().unwrap()
     }
 
     pub fn block_subscription(

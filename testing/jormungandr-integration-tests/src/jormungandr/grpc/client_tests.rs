@@ -437,21 +437,27 @@ pub fn test_watch_tip_subscription_is_current_tip() {
     let rest = setup.server.rest();
     let watch_client = setup.watch_client;
 
-    let (sender, receiver) = std::sync::mpsc::channel();
-    watch_client.tip_subscription(sender);
+    let notif = watch_client.tip_subscription();
 
-    let mut blocks_to_test: usize = 20;
+    let (watch_tip, cond) = &*notif;
 
-    while let Ok(header) = receiver.recv() {
-        let tip = rest.tip().unwrap();
+    let mut iters_remaining: usize = 20;
+    let mut guard = watch_tip.lock().unwrap();
 
-        assert_eq!(header.unwrap().id(), tip.into_hash());
+    loop {
+        let header = &*guard;
 
-        if blocks_to_test == 0 {
-            break;
+        let rest_tip = rest.tip().unwrap();
+        assert_eq!(header.as_ref().unwrap().id(), rest_tip.into_hash());
+
+        if iters_remaining == 0 {
+            // here we still hold the lock, it will be unlocked when dropping the stack
+            return;
+        } else {
+            iters_remaining -= 1;
+
+            guard = cond.wait(guard).unwrap();
         }
-
-        blocks_to_test -= 1;
     }
 }
 
