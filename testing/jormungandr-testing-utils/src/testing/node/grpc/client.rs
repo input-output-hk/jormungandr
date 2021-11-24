@@ -329,6 +329,8 @@ impl fmt::Debug for JormungandrWatchClient {
     }
 }
 
+pub type WatchTipNotifier = Arc<(Mutex<Result<LibHeader, tonic::Status>>, Condvar)>;
+
 impl JormungandrWatchClient {
     pub fn from_address(address: &str) -> Result<Self, MockClientError> {
         let addr = address
@@ -358,7 +360,7 @@ impl JormungandrWatchClient {
         self.inner_client.clone()
     }
 
-    pub fn tip_subscription(&self) -> Arc<(Mutex<Result<LibHeader, tonic::Status>>, Condvar)> {
+    pub fn tip_subscription(&self) -> WatchTipNotifier {
         use futures::StreamExt;
 
         let rt = Arc::clone(&self.rt);
@@ -376,8 +378,7 @@ impl JormungandrWatchClient {
 
                 let mut stream = stream.fuse();
 
-                let mut cond_var: Option<Arc<(Mutex<Result<LibHeader, tonic::Status>>, Condvar)>> =
-                    None;
+                let mut cond_var: Option<WatchTipNotifier> = None;
 
                 while let Some(header) = stream.next().await {
                     let new_tip: Result<LibHeader, tonic::Status> =
@@ -393,7 +394,7 @@ impl JormungandrWatchClient {
 
                         sender.send(Arc::clone(&pair)).unwrap();
 
-                        cond_var = Some(pair);
+                        cond_var.replace(pair);
                     }
                 }
             })
