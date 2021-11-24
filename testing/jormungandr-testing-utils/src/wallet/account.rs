@@ -24,9 +24,6 @@ pub struct Wallet {
     /// the spending key
     signing_key: SigningKey,
 
-    /// the identifier of the account
-    identifier: Identifier,
-
     /// the counter as we know of this value needs to be in sync
     /// with what is in the blockchain
     internal_counter: account::SpendingCounter,
@@ -40,10 +37,16 @@ impl Wallet {
         RNG: CryptoRng + RngCore,
     {
         let signing_key = SigningKey::generate_extended(rng);
-        let identifier = signing_key.identifier();
         Wallet {
             signing_key,
-            identifier,
+            internal_counter: account::SpendingCounter::zero(),
+            discrimination,
+        }
+    }
+
+    pub fn from_secret(signing_key: SigningKey, discrimination: Discrimination) -> Self {
+        Wallet {
+            signing_key,
             internal_counter: account::SpendingCounter::zero(),
             discrimination,
         }
@@ -51,10 +54,8 @@ impl Wallet {
 
     pub fn from_existing_account(bech32_str: &str, spending_counter: Option<u32>) -> Self {
         let signing_key = SigningKey::from_bech32_str(bech32_str).expect("bad bech32");
-        let identifier = signing_key.identifier();
         Wallet {
             signing_key,
-            identifier,
             internal_counter: spending_counter.unwrap_or(0).into(),
             discrimination: Discrimination::Test,
         }
@@ -87,11 +88,11 @@ impl Wallet {
     }
 
     pub fn stake_key(&self) -> UnspecifiedAccountIdentifier {
-        UnspecifiedAccountIdentifier::from_single_account(self.identifier().clone().to_inner())
+        UnspecifiedAccountIdentifier::from_single_account(self.identifier().to_inner())
     }
 
-    pub fn identifier(&self) -> &Identifier {
-        &self.identifier
+    pub fn identifier(&self) -> Identifier {
+        self.signing_key.identifier()
     }
 
     pub fn signing_key(&self) -> &SigningKey {

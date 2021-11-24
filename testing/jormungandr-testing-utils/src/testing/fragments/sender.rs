@@ -11,9 +11,11 @@ use crate::{
     wallet::Wallet,
 };
 use chain_core::property::Fragment as _;
+use chain_crypto::Ed25519;
+use chain_crypto::SecretKey;
 use chain_impl_mockchain::{
     block::BlockDate,
-    certificate::{DecryptedPrivateTally, VotePlan, VoteTallyPayload},
+    certificate::{DecryptedPrivateTally, UpdateProposal, UpdateVote, VotePlan, VoteTallyPayload},
     fee::LinearFee,
     fragment::Fragment,
     vote::Choice,
@@ -335,6 +337,42 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         self.send_vote_tally(from, vote_plan, via, VoteTallyPayload::Public)
+    }
+
+    pub fn send_update_proposal<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        from: &mut Wallet,
+        bft_secret: &SecretKey<Ed25519>,
+        update_proposal: UpdateProposal,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = from.issue_update_proposal(
+            &self.block0_hash,
+            &self.fees,
+            bft_secret,
+            self.expiry_generator.block_date(),
+            update_proposal,
+        )?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_update_vote<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        from: &mut Wallet,
+        bft_secret: &SecretKey<Ed25519>,
+        update_vote: UpdateVote,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = from.issue_update_vote(
+            &self.block0_hash,
+            &self.fees,
+            bft_secret,
+            self.expiry_generator.block_date(),
+            update_vote,
+        )?;
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
     }
 
     pub fn send_encrypted_tally<A: FragmentNode + SyncNode + Sized + Send>(

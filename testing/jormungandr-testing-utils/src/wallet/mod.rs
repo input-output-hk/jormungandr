@@ -11,11 +11,11 @@ use crate::{
 };
 use chain_addr::AddressReadable;
 use chain_addr::Discrimination;
-use chain_crypto::{Ed25519, Ed25519Extended, SecretKey, Signature};
+use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Signature};
 pub use chain_impl_mockchain::{
     account::SpendingCounter,
     block::Block,
-    certificate::{PoolId, SignedCertificate},
+    certificate::{PoolId, SignedCertificate, UpdateProposal, UpdateVote},
     chaintypes::ConsensusVersion,
     fee::LinearFee,
     fragment::Fragment,
@@ -110,6 +110,10 @@ impl Wallet {
         ))
     }
 
+    pub fn discrimination(&self) -> Discrimination {
+        self.address().1 .0
+    }
+
     pub fn to_initial_fund(&self, value: u64) -> InitialUTxO {
         InitialUTxO {
             address: self.address(),
@@ -189,6 +193,10 @@ impl Wallet {
             Wallet::UTxO(utxo) => utxo.address(),
             Wallet::Delegation(delegation) => delegation.address(),
         }
+    }
+
+    pub fn public_key(&self) -> PublicKey<Ed25519> {
+        self.address().1.public_key().unwrap().clone()
     }
 
     pub fn address_bech32(&self, discrimination: Discrimination) -> String {
@@ -463,6 +471,40 @@ impl Wallet {
             .vote_tally(self, vote_plan, tally_type))
     }
 
+    pub fn issue_update_proposal(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        bft_secret: &SecretKey<Ed25519>,
+        valid_until: BlockDate,
+        update_proposal: UpdateProposal,
+    ) -> Result<Fragment, WalletError> {
+        Ok(
+            FragmentBuilder::new(block0_hash, fees, valid_until).update_proposal(
+                self,
+                update_proposal,
+                bft_secret,
+            ),
+        )
+    }
+
+    pub fn issue_update_vote(
+        &mut self,
+        block0_hash: &Hash,
+        fees: &LinearFee,
+        bft_secret: &SecretKey<Ed25519>,
+        valid_until: BlockDate,
+        update_vote: UpdateVote,
+    ) -> Result<Fragment, WalletError> {
+        Ok(
+            FragmentBuilder::new(block0_hash, fees, valid_until).update_vote(
+                self,
+                update_vote,
+                bft_secret,
+            ),
+        )
+    }
+
     pub fn to_committee_id(&self) -> CommitteeIdDef {
         CommitteeIdDef::from(CommitteeId::from(
             self.address().1.public_key().unwrap().clone(),
@@ -497,5 +539,11 @@ impl From<Wallet> for WalletLib {
         };
         let address_data_value = AddressDataValue::new(address_data, ValueLib(0));
         WalletLib::from_address_data_value(address_data_value)
+    }
+}
+
+impl From<account::Wallet> for Wallet {
+    fn from(account: account::Wallet) -> Self {
+        Self::Account(account)
     }
 }
