@@ -417,9 +417,9 @@ dependencies = [
 
 [[package]]
 name = "bytesize"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81a18687293a1546b67c246452202bbbf143d239cb43494cc163da14979082da"
+checksum = "6c58ec36aac5066d5ca17df51b3e70279f5670a72102f5752cb7e7c856adfc70"
 
 [[package]]
 name = "bzip2"
@@ -1949,7 +1949,7 @@ dependencies = [
  "http-zipkin",
  "imhamt",
  "jormungandr-lib",
- "keynesis",
+ "keynesis 2.0.1",
  "lazy_static",
  "libc",
  "linked-hash-map",
@@ -2136,7 +2136,7 @@ dependencies = [
  "jormungandr-lib",
  "jortestkit",
  "json",
- "keynesis",
+ "keynesis 2.0.1",
  "lazy_static",
  "log",
  "netstat2",
@@ -2159,7 +2159,7 @@ dependencies = [
  "serde_yaml",
  "strum 0.21.0",
  "symmetric-cipher",
- "sysinfo 0.20.3",
+ "sysinfo 0.21.1",
  "tar",
  "tempfile",
  "thiserror",
@@ -2249,6 +2249,29 @@ checksum = "c5bf8dc22157c7a4d75f1df13a1b75ada82431141423e3d419ac89f2c1fbb298"
 dependencies = [
  "cryptoxide",
  "hex",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.3",
+ "thiserror",
+]
+
+[[package]]
+name = "keynesis"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44fc942a3dd82e6c736202ac769317233a6d60a009412343ee7066228bd51832"
+dependencies = [
+ "keynesis-core",
+]
+
+[[package]]
+name = "keynesis-core"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf926e42051093c591122c24279215c00ee5a240c16760ba0a2bde1571196380"
+dependencies = [
+ "cryptoxide",
+ "hex",
+ "packtool",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "thiserror",
@@ -2673,6 +2696,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "packtool"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e0d9e8a75570b505fbc1029cc6972221a1a7587bbc6e1c612e1d8ef9ed9b532"
+dependencies = [
+ "hex",
+ "packtool-macro",
+ "thiserror",
+]
+
+[[package]]
+name = "packtool-macro"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3b0cbadedc184bec9e2f09192bc5bd3c4c0d90600daac5e28d1eeb6965baaa0"
+dependencies = [
+ "proc-macro2 1.0.28",
+ "quote 1.0.9",
+ "syn 1.0.74",
+]
+
+[[package]]
 name = "parity-multiaddr"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2865,7 +2910,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e779918f3699dbd6df29cbbdb0681c863f5c42d42c85a1d197d72246d7895397"
 dependencies = [
  "hex",
- "keynesis",
+ "keynesis 1.4.0",
  "lru",
  "thiserror",
 ]
@@ -3907,9 +3952,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.20.3"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92d77883450d697c0010e60db3d940ed130b0ed81d27485edee981621b434e52"
+checksum = "fb6c2c4a6ca462f07ca89841a2618dca6e405304d19ae238997e64915d89f513"
 dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys",

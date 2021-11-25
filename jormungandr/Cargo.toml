@@ -34,7 +34,7 @@ chrono = "0.4.19"
 futures = "0.3.18"
 hex = "0.4"
 jormungandr-lib = { path = "../jormungandr-lib" }
-keynesis = "1.1"
+keynesis = "2.0"
 lazy_static = "1.4"
 linked-hash-map = "0.5"
 poldercast = "1.2"
