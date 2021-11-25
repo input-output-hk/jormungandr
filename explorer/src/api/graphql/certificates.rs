@@ -1,10 +1,12 @@
+use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
+use super::{
+    config_param::ConfigParams, Address, BftLeader, BlockDate, ExplorerAddress, Pool, Proposal,
+    TaxType,
+};
 use super::{error::ApiError, extract_context};
 use async_graphql::{Context, FieldResult, Object, Union};
 use chain_impl_mockchain::certificate;
 use std::convert::TryFrom;
-
-use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
-use super::{Address, BlockDate, ExplorerAddress, Pool, Proposal, TaxType};
 
 // interface for grouping certificates as a graphl union
 #[derive(Union)]
@@ -18,6 +20,8 @@ pub enum Certificate {
     VoteCast(VoteCast),
     VoteTally(VoteTally),
     EncryptedVoteTally(EncryptedVoteTally),
+    UpdateProposal(UpdateProposal),
+    UpdateVote(UpdateVote),
 }
 
 pub struct StakeDelegation(certificate::StakeDelegation);
@@ -38,6 +42,10 @@ pub struct VoteCast(certificate::VoteCast);
 pub struct VoteTally(certificate::VoteTally);
 
 pub struct EncryptedVoteTally(certificate::EncryptedVoteTally);
+
+pub struct UpdateProposal(certificate::UpdateProposal);
+
+pub struct UpdateVote(certificate::UpdateVote);
 
 #[Object]
 impl StakeDelegation {
@@ -233,6 +241,28 @@ impl EncryptedVoteTally {
     }
 }
 
+#[Object]
+impl UpdateProposal {
+    pub async fn changes(&self) -> ConfigParams {
+        self.0.changes().into()
+    }
+
+    pub async fn proposer_id(&self) -> BftLeader {
+        self.0.proposer_id().clone().into()
+    }
+}
+
+#[Object]
+impl UpdateVote {
+    pub async fn proposal_id(&self) -> String {
+        format!("{}", self.0.proposal_id())
+    }
+
+    pub async fn voter_id(&self) -> BftLeader {
+        self.0.voter_id().clone().into()
+    }
+}
+
 /*------------------------------*/
 /*------- Conversions ---------*/
 /*----------------------------*/
@@ -262,8 +292,10 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             certificate::Certificate::EncryptedVoteTally(c) => {
                 Ok(Certificate::EncryptedVoteTally(EncryptedVoteTally(c)))
             }
-            certificate::Certificate::UpdateProposal(c) => todo!("port this from jormungandr"),
-            certificate::Certificate::UpdateVote(c) => todo!("port this from jormungandr"),
+            certificate::Certificate::UpdateProposal(c) => {
+                Ok(Certificate::UpdateProposal(UpdateProposal(c)))
+            }
+            certificate::Certificate::UpdateVote(c) => Ok(Certificate::UpdateVote(UpdateVote(c))),
         }
     }
 }
@@ -307,5 +339,17 @@ impl From<certificate::VotePlan> for VotePlan {
 impl From<certificate::VoteCast> for VoteCast {
     fn from(vote_cast: certificate::VoteCast) -> VoteCast {
         VoteCast(vote_cast)
+    }
+}
+
+impl From<certificate::UpdateProposal> for UpdateProposal {
+    fn from(update_proposal: certificate::UpdateProposal) -> Self {
+        UpdateProposal(update_proposal)
+    }
+}
+
+impl From<certificate::UpdateVote> for UpdateVote {
+    fn from(update_vote: certificate::UpdateVote) -> Self {
+        UpdateVote(update_vote)
     }
 }
