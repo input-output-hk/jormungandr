@@ -14,7 +14,7 @@ tokio-stream = "0.1"
 futures = "0.3.18"
 base64 = "0.13"
 bech32 = "0.8"
-bytesize = "1.0.1"
+bytesize = "1.1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
@@ -36,7 +36,7 @@ humantime = "2.0"
 custom_debug = "0.5"
 thiserror = "1.0"
 poldercast = "1.2"
-sysinfo = { version = "0.20.3" }
+sysinfo = { version = "0.21.1" }
 os_info = { version = "3.0.7", default-features = false }
 zip = "0.5.6"
 flate2 = "1.0.21"
@@ -57,7 +57,7 @@ qrcodegen = "1.6"
 quircs = "0.10.0"
 image = "0.23.12"
 strum = { version = "0.21", features = ["derive"] }
-tracing-subscriber = "0.2"
+tracing-subscriber = "0.3"
 tracing = "0.1"
 log = { version = "0.4", features = ["serde"] }
 netstat2 = "0.9"
