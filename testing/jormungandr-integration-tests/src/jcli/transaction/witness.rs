@@ -145,8 +145,8 @@ pub fn test_make_witness_with_readonly_private_key_file_fails() {
     let private_key = jcli.key().generate_default();
     transaction_wrapper
         .new_transaction()
-        .add_input(&FAKE_INPUT_TRANSACTION_ID, &0, &100)
-        .add_output(&receiver.address_bech32(Discrimination::Test), &100)
+        .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, "100")
+        .add_output(&receiver.address_bech32(Discrimination::Test), 100.into())
         .set_expiry_date(BlockDate::first().into())
         .finalize();
     let witness = Witness::new(
