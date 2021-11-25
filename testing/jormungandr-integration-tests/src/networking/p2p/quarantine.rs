@@ -1,3 +1,20 @@
+use crate::networking::p2p::assert_are_in_quarantine;
+use crate::networking::p2p::assert_empty_quarantine;
+use crate::networking::p2p::assert_node_stats;
+use crate::networking::utils;
+use jormungandr_lib::interfaces::Policy;
+use jormungandr_lib::time::Duration;
+use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
+use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
+use jormungandr_testing_utils::testing::network::Node;
+use jormungandr_testing_utils::testing::network::SpawnParams;
+use jormungandr_testing_utils::testing::network::Topology;
+
+const CLIENT: &str = "CLIENT";
+const SERVER: &str = "SERVER";
+
+const ALICE: &str = "ALICE";
+const BOB: &str = "BOB";
 
 #[test]
 pub fn node_whitelist_itself() {
@@ -138,7 +155,7 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
         )
         .unwrap();
 
-    process_utils::sleep(5);
+    utils::wait(5);
 
     assert_node_stats(&server, 0, 1, 1, "after starting client");
     assert_are_in_quarantine(&server, vec![&client], "after starting client");
@@ -175,13 +192,13 @@ pub fn node_does_not_quarantine_trusted_node() {
         .spawn(SpawnParams::new(CLIENT).in_memory())
         .unwrap();
 
-    process_utils::sleep(5);
+    utils::wait(5);
 
     assert_node_stats(&server, 1, 0, 1, "before stopping client");
     assert_empty_quarantine(&server, "before stopping client");
 
     client.shutdown();
-    process_utils::sleep(20);
+    utils::wait(25);
 
     // The server "forgets" the client but does not quarantine it
     assert_node_stats(&server, 1, 0, 1, "before restarting client");

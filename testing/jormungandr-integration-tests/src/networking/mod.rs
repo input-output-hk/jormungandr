@@ -6,7 +6,6 @@ pub mod explorer;
 pub mod leadership_log;
 pub mod p2p;
 pub mod stake_pool;
-pub mod stats;
 pub mod testnet;
 pub mod topology;
 pub mod utils;

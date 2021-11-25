@@ -10,7 +10,6 @@ use jormungandr_testing_utils::testing::network::Topology;
 use jormungandr_testing_utils::testing::node::LogLevel;
 use jormungandr_testing_utils::testing::DummySyncNode;
 use jormungandr_testing_utils::testing::FragmentSender;
-
 const LEADER1: &str = "LEADER1";
 const LEADER2: &str = "LEADER2";
 const LEADER3: &str = "LEADER3";

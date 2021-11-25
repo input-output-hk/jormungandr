@@ -1,4 +1,5 @@
 pub mod connections;
+pub mod quarantine;
 pub mod stats;
 
 pub use connections::max_connections;
