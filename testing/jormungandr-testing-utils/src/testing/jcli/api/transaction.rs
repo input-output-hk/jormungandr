@@ -4,7 +4,7 @@ use crate::wallet::Wallet;
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::TempDir;
 use chain_core::property::Deserialize;
-use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
+use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, LegacyUTxO, UTxOInfo, Value},
@@ -173,7 +173,7 @@ impl Transaction {
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
                 &witness.addr_type,
-                witness.spending_account_counter,
+                witness.account_spending_counter,
                 &witness.file,
                 &witness.private_key_path,
             )
@@ -188,7 +188,7 @@ impl Transaction {
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
                 &witness.addr_type,
-                witness.spending_account_counter,
+                witness.account_spending_counter,
                 &witness.file,
                 &witness.private_key_path,
             )
@@ -211,7 +211,7 @@ impl Transaction {
                 genesis_hash,
                 &account.signing_key().to_bech32_str(),
                 "account",
-                Some(account.internal_counter().into()),
+                Some(account.internal_counter()),
                 staging_file,
             ),
             Wallet::UTxO(utxo) => self.create_witness_from_key(
@@ -239,7 +239,7 @@ impl Transaction {
         genesis_hash: Hash,
         private_key: &str,
         addr_type: &str,
-        spending_key: Option<u32>,
+        spending_counter: Option<SpendingCounter>,
         staging_file: P,
     ) -> Witness {
         let transaction_id = self.id(staging_file);
@@ -249,7 +249,7 @@ impl Transaction {
             &transaction_id,
             addr_type,
             private_key,
-            spending_key,
+            spending_counter,
         )
     }
 

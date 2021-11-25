@@ -1,7 +1,8 @@
 use crate::testing::FragmentBuilderError;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
-    account,
+    account::SpendingCounter,
+    accounting::account::SpendingCounterIncreasing,
     fee::{FeeAlgorithm, LinearFee},
     transaction::{
         Balance, Input, InputOutputBuilder, Payload, PayloadSlice, TransactionSignDataHash,
@@ -29,7 +30,7 @@ pub struct Wallet {
 
     /// the counter as we know of this value needs to be in sync
     /// with what is in the blockchain
-    internal_counter: account::SpendingCounter,
+    internal_counters: SpendingCounterIncreasing,
 
     discrimination: Discrimination,
 }
@@ -44,18 +45,23 @@ impl Wallet {
         Wallet {
             signing_key,
             identifier,
-            internal_counter: account::SpendingCounter::zero(),
+            internal_counters: SpendingCounterIncreasing::default(),
             discrimination,
         }
     }
 
-    pub fn from_existing_account(bech32_str: &str, spending_counter: Option<u32>) -> Self {
+    pub fn from_existing_account(
+        bech32_str: &str,
+        spending_counter: Option<SpendingCounter>,
+    ) -> Self {
         let signing_key = SigningKey::from_bech32_str(bech32_str).expect("bad bech32");
         let identifier = signing_key.identifier();
         Wallet {
             signing_key,
             identifier,
-            internal_counter: spending_counter.unwrap_or(0).into(),
+            internal_counters: SpendingCounterIncreasing::new_from_counter(
+                spending_counter.unwrap_or_else(SpendingCounter::zero),
+            ),
             discrimination: Discrimination::Test,
         }
     }
@@ -68,22 +74,31 @@ impl Wallet {
         self.identifier().to_address(self.discrimination).into()
     }
 
-    pub fn set_counter(&mut self, value: u32) {
-        self.internal_counter = account::SpendingCounter::from(value);
+    pub fn set_counter(&mut self, counter: SpendingCounter) {
+        let mut counters = self.internal_counters.get_valid_counters();
+        counters[counter.lane()] = counter;
+        self.internal_counters = SpendingCounterIncreasing::new_from_counters(counters).unwrap();
     }
 
-    pub fn increment_counter(&mut self) {
-        let v: u32 = self.internal_counter.into();
-        self.internal_counter = account::SpendingCounter::from(v + 1);
+    pub fn increment_counter(&mut self, lane: usize) {
+        self.internal_counters
+            .next_verify(self.internal_counters.get_valid_counters()[lane])
+            .unwrap();
     }
 
-    pub fn decrement_counter(&mut self) {
-        let v: u32 = self.internal_counter.into();
-        self.internal_counter = account::SpendingCounter::from(v - 1);
+    pub fn decrement_counter(&mut self, lane: usize) {
+        self.set_counter(SpendingCounter::from(
+            <u32>::from(self.internal_counters()[lane]) - 1,
+        ))
     }
 
-    pub fn internal_counter(&self) -> account::SpendingCounter {
-        self.internal_counter
+    /// Use the default counter
+    pub fn internal_counter(&self) -> SpendingCounter {
+        self.internal_counters.get_valid_counter()
+    }
+
+    pub fn internal_counters(&self) -> Vec<SpendingCounter> {
+        self.internal_counters.get_valid_counters()
     }
 
     pub fn stake_key(&self) -> UnspecifiedAccountIdentifier {
@@ -106,7 +121,7 @@ impl Wallet {
         Witness::new_account(
             &(*block0_hash).into_hash(),
             signing_data,
-            self.internal_counter(),
+            self.internal_counters.get_valid_counter(),
             |d| self.signing_key().as_ref().sign(d),
         )
     }

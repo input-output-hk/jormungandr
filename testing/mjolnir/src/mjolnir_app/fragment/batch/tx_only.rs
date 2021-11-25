@@ -61,8 +61,10 @@ pub struct TxOnly {
 
 impl TxOnly {
     pub fn exec(&self) -> Result<(), MjolnirError> {
-        let mut faucet =
-            Wallet::import_account(&self.faucet_key_file, Some(self.faucet_spending_counter));
+        let mut faucet = Wallet::import_account(
+            &self.faucet_key_file,
+            Some(self.faucet_spending_counter.into()),
+        );
         let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
         builder.with_rest(self.endpoint.parse().unwrap());
         let remote_jormungandr = builder.build();
