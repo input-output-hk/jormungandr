@@ -407,7 +407,7 @@ impl ExplorerTransaction {
                         .and_then(|block_id| {
                             context
                                 .prev_blocks
-                                .lookup(&block_id)
+                                .lookup(block_id)
                                 .map(|block| &block.transactions[&tx].outputs[index as usize])
                         })
                         .or_else(|| {

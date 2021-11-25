@@ -234,7 +234,7 @@ impl ExplorerDb {
 
     pub async fn get_block(&self, block_id: &HeaderHash) -> Option<Arc<ExplorerBlock>> {
         for (_hash, state_ref) in self.multiverse.tips().await.iter() {
-            if let Some(b) = state_ref.state().blocks.lookup(&block_id) {
+            if let Some(b) = state_ref.state().blocks.lookup(block_id) {
                 return Some(Arc::clone(b));
             }
         }
@@ -293,7 +293,7 @@ impl ExplorerDb {
         let mut tips = Vec::new();
 
         for (hash, state_ref) in self.multiverse.tips().await.drain(..) {
-            if let Some(b) = state_ref.state().blocks.lookup(&block_id) {
+            if let Some(b) = state_ref.state().blocks.lookup(block_id) {
                 block = block.or_else(|| Some(Arc::clone(b)));
                 tips.push((hash, state_ref));
             }
@@ -320,7 +320,7 @@ impl ExplorerDb {
             .await
             .unwrap();
 
-        if let Some(block) = current_branch.state().blocks.lookup(&block_id) {
+        if let Some(block) = current_branch.state().blocks.lookup(block_id) {
             let confirmed_block_chain_length: ChainLength = self
                 .stable_store
                 .confirmed_block_chain_length
@@ -357,7 +357,7 @@ impl ExplorerDb {
                 state_ref
                     .state()
                     .transactions
-                    .lookup(&transaction_id)
+                    .lookup(transaction_id)
                     .map(|arc| *arc.clone())
             })
             .collect();
@@ -408,7 +408,7 @@ impl ExplorerDb {
         vote_plan_id: &VotePlanId,
     ) -> Option<Arc<ExplorerVotePlan>> {
         for (_hash, state_ref) in self.multiverse.tips().await.iter() {
-            if let Some(b) = state_ref.state().vote_plans.lookup(&vote_plan_id) {
+            if let Some(b) = state_ref.state().vote_plans.lookup(vote_plan_id) {
                 return Some(Arc::clone(b));
             }
         }
@@ -537,7 +537,7 @@ fn apply_block_to_stake_pools(
     let mut blocks = match &block.producer() {
         indexing::BlockProducer::StakePool(id) => blocks
             .update(
-                &id,
+                id,
                 |array: &Arc<PersistentSequence<HeaderHash>>| -> std::result::Result<_, Infallible> {
                     Ok(Some(Arc::new(array.append(block.id()))))
                 },
