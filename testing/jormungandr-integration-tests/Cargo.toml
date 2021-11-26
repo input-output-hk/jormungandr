@@ -43,7 +43,7 @@ fs_extra = "1.1.0"
 tempfile = "3"
 json = "0.12.4"
 multiaddr = { package = "parity-multiaddr", version = "0.11" }
-rstest = "0.10.0"
+rstest = "0.11.0"
 tracing = "0.1"
 function_name = "0.2.0"
 

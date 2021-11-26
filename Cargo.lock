@@ -3324,14 +3324,14 @@ dependencies = [
 
 [[package]]
 name = "rstest"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "041bb0202c14f6a158bbbf086afb03d0c6e975c2dec7d4912f8061ed44f290af"
+checksum = "2288c66aeafe3b2ed227c981f364f9968fa952ef0b30e84ada4486e7ee24d00a"
 dependencies = [
  "cfg-if 1.0.0",
  "proc-macro2 1.0.28",
  "quote 1.0.9",
- "rustc_version 0.3.3",
+ "rustc_version 0.4.0",
  "syn 1.0.74",
 ]
 
