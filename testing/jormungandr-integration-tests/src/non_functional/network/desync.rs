@@ -1,6 +1,5 @@
 use crate::non_functional::network::*;
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use function_name::named;
 use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
 use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
 use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
@@ -10,7 +9,7 @@ use jormungandr_testing_utils::testing::network::Topology;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::{testing::network::FaketimeConfig, wallet::Wallet};
 
-#[named]
+#[test]
 pub fn bft_forks() {
     let n_transactions = 5;
     let transaction_amount = 1_000_000;

@@ -1,46 +1,35 @@
-#[cfg(feature = "network-non-functional")]
-pub mod network;
-
-#[cfg(feature = "sanity-non-functional")]
+#[cfg(feature = "cross-version")]
 pub mod compatibility;
+#[cfg(all(feature = "network"))]
+pub mod network;
 /*
  Explorer soak test. Run node for ~15 minutes and verify explorer is in sync with node rest
 */
-#[cfg(feature = "sanity-non-functional")]
+#[cfg(feature = "soak")]
 pub mod explorer;
 /*
  Sanity performance tests. Quick tests to check overall node performance.
  Run some transaction for ~15 minutes or specified no of transactions (100)
 */
-#[cfg(feature = "sanity-non-functional")]
 pub mod transaction;
 /*
 Long running test for self node (48 h)
 */
-#[cfg(feature = "soak-non-functional")]
+#[cfg(feature = "soak")]
 pub mod soak;
 
 /*
   Quick load test for rest api
 */
-#[cfg(feature = "sanity-non-functional")]
 pub mod rest;
 
 /*
 Long running test for dumping rewards each epoch
 */
-#[cfg(feature = "sanity-non-functional")]
-pub mod rewards;
-
-#[cfg(feature = "sanity-non-functional")]
-pub mod fragment;
-
-#[cfg(feature = "sanity-non-functional")]
 pub mod bootstrap;
-
-#[cfg(feature = "sanity-non-functional")]
+pub mod fragment;
 pub mod persistent_log;
-
+pub mod rewards;
 pub mod voting;
 
 use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};

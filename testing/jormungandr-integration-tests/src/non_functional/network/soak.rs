@@ -1,3 +1,5 @@
+use crate::networking::p2p::connections::parse_timestamp;
+use crate::networking::utils::wait;
 use crate::non_functional::network::*;
 use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
 use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
@@ -5,6 +7,7 @@ use jormungandr_testing_utils::testing::network::wallet::template::builder::Wall
 use jormungandr_testing_utils::testing::network::Node;
 use jormungandr_testing_utils::testing::network::SpawnParams;
 use jormungandr_testing_utils::testing::network::Topology;
+use jormungandr_testing_utils::testing::node::LogLevel;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::SyncWaitParams;
 use jormungandr_testing_utils::testing::{ensure_nodes_are_in_sync, FragmentVerifier};
@@ -21,6 +24,9 @@ const DAVID: &str = "DAVID";
 const EDGAR: &str = "EDGAR";
 const FILIP: &str = "FILIP";
 const GRACE: &str = "GRACE";
+
+const LEADER_6: &str = "Leader6";
+const LEADER_7: &str = "Leader7";
 
 #[test]
 pub fn relay_soak() {
@@ -193,4 +199,54 @@ pub fn relay_soak() {
         ],
     )
     .unwrap();
+}
+
+#[test]
+/// Ensures that consecutive network-stuck checks respect the `network_stuck_check` timing parameter
+fn network_stuck_check() {
+    const INTERVAL_SECS: u64 = 90;
+    let mut network_controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(CORE_NODE))
+                .with_node(Node::new(LEADER_1).with_trusted_peer(CORE_NODE)),
+        )
+        .build()
+        .unwrap();
+
+    let server = network_controller
+        .spawn(SpawnParams::new(CORE_NODE).in_memory())
+        .unwrap();
+
+    let client = network_controller
+        .spawn(
+            SpawnParams::new(LEADER_1)
+                .log_level(LogLevel::TRACE)
+                .gossip_interval(jormungandr_lib::time::Duration::new(5, 0))
+                .network_stuck_check(jormungandr_lib::time::Duration::new(INTERVAL_SECS, 0)),
+        )
+        .unwrap();
+
+    server.stop();
+
+    wait(10 * INTERVAL_SECS);
+
+    let log_timestamps: Vec<u64> = client
+        .logger
+        .get_lines_as_string()
+        .into_iter()
+        .filter(|s| s.contains("p2p network have been too quiet for some time"))
+        .map(|t| parse_timestamp(&t))
+        .collect();
+
+    let mut prev = None;
+
+    for log_timestamp in log_timestamps {
+        match prev {
+            None => prev = Some(log_timestamp),
+            Some(prev) => {
+                assert!(log_timestamp - prev >= INTERVAL_SECS);
+            }
+        }
+    }
 }

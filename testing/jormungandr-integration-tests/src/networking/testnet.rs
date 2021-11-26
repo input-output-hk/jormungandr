@@ -1,5 +1,3 @@
-#![cfg(feature = "testnet")]
-
 use crate::jormungandr::genesis::stake_pool::{
     create_new_stake_pool, delegate_stake, retire_stake_pool,
 };

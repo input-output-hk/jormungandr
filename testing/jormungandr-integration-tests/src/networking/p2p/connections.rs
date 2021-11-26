@@ -331,7 +331,7 @@ fn max_bootstrap_attempts() {
     );
 }
 
-fn parse_timestamp(log: &str) -> u64 {
+pub fn parse_timestamp(log: &str) -> u64 {
     let re = regex::Regex::new("([0-9]+):([0-9]+):([0-9]+)").unwrap();
 
     let captures = re.captures(log).unwrap();
