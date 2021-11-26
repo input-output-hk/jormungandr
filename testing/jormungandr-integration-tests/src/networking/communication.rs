@@ -1,3 +1,4 @@
+use jormungandr_testing_utils::testing::network::Blockchain;
 use jormungandr_testing_utils::testing::network::{
     builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder,
 };
@@ -18,6 +19,7 @@ pub fn two_nodes_communication() {
                 .with_node(Node::new(LEADER))
                 .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
         )
+        .blockchain_config(Blockchain::default().with_leader(LEADER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)

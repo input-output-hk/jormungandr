@@ -48,17 +48,17 @@ fn prepare_real_scenario(
     let mut builder = ControllerBuilder::new(title);
     let mut topology = Topology::default().with_node(Node::new(CORE_NODE));
 
-    let mut blockchain = Blockchain::default();
-    blockchain.set_consensus(consensus);
-    blockchain.set_slot_duration(SlotDuration::new(1).unwrap());
-    blockchain.set_consensus_genesis_praos_active_slot_coeff(
-        ActiveSlotCoefficient::new(Milli::from_millis(700)).unwrap(),
-    );
+    let mut blockchain = Blockchain::default()
+        .with_consensus(consensus)
+        .with_slot_duration(SlotDuration::new(1).unwrap())
+        .with_consensus_genesis_praos_active_slot_coeff(
+            ActiveSlotCoefficient::new(Milli::from_millis(700)).unwrap(),
+        );
 
     for i in 0..relay_nodes_count {
         let relay_name = relay_name(i + 1);
         topology = topology.with_node(Node::new(&relay_name).with_trusted_peer(CORE_NODE));
-        blockchain.add_leader(relay_name);
+        blockchain = blockchain.with_leader(relay_name);
     }
 
     let mut leader_counter = 1;
@@ -71,7 +71,7 @@ fn prepare_real_scenario(
             let leader_name = leader_name(leader_counter);
             topology = topology.with_node(Node::new(&leader_name).with_trusted_peer(&relay_name));
 
-            blockchain.add_leader(leader_name);
+            blockchain = blockchain.with_leader(leader_name);
 
             leader_counter += 1;
         }
@@ -80,7 +80,7 @@ fn prepare_real_scenario(
             let legacy_name = legacy_name(legacy_nodes_counter);
             topology = topology.with_node(Node::new(&legacy_name).with_trusted_peer(&relay_name));
 
-            blockchain.add_leader(legacy_name);
+            blockchain = blockchain.with_leader(legacy_name);
 
             legacy_nodes_counter += 1;
         }
@@ -89,7 +89,7 @@ fn prepare_real_scenario(
     builder = builder.topology(topology);
 
     // adds all nodes as leaders
-    blockchain.add_leader(CORE_NODE);
+    blockchain = blockchain.with_leader(CORE_NODE);
 
     for i in 1..leader_counter {
         let initial_wallet_name = wallet_name(i);
@@ -99,7 +99,7 @@ fn prepare_real_scenario(
             blockchain.discrimination(),
         );
         *wallet.delegate_mut() = Some(leader_name(i).to_owned());
-        blockchain.add_wallet(wallet);
+        blockchain = blockchain.with_wallet(wallet);
     }
 
     for i in 1..legacy_nodes_counter {
@@ -110,7 +110,7 @@ fn prepare_real_scenario(
             blockchain.discrimination(),
         );
         *wallet.delegate_mut() = Some(legacy_name(i).to_owned());
-        blockchain.add_wallet(wallet);
+        blockchain = blockchain.with_wallet(wallet);
     }
 
     builder.blockchain(blockchain)
