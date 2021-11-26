@@ -103,7 +103,7 @@ checksum = "3d20831bd004dda4c7c372c19cdabff369f794a95e955b3f13fe460e3e1ae95f"
 dependencies = [
  "bstr",
  "doc-comment",
- "predicates 2.0.2",
+ "predicates 2.1.0",
  "predicates-core",
  "predicates-tree",
  "wait-timeout",
@@ -111,13 +111,13 @@ dependencies = [
 
 [[package]]
 name = "assert_fs"
-version = "1.0.5"
+version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d7b349de9bde9383966c8d3be1103623620ca34d2c43a41b82360e552661007"
+checksum = "633ff1df0788db09e2087fb93d05974e93acb886ac3aec4e67be1d6932e360e4"
 dependencies = [
  "doc-comment",
  "globwalk",
- "predicates 2.0.2",
+ "predicates 2.1.0",
  "predicates-core",
  "predicates-tree",
  "tempfile",
@@ -1896,7 +1896,7 @@ dependencies = [
  "gtmpl",
  "hex",
  "jormungandr-lib",
- "predicates 2.0.2",
+ "predicates 2.1.0",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
  "rayon",
@@ -1999,7 +1999,7 @@ dependencies = [
  "lazy_static",
  "parity-multiaddr",
  "poldercast",
- "predicates 2.0.2",
+ "predicates 2.1.0",
  "prost",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
@@ -2092,7 +2092,7 @@ dependencies = [
  "os_info",
  "parity-multiaddr",
  "poldercast",
- "predicates 2.0.2",
+ "predicates 2.1.0",
  "prost",
  "qrcodegen",
  "quircs",
@@ -2840,9 +2840,9 @@ dependencies = [
 
 [[package]]
 name = "predicates"
-version = "2.0.2"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c143348f141cc87aab5b950021bac6145d0e5ae754b0591de23244cee42c9308"
+checksum = "95e5a7689e456ab905c22c2b48225bb921aba7c8dfa58440d68ba13f6222a715"
 dependencies = [
  "difflib",
  "float-cmp 0.9.0",
