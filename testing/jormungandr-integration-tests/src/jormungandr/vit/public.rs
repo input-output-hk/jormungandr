@@ -206,7 +206,7 @@ pub fn test_vote_flow_bft() {
         .send_vote_cast(&mut bob, &vote_plan, 0, &favorable_choice, &jormungandr)
         .unwrap();
 
-    let rewards_before = jormungandr.explorer().last_block().unwrap().rewards();
+    let rewards_before: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
 
     wait_for_epoch(1, jormungandr.rest());
 
@@ -271,7 +271,7 @@ pub fn test_vote_flow_bft() {
         jormungandr.rest().vote_plan_statuses().unwrap(),
     );
 
-    let rewards_after = jormungandr.explorer().last_block().unwrap().rewards();
+    let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
 
     assert!(
         rewards_after == (rewards_before + rewards_increase),
@@ -442,7 +442,7 @@ pub fn test_vote_flow_praos() {
 
     wait_for_epoch(3, jormungandr.rest());
 
-    let rewards_after = jormungandr.explorer().last_block().unwrap().rewards();
+    let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
 
     // We want to make sure that our small rewards increase is reflexed in current rewards amount
     assert!(
@@ -532,7 +532,7 @@ pub fn jcli_e2e_flow() {
 
     alice.confirm_transaction();
 
-    let rewards_before = jormungandr.explorer().last_block().unwrap().rewards();
+    let rewards_before: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
 
     time::wait_for_epoch(1, jormungandr.rest());
 
@@ -631,7 +631,7 @@ pub fn jcli_e2e_flow() {
         3
     );
 
-    let rewards_after = jormungandr.explorer().last_block().unwrap().rewards();
+    let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
 
     // We want to make sure that our small rewards increase is reflexed in current rewards amount
     assert!(

@@ -159,6 +159,14 @@ pub async fn get_rewards_info_history(
         .map_err(warp::reject::custom)
 }
 
+pub async fn get_rewards_remaining(context: ContextLock) -> Result<impl Reply, Rejection> {
+    let context = context.read().await;
+    logic::get_rewards_remaining(&context)
+        .await
+        .map(|r| warp::reply::json(&r))
+        .map_err(warp::reject::custom)
+}
+
 pub async fn get_utxo(
     fragment_id_hex: String,
     output_index: u8,

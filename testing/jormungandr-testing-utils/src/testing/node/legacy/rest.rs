@@ -72,6 +72,12 @@ impl BackwardCompatibleRest {
         Ok(response_text)
     }
 
+    pub fn remaining_rewards(&self) -> Result<String, reqwest::Error> {
+        let response_text = self.raw().remaining_rewards()?.text()?;
+        self.print_response_text(&response_text);
+        Ok(response_text)
+    }
+
     pub fn stake_distribution(&self) -> Result<String, reqwest::Error> {
         let response_text = self.raw().stake_distribution()?.text()?;
         self.print_response_text(&response_text);

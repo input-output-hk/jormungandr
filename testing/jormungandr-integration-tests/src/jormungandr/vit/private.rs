@@ -121,7 +121,7 @@ pub fn jcli_e2e_flow_private_vote() {
 
     alice.confirm_transaction();
 
-    let rewards_before = jormungandr.explorer().last_block().unwrap().rewards();
+    let rewards_before: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
 
     time::wait_for_epoch(1, jormungandr.rest());
 
@@ -266,7 +266,8 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(3, jormungandr.rest());
 
-    let rewards_after = jormungandr.explorer().last_block().unwrap().rewards();
+    let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
+
     // We want to make sure that our small rewards increase is reflexed in current rewards amount
     assert!(
         rewards_after == rewards_before + rewards_increase,

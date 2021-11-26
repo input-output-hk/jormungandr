@@ -93,6 +93,11 @@ impl RawRest {
         self.get(&request)
     }
 
+    pub fn remaining_rewards(&self) -> Result<Response, reqwest::Error> {
+        let request = "rewards/remaining".to_string();
+        self.get(&request)
+    }
+
     fn print_request_path(&self, text: &str) {
         if self.rest_settings().enable_debug {
             println!("Request: {}", text);

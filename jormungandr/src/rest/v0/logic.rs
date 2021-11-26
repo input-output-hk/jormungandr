@@ -32,7 +32,7 @@ use jormungandr_lib::{
         AccountState, EpochRewardsInfo, FragmentLog, FragmentOrigin, FragmentsProcessingSummary,
         LeadershipLog, NodeStatsDto, PeerStats, Rewards as StakePoolRewards, SettingsDto,
         StakeDistribution, StakeDistributionDto, StakePoolStats, TaxTypeSerde, TransactionOutput,
-        VotePlanStatus,
+        Value, VotePlanStatus,
     },
     time::SystemTime,
 };
@@ -422,6 +422,13 @@ pub async fn get_rewards_info_history(
     }
 
     Ok(vec)
+}
+
+pub async fn get_rewards_remaining(context: &Context) -> Result<Value, Error> {
+    let tip_ref = context.blockchain_tip()?.get_ref().await;
+    let ledger = tip_ref.ledger();
+
+    Ok(ledger.remaining_rewards().into())
 }
 
 pub async fn get_utxo(

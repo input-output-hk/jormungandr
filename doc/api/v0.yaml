@@ -1159,6 +1159,25 @@ paths:
                       },
                     ]
 
+  '/api/v0/rewards/remaining':
+    get:
+      description: 'returns the remaining funds to be distributed as rewards'
+      operationId: RewardsRemaining
+      tags:
+        - rewards
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: integer
+                minimum: 0
+              examples:
+                remaining rewards:
+                  value:
+                    1000000
+
   '/api/v0/stake_pool/{pool_id}':
     get:
       description: Gets stake pool details
