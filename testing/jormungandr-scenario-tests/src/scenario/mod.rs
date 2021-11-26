@@ -97,15 +97,15 @@ macro_rules! prepare_scenario {
         )*
         builder = builder.topology(topology);
 
-        let mut blockchain = crate::scenario::Blockchain::default();
-        blockchain.set_consensus(crate::scenario::ConsensusVersion::$blockchain_consensus);
-        blockchain.set_consensus_genesis_praos_active_slot_coeff(crate::scenario::ActiveSlotCoefficient::new(crate::scenario::Milli::from_millis(700)).unwrap());
-        blockchain.set_slots_per_epoch(crate::scenario::NumberOfSlotsPerEpoch::new($slots_per_epoch).unwrap());
-        blockchain.set_slot_duration(crate::scenario::SlotDuration::new($slot_duration).unwrap());
+        let mut blockchain = crate::scenario::Blockchain::default()
+            .with_consensus(crate::scenario::ConsensusVersion::$blockchain_consensus)
+            .with_consensus_genesis_praos_active_slot_coeff(crate::scenario::ActiveSlotCoefficient::new(crate::scenario::Milli::from_millis(700)).unwrap())
+            .with_slots_per_epoch(crate::scenario::NumberOfSlotsPerEpoch::new($slots_per_epoch).unwrap())
+            .with_slot_duration(crate::scenario::SlotDuration::new($slot_duration).unwrap());
 
         $(
             let node_leader = $node_leader.to_owned();
-            blockchain.add_leader(node_leader);
+            blockchain = blockchain.with_leader(node_leader);
         )*
 
         $(
@@ -140,7 +140,7 @@ macro_rules! prepare_scenario {
                     panic!("unknown wallet type");
                 }
             };
-            blockchain.add_wallet(wallet);
+            blockchain = blockchain.with_wallet(wallet);
         )*
 
         $(

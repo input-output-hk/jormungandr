@@ -510,6 +510,7 @@ fn pending_transaction_stats() {
             Value(100_000),
             chain_addr::Discrimination::Test,
         ))
+        .blockchain_config(Blockchain::default().with_leader(LEADER))
         .wallet_template(WalletTemplate::new_account(
             BOB,
             Value(100_000),
@@ -571,10 +572,11 @@ fn avg_block_size_stats() {
     const STABILITY_SLOTS: usize = 3; // Number of slots we expect `block_content_size_avg` to stay the same for
     let linear_fee = LinearFee::new(0, 0, 0);
 
-    let mut blockchain = Blockchain::default();
-    blockchain.set_slot_duration(SlotDuration::new(SLOT_DURATION_SECS).unwrap());
-    blockchain.set_linear_fee(linear_fee);
-    blockchain.set_block_content_max_size(200.into()); // This should only fit one transaction
+    let blockchain = Blockchain::default()
+        .with_slot_duration(SlotDuration::new(SLOT_DURATION_SECS).unwrap())
+        .with_linear_fee(linear_fee)
+        .with_leader(LEADER)
+        .with_block_content_max_size(200.into()); // This should only fit one transaction
 
     let mut controller = NetworkBuilder::default()
         .blockchain_config(blockchain)

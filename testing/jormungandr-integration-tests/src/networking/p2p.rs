@@ -1,3 +1,4 @@
+use jormungandr_testing_utils::testing::network::Blockchain;
 use jormungandr_testing_utils::testing::{
     jormungandr::process::JormungandrProcess,
     network::{
@@ -130,6 +131,11 @@ pub fn node_whitelist_itself() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leader(SERVER)
+                .with_leader(CLIENT),
+        )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -170,6 +176,11 @@ pub fn node_does_not_quarantine_whitelisted_node() {
             Topology::default()
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leader(SERVER)
+                .with_leader(CLIENT),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
@@ -225,6 +236,11 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leader(SERVER)
+                .with_leader(CLIENT),
+        )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -276,6 +292,11 @@ pub fn node_does_not_quarantine_trusted_node() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leader(SERVER)
+                .with_leader(CLIENT),
+        )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -318,6 +339,11 @@ pub fn node_trust_itself() {
             Topology::default()
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leader(SERVER)
+                .with_leader(CLIENT),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
@@ -362,6 +388,11 @@ fn gossip_interval() {
             Topology::default()
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leader(SERVER)
+                .with_leader(CLIENT),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
@@ -423,6 +454,11 @@ fn network_stuck_check() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leader(SERVER)
+                .with_leader(CLIENT),
+        )
         .build()
         .unwrap();
 
@@ -473,6 +509,12 @@ pub fn topics_of_interest_influences_node_sync_ability() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(FAST_CLIENT).with_trusted_peer(SERVER))
                 .with_node(Node::new(SLOW_CLIENT).with_trusted_peer(SERVER)),
+        )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leader(SERVER)
+                .with_leader(FAST_CLIENT)
+                .with_leader(SLOW_CLIENT),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
@@ -557,6 +599,11 @@ fn max_bootstrap_attempts() {
             Topology::default()
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leader(SERVER)
+                .with_leader(CLIENT),
         )
         .build()
         .unwrap();

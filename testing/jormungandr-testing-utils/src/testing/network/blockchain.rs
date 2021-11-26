@@ -57,75 +57,91 @@ impl Blockchain {
         self.block0_date
     }
 
-    pub fn set_block0_date(&mut self, block0_date: SecondsSinceUnixEpoch) {
+    pub fn with_block0_date(mut self, block0_date: SecondsSinceUnixEpoch) -> Self {
         self.block0_date = block0_date;
+        self
     }
 
     pub fn block_content_max_size(&self) -> &BlockContentMaxSize {
         &self.block_content_max_size
     }
 
-    pub fn set_block_content_max_size(&mut self, block_content_max_size: BlockContentMaxSize) {
+    pub fn with_block_content_max_size(
+        mut self,
+        block_content_max_size: BlockContentMaxSize,
+    ) -> Self {
         self.block_content_max_size = block_content_max_size;
+        self
     }
 
     pub fn committees(&self) -> Vec<WalletAlias> {
         self.committees.clone()
     }
 
-    pub fn set_committes(&mut self, committees: Vec<WalletAlias>) {
+    pub fn with_committes(mut self, committees: Vec<WalletAlias>) -> Self {
         self.committees = committees;
+        self
     }
 
-    pub fn add_committee<S: Into<NodeAlias>>(&mut self, alias: S) {
+    pub fn with_committee<S: Into<NodeAlias>>(mut self, alias: S) -> Self {
         self.committees.push(alias.into());
+        self
     }
 
     pub fn consensus(&self) -> &ConsensusVersion {
         &self.consensus
     }
 
-    pub fn set_consensus(&mut self, consensus: ConsensusVersion) {
+    pub fn with_consensus(mut self, consensus: ConsensusVersion) -> Self {
         self.consensus = consensus;
+        self
     }
 
     pub fn consensus_genesis_praos_active_slot_coeff(&self) -> &ActiveSlotCoefficient {
         &self.consensus_genesis_praos_active_slot_coeff
     }
 
-    pub fn set_consensus_genesis_praos_active_slot_coeff(&mut self, coeff: ActiveSlotCoefficient) {
+    pub fn with_consensus_genesis_praos_active_slot_coeff(
+        mut self,
+        coeff: ActiveSlotCoefficient,
+    ) -> Self {
         self.consensus_genesis_praos_active_slot_coeff = coeff;
+        self
     }
 
     pub fn discrimination(&self) -> Discrimination {
         self.discrimination
     }
 
-    pub fn set_discrimination(&mut self, discrimination: Discrimination) {
+    pub fn with_discrimination(mut self, discrimination: Discrimination) -> Self {
         self.discrimination = discrimination;
+        self
     }
 
     pub fn external_committees(&self) -> Vec<CommitteeIdDef> {
         self.external_committees.clone()
     }
 
-    pub fn set_external_committees(&mut self, external_committees: Vec<CommitteeIdDef>) {
+    pub fn with_external_committees(mut self, external_committees: Vec<CommitteeIdDef>) -> Self {
         self.external_committees = external_committees;
+        self
     }
 
-    pub fn add_external_committee(&mut self, committee: CommitteeIdDef) {
+    pub fn with_external_committee(mut self, committee: CommitteeIdDef) -> Self {
         self.external_committees.push(committee);
+        self
     }
 
     pub fn external_consensus_leader_ids(&self) -> Vec<ConsensusLeaderId> {
         self.external_consensus_leader_ids.clone()
     }
 
-    pub fn set_external_consensus_leader_ids(
-        &mut self,
+    pub fn with_external_consensus_leader_ids(
+        mut self,
         external_consensus_leader_ids: Vec<ConsensusLeaderId>,
-    ) {
+    ) -> Self {
         self.external_consensus_leader_ids = external_consensus_leader_ids;
+        self
     }
 
     pub fn has_external_consensus_leader_ids(&self) -> bool {
@@ -136,8 +152,9 @@ impl Blockchain {
         self.external_wallets.clone()
     }
 
-    pub fn set_external_wallets(&mut self, external_wallets: Vec<ExternalWalletTemplate>) {
+    pub fn with_external_wallets(mut self, external_wallets: Vec<ExternalWalletTemplate>) -> Self {
         self.external_wallets = external_wallets;
+        self
     }
 
     pub fn kes_update_speed(&self) -> &KesUpdateSpeed {
@@ -148,62 +165,69 @@ impl Blockchain {
         self.leaders.iter()
     }
 
-    pub fn add_leader<S: Into<NodeAlias>>(&mut self, alias: S) {
-        self.leaders.push(alias.into())
+    pub fn with_leader<S: Into<NodeAlias>>(mut self, alias: S) -> Self {
+        self.leaders.push(alias.into());
+        self
     }
 
     pub fn linear_fee(&self) -> LinearFee {
         self.linear_fee
     }
 
-    pub fn set_linear_fee(&mut self, linear_fee: LinearFee) {
+    pub fn with_linear_fee(mut self, linear_fee: LinearFee) -> Self {
         self.linear_fee = linear_fee;
+        self
     }
 
     pub fn slot_duration(&self) -> &SlotDuration {
         &self.slot_duration
     }
 
-    pub fn set_slot_duration(&mut self, slot_duration: SlotDuration) {
+    pub fn with_slot_duration(mut self, slot_duration: SlotDuration) -> Self {
         self.slot_duration = slot_duration;
+        self
     }
 
     pub fn slots_per_epoch(&self) -> &NumberOfSlotsPerEpoch {
         &self.slots_per_epoch
     }
 
-    pub fn set_slots_per_epoch(&mut self, slots_per_epoch: NumberOfSlotsPerEpoch) {
+    pub fn with_slots_per_epoch(mut self, slots_per_epoch: NumberOfSlotsPerEpoch) -> Self {
         self.slots_per_epoch = slots_per_epoch;
+        self
     }
 
     pub fn tx_max_expiry_epochs(&self) -> Option<u8> {
         self.tx_max_expiry_epochs
     }
 
-    pub fn set_tx_max_expiry_epochs(&mut self, tx_max_expiry_epochs: Option<u8>) {
+    pub fn with_tx_max_expiry_epochs(mut self, tx_max_expiry_epochs: Option<u8>) -> Self {
         self.tx_max_expiry_epochs = tx_max_expiry_epochs;
+        self
     }
 
     pub fn vote_plans(&self) -> HashMap<VotePlanKey, VotePlan> {
         self.vote_plans.clone()
     }
 
-    pub fn add_vote_plan(
-        &mut self,
+    pub fn with_vote_plan(
+        mut self,
         alias: String,
         owner_alias: String,
         vote_plan_template: VotePlan,
-    ) {
+    ) -> Self {
         self.vote_plans
             .insert(VotePlanKey { alias, owner_alias }, vote_plan_template);
+        self
     }
 
     pub fn wallets(&self) -> impl Iterator<Item = &WalletTemplate> {
         self.wallets.values()
     }
 
-    pub fn add_wallet(&mut self, wallet: WalletTemplate) {
+    pub fn with_wallet(mut self, wallet: WalletTemplate) -> Self {
         self.wallets.insert(wallet.alias().clone(), wallet);
+        self
     }
 }
 
