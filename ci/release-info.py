@@ -78,7 +78,6 @@ crates = {
     "jcli": [],
     "jormungandr-testing-utils": [],
     "jormungandr-integration-tests": [],
-    "jormungandr-scenario-tests": [],
 }
 
 version = bundle_version(crates)

@@ -10,6 +10,7 @@ pub enum TestingDirectory {
 }
 
 impl TestingDirectory {
+    #[allow(dead_code)]
     pub fn path(&self) -> &Path {
         match self {
             TestingDirectory::User(path_buf) => path_buf,
@@ -42,12 +43,6 @@ impl PathChild for TestingDirectory {
             Self::User(dir_path) => ChildPath::new(dir_path.join(path)),
             Self::Temp(temp_dir) => temp_dir.child(path),
         }
-    }
-}
-
-impl From<ChildPath> for TestingDirectory {
-    fn from(child_path: ChildPath) -> Self {
-        Self::User(child_path.path().to_path_buf())
     }
 }
 

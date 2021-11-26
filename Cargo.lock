@@ -1026,18 +1026,6 @@ dependencies = [
 
 [[package]]
 name = "dialoguer"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c9dd058f8b65922819fabb4a41e7d1964e56344042c26efbccd465202c23fa0c"
-dependencies = [
- "console 0.14.1",
- "lazy_static",
- "tempfile",
- "zeroize",
-]
-
-[[package]]
-name = "dialoguer"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61579ada4ec0c6031cfac3f86fdba0d195a7ebeb5e36693bd53cb5999a25beeb"
@@ -1999,7 +1987,9 @@ dependencies = [
  "chain-time",
  "chain-vote",
  "fs_extra",
+ "function_name",
  "futures",
+ "hersir",
  "hex",
  "indicatif",
  "jormungandr-lib",
@@ -2063,47 +2053,6 @@ dependencies = [
  "serde_yaml",
  "thiserror",
  "typed-bytes",
-]
-
-[[package]]
-name = "jormungandr-scenario-tests"
-version = "0.13.0"
-dependencies = [
- "assert_fs",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
- "chrono",
- "console 0.15.0",
- "custom_debug",
- "dialoguer 0.8.0",
- "function_name",
- "futures",
- "hersir",
- "hex",
- "indicatif",
- "jormungandr-lib",
- "jormungandr-testing-utils",
- "jortestkit",
- "json",
- "lazy_static",
- "parity-multiaddr",
- "poldercast",
- "rand 0.8.4",
- "rand_chacha 0.3.1",
- "rand_core 0.6.3",
- "regex",
- "reqwest",
- "serde",
- "serde_derive",
- "serde_json",
- "serde_yaml",
- "structopt",
- "thiserror",
- "tokio",
- "yaml-rust",
 ]
 
 [[package]]
@@ -2188,7 +2137,7 @@ dependencies = [
  "console 0.14.1",
  "csv",
  "custom_debug",
- "dialoguer 0.9.0",
+ "dialoguer",
  "flate2",
  "fs_extra",
  "hex",

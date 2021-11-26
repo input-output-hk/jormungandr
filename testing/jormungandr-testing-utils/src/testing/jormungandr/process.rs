@@ -1,5 +1,5 @@
 use super::{starter::StartupError, JormungandrError};
-use crate::testing::jcli::{JCli, JCliCommand};
+use crate::testing::jcli::JCli;
 use crate::testing::jormungandr::TestingDirectory;
 use crate::testing::network::NodeAlias;
 use crate::testing::node::grpc::JormungandrClient;
@@ -17,19 +17,18 @@ use crate::testing::{
 use ::multiaddr::Multiaddr;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use chain_time::TimeEra;
+use jormungandr_lib::interfaces::NodeState;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Block0Configuration, TrustedPeer},
 };
-use jortestkit::prelude::ProcessOutput;
+use jortestkit::prelude::NamedProcess;
 use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
 use std::process::ExitStatus;
-use std::process::Stdio;
-use thiserror::Error;
-
 use std::time::{Duration, Instant};
+use thiserror::Error;
 
 pub enum StartupVerificationMode {
     Log,
@@ -40,8 +39,16 @@ pub enum StartupVerificationMode {
 pub enum Status {
     Running,
     Starting,
-    Stopped(JormungandrError),
     Exited(ExitStatus),
+}
+
+impl From<NodeState> for Status {
+    fn from(node_state: NodeState) -> Self {
+        match &node_state {
+            NodeState::Running => Status::Running,
+            _ => Status::Starting,
+        }
+    }
 }
 
 pub struct JormungandrProcess {
@@ -136,14 +143,19 @@ impl JormungandrProcess {
                     log_content: self.logger.get_log_content(),
                 });
             }
-            match self.status(verification_mode) {
-                Status::Running => {
-                    return Ok(());
+
+            let stauts_result = self.status(verification_mode);
+
+            if let Ok(status) = stauts_result {
+                match status {
+                    Status::Running => {
+                        return Ok(());
+                    }
+                    Status::Exited(exit_status) => {
+                        return Err(StartupError::ProcessExited(exit_status))
+                    }
+                    Status::Starting => (),
                 }
-                Status::Stopped(err) => {
-                    return Err(StartupError::JormungandrError(err));
-                }
-                _ => {}
             }
             std::thread::sleep(Duration::from_secs(2));
         }
@@ -177,55 +189,41 @@ impl JormungandrProcess {
         self.check_no_errors_in_log()
     }
 
-    pub fn status(&self, strategy: &StartupVerificationMode) -> Status {
+    pub fn status(&self, strategy: &StartupVerificationMode) -> Result<Status, StartupError> {
         match strategy {
             StartupVerificationMode::Log => {
                 let bootstrap_completed_msgs = [
                     "listening and accepting gRPC connections",
                     "genesis block fetched",
                 ];
-                if let Err(err) = self.check_startup_errors_in_logs() {
-                    Status::Stopped(err)
-                } else if self.logger.contains_any_of(&bootstrap_completed_msgs) {
-                    Status::Running
+
+                self.check_startup_errors_in_logs()?;
+
+                if self.logger.contains_any_of(&bootstrap_completed_msgs) {
+                    Ok(Status::Running)
                 } else {
-                    Status::Starting
+                    Ok(Status::Starting)
                 }
             }
             StartupVerificationMode::Rest => {
-                let jcli: JCli = Default::default();
+                let output = self.rest().stats();
+                if let Err(err) = output {
+                    return Err(StartupError::CannotGetRestStatus(err));
+                }
 
-                let output = JCliCommand::new(std::process::Command::new(jcli.path()))
-                    .rest()
-                    .v0()
-                    .node()
-                    .stats(&self.rest_uri())
-                    .build()
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .spawn()
-                    .unwrap()
-                    .wait_with_output()
-                    .expect("failed to execute get_rest_stats command");
-
-                let output = output.try_as_single_node_yaml();
-                match output
-                    .ok()
-                    .as_ref()
-                    .and_then(|x| x.get("state"))
-                    .map(|x| x.as_str())
-                {
-                    Some("Running") => Status::Running,
-                    _ => {
-                        if let Err(err) = self.check_startup_errors_in_logs() {
-                            Status::Stopped(err)
-                        } else {
-                            Status::Starting
-                        }
-                    }
+                match output.ok().as_ref() {
+                    Some(node_stats) => Ok(node_stats.state.clone().into()),
+                    _ => self
+                        .check_startup_errors_in_logs()
+                        .map_err(Into::into)
+                        .map(|_| Status::Starting),
                 }
             }
         }
+    }
+
+    pub fn as_named_process(&self) -> NamedProcess {
+        NamedProcess::new(self.alias(), self.process_id() as usize)
     }
 
     pub fn p2p_listen_addr(&self) -> SocketAddr {
@@ -413,7 +411,10 @@ impl SyncNode for JormungandrProcess {
     }
 
     fn is_running(&self) -> bool {
-        matches!(self.status(&StartupVerificationMode::Log), Status::Running)
+        matches!(
+            self.status(&StartupVerificationMode::Log),
+            Ok(Status::Running)
+        )
     }
 }
 

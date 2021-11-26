@@ -13,7 +13,7 @@ pub use blockchain::Blockchain;
 use chain_impl_mockchain::header::HeaderId;
 pub use rng::{Random, Seed};
 use serde::Deserialize;
-pub use settings::{NodeSetting, Settings, WalletProxySettings};
+pub use settings::{NodeSetting, Settings};
 pub use spawn_params::{FaketimeConfig, SpawnParams};
 use std::path::PathBuf;
 pub use topology::{Node, NodeAlias, Topology};

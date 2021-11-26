@@ -1,8 +1,6 @@
-#[cfg(feature = "sanity-non-functional")]
 mod load;
-#[cfg(feature = "sanity-non-functional")]
 mod noise;
-#[cfg(feature = "soak-non-functional")]
+#[cfg(feature = "soak")]
 mod soak;
 
 use crate::non_functional::voting::config::PublicVotingLoadTestConfig;

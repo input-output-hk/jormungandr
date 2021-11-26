@@ -25,7 +25,6 @@ use jormungandr_lib::{
 };
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
-use std::net::SocketAddr;
 
 /// contains all the data to start or interact with a node
 #[derive(Debug, Clone)]
@@ -44,42 +43,6 @@ pub struct NodeSetting {
     pub topology_secret: SigningKey<Ed25519>,
 
     pub node_topology: NodeTemplate,
-}
-
-#[derive(Clone, Debug)]
-pub struct WalletProxySettings {
-    pub proxy_address: SocketAddr,
-    pub vit_station_address: SocketAddr,
-    pub node_backend_address: Option<SocketAddr>,
-}
-
-impl WalletProxySettings {
-    pub fn base_address(&self) -> SocketAddr {
-        self.proxy_address
-    }
-
-    pub fn base_vit_address(&self) -> SocketAddr {
-        self.vit_station_address
-    }
-
-    pub fn base_node_backend_address(&self) -> Option<SocketAddr> {
-        self.node_backend_address
-    }
-
-    pub fn address(&self) -> String {
-        format!("http://{}", self.base_address())
-    }
-
-    pub fn vit_address(&self) -> String {
-        format!("http://{}", self.base_vit_address())
-    }
-
-    pub fn node_backend_address(&self) -> String {
-        format!(
-            "http://{}/api/v0",
-            self.base_node_backend_address().unwrap()
-        )
-    }
 }
 
 #[derive(Debug)]

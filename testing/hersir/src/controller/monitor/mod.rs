@@ -1,6 +1,5 @@
 mod node;
 
-use super::{spawn_legacy_node, spawn_node};
 use crate::controller::{Context, Error};
 use crate::style;
 use crate::utils::Dotifier;
@@ -17,13 +16,8 @@ use jormungandr_testing_utils::testing::network::{
 use jormungandr_testing_utils::testing::utils::{Event, Observable, Observer};
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
-    testing::{
-        benchmark_consumption,
-        network::{
-            Blockchain, LeadershipMode, PersistenceMode, SpawnParams, Topology,
-            Wallet as WalletSetting,
-        },
-        ConsumptionBenchmarkRun,
+    testing::network::{
+        Blockchain, LeadershipMode, PersistenceMode, SpawnParams, Topology, Wallet as WalletSetting,
     },
     wallet::Wallet,
     Version,
@@ -73,7 +67,7 @@ impl MonitorControllerBuilder {
         let observer: Rc<dyn Observer> = Rc::new(NetworkBuilderObserver::new(&self.title));
         let inner_controller = self
             .network_builder
-            .testing_directory(testing_directory.into())
+            .testing_directory(testing_directory.path().to_path_buf().into())
             .register(&observer)
             .build()?;
         if context.generate_documentation() {
@@ -199,17 +193,6 @@ impl MonitorController {
         self.inner.block0_file()
     }
 
-    pub fn start_monitor_resources(
-        &mut self,
-        info: &str,
-        nodes: Vec<&Node>,
-    ) -> ConsumptionBenchmarkRun {
-        benchmark_consumption(info.to_owned())
-            .for_processes(nodes.iter().map(|x| x.as_named_process()).collect())
-            .bare_metal_stake_pool_consumption_target()
-            .start()
-    }
-
     pub fn wallet(&self, wallet: &str) -> Result<Wallet, Error> {
         if let Some(wallet) = self.settings().wallets.get(wallet) {
             Ok(wallet.clone().into())
@@ -247,7 +230,7 @@ impl MonitorController {
     }
 
     pub fn spawn_node_custom(&mut self, input_params: SpawnParams) -> Result<Node, Error> {
-        let jormungandr_process = spawn_node(&mut self.inner, input_params.clone())?;
+        let jormungandr_process = self.inner.spawn(input_params.clone())?;
 
         let progress_bar =
             self.build_progress_bar(input_params.get_alias(), jormungandr_process.rest_address());
@@ -261,7 +244,7 @@ impl MonitorController {
         version: &Version,
     ) -> Result<LegacyNode, Error> {
         let (jormungandr_process, legacy_node_config) =
-            spawn_legacy_node(&mut self.inner, input_params.clone(), version)?;
+            self.inner.spawn_legacy(input_params.clone(), version)?;
         let progress_bar =
             self.build_progress_bar(input_params.get_alias(), jormungandr_process.rest_address());
         Ok(LegacyNode::new(
@@ -269,18 +252,6 @@ impl MonitorController {
             progress_bar,
             legacy_node_config,
         ))
-    }
-
-    pub fn restart_node(
-        &mut self,
-        mut node: Node,
-        leadership_mode: LeadershipMode,
-        persistence_mode: PersistenceMode,
-    ) -> Result<Node, Error> {
-        node.shutdown()?;
-        let new_node = self.spawn_node(&node.alias(), leadership_mode, persistence_mode)?;
-        new_node.wait_for_bootstrap()?;
-        Ok(new_node)
     }
 
     pub fn monitor_nodes(&mut self) {
