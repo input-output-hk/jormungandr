@@ -600,6 +600,11 @@ fn max_bootstrap_attempts() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leader(SERVER)
+                .with_leader(CLIENT),
+        )
         .build()
         .unwrap();
 
