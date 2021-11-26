@@ -183,6 +183,8 @@ pub enum Error {
     InfoExpectedSingleAccount,
     #[error("making account witness requires passing spending counter")]
     MakeWitnessAccountCounterMissing,
+    #[error("invalid account spending counter lane: max {max}, actual {actual}")]
+    MakeWitnessAccountInvalidCounterLane { max: usize, actual: usize },
     #[error("transaction type doesn't need payload authentification")]
     TxDoesntNeedPayloadAuth,
     #[error("transaction type need payload authentification")]

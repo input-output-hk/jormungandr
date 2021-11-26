@@ -12,7 +12,7 @@
 - Add new grpc watch service implementation for external (non-node) clients.
 - update explorer, add new GraphQL objects as `UpdateProposal`, `UpdateVote`, `ConfigParam` etc.
 - update REST API: add new endpoint account based votes count (`/api/v1/votes/plan/accounts-votes-count`)
-
+- Add jcli option to specify a spending counter lane in a user-friendly way
 
 ## Release 0.13.0
 

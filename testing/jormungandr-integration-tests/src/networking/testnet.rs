@@ -1,5 +1,3 @@
-#![cfg(feature = "testnet")]
-
 use crate::jormungandr::genesis::stake_pool::{
     create_new_stake_pool, delegate_stake, retire_stake_pool,
 };
@@ -140,7 +138,7 @@ fn create_actor_account(private_key: &str, jormungandr: &JormungandrProcess) -> 
         .rest()
         .v0()
         .account_stats(actor_account.address().to_string(), jormungandr.rest_uri());
-    Wallet::from_existing_account(private_key, Some(account_state.counters()[0]))
+    Wallet::from_existing_account(private_key, Some(account_state.counters()[0].into()))
 }
 
 fn bootstrap_current(testnet_config: TestnetConfig, network_alias: &str) {

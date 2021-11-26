@@ -12,6 +12,7 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog},
 };
+use jormungandr_testing_utils::testing::jormungandr::StartupError;
 use jormungandr_testing_utils::testing::node::configuration::legacy::NodeConfig as LegacyConfig;
 use jormungandr_testing_utils::testing::node::LogLevel;
 use jormungandr_testing_utils::testing::SyncNode;
@@ -53,12 +54,8 @@ impl LegacyNode {
         self.process.alias()
     }
 
-    pub fn status(&self) -> Status {
+    pub fn status(&self) -> Result<Status, StartupError> {
         self.process.status(&StartupVerificationMode::Rest)
-    }
-
-    pub fn check_running(&self) -> bool {
-        self.status() == Status::Running
     }
 
     pub fn progress_bar(&self) -> &ProgressBarController {
@@ -130,7 +127,10 @@ impl LegacyNode {
     }
 
     pub fn is_up(&self) -> bool {
-        matches!(self.status(), Status::Running)
+        match self.status() {
+            Ok(status) => status == Status::Running,
+            Err(_) => false,
+        }
     }
 
     pub fn shutdown(&mut self) -> Result<Option<ExitStatus>, Error> {

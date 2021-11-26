@@ -233,3 +233,116 @@ impl Default for Blockchain {
         }
     }
 }
+
+#[derive(Default)]
+pub struct BlockchainBuilder {
+    blockchain: Blockchain,
+}
+
+impl BlockchainBuilder {
+    pub fn block0_date(mut self, block0_date: SecondsSinceUnixEpoch) -> Self {
+        self.blockchain.set_block0_date(block0_date);
+        self
+    }
+
+    pub fn block_content_max_size(mut self, block_content_max_size: BlockContentMaxSize) -> Self {
+        self.blockchain
+            .set_block_content_max_size(block_content_max_size);
+        self
+    }
+
+    pub fn committee<S: Into<NodeAlias>>(mut self, alias: S) -> Self {
+        self.blockchain.add_committee(alias);
+        self
+    }
+
+    pub fn consensus(mut self, consensus: ConsensusVersion) -> Self {
+        self.blockchain.set_consensus(consensus);
+        self
+    }
+
+    pub fn consensus_genesis_praos_active_slot_coeff(
+        mut self,
+        coeff: ActiveSlotCoefficient,
+    ) -> Self {
+        self.blockchain
+            .set_consensus_genesis_praos_active_slot_coeff(coeff);
+        self
+    }
+
+    pub fn discrimination(mut self, discrimination: Discrimination) -> Self {
+        self.blockchain.set_discrimination(discrimination);
+        self
+    }
+
+    pub fn external_committees(mut self, external_committees: Vec<CommitteeIdDef>) -> Self {
+        self.blockchain.set_external_committees(external_committees);
+        self
+    }
+
+    pub fn external_committee(mut self, committee: CommitteeIdDef) -> Self {
+        self.blockchain.add_external_committee(committee);
+        self
+    }
+
+    pub fn external_consensus_leader_ids(
+        mut self,
+        external_consensus_leader_ids: Vec<ConsensusLeaderId>,
+    ) -> Self {
+        self.blockchain
+            .set_external_consensus_leader_ids(external_consensus_leader_ids);
+        self
+    }
+
+    pub fn external_wallets(mut self, external_wallets: Vec<ExternalWalletTemplate>) -> Self {
+        self.blockchain.set_external_wallets(external_wallets);
+        self
+    }
+
+    pub fn leader<S: Into<NodeAlias>>(mut self, alias: S) -> Self {
+        self.blockchain.add_leader(alias.into());
+        self
+    }
+    pub fn linear_fee(mut self, linear_fee: LinearFee) -> Self {
+        self.blockchain.set_linear_fee(linear_fee);
+        self
+    }
+
+    pub fn slot_duration(mut self, slot_duration: u8) -> Self {
+        self.blockchain
+            .set_slot_duration(SlotDuration::new(slot_duration).unwrap());
+        self
+    }
+
+    pub fn slots_per_epoch(mut self, slots_per_epoch: u32) -> Self {
+        self.blockchain
+            .set_slots_per_epoch(NumberOfSlotsPerEpoch::new(slots_per_epoch).unwrap());
+        self
+    }
+
+    pub fn tx_max_expiry_epochs(mut self, tx_max_expiry_epochs: Option<u8>) -> Self {
+        self.blockchain
+            .set_tx_max_expiry_epochs(tx_max_expiry_epochs);
+        self
+    }
+
+    pub fn vote_plan(
+        mut self,
+        alias: String,
+        owner_alias: String,
+        vote_plan_template: VotePlan,
+    ) -> Self {
+        self.blockchain
+            .add_vote_plan(alias, owner_alias, vote_plan_template);
+        self
+    }
+
+    pub fn wallet(mut self, wallet: WalletTemplate) -> Self {
+        self.blockchain.add_wallet(wallet);
+        self
+    }
+
+    pub fn build(self) -> Blockchain {
+        self.blockchain
+    }
+}

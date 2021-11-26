@@ -113,7 +113,7 @@ fn spawn_node(
         return Ok(());
     }
 
-    let node = controller.spawn_node_custom(spawn_params)?;
+    let node = controller.spawn_node(spawn_params)?;
     println!(
         "{}",
         style::info.apply_to(format!("node '{}' spawned", alias))

@@ -1,11 +1,17 @@
+use crate::stake_pool::StakePool;
+use crate::testing::jormungandr::ConfiguredStarter;
 use crate::testing::jormungandr::TestingDirectory;
 use crate::testing::network::VotePlanKey;
 use crate::testing::network::WalletAlias;
+use crate::testing::node::configuration::legacy::NodeConfig as LegacyNodeConfig;
+use crate::testing::LegacyConfigConverterError;
+use crate::testing::LegacyNodeConfigConverter;
 use crate::testing::{
     jormungandr::starter::{Starter, StartupError},
     jormungandr::JormungandrProcess,
     node::LogLevel,
 };
+use crate::Version;
 use crate::{
     testing::{
         network::{
@@ -35,6 +41,8 @@ const NODE_TOPOLOGY_KEY_FILE: &str = "node_topology_key";
 
 #[derive(Error, Debug)]
 pub enum ControllerError {
+    #[error("stake pool not found {0}")]
+    StakePoolNotFound(String),
     #[error("node not found {0}")]
     NodeNotFound(String),
     #[error("wallet not found {0}")]
@@ -49,6 +57,8 @@ pub enum ControllerError {
     Spawn(#[from] StartupError),
     #[error("VotePlan '{0}' was not found. Used before or never initialize")]
     VotePlanNotFound(String),
+    #[error(transparent)]
+    LegacyConfigConverter(#[from] LegacyConfigConverterError),
 }
 
 pub struct Controller {
@@ -87,6 +97,11 @@ impl Controller {
         &self.working_directory
     }
 
+    pub fn into_persistent(mut self) -> Self {
+        self.working_directory = self.working_directory.into_persistent();
+        self
+    }
+
     pub fn block0_file(&self) -> PathBuf {
         self.block0_file.to_path_buf()
     }
@@ -97,6 +112,13 @@ impl Controller {
 
     pub fn node_config(&self, alias: &str) -> Result<NodeConfig, ControllerError> {
         Ok(self.node_settings(alias)?.config.clone())
+    }
+
+    pub fn stake_pool(&self, alias: &str) -> Result<&StakePool, ControllerError> {
+        self.settings
+            .stake_pools
+            .get(alias)
+            .ok_or_else(|| ControllerError::StakePoolNotFound(alias.to_string()))
     }
 
     pub fn node_settings(&self, alias: &str) -> Result<&NodeSetting, ControllerError> {
@@ -211,6 +233,36 @@ impl Controller {
         Ok(self.make_starter_for(spawn_params)?.start()?)
     }
 
+    pub fn spawn_legacy(
+        &mut self,
+        input_params: SpawnParams,
+        version: &Version,
+    ) -> Result<(JormungandrProcess, LegacyNodeConfig), ControllerError> {
+        let alias = input_params.get_alias().clone();
+        let mut starter = self.make_starter_for(input_params)?;
+        let (params, working_dir) = starter.build_configuration()?;
+        let node_config = params.node_config().clone();
+
+        let configurer_starter =
+            ConfiguredStarter::legacy(&starter, version.clone(), params, working_dir)?;
+
+        let mut command = configurer_starter.command();
+        let process = command.spawn()?;
+
+        let legacy_node_config =
+            LegacyNodeConfigConverter::new(version.clone()).convert(&node_config)?;
+
+        let process = JormungandrProcess::new(
+            process,
+            &legacy_node_config,
+            self.settings().block0.clone(),
+            None,
+            alias,
+        )?;
+
+        Ok((process, legacy_node_config))
+    }
+
     pub fn make_starter_for(
         &mut self,
         mut spawn_params: SpawnParams,
@@ -233,14 +285,14 @@ impl Controller {
             peer.id = None;
         }
 
-        let log_file_path = dir.child("node.log").path().to_path_buf();
+        let log_file_path = dir.child("node.log");
         config.log = Some(Log(LogEntry {
             format: "json".into(),
             level: spawn_params
                 .get_log_level()
                 .unwrap_or(&LogLevel::DEBUG)
                 .to_string(),
-            output: LogOutput::Stdout,
+            output: LogOutput::File(log_file_path.path().to_path_buf()),
         }));
 
         if let PersistenceMode::Persistent = spawn_params.get_persistence_mode() {
@@ -268,7 +320,7 @@ impl Controller {
             secret_file.path(),
             self.settings.block0.clone(),
             false,
-            log_file_path,
+            log_file_path.path().to_path_buf(),
         );
 
         let mut starter = Starter::new();
