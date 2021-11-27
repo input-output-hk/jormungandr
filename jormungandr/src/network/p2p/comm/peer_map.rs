@@ -17,7 +17,7 @@ use rand::Rng;
 /// and ids is needed to handle subscriptions. However, this is subject to ip spoofing
 /// attacks and should not be used in an open network.
 pub struct ClientAuth {
-    // Avoid keeping open handshakes forever
+    // Limit the number of in progress handshakes to prevent SYN flood-like resource exhaustion attacks
     in_progress: LruCache<Address, [u8; NONCE_LEN]>,
     established: LinkedHashMap<Address, NodeId>,
 }
@@ -32,7 +32,7 @@ impl Default for ClientAuth {
 }
 
 impl ClientAuth {
-    const DEFAULT_OPEN_HANDSHAKED_LIMIT: usize = 32;
+    const DEFAULT_OPEN_HANDSHAKED_LIMIT: usize = 128;
 
     pub fn generate_auth_nonce(&mut self, addr: Address) -> [u8; NONCE_LEN] {
         let mut nonce = [0u8; NONCE_LEN];
