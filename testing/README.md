@@ -78,13 +78,13 @@ cargo test
 ### How to run performance tests
 ```
 cd jormungandr-integration-tests
-cargo test non_functional --feature sanity-non-functional
+cargo test non_functional --features sanity-non-functional
 ```
 
 ### How to run testnet soak tests
 ```
 cd jormungandr-integration-tests
-cargo test non_unctional --feature soak-non-functional
+cargo test non_unctional --features soak-non-functional
 ```
 
 ### Frequency
@@ -97,13 +97,13 @@ Multi node scenarios, whcich aim to test nodes behaviour in presence of other no
 ### How to run network tests
 ```
 cd jormungandr-integration-tests
-cargo test --feature network
+cargo test --features network
 ```
 
 ### How to run performance network tests
 ```
 cd jormungandr-integration-tests
-cargo test --feature network-non-functional
+cargo test --features network-non-functional
 ```
 
 # Performance tests dashboard
