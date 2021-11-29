@@ -612,7 +612,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#995eac86c61bc19da2e74b5b49fa3a7f63300485"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chain-core",
  "chain-crypto",
  "const_format",
@@ -3871,9 +3871,9 @@ dependencies = [
 
 [[package]]
 name = "tar"
-version = "0.4.36"
+version = "0.4.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8190d9cdacf6ee1b080605fd719b58d80a9fcbcea64db6744b26f743da02e447"
+checksum = "d6f5515d3add52e0bbdcad7b83c388bb36ba7b754dda3b5f5bc2d38640cdba5c"
 dependencies = [
  "filetime",
  "libc",
