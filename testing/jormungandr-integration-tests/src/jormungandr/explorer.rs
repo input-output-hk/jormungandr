@@ -63,9 +63,7 @@ pub fn explorer_sanity_test() {
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
-    let path = crate::common::configuration::get_explorer_app();
-
-    let block0_hash = jormungandr.rest().settings().unwrap().block0_hash;
+    let path = get_explorer_app();
 
     let explorer_port = get_available_port();
     let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
@@ -85,10 +83,7 @@ pub fn explorer_sanity_test() {
                 .spawn()
                 .expect("failed to execute explorer process"),
         ),
-        logs_dir: jormungandr
-            .temp_dir
-            .as_ref()
-            .map(|tmp_dir| tmp_dir.path().into()),
+        logs_dir: jormungandr.temp_dir(),
     };
 
     let explorer: Explorer = Explorer::new(explorer_listen_address);
@@ -102,7 +97,7 @@ pub fn explorer_sanity_test() {
     .unwrap()
     .encode();
 
-    let wait = Wait::new(Duration::from_secs(3), 20);
+    let wait = Wait::new(Duration::from_secs(3), 20000);
     let fragment_id = jcli
         .fragment_sender(&jormungandr)
         .send(&transaction)
@@ -110,8 +105,8 @@ pub fn explorer_sanity_test() {
 
     transaction_by_id(&explorer, fragment_id);
     blocks(&explorer, jormungandr.logger.get_created_blocks_hashes());
-    stake_pools(&explorer, &initial_stake_pools);
-    stake_pool(&explorer, &initial_stake_pools);
+    stake_pools(&explorer, initial_stake_pools.as_ref());
+    stake_pool(&explorer, initial_stake_pools.as_ref());
     block_at_chain_length(&explorer, jormungandr.logger.get_created_blocks_hashes());
     epoch(&explorer);
 }

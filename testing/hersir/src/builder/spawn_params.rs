@@ -141,7 +141,7 @@ impl SpawnParams {
         self
     }
 
-    pub fn skip_bootstrap(&mut self, skip_bootstrap: bool) -> &Self {
+    pub fn skip_bootstrap(mut self, skip_bootstrap: bool) -> Self {
         self.skip_bootstrap = Some(skip_bootstrap);
         self
     }

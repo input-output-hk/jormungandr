@@ -209,6 +209,10 @@ impl JormungandrProcess {
         self.alias.to_string()
     }
 
+    pub fn temp_dir(&self) -> Option<std::path::PathBuf> {
+        self.temp_dir.as_ref().map(|dir| dir.path().into())
+    }
+
     pub fn rest(&self) -> JormungandrRest {
         JormungandrRest::new(self.rest_uri())
     }

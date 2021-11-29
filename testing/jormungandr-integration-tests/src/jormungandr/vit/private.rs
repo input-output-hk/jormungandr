@@ -331,7 +331,6 @@ pub fn jcli_private_vote_invalid_proof() {
     let token_id = vote_plan.voting_token();
 
     let config = ConfigurationBuilder::new()
-        .with_explorer()
         .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
         .with_token(InitialToken {
             token_id: token_id.clone().into(),
