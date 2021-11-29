@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use crate::db::ExplorerDb;
-
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::block::HeaderId as HeaderHash;
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;
 
