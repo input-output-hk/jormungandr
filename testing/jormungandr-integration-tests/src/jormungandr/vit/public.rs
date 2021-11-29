@@ -213,11 +213,7 @@ pub fn test_vote_flow_bft() {
         .send_vote_cast(&mut bob, &vote_plan, 0, &favorable_choice, &jormungandr)
         .unwrap();
 
-<<<<<<< HEAD
     let rewards_before: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
-=======
-    let rewards_before: u64 = unimplemented!("treasury query not supported by external explorer");
->>>>>>> tests: regen explorer schema without treasury for now
 
     wait_for_epoch(1, jormungandr.rest());
 
@@ -282,11 +278,7 @@ pub fn test_vote_flow_bft() {
         jormungandr.rest().vote_plan_statuses().unwrap(),
     );
 
-<<<<<<< HEAD
     let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
-=======
-    let rewards_after: u64 = unimplemented!("treasury query not supported by external explorer");
->>>>>>> tests: regen explorer schema without treasury for now
 
     assert!(
         rewards_after == (rewards_before + rewards_increase),
@@ -472,11 +464,7 @@ pub fn test_vote_flow_praos() {
 
     wait_for_epoch(3, jormungandr.rest());
 
-<<<<<<< HEAD
     let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
-=======
-    let rewards_after: u64 = unimplemented!("treasury query not supported by external explorer");
->>>>>>> tests: regen explorer schema without treasury for now
 
     // We want to make sure that our small rewards increase is reflexed in current rewards amount
     assert!(
@@ -577,11 +565,7 @@ pub fn jcli_e2e_flow() {
 
     alice.confirm_transaction();
 
-<<<<<<< HEAD
     let rewards_before: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
-=======
-    let rewards_before: u64 = unimplemented!("treasury query not supported by external explorer");
->>>>>>> tests: regen explorer schema without treasury for now
 
     time::wait_for_epoch(1, jormungandr.rest());
 
@@ -668,11 +652,7 @@ pub fn jcli_e2e_flow() {
         3
     );
 
-<<<<<<< HEAD
     let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
-=======
-    let rewards_after: u64 = unimplemented!("treasury query not supported by external explorer");
->>>>>>> tests: regen explorer schema without treasury for now
 
     // We want to make sure that our small rewards increase is reflexed in current rewards amount
     assert!(
