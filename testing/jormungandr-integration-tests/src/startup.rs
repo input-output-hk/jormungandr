@@ -103,7 +103,6 @@ pub fn start_stake_pool(
         .with_block0_consensus(ConsensusVersion::GenesisPraos)
         .with_consensus_leaders_ids(leaders)
         .with_funds(funds)
-        .with_explorer()
         .with_initial_certs(initial_certs)
         .with_secret(secret)
         .build(&temp_dir);
@@ -132,7 +131,6 @@ pub fn start_bft(
                 .collect(),
         )
         .with_block0_consensus(ConsensusVersion::Bft)
-        .with_explorer()
         .build(&temp_dir);
 
     Starter::new().temp_dir(temp_dir).config(config).start()

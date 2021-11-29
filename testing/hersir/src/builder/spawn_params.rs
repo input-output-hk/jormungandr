@@ -4,7 +4,7 @@ use jormungandr_automation::jormungandr::LeadershipMode;
 use jormungandr_automation::jormungandr::PersistenceMode;
 use jormungandr_automation::jormungandr::{LogLevel, Version};
 use jormungandr_lib::interfaces::{
-    Explorer, LayersConfig, Mempool, NodeConfig, PersistentLog, Policy, PreferredListConfig,
+    LayersConfig, Mempool, NodeConfig, PersistentLog, Policy, PreferredListConfig,
     TopicsOfInterest, TrustedPeer,
 };
 use jormungandr_lib::time::Duration;
@@ -49,9 +49,9 @@ impl SpawnParams {
         Self {
             alias: alias.to_owned(),
             bootstrap_from_peers: None,
-            explorer: None,
             faketime: None,
             gossip_interval: None,
+            topics_of_interest: None,
             jormungandr: None,
             leadership_mode: LeadershipMode::Leader,
             listen_address: None,
@@ -143,12 +143,7 @@ impl SpawnParams {
         self
     }
 
-    pub fn explorer(mut self, explorer: Explorer) -> Self {
-        self.explorer = Some(explorer);
-        self
-    }
-
-    pub fn skip_bootstrap(mut self, skip_bootstrap: bool) -> Self {
+    pub fn skip_bootstrap(&mut self, skip_bootstrap: bool) -> &Self {
         self.skip_bootstrap = Some(skip_bootstrap);
         self
     }
@@ -260,10 +255,6 @@ impl SpawnParams {
                     topics_of_interest: Some(topics_of_interest.clone()),
                 });
             }
-        }
-
-        if let Some(explorer) = &self.explorer {
-            node_config.explorer = explorer.clone();
         }
 
         if let Some(mempool) = &self.mempool {

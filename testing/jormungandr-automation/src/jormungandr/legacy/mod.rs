@@ -8,7 +8,7 @@ pub use config::{
     NodeConfig as LegacyNodeConfig,
 };
 pub use jormungandr_lib::interfaces::{
-    Explorer, Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
+    Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
 };
 use jortestkit::file;
 
