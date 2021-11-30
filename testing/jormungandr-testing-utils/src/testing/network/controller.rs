@@ -292,7 +292,7 @@ impl Controller {
                 .get_log_level()
                 .unwrap_or(&LogLevel::DEBUG)
                 .to_string(),
-            output: LogOutput::File(log_file_path.path().to_path_buf()),
+            output: LogOutput::Stdout,
         }));
 
         if let PersistenceMode::Persistent = spawn_params.get_persistence_mode() {
