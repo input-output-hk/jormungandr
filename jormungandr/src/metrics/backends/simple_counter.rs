@@ -202,10 +202,9 @@ impl MetricsBackend for SimpleCounter {
                     Fragment::VoteTally(tx) => totals(tx),
                     Fragment::EncryptedVoteTally(tx) => totals(tx),
                     Fragment::MintToken(tx) => totals(tx),
-                    Fragment::Initial(_)
-                    | Fragment::OldUtxoDeclaration(_)
-                    | Fragment::UpdateProposal(_)
-                    | Fragment::UpdateVote(_) => return Ok(()),
+                    Fragment::UpdateProposal(tx) => totals(tx),
+                    Fragment::UpdateVote(tx) => totals(tx),
+                    Fragment::Initial(_) | Fragment::OldUtxoDeclaration(_) => return Ok(()),
                 }?;
                 block_tx_count += 1;
                 block_input_sum = (block_input_sum + total_input)?;
