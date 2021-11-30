@@ -24,12 +24,12 @@ bech32 = "0.8"
 hex = "0.4.2"
 rayon = "1.5"
 base64 = "0.13.0"
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-mint-token-serialize" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-mint-token-serialize" }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-mint-token-serialize" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-mint-token-serialize" }
-chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-mint-token-serialize" }
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-mint-token-serialize" }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.6.0"
 ed25519-bip32 = "0.4"
