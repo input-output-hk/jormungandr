@@ -201,6 +201,7 @@ impl MetricsBackend for SimpleCounter {
                     }
                     Fragment::VoteTally(tx) => totals(tx),
                     Fragment::EncryptedVoteTally(tx) => totals(tx),
+                    Fragment::MintToken(tx) => totals(tx),
                     Fragment::Initial(_)
                     | Fragment::OldUtxoDeclaration(_)
                     | Fragment::UpdateProposal(_)

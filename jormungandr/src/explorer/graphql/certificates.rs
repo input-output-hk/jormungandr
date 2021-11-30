@@ -22,6 +22,7 @@ pub enum Certificate {
     EncryptedVoteTally(EncryptedVoteTally),
     UpdateProposal(UpdateProposal),
     UpdateVote(UpdateVote),
+    MintToken(MintToken),
 }
 
 pub struct StakeDelegation(certificate::StakeDelegation);
@@ -46,6 +47,8 @@ pub struct EncryptedVoteTally(certificate::EncryptedVoteTally);
 pub struct UpdateProposal(certificate::UpdateProposal);
 
 pub struct UpdateVote(certificate::UpdateVote);
+
+pub struct MintToken(certificate::MintToken);
 
 #[Object]
 impl StakeDelegation {
@@ -277,6 +280,13 @@ impl UpdateVote {
     }
 }
 
+#[Object]
+impl MintToken {
+    pub async fn name(&self) -> String {
+        format!("{:?}", self.0.name)
+    }
+}
+
 /*------------------------------*/
 /*------- Conversions ---------*/
 /*----------------------------*/
@@ -310,6 +320,7 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
                 Ok(Certificate::UpdateProposal(UpdateProposal(c)))
             }
             certificate::Certificate::UpdateVote(c) => Ok(Certificate::UpdateVote(UpdateVote(c))),
+            certificate::Certificate::MintToken(c) => Ok(Certificate::MintToken(MintToken(c))),
         }
     }
 }

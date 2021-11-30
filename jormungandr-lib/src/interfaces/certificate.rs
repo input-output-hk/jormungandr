@@ -111,6 +111,10 @@ impl property::Serialize for Certificate {
                 writer.write_all(&[11])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
+            certificate::Certificate::MintToken(c) => {
+                writer.write_all(&[12])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
         };
         Ok(())
     }
