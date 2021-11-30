@@ -189,7 +189,7 @@ jobs:
         timeout-minutes: 90
         with:
           command: test
-          args: --tests ${{ env.CARGO_FLAGS }}
+          args: --tests ${{ env.CARGO_FLAGS }} --features network
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # TMPDIR and TMP are used respectively on unix and windows
