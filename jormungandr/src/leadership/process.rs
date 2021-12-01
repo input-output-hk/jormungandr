@@ -378,6 +378,7 @@ impl Module {
         event_end_hard: SystemTime,
     ) -> Result<Self, LeadershipError> {
         use futures::future::{select, Either};
+        use std::time::Duration;
 
         let now = SystemTime::now();
 
@@ -390,12 +391,12 @@ impl Module {
         let remaining_time = event_end
             .duration_since(now)
             .expect("event end in the future");
-        let deadline = Instant::now() + remaining_time.into();
+        let deadline = Instant::now() + Duration::from(remaining_time);
 
         let remaining_time_hard = event_end_hard
             .duration_since(now)
             .expect("event end in the future");
-        let hard_deadline = Instant::now() + remaining_time_hard.into();
+        let hard_deadline = Instant::now() + Duration::from(remaining_time_hard);
 
         // handle to the current span, created in `action_run_entry`
         let parent_span = Span::current();
