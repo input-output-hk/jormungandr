@@ -1,8 +1,9 @@
-use crate::testing::{adversary::block::BlockBuilder, startup, FragmentBuilder};
+use crate::block::BlockBuilder;
 use chain_impl_mockchain::{
     block::{Block, BlockDate, ContentsBuilder},
     chaintypes::ConsensusType,
 };
+use jormungandr_testing_utils::testing::{startup, FragmentBuilder};
 use reqwest::StatusCode;
 use std::net::SocketAddr;
 use warp::{reply::WithStatus, Reply};

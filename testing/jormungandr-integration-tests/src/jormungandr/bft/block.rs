@@ -7,10 +7,10 @@ use chain_impl_mockchain::{
 use hersir::builder::{Blockchain, NetworkBuilder, Node, SpawnParams, Topology};
 use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::{
-    adversary::{block::BlockBuilder, process::AdversaryNodeBuilder},
     jormungandr::{ConfigurationBuilder, Starter},
     startup, FragmentBuilder,
 };
+use loki::{block::BlockBuilder, process::AdversaryNodeBuilder};
 
 #[test]
 /// Ensures that blocks with an incorrect signature are rejected by a BFT leader node

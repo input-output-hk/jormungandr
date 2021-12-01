@@ -1,4 +1,3 @@
-pub mod adversary;
 pub mod asserts;
 pub mod block0;
 pub mod configuration;
