@@ -134,6 +134,7 @@ impl Sign {
                         got: keys_str.len(),
                     })??
             }
+            Certificate::MintToken(_) => return Err(Error::MintTokenDoesntNeedSignature),
         };
         write_signed_cert(self.output.as_deref(), signedcert.into())
     }

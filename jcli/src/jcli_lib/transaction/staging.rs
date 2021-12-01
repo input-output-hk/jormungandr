@@ -286,6 +286,7 @@ impl Staging {
                         .map_err(|error| Error::CertificateError { error })??;
                     self.extra_authed = Some(sc.into())
                 }
+                Certificate::MintToken(_) => unreachable!(),
             },
         };
         self.kind = StagingKind::Authed;
@@ -389,6 +390,9 @@ impl Staging {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
                 Certificate::UpdateVote(vt) => {
+                    self.finalize_payload(&vt, fee_algorithm, output_policy)
+                }
+                Certificate::MintToken(vt) => {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
 
@@ -599,6 +603,9 @@ impl Staging {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
                 Certificate::UpdateVote(vt) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
+                }
+                Certificate::MintToken(vt) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
             },

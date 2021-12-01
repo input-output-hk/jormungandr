@@ -63,6 +63,8 @@ pub enum Error {
     ExpectingOnlyOneSigningKey { got: usize },
     #[error("owner stake delegation does not need a signature")]
     OwnerStakeDelegationDoesntNeedSignature,
+    #[error("mint token does not need a signature")]
+    MintTokenDoesntNeedSignature,
     #[error("vote plan certificate does not need a signature")]
     VotePlanDoesntNeedSignature,
     #[error("vote cast certificate does not need a signature")]
