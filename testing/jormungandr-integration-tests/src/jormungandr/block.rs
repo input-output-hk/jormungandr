@@ -8,8 +8,7 @@ use chain_impl_mockchain::{
 use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::{
     adversary::process::AdversaryNodeBuilder,
-    jormungandr::{ConfigurationBuilder, Starter},
-    network::LeadershipMode,
+    jormungandr::{ConfigurationBuilder, LeadershipMode, Starter},
     startup, Block0ConfigurationBuilder,
 };
 

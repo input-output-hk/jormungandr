@@ -1,6 +1,6 @@
-use crate::testing::network::WalletAlias;
 use chain_impl_mockchain::value::Value;
 use jormungandr_lib::interfaces::ValueDef;
+use jormungandr_testing_utils::wallet::WalletAlias;
 use serde::Deserialize;
 
 /// Struct can be used to differentiate wallet template

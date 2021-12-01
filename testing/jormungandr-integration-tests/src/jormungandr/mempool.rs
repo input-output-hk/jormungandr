@@ -5,16 +5,20 @@ use assert_fs::{
 use chain_impl_mockchain::{
     block::BlockDate, chaintypes::ConsensusVersion, fee::LinearFee, value::Value,
 };
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::Blockchain;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
+use hersir::builder::WalletTemplate;
 use jormungandr_lib::interfaces::{
     BlockDate as BlockDateDto, InitialUTxO, Mempool, PersistentLog, SlotDuration,
 };
+
 use jormungandr_testing_utils::testing::{
     fragments::{FragmentExporter, PersistentLogViewer},
-    jormungandr::{ConfigurationBuilder, Starter},
-    network::{
-        builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder, Blockchain,
-        LeadershipMode, Node, SpawnParams, Topology, WalletTemplate,
-    },
+    jormungandr::{ConfigurationBuilder, LeadershipMode, Starter},
     node::time,
     startup, AdversaryFragmentSender, AdversaryFragmentSenderSetup, BlockDateGenerator,
     FragmentBuilder, FragmentGenerator, FragmentNode, FragmentSender, FragmentSenderSetup,

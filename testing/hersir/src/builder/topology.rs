@@ -1,6 +1,5 @@
+use jormungandr_testing_utils::testing::node::NodeAlias;
 use std::collections::{HashMap, HashSet};
-
-pub type NodeAlias = String;
 #[derive(Debug, Clone, Default)]
 pub struct Topology {
     pub nodes: HashMap<NodeAlias, Node>,

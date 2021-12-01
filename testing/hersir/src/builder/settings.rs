@@ -1,11 +1,9 @@
-use crate::testing::network::VotePlanKey;
-use crate::testing::network::VotePlanSettings;
-use crate::testing::network::{
-    Blockchain as BlockchainTemplate, ExternalWalletTemplate, Node as NodeTemplate, NodeAlias,
-    Random, Wallet, WalletAlias, WalletTemplate, WalletType,
+use crate::builder::VotePlanKey;
+use crate::builder::VotePlanSettings;
+use crate::builder::{
+    Blockchain, ExternalWalletTemplate, Node as NodeTemplate, Random, Wallet, WalletTemplate,
+    WalletType,
 };
-use crate::wallet::PrivateVoteCommitteeDataManager;
-use crate::{stake_pool::StakePool, testing::signed_stake_pool_cert, wallet::Wallet as WalletLib};
 use assert_fs::fixture::ChildPath;
 use assert_fs::fixture::PathChild;
 use chain_crypto::Ed25519;
@@ -23,6 +21,11 @@ use jormungandr_lib::{
         GenesisPraos, Initial, InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
     },
 };
+use jormungandr_testing_utils::stake_pool::StakePool;
+use jormungandr_testing_utils::testing::node::NodeAlias;
+use jormungandr_testing_utils::testing::signed_stake_pool_cert;
+use jormungandr_testing_utils::wallet::PrivateVoteCommitteeDataManager;
+use jormungandr_testing_utils::wallet::{Wallet as WalletLib, WalletAlias};
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
 
@@ -61,7 +64,7 @@ pub struct Settings {
 impl Settings {
     pub fn new<RNG>(
         nodes: HashMap<NodeAlias, NodeSetting>,
-        blockchain: BlockchainTemplate,
+        blockchain: Blockchain,
         rng: &mut Random<RNG>,
     ) -> Self
     where
@@ -109,7 +112,7 @@ impl Settings {
 
     fn populate_block0_blockchain_configuration<RNG>(
         &mut self,
-        blockchain: &BlockchainTemplate,
+        blockchain: &Blockchain,
         rng: &mut Random<RNG>,
     ) where
         RNG: RngCore + CryptoRng,

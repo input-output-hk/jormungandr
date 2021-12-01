@@ -4,14 +4,11 @@ mod legacy;
 
 pub use legacy::LegacyNode;
 
+use crate::style;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_lib::interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary};
-use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError};
-use std::collections::HashMap;
-
-use crate::style;
 use jormungandr_lib::interfaces::NodeState;
+use jormungandr_lib::interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary};
 use jormungandr_lib::{crypto::hash::Hash, multiaddr};
 use jormungandr_testing_utils::testing::jormungandr::ShutdownError;
 use jormungandr_testing_utils::testing::jormungandr::{
@@ -19,18 +16,17 @@ use jormungandr_testing_utils::testing::jormungandr::{
 };
 use jormungandr_testing_utils::testing::node::Explorer;
 use jormungandr_testing_utils::testing::node::LogLevel;
+use jormungandr_testing_utils::testing::node::NodeAlias;
 use jormungandr_testing_utils::testing::SyncNode;
 pub use jormungandr_testing_utils::testing::{
-    network::{
-        FaketimeConfig, LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode,
-        Settings,
-    },
     node::{
         grpc::{client::MockClientError, JormungandrClient},
         uri_from_socket_addr, JormungandrLogger, JormungandrRest, RestError,
     },
     MemPoolCheck, NamedProcess,
 };
+use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError};
+use std::collections::HashMap;
 
 use indicatif::ProgressBar;
 use std::net::SocketAddr;

@@ -1,13 +1,14 @@
 pub mod template;
 
-use crate::wallet::SpendingCounter;
-use crate::wallet::{
-    account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner, WalletError,
-};
 use chain_impl_mockchain::{
     block::BlockDate, certificate::PoolId, fee::LinearFee, fragment::Fragment,
     transaction::UnspecifiedAccountIdentifier, vote::CommitteeId,
 };
+use jormungandr_testing_utils::wallet::SpendingCounter;
+use jormungandr_testing_utils::wallet::{
+    account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner, WalletError,
+};
+
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Initial, Value},
@@ -16,8 +17,6 @@ use rand_core::{CryptoRng, RngCore};
 use serde::Deserialize;
 use std::path::Path;
 pub use template::{ExternalWalletTemplate, WalletTemplate};
-
-pub type WalletAlias = String;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]

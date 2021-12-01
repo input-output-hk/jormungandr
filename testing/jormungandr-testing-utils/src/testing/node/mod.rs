@@ -8,6 +8,8 @@ mod rest;
 pub mod time;
 mod verifier;
 
+pub type NodeAlias = String;
+
 pub use benchmark::*;
 pub use explorer::{Explorer, ExplorerError};
 pub use legacy::{

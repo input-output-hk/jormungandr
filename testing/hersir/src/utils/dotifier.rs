@@ -1,7 +1,10 @@
 use crate::style;
-use jormungandr_testing_utils::testing::network::Settings;
-use jormungandr_testing_utils::testing::network::{NodeSetting, WalletTemplate, WalletType};
 use std::io::Write;
+
+use crate::builder::NodeSetting;
+use crate::builder::Settings;
+use crate::builder::WalletTemplate;
+use crate::builder::WalletType;
 
 pub struct Dotifier;
 

@@ -1,14 +1,16 @@
+use super::NodeAlias;
 use jormungandr_lib::interfaces::{
     Explorer, LayersConfig, Mempool, NodeConfig, PersistentLog, Policy, PreferredListConfig,
     TopicsOfInterest, TrustedPeer,
 };
 use jormungandr_lib::time::Duration;
+use jormungandr_testing_utils::testing::jormungandr::FaketimeConfig;
+use jormungandr_testing_utils::testing::jormungandr::LeadershipMode;
+use jormungandr_testing_utils::testing::jormungandr::PersistenceMode;
+use jormungandr_testing_utils::testing::node::{LogLevel, Version};
 use multiaddr::Multiaddr;
-use std::net::SocketAddr;
-
-use super::{LeadershipMode, NodeAlias, PersistenceMode};
-use crate::testing::node::{LogLevel, Version};
 use serde::Deserialize;
+use std::net::SocketAddr;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -40,14 +42,6 @@ pub struct SpawnParams {
     version: Option<Version>,
     #[serde(default)]
     verbose: bool,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct FaketimeConfig {
-    /// Clock drift (1 = no drift, 2 = double speed)
-    pub drift: f32,
-    /// Offset from the real clock in seconds
-    pub offset: i32,
 }
 
 impl SpawnParams {

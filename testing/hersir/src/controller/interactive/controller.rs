@@ -1,10 +1,10 @@
+use crate::builder::SpawnParams;
+use crate::controller::interactive::ControllerError;
+use crate::controller::Controller;
 use crate::controller::Error;
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::Value;
 use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
-use jormungandr_testing_utils::testing::network::controller::{Controller, ControllerError};
-
-use jormungandr_testing_utils::testing::network::SpawnParams;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::wallet::Wallet;
 use jormungandr_testing_utils::Version;
@@ -93,7 +93,7 @@ impl UserInteractionController {
         let node = self.nodes.iter().find(|x| x.alias() == node_alias);
         let legacy_node = self.legacy_nodes.iter().find(|x| x.alias() == node_alias);
 
-        let fragment_sender = FragmentSender::from(self.controller.settings());
+        let fragment_sender = FragmentSender::from(&self.controller.settings().block0);
 
         let check = match (node, legacy_node) {
             (Some(node), None) => {
@@ -135,7 +135,7 @@ impl UserInteractionController {
         let node = self.nodes.iter().find(|x| x.alias() == node_alias);
         let legacy_node = self.legacy_nodes.iter().find(|x| x.alias() == node_alias);
 
-        let fragment_sender = FragmentSender::from(self.controller.settings());
+        let fragment_sender = FragmentSender::from(&self.controller.settings().block0);
         let check = match (node, legacy_node) {
             (Some(node), None) => fragment_sender.send_vote_cast(
                 wallet,
@@ -190,7 +190,7 @@ impl UserInteractionController {
         let node = self.nodes.iter().find(|x| x.alias() == node_alias);
         let legacy_node = self.legacy_nodes.iter().find(|x| x.alias() == node_alias);
 
-        let fragment_sender = FragmentSender::from(self.controller.settings());
+        let fragment_sender = FragmentSender::from(&self.controller.settings().block0);
 
         let check = match (node, legacy_node) {
             (Some(node), None) => fragment_sender.send_transaction(from, &to, node, value)?,

@@ -5,7 +5,6 @@ pub mod configuration;
 pub mod fragments;
 pub mod jcli;
 pub mod jormungandr;
-pub mod network;
 pub mod node;
 pub mod process;
 pub mod remote;
