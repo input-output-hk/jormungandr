@@ -24,8 +24,6 @@ const RELAY_NODE_2: &str = "Relay2";
 const ALICE: &str = "ALICE";
 const BOB: &str = "BOB";
 
-use function_name::named;
-
 #[test]
 pub fn fully_connected() {
     let mut controller = NetworkBuilder::default()
@@ -169,7 +167,6 @@ pub fn star() {
 }
 
 #[test]
-#[named]
 pub fn mesh() {
     let mut controller = NetworkBuilder::default()
         .topology(
@@ -251,7 +248,6 @@ pub fn mesh() {
 }
 
 #[test]
-#[named]
 pub fn point_to_point() {
     let mut controller = NetworkBuilder::default()
         .topology(
@@ -317,7 +313,6 @@ pub fn point_to_point() {
 }
 
 #[test]
-#[named]
 pub fn point_to_point_on_file_storage() {
     let mut controller = NetworkBuilder::default()
         .topology(
@@ -375,7 +370,6 @@ pub fn point_to_point_on_file_storage() {
 }
 
 #[test]
-#[named]
 pub fn tree() {
     let mut controller = NetworkBuilder::default()
         .topology(
@@ -455,7 +449,6 @@ pub fn tree() {
 }
 
 #[test]
-#[named]
 pub fn relay() {
     let mut controller = NetworkBuilder::default()
         .topology(
