@@ -1,4 +1,4 @@
-use crate::interfaces::{Address, OldAddress, SignedCertificate, Value};
+use crate::interfaces::{mint_token::MintToken, Address, OldAddress, SignedCertificate, Value};
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate,
@@ -16,6 +16,7 @@ pub enum Initial {
     Fund(Vec<InitialUTxO>),
     Cert(SignedCertificate),
     LegacyFund(Vec<LegacyUTxO>),
+    Tokens(MintToken),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -129,6 +130,7 @@ impl<'a> From<&'a Initial> for Fragment {
             Initial::Fund(utxo) => pack_utxo_in_message(utxo),
             Initial::Cert(cert) => pack_certificate_in_empty_tx_fragment(cert),
             Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(utxo),
+            Initial::Tokens(mint_token) => pack_mint_token_in_fragment(mint_token),
         }
     }
 }
@@ -201,6 +203,11 @@ fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Fragment {
             Fragment::UpdateVote(empty_auth_tx(c, a))
         }
     }
+}
+
+fn pack_mint_token_in_fragment(mint_token: &MintToken) -> Fragment {
+    let mint_token: &certificate::MintToken = &mint_token.clone().into();
+    Fragment::MintToken(Transaction::block0_payload(mint_token, &()))
 }
 
 #[cfg(test)]
