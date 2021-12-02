@@ -12,16 +12,16 @@ Midgard Serpent
 edition = "2018"
 
 [dependencies]
-chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl" }
-chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl" }
-chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl" }
-chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl" }
-chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl" }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl" }
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl" }
-cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl" }
-imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl" }
+chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 
 arc-swap = "^1.1.0"
 async-trait = "0.1.51"
@@ -72,9 +72,9 @@ features = ["rustls-tls"]
 tokio = { version = "^1.4", features = ["full"] }
 quickcheck = "0.9"
 quickcheck_macros = "0.9"
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl", features = [ "property-test-api" ] }
-chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl", features = [ "property-test-api" ] }
-chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "token-name-bech32-impl", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 
 [build-dependencies]
 versionisator = "1.0.2"

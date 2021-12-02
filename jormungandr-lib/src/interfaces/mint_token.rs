@@ -1,6 +1,6 @@
+use std::convert::TryFrom;
 use super::Value;
 use crate::crypto::account::Identifier;
-use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::{
     certificate,
     tokens::{minting_policy, name},
@@ -21,7 +21,7 @@ impl Serialize for TokenName {
     where
         S: serde::Serializer,
     {
-        self.0.to_bech32_str().serialize(serializer)
+        hex::encode(self.0.as_ref()).serialize(serializer)
     }
 }
 
@@ -31,9 +31,9 @@ impl<'de> Deserialize<'de> for TokenName {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
+        let data = hex::decode(&s).map_err(<D::Error as serde::de::Error>::custom)?;
         Ok(Self(
-            name::TokenName::try_from_bech32_str(&s)
-                .map_err(<D::Error as serde::de::Error>::custom)?,
+            name::TokenName::try_from(data).map_err(<D::Error as serde::de::Error>::custom)?,
         ))
     }
 }
