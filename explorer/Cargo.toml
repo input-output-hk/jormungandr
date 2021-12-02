@@ -38,6 +38,7 @@ rand = "0.8.3"
 rand_chacha = "0.3.0"
 base64 = "0.13.0"
 lazy_static = "1.4"
+http-zipkin = "0.3.0"
 
 jormungandr-lib = {path = "../jormungandr-lib"}
 
