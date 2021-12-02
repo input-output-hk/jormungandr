@@ -15,15 +15,11 @@ use chain_impl_mockchain::{
     value::Value,
 };
 use jormungandr_lib::interfaces::BlockDate as BlockDateLib;
-use jormungandr_testing_utils::testing::fragments::AdversaryFragmentGenerator;
 use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_testing_utils::testing::AdversaryFragmentSender;
 use jormungandr_testing_utils::testing::AdversaryFragmentSenderSetup;
 use jormungandr_testing_utils::testing::BlockDateGenerator;
-use jormungandr_testing_utils::testing::VoteCastsGenerator;
-use jormungandr_testing_utils::testing::{
-    benchmark_consumption, FragmentStatusProvider, VotePlanBuilder,
-};
+use jormungandr_testing_utils::testing::{benchmark_consumption, VotePlanBuilder};
 use jormungandr_testing_utils::{
     testing::{
         node::time::{wait_for_date, wait_for_epoch},
@@ -33,6 +29,7 @@ use jormungandr_testing_utils::{
 };
 use jortestkit::load::Configuration;
 use jortestkit::measurement::Status;
+use mjolnir::generators::{AdversaryFragmentGenerator, FragmentStatusProvider, VoteCastsGenerator};
 use rand::rngs::OsRng;
 
 const CRS_SEED: &[u8] = "Testing seed".as_bytes();

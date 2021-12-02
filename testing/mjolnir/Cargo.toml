@@ -10,7 +10,8 @@ edition = "2018"
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
-jormungandr-integration-tests = { path = "../jormungandr-integration-tests" }
+rand_core = "0.6"
+rand = "0.8"
 thiserror = "1.0"
 structopt = "^0.3"
 assert_fs = "1.0"

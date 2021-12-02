@@ -3,17 +3,18 @@ use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockDate as BlockDateDto, KesUpdateSpeed,
 };
 use jormungandr_testing_utils::testing::{
-    fragments::TransactionGenerator,
     jcli::{FragmentsCheck, JCli},
     jormungandr::ConfigurationBuilder,
     node::time,
-    startup, BatchFragmentGenerator, BlockDateGenerator, FragmentGenerator, FragmentSender,
-    FragmentSenderSetup, FragmentStatusProvider,
+    startup, BlockDateGenerator, FragmentSender, FragmentSenderSetup,
 };
 pub use jortestkit::{
     console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode},
     load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor},
     prelude::Wait,
+};
+use mjolnir::generators::{
+    BatchFragmentGenerator, FragmentGenerator, FragmentStatusProvider, TransactionGenerator,
 };
 use std::time::Duration;
 
