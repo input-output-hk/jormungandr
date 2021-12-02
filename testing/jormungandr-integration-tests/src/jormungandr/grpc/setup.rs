@@ -1,6 +1,9 @@
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use jormungandr_lib::interfaces::TrustedPeer;
-use jormungandr_testing_utils::testing::{node::grpc::JormungandrClient, SyncNode};
+use jormungandr_testing_utils::testing::{
+    node::grpc::{client::JormungandrWatchClient, JormungandrClient},
+    SyncNode,
+};
 
 use assert_fs::TempDir;
 use jormungandr_testing_utils::testing::{
@@ -25,12 +28,19 @@ impl Config {
     pub fn client(&self) -> JormungandrClient {
         JormungandrClient::new(self.addr)
     }
+
+    pub fn watch_client(&self) -> JormungandrWatchClient {
+        JormungandrWatchClient::new(self.addr)
+    }
 }
 
 pub mod client {
+    use jormungandr_testing_utils::testing::node::grpc::client::JormungandrWatchClient;
+
     use super::*;
     pub struct ClientBootstrap {
         pub client: JormungandrClient,
+        pub watch_client: JormungandrWatchClient,
         pub server: JormungandrProcess,
         pub config: JormungandrParams,
     }
@@ -52,11 +62,14 @@ pub mod client {
             .start_async()
             .unwrap();
         std::thread::sleep(Duration::from_secs(4));
-        let client = Config::attach_to_local_node(config.get_p2p_listen_port()).client();
+        let attached_config = Config::attach_to_local_node(config.get_p2p_listen_port());
+        let client = attached_config.client();
+        let watch_client = attached_config.watch_client();
         ClientBootstrap {
             client,
             server,
             config,
+            watch_client,
         }
     }
 }

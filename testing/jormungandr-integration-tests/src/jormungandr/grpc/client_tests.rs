@@ -1,5 +1,5 @@
 use super::setup;
-use chain_core::property::FromStr;
+use chain_core::property::{Block as _, FromStr};
 use chain_crypto::{Ed25519, PublicKey, Signature, Verification};
 use chain_impl_mockchain::{
     block::{BlockDate, Header},
@@ -395,4 +395,125 @@ pub fn pull_blocks_hashes_wrong_order() {
     );
 
     assert!(result.is_err());
+}
+
+#[test]
+pub fn test_watch_block_subscription_blocks_are_in_logs() {
+    use std::collections::HashSet;
+
+    let setup = setup::client::default();
+
+    let watch_client = setup.watch_client;
+
+    let (sender, receiver) = std::sync::mpsc::channel();
+
+    watch_client.block_subscription(sender);
+
+    let mut ids = HashSet::new();
+
+    const BLOCKS_TO_TEST: usize = 20;
+
+    while let Ok(block) = receiver.recv() {
+        assert!(ids.insert(block.unwrap().id()));
+
+        if ids.len() == BLOCKS_TO_TEST {
+            break;
+        }
+    }
+
+    // wait a bit in case are not flushed yet
+    std::thread::sleep(Duration::from_millis(250));
+
+    let block_hashes_from_logs: HashSet<Hash> = setup
+        .server
+        .logger
+        .get_created_blocks_hashes()
+        .into_iter()
+        .collect();
+
+    assert!(dbg!(ids).is_subset(&dbg!(block_hashes_from_logs)));
+}
+
+#[test]
+pub fn test_watch_tip_subscription_is_current_tip() {
+    let setup = setup::client::default();
+    let rest = setup.server.rest();
+    let watch_client = setup.watch_client;
+
+    let notif = watch_client.tip_subscription();
+
+    let (watch_tip, cond) = &*notif;
+
+    let mut iters_remaining: usize = 20;
+    let mut guard = watch_tip.lock().unwrap();
+
+    loop {
+        let header = &*guard;
+
+        let rest_tip = rest.tip().unwrap();
+        assert_eq!(header.as_ref().unwrap().id(), rest_tip.into_hash());
+
+        if iters_remaining == 0 {
+            // here we still hold the lock, it will be unlocked when dropping the stack
+            return;
+        } else {
+            iters_remaining -= 1;
+
+            guard = cond.wait(guard).unwrap();
+        }
+    }
+}
+
+#[test]
+pub fn test_watch_sync_multiverse_full() {
+    use std::collections::HashSet;
+
+    let setup = setup::client::default();
+    let watch_client = setup.watch_client;
+
+    setup
+        .client
+        .wait_for_chain_length(15.into(), CHAIN_GROWTH_TIMEOUT);
+
+    let blocks = watch_client.sync_multiverse(vec![]);
+
+    let block_hashes_from_logs: HashSet<Hash> = setup
+        .server
+        .logger
+        .get_created_blocks_hashes()
+        .into_iter()
+        .collect();
+
+    let mut block_set: HashSet<Hash> = Default::default();
+    let mut max_length = None;
+
+    for block in &blocks {
+        if !block_set.is_empty() {
+            assert!(block_set.contains(&block.header().block_parent_hash()))
+        }
+
+        max_length.replace(block.header().chain_length());
+
+        assert!(block_set.insert(block.id()));
+    }
+
+    // the genesis block is not in the logs
+    let genesis = blocks[0].clone();
+    block_set.remove(&genesis.id());
+
+    assert!(block_set.is_subset(&block_hashes_from_logs));
+
+    // There is a possibility of new blocks produced between `sync_multiverse` and
+    // `get_created_blocks_hashes`, so here we assert they were produced after.  This is actually
+    // not necessary for bft, because we are already checking the order by checking the parents,
+    // but for genesis praos we need this to be sure that we are sending all the branches.
+    //
+    // This test currently uses bft, though, so the checks are mostly as a precaution.
+    let rest = setup.server.rest();
+
+    for hash in block_hashes_from_logs.difference(&block_set) {
+        let missing_block = rest.block(hash).unwrap();
+
+        assert!(missing_block.header().chain_length() > max_length.unwrap());
+    }
 }

@@ -100,16 +100,15 @@ impl MessageProcessor {
                             if let Err(_err) = block_sender
                                 .send(Block::from_bytes(block.serialize_as_vec().unwrap()))
                             {
-                                tracing::trace!(
-                                    "there are no subscribers to broadcast block {}",
-                                    block_id
-                                );
+                                tracing::trace!("there are no subscribers to broadcast block");
+                            } else {
+                                tracing::debug!("block broadcasted to subscribers");
                             }
                         }
                         .instrument(tracing::debug_span!(
                             parent: span.clone(),
                             "block propagation message",
-                            ?block_id
+                            block_id = %block_id
                         )),
                     );
                 }

@@ -1,13 +1,14 @@
 use crate::testing::{
-    node::grpc::proto::{
+    node::grpc::node::{
         node_server::{Node, NodeServer},
         {
-            Block, BlockEvent, BlockIds, ClientAuthRequest, ClientAuthResponse, Fragment,
-            FragmentIds, Gossip, HandshakeRequest, HandshakeResponse, Header, PeersRequest,
-            PeersResponse, PullBlocksRequest, PullBlocksToTipRequest, PullHeadersRequest,
-            PushHeadersResponse, TipRequest, TipResponse, UploadBlocksResponse,
+            BlockEvent, ClientAuthRequest, ClientAuthResponse, Gossip, HandshakeRequest,
+            HandshakeResponse, PeersRequest, PeersResponse, PullBlocksRequest,
+            PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse, TipRequest,
+            TipResponse, UploadBlocksResponse,
         },
     },
+    node::grpc::types::{Block, BlockIds, Fragment, FragmentIds, Header},
     Block0ConfigurationBuilder,
 };
 use chain_core::{
