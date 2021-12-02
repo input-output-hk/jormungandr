@@ -12,12 +12,12 @@ tokio = { version = "1.4", features = ["macros", "time"] }
 futures      = "0.3.18"
 base64 = "0.13"
 hex = "0.4.2"
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
+chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 hersir = { path = "../hersir" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
