@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use super::Value;
 use crate::crypto::account::Identifier;
 use chain_impl_mockchain::{
@@ -6,6 +5,7 @@ use chain_impl_mockchain::{
     tokens::{minting_policy, name},
 };
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct TokenName(name::TokenName);

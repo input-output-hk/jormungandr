@@ -16,7 +16,7 @@ pub enum Initial {
     Fund(Vec<InitialUTxO>),
     Cert(SignedCertificate),
     LegacyFund(Vec<LegacyUTxO>),
-    Tokens(MintToken),
+    Token(MintToken),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -130,7 +130,7 @@ impl<'a> From<&'a Initial> for Fragment {
             Initial::Fund(utxo) => pack_utxo_in_message(utxo),
             Initial::Cert(cert) => pack_certificate_in_empty_tx_fragment(cert),
             Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(utxo),
-            Initial::Tokens(mint_token) => pack_mint_token_in_fragment(mint_token),
+            Initial::Token(mint_token) => pack_mint_token_in_fragment(mint_token),
         }
     }
 }
@@ -234,6 +234,7 @@ mod test {
                         .take(number_entries)
                         .collect(),
                 ),
+                3 => Initial::Token(Arbitrary::arbitrary(g)),
                 _ => unreachable!(),
             }
         }

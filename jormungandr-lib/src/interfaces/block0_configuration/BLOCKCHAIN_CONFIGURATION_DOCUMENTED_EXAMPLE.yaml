@@ -207,6 +207,13 @@ initial:
       - address: {initial_funds_address}
         value: 10000
 
+  # Initial token distribution present in the blockchain
+  - token:
+      name: "7e5d6abc"
+      to: "ed25519_pk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqyl7vm8"
+      # token amount
+      value: 100
+
   # Initial certificates
   #- cert: ..
 
