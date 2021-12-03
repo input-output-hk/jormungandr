@@ -233,6 +233,13 @@ impl Controller {
         Ok(self.make_starter_for(spawn_params)?.start()?)
     }
 
+    pub fn spawn_async(
+        &mut self,
+        spawn_params: SpawnParams,
+    ) -> Result<JormungandrProcess, ControllerError> {
+        Ok(self.make_starter_for(spawn_params)?.start_async()?)
+    }
+
     pub fn spawn_legacy(
         &mut self,
         input_params: SpawnParams,

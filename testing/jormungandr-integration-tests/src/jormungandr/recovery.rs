@@ -106,7 +106,7 @@ pub fn test_node_recovers_from_node_restart() {
     let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
     jcli.rest().v0().shutdown(jormungandr.rest_uri());
 
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    std::thread::sleep(std::time::Duration::from_secs(5));
 
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
@@ -163,6 +163,8 @@ pub fn test_node_recovers_kill_signal() {
     // Wait before stopping so transactions are flushed to disk
     std::thread::sleep(std::time::Duration::from_secs(1));
     jormungandr.stop();
+
+    std::thread::sleep(std::time::Duration::from_secs(5));
 
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)

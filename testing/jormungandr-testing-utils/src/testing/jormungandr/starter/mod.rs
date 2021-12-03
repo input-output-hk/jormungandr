@@ -108,7 +108,7 @@ impl Default for Starter {
 impl Starter {
     pub fn new() -> Self {
         Starter {
-            timeout: Duration::from_secs(300),
+            timeout: Duration::from_secs(30),
             sleep: 2,
             alias: "".to_owned(),
             leadership_mode: LeadershipMode::Leader,

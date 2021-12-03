@@ -1,3 +1,4 @@
+use crate::networking::utils::wait;
 use jormungandr_lib::interfaces::Policy;
 use jormungandr_testing_utils::testing::network::{
     builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder,
@@ -186,9 +187,13 @@ pub fn leader_restart() {
             Duration::from_secs(3),
         )
         .unwrap();
+
+    wait(5);
+
     let leader = controller
         .spawn(SpawnParams::new(LEADER).verbose(true))
         .unwrap();
+
     FragmentSender::from(controller.settings())
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_round_trip(10, &mut alice, &mut bob, &passive, 1_000.into())
