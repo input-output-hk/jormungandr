@@ -510,6 +510,7 @@ impl From<&ConfigParamLib> for ConfigParam {
             ConfigParamLib::TransactionMaxExpiryEpochs(v) => {
                 Self::TransactionMaxExpiryEpochs(v.into())
             }
+            #[cfg(feature = "evm")]
             ConfigParamLib::EvmParams(_params) => todo!(),
         }
     }
