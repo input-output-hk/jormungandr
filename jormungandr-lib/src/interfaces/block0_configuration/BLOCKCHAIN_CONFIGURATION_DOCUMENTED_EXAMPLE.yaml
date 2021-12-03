@@ -206,12 +206,11 @@ initial:
       # UTxO addresses or account
       - address: {initial_funds_address}
         value: 10000
-
+  
   # Initial token distribution present in the blockchain
   - token:
       name: "7e5d6abc"
-      to: "ed25519_pk1yqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqyl7vm8"
-      # token amount
+      to: {initial_funds_account_identifier}
       value: 100
 
   # Initial certificates

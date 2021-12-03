@@ -121,8 +121,10 @@ pub fn block0_configuration_documented_example() -> String {
     let leader_1: KeyPair<Ed25519> = KeyPair::generate(&mut rng);
     let leader_2: KeyPair<Ed25519> = KeyPair::generate(&mut rng);
 
-    let initial_funds_address = chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Single(pk));
+    let initial_funds_address =
+        chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Account(pk.clone()));
     let initial_funds_address = crate::interfaces::Address::from(initial_funds_address);
+    let initial_funds_account_identifier_pk = pk.to_bech32_str();
     let leader_1_pk = leader_1.public_key().to_bech32_str();
     let leader_2_pk = leader_2.public_key().to_bech32_str();
 
@@ -139,7 +141,8 @@ pub fn block0_configuration_documented_example() -> String {
         default_proposal_expiration = ProposalExpiration::default(),
         leader_1 = leader_1_pk,
         leader_2 = leader_2_pk,
-        initial_funds_address = initial_funds_address
+        initial_funds_address = initial_funds_address,
+        initial_funds_account_identifier = initial_funds_account_identifier_pk
     )
 }
 
