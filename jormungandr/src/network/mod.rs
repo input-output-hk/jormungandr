@@ -74,7 +74,7 @@ use self::p2p::comm::Peers;
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TopologyMsg, TransactionMsg};
-use crate::metrics::{Metrics, MetricsBackend};
+use crate::metrics::Metrics;
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::topology::{self, NodeId};
 use crate::utils::async_msg::{MessageBox, MessageQueue};
@@ -150,7 +150,6 @@ impl Clone for Channels {
 pub struct GlobalState {
     block0_hash: HeaderHash,
     config: Configuration,
-    stats_counter: Metrics,
     peers: Peers,
     keypair: NodeKeyPair,
     span: Span,
@@ -168,7 +167,7 @@ impl GlobalState {
         stats_counter: Metrics,
         span: Span,
     ) -> Self {
-        let peers = Peers::new(config.max_connections);
+        let peers = Peers::new(config.max_connections, stats_counter);
 
         //TODO: move this to a secure enclave
         let keypair =
@@ -177,7 +176,6 @@ impl GlobalState {
         GlobalState {
             block0_hash,
             config,
-            stats_counter,
             peers,
             keypair,
             span,
@@ -201,17 +199,15 @@ impl GlobalState {
     }
 
     fn inc_client_count(&self) {
-        self.stats_counter.add_peer_connected_cnt(1);
-        self.connected_count.fetch_add(1, Ordering::Relaxed);
+        self.connected_count.fetch_add(1, Ordering::AcqRel);
     }
 
     fn dec_client_count(&self) {
-        self.stats_counter.sub_peer_connected_cnt(1);
-        self.connected_count.fetch_sub(1, Ordering::Relaxed);
+        self.connected_count.fetch_sub(1, Ordering::AcqRel);
     }
 
     fn client_count(&self) -> usize {
-        self.connected_count.load(Ordering::Relaxed)
+        self.connected_count.load(Ordering::Acquire)
     }
 
     // How many client connections to bump when a new one is about to be

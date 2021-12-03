@@ -1,5 +1,6 @@
 mod peer_map;
 use super::Address;
+use crate::metrics::Metrics;
 use crate::network::{client::ConnectHandle, security_params::NONCE_LEN};
 use crate::topology::NodeId;
 use chain_network::data::block::{BlockEvent, ChainPullRequest};
@@ -465,9 +466,9 @@ pub struct Peers {
 }
 
 impl Peers {
-    pub fn new(capacity: usize) -> Self {
+    pub fn new(capacity: usize, stats_counter: Metrics) -> Self {
         Peers {
-            mutex: Mutex::new(PeerMap::new(capacity)),
+            mutex: Mutex::new(PeerMap::new(capacity, stats_counter)),
         }
     }
 

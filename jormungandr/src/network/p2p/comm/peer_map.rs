@@ -1,3 +1,4 @@
+use crate::metrics::{Metrics, MetricsBackend};
 use crate::network::{
     client::ConnectHandle,
     p2p::comm::{Address, PeerComms, PeerInfo, PeerStats},
@@ -77,6 +78,7 @@ pub struct PeerMap {
     map: LinkedHashMap<NodeId, PeerData>,
     client_auth: ClientAuth,
     capacity: usize,
+    stats_counter: Metrics,
 }
 
 struct PeerData {
@@ -138,11 +140,12 @@ impl<'a> CommStatus<'a> {
 }
 
 impl PeerMap {
-    pub fn new(capacity: usize) -> Self {
+    pub fn new(capacity: usize, stats_counter: Metrics) -> Self {
         PeerMap {
             map: LinkedHashMap::new(),
             client_auth: ClientAuth::default(),
             capacity,
+            stats_counter,
         }
     }
 
@@ -159,6 +162,7 @@ impl PeerMap {
                 Some(Entry {
                     inner: entry,
                     auth_info,
+                    stats_counter: &self.stats_counter,
                 })
             }
         }
@@ -166,6 +170,7 @@ impl PeerMap {
 
     /// for clearing the peer map
     pub fn clear(&mut self) {
+        self.stats_counter.sub_peer_connected_cnt(self.map.len());
         self.map.clear()
     }
 
@@ -182,6 +187,7 @@ impl PeerMap {
     fn ensure_peer(&mut self, id: NodeId, remote_addr: Address) -> &mut PeerData {
         if !self.map.contains_key(&id) {
             self.evict_if_full();
+            self.stats_counter.add_peer_connected_cnt(1);
         }
         self.map
             .entry(id)
@@ -237,6 +243,7 @@ impl PeerMap {
             // A bit tricky here: use PeerData::update_comm_status for the
             // side effect, then return the up-to-date member.
             data.update_comm_status();
+            self.stats_counter.sub_peer_connected_cnt(1);
             self.client_auth.remove(data.comms.remote_addr());
             data.comms
         })
@@ -278,6 +285,7 @@ impl PeerMap {
     fn evict_if_full(&mut self) {
         if self.map.len() >= self.capacity {
             if let Some((_, v)) = self.map.pop_front() {
+                self.stats_counter.sub_peer_connected_cnt(1);
                 self.client_auth.remove(v.comms.remote_addr());
             }
         }
@@ -287,6 +295,7 @@ impl PeerMap {
 pub struct Entry<'a> {
     inner: linked_hash_map::OccupiedEntry<'a, NodeId, PeerData>,
     auth_info: linked_hash_map::Entry<'a, Address, NodeId>,
+    stats_counter: &'a Metrics,
 }
 
 impl<'a> Entry<'a> {
@@ -297,6 +306,7 @@ impl<'a> Entry<'a> {
     pub fn remove(self) {
         use linked_hash_map::Entry::*;
         self.inner.remove();
+        self.stats_counter.sub_peer_connected_cnt(1);
         if let Occupied(entry) = self.auth_info {
             entry.remove();
         }
