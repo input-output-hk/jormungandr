@@ -21,7 +21,11 @@ impl Serialize for TokenName {
     where
         S: serde::Serializer,
     {
-        hex::encode(self.0.as_ref()).serialize(serializer)
+        if serializer.is_human_readable() {
+            hex::encode(self.0.as_ref()).serialize(serializer)
+        } else {
+            self.0.as_ref().serialize(serializer)
+        }
     }
 }
 
@@ -30,11 +34,20 @@ impl<'de> Deserialize<'de> for TokenName {
     where
         D: serde::Deserializer<'de>,
     {
-        let s = String::deserialize(deserializer)?;
-        let data = hex::decode(&s).map_err(<D::Error as serde::de::Error>::custom)?;
-        Ok(Self(
-            name::TokenName::try_from(data).map_err(<D::Error as serde::de::Error>::custom)?,
-        ))
+        if deserializer.is_human_readable() {
+            let s = String::deserialize(deserializer)?;
+            let data = hex::decode(&s).map_err(<D::Error as serde::de::Error>::custom)?;
+            Ok(Self(
+                name::TokenName::try_from(data).map_err(<D::Error as serde::de::Error>::custom)?,
+            ))
+        } else {
+            let data = <&[u8]>::deserialize(deserializer)
+                .map_err(<D::Error as serde::de::Error>::custom)?;
+            Ok(Self(
+                name::TokenName::try_from(data.to_vec())
+                    .map_err(<D::Error as serde::de::Error>::custom)?,
+            ))
+        }
     }
 }
 
@@ -81,13 +94,24 @@ impl From<MintToken> for certificate::MintToken {
 
 #[cfg(test)]
 mod test {
-    use quickcheck::Arbitrary;
-
     use super::*;
+    use quickcheck::Arbitrary;
 
     impl Arbitrary for MintToken {
         fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
             certificate::MintToken::arbitrary(g).into()
+        }
+    }
+
+    quickcheck! {
+        fn mint_token_bincode_serde_test(mint_token: MintToken) -> bool {
+            let decoded_mint_token: MintToken =  bincode::deserialize(bincode::serialize(&mint_token).unwrap().as_slice()).unwrap();
+            decoded_mint_token == mint_token
+        }
+
+        fn mint_token_yaml_serde_test(mint_token: MintToken) -> bool {
+            let decoded_mint_token: MintToken = serde_yaml::from_str(&serde_yaml::to_string(&mint_token).unwrap()).unwrap();
+            decoded_mint_token == mint_token
         }
     }
 }
