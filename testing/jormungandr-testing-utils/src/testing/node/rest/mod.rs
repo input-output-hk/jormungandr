@@ -2,20 +2,23 @@ mod load;
 mod raw;
 mod settings;
 
-pub use load::RestRequestGen;
-pub use raw::RawRest;
-pub use settings::RestSettings;
-
 use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
+use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_lib::interfaces::FragmentStatus;
+use chain_impl_mockchain::header::HeaderId;
+use jormungandr_lib::interfaces::{
+    AccountVotes, Address, FragmentStatus, FragmentsProcessingSummary, Value, VotePlanId,
+};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{
-        AccountState, EnclaveLeaderId, EpochRewardsInfo, FragmentLog, LeadershipLog, NodeStatsDto,
-        PeerRecord, PeerStats, SettingsDto, StakeDistributionDto, VotePlanStatus,
+        AccountState, EpochRewardsInfo, FragmentLog, LeadershipLog, NodeStatsDto, PeerRecord,
+        PeerStats, SettingsDto, StakeDistributionDto, VotePlanStatus,
     },
 };
+pub use load::RestRequestGen;
+pub use raw::RawRest;
+pub use settings::RestSettings;
 use std::collections::HashMap;
 use std::io::Read;
 use std::{fs::File, net::SocketAddr, path::Path};
@@ -37,6 +40,8 @@ pub enum RestError {
         status: reqwest::StatusCode,
         checks: Vec<MemPoolCheck>,
     },
+    #[error(transparent)]
+    ReadBytes(#[from] chain_core::mempack::ReadError),
 }
 
 pub fn uri_from_socket_addr(addr: SocketAddr) -> String {
@@ -111,9 +116,31 @@ impl JormungandrRest {
             .map_err(RestError::CannotDeserialize)
     }
 
+    pub fn remaining_rewards(&self) -> Result<Value, RestError> {
+        serde_json::from_str(&self.inner.remaining_rewards()?).map_err(RestError::CannotDeserialize)
+    }
+
     pub fn stake_distribution(&self) -> Result<StakeDistributionDto, RestError> {
         serde_json::from_str(&self.inner.stake_distribution()?)
             .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn account_votes(&self, address: Address) -> Result<Option<Vec<AccountVotes>>, RestError> {
+        serde_json::from_str(&self.inner.account_votes(address)?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn account_votes_with_plan_id(
+        &self,
+        vote_plan_id: VotePlanId,
+        address: Address,
+    ) -> Result<Option<Vec<u8>>, RestError> {
+        serde_json::from_str(
+            &self
+                .inner
+                .account_votes_with_plan_id(vote_plan_id, address)?,
+        )
+        .map_err(RestError::CannotDeserialize)
     }
 
     pub fn stake_pools(&self) -> Result<Vec<String>, RestError> {
@@ -182,16 +209,6 @@ impl JormungandrRest {
         serde_json::from_str(&self.inner.leaders_log()?).map_err(RestError::CannotDeserialize)
     }
 
-    pub fn leaders(&self) -> Result<Vec<EnclaveLeaderId>, RestError> {
-        let leaders = self.inner.leaders()?;
-        let leaders: Vec<EnclaveLeaderId> = if leaders.is_empty() {
-            Vec::new()
-        } else {
-            serde_json::from_str(&leaders).map_err(RestError::CannotDeserialize)?
-        };
-        Ok(leaders)
-    }
-
     pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, RestError> {
         self.inner.send_fragment(fragment).map_err(Into::into)
     }
@@ -205,8 +222,18 @@ impl JormungandrRest {
         self.inner.send_raw_fragments(bytes).map_err(Into::into)
     }
 
-    pub fn fragments_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, RestError> {
-        self.inner.fragments_logs()
+    pub fn block_as_bytes(&self, header_hash: &HeaderId) -> Result<Vec<u8>, RestError> {
+        self.inner.block_as_bytes(header_hash).map_err(Into::into)
+    }
+
+    pub fn shutdown(&self) -> Result<String, RestError> {
+        self.inner.shutdown().map_err(Into::into)
+    }
+
+    pub fn block(&self, header_hash: &HeaderId) -> Result<Block, RestError> {
+        use chain_core::mempack::{ReadBuf, Readable as _};
+        let bytes = self.block_as_bytes(header_hash)?;
+        Block::read(&mut ReadBuf::from(&bytes)).map_err(Into::into)
     }
 
     pub fn fragments_statuses(
@@ -220,7 +247,7 @@ impl JormungandrRest {
         &self,
         fragments: Vec<Fragment>,
         fail_fast: bool,
-    ) -> Result<Vec<MemPoolCheck>, RestError> {
+    ) -> Result<FragmentsProcessingSummary, RestError> {
         self.inner
             .send_fragment_batch(fragments, fail_fast)
             .map_err(Into::into)
@@ -229,5 +256,9 @@ impl JormungandrRest {
     pub fn vote_plan_statuses(&self) -> Result<Vec<VotePlanStatus>, RestError> {
         serde_json::from_str(&self.inner.vote_plan_statuses()?)
             .map_err(RestError::CannotDeserialize)
+    }
+
+    pub fn set_origin<S: Into<String>>(&mut self, origin: S) {
+        self.inner.set_origin(origin);
     }
 }

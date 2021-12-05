@@ -1,0 +1,22 @@
+name: Build Docker images for CI
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'ci/docker/Dockerfile'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Docker images
+        run: |
+          set -xe
+          RUST_CI_IMAGE_TAG="ghcr.io/${{ github.repository_owner }}/jormungandr-rust-ci:latest"
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker build ./ci/docker/ --tag $RUST_CI_IMAGE_TAG
+          docker push $RUST_CI_IMAGE_TAG

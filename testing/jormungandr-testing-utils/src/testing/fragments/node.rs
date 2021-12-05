@@ -1,9 +1,9 @@
+use crate::testing::network::NodeAlias;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{BlockDate, FragmentLog},
+    interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary},
 };
-
 use std::collections::HashMap;
 
 #[derive(custom_debug::Debug, thiserror::Error)]
@@ -50,17 +50,17 @@ impl FragmentNodeError {
 }
 
 pub trait FragmentNode {
-    fn alias(&self) -> &str;
+    fn alias(&self) -> NodeAlias;
     fn fragment_logs(&self) -> Result<HashMap<FragmentId, FragmentLog>, FragmentNodeError>;
     fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, FragmentNodeError>;
     fn send_batch_fragments(
         &self,
         fragments: Vec<Fragment>,
         fail_fast: bool,
-    ) -> Result<Vec<MemPoolCheck>, FragmentNodeError>;
+    ) -> Result<FragmentsProcessingSummary, FragmentNodeError>;
     fn log_pending_fragment(&self, fragment_id: FragmentId);
     fn log_rejected_fragment(&self, fragment_id: FragmentId, reason: String);
-    fn log_in_block_fragment(&self, fragment_id: FragmentId, date: BlockDate, block: Hash);
+    fn log_in_block_fragment(&self, fragment_id: FragmentId, valid_until: BlockDate, block: Hash);
     fn log_content(&self) -> Vec<String>;
 }
 
@@ -76,5 +76,11 @@ impl MemPoolCheck {
 
     pub fn fragment_id(&self) -> &FragmentId {
         &self.fragment_id
+    }
+}
+
+impl From<FragmentId> for MemPoolCheck {
+    fn from(from: FragmentId) -> Self {
+        Self::new(from)
     }
 }

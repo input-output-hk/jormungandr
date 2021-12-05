@@ -3,19 +3,20 @@ pub use self::{
         AdversaryFragmentSender, AdversaryFragmentSenderError, AdversaryFragmentSenderSetup,
         FaultyTransactionBuilder,
     },
+    chain_sender::FragmentChainSender,
     export::{FragmentExporter, FragmentExporterError},
     generator::FragmentGenerator,
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
     node::{FragmentNode, FragmentNodeError, MemPoolCheck},
-    persistent_log::PersistentLogViewer,
-    sender::{FragmentSender, FragmentSenderError},
+    persistent_log::{write_into_persistent_log, PersistentLogViewer},
+    sender::{BlockDateGenerator, FragmentSender, FragmentSenderError},
     setup::DummySyncNode,
     setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
     transaction::{transaction_to, transaction_to_many},
-    verifier::{FragmentVerifier, FragmentVerifierError},
+    verifier::{ExitStrategy as VerifyExitStrategy, FragmentVerifier, FragmentVerifierError},
 };
 use crate::{stake_pool::StakePool, wallet::Wallet};
-use chain_impl_mockchain::certificate::VoteTallyPayload;
+use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload};
 use chain_impl_mockchain::{
     certificate::{EncryptedVoteTally, PoolId, VoteCast, VotePlan, VoteTally},
     fee::LinearFee,
@@ -31,14 +32,15 @@ use jormungandr_lib::{
     interfaces::{Address, Initial, Value},
 };
 pub use load::{
-    AdversaryFragmentGenerator, BatchFragmentGenerator, FragmentStatusProvider,
-    TransactionGenerator, VoteCastsGenerator,
+    AdversaryFragmentGenerator, AdversaryVoteCastsGenerator, BatchFragmentGenerator,
+    FragmentStatusProvider, TransactionGenerator, VoteCastsGenerator,
 };
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
 use thiserror::Error;
 
 mod adversary;
+mod chain_sender;
 mod export;
 mod generator;
 mod initial_certificates;
@@ -65,13 +67,15 @@ pub enum FragmentBuilderError {
 pub struct FragmentBuilder {
     block0_hash: Hash,
     fees: LinearFee,
+    valid_until: BlockDate,
 }
 
 impl FragmentBuilder {
-    pub fn new(block0_hash: &Hash, fees: &LinearFee) -> Self {
+    pub fn new(block0_hash: &Hash, fees: &LinearFee, valid_until: BlockDate) -> Self {
         Self {
             block0_hash: *block0_hash,
             fees: *fees,
+            valid_until,
         }
     }
 
@@ -85,7 +89,14 @@ impl FragmentBuilder {
         address: Address,
         value: Value,
     ) -> Result<Fragment, FragmentBuilderError> {
-        transaction_to(&self.block0_hash, &self.fees, from, address, value)
+        transaction_to(
+            &self.block0_hash,
+            &self.fees,
+            self.valid_until,
+            from,
+            address,
+            value,
+        )
     }
 
     pub fn transaction_to_many(
@@ -94,28 +105,46 @@ impl FragmentBuilder {
         addresses: &[Address],
         value: Value,
     ) -> Result<Fragment, FragmentBuilderError> {
-        transaction_to_many(&self.block0_hash, &self.fees, from, addresses, value)
+        transaction_to_many(
+            &self.block0_hash,
+            &self.fees,
+            self.valid_until,
+            from,
+            addresses,
+            value,
+        )
     }
 
-    pub fn full_delegation_cert_for_block0(wallet: &Wallet, pool_id: PoolId) -> Initial {
-        Initial::Cert(signed_delegation_cert(wallet, pool_id).into())
+    pub fn full_delegation_cert_for_block0(
+        valid_until: BlockDate,
+        wallet: &Wallet,
+        pool_id: PoolId,
+    ) -> Initial {
+        Initial::Cert(signed_delegation_cert(wallet, valid_until, pool_id).into())
     }
 
     pub fn stake_pool_registration(&self, funder: &Wallet, stake_pool: &StakePool) -> Fragment {
         let inner_wallet = funder.clone().into();
-        self.fragment_factory()
-            .stake_pool_registration(&inner_wallet, &stake_pool.clone().into())
+        self.fragment_factory().stake_pool_registration(
+            self.valid_until,
+            &inner_wallet,
+            &stake_pool.clone().into(),
+        )
     }
 
     pub fn delegation(&self, from: &Wallet, stake_pool: &StakePool) -> Fragment {
         let inner_wallet = from.clone().into();
-        self.fragment_factory()
-            .delegation(&inner_wallet, &stake_pool.clone().into())
+        self.fragment_factory().delegation(
+            self.valid_until,
+            &inner_wallet,
+            &stake_pool.clone().into(),
+        )
     }
 
     pub fn delegation_remove(&self, from: &Wallet) -> Fragment {
         let inner_wallet = from.clone().into();
-        self.fragment_factory().delegation_remove(&inner_wallet)
+        self.fragment_factory()
+            .delegation_remove(self.valid_until, &inner_wallet)
     }
 
     pub fn delegation_to_many(
@@ -136,17 +165,23 @@ impl FragmentBuilder {
         let mut inner_distribution: Vec<(&StakePoolLib, u8)> = Vec::new();
 
         for (inner_stake_pool, (_, factor)) in inner_stake_pools.iter().zip(distribution) {
-            inner_distribution.push((&inner_stake_pool, factor));
+            inner_distribution.push((inner_stake_pool, factor));
         }
 
-        self.fragment_factory()
-            .delegation_to_many(&inner_wallet, &inner_distribution[..])
+        self.fragment_factory().delegation_to_many(
+            self.valid_until,
+            &inner_wallet,
+            &inner_distribution[..],
+        )
     }
 
     pub fn owner_delegation(&self, from: &Wallet, stake_pool: &StakePool) -> Fragment {
         let inner_wallet = from.clone().into();
-        self.fragment_factory()
-            .owner_delegation(&inner_wallet, &stake_pool.clone().into())
+        self.fragment_factory().owner_delegation(
+            self.valid_until,
+            &inner_wallet,
+            &stake_pool.clone().into(),
+        )
     }
 
     pub fn stake_pool_retire(&self, owners: Vec<&Wallet>, stake_pool: &StakePool) -> Fragment {
@@ -160,8 +195,11 @@ impl FragmentBuilder {
             .collect();
 
         let ref_inner_owners: Vec<&WalletLib> = inner_owners.iter().collect();
-        self.fragment_factory()
-            .stake_pool_retire(ref_inner_owners, &stake_pool.clone().into())
+        self.fragment_factory().stake_pool_retire(
+            self.valid_until,
+            ref_inner_owners,
+            &stake_pool.clone().into(),
+        )
     }
 
     pub fn stake_pool_update(
@@ -181,6 +219,7 @@ impl FragmentBuilder {
 
         let ref_inner_owners: Vec<&WalletLib> = inner_owners.iter().collect();
         self.fragment_factory().stake_pool_update(
+            self.valid_until,
             ref_inner_owners,
             &old_stake_pool.clone().into(),
             new_stake_pool.clone().into(),
@@ -190,7 +229,7 @@ impl FragmentBuilder {
     pub fn vote_plan(&self, wallet: &Wallet, vote_plan: &VotePlan) -> Fragment {
         let inner_wallet = wallet.clone().into();
         self.fragment_factory()
-            .vote_plan(&inner_wallet, vote_plan.clone())
+            .vote_plan(self.valid_until, &inner_wallet, vote_plan.clone())
     }
 
     pub fn public_vote_cast(
@@ -206,7 +245,8 @@ impl FragmentBuilder {
             proposal_index as u8,
             Payload::public(*choice),
         );
-        self.fragment_factory().vote_cast(&inner_wallet, vote_cast)
+        self.fragment_factory()
+            .vote_cast(self.valid_until, &inner_wallet, vote_cast)
     }
 
     pub fn private_vote_cast(
@@ -218,8 +258,8 @@ impl FragmentBuilder {
     ) -> Fragment {
         let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
 
-        let encrypting_key =
-            chain_vote::EncryptingVoteKey::from_participants(vote_plan.committee_public_keys());
+        let election_key =
+            chain_vote::ElectionPublicKey::from_participants(vote_plan.committee_public_keys());
 
         let options = vote_plan
             .proposals()
@@ -238,7 +278,7 @@ impl FragmentBuilder {
         let vote = chain_vote::Vote::new(length as usize, choice as usize);
         let crs = chain_vote::Crs::from_hash(vote_plan.to_id().as_ref());
         let (encrypted_vote, proof) =
-            chain_impl_mockchain::vote::encrypt_vote(&mut rng, &crs, &encrypting_key, vote);
+            chain_impl_mockchain::vote::encrypt_vote(&mut rng, &crs, &election_key, vote);
 
         let vote_cast = VoteCast::new(
             vote_plan.to_id(),
@@ -251,13 +291,17 @@ impl FragmentBuilder {
 
         let inner_wallet = wallet.clone().into();
 
-        self.fragment_factory().vote_cast(&inner_wallet, vote_cast)
+        self.fragment_factory()
+            .vote_cast(self.valid_until, &inner_wallet, vote_cast)
     }
 
     pub fn encrypted_tally(&self, owner: &Wallet, vote_plan: &VotePlan) -> Fragment {
         let encrypted_tally = EncryptedVoteTally::new(vote_plan.to_id());
-        self.fragment_factory()
-            .vote_encrypted_tally(&owner.clone().into(), encrypted_tally)
+        self.fragment_factory().vote_encrypted_tally(
+            self.valid_until,
+            &owner.clone().into(),
+            encrypted_tally,
+        )
     }
 
     pub fn vote_tally(
@@ -273,6 +317,6 @@ impl FragmentBuilder {
             VoteTallyPayload::Private { inner } => VoteTally::new_private(vote_plan.to_id(), inner),
         };
         self.fragment_factory()
-            .vote_tally(&inner_wallet, vote_tally)
+            .vote_tally(self.valid_until, &inner_wallet, vote_tally)
     }
 }

@@ -9,7 +9,7 @@ use std::{convert::TryFrom, fmt, str::FromStr as _};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-pub struct KesUpdateSpeed(pub(crate) u32);
+pub struct KesUpdateSpeed(u32);
 
 impl KesUpdateSpeed {
     /// minimal value for the KES Update Speed
@@ -196,7 +196,7 @@ mod test {
         const VALUE: u32 = 2 * 24 * 3600 + 6 * 3600 + 15 * 60 + 34;
         const DURATION_STR: &str = "---\n2days 6h 15m 34s";
 
-        let decoded: KesUpdateSpeed = serde_yaml::from_str(&DURATION_STR).unwrap();
+        let decoded: KesUpdateSpeed = serde_yaml::from_str(DURATION_STR).unwrap();
 
         assert_eq!(decoded.0, VALUE)
     }

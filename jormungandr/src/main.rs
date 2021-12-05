@@ -11,6 +11,7 @@ use crate::{
     blockcfg::{HeaderHash, Leader},
     blockchain::Blockchain,
     diagnostic::Diagnostic,
+    metrics::MetricsBackend,
     secure::enclave::Enclave,
     settings::start::Settings,
     utils::{async_msg, task::Services},
@@ -36,18 +37,18 @@ pub mod fragment;
 pub mod intercom;
 pub mod leadership;
 pub mod log;
+pub mod metrics;
 pub mod network;
 pub mod rest;
 pub mod secure;
 pub mod settings;
 pub mod start_up;
 pub mod state;
-mod stats_counter;
 pub mod stuck_notifier;
 pub mod topology;
 pub mod utils;
+pub mod watch_client;
 
-use stats_counter::StatsCounter;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_futures::Instrument;
 
@@ -77,6 +78,7 @@ const NETWORK_TASK_QUEUE_LEN: usize = 64;
 const EXPLORER_TASK_QUEUE_LEN: usize = 32;
 const CLIENT_TASK_QUEUE_LEN: usize = 32;
 const TOPOLOGY_TASK_QUEUE_LEN: usize = 32;
+const WATCH_CLIENT_TASK_QUEUE_LEN: usize = 32;
 const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
@@ -102,7 +104,29 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     let leadership_logs =
         leadership::Logs::new(bootstrapped_node.settings.leadership.logs_capacity);
 
-    let stats_counter = StatsCounter::default();
+    let metrics_builder = crate::metrics::Metrics::builder();
+
+    let simple_metrics_counter = Arc::new(crate::metrics::backends::SimpleCounter::new());
+    let metrics_builder = metrics_builder.add_backend(simple_metrics_counter.clone());
+
+    #[cfg(feature = "prometheus-metrics")]
+    let (prometheus_metric, metrics_builder) = if bootstrapped_node.settings.prometheus {
+        let prometheus = Arc::new(crate::metrics::backends::Prometheus::new());
+        (
+            Some(prometheus.clone()),
+            metrics_builder.add_backend(prometheus),
+        )
+    } else {
+        (None, metrics_builder)
+    };
+
+    let stats_counter = metrics_builder.build();
+
+    {
+        let block_ref = services.block_on_task("get_tip_block", |_| blockchain_tip.get_ref());
+        let block = blockchain.storage().get(block_ref.hash()).unwrap().unwrap();
+        stats_counter.set_tip_block(&block, &block_ref);
+    }
 
     let explorer = {
         if bootstrapped_node.settings.explorer {
@@ -126,6 +150,22 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         }
     };
 
+    let (watch_msgbox, watch_client) = {
+        let (msgbox, queue) = async_msg::channel(WATCH_CLIENT_TASK_QUEUE_LEN);
+
+        let blockchain_tip = blockchain_tip.clone();
+        let current_tip = block_on(async { blockchain_tip.get_ref().await.header().clone() });
+
+        let (client, message_processor) =
+            watch_client::WatchClient::new(current_tip, blockchain.clone());
+
+        services.spawn_future("watch_client", move |info| async move {
+            message_processor.start(info, queue).await
+        });
+
+        (msgbox, client)
+    };
+
     {
         let blockchain = blockchain.clone();
         let blockchain_tip = blockchain_tip.clone();
@@ -136,16 +176,17 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         let block_cache_ttl: Duration = Duration::from_secs(120);
         let stats_counter = stats_counter.clone();
         services.spawn_future("block", move |info| {
-            let process = blockchain::Process {
+            let task_data = blockchain::TaskData {
                 blockchain,
                 blockchain_tip,
                 stats_counter,
                 network_msgbox,
                 fragment_msgbox,
                 explorer_msgbox,
+                watch_msgbox,
                 garbage_collection_interval: block_cache_ttl,
             };
-            process.start(info, block_queue)
+            blockchain::start(task_data, info, block_queue)
         });
     }
 
@@ -184,6 +225,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 global_state,
                 input: network_queue,
                 channels,
+                watch: watch_client,
             };
             network::start(params)
         });
@@ -195,6 +237,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             network_msgbox: network_msgbox.clone(),
             initial_peers: bootstrapped_node.initial_peers,
             topology_queue,
+            stats_counter: stats_counter.clone(),
         };
 
         services.spawn_future("topology", move |_| topology::start(task_data));
@@ -217,15 +260,14 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             None
         }
     });
-    let leader_secrets = bootstrapped_node
+    let leader_secret = bootstrapped_node
         .settings
-        .secrets
-        .iter()
-        .map(|secret_path| {
+        .secret
+        .map::<Result<_, start_up::Error>, _>(|secret_path| {
             let secret = secure::NodeSecret::load_from_file(secret_path.as_path())?;
             if let (Some(leaders), Some(leader)) = (&bft_leaders, secret.bft()) {
                 let public_key = &leader.sig_key.to_public();
-                if !leaders.contains(&public_key) {
+                if !leaders.contains(public_key) {
                     tracing::warn!(
                         "node was started with a BFT secret key but the corresponding \
                         public key {} is not listed among consensus leaders",
@@ -238,9 +280,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
                 genesis_leader: secret.genesis(),
             })
         })
-        .collect::<Result<Vec<Leader>, start_up::Error>>()?;
-    let n_pools = leader_secrets.len();
-    let enclave = block_on(Enclave::from_vec(leader_secrets));
+        .transpose()?;
+    let enclave = Enclave::new(leader_secret);
 
     {
         let logs = leadership_logs.clone();
@@ -267,7 +308,7 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
     }
 
     {
-        let stats_counter = stats_counter.clone();
+        let blockchain_tip = blockchain_tip.clone();
         let process = fragment::Process::new(
             bootstrapped_node.settings.mempool.pool_max_entries.into(),
             bootstrapped_node.settings.mempool.log_max_entries.into(),
@@ -281,18 +322,18 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
 
         services.spawn_try_future("fragment", move |info| {
             process.start(
-                n_pools,
                 info,
                 stats_counter,
                 fragment_queue,
                 fragment_log_dir,
+                blockchain_tip,
             )
         });
     };
 
     if let Some(rest_context) = bootstrapped_node.rest_context {
         let full_context = rest::FullContext {
-            stats_counter,
+            stats_counter: simple_metrics_counter,
             network_task: network_msgbox,
             transaction_task: fragment_msgbox,
             topology_task: topology_msgbox,
@@ -300,6 +341,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             enclave,
             network_state,
             explorer: explorer.as_ref().map(|(_msg_box, context)| context.clone()),
+            #[cfg(feature = "prometheus-metrics")]
+            prometheus: prometheus_metric,
         };
         block_on(async {
             let mut rest_context = rest_context.write().await;
@@ -419,7 +462,7 @@ async fn bootstrap_internal(
         })
     }
 
-    let block0_hash = block0.header.hash();
+    let block0_hash = block0.header().hash();
 
     let block0_explorer = block0.clone();
 
@@ -477,7 +520,7 @@ async fn bootstrap_internal(
 
     let explorer_db = if settings.explorer {
         futures::select! {
-            explorer_result = explorer::ExplorerDb::bootstrap(block0_explorer, &blockchain, blockchain_tip.clone()).fuse() => {
+            explorer_result = explorer::ExplorerDb::bootstrap(block0_explorer, &blockchain).fuse() => {
                 Some(explorer_result?)
             },
             _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),
@@ -628,8 +671,15 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             let context = Arc::new(RwLock::new(context));
 
             let service_context = context.clone();
-            let explorer = settings.explorer;
-            let server_handler = rest::start_rest_server(rest, explorer, context.clone());
+            let rest = rest::Config {
+                listen: rest.listen,
+                tls: rest.tls,
+                cors: rest.cors,
+                enable_explorer: settings.explorer,
+                #[cfg(feature = "prometheus-metrics")]
+                enable_prometheus: settings.prometheus,
+            };
+            let server_handler = rest::start_rest_server(rest, context.clone());
             services.spawn_future("rest", move |info| async move {
                 service_context.write().await.set_span(info.span().clone());
                 server_handler.await

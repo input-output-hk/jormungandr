@@ -6,6 +6,7 @@ mod blockdate;
 mod certificate;
 mod committee;
 mod config;
+mod config_params;
 mod fragment;
 mod fragment_log;
 mod fragment_log_persistent;
@@ -42,6 +43,7 @@ pub use self::certificate::{
 };
 pub use self::committee::CommitteeIdDef;
 pub use self::config::*;
+pub use self::config_params::{config_params_documented_example, ConfigParam, ConfigParams};
 pub use self::fragment::FragmentDef;
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
 pub use self::fragment_log_persistent::{
@@ -52,10 +54,8 @@ pub use self::fragments_batch::FragmentsBatch;
 pub use self::fragments_processing_summary::{
     FragmentRejectionReason, FragmentsProcessingSummary, RejectedFragmentInfo,
 };
-pub use self::leadership_log::{
-    EnclaveLeaderId, LeadershipLog, LeadershipLogId, LeadershipLogStatus,
-};
-pub use self::linear_fee::LinearFeeDef;
+pub use self::leadership_log::{LeadershipLog, LeadershipLogId, LeadershipLogStatus};
+pub use self::linear_fee::{LinearFeeDef, PerCertificateFeeDef, PerVoteCertificateFeeDef};
 pub use self::old_address::OldAddress;
 pub use self::peer_stats::{PeerRecord, PeerStats, Subscription};
 pub use self::ratio::{ParseRatioError, Ratio};
@@ -73,6 +73,6 @@ pub use self::transaction_witness::TransactionWitness;
 pub use self::utxo_info::{UTxOInfo, UTxOOutputInfo};
 pub use self::value::{Value, ValueDef};
 pub use self::vote::{
-    serde_base64_bytes, Payload, PrivateTallyState, Tally, TallyResult, VotePlanDef,
-    VotePlanStatus, VoteProposalStatus, MEMBER_PUBLIC_KEY_BECH32_HRP,
+    serde_base64_bytes, AccountVotes, PrivateTallyState, Tally, TallyResult, VotePayload, VotePlan,
+    VotePlanId, VotePlanStatus, VotePrivacy, VoteProposalStatus,
 };

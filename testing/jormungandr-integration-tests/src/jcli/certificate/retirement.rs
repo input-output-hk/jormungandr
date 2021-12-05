@@ -1,9 +1,9 @@
-use crate::common::{jcli::JCli, startup::create_new_key_pair};
-use chain_crypto::{Curve25519_2HashDh, Ed25519, SumEd25519_12};
+use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::PoolId, testing::builders::cert_builder::build_stake_pool_retirement_cert,
 };
 use jormungandr_lib::interfaces::Certificate;
+use jormungandr_testing_utils::testing::{jcli::JCli, startup::create_new_key_pair};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
@@ -15,7 +15,7 @@ pub fn jcli_creates_correct_retirement_certificate() {
 
     let owner = create_new_key_pair::<Ed25519>();
     let kes = create_new_key_pair::<SumEd25519_12>();
-    let vrf = create_new_key_pair::<Curve25519_2HashDh>();
+    let vrf = create_new_key_pair::<RistrettoGroup2HashDh>();
 
     let certificate = jcli.certificate().new_stake_pool_registration(
         &kes.identifier().to_bech32_str(),
@@ -44,8 +44,8 @@ pub fn jcli_creates_correct_retirement_certificate() {
 }
 
 pub fn assert_new_stake_pool_retirement(stake_pool_id: &str) -> String {
-    let pool_id = PoolId::from_str(&stake_pool_id).unwrap();
+    let pool_id = PoolId::from_str(stake_pool_id).unwrap();
     let start_validity = 0u64;
     let certificate = build_stake_pool_retirement_cert(pool_id, start_validity);
-    Certificate::from(certificate).to_bech32().unwrap()
+    Certificate::from(certificate).to_bech32m().unwrap()
 }

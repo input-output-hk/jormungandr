@@ -8,7 +8,7 @@ use std::{convert::TryFrom, fmt, str::FromStr as _};
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-pub struct SlotDuration(pub(crate) u8);
+pub struct SlotDuration(u8);
 
 impl SlotDuration {
     /// minimal value for the slot duration
@@ -18,7 +18,7 @@ impl SlotDuration {
     ///
     /// assert_eq!(SlotDuration::MINIMUM, SlotDuration::new(1).unwrap())
     /// ```
-    pub const MINIMUM: Self = SlotDuration(MINIMUM_SLOT_DURATION);
+    pub const MINIMUM: Self = Self(MINIMUM_SLOT_DURATION);
     /// maximum value for the slot duration
     ///
     /// ```
@@ -26,7 +26,7 @@ impl SlotDuration {
     ///
     /// assert_eq!(SlotDuration::MAXIMUM, SlotDuration::new(255).unwrap())
     /// ```
-    pub const MAXIMUM: Self = SlotDuration(MAXIMUM_SLOT_DURATION);
+    pub const MAXIMUM: Self = Self(MAXIMUM_SLOT_DURATION);
 
     /// create a new SlotDuration value
     ///
@@ -37,7 +37,7 @@ impl SlotDuration {
         if v < MINIMUM_SLOT_DURATION || MAXIMUM_SLOT_DURATION < v {
             None
         } else {
-            Some(SlotDuration(v))
+            Some(Self(v))
         }
     }
 }
@@ -198,7 +198,7 @@ mod test {
         const VALUE: u8 = 15;
         const DURATION_STR: &str = "---\n15s";
 
-        let decoded: SlotDuration = serde_yaml::from_str(&DURATION_STR).unwrap();
+        let decoded: SlotDuration = serde_yaml::from_str(DURATION_STR).unwrap();
 
         assert_eq!(decoded.0, VALUE)
     }

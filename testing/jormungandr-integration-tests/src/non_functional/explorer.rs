@@ -1,22 +1,19 @@
 use super::NodeStuckError;
-use crate::common::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess},
-    startup,
-};
-
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{ActiveSlotCoefficient, KesUpdateSpeed},
+    interfaces::{ActiveSlotCoefficient, BlockDate, KesUpdateSpeed},
 };
 use jormungandr_testing_utils::{
     testing::{
-        benchmark_consumption, benchmark_endurance, node::explorer::load::ExplorerRequestGen,
-        Endurance, EnduranceBenchmarkRun, Thresholds,
+        benchmark_consumption, benchmark_endurance,
+        jcli::JCli,
+        jormungandr::{ConfigurationBuilder, JormungandrProcess},
+        node::explorer::load::ExplorerRequestGen,
+        startup, BlockDateGenerator, Endurance, EnduranceBenchmarkRun, Thresholds,
     },
     wallet::Wallet,
 };
-use jortestkit::load::{Configuration, Monitor};
+use jortestkit::load::{ConfigurationBuilder as LoadConfigurationBuilder, Monitor};
 use std::{str::FromStr, time::Duration};
 
 #[test]
@@ -48,12 +45,17 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
             .for_process("Node with Explorer", jormungandr.pid() as usize)
             .start();
 
+    let shift = BlockDate::new(0, 4);
+    let settings = jormungandr.rest().settings().unwrap();
+    let expiry_block_date_generator = BlockDateGenerator::rolling(&settings, shift.into(), false);
+
     loop {
         let transaction = jcli
             .transaction_builder(jormungandr.genesis_block_hash())
             .new_transaction()
             .add_account(&sender.address().to_string(), &output_value.into())
             .add_output(&receiver.address().to_string(), output_value.into())
+            .set_expiry_date(expiry_block_date_generator.block_date().into())
             .finalize()
             .seal_with_witness_for_address(&sender)
             .to_message();
@@ -102,19 +104,15 @@ fn check_explorer_and_rest_are_in_sync(
     let block_tip = Hash::from_str(&jcli.rest().v0().tip(&jormungandr.rest_uri())).unwrap();
 
     let explorer = jormungandr.explorer();
-    let block = explorer
+    let last_block = explorer
         .last_block()
-        .map_err(NodeStuckError::InternalExplorerError)?
-        .data
-        .unwrap()
-        .tip
-        .block;
+        .map_err(NodeStuckError::InternalExplorerError)?;
 
-    if block_tip == Hash::from_str(&block.id).unwrap() {
+    if block_tip == Hash::from_str(&last_block.block().id).unwrap() {
         Ok(())
     } else {
         Err(NodeStuckError::ExplorerTipIsOutOfSync {
-            actual: Hash::from_str(&block.id).unwrap(),
+            actual: Hash::from_str(&last_block.block().id).unwrap(),
             expected: block_tip,
             logs: jormungandr.logger.get_log_content(),
         })
@@ -147,14 +145,12 @@ pub fn explorer_load_test() {
     request_gen
         .do_setup(addresses.iter().map(|x| x.address().to_string()).collect())
         .unwrap();
-    let config = Configuration::duration(
-        100,
-        std::time::Duration::from_secs(60),
-        100,
-        Monitor::Progress(100),
-        0,
-        1_000,
-    );
+    let config = LoadConfigurationBuilder::duration(Duration::from_secs(60))
+        .thread_no(30)
+        .step_delay(Duration::from_millis(100))
+        .monitor(Monitor::Progress(100))
+        .status_pace(Duration::from_secs(1))
+        .build();
     let stats = jortestkit::load::start_sync(request_gen, config, "Explorer load test");
     assert!((stats.calculate_passrate() as u32) > 95);
 }

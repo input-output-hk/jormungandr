@@ -1,5 +1,6 @@
 use crate::jcli_lib::rest::{Error, RestArgs};
 use crate::jcli_lib::utils::{AccountId, OutputFormat};
+use jormungandr_lib::interfaces::AccountState;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -24,13 +25,20 @@ impl Account {
             output_format,
             account_id,
         } = self;
-        let state = args
-            .client()?
-            .get(&["v0", "account", &account_id.to_url_arg()])
-            .execute()?
-            .json()?;
-        let formatted = output_format.format_json(state)?;
+        let state = request_account_information(args, account_id)?;
+        let formatted = output_format.format_json(serde_json::to_value(state)?)?;
         println!("{}", formatted);
         Ok(())
     }
+}
+
+pub fn request_account_information(
+    args: RestArgs,
+    account_id: AccountId,
+) -> Result<AccountState, Error> {
+    args.client()?
+        .get(&["v0", "account", &account_id.to_url_arg()])
+        .execute()?
+        .json()
+        .map_err(Into::into)
 }

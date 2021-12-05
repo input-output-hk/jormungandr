@@ -6,9 +6,7 @@ extern crate lazy_static;
 pub mod jcli;
 #[cfg(test)]
 pub mod jormungandr;
-#[cfg(test)]
+#[cfg(all(test, feature = "network"))]
 pub mod networking;
-#[cfg(test)]
+#[cfg(all(test, feature = "non-functional"))]
 pub mod non_functional;
-
-pub mod common;

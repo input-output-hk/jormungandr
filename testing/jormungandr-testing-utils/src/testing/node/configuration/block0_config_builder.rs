@@ -7,8 +7,8 @@ use jormungandr_lib::{
     interfaces::{
         ActiveSlotCoefficient, Block0Configuration, BlockContentMaxSize, BlockchainConfiguration,
         CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, FeesGoTo, Initial, InitialUTxO,
-        KesUpdateSpeed, NumberOfSlotsPerEpoch, Ratio, RewardConstraints, RewardParams,
-        SlotDuration, TaxType, Value,
+        KesUpdateSpeed, NumberOfSlotsPerEpoch, ProposalExpiration, Ratio, RewardConstraints,
+        RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -50,6 +50,7 @@ impl Block0ConfigurationBuilder {
                 consensus_leader_ids: vec![],
                 consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::MAXIMUM,
                 linear_fees: LinearFee::new(0, 0, 0),
+                proposal_expiration: ProposalExpiration::default(),
                 kes_update_speed: KesUpdateSpeed::new(12 * 3600).unwrap(),
                 treasury: Some(1_000_000.into()),
                 treasury_parameters: Some(TaxType {
@@ -65,6 +66,7 @@ impl Block0ConfigurationBuilder {
                     epoch_rate: NonZeroU32::new(1).unwrap(),
                 }),
                 committees: Vec::new(),
+                tx_max_expiry_epochs: Some(100),
             },
             initial: vec![],
         }
@@ -74,6 +76,15 @@ impl Block0ConfigurationBuilder {
         self.initial.extend(funds.iter().cloned());
         self
     }
+
+    pub fn with_block_content_max_size(
+        &mut self,
+        block_content_max_size: BlockContentMaxSize,
+    ) -> &mut Self {
+        self.blockchain_configuration.block_content_max_size = block_content_max_size;
+        self
+    }
+
     pub fn with_leaders(&mut self, leaders_ids: Vec<ConsensusLeaderId>) -> &mut Self {
         self.blockchain_configuration.consensus_leader_ids = leaders_ids;
         self
@@ -131,16 +142,16 @@ impl Block0ConfigurationBuilder {
         self
     }
 
-    pub fn with_block_content_max_size(
-        &mut self,
-        block_content_max_size: BlockContentMaxSize,
-    ) -> &mut Self {
-        self.blockchain_configuration.block_content_max_size = block_content_max_size;
+    pub fn with_linear_fees(&mut self, linear_fees: LinearFee) -> &mut Self {
+        self.blockchain_configuration.linear_fees = linear_fees;
         self
     }
 
-    pub fn with_linear_fees(&mut self, linear_fees: LinearFee) -> &mut Self {
-        self.blockchain_configuration.linear_fees = linear_fees;
+    pub fn with_proposal_expiration(
+        &mut self,
+        proposal_expiration: ProposalExpiration,
+    ) -> &mut Self {
+        self.blockchain_configuration.proposal_expiration = proposal_expiration;
         self
     }
 
@@ -156,6 +167,11 @@ impl Block0ConfigurationBuilder {
 
     pub fn with_fees_go_to(&mut self, fees_go_to: Option<FeesGoTo>) -> &mut Self {
         self.blockchain_configuration.fees_go_to = fees_go_to;
+        self
+    }
+
+    pub fn with_tx_max_expiry_epochs(&mut self, tx_max_expiry_epochs: u8) -> &mut Self {
+        self.blockchain_configuration.tx_max_expiry_epochs = Some(tx_max_expiry_epochs);
         self
     }
 

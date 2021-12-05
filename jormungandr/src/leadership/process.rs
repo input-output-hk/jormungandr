@@ -1,7 +1,7 @@
 use crate::{
     blockcfg::{
-        ApplyBlockLedger, Block, BlockVersion, Contents, HeaderBuilderNew, LeaderOutput,
-        Leadership, LedgerParameters,
+        block_builder, ApplyBlockLedger, BlockVersion, Contents, LeaderOutput, Leadership,
+        LedgerParameters,
     },
     blockchain::{new_epoch_leadership_from, EpochLeadership, LeadershipBlock, Ref, Tip},
     intercom::{unary_reply, BlockMsg, Error as IntercomError, TransactionMsg},
@@ -17,7 +17,7 @@ use chain_time::{
 };
 use futures::{future::TryFutureExt, sink::SinkExt};
 use jormungandr_lib::{
-    interfaces::{EnclaveLeaderId, LeadershipLog, LeadershipLogStatus},
+    interfaces::{LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
 };
 use std::cmp::Ordering;
@@ -146,26 +146,16 @@ impl Module {
         }
     }
 
-    /// this function compute when the next epoch will start, next epoch
-    /// from the local system time point of view. Meaning this is not the
-    /// epoch of the current tip
-    fn next_epoch_time(&self) -> Result<SystemTime, LeadershipError> {
-        let current_position = self.current_slot_position()?;
-        let epoch = Epoch(current_position.epoch.0 + 1);
-        let slot = EpochSlotOffset(0);
-
-        Ok(self.slot_time(epoch, slot))
+    fn epoch_time(&self, epoch: Epoch) -> Result<SystemTime, LeadershipError> {
+        Ok(self.slot_time(epoch, EpochSlotOffset(0)))
     }
 
-    fn next_epoch_instant(&self) -> Result<Instant, LeadershipError> {
-        let next_epoch_time = self.next_epoch_time()?;
+    fn epoch_instant(&self, epoch: Epoch) -> Result<Instant, LeadershipError> {
+        let epoch_time = self.epoch_time(epoch)?;
 
-        match next_epoch_time
-            .as_ref()
-            .duration_since(SystemTime::now().into())
-        {
+        match epoch_time.as_ref().duration_since(SystemTime::now().into()) {
             Err(err) => {
-                // only possible if `next_epoch_time` is earlier than now. I.e. if the next
+                // only possible if `epoch_time` is earlier than now. I.e. if the next
                 // epoch is in the past.
 
                 unreachable!(
@@ -254,7 +244,6 @@ impl Module {
             .as_mut()
             .expect("schedule must be available at this point")
             .peek()
-            .await
         {
             None => {
                 // the schedule is empty we were in the _action_ mode, so that means
@@ -262,14 +251,13 @@ impl Module {
                 // wait for the next epoch
 
                 tracing::debug!("no item scheduled, waiting for next epoch");
-                self.next_epoch_instant()
+                self.epoch_instant(Epoch(self.schedule.as_ref().unwrap().epoch().0 + 1))
             }
             Some(event) => {
                 let span = tracing::span!(
                     parent: self.service_info.span(),
                     Level::TRACE, "leader_event",
                     event_date = %event.date.to_string(),
-                    leader_id = %event.id.to_string()
                 );
 
                 let epoch = Epoch(event.date.epoch);
@@ -298,7 +286,7 @@ impl Module {
 
     async fn action(mut self) -> Result<Self, LeadershipError> {
         match self.schedule.as_mut() {
-            Some(schedule) => match schedule.next().await {
+            Some(schedule) => match schedule.next_event() {
                 Some(event) => self.action_entry(event).await,
                 None => self.action_schedule().await,
             },
@@ -312,7 +300,7 @@ impl Module {
         let epoch = Epoch(event.date.epoch);
         let slot = EpochSlotOffset(event.date.slot_id);
         let scheduled_at_time = module.slot_time(epoch, slot);
-        let log = LeadershipLog::new(event.id, event.date.into(), scheduled_at_time);
+        let log = LeadershipLog::new(event.date.into(), scheduled_at_time);
 
         let entry = match module.logs.insert(log).await {
             Ok(log) => Entry { event, log },
@@ -335,9 +323,8 @@ impl Module {
 
         let span = span!(
             parent: self.service_info.span(),
-            Level::TRACE,
+            Level::DEBUG,
             "action_run_entry",
-            leader_id = %entry.event.id.to_string(),
             event_date = %entry.event.date.to_string(),
             event_start = %event_start.to_string(),
             event_end = %event_end.to_string()
@@ -499,12 +486,11 @@ impl Module {
         let ledger_parameters = leadership.ledger_parameters.clone();
 
         let ledger = ledger
-            .begin_block((*ledger_parameters).clone(), chain_length, event.date)
+            .begin_block(chain_length, event.date)
             .map_err(Box::new)?;
 
         let (contents, ledger) = prepare_block(
             pool,
-            event.id,
             ledger,
             ledger_parameters,
             soft_deadline_future,
@@ -520,63 +506,69 @@ impl Module {
                 LeaderOutput::GenesisPraos(..) => BlockVersion::KesVrfproof,
             };
 
-            let hdr_builder = HeaderBuilderNew::new(ver, &contents)
-                .set_parent(&parent_id, chain_length)
-                .set_date(event.date);
+            let LeaderEvent { date, output } = event;
 
-            match event.output {
-                LeaderOutput::None => {
-                    let header = hdr_builder
+            match output {
+                LeaderOutput::None => block_builder(ver, contents, |hdr_builder| {
+                    Ok(hdr_builder
+                        .set_parent(&parent_id, chain_length)
+                        .set_date(date)
                         .into_unsigned_header()
                         .expect("Valid Header Builder")
-                        .generalize();
-                    Ok(Some(Block { header, contents }))
-                }
+                        .generalize())
+                })
+                .map(Some),
                 LeaderOutput::Bft(leader_id) => {
-                    let final_builder = hdr_builder
-                        .into_bft_builder()
-                        .expect("Valid Header Builder")
-                        .set_consensus_data(&leader_id);
-                    enclave
-                        .query_header_bft_finalize(final_builder, event.id)
-                        .map_ok(|h| {
-                            Some(Block {
-                                header: h.generalize(),
-                                contents,
-                            })
-                        })
-                        .or_else(|e| async move {
+                    let block = block_builder(ver, contents, |hdr_builder| {
+                        let final_builder = hdr_builder
+                            .set_parent(&parent_id, chain_length)
+                            .set_date(date)
+                            .into_bft_builder()
+                            .expect("Valid Header Builder")
+                            .set_consensus_data(&leader_id);
+
+                        enclave
+                            .query_header_bft_finalize(final_builder)
+                            .map(|h| h.generalize())
+                    });
+
+                    match block {
+                        Ok(block) => Ok(Some(block)),
+                        Err(e) => {
                             event_logs_error
                                 .set_status(LeadershipLogStatus::Rejected {
                                     reason: format!("Cannot sign the block: {}", e),
                                 })
                                 .await;
                             Ok(None)
-                        })
-                        .await
+                        }
+                    }
                 }
                 LeaderOutput::GenesisPraos(node_id, vrfproof) => {
-                    let final_builder = hdr_builder
-                        .into_genesis_praos_builder()
-                        .expect("Valid Header Builder")
-                        .set_consensus_data(&node_id, &vrfproof.into());
-                    enclave
-                        .query_header_genesis_praos_finalize(final_builder, event.id)
-                        .map_ok(|h| {
-                            Some(Block {
-                                header: h.generalize(),
-                                contents,
-                            })
-                        })
-                        .or_else(|e| async move {
+                    let block = block_builder(ver, contents, |hdr_builder| {
+                        let final_builder = hdr_builder
+                            .set_parent(&parent_id, chain_length)
+                            .set_date(date)
+                            .into_genesis_praos_builder()
+                            .expect("Valid Header Builder")
+                            .set_consensus_data(&node_id, &vrfproof.into());
+
+                        enclave
+                            .query_header_genesis_praos_finalize(final_builder)
+                            .map(|h| h.generalize())
+                    });
+
+                    match block {
+                        Ok(block) => Ok(Some(block)),
+                        Err(e) => {
                             event_logs_error
                                 .set_status(LeadershipLogStatus::Rejected {
                                     reason: format!("Cannot sign the block: {}", e),
                                 })
                                 .await;
                             Ok(None)
-                        })
-                        .await
+                        }
+                    }
                 }
             }
         };
@@ -584,10 +576,10 @@ impl Module {
         match signing {
             Ok(maybe_block) => {
                 if let Some(block) = maybe_block {
-                    let id = block.header.hash();
-                    let parent = block.header.block_parent_hash();
-                    let chain_length: u32 = block.header.chain_length().into();
-                    let ledger = ledger.finish(&block.header.get_consensus_eval_context());
+                    let id = block.header().hash();
+                    let parent = block.header().block_parent_hash();
+                    let chain_length: u32 = block.header().chain_length().into();
+                    let ledger = ledger.finish(&block.header().get_consensus_eval_context());
                     let leadership_block = LeadershipBlock {
                         block,
                         new_ledger: ledger,
@@ -619,7 +611,7 @@ impl Module {
         let parent_span = self.service_info.span();
         let span = tracing::span!(
             parent: parent_span,
-            Level::TRACE,
+            Level::DEBUG,
             "action_schedule",
             epoch_tip = epoch_tip.0,
             current_epoch = current_slot_position.epoch.0,
@@ -708,7 +700,6 @@ impl Entry {
 
 async fn prepare_block(
     mut fragment_pool: MessageBox<TransactionMsg>,
-    leader_id: EnclaveLeaderId,
     ledger: ApplyBlockLedger,
     epoch_parameters: Arc<LedgerParameters>,
     soft_deadline_future: futures::channel::oneshot::Receiver<()>,
@@ -718,10 +709,7 @@ async fn prepare_block(
 
     let (reply_handle, reply_future) = unary_reply();
 
-    let pool_idx: u32 = leader_id.into();
-
     let msg = TransactionMsg::SelectTransactions {
-        pool_idx: pool_idx as usize,
         ledger,
         ledger_params: epoch_parameters.as_ref().clone(),
         selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,

@@ -1,23 +1,25 @@
 use crate::{
-    fragment::{Logs, Pools},
+    blockchain::Tip,
+    fragment::{Logs, Pool},
     intercom::{NetworkMsg, TransactionMsg},
-    stats_counter::StatsCounter,
+    metrics::{Metrics, MetricsBackend},
     utils::{
         async_msg::{MessageBox, MessageQueue},
         task::TokioServiceInfo,
     },
 };
 
+use chain_core::property::Fragment;
 use std::collections::HashMap;
-use std::fs::{self, File};
 use std::io;
 use std::path::{Path, PathBuf};
+use tokio::fs::{self, File};
 
 use chrono::{Duration, DurationRound, Utc};
-use futures::future;
+use futures::{future, TryFutureExt};
 use thiserror::Error;
 use tokio_stream::StreamExt;
-use tracing::{span, Level};
+use tracing::{debug_span, span, Level};
 use tracing_futures::Instrument;
 
 pub struct Process {
@@ -49,11 +51,11 @@ impl Process {
 
     pub async fn start<P: AsRef<Path>>(
         self,
-        n_pools: usize,
         service_info: TokioServiceInfo,
-        stats_counter: StatsCounter,
+        stats_counter: Metrics,
         mut input: MessageQueue<TransactionMsg>,
         persistent_log_dir: Option<P>,
+        tip: Tip,
     ) -> Result<(), Error> {
         async fn hourly_wakeup(enabled: bool) {
             if enabled {
@@ -67,7 +69,7 @@ impl Process {
             }
         }
 
-        fn open_log_file(dir: &Path) -> Result<File, Error> {
+        async fn open_log_file(dir: &Path) -> Result<File, Error> {
             let mut path: PathBuf = dir.into();
             if !path.exists() {
                 std::fs::create_dir_all(dir).map_err(Error::PersistentLog)?;
@@ -81,15 +83,15 @@ impl Process {
                 .read(false)
                 .open(path)
                 .map_err(Error::PersistentLog)
+                .await
         }
 
-        let min_logs_size = n_pools * self.pool_max_entries;
-        if self.logs_max_entries < min_logs_size {
+        if self.logs_max_entries < self.pool_max_entries {
             tracing::warn!(
-                "Having 'log_max_entries' < 'pool_max_entries' * n_pools is not recommendend. Overriding 'log_max_entries' to {}", min_logs_size
+                "Having 'log_max_entries' < 'pool_max_entries' is not recommendend. Overriding 'log_max_entries' to {}", self.pool_max_entries
             );
         }
-        let logs = Logs::new(std::cmp::max(self.logs_max_entries, min_logs_size));
+        let logs = Logs::new(std::cmp::max(self.logs_max_entries, self.pool_max_entries));
 
         let mut wakeup = Box::pin(hourly_wakeup(persistent_log_dir.is_some()));
 
@@ -97,22 +99,24 @@ impl Process {
             let persistent_log = match &persistent_log_dir {
                 None => None,
                 Some(dir) => {
-                    let file = open_log_file(dir.as_ref())?;
+                    let file = open_log_file(dir.as_ref()).await?;
                     Some(file)
                 }
             };
 
-            let mut pool = Pools::new(
+            let mut pool = Pool::new(
                 self.pool_max_entries,
-                n_pools,
                 logs,
                 self.network_msg_box,
                 persistent_log,
+                tip,
+                stats_counter.clone()
             );
 
             loop {
                 tokio::select! {
                     maybe_msg = input.next() => {
+                        tracing::trace!("handling new fragment task item");
                         match maybe_msg {
                             None => break,
                             Some(msg) => match msg {
@@ -127,24 +131,35 @@ impl Process {
                                     // This interface only makes sense for messages coming from arbitrary users (like transaction, certificates),
                                     // for other message we don't want to receive them through this interface, and possibly
                                     // put them in another pool.
+                                    let span = debug_span!("incoming_fragments");
+                                    async {
+                                        let stats_counter = stats_counter.clone();
+                                        let summary = pool
+                                            .insert_and_propagate_all(origin, fragments.into_iter().map(|el| {
+                                                let id = el.id();
+                                                (el, id)
+                                            }).collect(), fail_fast)
+                                            .await?;
 
-                                    let stats_counter = stats_counter.clone();
+                                        stats_counter.add_tx_recv_cnt(summary.accepted.len());
 
-                                    let summary = pool
-                            .insert_and_propagate_all(origin, fragments, fail_fast)
-                            .await?;
-
-                        stats_counter.add_tx_recv_cnt(summary.accepted.len());
-
-                        reply_handle.reply_ok(summary);
+                                        reply_handle.reply_ok(summary);
+                                        Ok::<(), Error>(())
+                                    }
+                                    .instrument(span)
+                                    .await?;
                                 }
                                 TransactionMsg::RemoveTransactions(fragment_ids, status) => {
-                                    tracing::debug!(
-                                        "removing fragments added to block {:?}: {:?}",
-                                        status,
-                                        fragment_ids
-                                    );
-                                    pool.remove_added_to_block(fragment_ids, status);
+                                    let span = debug_span!("remove_transactions_in_block");
+                                    async {
+                                        tracing::debug!(
+                                            "removing fragments added to block {:?}: {:?}",
+                                            status,
+                                            fragment_ids
+                                        );
+                                        pool.remove_added_to_block(fragment_ids, status);
+                                        pool.remove_expired_txs().await;
+                                    }.instrument(span).await
                                 }
                                 TransactionMsg::GetLogs(reply_handle) => {
                                     let logs = pool.logs().logs().cloned().collect();
@@ -159,8 +174,11 @@ impl Process {
                                     );
                                     reply_handle.reply_ok(statuses);
                                 }
+                                TransactionMsg::BranchSwitch(fork_date) => {
+                                    tracing::debug!(%fork_date, "pruning logs after branch switch");
+                                    pool.prune_after_ledger_branch(fork_date);
+                                }
                                 TransactionMsg::SelectTransactions {
-                                    pool_idx,
                                     ledger,
                                     ledger_params,
                                     selection_alg,
@@ -168,9 +186,14 @@ impl Process {
                                     soft_deadline_future,
                                     hard_deadline_future,
                                 } => {
-                                    let contents = pool
+                                    let span = span!(
+                                        Level::DEBUG,
+                                        "fragment_selection",
+                                        kind = "older_first",
+                                    );
+                                    async {
+                                        let contents = pool
                                         .select(
-                                            pool_idx,
                                             ledger,
                                             ledger_params,
                                             selection_alg,
@@ -178,17 +201,25 @@ impl Process {
                                             hard_deadline_future,
                                         )
                                         .await;
-                                    reply_handle.reply_ok(contents);
+                                        reply_handle.reply_ok(contents);
+                                    }
+                                    .instrument(span)
+                                    .await
                                 }
                             }
-                        }
+                        };
+                        tracing::trace!("item handling finished");
                     }
                     _ = &mut wakeup => {
-                        pool.close_persistent_log();
-                        let dir = persistent_log_dir.as_ref().unwrap();
-                        let file = open_log_file(dir.as_ref())?;
-                        pool.set_persistent_log(file);
-                        wakeup = Box::pin(hourly_wakeup(true));
+                        async {
+                            pool.close_persistent_log().await;
+                            let dir = persistent_log_dir.as_ref().unwrap();
+                            let file = open_log_file(dir.as_ref()).await?;
+                            pool.set_persistent_log(file);
+                            wakeup = Box::pin(hourly_wakeup(true));
+                            Ok::<_, Error>(())
+                        }
+                        .instrument(debug_span!("persistent_log_rotation")).await?;
                     }
                 }
             }

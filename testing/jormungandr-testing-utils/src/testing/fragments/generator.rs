@@ -1,4 +1,6 @@
 use super::{FragmentSender, FragmentSenderError, MemPoolCheck};
+use crate::testing::vit::VoteCastCounter;
+use crate::testing::FragmentVerifier;
 use crate::testing::SyncNode;
 use crate::{
     stake_pool::StakePool,
@@ -11,24 +13,29 @@ use chain_impl_mockchain::{
     vote::Choice,
 };
 use chain_time::TimeEra;
-use jormungandr_lib::interfaces::BlockDate;
-use jortestkit::load::{RequestFailure, RequestGenerator};
+use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
 use std::iter;
+use std::time::Duration;
+use std::time::Instant;
 
 pub struct FragmentGenerator<'a, S: SyncNode + Send> {
     sender: Wallet,
     receiver: Wallet,
     active_stake_pools: Vec<StakePool>,
-    vote_plan_for_casting: Option<VotePlan>,
+    vote_plans_for_casting: Vec<VotePlan>,
     vote_plans_for_tally: Vec<VotePlan>,
     node: RemoteJormungandr,
     rand: OsRng,
+    vote_cast_register: Option<VoteCastCounter>,
     slots_per_epoch: u32,
     fragment_sender: FragmentSender<'a, S>,
     stake_pools_count: usize,
     vote_plans_for_tally_count: usize,
+    vote_plans_for_casting_count: usize,
 }
 
 impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
@@ -40,8 +47,10 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         slots_per_epoch: u32,
         stake_pools_count: usize,
         vote_plans_for_tally_count: usize,
+        vote_plans_for_casting_count: usize,
         fragment_sender: FragmentSender<'a, S>,
     ) -> Self {
+        assert!(vote_plans_for_casting_count > 1);
         assert!(stake_pools_count > 1);
         assert!(vote_plans_for_tally_count > 1);
 
@@ -49,14 +58,16 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             sender,
             receiver,
             active_stake_pools: vec![],
-            vote_plan_for_casting: None,
+            vote_plans_for_casting: vec![],
             vote_plans_for_tally: vec![],
             node,
+            vote_cast_register: None,
             rand: OsRng,
             slots_per_epoch,
             fragment_sender,
             stake_pools_count,
             vote_plans_for_tally_count,
+            vote_plans_for_casting_count,
         }
     }
 
@@ -64,33 +75,35 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         self.active_stake_pools.clone()
     }
 
-    pub fn prepare(&mut self, start_block_date: BlockDate) {
+    pub fn prepare(&mut self, start_block_date: BlockDateDto) {
         let time_era = start_block_date.time_era(self.slots_per_epoch);
+        let mut fragments = Vec::new();
+        let settings = self.node.rest().settings().unwrap();
+        let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
+        let fees = settings.fees;
 
         let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&self.sender)))
             .take(self.stake_pools_count)
             .collect();
 
-        for stake_pool in stake_pools.iter() {
-            self.fragment_sender
-                .send_pool_registration(&mut self.sender, &stake_pool, &self.node)
-                .unwrap();
-        }
+        let votes_plan_for_casting: Vec<VotePlan> = iter::from_fn(|| {
+            Some(
+                VotePlanBuilder::new()
+                    .proposals_count(256)
+                    .with_vote_start(start_block_date.shift_slot(5, &time_era).into())
+                    .with_tally_start(start_block_date.shift_epoch(5).into())
+                    .with_tally_end(start_block_date.shift_epoch(6).into())
+                    .build(),
+            )
+        })
+        .take(self.vote_plans_for_casting_count)
+        .collect();
 
-        let vote_plan_for_casting: VotePlan = VotePlanBuilder::new()
-            .with_vote_start(start_block_date.into())
-            .with_tally_start(start_block_date.shift_epoch(5).into())
-            .with_tally_end(start_block_date.shift_epoch(6).into())
-            .build();
-
-        self.fragment_sender
-            .send_vote_plan(&mut self.sender, &vote_plan_for_casting, &self.node)
-            .unwrap();
         let vote_plans_for_tally: Vec<VotePlan> = iter::from_fn(|| {
             Some(
                 VotePlanBuilder::new()
-                    .with_vote_start(start_block_date.into())
-                    .with_tally_start(start_block_date.shift_slot(1, &time_era).into())
+                    .with_vote_start(start_block_date.shift_slot(10, &time_era).into())
+                    .with_tally_start(start_block_date.shift_slot(11, &time_era).into())
                     .with_tally_end(start_block_date.shift_epoch(5).into())
                     .build(),
             )
@@ -98,14 +111,61 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         .take(self.vote_plans_for_tally_count)
         .collect();
 
-        for vote_plan in vote_plans_for_tally.iter() {
-            self.fragment_sender
-                .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
-                .unwrap();
+        for stake_pool in &stake_pools {
+            fragments.push(
+                self.sender
+                    .issue_pool_registration_cert(
+                        &block0_hash,
+                        &fees,
+                        self.fragment_sender.date(),
+                        stake_pool,
+                    )
+                    .unwrap(),
+            );
+            self.sender.confirm_transaction();
         }
-        self.vote_plan_for_casting = Some(vote_plan_for_casting);
+        for vote_plan_for_casting in &votes_plan_for_casting {
+            fragments.push(
+                self.sender
+                    .issue_vote_plan_cert(
+                        &block0_hash,
+                        &fees,
+                        self.fragment_sender.date(),
+                        vote_plan_for_casting,
+                    )
+                    .unwrap(),
+            );
+            self.sender.confirm_transaction();
+        }
+
+        for vote_plan_for_tally in &vote_plans_for_tally {
+            fragments.push(
+                self.sender
+                    .issue_vote_plan_cert(
+                        &block0_hash,
+                        &fees,
+                        self.fragment_sender.date(),
+                        vote_plan_for_tally,
+                    )
+                    .unwrap(),
+            );
+            self.sender.confirm_transaction();
+        }
+
+        self.fragment_sender
+            .send_batch_fragments(fragments, true, &self.node)
+            .unwrap();
+        FragmentVerifier::wait_for_all_fragments(Duration::from_secs(10), &self.node).unwrap();
+        self.vote_plans_for_casting = votes_plan_for_casting;
         self.vote_plans_for_tally = vote_plans_for_tally;
         self.active_stake_pools = stake_pools;
+        self.vote_cast_register = Some(VoteCastCounter::new(
+            1,
+            self.vote_plans_for_casting
+                .iter()
+                .map(|x| (x.to_id(), x.proposals().len() as u8))
+                .collect(),
+        ));
     }
 
     pub fn send_random(&mut self) -> Result<MemPoolCheck, FragmentSenderError> {
@@ -179,7 +239,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     .send_pool_retire(&mut self.sender, &stake_pool, &self.node)
             }
             7 => {
-                let block_date = BlockDate::from_str(
+                let block_date = BlockDateDto::from_str(
                     self.node
                         .rest()
                         .stats()
@@ -205,20 +265,37 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                 self.fragment_sender
                     .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
             }
-            8 => self.fragment_sender.send_vote_cast(
-                &mut self.sender,
-                self.vote_plan_for_casting.as_ref().unwrap(),
-                0,
-                &Choice::new(1),
-                &self.node,
-            ),
+            8 => {
+                let vote_cast_register = self
+                    .vote_cast_register
+                    .as_mut()
+                    .expect("please run 'prepare' method before running load");
+
+                // wallet_idx is always 0 because we are using only one wallet
+                let wallet_idx = 0;
+                let wallet_votes_to_cast = vote_cast_register.advance_single(wallet_idx).unwrap();
+                let votes_to_cast = wallet_votes_to_cast.get(0).unwrap();
+                let vote_plan = self
+                    .vote_plans_for_casting
+                    .iter()
+                    .find(|x| x.to_id() == votes_to_cast.id())
+                    .unwrap();
+
+                self.fragment_sender.send_vote_cast(
+                    &mut self.sender,
+                    vote_plan,
+                    votes_to_cast.range().start as u8,
+                    &Choice::new(1),
+                    &self.node,
+                )
+            }
             9 => {
                 let index = self.rand.next_u32() as usize % self.vote_plans_for_tally.len();
-                let vote_plan = self.vote_plans_for_tally.remove(index);
+                let vote_plan = self.vote_plans_for_tally.get(index).unwrap();
 
                 self.fragment_sender.send_vote_tally(
                     &mut self.sender,
-                    &vote_plan,
+                    vote_plan,
                     &self.node,
                     VoteTallyPayload::Public,
                 )
@@ -228,12 +305,18 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
     }
 }
 
-impl<'a, S: SyncNode + Send> RequestGenerator for FragmentGenerator<'a, S> {
-    fn next(
-        &mut self,
-    ) -> Result<Vec<Option<jortestkit::load::Id>>, jortestkit::load::RequestFailure> {
+impl<'a, S: SyncNode + Send + Sync> RequestGenerator for FragmentGenerator<'a, S> {
+    fn next(&mut self) -> Result<Request, RequestFailure> {
+        let start = Instant::now();
         self.send_random()
-            .map(|x| vec![Some(x.fragment_id().to_string())])
+            .map(|x| Request {
+                ids: vec![Some(x.fragment_id().to_string())],
+                duration: start.elapsed(),
+            })
             .map_err(|err| RequestFailure::General(err.to_string()))
+    }
+
+    fn split(self) -> (Self, Option<Self>) {
+        (self, None)
     }
 }

@@ -1,4 +1,7 @@
 use super::{FragmentExporter, FragmentExporterError};
+use crate::testing::network::controller::Controller;
+use crate::testing::network::Settings;
+use crate::testing::DummySyncNode;
 use crate::{
     stake_pool::StakePool,
     testing::{
@@ -10,15 +13,18 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
+    block::BlockDate,
     certificate::{DecryptedPrivateTally, VotePlan, VoteTallyPayload},
     fee::LinearFee,
     fragment::Fragment,
     vote::Choice,
 };
-use jormungandr_lib::interfaces::Address;
+use jormungandr_lib::interfaces::BlockchainConfiguration;
+use jormungandr_lib::interfaces::{Address, FragmentsProcessingSummary};
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{FragmentStatus, Value},
+    interfaces::{FragmentStatus, SettingsDto, Value},
+    time::SystemTime,
 };
 use std::time::Duration;
 
@@ -37,7 +43,7 @@ pub enum FragmentSenderError {
     TooManyAttemptsFailed { attempts: u8, alias: String },
     #[error("fragment verifier error")]
     FragmentVerifierError(#[from] super::FragmentVerifierError),
-    #[error("cannot send fragment")]
+    #[error(transparent)]
     SendFragmentError(#[from] super::node::FragmentNodeError),
     #[error("cannot sync node before sending fragment")]
     SyncNodeError(#[from] crate::testing::SyncNodeError),
@@ -45,7 +51,7 @@ pub enum FragmentSenderError {
     WalletError(#[from] crate::wallet::WalletError),
     #[error("wrong sender configuration: cannot use disable transaction auto confirm when sending more than one transaction")]
     TransactionAutoConfirmDisabledError,
-    #[error("fragment exporter error")]
+    #[error(transparent)]
     FragmentExporterError(#[from] FragmentExporterError),
 }
 
@@ -69,14 +75,21 @@ pub struct FragmentSender<'a, S: SyncNode + Send> {
     block0_hash: Hash,
     fees: LinearFee,
     setup: FragmentSenderSetup<'a, S>,
+    expiry_generator: BlockDateGenerator,
 }
 
 impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
-    pub fn new(block0_hash: Hash, fees: LinearFee, setup: FragmentSenderSetup<'a, S>) -> Self {
+    pub fn new(
+        block0_hash: Hash,
+        fees: LinearFee,
+        expiry_generator: BlockDateGenerator,
+        setup: FragmentSenderSetup<'a, S>,
+    ) -> Self {
         Self {
             block0_hash,
             fees,
             setup,
+            expiry_generator,
         }
     }
 
@@ -88,6 +101,17 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         self.fees
     }
 
+    pub fn date(&self) -> BlockDate {
+        self.expiry_generator.block_date()
+    }
+
+    pub fn set_valid_until(self, valid_until: BlockDate) -> Self {
+        Self {
+            expiry_generator: valid_until.into(),
+            ..self
+        }
+    }
+
     pub fn clone_with_setup<U: SyncNode + Send>(
         &self,
         setup: FragmentSenderSetup<'a, U>,
@@ -95,6 +119,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         FragmentSender {
             fees: self.fees(),
             block0_hash: self.block0_hash(),
+            expiry_generator: self.expiry_generator.clone(),
             setup,
         }
     }
@@ -104,11 +129,32 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         fragments: Vec<Fragment>,
         fail_fast: bool,
         node: &A,
-    ) -> Result<Vec<MemPoolCheck>, FragmentSenderError> {
+    ) -> Result<FragmentsProcessingSummary, FragmentSenderError> {
+        self.dump_fragments_if_enabled(&fragments, node)?;
         self.wait_for_node_sync_if_enabled(node)
             .map_err(FragmentSenderError::SyncNodeError)?;
         node.send_batch_fragments(fragments, fail_fast)
             .map_err(|e| e.into())
+    }
+
+    pub fn send_batch_fragments_in_chunks<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        fragments: Vec<Fragment>,
+        chunks_size: usize,
+        fail_fast: bool,
+        node: &A,
+    ) -> Result<FragmentsProcessingSummary, FragmentSenderError> {
+        let mut summary = FragmentsProcessingSummary {
+            accepted: Vec::new(),
+            rejected: Vec::new(),
+        };
+
+        for chunks in fragments.chunks(chunks_size) {
+            let chunk_summary = self.send_batch_fragments(chunks.to_vec(), fail_fast, node)?;
+            summary.accepted.extend(chunk_summary.accepted);
+            summary.rejected.extend(chunk_summary.rejected);
+        }
+        Ok(summary)
     }
 
     pub fn send_transaction<A: FragmentNode + SyncNode + Sized + Send>(
@@ -119,7 +165,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         value: Value,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         let address = to.address();
-        let fragment = from.transaction_to(&self.block0_hash, &self.fees, address, value)?;
+        let fragment = from.transaction_to(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            address,
+            value,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -132,8 +184,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         value: Value,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         let addresses: Vec<Address> = to.iter().map(|x| x.address()).collect();
-        let fragment =
-            from.transaction_to_many(&self.block0_hash, &self.fees, &addresses, value)?;
+        let fragment = from.transaction_to_many(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            &addresses,
+            value,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -144,7 +201,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_full_delegation_cert(&self.block0_hash, &self.fees, to)?;
+        let fragment = from.issue_full_delegation_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            to,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -155,8 +217,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         distribution: &[(&StakePool, u8)],
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment =
-            from.issue_split_delegation_cert(&self.block0_hash, &self.fees, distribution.to_vec())?;
+        let fragment = from.issue_split_delegation_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            distribution.to_vec(),
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -167,7 +233,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_owner_delegation_cert(&self.block0_hash, &self.fees, to)?;
+        let fragment = from.issue_owner_delegation_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            to,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -178,7 +249,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_pool_registration_cert(&self.block0_hash, &self.fees, to)?;
+        let fragment = from.issue_pool_registration_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            to,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -190,8 +266,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         update_stake_pool: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment =
-            from.issue_pool_update_cert(&self.block0_hash, &self.fees, to, update_stake_pool)?;
+        let fragment = from.issue_pool_update_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            to,
+            update_stake_pool,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -202,7 +283,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_pool_retire_cert(&self.block0_hash, &self.fees, to)?;
+        let fragment = from.issue_pool_retire_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            to,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -213,7 +299,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         vote_plan: &VotePlan,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_vote_plan_cert(&self.block0_hash, &self.fees, vote_plan)?;
+        let fragment = from.issue_vote_plan_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            vote_plan,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -229,6 +320,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         let fragment = from.issue_vote_cast_cert(
             &self.block0_hash,
             &self.fees,
+            self.expiry_generator.block_date(),
             vote_plan,
             proposal_index,
             choice,
@@ -252,7 +344,12 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         vote_plan: &VotePlan,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_encrypted_tally_cert(&self.block0_hash, &self.fees, vote_plan)?;
+        let fragment = from.issue_encrypted_tally_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            vote_plan,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -274,8 +371,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         via: &A,
         tally_type: VoteTallyPayload,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment =
-            from.issue_vote_tally_cert(&self.block0_hash, &self.fees, vote_plan, tally_type)?;
+        let fragment = from.issue_vote_tally_cert(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+            vote_plan,
+            tally_type,
+        )?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -293,7 +395,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, &wallet2, node, value)?;
+            self.send_transaction(&mut wallet1, wallet2, node, value)?;
         }
         Ok(())
     }
@@ -312,7 +414,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, &wallet2, node, value)?;
+            self.send_transaction(&mut wallet1, wallet2, node, value)?;
             std::thread::sleep(duration);
         }
         Ok(())
@@ -331,8 +433,8 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, &wallet2, node, value)?;
-            self.send_transaction(&mut wallet2, &wallet1, node, value)?;
+            self.send_transaction(&mut wallet1, wallet2, node, value)?;
+            self.send_transaction(&mut wallet2, wallet1, node, value)?;
         }
         Ok(())
     }
@@ -342,10 +444,14 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         check: &MemPoolCheck,
         node: &A,
     ) -> Result<(), FragmentSenderError> {
-        let verifier = FragmentVerifier;
-        match verifier.wait_fragment(Duration::from_secs(2), check.clone(), node)? {
+        match FragmentVerifier::wait_fragment(
+            Duration::from_secs(2),
+            check.clone(),
+            Default::default(),
+            node,
+        )? {
             FragmentStatus::Rejected { reason } => Err(FragmentSenderError::FragmentNotInBlock {
-                alias: FragmentNode::alias(node).to_string(),
+                alias: FragmentNode::alias(node),
                 reason,
                 logs: FragmentNode::log_content(node),
             }),
@@ -363,6 +469,20 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         if let Some(dump_folder) = &self.setup.dump_fragments {
             FragmentExporter::new(dump_folder.to_path_buf())?
                 .dump_to_file(fragment, sender, via)?;
+        }
+        Ok(())
+    }
+
+    fn dump_fragments_if_enabled(
+        &self,
+        fragments: &[Fragment],
+        via: &dyn FragmentNode,
+    ) -> Result<(), FragmentSenderError> {
+        if let Some(dump_folder) = &self.setup.dump_fragments {
+            let exporter = FragmentExporter::new(dump_folder.to_path_buf())?;
+            for fragment in fragments {
+                exporter.dump_to_file_no_sender(fragment, via)?;
+            }
         }
         Ok(())
     }
@@ -395,6 +515,11 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
                     println!("Ignoring error: {:?}", err);
                     return Ok(MemPoolCheck::new(fragment.id()));
                 }
+
+                if self.setup.stop_at_error {
+                    return Err(err);
+                }
+
                 println!(
                     "Error while sending fragment {:?}. Retrying if possible...",
                     err
@@ -412,7 +537,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
 
         Err(FragmentSenderError::TooManyAttemptsFailed {
             attempts: self.setup.attempts_count(),
-            alias: FragmentNode::alias(node).to_string(),
+            alias: FragmentNode::alias(node),
         })
     }
 
@@ -437,5 +562,166 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
             SyncWaitParams::network_size(nodes_length, 2).into(),
             "waiting for node to be in sync before sending transaction",
         )
+    }
+}
+
+impl<'a> From<&Settings> for FragmentSender<'a, DummySyncNode> {
+    fn from(settings: &Settings) -> Self {
+        Self::new(
+            settings.block0.to_block().header().hash().into(),
+            settings.block0.blockchain_configuration.linear_fees,
+            BlockDateGenerator::rolling_from_blockchain_config(
+                &settings.block0.blockchain_configuration,
+                BlockDate {
+                    epoch: 1,
+                    slot_id: 0,
+                },
+                false,
+            ),
+            Default::default(),
+        )
+    }
+}
+
+impl<'a> From<&Controller> for FragmentSender<'a, DummySyncNode> {
+    fn from(controller: &Controller) -> Self {
+        FragmentSender::from(controller.settings())
+    }
+}
+
+#[derive(Clone)]
+pub enum BlockDateGenerator {
+    Rolling {
+        block0_time: SystemTime,
+        slot_duration: u64,
+        slots_per_epoch: u32,
+        shift: BlockDate,
+        shift_back: bool,
+    },
+    Fixed(BlockDate),
+}
+
+impl BlockDateGenerator {
+    pub fn rolling_from_blockchain_config(
+        blockchain_configuration: &BlockchainConfiguration,
+        shift: BlockDate,
+        shift_back: bool,
+    ) -> Self {
+        Self::Rolling {
+            block0_time: blockchain_configuration.block0_date.into(),
+            slot_duration: {
+                let slot_duration: u8 = blockchain_configuration.slot_duration.into();
+                slot_duration.into()
+            },
+            slots_per_epoch: blockchain_configuration.slots_per_epoch.into(),
+            shift,
+            shift_back,
+        }
+    }
+
+    /// Returns `BlockDate`s that are always ahead or behind the current date by a certain shift
+    pub fn rolling(block0_settings: &SettingsDto, shift: BlockDate, shift_back: bool) -> Self {
+        Self::Rolling {
+            block0_time: block0_settings.block0_time,
+            slot_duration: block0_settings.slot_duration,
+            slots_per_epoch: block0_settings.slots_per_epoch,
+            shift,
+            shift_back,
+        }
+    }
+
+    /// Shifts the current date and returns the result on all subsequent calls
+    pub fn shifted(block0_settings: &SettingsDto, shift: BlockDate, shift_back: bool) -> Self {
+        let current = Self::current_blockchain_age(
+            block0_settings.block0_time,
+            block0_settings.slots_per_epoch,
+            block0_settings.slot_duration,
+        );
+
+        let shifted = if shift_back {
+            Self::shift_back(block0_settings.slots_per_epoch, current, shift)
+        } else {
+            Self::shift_ahead(block0_settings.slots_per_epoch, current, shift)
+        };
+
+        Self::Fixed(shifted)
+    }
+
+    pub fn block_date(&self) -> BlockDate {
+        match self {
+            Self::Fixed(valid_until) => *valid_until,
+            Self::Rolling {
+                block0_time,
+                slot_duration,
+                slots_per_epoch,
+                shift,
+                shift_back,
+            } => {
+                let current =
+                    Self::current_blockchain_age(*block0_time, *slots_per_epoch, *slot_duration);
+
+                if *shift_back {
+                    Self::shift_back(*slots_per_epoch, current, *shift)
+                } else {
+                    Self::shift_ahead(*slots_per_epoch, current, *shift)
+                }
+            }
+        }
+    }
+
+    pub fn shift_ahead(slots_per_epoch: u32, date: BlockDate, shift: BlockDate) -> BlockDate {
+        if shift.slot_id >= slots_per_epoch {
+            panic!(
+                "Requested shift by {} but an epoch has {} slots",
+                shift, slots_per_epoch
+            );
+        }
+
+        let epoch = date.epoch + shift.epoch + (date.slot_id + shift.slot_id) / slots_per_epoch;
+        let slot_id = (date.slot_id + shift.slot_id) % slots_per_epoch;
+
+        BlockDate { epoch, slot_id }
+    }
+
+    pub fn shift_back(slots_per_epoch: u32, date: BlockDate, shift: BlockDate) -> BlockDate {
+        if shift.slot_id >= slots_per_epoch {
+            panic!(
+                "Requested shift by -{} but an epoch has {} slots",
+                shift, slots_per_epoch
+            );
+        }
+
+        let epoch = date.epoch - shift.epoch - (date.slot_id + shift.slot_id) / slots_per_epoch;
+        let slot_id = (date.slot_id + shift.slot_id) % slots_per_epoch;
+
+        BlockDate { epoch, slot_id }
+    }
+
+    pub fn current_blockchain_age(
+        block0_time: SystemTime,
+        slots_per_epoch: u32,
+        slot_duration: u64,
+    ) -> BlockDate {
+        let now = SystemTime::now();
+
+        let slots_since_block0 = now
+            .duration_since(block0_time)
+            .unwrap_or_else(|_| jormungandr_lib::time::Duration::from_millis(0))
+            .as_secs()
+            / slot_duration;
+
+        let epoch = slots_since_block0 / slots_per_epoch as u64;
+        let slot_id = slots_since_block0 % slots_per_epoch as u64;
+
+        BlockDate {
+            epoch: epoch as u32,
+            slot_id: slot_id as u32,
+        }
+    }
+}
+
+impl From<BlockDate> for BlockDateGenerator {
+    fn from(from: BlockDate) -> Self {
+        Self::Fixed(from)
     }
 }

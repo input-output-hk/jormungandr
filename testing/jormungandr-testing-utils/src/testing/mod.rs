@@ -1,17 +1,29 @@
+pub mod adversary;
+pub mod asserts;
+pub mod block0;
+pub mod configuration;
 pub mod fragments;
-pub mod network_builder;
+pub mod jcli;
+pub mod jormungandr;
+pub mod network;
 pub mod node;
 pub mod process;
-mod remote;
-mod storage;
+pub mod remote;
+pub mod resources;
+pub mod startup;
+pub mod storage;
 pub mod sync;
-mod verify;
-mod vit;
+pub mod transaction_utils;
+pub mod utils;
+pub mod verify;
+pub mod vit;
+pub mod witness;
 
 pub use fragments::{
-    signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, AdversaryFragmentSender,
-    AdversaryFragmentSenderError, AdversaryFragmentSenderSetup, BatchFragmentGenerator,
-    DummySyncNode, FragmentBuilder, FragmentBuilderError, FragmentGenerator, FragmentNode,
+    signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, AdversaryFragmentGenerator,
+    AdversaryFragmentSender, AdversaryFragmentSenderError, AdversaryFragmentSenderSetup,
+    AdversaryVoteCastsGenerator, BatchFragmentGenerator, BlockDateGenerator, DummySyncNode,
+    FragmentBuilder, FragmentBuilderError, FragmentChainSender, FragmentGenerator, FragmentNode,
     FragmentNodeError, FragmentSender, FragmentSenderError, FragmentSenderSetup,
     FragmentSenderSetupBuilder, FragmentStatusProvider, FragmentVerifier, FragmentVerifierError,
     MemPoolCheck, VerifyStrategy, VoteCastsGenerator,
@@ -32,7 +44,7 @@ pub use sync::{
     ensure_node_is_in_sync_with_others, ensure_nodes_are_in_sync, MeasurementReportInterval,
     MeasurementReporter, SyncNode, SyncNodeError, SyncWaitParams,
 };
-pub use vit::{VotePlanBuilder, VotePlanExtension};
+pub use vit::{VoteCastCounter, VotePlanBuilder, VotePlanExtension};
 
 pub use verify::{assert, assert_equals, Error as VerificationError};
 

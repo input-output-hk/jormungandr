@@ -1,15 +1,18 @@
-use crate::common::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
+use assert_fs::prelude::*;
+use assert_fs::TempDir;
+use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
+use chain_impl_mockchain::block::BlockDate;
+use jormungandr_lib::interfaces::ActiveSlotCoefficient;
+use jormungandr_testing_utils::testing::node::time;
+use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
+use jormungandr_testing_utils::wallet::Wallet;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
     testing::{
-        AdversaryFragmentSender, AdversaryFragmentSenderSetup, FragmentSender, FragmentSenderSetup,
+        AdversaryFragmentSender, AdversaryFragmentSenderSetup, BlockDateGenerator, FragmentSender,
+        FragmentSenderSetup,
     },
 };
-
-use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
-
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
 use std::time::Duration;
 
 #[test]
@@ -36,6 +39,11 @@ pub fn test_all_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        BlockDate {
+            epoch: 10,
+            slot_id: 0,
+        }
+        .into(),
         FragmentSenderSetup::resend_3_times(),
     );
 
@@ -119,7 +127,7 @@ pub fn test_all_fragments() {
     let mut stake_pool_info = new_stake_pool.info_mut();
     stake_pool_info.serial = 100u128;
 
-    startup::sleep_till_next_epoch(1, &jormungandr.block0_configuration());
+    time::wait_for_epoch(1, jormungandr.rest());
 
     transaction_sender
         .send_pool_update(
@@ -167,12 +175,14 @@ pub fn test_all_adversary_fragments() {
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        BlockDate::first().next_epoch().into(),
         FragmentSenderSetup::resend_3_times(),
     );
 
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        BlockDate::first().next_epoch().into(),
         AdversaryFragmentSenderSetup::no_verify(),
     );
     let verifier = jormungandr
@@ -188,7 +198,12 @@ pub fn test_all_adversary_fragments() {
         )
         .unwrap();
     adversary_sender
-        .send_faulty_full_delegation(&mut full_delegator, initial_stake_pool.id(), &jormungandr)
+        .send_faulty_full_delegation(
+            BlockDate::first().next_epoch(),
+            &mut full_delegator,
+            initial_stake_pool.id(),
+            &jormungandr,
+        )
         .unwrap();
     transaction_sender
         .send_transaction(
@@ -202,4 +217,79 @@ pub fn test_all_adversary_fragments() {
     verifier
         .value_moved_between_wallets(&faucet, &stake_pool_owner, stake_pool_owner_stake.into())
         .unwrap();
+}
+
+#[test]
+pub fn test_increased_block_content_max_size() {
+    let receivers: Vec<Wallet> = std::iter::from_fn(|| Some(startup::create_new_account_address()))
+        .take(98)
+        .collect();
+    let mut stake_pool_owner = startup::create_new_account_address();
+
+    let stake_pool_owner_stake = 1;
+
+    let (jormungandr, _stake_pools) = startup::start_stake_pool(
+        &[stake_pool_owner.clone()],
+        &[],
+        &mut ConfigurationBuilder::new()
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_block_content_max_size(8192.into()),
+    )
+    .unwrap();
+
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let transaction_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        BlockDateGenerator::rolling(
+            &settings,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            false,
+        ),
+        FragmentSenderSetup::resend_3_times(),
+    );
+
+    transaction_sender
+        .send_transaction_to_many(
+            &mut stake_pool_owner,
+            &receivers,
+            &jormungandr,
+            stake_pool_owner_stake.into(),
+        )
+        .unwrap();
+}
+
+#[test]
+pub fn test_block_content_max_size_below_transaction_size() {
+    let receivers: Vec<Wallet> = std::iter::from_fn(|| Some(startup::create_new_account_address()))
+        .take(98)
+        .collect();
+    let mut stake_pool_owner = startup::create_new_account_address();
+
+    let stake_pool_owner_stake = 1;
+
+    let (jormungandr, _stake_pools) = startup::start_stake_pool(
+        &[stake_pool_owner.clone()],
+        &[],
+        &mut ConfigurationBuilder::new()
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_block_content_max_size(4092.into()),
+    )
+    .unwrap();
+
+    let transaction_sender =
+        jormungandr.fragment_sender(FragmentSenderSetup::should_stop_at_error());
+
+    assert!(transaction_sender
+        .send_transaction_to_many(
+            &mut stake_pool_owner,
+            &receivers,
+            &jormungandr,
+            stake_pool_owner_stake.into(),
+        )
+        .is_err());
 }

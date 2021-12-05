@@ -2,7 +2,7 @@ use crate::jcli_lib::{
     rest::{Error, RestArgs},
     utils::{io, OutputFormat},
 };
-use chain_core::property::Deserialize;
+use chain_core::property::{Deserialize, Serialize};
 use chain_impl_mockchain::fragment::Fragment;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -57,14 +57,19 @@ fn get_logs(args: RestArgs, output_format: OutputFormat) -> Result<(), Error> {
 fn post_message(args: RestArgs, file: Option<PathBuf>) -> Result<(), Error> {
     let msg_hex = io::read_line(&file)?;
     let msg_bin = hex::decode(&msg_hex)?;
-    let _fragment =
+    let fragment =
         Fragment::deserialize(msg_bin.as_slice()).map_err(Error::InputFragmentMalformed)?;
+    let fragment_id = post_fragment(args, fragment)?;
+    println!("{}", fragment_id);
+    Ok(())
+}
+
+pub fn post_fragment(args: RestArgs, fragment: Fragment) -> Result<String, Error> {
     let fragment_id = args
         .client()?
         .post(&["v0", "message"])
-        .body(msg_bin)
+        .body(fragment.serialize_as_vec()?)
         .execute()?
         .text()?;
-    println!("{}", fragment_id);
-    Ok(())
+    Ok(fragment_id)
 }

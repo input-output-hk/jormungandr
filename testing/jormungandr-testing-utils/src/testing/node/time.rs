@@ -18,7 +18,7 @@ pub fn wait_for_date(target_block_date: BlockDate, mut rest: JormungandrRest) {
     }
 }
 
-fn get_current_date(rest: &mut JormungandrRest) -> BlockDate {
+pub fn get_current_date(rest: &mut JormungandrRest) -> BlockDate {
     BlockDate::from_str(
         rest.stats()
             .unwrap()

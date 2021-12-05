@@ -1,5 +1,6 @@
 use crate::interfaces::{Address, OldAddress, SignedCertificate, Value};
 use chain_impl_mockchain::{
+    block::BlockDate,
     certificate,
     fragment::Fragment,
     legacy::UtxoDeclaration,
@@ -116,7 +117,7 @@ fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDe
 
     let inits_iter = utxo_decl.addrs.iter().map(|(address, value)| LegacyUTxO {
         address: address.clone().into(),
-        value: value.clone().into(),
+        value: (*value).into(),
     });
     let inits: Vec<_> = inits_iter.collect();
     initials.push(Initial::LegacyFund(inits))
@@ -125,9 +126,9 @@ fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDe
 impl<'a> From<&'a Initial> for Fragment {
     fn from(initial: &'a Initial) -> Fragment {
         match initial {
-            Initial::Fund(utxo) => pack_utxo_in_message(&utxo),
-            Initial::Cert(cert) => pack_certificate_in_empty_tx_fragment(&cert),
-            Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(&utxo),
+            Initial::Fund(utxo) => pack_utxo_in_message(utxo),
+            Initial::Cert(cert) => pack_certificate_in_empty_tx_fragment(cert),
+            Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(utxo),
         }
     }
 }
@@ -142,8 +143,11 @@ fn pack_utxo_in_message(v: &[InitialUTxO]) -> Fragment {
         panic!("cannot create a singular transaction fragment with more than 254 outputs ({} requested). spread outputs to another fragment", outputs.len())
     }
 
+    let valid_until = BlockDate::first();
+
     let tx = TxBuilder::new()
         .set_nopayload()
+        .set_expiry_date(valid_until)
         .set_ios(&[], &outputs[..])
         .set_witnesses(&[])
         .set_payload_auth(&());
@@ -189,6 +193,12 @@ fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Fragment {
         certificate::SignedCertificate::VoteTally(c, a) => Fragment::VoteTally(empty_auth_tx(c, a)),
         certificate::SignedCertificate::EncryptedVoteTally(c, a) => {
             Fragment::EncryptedVoteTally(empty_auth_tx(c, a))
+        }
+        certificate::SignedCertificate::UpdateProposal(c, a) => {
+            Fragment::UpdateProposal(empty_auth_tx(c, a))
+        }
+        certificate::SignedCertificate::UpdateVote(c, a) => {
+            Fragment::UpdateVote(empty_auth_tx(c, a))
         }
     }
 }

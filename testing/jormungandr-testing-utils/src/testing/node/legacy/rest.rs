@@ -7,7 +7,10 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_lib::interfaces::FragmentStatus;
+use chain_impl_mockchain::header::HeaderId;
+use jormungandr_lib::interfaces::{
+    Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
+};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
 use reqwest::blocking::Response;
 use std::collections::HashMap;
@@ -17,14 +20,12 @@ use std::collections::HashMap;
 /// in order to assure compatibility and lack of serde errors
 #[derive(Debug, Clone)]
 pub struct BackwardCompatibleRest {
-    settings: RestSettings,
     raw: RawRest,
 }
 
 impl BackwardCompatibleRest {
     pub fn new(uri: String, settings: RestSettings) -> Self {
         Self {
-            settings: settings.clone(),
             raw: RawRest::new(uri, settings),
         }
     }
@@ -33,24 +34,30 @@ impl BackwardCompatibleRest {
         &self.raw
     }
 
+    pub fn rest_settings(&self) -> &RestSettings {
+        self.raw.rest_settings()
+    }
+
     fn print_response_text(&self, text: &str) {
-        if self.settings.enable_debug {
+        if self.rest_settings().enable_debug {
             println!("Response: {}", text);
         }
     }
 
     fn print_debug_response(&self, response: &Response) {
-        if self.settings.enable_debug {
+        if self.rest_settings().enable_debug {
             println!("Response: {:?}", response);
         }
     }
 
     pub fn disable_logger(&mut self) {
         self.raw.disable_logger();
+        self.raw.rest_settings_mut().enable_debug = false;
     }
 
     pub fn enable_logger(&mut self) {
         self.raw.enable_logger();
+        self.raw.rest_settings_mut().enable_debug = true;
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<String, reqwest::Error> {
@@ -65,6 +72,12 @@ impl BackwardCompatibleRest {
         Ok(response_text)
     }
 
+    pub fn remaining_rewards(&self) -> Result<String, reqwest::Error> {
+        let response_text = self.raw().remaining_rewards()?.text()?;
+        self.print_response_text(&response_text);
+        Ok(response_text)
+    }
+
     pub fn stake_distribution(&self) -> Result<String, reqwest::Error> {
         let response_text = self.raw().stake_distribution()?.text()?;
         self.print_response_text(&response_text);
@@ -73,6 +86,25 @@ impl BackwardCompatibleRest {
 
     pub fn account_state(&self, wallet: &Wallet) -> Result<String, reqwest::Error> {
         self.account_state_by_pk(&wallet.identifier().to_bech32_str())
+    }
+
+    pub fn account_votes(&self, wallet_address: Address) -> Result<String, reqwest::Error> {
+        let response_text = self.raw().account_votes(wallet_address)?.text()?;
+        self.print_response_text(&response_text);
+        Ok(response_text)
+    }
+
+    pub fn account_votes_with_plan_id(
+        &self,
+        vote_plan_id: VotePlanId,
+        wallet_address: Address,
+    ) -> Result<String, reqwest::Error> {
+        let response_text = self
+            .raw()
+            .account_votes_with_plan_id(vote_plan_id, wallet_address)?
+            .text()?;
+        self.print_response_text(&response_text);
+        Ok(response_text)
     }
 
     pub fn account_state_by_pk(&self, bech32_str: &str) -> Result<String, reqwest::Error> {
@@ -126,6 +158,17 @@ impl BackwardCompatibleRest {
         tip.parse().map_err(RestError::HashParseError)
     }
 
+    pub fn block_as_bytes(&self, header_hash: &HeaderId) -> Result<Vec<u8>, RestError> {
+        let mut bytes = Vec::new();
+        let mut resp = self.raw().block(header_hash)?;
+        resp.copy_to(&mut bytes)?;
+        Ok(bytes)
+    }
+
+    pub fn shutdown(&self) -> Result<String, reqwest::Error> {
+        self.raw().shutdown()?.text()
+    }
+
     pub fn settings(&self) -> Result<String, reqwest::Error> {
         self.raw().settings()?.text()
     }
@@ -170,10 +213,6 @@ impl BackwardCompatibleRest {
         Ok(logs)
     }
 
-    pub fn leaders(&self) -> Result<String, reqwest::Error> {
-        self.raw().leaders()?.text()
-    }
-
     pub fn send_fragment(&self, fragment: Fragment) -> Result<MemPoolCheck, reqwest::Error> {
         let fragment_id = fragment.id();
         let response = self.raw().send_fragment(fragment)?;
@@ -197,27 +236,29 @@ impl BackwardCompatibleRest {
         &self,
         fragments: Vec<Fragment>,
         fail_fast: bool,
-    ) -> Result<Vec<MemPoolCheck>, RestError> {
+    ) -> Result<FragmentsProcessingSummary, RestError> {
         let checks: Vec<MemPoolCheck> = fragments
             .iter()
             .map(|x| MemPoolCheck::new(x.id()))
             .collect();
         let response = self.raw.send_fragment_batch(fragments, fail_fast)?;
-        if response.status() != reqwest::StatusCode::OK {
-            return Err(RestError::NonSuccessErrorCode {
+        self.print_debug_response(&response);
+        if response.status() == reqwest::StatusCode::OK {
+            Ok(serde_json::from_str(&response.text()?)?)
+        } else {
+            Err(RestError::NonSuccessErrorCode {
                 status: response.status(),
                 response: response.text().unwrap(),
                 checks,
-            });
+            })
         }
-
-        self.print_debug_response(&response);
-        println!("{:?}", response.text().unwrap());
-
-        Ok(checks)
     }
 
     pub fn vote_plan_statuses(&self) -> Result<String, reqwest::Error> {
         self.raw().vote_plan_statuses()?.text()
+    }
+
+    pub fn set_origin<S: Into<String>>(&mut self, origin: S) {
+        self.raw.rest_settings_mut().cors = Some(origin.into());
     }
 }

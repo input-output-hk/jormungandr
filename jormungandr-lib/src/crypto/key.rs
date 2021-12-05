@@ -8,11 +8,11 @@
 use crate::crypto::serde as internal;
 use chain_addr::{Address, Discrimination, Kind};
 use chain_crypto::{
-    AsymmetricKey, AsymmetricPublicKey, Ed25519, PublicKey, SecretKey, SignatureFromStrError,
-    SigningAlgorithm, VerificationAlgorithm,
+    bech32::Bech32, AsymmetricKey, AsymmetricPublicKey, Ed25519, PublicKey, SecretKey,
+    SignatureFromStrError, SigningAlgorithm, VerificationAlgorithm,
 };
 use rand_core::{CryptoRng, RngCore};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
 
 /// a cryptographic identifier. Can be used to identify a signature
@@ -40,14 +40,34 @@ pub struct Identifier<A: AsymmetricPublicKey>(
 /// More info at the module documentation
 ///
 /// [`Identifier`]: ./struct.Identifier.html
-#[derive(Deserialize, Serialize)]
-pub struct SigningKey<A: AsymmetricKey>(
-    #[serde(
-        deserialize_with = "internal::deserialize_secret",
-        serialize_with = "internal::serialize_secret"
-    )]
-    pub(crate) SecretKey<A>,
-);
+
+pub struct SigningKey<A: AsymmetricKey>(pub(crate) SecretKey<A>);
+
+impl<A> Serialize for SigningKey<A>
+where
+    A: AsymmetricKey,
+    SecretKey<A>: Bech32,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        internal::serialize_secret(&self.0, serializer)
+    }
+}
+
+impl<'de, A> Deserialize<'de> for SigningKey<A>
+where
+    A: AsymmetricKey,
+    SecretKey<A>: Bech32,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        internal::deserialize_secret(deserializer).map(Self)
+    }
+}
 
 /// A key pair of the given cryptographic algorithm
 ///
@@ -231,7 +251,13 @@ impl<A: AsymmetricKey> SigningKey<A> {
     pub fn identifier(&self) -> Identifier<<A as AsymmetricKey>::PubAlg> {
         Identifier(self.0.to_public())
     }
+}
 
+impl<A> SigningKey<A>
+where
+    A: AsymmetricKey,
+    SecretKey<A>: Bech32,
+{
     /// encode the `SigningKey` into a bech32 string.
     ///
     /// This is a human readable encoding that allows to check input validation.
@@ -256,14 +282,12 @@ impl<A: AsymmetricKey> SigningKey<A> {
     ///
     #[inline]
     pub fn to_bech32_str(&self) -> String {
-        use chain_crypto::bech32::Bech32 as _;
         self.0.to_bech32_str()
     }
 
     /// try to decode the given bech32 string into a valid signing key
     #[inline]
     pub fn from_bech32_str(s: &str) -> Result<Self, chain_crypto::bech32::Error> {
-        use chain_crypto::bech32::Bech32 as _;
         SecretKey::try_from_bech32_str(s).map(SigningKey)
     }
 }
@@ -278,14 +302,12 @@ impl<T, A: VerificationAlgorithm> Signature<T, A> {
     /// Serde implementation of `Signature` provides the bech32 string support.
     #[inline]
     pub fn to_bech32_str(&self) -> String {
-        use chain_crypto::bech32::Bech32 as _;
         self.0.to_bech32_str()
     }
 
     /// try to decode the given bech32 string into a valid signature
     #[inline]
     pub fn from_bech32_str(s: &str) -> Result<Self, chain_crypto::bech32::Error> {
-        use chain_crypto::bech32::Bech32 as _;
         chain_crypto::Signature::try_from_bech32_str(s).map(Signature::from)
     }
 

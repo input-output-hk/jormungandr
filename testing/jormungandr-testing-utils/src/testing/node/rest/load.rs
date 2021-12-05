@@ -1,7 +1,10 @@
 use super::{JormungandrRest, RestError};
-use jortestkit::load::{Id, RequestFailure, RequestGenerator};
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
+use std::time::Instant;
+
+const DEFAULT_MAX_SPLITS: usize = 7; // equals to 128 splits, will likely not reach that value but it's there just to prevent a stack overflow
 
 #[derive(Clone)]
 pub struct RestRequestGen {
@@ -9,6 +12,7 @@ pub struct RestRequestGen {
     rand: OsRng,
     addresses: Vec<String>,
     stake_pools: Vec<String>,
+    max_splits: usize,
 }
 
 impl RestRequestGen {
@@ -18,12 +22,12 @@ impl RestRequestGen {
             rand: OsRng,
             addresses: Vec::new(),
             stake_pools: Vec::new(),
+            max_splits: DEFAULT_MAX_SPLITS,
         }
     }
 
     pub fn do_setup(&mut self, addresses: Vec<String>) -> Result<(), RestError> {
         self.addresses = addresses;
-        //   self.stake_pools = self.rest_client.stake_pools()?;
         Ok(())
     }
 
@@ -55,8 +59,9 @@ impl RestRequestGen {
 }
 
 impl RequestGenerator for RestRequestGen {
-    fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
-        match self.next_usize() % 10 {
+    fn next(&mut self) -> Result<Request, RequestFailure> {
+        let start = Instant::now();
+        match self.next_usize() % 9 {
             0 => {
                 self.rest_client.p2p_available().map_err(|e| {
                     RequestFailure::General(format!("Rest - p2p_available: {}", e.to_string()))
@@ -88,27 +93,35 @@ impl RequestGenerator for RestRequestGen {
                 })?;
             }
             6 => {
-                self.rest_client.leaders().map_err(|e| {
-                    RequestFailure::General(format!("Rest - leaders: {}", e.to_string()))
-                })?;
-            }
-            7 => {
                 self.rest_client.stats().map_err(|e| {
                     RequestFailure::General(format!("Rest - stats: {}", e.to_string()))
                 })?;
             }
-            8 => {
+            7 => {
                 self.rest_client.network_stats().map_err(|e| {
                     RequestFailure::General(format!("Rest - network_stats: {}", e.to_string()))
                 })?;
             }
-            9 => {
+            8 => {
                 self.rest_client.tip().map_err(|e| {
                     RequestFailure::General(format!("Rest - tip: {}", e.to_string()))
                 })?;
             }
             _ => unreachable!(),
         }
-        Ok(vec![None])
+        Ok(Request {
+            ids: vec![None],
+            duration: start.elapsed(),
+        })
+    }
+
+    fn split(mut self) -> (Self, Option<Self>) {
+        // Since rest queries do not modify the node state we can split as many times as we want
+        // but that may trigger a bug in rayon so we artificially limit it
+        if self.max_splits == 0 {
+            return (self, None);
+        }
+        self.max_splits -= 1;
+        (self.clone(), Some(self))
     }
 }

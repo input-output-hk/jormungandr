@@ -1,18 +1,17 @@
-use crate::mjolnir_app::MjolnirError;
+use crate::mjolnir_app::{args::parse_shift, build_monitor, MjolnirError};
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
     testing::{
-        BatchFragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
-        RemoteJormungandrBuilder,
+        fragments::BlockDateGenerator, BatchFragmentGenerator, FragmentSenderSetup,
+        FragmentStatusProvider, RemoteJormungandrBuilder,
     },
     wallet::Wallet,
 };
-use jortestkit::prelude::parse_progress_bar_mode_from_str;
 use jortestkit::{
-    load::{Configuration, Monitor},
-    prelude::ProgressBarMode,
+    load::ConfigurationBuilder, prelude::parse_progress_bar_mode_from_str, prelude::ProgressBarMode,
 };
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
 pub struct TxOnly {
@@ -25,9 +24,9 @@ pub struct TxOnly {
     #[structopt(short = "e", long = "endpoint")]
     pub endpoint: String,
 
-    /// amount of delay [seconds] between sync attempts
-    #[structopt(short = "p", long = "pace", default_value = "2")]
-    pub pace: u64,
+    /// amount of delay [milliseconds] between sync attempts
+    #[structopt(long = "delay", default_value = "50")]
+    pub delay: u64,
 
     /// amount of delay [seconds] between sync attempts
     #[structopt(short = "d", long = "duration")]
@@ -50,12 +49,22 @@ pub struct TxOnly {
 
     #[structopt(long = "spending-counter", short = "s")]
     faucet_spending_counter: u32,
+
+    /// Transaction validity deadline (inclusive)
+    #[structopt(short = "v", long = "valid-until", conflicts_with = "ttl")]
+    valid_until: Option<BlockDate>,
+
+    /// Transaction time to live (can be negative e.g. ~4.2)
+    #[structopt(short = "t", long= "ttl", default_value = "1.0", parse(try_from_str = parse_shift))]
+    ttl: (BlockDate, bool),
 }
 
 impl TxOnly {
     pub fn exec(&self) -> Result<(), MjolnirError> {
-        let mut faucet =
-            Wallet::import_account(&self.faucet_key_file, Some(self.faucet_spending_counter));
+        let mut faucet = Wallet::import_account(
+            &self.faucet_key_file,
+            Some(self.faucet_spending_counter.into()),
+        );
         let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
         builder.with_rest(self.endpoint.parse().unwrap());
         let remote_jormungandr = builder.build();
@@ -65,23 +74,27 @@ impl TxOnly {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
+        let expiry_generator = self
+            .valid_until
+            .map(BlockDateGenerator::Fixed)
+            .unwrap_or_else(|| BlockDateGenerator::rolling(&settings, self.ttl.0, self.ttl.1));
+
         let mut request_gen = BatchFragmentGenerator::new(
             FragmentSenderSetup::no_verify(),
             remote_jormungandr,
             block0_hash,
             fees,
+            expiry_generator,
             10,
         );
         request_gen.fill_from_faucet(&mut faucet);
 
-        let config = Configuration::duration(
-            self.count,
-            std::time::Duration::from_secs(self.duration),
-            self.pace,
-            self.build_monitor(),
-            30,
-            1,
-        );
+        let config = ConfigurationBuilder::duration(Duration::from_secs(self.duration))
+            .thread_no(self.count)
+            .step_delay(Duration::from_millis(self.delay))
+            .monitor(build_monitor(&self.progress_bar_mode))
+            .shutdown_grace_period(Duration::from_secs(30))
+            .build();
 
         let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
         builder.with_rest(self.endpoint.parse().unwrap());
@@ -94,13 +107,5 @@ impl TxOnly {
             assert!((stats.calculate_passrate() as u32) > 95);
         }
         Ok(())
-    }
-
-    fn build_monitor(&self) -> Monitor {
-        match self.progress_bar_mode {
-            ProgressBarMode::Monitor => Monitor::Progress(100),
-            ProgressBarMode::Standard => Monitor::Standard(100),
-            ProgressBarMode::None => Monitor::Disabled(10),
-        }
     }
 }

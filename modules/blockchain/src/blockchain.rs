@@ -57,7 +57,7 @@ impl Blockchain {
     }
 
     pub fn put(&mut self, block: &Block) -> Result<Event, Error> {
-        let parent_hash = block.header.block_parent_hash();
+        let parent_hash = block.header().block_parent_hash();
         if let Some(parent) = self.heads.get(&parent_hash).cloned() {
             // refresh the parent in the `cache` LRU
             self.cache.put(parent_hash, Arc::clone(&parent));
@@ -74,7 +74,7 @@ impl Blockchain {
             Ok(self.put_head(new_reference, true, epoch_transition))
         } else {
             Ok(Event::MissingParent {
-                parent: block.header.hash(),
+                parent: block.header().hash(),
             })
         }
     }

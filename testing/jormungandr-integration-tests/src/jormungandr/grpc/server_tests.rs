@@ -10,12 +10,10 @@ pub fn wrong_protocol() {
     let setup = setup::server::default();
 
     let block0 = setup.server.block0_configuration().to_block();
-    let genesis_hash = setup.server.genesis_block_hash().into_hash();
 
-    let mock_controller = MockBuilder::new()
+    let mock_controller = MockBuilder::default()
         .with_port(setup.mock_port)
-        .with_genesis_hash(genesis_hash)
-        .with_tip(block0.header)
+        .with_genesis_block(block0)
         .with_protocol_version(ProtocolVersion::Bft)
         .build();
 
@@ -44,13 +42,11 @@ pub fn wrong_genesis_hash() {
 
     let block0 = setup.server.block0_configuration().to_block();
 
-    let mock_controller = MockBuilder::new()
+    let mut mock_controller = MockBuilder::default()
         .with_port(setup.mock_port)
-        // little hack, we need tip header to be the same of the server so that we can complete bootstrap
-        .with_tip(block0.header)
         .with_protocol_version(ProtocolVersion::GenesisPraos)
         .build();
-
+    mock_controller.set_tip_block(&block0);
     setup.wait_server_online();
 
     let mock_result = mock_controller.finish_and_verify_that(|mock_verifier| {
@@ -80,12 +76,10 @@ pub fn handshake_ok() {
     let setup = setup::server::default();
 
     let block0 = setup.server.block0_configuration().to_block();
-    let genesis_hash = setup.server.genesis_block_hash().into_hash();
 
-    let mock_controller = MockBuilder::new()
+    let mock_controller = MockBuilder::default()
         .with_port(setup.mock_port)
-        .with_genesis_hash(genesis_hash)
-        .with_tip(block0.header)
+        .with_genesis_block(block0)
         .with_protocol_version(ProtocolVersion::GenesisPraos)
         .build();
 

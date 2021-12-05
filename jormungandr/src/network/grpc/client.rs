@@ -28,6 +28,11 @@ pub enum FetchBlockError {
     GetBlocksStream { source: net_error::Error },
     #[error("no blocks received")]
     NoBlocks,
+    #[error("Unexpected block hash: requested {requested} received {received}")]
+    UnexpectedBlock {
+        requested: HeaderHash,
+        received: HeaderHash,
+    },
 }
 
 pub type ConnectError = transport::Error;
@@ -71,7 +76,15 @@ pub async fn fetch_block(peer: &Peer, hash: HeaderHash) -> Result<Block, FetchBl
             let block = block
                 .decode()
                 .map_err(|e| FetchBlockError::GetBlocksStream { source: e })?;
-            Ok(block)
+
+            if block.header().id() == hash {
+                Ok(block)
+            } else {
+                Err(FetchBlockError::UnexpectedBlock {
+                    requested: hash.to_owned(),
+                    received: block.header().id(),
+                })
+            }
         }
         None => Err(FetchBlockError::NoBlocks),
         Some(Err(e)) => Err(FetchBlockError::GetBlocksStream { source: e }),

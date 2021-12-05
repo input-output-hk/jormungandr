@@ -68,7 +68,7 @@ from the given genesis configuration file (`genesis.yaml`).
 
 Now that the blockchain is initialized, you need to start your node.
 
-Write you private key in a file on your HD:
+Write your private key in a file on your HD:
 
 ```sh
 $ cat node_secret.yaml

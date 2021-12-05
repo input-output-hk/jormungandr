@@ -57,32 +57,13 @@ pub fn filter(
     let leaders = {
         let root = warp::path!("leaders" / ..).boxed();
 
-        let get = warp::path::end()
-            .and(warp::get())
-            .and(with_context.clone())
-            .and_then(handlers::get_leaders)
-            .boxed();
-
-        let post = warp::path::end()
-            .and(warp::post())
-            .and(warp::body::json())
-            .and(with_context.clone())
-            .and_then(handlers::post_leaders)
-            .boxed();
-
         let logs = warp::path!("logs")
             .and(warp::get())
             .and(with_context.clone())
             .and_then(handlers::get_leaders_logs)
             .boxed();
 
-        let delete = warp::path!(u32)
-            .and(warp::delete())
-            .and(with_context.clone())
-            .and_then(handlers::delete_leaders)
-            .boxed();
-
-        root.and(get.or(post).or(logs).or(delete)).boxed()
+        root.and(logs).boxed()
     };
 
     let p2p = {
@@ -210,7 +191,13 @@ pub fn filter(
             .and_then(handlers::get_rewards_info_epoch)
             .boxed();
 
-        root.and(history.or(epoch)).boxed()
+        let remaining = warp::path!("remaining")
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_rewards_remaining)
+            .boxed();
+
+        root.and(history.or(epoch).or(remaining)).boxed()
     };
 
     let utxo = warp::path!("utxo" / String / u8)

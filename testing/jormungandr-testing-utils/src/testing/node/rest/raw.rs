@@ -5,7 +5,8 @@ use chain_core::property::Serialize;
 use chain_crypto::PublicKey;
 use chain_impl_mockchain::account;
 use chain_impl_mockchain::fragment::Fragment;
-use jormungandr_lib::interfaces::FragmentsBatch;
+use chain_impl_mockchain::header::HeaderId;
+use jormungandr_lib::interfaces::{Address, FragmentsBatch, VotePlanId};
 use jortestkit::process::Wait;
 use reqwest::{
     blocking::{Client, Response},
@@ -13,6 +14,7 @@ use reqwest::{
 };
 use std::fmt;
 
+const ORIGIN: &str = "Origin";
 enum ApiVersion {
     V0,
     V1,
@@ -34,7 +36,7 @@ impl fmt::Display for ApiVersion {
 pub struct RawRest {
     uri: String,
     client: Client,
-    logging_enabled: bool,
+    settings: RestSettings,
 }
 
 impl RawRest {
@@ -61,16 +63,24 @@ impl RawRest {
         Self {
             uri,
             client,
-            logging_enabled: settings.enable_debug,
+            settings,
         }
     }
 
+    pub fn rest_settings(&self) -> &RestSettings {
+        &self.settings
+    }
+
+    pub fn rest_settings_mut(&mut self) -> &mut RestSettings {
+        &mut self.settings
+    }
+
     pub fn enable_logger(&mut self) {
-        self.logging_enabled = true;
+        self.rest_settings_mut().enable_debug = true;
     }
 
     pub fn disable_logger(&mut self) {
-        self.logging_enabled = false;
+        self.rest_settings_mut().enable_debug = false;
     }
 
     pub fn epoch_reward_history(&self, epoch: u32) -> Result<Response, reqwest::Error> {
@@ -83,8 +93,13 @@ impl RawRest {
         self.get(&request)
     }
 
+    pub fn remaining_rewards(&self) -> Result<Response, reqwest::Error> {
+        let request = "rewards/remaining".to_string();
+        self.get(&request)
+    }
+
     fn print_request_path(&self, text: &str) {
-        if self.logging_enabled {
+        if self.rest_settings().enable_debug {
             println!("Request: {}", text);
         }
     }
@@ -92,7 +107,22 @@ impl RawRest {
     fn get(&self, path: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
         let request = self.path(ApiVersion::V0, path);
         self.print_request_path(&request);
-        self.client.get(request).send()
+
+        let mut client_builder = reqwest::blocking::Client::builder();
+
+        if let Some(cert) = self.rest_settings().certificate.as_ref() {
+            client_builder = client_builder
+                .use_rustls_tls()
+                .add_root_certificate(cert.clone())
+        }
+        let client = client_builder.build()?;
+        let mut res = client.get(&request);
+
+        if let Some(origin) = self.rest_settings().cors.as_ref() {
+            res = res.header(ORIGIN, origin.to_string());
+        }
+
+        res.send()
     }
 
     fn path(&self, api_version: ApiVersion, path: &str) -> String {
@@ -108,12 +138,12 @@ impl RawRest {
     }
 
     pub fn account_state_by_pk(&self, bech32_str: &str) -> Result<Response, reqwest::Error> {
-        let key = hex::encode(Self::try_from_str(bech32_str).as_ref().as_ref());
+        let key = hex::encode(Self::try_from_str(bech32_str).as_ref());
         self.get(&format!("account/{}", key))
     }
 
     fn try_from_str(src: &str) -> account::Identifier {
-        let (_, data) = bech32::decode(src).unwrap();
+        let (_, data, _variant) = bech32::decode(src).unwrap();
         let dat = Vec::from_base32(&data).unwrap();
         let pk = PublicKey::from_binary(&dat).unwrap();
         account::Identifier::from(pk)
@@ -121,6 +151,26 @@ impl RawRest {
 
     pub fn stake_pools(&self) -> Result<Response, reqwest::Error> {
         self.get("stake_pools")
+    }
+
+    pub fn account_votes(&self, address: Address) -> Result<Response, reqwest::Error> {
+        let pk = address.1.public_key().unwrap();
+        let key = hex::encode(account::Identifier::from(pk.clone()).as_ref());
+
+        let request = format!("votes/plan/account-votes/{}", key);
+        self.client.get(&self.path(ApiVersion::V1, &request)).send()
+    }
+
+    pub fn account_votes_with_plan_id(
+        &self,
+        vote_plan_id: VotePlanId,
+        address: Address,
+    ) -> Result<Response, reqwest::Error> {
+        let pk = address.1.public_key().unwrap();
+        let key = hex::encode(account::Identifier::from(pk.clone()).as_ref());
+
+        let request = format!("votes/plan/{}/account-votes/{}", vote_plan_id, key);
+        self.client.get(&self.path(ApiVersion::V1, &request)).send()
     }
 
     pub fn stake_distribution_at(&self, epoch: u32) -> Result<Response, reqwest::Error> {
@@ -164,12 +214,16 @@ impl RawRest {
         self.get("settings")
     }
 
-    pub fn fragment_logs(&self) -> Result<Response, reqwest::Error> {
-        self.get("fragment/logs")
+    pub fn shutdown(&self) -> Result<Response, reqwest::Error> {
+        self.get("shutdown")
     }
 
-    pub fn leaders(&self) -> Result<Response, reqwest::Error> {
-        self.get("leaders")
+    pub fn block(&self, header_hash: &HeaderId) -> Result<Response, reqwest::Error> {
+        self.get(&format!("block/{}", header_hash))
+    }
+
+    pub fn fragment_logs(&self) -> Result<Response, reqwest::Error> {
+        self.get("fragment/logs")
     }
 
     fn construct_headers(&self) -> HeaderMap {
@@ -259,7 +313,7 @@ impl RawRest {
         F: Fn(&RawRest) -> Result<Response, reqwest::Error>,
     {
         loop {
-            let response = action(&self);
+            let response = action(self);
             println!("Waiting for 200... {:?}", response);
             if let Ok(response) = response {
                 if response.status().is_success() {

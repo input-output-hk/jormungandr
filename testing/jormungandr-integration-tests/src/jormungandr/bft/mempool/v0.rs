@@ -1,11 +1,13 @@
-use crate::common::jormungandr::{ConfigurationBuilder, Starter};
-use crate::common::startup;
 use assert_fs::TempDir;
 use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::Mempool;
+use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::{FragmentSenderSetup, FragmentVerifier};
+use jormungandr_testing_utils::testing::startup;
+use jormungandr_testing_utils::testing::{
+    fragments::VerifyExitStrategy, FragmentSenderSetup, FragmentVerifier,
+};
 use std::time::Duration;
 
 #[test]
@@ -26,7 +28,9 @@ pub fn test_mempool_pool_max_entries_limit() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(2)
+        // Use a long slot time to avoid producing a block
+        // before both test requests has been sent
+        .with_slot_duration(15)
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
             log_max_entries: 100.into(),
@@ -54,15 +58,27 @@ pub fn test_mempool_pool_max_entries_limit() {
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
         .unwrap();
 
+    // Wait until the fragment enters the mempool
+    FragmentVerifier::wait_fragment(
+        Duration::from_millis(100),
+        mempool_check.clone(),
+        VerifyExitStrategy::OnPending,
+        &jormungandr,
+    )
+    .unwrap();
+
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
         .assert_size(1)
         .assert_contains_only(mempool_check.fragment_id());
 
-    FragmentVerifier
-        .wait_and_verify_is_in_block(Duration::from_secs(2), mempool_check, &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_and_verify_is_in_block(
+        Duration::from_secs(2),
+        mempool_check,
+        &jormungandr,
+    )
+    .unwrap();
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 1.into())
@@ -87,7 +103,6 @@ pub fn test_mempool_pool_max_entries_equal_0() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 0.into(),
             log_max_entries: 100.into(),
@@ -142,7 +157,9 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
+        // Use a long slot time to avoid producing a block
+        // before both test requests has been sent
+        .with_slot_duration(15)
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
             log_max_entries: 1.into(),
@@ -170,15 +187,27 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
         .unwrap();
 
+    // Wait until the fragment enters the mempool
+    FragmentVerifier::wait_fragment(
+        Duration::from_millis(100),
+        first_fragment.clone(),
+        VerifyExitStrategy::OnPending,
+        &jormungandr,
+    )
+    .unwrap();
+
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
         .assert_size(1)
         .assert_contains_only(first_fragment.fragment_id());
 
-    FragmentVerifier
-        .wait_and_verify_is_in_block(Duration::from_secs(15), first_fragment, &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_and_verify_is_in_block(
+        Duration::from_secs(15),
+        first_fragment,
+        &jormungandr,
+    )
+    .unwrap();
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 1.into())
@@ -203,7 +232,6 @@ pub fn test_mempool_log_max_entries_equals_0() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 0.into(),
             log_max_entries: 0.into(),
@@ -259,7 +287,6 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 2.into(),
             log_max_entries: 0.into(),
@@ -283,9 +310,18 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
         .unwrap();
 
-    fragment_sender
+    let second_transaction = fragment_sender
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
         .unwrap();
+
+    // Wait until the fragment enters the mempool
+    FragmentVerifier::wait_fragment(
+        Duration::from_millis(100),
+        second_transaction,
+        VerifyExitStrategy::OnPending,
+        &jormungandr,
+    )
+    .unwrap();
 
     jormungandr
         .correct_state_verifier()

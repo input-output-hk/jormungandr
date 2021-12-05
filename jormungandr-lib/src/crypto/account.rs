@@ -150,7 +150,7 @@ impl SigningKey {
     pub fn from_bech32_str(s: &str) -> Result<Self, SigningKeyParseError> {
         use chain_crypto::bech32::Bech32 as _;
 
-        let (hrp, _) = bech32::decode(s)?;
+        let (hrp, _, _variant) = bech32::decode(s)?;
 
         let key = match hrp.as_ref() {
             Ed25519::SECRET_BECH32_HRP => SigningKey(EitherEd25519SecretKey::Normal(

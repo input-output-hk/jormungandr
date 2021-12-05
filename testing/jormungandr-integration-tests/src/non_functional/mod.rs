@@ -1,50 +1,42 @@
-#[cfg(feature = "sanity-non-functional")]
+#[cfg(feature = "cross-version")]
 pub mod compatibility;
+#[cfg(all(feature = "network"))]
+pub mod network;
 /*
  Explorer soak test. Run node for ~15 minutes and verify explorer is in sync with node rest
 */
-#[cfg(feature = "sanity-non-functional")]
+#[cfg(feature = "soak")]
 pub mod explorer;
 /*
  Sanity performance tests. Quick tests to check overall node performance.
  Run some transaction for ~15 minutes or specified no of transactions (100)
 */
-#[cfg(feature = "sanity-non-functional")]
 pub mod transaction;
 /*
 Long running test for self node (48 h)
 */
-#[cfg(feature = "soak-non-functional")]
+#[cfg(feature = "soak")]
 pub mod soak;
 
 /*
   Quick load test for rest api
 */
-#[cfg(feature = "sanity-non-functional")]
 pub mod rest;
 
 /*
 Long running test for dumping rewards each epoch
 */
-#[cfg(feature = "sanity-non-functional")]
-pub mod rewards;
-
-#[cfg(feature = "sanity-non-functional")]
-pub mod fragment;
-
-#[cfg(feature = "sanity-non-functional")]
 pub mod bootstrap;
-
-#[cfg(feature = "sanity-non-functional")]
+pub mod fragment;
 pub mod persistent_log;
-
+pub mod rewards;
 pub mod voting;
 
-use crate::common::{
+use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
+use jormungandr_testing_utils::testing::{
     jcli::{self, JCli},
     jormungandr::{JormungandrError, JormungandrProcess},
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
 use jormungandr_testing_utils::{testing::node::ExplorerError, wallet::Wallet};
 use thiserror::Error;
 
@@ -82,7 +74,7 @@ pub fn send_transaction_and_ensure_block_was_produced(
     let block_tip_before_transaction = jcli.rest().v0().tip(&jormungandr.rest_uri());
     let block_counter_before_transaction = jormungandr.logger.get_created_blocks_counter();
 
-    jcli.fragment_sender(&jormungandr)
+    jcli.fragment_sender(jormungandr)
         .send_many(transation_messages)
         .wait_until_all_processed(&Default::default())
         .map_err(NodeStuckError::InternalJcliError)?;
@@ -113,9 +105,9 @@ pub fn check_transaction_was_processed(
     value: u64,
     jormungandr: &JormungandrProcess,
 ) -> Result<(), NodeStuckError> {
-    send_transaction_and_ensure_block_was_produced(&[transaction], &jormungandr)?;
+    send_transaction_and_ensure_block_was_produced(&[transaction], jormungandr)?;
 
-    check_funds_transferred_to(&receiver.address().to_string(), value.into(), &jormungandr)?;
+    check_funds_transferred_to(&receiver.address().to_string(), value.into(), jormungandr)?;
 
     jormungandr
         .check_no_errors_in_log()

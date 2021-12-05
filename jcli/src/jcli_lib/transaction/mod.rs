@@ -1,15 +1,17 @@
-mod add_account;
+pub mod add_account;
 mod add_certificate;
 mod add_input;
-mod add_output;
+pub mod add_output;
 mod add_witness;
 mod auth;
 mod common;
-mod finalize;
+pub mod finalize;
 mod info;
 mod mk_witness;
-mod new;
+pub mod new;
 mod seal;
+mod set_expiry_date;
+mod simplified;
 mod staging;
 
 use self::staging::StagingKind;
@@ -17,6 +19,7 @@ use crate::jcli_lib::{
     certificate,
     utils::{key_parser, output_format},
 };
+use crate::{block, rest, utils};
 use chain_core::property::Serialize as _;
 use chain_impl_mockchain as chain;
 use std::path::PathBuf;
@@ -39,6 +42,8 @@ pub enum Transaction {
     AddOutput(add_output::AddOutput),
     /// add output to the finalized transaction
     AddWitness(add_witness::AddWitness),
+    /// set a transaction expiration date
+    SetExpiryDate(set_expiry_date::SetExpiryDate),
     /// set a certificate to the Transaction. If there is already
     /// an extra certificate in the transaction it will be replaced
     /// with the new one.
@@ -62,6 +67,8 @@ pub enum Transaction {
     Auth(auth::Auth),
     /// get the message format out of a sealed transaction
     ToMessage(common::CommonTransaction),
+    /// send a transaction from one account to another (simplified method)
+    MakeTransaction(simplified::MakeTransaction),
 }
 
 type StaticStr = &'static str;
@@ -87,7 +94,7 @@ pub enum Error {
         path: PathBuf,
     },
     #[error("could not process secret file '{0}'")]
-    SecretFileFailed(#[from] key_parser::Error),
+    SecretKeyReadFailed(#[from] key_parser::Error),
     /*
     SecretFileReadFailed { source: std::io::Error, path: PathBuf }
         = @{{ let _ = source; format_args!("could not read secret file '{}'", path.display()) }},
@@ -151,6 +158,10 @@ pub enum Error {
     TxKindToFinalizeInvalid { kind: StagingKind },
     #[error("cannot get message from transaction in {kind} state")]
     TxKindToGetMessageInvalid { kind: StagingKind },
+    #[error("cannot get witness data in {kind} state")]
+    TxKindToSignDataHashInvalid { kind: StagingKind },
+    #[error("cannot set expiration date in {kind} state")]
+    TxKindToSetValidityTimeInvalid { kind: StagingKind },
 
     #[error("too many witnesses in transaction to add another: {actual}, maximum is {max}")]
     TooManyWitnessesToAddWitness { actual: usize, max: usize },
@@ -172,6 +183,8 @@ pub enum Error {
     InfoExpectedSingleAccount,
     #[error("making account witness requires passing spending counter")]
     MakeWitnessAccountCounterMissing,
+    #[error("invalid account spending counter lane: max {max}, actual {actual}")]
+    MakeWitnessAccountInvalidCounterLane { max: usize, actual: usize },
     #[error("transaction type doesn't need payload authentification")]
     TxDoesntNeedPayloadAuth,
     #[error("transaction type need payload authentification")]
@@ -187,6 +200,30 @@ pub enum Error {
     TxWithOwnerStakeDelegationHasUtxoInput,
     #[error("transaction has owner stake delegation, but has outputs")]
     TxWithOwnerStakeDelegationHasOutputs,
+
+    #[error(transparent)]
+    Block0Error(#[from] block::Error),
+
+    #[error(transparent)]
+    AccountIdError(#[from] utils::account_id::Error),
+
+    #[error(transparent)]
+    RestError(#[from] rest::Error),
+
+    #[error("could not generate random key")]
+    RandError(#[from] rand::Error),
+
+    #[error("invalid block0 header hash")]
+    InvalidBlock0HeaderHash,
+
+    #[error("canceled by user")]
+    CancelByUser,
+
+    #[error("error requesting user input")]
+    UserInputError(#[from] std::io::Error),
+
+    #[error("cannot finalize the payload without a validity end date set")]
+    CannotFinalizeWithoutValidUntil,
 }
 
 /*
@@ -215,6 +252,8 @@ impl Transaction {
             Transaction::MakeWitness(mk_witness) => mk_witness.exec(),
             Transaction::Auth(auth) => auth.exec(),
             Transaction::ToMessage(common) => display_message(common),
+            Transaction::MakeTransaction(send) => send.exec(),
+            Transaction::SetExpiryDate(set_expiry_date) => set_expiry_date.exec(),
         }
     }
 }
@@ -225,7 +264,7 @@ fn display_id(common: common::CommonTransaction) -> Result<(), Error> {
 }
 
 fn display_data_for_witness(common: common::CommonTransaction) -> Result<(), Error> {
-    let id = common.load()?.transaction_sign_data_hash();
+    let id = common.load()?.transaction_sign_data_hash()?;
     println!("{}", id);
     Ok(())
 }

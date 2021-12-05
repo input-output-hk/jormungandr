@@ -122,16 +122,16 @@ impl Storage {
 
     pub fn put_block(&self, block: &Block) -> Result<(), Error> {
         let id = block
-            .header
+            .header()
             .hash()
             .serialize_as_vec()
             .map_err(Error::Serialize)?;
         let parent_id = block
-            .header
+            .header()
             .block_parent_hash()
             .serialize_as_vec()
             .map_err(Error::Serialize)?;
-        let chain_length = block.header.chain_length().into();
+        let chain_length = block.header().chain_length().into();
         let block_info = BlockInfo::new(id, parent_id, chain_length);
         self.storage
             .put_block(
@@ -139,6 +139,33 @@ impl Storage {
                 block_info,
             )
             .map_err(Into::into)
+    }
+
+    pub fn get_parent(&self, header_hash: HeaderHash) -> Result<Option<HeaderHash>, Error> {
+        let block_info = match self.storage.get_block_info(header_hash.as_ref()) {
+            Ok(block_info) => block_info,
+            Err(_) => return Ok(None),
+        };
+
+        HeaderHash::deserialize(block_info.parent_id().as_ref())
+            .map_err(Error::Deserialize)
+            .map(Some)
+    }
+
+    pub fn is_ancestor(&self, a: HeaderHash, b: HeaderHash) -> bool {
+        self.storage
+            .is_ancestor(a.as_ref(), b.as_ref())
+            .map(|x| x.is_some())
+            .unwrap_or(false)
+    }
+
+    pub fn get_chain_length(&self, block_id: HeaderHash) -> Option<u32> {
+        let block_info = match self.storage.get_block_info(block_id.as_ref()) {
+            Ok(block_info) => block_info,
+            Err(_) => return None,
+        };
+
+        Some(block_info.chain_length())
     }
 
     /// Return values:
@@ -260,6 +287,22 @@ impl Storage {
             header_hash,
             distance: closest_found,
         }))
+    }
+
+    pub fn find_common_ancestor(
+        &self,
+        tip_1: HeaderHash,
+        tip_2: HeaderHash,
+    ) -> Result<HeaderHash, Error> {
+        HeaderHash::deserialize(
+            self.storage
+                .find_lowest_common_ancestor(tip_1.as_ref(), tip_2.as_ref())?
+                // No common ancestor means that we accepted blocks originating from two different block0
+                .unwrap()
+                .id()
+                .as_ref(),
+        )
+        .map_err(Error::Deserialize)
     }
 
     pub fn gc(&self, threshold_depth: u32, main_branch_tip: &[u8]) -> Result<(), Error> {

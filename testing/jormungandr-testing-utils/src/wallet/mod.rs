@@ -1,36 +1,17 @@
 pub mod account;
 pub mod committee;
 pub mod delegation;
+pub mod discrimination;
 pub mod utxo;
 
-pub use committee::{
-    ElectionPublicKeyExtension, PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager,
-};
-
+use crate::wallet::discrimination::DiscriminationExtension;
 use crate::{
-    qr_code::KeyQrCode,
     stake_pool::StakePool,
     testing::{FragmentBuilder, FragmentBuilderError},
 };
-use chain_impl_mockchain::{
-    certificate::{VotePlan, VoteTallyPayload},
-    fee::FeeAlgorithm,
-    key::EitherEd25519SecretKey,
-    testing::data::{AddressData, AddressDataValue, Wallet as WalletLib},
-    transaction::{
-        InputOutputBuilder, Payload, PayloadSlice, TransactionBindingAuthDataPhantom,
-        TransactionSignDataHash, Witness,
-    },
-    value::Value as ValueLib,
-    vote::{Choice, CommitteeId},
-};
-use jormungandr_lib::{
-    crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
-    interfaces::{Address, CommitteeIdDef, Initial, InitialUTxO, Value},
-};
-
+use chain_addr::AddressReadable;
 use chain_addr::Discrimination;
-use chain_crypto::{Ed25519, Signature};
+use chain_crypto::{Ed25519, Ed25519Extended, SecretKey, Signature};
 pub use chain_impl_mockchain::{
     account::SpendingCounter,
     block::Block,
@@ -40,7 +21,25 @@ pub use chain_impl_mockchain::{
     fragment::Fragment,
     header::HeaderId,
     milli::Milli,
-    transaction::{Input, TransactionBindingAuthData, UnspecifiedAccountIdentifier},
+    transaction::{Input, TransactionBindingAuthData},
+};
+use chain_impl_mockchain::{
+    block::BlockDate,
+    certificate::{VotePlan, VoteTallyPayload},
+    fee::FeeAlgorithm,
+    key::EitherEd25519SecretKey,
+    testing::data::{AddressData, AddressDataValue, Wallet as WalletLib},
+    transaction::{
+        InputOutputBuilder, Payload, PayloadSlice, TransactionBindingAuthDataPhantom,
+        TransactionSignDataHash, UnspecifiedAccountIdentifier, Witness,
+    },
+    value::Value as ValueLib,
+    vote::{Choice, CommitteeId},
+};
+pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
+use jormungandr_lib::{
+    crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
+    interfaces::{Address, CommitteeIdDef, Initial, InitialUTxO, Value},
 };
 use rand_core::{CryptoRng, RngCore};
 use std::{fs::File, path::Path};
@@ -58,11 +57,13 @@ pub enum WalletError {
     FragmentError(#[from] FragmentBuilderError),
     #[error("Invalid data")]
     InvalidBech32(#[from] bech32::Error),
-    #[error("invalid vote encrypting key")]
-    VoteEncryptingKey,
+    #[error("invalid electin public key")]
+    ElectionPublicKey,
     #[error("invalid bech32 public key, expected {expected} hrp got {actual}")]
     InvalidBech32Key { expected: String, actual: String },
 }
+
+const DEFAULT_LANE: usize = 0;
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
@@ -82,7 +83,7 @@ impl Wallet {
 
     pub fn import_account<P: AsRef<Path>>(
         secret_key_file: P,
-        spending_counter: Option<u32>,
+        spending_counter: Option<SpendingCounter>,
     ) -> Wallet {
         let bech32_str = jortestkit::file::read_file(secret_key_file);
         Wallet::Account(account::Wallet::from_existing_account(
@@ -103,7 +104,7 @@ impl Wallet {
 
     pub fn from_existing_account(
         signing_key_bech32: &str,
-        spending_counter: Option<u32>,
+        spending_counter: Option<SpendingCounter>,
     ) -> Wallet {
         Wallet::Account(account::Wallet::from_existing_account(
             signing_key_bech32,
@@ -155,25 +156,20 @@ impl Wallet {
         Wallet::Delegation(delegation)
     }
 
-    pub fn save_qr_code<P: AsRef<Path>>(&self, path: P, password: &[u8]) {
-        let qr = match self {
+    pub fn secret_key(&self) -> SecretKey<Ed25519Extended> {
+        match self {
             Wallet::Account(account) => {
                 let secret_key = match account.signing_key().as_ref() {
                     EitherEd25519SecretKey::Extended(secret_key) => secret_key,
                     EitherEd25519SecretKey::Normal(_) => panic!("unsupported secret key type"),
                 };
-                KeyQrCode::generate(secret_key.clone(), password)
+                secret_key.clone()
             }
-            Wallet::UTxO(utxo) => {
-                KeyQrCode::generate(utxo.last_signing_key().clone().into_secret_key(), password)
+            Wallet::UTxO(utxo) => utxo.last_signing_key().clone().into_secret_key(),
+            Wallet::Delegation(delegation) => {
+                delegation.last_signing_key().clone().into_secret_key()
             }
-            Wallet::Delegation(delegation) => KeyQrCode::generate(
-                delegation.last_signing_key().clone().into_secret_key(),
-                password,
-            ),
-        };
-
-        qr.to_img().save(path).unwrap();
+        }
     }
 
     pub fn save_to_path<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
@@ -197,10 +193,18 @@ impl Wallet {
         }
     }
 
+    pub fn address_bech32(&self, discrimination: Discrimination) -> String {
+        AddressReadable::from_address(&discrimination.into_prefix(), &self.address().into())
+            .to_string()
+    }
+
     pub fn sign_slice(&self, data: &[u8]) -> Signature<TransactionBindingAuthDataPhantom, Ed25519> {
         match self {
-            Wallet::Account(account) => account.signing_key().as_ref().sign_slice(&data),
-            _ => unimplemented!(),
+            Wallet::Account(account) => account.signing_key().as_ref().sign_slice(data),
+            Wallet::UTxO(utxo) => utxo.last_signing_key().as_ref().sign_slice(data),
+            Wallet::Delegation(delegation) => {
+                delegation.last_signing_key().as_ref().sign_slice(data)
+            }
         }
     }
 
@@ -268,7 +272,21 @@ impl Wallet {
 
     pub fn confirm_transaction(&mut self) {
         match self {
-            Wallet::Account(account) => account.increment_counter(),
+            Wallet::Account(account) => account.increment_counter(DEFAULT_LANE),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn decrement_counter(&mut self) {
+        match self {
+            Wallet::Account(account) => account.decrement_counter(DEFAULT_LANE),
+            _ => unimplemented!(),
+        }
+    }
+
+    pub fn spending_counter(&self) -> SpendingCounter {
+        match self {
+            Wallet::Account(account) => account.internal_counter(),
             _ => unimplemented!(),
         }
     }
@@ -276,23 +294,25 @@ impl Wallet {
     pub fn stake_key(&self) -> Option<UnspecifiedAccountIdentifier> {
         match &self {
             Wallet::Account(account) => Some(account.stake_key()),
+            Wallet::Delegation(delegation) => Some(delegation.stake_key()),
             _ => unimplemented!(),
         }
     }
 
-    pub fn delegation_cert_for_block0(&self, pool_id: PoolId) -> Initial {
-        FragmentBuilder::full_delegation_cert_for_block0(&self, pool_id)
+    pub fn delegation_cert_for_block0(&self, valid_until: BlockDate, pool_id: PoolId) -> Initial {
+        FragmentBuilder::full_delegation_cert_for_block0(valid_until, self, pool_id)
     }
 
     pub fn transaction_to(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         address: Address,
         value: Value,
     ) -> Result<Fragment, WalletError> {
-        FragmentBuilder::new(block0_hash, fees)
-            .transaction(&self, address, value)
+        FragmentBuilder::new(block0_hash, fees, valid_until)
+            .transaction(self, address, value)
             .map_err(WalletError::FragmentError)
     }
 
@@ -300,11 +320,12 @@ impl Wallet {
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         address: &[Address],
         value: Value,
     ) -> Result<Fragment, WalletError> {
-        FragmentBuilder::new(block0_hash, fees)
-            .transaction_to_many(&self, address, value)
+        FragmentBuilder::new(block0_hash, fees, valid_until)
+            .transaction_to_many(self, address, value)
             .map_err(WalletError::FragmentError)
     }
 
@@ -312,82 +333,96 @@ impl Wallet {
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_retire(vec![&self], stake_pool))
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
+            .stake_pool_retire(vec![self], stake_pool))
     }
 
     pub fn issue_pool_registration_cert(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_registration(&self, stake_pool))
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
+            .stake_pool_registration(self, stake_pool))
     }
 
     pub fn issue_pool_update_cert(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         stake_pool: &StakePool,
         update_stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).stake_pool_update(
-            vec![&self],
-            stake_pool,
-            update_stake_pool,
-        ))
+        Ok(
+            FragmentBuilder::new(block0_hash, fees, valid_until).stake_pool_update(
+                vec![self],
+                stake_pool,
+                update_stake_pool,
+            ),
+        )
     }
 
     pub fn issue_full_delegation_cert(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).delegation(&self, stake_pool))
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).delegation(self, stake_pool))
     }
 
     pub fn issue_owner_delegation_cert(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         stake_pool: &StakePool,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).owner_delegation(&self, stake_pool))
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).owner_delegation(self, stake_pool))
     }
 
     pub fn issue_split_delegation_cert(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         distribution: Vec<(&StakePool, u8)>,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).delegation_to_many(&self, distribution))
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
+            .delegation_to_many(self, distribution))
     }
 
     pub fn remove_delegation_cert(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).delegation_remove(&self))
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).delegation_remove(self))
     }
 
     pub fn issue_vote_plan_cert(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         vote_plan: &VotePlan,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).vote_plan(&self, vote_plan))
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).vote_plan(self, vote_plan))
     }
 
     pub fn issue_vote_cast_cert(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         vote_plan: &VotePlan,
         proposal_index: u8,
         choice: &Choice,
@@ -396,13 +431,15 @@ impl Wallet {
             chain_impl_mockchain::vote::PayloadType::Public => Ok(FragmentBuilder::new(
                 block0_hash,
                 fees,
+                valid_until,
             )
-            .public_vote_cast(&self, vote_plan, proposal_index, choice)),
+            .public_vote_cast(self, vote_plan, proposal_index, choice)),
             chain_impl_mockchain::vote::PayloadType::Private => Ok(FragmentBuilder::new(
                 block0_hash,
                 fees,
+                valid_until,
             )
-            .private_vote_cast(&self, vote_plan, proposal_index, choice)),
+            .private_vote_cast(self, vote_plan, proposal_index, choice)),
         }
     }
 
@@ -410,19 +447,22 @@ impl Wallet {
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         vote_plan: &VotePlan,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).encrypted_tally(&self, vote_plan))
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).encrypted_tally(self, vote_plan))
     }
 
     pub fn issue_vote_tally_cert(
         &mut self,
         block0_hash: &Hash,
         fees: &LinearFee,
+        valid_until: BlockDate,
         vote_plan: &VotePlan,
         tally_type: VoteTallyPayload,
     ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees).vote_tally(&self, vote_plan, tally_type))
+        Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
+            .vote_tally(self, vote_plan, tally_type))
     }
 
     pub fn to_committee_id(&self) -> CommitteeIdDef {
@@ -431,7 +471,7 @@ impl Wallet {
         ))
     }
 
-    pub fn update_counter(&mut self, counter: u32) {
+    pub fn update_counter(&mut self, counter: SpendingCounter) {
         if let Wallet::Account(account) = self {
             account.set_counter(counter)
         }

@@ -1,4 +1,5 @@
 use crate::jcli_lib::transaction::{common, Error};
+use crate::transaction::staging::Staging;
 use chain_impl_mockchain::transaction::OutputPolicy;
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;
@@ -20,15 +21,23 @@ impl Finalize {
     pub fn exec(self) -> Result<(), Error> {
         let mut transaction = self.common.load()?;
 
-        let fee_algo = self.fee.linear_fee();
-        let output_policy = match self.change {
-            None => OutputPolicy::Forget,
-            Some(change) => OutputPolicy::One(change.into()),
-        };
-
-        let _balance = transaction.balance_inputs_outputs(&fee_algo, output_policy)?;
+        finalize(self.fee, self.change, &mut transaction)?;
 
         self.common.store(&transaction)?;
         Ok(())
     }
+}
+
+pub fn finalize(
+    fee: common::CommonFees,
+    change: Option<interfaces::Address>,
+    transaction: &mut Staging,
+) -> Result<(), Error> {
+    let fee_algo = fee.linear_fee();
+    let output_policy = match change {
+        None => OutputPolicy::Forget,
+        Some(change) => OutputPolicy::One(change.into()),
+    };
+    let _balance = transaction.balance_inputs_outputs(&fee_algo, output_policy)?;
+    Ok(())
 }

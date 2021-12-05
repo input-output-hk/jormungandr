@@ -1,5 +1,5 @@
-use crate::common::jcli::JCli;
 use chain_addr::Discrimination;
+use jormungandr_testing_utils::testing::jcli::JCli;
 
 #[test]
 pub fn test_utxo_address_made_of_ed25519_extended_key() {
@@ -25,7 +25,7 @@ pub fn test_delegation_address_made_of_ed25519_extended_seed_key() {
 
     let private_key = jcli
         .key()
-        .generate_with_seed("ed25519Extended", &correct_seed);
+        .generate_with_seed("ed25519Extended", correct_seed);
     println!("private key: {}", &private_key);
 
     let public_key = jcli.key().convert_to_public_string(&private_key);
@@ -33,7 +33,7 @@ pub fn test_delegation_address_made_of_ed25519_extended_seed_key() {
 
     let private_key = jcli
         .key()
-        .generate_with_seed("ed25519Extended", &correct_seed);
+        .generate_with_seed("ed25519Extended", correct_seed);
     println!("private delegation key: {}", &private_key);
     let delegation_key = jcli.key().convert_to_public_string(&private_key);
     println!("delegation key: {}", &delegation_key);
@@ -55,7 +55,7 @@ pub fn test_delegation_address_is_the_same_as_public() {
 
     let private_key = jcli
         .key()
-        .generate_with_seed("ed25519Extended", &correct_seed);
+        .generate_with_seed("ed25519Extended", correct_seed);
     println!("private key: {}", &private_key);
 
     let public_key = jcli.key().convert_to_public_string(&private_key);
@@ -78,7 +78,7 @@ pub fn test_delegation_address_for_prod_discrimination() {
 
     let private_key = jcli
         .key()
-        .generate_with_seed("ed25519Extended", &correct_seed);
+        .generate_with_seed("ed25519Extended", correct_seed);
     println!("private key: {}", &private_key);
 
     let public_key = jcli.key().convert_to_public_string(&private_key);
@@ -101,7 +101,7 @@ pub fn test_single_address_for_prod_discrimination() {
 
     let private_key = jcli
         .key()
-        .generate_with_seed("ed25519Extended", &correct_seed);
+        .generate_with_seed("ed25519Extended", correct_seed);
     println!("private key: {}", &private_key);
 
     let public_key = jcli.key().convert_to_public_string(&private_key);
@@ -121,7 +121,7 @@ pub fn test_account_address_for_prod_discrimination() {
 
     let private_key = jcli
         .key()
-        .generate_with_seed("ed25519Extended", &correct_seed);
+        .generate_with_seed("ed25519Extended", correct_seed);
     println!("private key: {}", &private_key);
 
     let public_key = jcli.key().convert_to_public_string(&private_key);

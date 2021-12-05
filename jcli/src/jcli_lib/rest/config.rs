@@ -7,12 +7,12 @@ use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
 
-#[derive(StructOpt)]
+#[derive(StructOpt, Clone)]
 pub struct RestArgs {
     /// node API address. Must always have `http://` or `https://` prefix.
     /// E.g. `-h http://127.0.0.1`, `--host https://node.com:8443/cardano/api`
     #[structopt(short, long, env = "JORMUNGANDR_RESTAPI_URL")]
-    host: Url,
+    pub host: Url,
     /// print additional debug information to stderr.
     /// The output format is intentionally undocumented and unstable
     #[structopt(long)]
@@ -60,11 +60,11 @@ pub enum Error {
     #[error("node rejected request because of invalid parameters")]
     InvalidParams(#[source] reqwest::Error),
     #[error("node internal error")]
-    InternalError(#[source] reqwest::Error),
+    Internal(#[source] reqwest::Error),
     #[error("redirecting error while connecting with node")]
     Redirecton(#[source] reqwest::Error),
     #[error("communication with node failed in unexpected way")]
-    UnexpectedError(#[source] reqwest::Error),
+    Unexpected(#[source] reqwest::Error),
 }
 
 impl RestArgs {
@@ -203,14 +203,14 @@ impl RestRequestBuilder {
                     if status.is_client_error() {
                         Error::InvalidParams(e)
                     } else if status.is_server_error() {
-                        Error::InternalError(e)
+                        Error::Internal(e)
                     } else if status.is_redirection() {
                         Error::Redirecton(e)
                     } else {
-                        Error::UnexpectedError(e)
+                        Error::Unexpected(e)
                     }
                 } else {
-                    Error::UnexpectedError(e)
+                    Error::Unexpected(e)
                 }
             })?;
 

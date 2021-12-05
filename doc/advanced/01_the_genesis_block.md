@@ -1,7 +1,7 @@
 # genesis file
 
 The genesis file is the file that allows you to create a new blockchain
-from block 0. It lays out the different parameter of your blockchain:
+from block 0. It lays out the different parameters of your blockchain:
 the initial utxo, the start time, the slot duration time, etc...
 
 Example of a BFT genesis file with an initial address UTxO and an account UTxO.
@@ -18,7 +18,7 @@ jcli genesis init
 For example your genesis file may look like:
 
 ```yaml
-{{#include ../../jormungandr-lib/src/interfaces/block0_configuration/DOCUMENTED_EXAMPLE.yaml}}
+{{#include ../../jormungandr-lib/src/interfaces/block0_configuration/BLOCKCHAIN_CONFIGURATION_DOCUMENTED_EXAMPLE.yaml}}
 ```
 
 There are multiple _parts_ in the genesis file:

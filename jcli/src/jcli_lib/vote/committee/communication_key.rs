@@ -1,5 +1,5 @@
 use crate::jcli_lib::vote::{Error, OutputFile, Seed};
-use bech32::{FromBase32, ToBase32};
+use chain_crypto::bech32::Bech32;
 use chain_vote::MemberCommunicationKey;
 use rand::rngs::OsRng;
 use rand_chacha::rand_core::SeedableRng;
@@ -52,15 +52,7 @@ impl Generate {
         let key = MemberCommunicationKey::new(&mut rng);
 
         let mut output = self.output_file.open()?;
-        writeln!(
-            output,
-            "{}",
-            bech32::encode(
-                crate::jcli_lib::vote::bech32_constants::COMMUNICATION_SK_HRP,
-                key.to_bytes().to_base32()
-            )
-            .map_err(Error::Bech32)?
-        )?;
+        writeln!(output, "{}", key.to_bech32_str())?;
         Ok(())
     }
 }
@@ -68,29 +60,11 @@ impl Generate {
 impl ToPublic {
     fn exec(self) -> Result<(), Error> {
         let line = crate::jcli_lib::utils::io::read_line(&self.input_key)?;
-        let (hrp, bytes) = bech32::decode(&line).map_err(Error::Bech32)?;
 
-        if hrp != crate::jcli_lib::vote::bech32_constants::COMMUNICATION_SK_HRP {
-            return Err(Error::InvalidSecretKey);
-        }
-
-        let key = chain_vote::encryption::SecretKey::from_bytes(
-            &Vec::<u8>::from_base32(&bytes).map_err(|_| Error::InvalidSecretKey)?,
-        )
-        .ok_or(Error::InvalidSecretKey)?;
-
-        let kp = chain_vote::encryption::Keypair::from_secretkey(key);
+        let sk = MemberCommunicationKey::try_from_bech32_str(&line)?.to_public();
 
         let mut output = self.output_file.open()?;
-        writeln!(
-            output,
-            "{}",
-            bech32::encode(
-                crate::jcli_lib::vote::bech32_constants::COMMUNICATION_PK_HRP,
-                kp.public_key.to_bytes().to_base32()
-            )
-            .map_err(Error::Bech32)?
-        )?;
+        writeln!(output, "{}", sk.to_bech32_str())?;
 
         Ok(())
     }

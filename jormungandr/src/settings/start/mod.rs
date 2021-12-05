@@ -47,12 +47,14 @@ pub struct Settings {
     pub network: network::Configuration,
     pub storage: Option<PathBuf>,
     pub block_0: Block0Info,
-    pub secrets: Vec<PathBuf>,
+    pub secret: Option<PathBuf>,
     pub rest: Option<Rest>,
     pub mempool: Mempool,
     pub rewards_report_all: bool,
     pub leadership: Leadership,
     pub explorer: bool,
+    #[cfg(feature = "prometheus-metrics")]
+    pub prometheus: bool,
     pub no_blockchain_updates_warning_interval: std::time::Duration,
     pub block_hard_deadline: u32,
 }
@@ -164,7 +166,7 @@ impl RawSettings {
             config,
         } = self;
         let command_arguments = &command_line.start_arguments;
-        let network = generate_network(&command_arguments, &config)?;
+        let network = generate_network(command_arguments, &config)?;
 
         let storage = match (
             command_arguments.storage.as_ref(),
@@ -175,12 +177,11 @@ impl RawSettings {
             (None, None) => None,
         };
 
-        let mut secrets = command_arguments.secret.clone();
-        if let Some(secret_files) = config.as_ref().map(|cfg| cfg.secret_files.clone()) {
-            secrets.extend(secret_files);
-        }
-
-        if secrets.is_empty() {
+        let secret = command_arguments
+            .secret
+            .clone()
+            .or_else(|| config.as_ref().map(|cfg| cfg.secret_file.clone()).flatten());
+        if secret.is_none() {
             tracing::warn!(
                 "Node started without path to the stored secret keys (not a stake pool or a BFT leader)"
             );
@@ -203,11 +204,19 @@ impl RawSettings {
                     .map_or(false, |settings| settings.enabled)
             });
 
+        #[cfg(feature = "prometheus-metrics")]
+        let prometheus = command_arguments.prometheus_enabled
+            || config.as_ref().map_or(false, |cfg| {
+                cfg.prometheus
+                    .as_ref()
+                    .map_or(false, |settings| settings.enabled)
+            });
+
         Ok(Settings {
             storage,
             block_0,
             network,
-            secrets,
+            secret,
             rewards_report_all: command_line.rewards_report_all,
             rest,
             mempool: config
@@ -217,6 +226,8 @@ impl RawSettings {
                 .as_ref()
                 .map_or(Leadership::default(), |cfg| cfg.leadership.clone()),
             explorer,
+            #[cfg(feature = "prometheus-metrics")]
+            prometheus,
             no_blockchain_updates_warning_interval: config
                 .as_ref()
                 .and_then(|config| config.no_blockchain_updates_warning_interval)
@@ -341,7 +352,6 @@ fn generate_network(
             .unwrap_or(network::DEFAULT_MAX_INBOUND_CONNECTIONS),
         timeout: std::time::Duration::from_secs(15),
         allow_private_addresses: p2p.allow_private_addresses,
-        max_unreachable_nodes_to_connect_per_event: p2p.max_unreachable_nodes_to_connect_per_event,
         gossip_interval: p2p
             .gossip_interval
             .map(|d| d.into())

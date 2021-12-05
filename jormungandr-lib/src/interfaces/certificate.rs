@@ -53,6 +53,12 @@ impl SignedCertificate {
             certificate::SignedCertificate::EncryptedVoteTally(c, _) => {
                 Certificate(certificate::Certificate::EncryptedVoteTally(c))
             }
+            certificate::SignedCertificate::UpdateProposal(c, _) => {
+                Certificate(certificate::Certificate::UpdateProposal(c))
+            }
+            certificate::SignedCertificate::UpdateVote(c, _) => {
+                Certificate(certificate::Certificate::UpdateVote(c))
+            }
         }
     }
 }
@@ -95,6 +101,18 @@ impl property::Serialize for Certificate {
             }
             certificate::Certificate::EncryptedVoteTally(c) => {
                 writer.write_all(&[9])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
+            certificate::Certificate::UpdateProposal(c) => {
+                writer.write_all(&[10])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
+            certificate::Certificate::UpdateVote(c) => {
+                writer.write_all(&[11])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
+            certificate::Certificate::MintToken(c) => {
+                writer.write_all(&[12])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
         };
@@ -147,6 +165,14 @@ impl Readable for Certificate {
                     cert,
                 )))
             }
+            10 => {
+                let cert = certificate::UpdateProposal::read(buf)?;
+                Ok(Certificate(certificate::Certificate::UpdateProposal(cert)))
+            }
+            11 => {
+                let cert = certificate::UpdateVote::read(buf)?;
+                Ok(Certificate(certificate::Certificate::UpdateVote(cert)))
+            }
             t => Err(ReadError::UnknownTag(t as u32)),
         }
     }
@@ -192,6 +218,16 @@ impl property::Serialize for SignedCertificate {
             }
             certificate::SignedCertificate::EncryptedVoteTally(c, a) => {
                 writer.write_all(&[9])?;
+                writer.write_all(c.serialize().as_slice())?;
+                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+            }
+            certificate::SignedCertificate::UpdateProposal(c, a) => {
+                writer.write_all(&[10])?;
+                writer.write_all(c.serialize().as_slice())?;
+                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+            }
+            certificate::SignedCertificate::UpdateVote(c, a) => {
+                writer.write_all(&[11])?;
                 writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
@@ -258,6 +294,20 @@ impl Readable for SignedCertificate {
                     certificate::SignedCertificate::EncryptedVoteTally(cert, auth),
                 ))
             }
+            10 => {
+                let cert = certificate::UpdateProposal::read(buf)?;
+                let auth = Readable::read(buf)?;
+                Ok(SignedCertificate(
+                    certificate::SignedCertificate::UpdateProposal(cert, auth),
+                ))
+            }
+            11 => {
+                let cert = certificate::UpdateVote::read(buf)?;
+                let auth = Readable::read(buf)?;
+                Ok(SignedCertificate(
+                    certificate::SignedCertificate::UpdateVote(cert, auth),
+                ))
+            }
             t => Err(ReadError::UnknownTag(t as u32)),
         }
     }
@@ -289,15 +339,22 @@ pub enum CertificateFromStrError {
     InvalidBech32(#[from] bech32::Error),
 }
 
+/// Use bech32m variant to serialize a certificate as its length it's not fixed
+/// but allow to read original bech32 formatted certificates for backward compatibility
 impl Certificate {
-    pub fn to_bech32(&self) -> Result<String, CertificateToBech32Error> {
+    pub fn to_bech32m(&self) -> Result<String, CertificateToBech32Error> {
         use chain_core::property::Serialize as _;
         let bytes = self.serialize_as_vec()?;
-        Ok(bech32::encode(CERTIFICATE_HRP, &bytes.to_base32())?)
+        // jormungandr_lib::Certificate is only used in jcli so we don't
+        Ok(bech32::encode(
+            CERTIFICATE_HRP,
+            &bytes.to_base32(),
+            bech32::Variant::Bech32m,
+        )?)
     }
 
     pub fn from_bech32(bech32: &str) -> Result<Self, CertificateFromBech32Error> {
-        let (hrp, data) = bech32::decode(bech32)?;
+        let (hrp, data, _variant) = bech32::decode(bech32)?;
         if hrp != CERTIFICATE_HRP {
             return Err(CertificateFromBech32Error::InvalidHrp {
                 expected: CERTIFICATE_HRP.to_owned(),
@@ -311,14 +368,18 @@ impl Certificate {
 }
 
 impl SignedCertificate {
-    pub fn to_bech32(&self) -> Result<String, CertificateToBech32Error> {
+    pub fn to_bech32m(&self) -> Result<String, CertificateToBech32Error> {
         use chain_core::property::Serialize as _;
         let bytes = self.serialize_as_vec()?;
-        Ok(bech32::encode(SIGNED_CERTIFICATE_HRP, &bytes.to_base32())?)
+        Ok(bech32::encode(
+            SIGNED_CERTIFICATE_HRP,
+            &bytes.to_base32(),
+            bech32::Variant::Bech32m,
+        )?)
     }
 
     pub fn from_bech32(bech32: &str) -> Result<Self, CertificateFromBech32Error> {
-        let (hrp, data) = bech32::decode(bech32)?;
+        let (hrp, data, _variant) = bech32::decode(bech32)?;
         if hrp != SIGNED_CERTIFICATE_HRP {
             return Err(CertificateFromBech32Error::InvalidHrp {
                 expected: SIGNED_CERTIFICATE_HRP.to_owned(),
@@ -335,20 +396,20 @@ impl SignedCertificate {
 
 impl fmt::Display for Certificate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_bech32().unwrap())
+        write!(f, "{}", self.to_bech32m().unwrap())
     }
 }
 
 impl FromStr for Certificate {
     type Err = CertificateFromStrError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Certificate::from_bech32(&s)?)
+        Ok(Certificate::from_bech32(s)?)
     }
 }
 
 impl fmt::Display for SignedCertificate {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.to_bech32().unwrap())
+        write!(f, "{}", self.to_bech32m().unwrap())
     }
 }
 
@@ -387,7 +448,7 @@ impl Serialize for Certificate {
     {
         use serde::ser::Error as _;
 
-        let bech32 = self.to_bech32().map_err(S::Error::custom)?;
+        let bech32 = self.to_bech32m().map_err(S::Error::custom)?;
 
         bech32.serialize(serializer)
     }
@@ -412,7 +473,7 @@ impl Serialize for SignedCertificate {
     {
         use serde::ser::Error as _;
 
-        let bech32 = self.to_bech32().map_err(S::Error::custom)?;
+        let bech32 = self.to_bech32m().map_err(S::Error::custom)?;
         bech32.serialize(serializer)
     }
 }

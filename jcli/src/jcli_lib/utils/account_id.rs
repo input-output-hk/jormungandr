@@ -6,7 +6,6 @@ use thiserror::Error;
 
 #[derive(Debug)]
 pub struct AccountId {
-    arg: String,
     account: account::Identifier,
 }
 
@@ -18,12 +17,11 @@ impl AccountId {
     // accept either an address with the account kind
     // or a ed25519 publickey
     pub fn try_from_str(src: &str) -> Result<Self, Error> {
-        if let Ok((_, data)) = bech32::decode(src) {
+        if let Ok((_, data, _variant)) = bech32::decode(src) {
             let dat = Vec::from_base32(&data).unwrap();
             if let Ok(addr) = Address::from_bytes(&dat) {
                 match addr.kind() {
                     Kind::Account(pk) => Ok(Self {
-                        arg: src.to_string(),
                         account: id_from_pub(pk.clone()),
                     }),
                     _ => Err(Error::AddressNotAccount {
@@ -33,7 +31,6 @@ impl AccountId {
                 }
             } else if let Ok(pk) = PublicKey::from_binary(&dat) {
                 Ok(Self {
-                    arg: src.to_string(),
                     account: id_from_pub(pk),
                 })
             } else {

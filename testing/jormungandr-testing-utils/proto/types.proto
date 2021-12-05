@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+// Message types shared by protocol definitions
+package iohk.chain.types;
+
+// Representation of a block.
+message Block {
+  // The serialized content of the block.
+  bytes content = 1;
+}
+
+// Representation of a block header.
+message Header {
+  // The serialized content of the block header.
+  bytes content = 1;
+}
+
+// Representation of a block fragment, that is, a transaction or other
+// content item.
+message Fragment {
+  // The serialized content of the fragment.
+  bytes content = 1;
+}
+
+// A sequence of block identifiers used in fetch requests and solicitation.
+message BlockIds {
+  // The identifiers of blocks for loading.
+  repeated bytes ids = 1;
+}
+
+// A sequence of fragment identifiers used in fetch requests.
+message FragmentIds {
+  // The identifiers of fragments.
+  repeated bytes ids = 1;
+}

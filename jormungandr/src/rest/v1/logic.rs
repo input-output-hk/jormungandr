@@ -3,13 +3,20 @@ use crate::{
     intercom::{self, TransactionMsg},
     rest::Context,
 };
-use chain_crypto::{digest::Error as DigestError, hash::Error as HashError, PublicKeyFromStrError};
-use chain_impl_mockchain::{fragment::FragmentId, value::ValueError};
+use chain_crypto::{
+    digest::Error as DigestError, hash::Error as HashError, PublicKey, PublicKeyFromStrError,
+};
+use chain_impl_mockchain::{
+    account::{AccountAlg, Identifier},
+    fragment::FragmentId,
+    value::ValueError,
+};
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
 use jormungandr_lib::interfaces::{
-    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch, FragmentsProcessingSummary,
+    AccountVotes, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch,
+    FragmentsProcessingSummary, VotePlanId,
 };
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, convert::TryInto, str::FromStr};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
 
@@ -17,15 +24,15 @@ use tracing_futures::Instrument;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    ContextError(#[from] crate::rest::context::Error),
+    Context(#[from] crate::rest::context::Error),
     #[error(transparent)]
     PublicKey(#[from] PublicKeyFromStrError),
     #[error(transparent)]
-    IntercomError(#[from] intercom::Error),
+    Intercom(#[from] intercom::Error),
     #[error(transparent)]
-    TxMsgSendError(#[from] TrySendError<TransactionMsg>),
+    TxMsgSend(#[from] TrySendError<TransactionMsg>),
     #[error(transparent)]
-    MsgSendError(#[from] SendError),
+    MsgSend(#[from] SendError),
     #[error("Block value calculation error")]
     Value(#[from] ValueError),
     #[error(transparent)]
@@ -38,6 +45,12 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
     #[error("Could not process all fragments")]
     Fragments(FragmentsProcessingSummary),
+}
+
+fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
+    PublicKey::<AccountAlg>::from_str(id_hex)
+        .map(Into::into)
+        .map_err(Into::into)
 }
 
 pub async fn get_fragment_statuses<'a>(
@@ -56,7 +69,7 @@ pub async fn get_fragment_statuses<'a>(
             .await
             .map_err(|e| {
                 tracing::debug!(reason = %e, "error getting message statuses");
-                Error::MsgSendError(e)
+                Error::MsgSend(e)
             })?;
         reply_future
             .await
@@ -104,9 +117,88 @@ pub async fn get_fragment_logs(context: &Context) -> Result<Vec<FragmentLog>, Er
             .await
             .map_err(|e| {
                 tracing::debug!(reason = %e, "error getting fragment logs");
-                Error::MsgSendError(e)
+                Error::MsgSend(e)
             })?;
         reply_future.await.map_err(Into::into)
+    }
+    .instrument(span)
+    .await
+}
+
+pub async fn get_account_votes_with_plan(
+    context: &Context,
+    vote_plan_id: VotePlanId,
+    account_id_hex: String,
+) -> Result<Option<Vec<u8>>, Error> {
+    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes_with_plan", request = "get_account_votes_with_plan");
+
+    let identifier =
+        chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
+            parse_account_id(&account_id_hex)?,
+        );
+
+    async move {
+        let maybe_vote_plan = context
+            .blockchain_tip()?
+            .get_ref()
+            .await
+            .ledger()
+            .active_vote_plans()
+            .into_iter()
+            .find(|x| x.id == vote_plan_id.into_digest().into());
+        let vote_plan = match maybe_vote_plan {
+            Some(vote_plan) => vote_plan,
+            None => return Ok(None),
+        };
+        let result = vote_plan
+            .proposals
+            .into_iter()
+            .enumerate()
+            .filter(|(_, x)| x.votes.contains_key(&identifier))
+            .map(|(i, _)| i.try_into().unwrap())
+            .collect();
+        Ok(Some(result))
+    }
+    .instrument(span)
+    .await
+}
+
+pub async fn get_account_votes(
+    context: &Context,
+    account_id_hex: String,
+) -> Result<Option<Vec<AccountVotes>>, Error> {
+    let span = span!(parent: context.span()?, Level::TRACE, "get_account_votes", request = "get_account_votes");
+
+    let identifier =
+        chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier::from_single_account(
+            parse_account_id(&account_id_hex)?,
+        );
+
+    async {
+        let result = context
+            .blockchain_tip()?
+            .get_ref()
+            .await
+            .ledger()
+            .active_vote_plans()
+            .into_iter()
+            .map(|vote_plan| {
+                let votes = vote_plan
+                    .proposals
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(_, x)| x.votes.contains_key(&identifier))
+                    .map(|(i, _)| i.try_into().unwrap())
+                    .collect();
+
+                AccountVotes {
+                    vote_plan_id: vote_plan.id.into(),
+                    votes,
+                }
+            })
+            .collect();
+
+        Ok(Some(result))
     }
     .instrument(span)
     .await

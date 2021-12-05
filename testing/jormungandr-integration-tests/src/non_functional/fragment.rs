@@ -1,16 +1,20 @@
-use crate::common::jormungandr::ConfigurationBuilder;
-use crate::common::startup;
-use jormungandr_lib::interfaces::BlockDate;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
-use jormungandr_testing_utils::testing::fragments::TransactionGenerator;
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::FragmentSender;
-use jormungandr_testing_utils::testing::{
-    BatchFragmentGenerator, FragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
+use chain_impl_mockchain::block::BlockDate;
+use jormungandr_lib::interfaces::{
+    ActiveSlotCoefficient, BlockDate as BlockDateDto, KesUpdateSpeed,
 };
-pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
-use jortestkit::load::{self, Configuration, Monitor};
-use jortestkit::prelude::Wait;
+use jormungandr_testing_utils::testing::{
+    fragments::TransactionGenerator,
+    jcli::{FragmentsCheck, JCli},
+    jormungandr::ConfigurationBuilder,
+    node::time,
+    startup, BatchFragmentGenerator, BlockDateGenerator, FragmentGenerator, FragmentSender,
+    FragmentSenderSetup, FragmentStatusProvider,
+};
+pub use jortestkit::{
+    console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode},
+    load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor},
+    prelude::Wait,
+};
 use std::time::Duration;
 
 #[test]
@@ -25,21 +29,21 @@ pub fn fragment_load_test() {
             .with_slots_per_epoch(30)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(4)
+            .with_block_content_max_size(204800.into())
             .with_epoch_stability_depth(10)
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
 
     jormungandr.steal_temp_dir().unwrap().into_persistent();
+    let settings = jormungandr.rest().settings().unwrap();
 
-    let configuration = Configuration::duration(
-        1,
-        std::time::Duration::from_secs(60),
-        500,
-        Monitor::Standard(1000),
-        1_000,
-        1_000,
-    );
+    let configuration = LoadConfigurationBuilder::duration(Duration::from_secs(60))
+        .step_delay(Duration::from_millis(500))
+        .monitor(Monitor::Standard(1000))
+        .shutdown_grace_period(Duration::from_secs(1))
+        .status_pace(Duration::from_secs(1))
+        .build();
 
     let mut request_generator = FragmentGenerator::new(
         faucet,
@@ -48,25 +52,30 @@ pub fn fragment_load_test() {
         60,
         30,
         30,
+        30,
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),
+            BlockDateGenerator::rolling(
+                &settings,
+                BlockDate {
+                    epoch: 1,
+                    slot_id: 0,
+                },
+                false,
+            ),
             FragmentSenderSetup::no_verify(),
         ),
     );
 
-    use crate::common::jcli::FragmentsCheck;
-    use crate::common::jcli::JCli;
-
-    request_generator.prepare(BlockDate::new(0, 19));
+    request_generator.prepare(BlockDateDto::new(2, 0));
 
     let jcli: JCli = Default::default();
-
     let fragment_check = FragmentsCheck::new(jcli, &jormungandr);
     let wait = Wait::new(Duration::from_secs(1), 25);
     fragment_check.wait_until_all_processed(&wait).unwrap();
 
-    time::wait_for_epoch(1, jormungandr.rest());
+    time::wait_for_epoch(3, jormungandr.rest());
 
     load::start_async(
         request_generator,
@@ -94,20 +103,29 @@ pub fn fragment_batch_load_test() {
 
     jormungandr.steal_temp_dir().unwrap().into_persistent();
 
-    let configuration = Configuration::duration(
-        5,
-        std::time::Duration::from_secs(60),
-        1000,
-        Monitor::Standard(100),
-        3_000,
-        1_000,
-    );
+    let configuration = LoadConfigurationBuilder::duration(Duration::from_secs(60))
+        .thread_no(5)
+        .step_delay(Duration::from_secs(1))
+        .monitor(Monitor::Standard(100))
+        .shutdown_grace_period(Duration::from_secs(3))
+        .status_pace(Duration::from_secs(1))
+        .build();
+
+    let settings = jormungandr.rest().settings().unwrap();
 
     let mut request_generator = BatchFragmentGenerator::new(
         FragmentSenderSetup::no_verify(),
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        BlockDateGenerator::rolling(
+            &settings,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            false,
+        ),
         10,
     );
     request_generator.fill_from_faucet(&mut faucet);
@@ -137,21 +155,28 @@ pub fn transaction_load_test() {
     .unwrap();
 
     jormungandr.steal_temp_dir().unwrap().into_persistent();
+    let settings = jormungandr.rest().settings().unwrap();
 
-    let configuration = Configuration::duration(
-        1,
-        std::time::Duration::from_secs(60),
-        100,
-        Monitor::Standard(100),
-        100,
-        1_000,
-    );
+    let configuration = LoadConfigurationBuilder::duration(Duration::from_secs(60))
+        .step_delay(Duration::from_millis(100))
+        .monitor(Monitor::Standard(100))
+        .shutdown_grace_period(Duration::from_millis(100))
+        .status_pace(Duration::from_secs(1))
+        .build();
 
     let mut request_generator = TransactionGenerator::new(
         FragmentSenderSetup::no_verify(),
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        BlockDateGenerator::rolling(
+            &settings,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            false,
+        ),
     );
     request_generator.fill_from_faucet(&mut faucet);
 

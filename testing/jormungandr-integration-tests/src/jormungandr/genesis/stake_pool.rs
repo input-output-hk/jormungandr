@@ -1,62 +1,21 @@
-use crate::common::{
+use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
     startup,
 };
 
-use chain_crypto::{Curve25519_2HashDh, SumEd25519_12};
+use chain_crypto::{RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{InitialUTxO, Ratio, TaxType, Value},
+    interfaces::{BlockDate, InitialUTxO, Ratio, TaxType, Value},
 };
-use jormungandr_testing_utils::{
-    testing::{FragmentSender, FragmentSenderSetup},
-    wallet::Wallet,
-};
+use jormungandr_testing_utils::wallet::Wallet;
 use jortestkit::process::Wait;
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
 use std::str::FromStr;
-
-#[test]
-pub fn more_than_one_stake_pool_in_app() {
-    let mut first_spo = startup::create_new_account_address();
-    let second_spo = startup::create_new_account_address();
-    let third_spo = startup::create_new_account_address();
-
-    let (jormungandr, _) = startup::start_stake_pool(
-        &[first_spo.clone(), second_spo.clone(), third_spo],
-        &[],
-        &mut ConfigurationBuilder::new(),
-    )
-    .unwrap();
-
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        FragmentSenderSetup::resend_3_times(),
-    );
-    fragment_sender
-        .send_transaction(&mut first_spo, &second_spo, &jormungandr, 1.into())
-        .unwrap();
-
-    jormungandr.assert_no_errors_in_log();
-
-    let last_block_height: u64 = jormungandr
-        .rest()
-        .stats()
-        .unwrap()
-        .stats
-        .unwrap()
-        .last_block_height
-        .unwrap()
-        .parse()
-        .unwrap();
-
-    assert!(last_block_height > 0);
-}
 
 #[test]
 pub fn create_delegate_retire_stake_pool() {
@@ -81,6 +40,7 @@ pub fn create_delegate_retire_stake_pool() {
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,
         config.genesis_block_hash(),
+        BlockDate::new(1, 0),
         &jormungandr,
         &Default::default(),
     );
@@ -88,6 +48,7 @@ pub fn create_delegate_retire_stake_pool() {
         &mut actor_account,
         &stake_pool_id,
         config.genesis_block_hash(),
+        BlockDate::new(1, 0),
         &jormungandr,
         &Default::default(),
     );
@@ -95,6 +56,7 @@ pub fn create_delegate_retire_stake_pool() {
         &stake_pool_id,
         &mut actor_account,
         config.genesis_block_hash(),
+        BlockDate::new(1, 0),
         &jormungandr,
         &Default::default(),
     );
@@ -103,13 +65,14 @@ pub fn create_delegate_retire_stake_pool() {
 pub fn create_new_stake_pool(
     account: &mut Wallet,
     genesis_block_hash: &str,
+    valid_until: BlockDate,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) -> String {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let kes = startup::create_new_key_pair::<Curve25519_2HashDh>();
+    let kes = startup::create_new_key_pair::<RistrettoGroup2HashDh>();
     let vrf = startup::create_new_key_pair::<SumEd25519_12>();
 
     let owner_stake_key = temp_dir.child("stake_key.private_key");
@@ -143,15 +106,16 @@ pub fn create_new_stake_pool(
         .new_transaction()
         .add_account(&account.address().to_string(), &fee_value)
         .add_certificate(&stake_pool_certificate)
+        .set_expiry_date(valid_until)
         .finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
         .add_auth(owner_stake_key.path())
         .to_message();
 
     account.confirm_transaction();
-    jcli.fragment_sender(&jormungandr)
+    jcli.fragment_sender(jormungandr)
         .send(&transaction)
-        .assert_in_block_with_wait(&wait);
+        .assert_in_block_with_wait(wait);
 
     let stake_pool_id = jcli
         .certificate()
@@ -172,6 +136,7 @@ pub fn delegate_stake(
     account: &mut Wallet,
     stake_pool_id: &str,
     genesis_block_hash: &str,
+    valid_until: BlockDate,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) {
@@ -197,22 +162,23 @@ pub fn delegate_stake(
         .new_transaction()
         .add_account(&account.address().to_string(), &fee_value)
         .add_certificate(&stake_pool_delegation)
+        .set_expiry_date(valid_until)
         .finalize_with_fee(&account.address().to_string(), &fees)
         .seal_with_witness_for_address(account)
         .add_auth(owner_stake_key.path())
         .to_message();
 
     account.confirm_transaction();
-    jcli.fragment_sender(&jormungandr)
+    jcli.fragment_sender(jormungandr)
         .send(&transaction)
-        .assert_in_block_with_wait(&wait);
+        .assert_in_block_with_wait(wait);
 
     let account_state_after_delegation = jcli
         .rest()
         .v0()
         .account_stats(account.address().to_string(), jormungandr.rest_uri());
 
-    let stake_pool_id_hash = Hash::from_str(&stake_pool_id).unwrap();
+    let stake_pool_id_hash = Hash::from_str(stake_pool_id).unwrap();
     assert!(
         account_state_after_delegation
             .delegation()
@@ -227,6 +193,7 @@ pub fn retire_stake_pool(
     stake_pool_id: &str,
     account: &mut Wallet,
     genesis_block_hash: &str,
+    valid_until: BlockDate,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
 ) {
@@ -238,7 +205,7 @@ pub fn retire_stake_pool(
         .write_str(&account.signing_key_to_string())
         .unwrap();
 
-    let retirement_cert = jcli.certificate().new_stake_pool_retirement(&stake_pool_id);
+    let retirement_cert = jcli.certificate().new_stake_pool_retirement(stake_pool_id);
 
     let settings = jcli.rest().v0().settings(jormungandr.rest_uri());
     let fees: LinearFee = settings.fees;
@@ -250,22 +217,23 @@ pub fn retire_stake_pool(
         .new_transaction()
         .add_account(&account.address().to_string(), &fee_value)
         .add_certificate(&retirement_cert)
+        .set_expiry_date(valid_until)
         .finalize_with_fee(&account.address().to_string(), &fees)
-        .seal_with_witness_for_address(&account)
+        .seal_with_witness_for_address(account)
         .add_auth(owner_stake_key.path())
         .to_message();
 
     account.confirm_transaction();
-    jcli.fragment_sender(&jormungandr)
+    jcli.fragment_sender(jormungandr)
         .send(&transaction)
-        .assert_in_block_with_wait(&wait);
+        .assert_in_block_with_wait(wait);
 
     let account_state_after_stake_pool_retire = jcli
         .rest()
         .v0()
         .account_stats(account.address().to_string(), jormungandr.rest_uri());
 
-    let stake_pool_id_hash = Hash::from_str(&stake_pool_id).unwrap();
+    let stake_pool_id_hash = Hash::from_str(stake_pool_id).unwrap();
 
     assert!(
         account_state_after_stake_pool_retire

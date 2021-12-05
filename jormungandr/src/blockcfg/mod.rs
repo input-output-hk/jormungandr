@@ -1,7 +1,7 @@
 pub use chain_network::data::gossip::Gossip;
 
 pub use chain_impl_mockchain::{
-    block::Block,
+    block::{builder as block_builder, Block},
     chaineval::HeaderContentEvalContext,
     chaintypes::ConsensusVersion,
     config::{self, Block0Date, ConfigParam},
@@ -84,7 +84,7 @@ impl Block0DataSource for Block {
 fn initial(block: &Block) -> Result<&ConfigParams, Block0Malformed> {
     for fragment in block.fragments() {
         if let Fragment::Initial(init) = fragment {
-            return Ok(&init);
+            return Ok(init);
         }
     }
     Err(Block0Malformed::NoInitialSettings)

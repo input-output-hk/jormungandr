@@ -47,7 +47,7 @@ jcli certificate new stake-pool-retirement \
 
 where:
 
-- `output-file`                 - *optional*, write the output of to the given file
+- `output-file`                 - *optional*, write the output to the given file
                                   or print it to the standard output if not defined.
 - `--retirement-time`           - is the number of seconds since the start in order
                                   to make the stake pool retire. `0` means as soon as possible.
@@ -68,3 +68,40 @@ Where:
 - `<STAKE_KEY>`                - the public key used in the stake key registration
 - `<STAKE_POOL_IDS>...`        - hex-encoded stake pool IDs and their numeric weights in format **"pool_id:weight"**.
                                  If *weight* is not provided, *it defaults to 1*.
+
+## Building update proposal certificate
+
+Builds an update proposal certificate.
+
+```sh
+jcli certificate new update-proposal \
+    <PROPOSER_ID> \
+    <CONFIG_FILE> \
+    [<output-file>]
+```
+
+Where:
+- <PROPOSER_ID>                      - the proposer ID, public key of the one who will sign this certificate
+- <CONFIG_FILE>                      - *optional*, the file path to the config file defining the config param changes If omitted it will be read from the standard input.
+- `output-file`                      - *optional*, write the output to the given file or print it to the standard output if not defined
+
+For example your config file may look like:
+```yaml
+{{#include ../../jormungandr-lib/src/interfaces/CONFIG_PARAMS_DOCUMENTED_EXAMPLE.yaml}}
+```
+
+## Building update vote certificate
+
+Builds an update proposal certificate.
+
+```sh
+jcli certificate new update-proposal \
+    <PROPOSAL_ID> \
+    <VOTER_ID> \
+    [<output-file>]
+```
+
+Where:
+- <PROPOSAL_ID>                      - the proposal ID of the proposal, it is a corresponding update proposal fragment id
+- <VOTER_ID>                         - the voter ID, public key of the one who will sign this certificate
+- `output-file`                      - *optional*, write the output to the given file or print it to the standard output if not defined

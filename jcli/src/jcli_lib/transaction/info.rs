@@ -71,7 +71,7 @@ impl Info {
         };
         let info = json!({
             "status": staging.staging_kind_name(),
-            "sign_data_hash": staging.transaction_sign_data_hash().to_string(),
+            "sign_data_hash": staging.transaction_sign_data_hash()?.to_string(),
             "num_inputs": staging.inputs().len(),
             "num_outputs": staging.outputs().len(),
             "num_witnesses": staging.witness_count(),

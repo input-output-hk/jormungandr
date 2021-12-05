@@ -1,6 +1,146 @@
 """Directs the executor to query only when the field exists."""
 directive @ifdef on FIELD
 
+type Block0Date {
+  block0_date: Int!
+}
+
+enum DiscriminationEnum {
+  PRODUCTION,
+  TEST,
+}
+
+type Discrimination {
+  discrimination: DiscriminationEnum!
+}
+
+enum ConsensusTypeEnum {
+  BFT,
+  GENESISPRAOS,
+}
+
+type ConsensusType {
+  consensus_type: ConsensusTypeEnum!
+}
+
+type SlotsPerEpoch {
+  slots_per_epoch: Int!
+}
+
+type SlotDuration {
+  slot_duration: Int!
+}
+
+type EpochStabilityDepth {
+  epoch_stability_depth: Int!
+}
+
+type Milli {
+  milli: Int!
+}
+
+type BlockContentMaxSize {
+  block_content_max_size: Int!
+}
+
+type AddBftLeader {
+  add_bft_leader: BftLeader!
+}
+
+type RemoveBftLeader {
+  remove_bft_leader: BftLeader!
+}
+
+type PerCertificateFee {
+  certificate_pool_registration: NonZero
+  certificate_stake_delegation: NonZero
+  certificate_owner_stake_delegation: NonZero
+}
+
+type PerVoteCertificateFee {
+  certificate_vote_plan: NonZero
+  certificate_vote_cast: NonZero
+}
+
+type LinearFee {
+  constant: Int!
+  coefficient: Int!
+  certificate: Int!
+  per_certificate_fees: PerCertificateFee!
+  per_vote_certificate_fees: PerVoteCertificateFee!
+}
+
+type ProposalExpiration {
+  proposal_expiration: Int!
+}
+
+type KesUpdateSpeed {
+  kes_update_speed: Int!
+}
+
+type TreasuryAdd {
+  treasury_add: Value!
+}
+
+type TreasuryParams {
+  treasury_params: TaxType!
+}
+
+type RewardPot {
+  reward_pot: Value!
+}
+
+type Linear {
+    constant: Int!
+    ratio: Ratio!
+    epoch_start: Int!
+    epoch_rate: NonZero!
+}
+
+type Halving {
+    constant: Int!
+    ratio: Ratio!
+    epoch_start: Int!
+    epoch_rate: NonZero!
+}
+
+union RewardParamsUnion = Linear | Halving
+
+type RewardParams {
+  reward_params: RewardParamsUnion!
+}
+
+type FeesInTreasury {
+  fees_in_treasury: Boolean!
+}
+
+type RewardLimitNone {
+  reward_limit_none: Boolean!
+}
+
+type RewardLimitByAbsoluteStake {
+  reward_limit_by_absolute_stake: Ratio!
+}
+
+type PoolRewardParticipationCapping {
+  min: NonZero!
+  max: NonZero!
+}
+
+type AddCommitteeId {
+  add_committee_id: String!
+}
+
+type RemoveCommitteeId {
+  remove_committee_id: String!
+}
+
+type TransactionMaxExpiryEpochs {
+  transaction_max_expiry_epochs: Int!
+}
+
+union ConfigParam = Block0Date | Discrimination | ConsensusType | SlotsPerEpoch | SlotDuration | EpochStabilityDepth | Milli | BlockContentMaxSize | AddBftLeader | RemoveBftLeader | LinearFee | ProposalExpiration | KesUpdateSpeed | TreasuryAdd | TreasuryParams | RewardPot | RewardParams | PerCertificateFee | FeesInTreasury | RewardLimitNone | RewardLimitByAbsoluteStake | PoolRewardParticipationCapping | AddCommitteeId | RemoveCommitteeId | PerVoteCertificateFee | TransactionMaxExpiryEpochs
+
 type Address {
   """The base32 representation of an address"""
   id: String!
@@ -92,17 +232,6 @@ type Epoch {
 scalar EpochNumber
 
 scalar ExternalProposalId
-
-type FeeSettings {
-  constant: Value!
-  coefficient: Value!
-  certificate: Value!
-  certificatePoolRegistration: Value!
-  certificateStakeDelegation: Value!
-  certificateOwnerStakeDelegation: Value!
-  certificateVotePlan: Value!
-  certificateVoteCast: Value!
-}
 
 union Leader = Pool | BftLeader
 
@@ -237,8 +366,8 @@ type Ratio {
 }
 
 type Settings {
-  fees: FeeSettings!
-  epochStabilityDepth: String!
+  fees: LinearFee!
+  epochStabilityDepth: EpochStabilityDepth!
 }
 
 scalar Slot

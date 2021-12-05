@@ -1,14 +1,12 @@
-#[cfg(feature = "sanity-non-functional")]
 mod load;
-#[cfg(feature = "sanity-non-functional")]
 mod noise;
-#[cfg(feature = "soak-non-functional")]
+#[cfg(feature = "soak")]
 mod soak;
 
-use crate::common::jormungandr::{ConfigurationBuilder, Starter};
 use crate::non_functional::voting::config::PrivateVotingLoadTestConfig;
 use assert_fs::TempDir;
-use chain_core::property::BlockDate;
+use chain_core::property::BlockDate as _;
+use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::testing::data::CommitteeMembersManager;
 use chain_impl_mockchain::{
     certificate::{VoteAction, VoteTallyPayload},
@@ -18,8 +16,10 @@ use chain_impl_mockchain::{
 };
 use jormungandr_lib::interfaces::BlockDate as BlockDateLib;
 use jormungandr_testing_utils::testing::fragments::AdversaryFragmentGenerator;
+use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_testing_utils::testing::AdversaryFragmentSender;
 use jormungandr_testing_utils::testing::AdversaryFragmentSenderSetup;
+use jormungandr_testing_utils::testing::BlockDateGenerator;
 use jormungandr_testing_utils::testing::VoteCastsGenerator;
 use jormungandr_testing_utils::testing::{
     benchmark_consumption, FragmentStatusProvider, VotePlanBuilder,
@@ -83,7 +83,15 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         .member_public_keys(committee_keys)
         .build();
 
-    let vote_plan_cert = vote_plan_cert(&committee, &vote_plan).into();
+    let vote_plan_cert = vote_plan_cert(
+        &committee,
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        &vote_plan,
+    )
+    .into();
 
     let config = ConfigurationBuilder::new()
         .with_fund(committee.to_initial_fund(quick_config.initial_fund_per_wallet()))
@@ -97,7 +105,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         .with_slots_per_epoch(quick_config.slots_in_epoch())
         .with_certs(vec![vote_plan_cert])
         .with_slot_duration(quick_config.slot_duration())
-        .with_block_content_max_size(quick_config.block_content_max_size())
+        .with_block_content_max_size(quick_config.block_content_max_size().into())
         .with_treasury(1_000.into())
         .build(&temp_dir);
 
@@ -107,9 +115,20 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         .start()
         .unwrap();
 
+    let settings = jormungandr.rest().settings().unwrap();
+    let block_date_generator = BlockDateGenerator::rolling(
+        &settings,
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        false,
+    );
+
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        block_date_generator,
         FragmentSenderSetup::no_verify(),
     );
 
@@ -163,7 +182,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
         .unwrap();
 
-    let shares = decrypt_tally(&vote_plan_status.clone().into(), &members);
+    let shares = decrypt_tally(&vote_plan_status.clone().into(), &members).unwrap();
 
     transaction_sender
         .send_vote_tally(
@@ -246,7 +265,15 @@ pub fn adversary_private_vote_load_scenario(
         .member_public_keys(committee_keys)
         .build();
 
-    let vote_plan_cert = vote_plan_cert(&committee, &vote_plan).into();
+    let vote_plan_cert = vote_plan_cert(
+        &committee,
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        &vote_plan,
+    )
+    .into();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
@@ -263,7 +290,7 @@ pub fn adversary_private_vote_load_scenario(
         .with_slots_per_epoch(quick_config.slots_in_epoch())
         .with_certs(vec![vote_plan_cert])
         .with_slot_duration(quick_config.slot_duration())
-        .with_block_content_max_size(quick_config.block_content_max_size())
+        .with_block_content_max_size(quick_config.block_content_max_size().into())
         .with_treasury(1_000.into())
         .build(&temp_dir);
 
@@ -273,15 +300,31 @@ pub fn adversary_private_vote_load_scenario(
         .start()
         .unwrap();
 
+    let settings = jormungandr.rest().settings().unwrap();
+    let block_date_generator = BlockDateGenerator::rolling(
+        &settings,
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        false,
+    );
+
     let transaction_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        block_date_generator,
         FragmentSenderSetup::no_verify(),
     );
 
     let adversary_transaction_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        }
+        .into(),
         AdversaryFragmentSenderSetup::no_verify(),
     );
 
@@ -350,7 +393,7 @@ pub fn adversary_private_vote_load_scenario(
         .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
         .unwrap();
 
-    let shares = decrypt_tally(&vote_plan_status.clone().into(), &members);
+    let shares = decrypt_tally(&vote_plan_status.clone().into(), &members).unwrap();
 
     transaction_sender
         .send_vote_tally(

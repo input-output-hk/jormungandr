@@ -17,10 +17,9 @@ def check_version(crate):
 def print_error(crate, match):
     # Print errors for packages which versions didn't match tag reference
     if not match:
+        version, path = crate[0], crate[1]
         print(
-            "::error file={path}::version {version} does not match release tag {tag}".format(
-                tag=ref, version=str(crate[0]), path=str(crate[1])
-            )
+            f"::error file={path}::version {version} does not match release tag {ref}"
         )
 
 
@@ -79,7 +78,6 @@ crates = {
     "jcli": [],
     "jormungandr-testing-utils": [],
     "jormungandr-integration-tests": [],
-    "jormungandr-scenario-tests": [],
 }
 
 version = bundle_version(crates)
@@ -96,4 +94,4 @@ elif release_type == "nightly":
     release_flags = "--prerelease"
 
 for name in "version", "date", "tag", "release_type", "release_flags":
-    print("::set-output name={0}::{1}".format(name, globals()[name]))
+    print(f"::set-output name={name}::{globals()[name]}")

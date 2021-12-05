@@ -1,18 +1,17 @@
-use crate::mjolnir_app::MjolnirError;
-use jormungandr_integration_tests::common::startup;
-use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
+use crate::mjolnir_app::{args::parse_shift, build_monitor, MjolnirError};
+use chain_impl_mockchain::block::BlockDate;
+use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
     testing::{
-        node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentStatusProvider,
-        RemoteJormungandrBuilder,
+        fragments::BlockDateGenerator, node::time, startup, FragmentGenerator, FragmentSender,
+        FragmentSenderSetup, FragmentStatusProvider, RemoteJormungandrBuilder,
     },
     wallet::Wallet,
 };
+use jortestkit::load::ConfigurationBuilder;
 use jortestkit::prelude::parse_progress_bar_mode_from_str;
-use jortestkit::{
-    load::{Configuration, Monitor},
-    prelude::ProgressBarMode,
-};
+use jortestkit::prelude::ProgressBarMode;
+use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 
@@ -32,9 +31,9 @@ pub struct AllFragments {
     #[structopt(short = "e", long = "explorer")]
     pub explorer_endpoint: String,
 
-    /// amount of delay [seconds] between sync attempts
-    #[structopt(short = "p", long = "pace", default_value = "2")]
-    pub pace: u64,
+    /// amount of delay [milliseconds] between sync attempts
+    #[structopt(long = "delay", default_value = "50")]
+    pub delay: u64,
 
     /// amount of delay [seconds] between sync attempts
     #[structopt(short = "d", long = "duration")]
@@ -61,13 +60,23 @@ pub struct AllFragments {
     /// load test rump up period
     #[structopt(long = "rump-up")]
     rump_up: u32,
+
+    /// Transaction validity deadline (inclusive)
+    #[structopt(short = "v", long = "valid-until", conflicts_with = "ttl")]
+    valid_until: Option<BlockDate>,
+
+    /// Transaction time to live (can be negative e.g. ~4.2)
+    #[structopt(short = "t", long= "ttl", default_value = "1.0", parse(try_from_str = parse_shift))]
+    ttl: (BlockDate, bool),
 }
 
 impl AllFragments {
     pub fn exec(&self) -> Result<(), MjolnirError> {
         let title = "all fragment load test";
-        let faucet =
-            Wallet::import_account(&self.faucet_key_file, Some(self.faucet_spending_counter));
+        let faucet = Wallet::import_account(
+            &self.faucet_key_file,
+            Some(self.faucet_spending_counter.into()),
+        );
         let receiver = startup::create_new_account_address();
         let mut builder = RemoteJormungandrBuilder::new("node".to_string());
         builder.with_rest(self.endpoint.parse().unwrap());
@@ -79,8 +88,14 @@ impl AllFragments {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
-        let fragment_sender =
-            FragmentSender::new(block0_hash, fees, FragmentSenderSetup::no_verify());
+        let fragment_sender = FragmentSender::new(
+            block0_hash,
+            fees,
+            self.valid_until
+                .map(BlockDateGenerator::Fixed)
+                .unwrap_or_else(|| BlockDateGenerator::rolling(&settings, self.ttl.0, self.ttl.1)),
+            FragmentSenderSetup::no_verify(),
+        );
 
         let mut generator = FragmentGenerator::new(
             faucet,
@@ -89,19 +104,22 @@ impl AllFragments {
             settings.slots_per_epoch,
             30,
             30,
+            30,
             fragment_sender,
         );
 
-        let current_date = BlockDate::from_str(
-            rest.stats()
-                .unwrap()
-                .stats
-                .unwrap()
-                .last_block_date
-                .unwrap()
-                .as_ref(),
-        )
-        .unwrap();
+        let current_date = jormungandr_lib::interfaces::BlockDate::from(
+            BlockDate::from_str(
+                rest.stats()
+                    .unwrap()
+                    .stats
+                    .unwrap()
+                    .last_block_date
+                    .unwrap()
+                    .as_ref(),
+            )
+            .unwrap(),
+        );
 
         let target_date = current_date.shift_slot(
             self.rump_up,
@@ -112,14 +130,12 @@ impl AllFragments {
 
         time::wait_for_date(target_date, rest);
 
-        let config = Configuration::duration(
-            self.count,
-            std::time::Duration::from_secs(self.duration),
-            self.pace,
-            self.build_monitor(),
-            30,
-            1,
-        );
+        let config = ConfigurationBuilder::duration(Duration::from_secs(self.duration))
+            .thread_no(self.count)
+            .step_delay(Duration::from_millis(self.delay))
+            .monitor(build_monitor(&self.progress_bar_mode))
+            .shutdown_grace_period(Duration::from_secs(30))
+            .build();
         let mut builder = RemoteJormungandrBuilder::new("node".to_string());
         builder.with_rest(self.endpoint.parse().unwrap());
         let remote_jormungandr = builder.build();
@@ -130,13 +146,5 @@ impl AllFragments {
         stats.print_summary(title);
 
         Ok(())
-    }
-
-    fn build_monitor(&self) -> Monitor {
-        match self.progress_bar_mode {
-            ProgressBarMode::Monitor => Monitor::Progress(100),
-            ProgressBarMode::Standard => Monitor::Standard(100),
-            ProgressBarMode::None => Monitor::Disabled(10),
-        }
     }
 }

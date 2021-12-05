@@ -4,8 +4,10 @@ use crate::jcli_lib::{
 };
 use bech32::{self, ToBase32 as _};
 use chain_core::property::Serialize as _;
+use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::{
     account::SpendingCounter,
+    accounting::account::spending::SpendingCounterIncreasing,
     header::HeaderId,
     transaction::{TransactionSignDataHash, Witness},
 };
@@ -31,10 +33,16 @@ pub struct MkWitness {
     #[structopt(long = "genesis-block-hash", parse(try_from_str))]
     pub genesis_block_hash: HeaderId,
 
-    /// value is mandatory is `--type=account' It is the counter for
+    /// value is mandatory if `--type=account`. It is the counter value for
     /// every time the account is being utilized.
     #[structopt(long = "account-spending-counter")]
     pub account_spending_counter: Option<u32>,
+
+    /// lane to use for the spending counter. Each lane has an independent
+    /// spending counter value.
+    /// If unsure, leave blank and lane 0 will be used
+    #[structopt(long)]
+    pub account_spending_counter_lane: Option<usize>,
 
     /// the file path to the file to read the signing key from.
     /// If omitted it will be read from the standard input.
@@ -62,38 +70,27 @@ impl std::str::FromStr for WitnessType {
 
 impl MkWitness {
     pub fn exec(self) -> Result<(), Error> {
-        let witness = match self.witness_type {
-            WitnessType::UTxO => {
-                let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
-                Witness::new_utxo(&self.genesis_block_hash, &self.sign_data_hash, |d| {
-                    secret_key.sign(d)
-                })
-            }
-            WitnessType::OldUTxO => {
-                let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
-                Witness::new_old_utxo(
-                    &self.genesis_block_hash,
-                    &self.sign_data_hash,
-                    |d| (secret_key.to_public(), secret_key.sign(d)),
-                    &[0; 32],
-                )
-            }
-            WitnessType::Account => {
-                let account_spending_counter = self
-                    .account_spending_counter
-                    .ok_or(Error::MakeWitnessAccountCounterMissing)
-                    .map(SpendingCounter::from)?;
-
-                let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
-                Witness::new_account(
-                    &self.genesis_block_hash,
-                    &self.sign_data_hash,
-                    account_spending_counter,
-                    |d| secret_key.sign(d),
-                )
-            }
-        };
-
+        let secret_key = read_ed25519_secret_key_from_file(&self.secret)?;
+        let sc = self
+            .account_spending_counter
+            .map(|counter| {
+                let lane = self.account_spending_counter_lane.unwrap_or_default();
+                if lane > SpendingCounterIncreasing::LANES {
+                    return Err(Error::MakeWitnessAccountInvalidCounterLane {
+                        max: SpendingCounterIncreasing::LANES,
+                        actual: lane,
+                    });
+                }
+                Ok(SpendingCounter::new(lane, counter))
+            })
+            .transpose()?;
+        let witness = make_witness(
+            &self.witness_type,
+            &self.genesis_block_hash,
+            &self.sign_data_hash,
+            sc,
+            &secret_key,
+        )?;
         self.write_witness(&witness)
     }
 
@@ -108,10 +105,37 @@ impl MkWitness {
             .map_err(Error::WitnessFileSerializationFailed)?;
 
         let base32 = bytes.to_base32();
-        let bech32 = bech32::encode("witness", &base32)?;
+        let bech32 = bech32::encode("witness", &base32, bech32::Variant::Bech32)?;
         writeln!(writer, "{}", bech32).map_err(|source| Error::WitnessFileWriteFailed {
             source,
             path: self.output.clone().unwrap_or_default(),
         })
     }
+}
+
+pub fn make_witness(
+    witness_type: &WitnessType,
+    genesis_block_hash: &HeaderId,
+    sign_data_hash: &TransactionSignDataHash,
+    account_spending_counter: Option<SpendingCounter>,
+    secret_key: &EitherEd25519SecretKey,
+) -> Result<Witness, Error> {
+    let witness = match witness_type {
+        WitnessType::UTxO => {
+            Witness::new_utxo(genesis_block_hash, sign_data_hash, |d| secret_key.sign(d))
+        }
+        WitnessType::OldUTxO => Witness::new_old_utxo(
+            genesis_block_hash,
+            sign_data_hash,
+            |d| (secret_key.to_public(), secret_key.sign(d)),
+            &[0; 32],
+        ),
+        WitnessType::Account => Witness::new_account(
+            genesis_block_hash,
+            sign_data_hash,
+            account_spending_counter.ok_or(Error::MakeWitnessAccountCounterMissing)?,
+            |d| secret_key.sign(d),
+        ),
+    };
+    Ok(witness)
 }

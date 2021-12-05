@@ -1,5 +1,7 @@
 use super::{JormungandrServerImpl, MockController, MockLogger, MockServerData, ProtocolVersion};
-use chain_impl_mockchain::{block::Header, key::Hash, testing::TestGen};
+use chain_core::property::Serialize;
+use chain_impl_mockchain::{block::Block, key::Hash};
+use chain_storage::BlockStore;
 use futures::FutureExt;
 use std::io::{Result, Write};
 use std::net::SocketAddr;
@@ -9,44 +11,35 @@ use std::sync::RwLock;
 use tokio::sync::oneshot;
 use tonic::transport::Server;
 
+use crate::testing::configuration::get_available_port;
 use crate::testing::node::grpc::server::NodeServer;
 
 pub struct MockBuilder {
-    mock_port: u16,
-    genesis_hash: Hash,
-    tip: Header,
+    mock_port: Option<u16>,
+    genesis_block: Option<Block>,
     protocol_version: ProtocolVersion,
+    invalid_block0_hash: bool,
 }
 
 impl Default for MockBuilder {
     fn default() -> Self {
-        Self::new()
+        Self {
+            mock_port: None,
+            genesis_block: None,
+            protocol_version: ProtocolVersion::GenesisPraos,
+            invalid_block0_hash: false,
+        }
     }
 }
 
 impl MockBuilder {
-    pub fn new() -> Self {
-        let genesis_hash: Hash = TestGen::hash();
-        Self {
-            mock_port: 9999,
-            genesis_hash,
-            tip: super::data::header(30, &genesis_hash),
-            protocol_version: ProtocolVersion::GenesisPraos,
-        }
-    }
-
     pub fn with_port(&mut self, mock_port: u16) -> &mut Self {
-        self.mock_port = mock_port;
+        self.mock_port = Some(mock_port);
         self
     }
 
-    pub fn with_genesis_hash(&mut self, hash: Hash) -> &mut Self {
-        self.genesis_hash = hash;
-        self
-    }
-
-    pub fn with_tip(&mut self, tip: Header) -> &mut Self {
-        self.tip = tip;
+    pub fn with_genesis_block(&mut self, block: Block) -> &mut Self {
+        self.genesis_block = Some(block);
         self
     }
 
@@ -55,15 +48,38 @@ impl MockBuilder {
         self
     }
 
-    fn build_data(&self) -> Arc<RwLock<MockServerData>> {
+    pub fn with_invalid_block0_hash(&mut self, invalid_block0_hash: bool) -> &mut Self {
+        self.invalid_block0_hash = invalid_block0_hash;
+        self
+    }
+
+    pub fn build_data(&self) -> Arc<RwLock<MockServerData>> {
+        let storage = BlockStore::memory(Hash::zero_hash().as_bytes().to_owned()).unwrap();
+        let block0 = if let Some(block) = self.genesis_block.clone().take() {
+            block
+        } else {
+            // Block contents do not really matter.
+            // A full block is used just to make the storage consistent and reuse code
+            super::data::block0()
+        };
+
         let data = MockServerData::new(
-            self.genesis_hash,
-            self.tip.clone(),
+            block0.header().hash(),
             self.protocol_version.clone(),
-            format!("127.0.0.1:{}", self.mock_port)
-                .parse::<SocketAddr>()
-                .unwrap(),
+            format!(
+                "127.0.0.1:{}",
+                self.mock_port.unwrap_or_else(get_available_port)
+            )
+            .parse::<SocketAddr>()
+            .unwrap(),
+            storage,
+            self.invalid_block0_hash,
         );
+
+        data.put_block(&block0).unwrap();
+        data.set_tip(block0.header().hash().serialize_as_vec().unwrap().as_ref())
+            .unwrap();
+
         Arc::new(RwLock::new(data))
     }
 
@@ -88,7 +104,7 @@ impl Write for ChannelWriter {
     }
 }
 
-fn start_thread(data: Arc<RwLock<MockServerData>>) -> MockController {
+pub fn start_thread(data: Arc<RwLock<MockServerData>>) -> MockController {
     let (tx, rx) = sync_channel(100);
     let logger = MockLogger::new(rx);
     let (shutdown_signal, rx) = oneshot::channel::<()>();

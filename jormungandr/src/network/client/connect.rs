@@ -107,7 +107,7 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
 
 // Validate the server peer's node ID
 fn validate_peer_auth(auth: AuthenticatedNodeId, nonce: &[u8]) -> Result<NodeId, ConnectError> {
-    auth.verify(&nonce)
+    auth.verify(nonce)
         .map_err(ConnectError::PeerSignatureVerificationFailed)?;
     Ok(auth.into())
 }

@@ -29,6 +29,7 @@ pub struct P2p {
 
     pub allow_private_addresses: bool,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub topics_of_interest: Option<TopicsOfInterest>,
 
     pub policy: Option<Policy>,
@@ -68,7 +69,10 @@ pub struct NodeConfig {
     pub storage: Option<PathBuf>,
     pub rest: Rest,
     pub p2p: P2p,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub log: Option<Log>,
+    #[serde(rename = "log", skip_serializing_if = "Option::is_none")]
+    pub single_log: Option<jormungandr_lib::interfaces::Log>,
     pub explorer: Explorer,
     pub mempool: Option<Mempool>,
     pub bootstrap_from_trusted_peers: Option<bool>,

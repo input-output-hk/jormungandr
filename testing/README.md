@@ -94,16 +94,16 @@ Functional tests are run on each PR. Performance and testnet integration tests a
 Multi node scenarios, whcich aim to test nodes behaviour in presence of other nodes or within given network topologies for particular network settings or in occurence on some node disruption
 
 
-### How to run functional tests
+### How to run network tests
 ```
-cd jormungandr-scenarios-tests
-cargo run -- --tag short
+cd jormungandr-integration-tests
+cargo test --feature network
 ```
 
-### How to run real network tests
+### How to run performance network tests
 ```
-cd jormungandr-scenarios-tests
-cargo run -- --scenario real_network
+cd jormungandr-integration-tests
+cargo test --feature network-non-functional
 ```
 
 # Performance tests dashboard

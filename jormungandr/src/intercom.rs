@@ -9,7 +9,7 @@ use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
 use chain_network::error as net_error;
 use jormungandr_lib::interfaces::{
-    FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
+    BlockDate, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
 };
 use poldercast::layer::Selection;
 
@@ -509,13 +509,13 @@ pub enum TransactionMsg {
         reply_handle: ReplyHandle<FragmentsProcessingSummary>,
     },
     RemoveTransactions(Vec<FragmentId>, FragmentStatus),
+    BranchSwitch(BlockDate),
     GetLogs(ReplyHandle<Vec<FragmentLog>>),
     GetStatuses(
         Vec<FragmentId>,
         ReplyHandle<HashMap<FragmentId, FragmentStatus>>,
     ),
     SelectTransactions {
-        pool_idx: usize,
         ledger: ApplyBlockLedger,
         ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
@@ -625,6 +625,12 @@ pub enum TopologyMsg {
 pub enum ExplorerMsg {
     NewBlock(Block),
     NewTip(HeaderHash),
+}
+
+/// Messages to the notifier task
+pub enum WatchMsg {
+    NewBlock(Block),
+    NewTip(Header),
 }
 
 #[cfg(test)]

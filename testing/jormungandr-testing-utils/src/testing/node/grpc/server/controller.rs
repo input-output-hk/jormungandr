@@ -1,5 +1,9 @@
 use super::{MockExitCode, MockLogger, MockServerData, MockVerifier, ProtocolVersion};
-use chain_impl_mockchain::{block::Header, key::Hash};
+use chain_core::property::Serialize;
+use chain_impl_mockchain::{
+    block::{Block, Header},
+    key::Hash,
+};
 use std::sync::RwLock;
 use std::{
     sync::Arc,
@@ -52,9 +56,23 @@ impl MockController {
         }
     }
 
-    pub fn set_tip(&mut self, tip: Header) {
-        let mut data = self.data.write().unwrap();
-        *data.tip_mut() = tip;
+    /// block_id must refer to a valid block already in the storage
+    pub fn set_tip(&mut self, tip: &Header) {
+        let data = self.data.write().unwrap();
+        data.set_tip(tip.serialize_as_vec().as_ref().unwrap())
+            .unwrap();
+    }
+
+    pub fn set_tip_block(&mut self, tip: &Block) {
+        let data = self.data.write().unwrap();
+        data.put_block(tip).unwrap();
+        data.set_tip(tip.header().hash().serialize_as_vec().as_ref().unwrap())
+            .unwrap();
+    }
+
+    pub fn genesis_hash(&self) -> Hash {
+        let data = self.data.read().unwrap();
+        *data.genesis_hash()
     }
 
     pub fn set_genesis(&mut self, tip: Hash) {

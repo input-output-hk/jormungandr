@@ -1,11 +1,11 @@
-use crate::common::{
+use jormungandr_testing_utils::testing::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Role, Starter},
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
     startup,
 };
 
-use jormungandr_lib::interfaces::{AccountState, InitialUTxO, SettingsDto, UTxOInfo};
-use jormungandr_testing_utils::testing::SyncNode;
+use jormungandr_lib::interfaces::{AccountState, BlockDate, InitialUTxO, SettingsDto, UTxOInfo};
+use jormungandr_testing_utils::testing::{network::LeadershipMode, SyncNode};
 use jormungandr_testing_utils::wallet::Wallet;
 
 use assert_fs::prelude::*;
@@ -63,12 +63,13 @@ pub fn do_simple_transaction(
         .add_input_from_utxo(utxo_sender)
         .add_output(&account_receiver.address().to_string(), TX_VALUE.into())
         .add_output(&utxo_receiver.address().to_string(), TX_VALUE.into())
+        .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_for_address(sender)
         .to_message();
     let tx_id = tx.fragment_id();
 
-    jcli.fragment_sender(&jormungandr)
+    jcli.fragment_sender(jormungandr)
         .send(&transaction_message)
         .assert_in_block();
 
@@ -110,7 +111,7 @@ pub fn test_node_recovers_from_node_restart() {
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
         .config(config)
-        .role(Role::Leader)
+        .leadership_mode(LeadershipMode::Leader)
         .start()
         .unwrap();
 
@@ -166,7 +167,7 @@ pub fn test_node_recovers_kill_signal() {
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
         .config(config)
-        .role(Role::Leader)
+        .leadership_mode(LeadershipMode::Leader)
         .start()
         .unwrap();
 

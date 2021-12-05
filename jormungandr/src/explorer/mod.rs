@@ -57,7 +57,6 @@ pub struct ExplorerDb {
     longest_chain_tip: Tip,
     pub blockchain_config: BlockchainConfig,
     blockchain: Blockchain,
-    blockchain_tip: blockchain::Tip,
     stable_store: StableIndex,
     tip_broadcast: tokio::sync::broadcast::Sender<(HeaderHash, multiverse::Ref)>,
 }
@@ -67,12 +66,13 @@ pub struct StableIndex {
     confirmed_block_chain_length: Arc<AtomicU32>,
 }
 
+// TODO: not all of the fields may be needed, clean up in future updates
+#[allow(dead_code)]
 #[derive(Clone)]
 pub struct BlockchainConfig {
     /// Used to construct `Address` from `AccountIndentifier` when processing transaction
     /// inputs
     discrimination: Discrimination,
-    consensus_version: ConsensusVersion,
     fees: LinearFee,
     epoch_stability_depth: u32,
 }
@@ -131,7 +131,10 @@ impl Explorer {
                                 let _state_ref = explorer_db.apply_block(block.clone()).await?;
 
                                 let mut guard = tip_candidate.lock().await;
-                                if guard.map(|hash| hash == block.header.id()).unwrap_or(false) {
+                                if guard
+                                    .map(|hash| hash == block.header().id())
+                                    .unwrap_or(false)
+                                {
                                     let hash = guard.take().unwrap();
                                     explorer_db.set_tip(hash).await;
                                 }
@@ -177,14 +180,10 @@ impl ExplorerDb {
     /// Apply all the blocks in the [block0, MAIN_BRANCH_TAG], also extract the static
     /// Blockchain settings from the Block0 (Discrimination)
     /// This function is only called once on the node's bootstrap phase
-    pub async fn bootstrap(
-        block0: Block,
-        blockchain: &Blockchain,
-        blockchain_tip: blockchain::Tip,
-    ) -> Result<Self> {
+    pub async fn bootstrap(block0: Block, blockchain: &Blockchain) -> Result<Self> {
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
-                .contents
+                .contents()
                 .iter()
                 .filter_map(|fragment| match fragment {
                     Fragment::Initial(config_params) => Some(config_params),
@@ -210,7 +209,14 @@ impl ExplorerDb {
         let addresses = apply_block_to_addresses(Addresses::new(), &block);
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(StakePool::new(), StakePoolBlocks::new(), &block);
-        let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &blockchain_tip, &block);
+        let block_id = block0.header().hash();
+
+        let block_ref = blockchain
+            .get_ref(block_id)
+            .await
+            .map_err(Box::new)?
+            .ok_or(Error::BlockNotFound(block_id))?;
+        let vote_plans = apply_block_to_vote_plans(VotePlans::new(), &block_ref, &block);
 
         let initial_state = State {
             transactions,
@@ -245,7 +251,6 @@ impl ExplorerDb {
             longest_chain_tip: Tip::new(hash),
             blockchain_config,
             blockchain: blockchain.clone(),
-            blockchain_tip,
             stable_store: StableIndex {
                 confirmed_block_chain_length: Arc::new(AtomicU32::default()),
             },
@@ -270,7 +275,7 @@ impl ExplorerDb {
                 let block = blockchain.storage().get(hash)?.ok_or_else(|| {
                     Error::BootstrapError(format!("couldn't get block {} from the storage", hash))
                 })?;
-                hash = block.header.block_parent_hash();
+                hash = block.header().block_parent_hash();
                 blocks.push(block);
             }
             while let Some(block) = blocks.pop() {
@@ -287,9 +292,9 @@ impl ExplorerDb {
     /// This doesn't perform any validation on the given block and the previous state, it
     /// is assumed that the Block is valid
     async fn apply_block(&self, block: Block) -> Result<multiverse::Ref> {
-        let previous_block = block.header.block_parent_hash();
-        let chain_length = block.header.chain_length();
-        let block_id = block.header.hash();
+        let previous_block = block.header().block_parent_hash();
+        let chain_length = block.header().chain_length();
+        let block_id = block.header().hash();
         let multiverse = self.multiverse.clone();
         let discrimination = self.blockchain_config.discrimination;
 
@@ -319,6 +324,14 @@ impl ExplorerDb {
         let (stake_pool_data, stake_pool_blocks) =
             apply_block_to_stake_pools(stake_pool_data, stake_pool_blocks, &explorer_block);
 
+        let block_ref = self
+            .blockchain()
+            .get_ref(block_id)
+            .await
+            .map_err(Box::new)?
+            .ok_or(Error::BlockNotFound(block_id))?;
+        let vote_plans = apply_block_to_vote_plans(vote_plans, &block_ref, &explorer_block);
+
         let state_ref = multiverse
             .insert(
                 chain_length,
@@ -332,21 +345,16 @@ impl ExplorerDb {
                     chain_lengths: apply_block_to_chain_lengths(chain_lengths, &explorer_block)?,
                     stake_pool_data,
                     stake_pool_blocks,
-                    vote_plans: apply_block_to_vote_plans(
-                        vote_plans,
-                        &self.blockchain_tip,
-                        &explorer_block,
-                    ),
+                    vote_plans,
                 },
             )
             .await;
-
         Ok(state_ref)
     }
 
     pub async fn get_block(&self, block_id: &HeaderHash) -> Option<Arc<ExplorerBlock>> {
         for (_hash, state_ref) in self.multiverse.tips().await.iter() {
-            if let Some(b) = state_ref.state().blocks.lookup(&block_id) {
+            if let Some(b) = state_ref.state().blocks.lookup(block_id) {
                 return Some(Arc::clone(b));
             }
         }
@@ -405,7 +413,7 @@ impl ExplorerDb {
         let mut tips = Vec::new();
 
         for (hash, state_ref) in self.multiverse.tips().await.drain(..) {
-            if let Some(b) = state_ref.state().blocks.lookup(&block_id) {
+            if let Some(b) = state_ref.state().blocks.lookup(block_id) {
                 block = block.or_else(|| Some(Arc::clone(b)));
                 tips.push((hash, state_ref));
             }
@@ -432,7 +440,7 @@ impl ExplorerDb {
             .await
             .unwrap();
 
-        if let Some(block) = current_branch.state().blocks.lookup(&block_id) {
+        if let Some(block) = current_branch.state().blocks.lookup(block_id) {
             let confirmed_block_chain_length: ChainLength = self
                 .stable_store
                 .confirmed_block_chain_length
@@ -469,7 +477,7 @@ impl ExplorerDb {
                 state_ref
                     .state()
                     .transactions
-                    .lookup(&transaction_id)
+                    .lookup(transaction_id)
                     .map(|arc| *arc.clone())
             })
             .collect();
@@ -520,7 +528,7 @@ impl ExplorerDb {
         vote_plan_id: &VotePlanId,
     ) -> Option<Arc<ExplorerVotePlan>> {
         for (_hash, state_ref) in self.multiverse.tips().await.iter() {
-            if let Some(b) = state_ref.state().vote_plans.lookup(&vote_plan_id) {
+            if let Some(b) = state_ref.state().vote_plans.lookup(vote_plan_id) {
                 return Some(Arc::clone(b));
             }
         }
@@ -653,7 +661,7 @@ fn apply_block_to_stake_pools(
     let mut blocks = match &block.producer() {
         indexing::BlockProducer::StakePool(id) => blocks
             .update(
-                &id,
+                id,
                 |array: &Arc<PersistentSequence<HeaderHash>>| -> std::result::Result<_, Infallible> {
                     Ok(Some(Arc::new(array.append(block.id()))))
                 },
@@ -703,7 +711,7 @@ fn apply_block_to_stake_pools(
 
 fn apply_block_to_vote_plans(
     mut vote_plans: VotePlans,
-    blockchain_tip: &blockchain::Tip,
+    block_ref: &Arc<blockchain::Ref>,
     block: &ExplorerBlock,
 ) -> VotePlans {
     for tx in block.transactions.values() {
@@ -796,17 +804,16 @@ fn apply_block_to_vote_plans(
                     use chain_impl_mockchain::vote::PayloadType;
                     vote_plans
                         .update(vote_tally.id(), |vote_plan| {
-                            let proposals_from_state =
-                                futures::executor::block_on(blockchain_tip.get_ref())
-                                    .active_vote_plans()
-                                    .into_iter()
-                                    .find_map(|vps| {
-                                        if vps.id != vote_plan.id {
-                                            return None;
-                                        }
-                                        Some(vps.proposals)
-                                    })
-                                    .unwrap();
+                            let proposals_from_state = block_ref
+                                .active_vote_plans()
+                                .into_iter()
+                                .find_map(|vps| {
+                                    if vps.id != vote_plan.id {
+                                        return None;
+                                    }
+                                    Some(vps.proposals)
+                                })
+                                .unwrap();
                             let proposals = vote_plan
                                 .proposals
                                 .clone()
@@ -883,8 +890,6 @@ impl BlockchainConfig {
 
         BlockchainConfig {
             discrimination: discrimination.expect("discrimination not found in initial params"),
-            consensus_version: consensus_version
-                .expect("consensus version not found in initial params"),
             fees: fees.expect("fees not found in initial params"),
             epoch_stability_depth: epoch_stability_depth
                 .expect("epoch stability depth not found in initial params"),

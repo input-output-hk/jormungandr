@@ -17,7 +17,7 @@ use std::path::PathBuf;
 #[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(default)]
-    pub secret_files: Vec<PathBuf>,
+    pub secret_file: Option<PathBuf>,
     pub storage: Option<PathBuf>,
     pub log: Option<ConfigLogSettings>,
 
@@ -37,6 +37,9 @@ pub struct Config {
     pub http_fetch_block0_service: Vec<String>,
 
     pub explorer: Option<Explorer>,
+
+    #[cfg(feature = "prometheus-metrics")]
+    pub prometheus: Option<Prometheus>,
 
     /// the time interval with no blockchain updates after which alerts are thrown
     #[serde(default)]
@@ -105,15 +108,6 @@ pub struct P2pConfig {
     #[serde(default)]
     pub layers: LayersConfig,
 
-    /// set the maximum number of unreachable nodes to contact at a time for every
-    /// new notification. The default value is 20.
-    ///
-    /// Every time a new propagation event is triggered, the node will select
-    /// randomly a certain amount of unreachable nodes to connect to in addition
-    /// to the one selected by other p2p topology layer.
-    #[serde(default)]
-    pub max_unreachable_nodes_to_connect_per_event: Option<usize>,
-
     /// interval to start gossiping with new nodes, changing the value will
     /// affect the bandwidth. The more often the node will gossip the more
     /// bandwidth the node will need. The less often the node gossips the less
@@ -157,6 +151,12 @@ pub struct Explorer {
     pub enabled: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub struct Prometheus {
+    pub enabled: bool,
+}
+
 impl Default for P2pConfig {
     fn default() -> Self {
         P2pConfig {
@@ -170,7 +170,6 @@ impl Default for P2pConfig {
             allow_private_addresses: false,
             policy: QuarantineConfig::default(),
             layers: LayersConfig::default(),
-            max_unreachable_nodes_to_connect_per_event: None,
             gossip_interval: None,
             network_stuck_check: None,
             max_bootstrap_attempts: None,

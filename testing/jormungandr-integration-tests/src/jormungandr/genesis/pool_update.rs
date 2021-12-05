@@ -1,8 +1,8 @@
-use crate::common::{
+use chain_impl_mockchain::rewards::TaxType;
+use jormungandr_testing_utils::testing::node::time;
+use jormungandr_testing_utils::testing::{
     jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
 };
-
-use chain_impl_mockchain::rewards::TaxType;
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
@@ -28,13 +28,17 @@ pub fn update_pool_fees_is_not_allowed() {
     stake_pool_info.rewards = TaxType::zero();
 
     // 6. send pool update certificate
-    startup::sleep_till_next_epoch(1, &jormungandr.block0_configuration());
+    time::wait_for_epoch(2, jormungandr.rest());
 
     let transaction = stake_pool_owner
         .issue_pool_update_cert(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
-            &stake_pool,
+            chain_impl_mockchain::block::BlockDate {
+                epoch: 3,
+                slot_id: 0,
+            },
+            stake_pool,
             &new_stake_pool,
         )
         .unwrap()

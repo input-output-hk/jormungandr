@@ -1,9 +1,10 @@
 use super::{Gossip, Gossips, P2pTopology, Peer};
 use crate::intercom::{NetworkMsg, PropagateMsg, TopologyMsg};
+use crate::metrics::Metrics;
 use crate::settings::start::network::Configuration;
 use crate::utils::async_msg::{MessageBox, MessageQueue};
 use std::time::Duration;
-use tokio::time::{Instant, Interval};
+use tokio::time::{Instant, Interval, MissedTickBehavior};
 use tokio_stream::StreamExt;
 
 pub const DEFAULT_NETWORK_STUCK_INTERVAL: Duration = Duration::from_secs(60 * 5); // 5 min
@@ -23,6 +24,7 @@ pub struct TaskData {
     pub topology_queue: MessageQueue<TopologyMsg>,
     pub initial_peers: Vec<Peer>,
     pub config: Configuration,
+    pub stats_counter: Metrics,
 }
 
 pub async fn start(task_data: TaskData) {
@@ -31,9 +33,10 @@ pub async fn start(task_data: TaskData) {
         topology_queue,
         initial_peers,
         config,
+        stats_counter,
     } = task_data;
 
-    let mut topology = P2pTopology::new(&config);
+    let mut topology = P2pTopology::new(&config, stats_counter);
 
     topology.accept_gossips(Gossips::from(
         initial_peers
@@ -42,9 +45,12 @@ pub async fn start(task_data: TaskData) {
             .collect::<Vec<_>>(),
     ));
 
+    let mut gossip_interval = tokio::time::interval(config.gossip_interval);
+    gossip_interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
+
     let mut process = Process {
         input: topology_queue,
-        gossip_interval: tokio::time::interval(config.gossip_interval),
+        gossip_interval,
         network_stuck_check: config.network_stuck_check,
         network_msgbox,
         topology,
@@ -60,6 +66,7 @@ impl Process {
         loop {
             tokio::select! {
                 Some(input) = self.input.next() => {
+                    tracing::trace!("handling new topology task item");
                     match input {
                         TopologyMsg::AcceptGossip(gossip) => {
                             self.topology.accept_gossips(gossip);
@@ -80,16 +87,22 @@ impl Process {
                             handle.reply_ok(self.topology.list_quarantined())
                         }
                     }
+                    tracing::trace!("item handling finished");
                 },
                 _ = self.gossip_interval.tick() => {
+                        let span = tracing::debug_span!("generating_gossip", task = "topology");
+                        let _guard = span.enter();
                         self.topology.update_gossip();
                         let view = self.topology.view(poldercast::layer::Selection::Any);
                         if view.peers.is_empty() {
                             tracing::warn!("no peers to gossip with found, check your connection");
                         }
+                        tracing::trace!("gossiping with peers");
                         self.send_gossip_messages(view.peers)
                     }
                 _ = quarantine_check.tick() => {
+                    let span = tracing::debug_span!("quarantine_check", task = "topology");
+                    let _guard = span.enter();
                     // Even if lifted from quarantine, peers will be re-added to the topology
                     // only after we receive a gossip about them.
                     let mut nodes_to_contact = self.topology.lift_reports();

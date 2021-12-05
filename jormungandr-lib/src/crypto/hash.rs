@@ -37,7 +37,7 @@ impl Hash {
         self.into_digest().into()
     }
 
-    pub fn to_hex(&self) -> String {
+    pub fn to_hex(self) -> String {
         self.to_string()
     }
 

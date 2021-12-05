@@ -38,7 +38,7 @@ impl AddWitness {
                 path: self.witness.clone(),
             })?;
 
-        let (hrp, data) = bech32::decode(bech32_str.trim()).map_err(|source| {
+        let (hrp, data, _variant) = bech32::decode(bech32_str.trim()).map_err(|source| {
             Error::WitnessFileBech32Malformed {
                 source,
                 path: self.witness.clone(),

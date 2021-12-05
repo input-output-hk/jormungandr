@@ -3,7 +3,6 @@ use crate::blockchain::{Storage, Tip};
 use crate::intercom::{ClientMsg, Error, ReplySendError, ReplyStreamHandle};
 use crate::utils::async_msg::MessageQueue;
 use crate::utils::task::TokioServiceInfo;
-use chain_core::property::HasHeader;
 
 use futures::prelude::*;
 use tokio::time::timeout;
@@ -197,7 +196,7 @@ async fn handle_get_headers(
 ) -> Result<(), ReplySendError> {
     fuse_send_items(
         ids.into_iter()
-            .map(|id| get_block_from_storage(&storage, id).map(|block| block.header())),
+            .map(|id| get_block_from_storage(&storage, id).map(|block| block.header().clone())),
         handle,
     )
     .await
@@ -209,7 +208,7 @@ async fn handle_get_headers_range(
     to: HeaderHash,
     handle: ReplyStreamHandle<Header>,
 ) -> Result<(), ReplySendError> {
-    send_range_from_storage(storage, from, to, |block| block.header(), handle).await
+    send_range_from_storage(storage, from, to, |block| block.header().clone(), handle).await
 }
 
 async fn handle_pull_blocks(

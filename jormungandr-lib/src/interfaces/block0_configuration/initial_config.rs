@@ -2,7 +2,8 @@ use crate::{
     interfaces::{
         ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
         EpochStabilityDepth, FeesGoTo, KesUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch,
-        PoolParticipationCapping, RewardConstraints, RewardParams, SlotDuration, TaxType, Value,
+        PoolParticipationCapping, ProposalExpiration, RewardConstraints, RewardParams,
+        SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -62,6 +63,11 @@ pub struct BlockchainConfiguration {
     #[serde(with = "LinearFeeDef")]
     pub linear_fees: LinearFee,
 
+    /// the proposal expiration settings. The default value is `100`.
+    ///
+    #[serde(default)]
+    pub proposal_expiration: ProposalExpiration,
+
     /// number of slots in one given epoch. The default value is `720`.
     ///
     #[serde(default)]
@@ -95,6 +101,10 @@ pub struct BlockchainConfiguration {
     /// set the maximal depth from which a fork will no longer be considered valid
     #[serde(default)]
     pub epoch_stability_depth: EpochStabilityDepth,
+
+    /// set the maximum number of epochs a transaction can reside in the mempool
+    #[serde(default)]
+    pub tx_max_expiry_epochs: Option<u8>,
 
     /// Fees go to settings, the default being `rewards`.
     ///
@@ -154,8 +164,6 @@ pub enum FromConfigParamsError {
     ),
     #[error("Invalid slot duration value")]
     SlotDuration(#[from] super::slots_duration::TryFromSlotDurationError),
-    #[error("Invalid consensus leader id")]
-    ConsensusLeaderId(#[from] super::leader_id::TryFromConsensusLeaderIdError),
     #[error("Invalid active slot coefficient value")]
     ActiveSlotCoefficient(
         #[from] super::active_slot_coefficient::TryFromActiveSlotCoefficientError,
@@ -184,6 +192,7 @@ impl BlockchainConfiguration {
             discrimination,
             block0_consensus,
             linear_fees,
+            proposal_expiration: ProposalExpiration::default(),
             consensus_leader_ids: Vec::default(),
             slots_per_epoch: NumberOfSlotsPerEpoch::default(),
             slot_duration: SlotDuration::default(),
@@ -191,6 +200,7 @@ impl BlockchainConfiguration {
             consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
             block_content_max_size: BlockContentMaxSize::default(),
             epoch_stability_depth: EpochStabilityDepth::default(),
+            tx_max_expiry_epochs: None,
             fees_go_to: None,
             treasury: None,
             treasury_parameters: None,
@@ -216,6 +226,7 @@ impl BlockchainConfiguration {
         let mut consensus_genesis_praos_active_slot_coeff = None;
         let mut block_content_max_size = None;
         let mut linear_fees = None;
+        let mut proposal_expiration = None;
         let mut kes_update_speed = None;
         let mut treasury = None;
         let mut treasury_parameters = None;
@@ -226,6 +237,7 @@ impl BlockchainConfiguration {
         let mut fees_go_to = None;
         let mut reward_constraints = RewardConstraints::default();
         let mut committees = Vec::new();
+        let mut tx_max_expiry_epochs = None;
 
         for param in params.iter().cloned() {
             match param {
@@ -244,8 +256,8 @@ impl BlockchainConfiguration {
                 cp @ ConfigParam::SlotDuration(_) => slot_duration
                     .replace(SlotDuration::try_from(cp)?)
                     .map(|_| "slot_duration"),
-                cp @ ConfigParam::AddBftLeader(_) => {
-                    consensus_leader_ids.push(ConsensusLeaderId::try_from(cp)?);
+                ConfigParam::AddBftLeader(val) => {
+                    consensus_leader_ids.push(val.into());
                     None
                 }
                 cp @ ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(_) => {
@@ -264,7 +276,9 @@ impl BlockchainConfiguration {
                 ConfigParam::RemoveBftLeader(_) => {
                     panic!("block 0 attempts to remove a BFT leader")
                 }
-                ConfigParam::ProposalExpiration(_param) => unimplemented!(),
+                ConfigParam::ProposalExpiration(param) => proposal_expiration
+                    .replace(param.into())
+                    .map(|_| "proposal_expiration"),
                 ConfigParam::BlockContentMaxSize(param) => block_content_max_size
                     .replace(param.into())
                     .map(|_| "block_content_max_size"),
@@ -307,6 +321,9 @@ impl BlockchainConfiguration {
                 ConfigParam::RemoveCommitteeId(_committee_id) => {
                     panic!("attempt to remove a committee in the block0")
                 }
+                ConfigParam::TransactionMaxExpiryEpochs(value) => tx_max_expiry_epochs
+                    .replace(value)
+                    .map(|_| "tx_max_expiry_epochs"),
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
@@ -333,6 +350,8 @@ impl BlockchainConfiguration {
             consensus_genesis_praos_active_slot_coeff: consensus_genesis_praos_active_slot_coeff
                 .ok_or_else(|| param_missing_error("consensus_genesis_praos_active_slot_coeff"))?,
             linear_fees: linear_fees.ok_or_else(|| param_missing_error("linear_fees"))?,
+            proposal_expiration: proposal_expiration
+                .ok_or_else(|| param_missing_error("proposal_expiration"))?,
             kes_update_speed: kes_update_speed
                 .ok_or_else(|| param_missing_error("kes_update_speed"))?,
             epoch_stability_depth: epoch_stability_depth
@@ -347,6 +366,7 @@ impl BlockchainConfiguration {
             reward_parameters,
             reward_constraints,
             committees,
+            tx_max_expiry_epochs,
         })
     }
 
@@ -356,6 +376,7 @@ impl BlockchainConfiguration {
             discrimination,
             block0_consensus,
             linear_fees,
+            proposal_expiration,
             consensus_leader_ids,
             slots_per_epoch,
             slot_duration,
@@ -370,6 +391,7 @@ impl BlockchainConfiguration {
             reward_parameters,
             reward_constraints,
             committees,
+            tx_max_expiry_epochs,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -388,6 +410,7 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::EpochStabilityDepth(
             epoch_stability_depth.into(),
         ));
+        params.push(ConfigParam::ProposalExpiration(proposal_expiration.into()));
 
         if let Some(fees_go_to) = fees_go_to {
             params.push(ConfigParam::from(fees_go_to));
@@ -438,6 +461,12 @@ impl BlockchainConfiguration {
             )));
         }
 
+        if let Some(tx_max_expiry_epochs) = tx_max_expiry_epochs {
+            params.push(ConfigParam::TransactionMaxExpiryEpochs(
+                tx_max_expiry_epochs,
+            ));
+        }
+
         let params = consensus_leader_ids
             .into_iter()
             .map(ConfigParam::from)
@@ -459,14 +488,14 @@ impl BlockchainConfiguration {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", remote = "Discrimination")]
-enum DiscriminationDef {
+pub enum DiscriminationDef {
     Test,
     Production,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", remote = "ConsensusVersion")]
-enum ConsensusVersionDef {
+pub enum ConsensusVersionDef {
     Bft,
     GenesisPraos,
 }
@@ -508,6 +537,7 @@ mod test {
                     ConsensusVersion::GenesisPraos
                 },
                 linear_fees,
+                proposal_expiration: Arbitrary::arbitrary(g),
                 consensus_leader_ids: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
                     .take(counter_leaders)
                     .collect(),
@@ -526,6 +556,7 @@ mod test {
                 committees: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
                     .take(counter_committee)
                     .collect(),
+                tx_max_expiry_epochs: Arbitrary::arbitrary(g),
             }
         }
     }

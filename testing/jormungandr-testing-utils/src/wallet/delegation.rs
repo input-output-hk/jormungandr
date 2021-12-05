@@ -1,5 +1,7 @@
 use chain_addr::Discrimination;
-use chain_impl_mockchain::transaction::{TransactionSignDataHash, Witness};
+use chain_impl_mockchain::transaction::{
+    TransactionSignDataHash, UnspecifiedAccountIdentifier, Witness,
+};
 use jormungandr_lib::{
     crypto::{
         account::Identifier as AccountIdentifier,
@@ -15,11 +17,6 @@ pub type SpendingKey = SigningKey<chain_crypto::Ed25519Extended>;
 /// wallet for an delegation
 #[derive(Debug, Clone)]
 pub struct Wallet {
-    /// this is the root seed of the wallet, everytime we will require
-    /// the wallet to update we will update the rng, we keep the `seed`
-    /// so we may reproduce the steps of the wallet
-    seed: [u8; 32],
-
     rng: ChaChaRng,
 
     /// the spending key
@@ -40,7 +37,6 @@ impl Wallet {
         rng.fill_bytes(&mut seed);
         Self {
             signing_keys: Vec::new(),
-            seed,
             rng: ChaChaRng::from_seed(seed),
             delegations: Vec::new(),
             discrimination,
@@ -54,8 +50,14 @@ impl Wallet {
         self.signing_keys.last().unwrap()
     }
 
+    pub fn stake_key(&self) -> UnspecifiedAccountIdentifier {
+        UnspecifiedAccountIdentifier::from_single_account(
+            self.last_delegation_identifier().to_inner(),
+        )
+    }
+
     pub fn delegation(&self, i: usize) -> &AccountIdentifier {
-        &self.delegations.get(i).unwrap()
+        self.delegations.get(i).unwrap()
     }
 
     pub fn address(&self) -> Address {

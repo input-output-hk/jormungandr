@@ -1,3 +1,4 @@
+use crate::testing::fragments::sender::BlockDateGenerator;
 use crate::testing::FragmentSender;
 use crate::testing::FragmentSenderSetup;
 use crate::testing::RemoteJormungandr;
@@ -6,8 +7,9 @@ use crate::wallet::LinearFee;
 use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::crypto::hash::Hash;
-use jortestkit::load::{Id, RequestFailure, RequestGenerator};
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
+use std::time::Instant;
 
 pub struct BatchFragmentGenerator<'a, S: SyncNode + Send> {
     wallets: Vec<Wallet>,
@@ -24,11 +26,17 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
         jormungandr: RemoteJormungandr,
         block_hash: Hash,
         fees: LinearFee,
+        expiry_generator: BlockDateGenerator,
         batch_size: u8,
     ) -> Self {
         Self {
             wallets: Vec::new(),
-            fragment_sender: FragmentSender::new(block_hash, fees, fragment_sender_setup),
+            fragment_sender: FragmentSender::new(
+                block_hash,
+                fees,
+                expiry_generator,
+                fragment_sender_setup,
+            ),
             rand: OsRng,
             jormungandr,
             split_marker: 0,
@@ -87,6 +95,7 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
             .transaction_to(
                 &self.fragment_sender.block0_hash(),
                 &self.fragment_sender.fees(),
+                self.fragment_sender.date(),
                 reciever.address(),
                 1.into(),
             )
@@ -108,22 +117,43 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
         Ok(transactions)
     }
 
-    pub fn send_batch(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
+    pub fn send_batch(&mut self) -> Result<Request, RequestFailure> {
         let transactions = self.generate_batch_transaction()?;
+        let start = Instant::now();
         self.fragment_sender
             .send_batch_fragments(transactions, false, &self.jormungandr)
-            .map(|checks| {
-                checks
+            .map(|summary| Request {
+                ids: summary
+                    .fragment_ids()
                     .iter()
-                    .map(|x| Some(x.fragment_id().to_string()))
-                    .collect()
+                    .map(|x| Some(x.to_string()))
+                    .collect(),
+                duration: start.elapsed(),
             })
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))
     }
 }
 
-impl<S: SyncNode + Send> RequestGenerator for BatchFragmentGenerator<'_, S> {
-    fn next(&mut self) -> Result<Vec<Option<Id>>, RequestFailure> {
+impl<S: SyncNode + Send + Sync + Clone> RequestGenerator for BatchFragmentGenerator<'_, S> {
+    fn next(&mut self) -> Result<Request, RequestFailure> {
         self.send_batch()
+    }
+
+    fn split(mut self) -> (Self, Option<Self>) {
+        let wallets_len = self.wallets.len();
+        // there needs to be at least one receiver and one sender in each half
+        if wallets_len <= 4 {
+            return (self, None);
+        }
+        let wallets = self.wallets.split_off(wallets_len / 2);
+        let other = Self {
+            wallets,
+            jormungandr: self.jormungandr.clone_with_rest(),
+            fragment_sender: self.fragment_sender.clone(),
+            rand: OsRng,
+            split_marker: 1,
+            batch_size: self.batch_size(),
+        };
+        (self, Some(other))
     }
 }

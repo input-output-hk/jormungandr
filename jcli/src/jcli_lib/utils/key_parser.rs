@@ -21,6 +21,8 @@ pub enum Error {
     },
     #[error("could not decode secretkey: {0}")]
     SecretKeyMalformed(#[from] bech32::Error),
+    #[error("error requesting user input")]
+    UserInputError(#[from] std::io::Error),
 }
 
 pub fn parse_pub_key<A: AsymmetricPublicKey>(
@@ -29,9 +31,12 @@ pub fn parse_pub_key<A: AsymmetricPublicKey>(
     Bech32::try_from_bech32_str(bech32_str)
 }
 
-pub fn _read_secret_key_from_file<A: AsymmetricKey, P: AsRef<Path>>(
-    path: &Option<P>,
-) -> Result<SecretKey<A>, Error> {
+pub fn _read_secret_key_from_file<A, P>(path: &Option<P>) -> Result<SecretKey<A>, Error>
+where
+    A: AsymmetricKey,
+    SecretKey<A>: Bech32,
+    P: AsRef<Path>,
+{
     let bech32_str: String =
         io::read_line(path).map_err(|source| Error::SecretKeyFileReadFailed {
             source,
@@ -41,6 +46,17 @@ pub fn _read_secret_key_from_file<A: AsymmetricKey, P: AsRef<Path>>(
         source,
         path: io::path_to_path_buf(path),
     })
+}
+
+pub fn read_secret_key(secret_key_path: Option<PathBuf>) -> Result<EitherEd25519SecretKey, Error> {
+    match secret_key_path {
+        Some(path) => read_ed25519_secret_key_from_file(&Some(path)),
+        None => {
+            let key =
+                rpassword::prompt_password_stdout("Introduce the bech32 format secret key:\n")?;
+            parse_ed25519_secret_key(&key)
+        }
+    }
 }
 
 pub fn read_ed25519_secret_key_from_file<P: AsRef<Path>>(
@@ -64,9 +80,9 @@ pub fn read_ed25519_secret_key_from_file<P: AsRef<Path>>(
 }
 
 pub fn parse_ed25519_secret_key(bech32_str: &str) -> Result<EitherEd25519SecretKey, Error> {
-    match SecretKey::try_from_bech32_str(&bech32_str) {
+    match SecretKey::try_from_bech32_str(bech32_str) {
         Ok(sk) => Ok(EitherEd25519SecretKey::Extended(sk)),
-        Err(_) => SecretKey::try_from_bech32_str(&bech32_str)
+        Err(_) => SecretKey::try_from_bech32_str(bech32_str)
             .map(EitherEd25519SecretKey::Normal)
             .map_err(Error::SecretKeyMalformed),
     }

@@ -3,6 +3,8 @@ mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
 mod new_stake_pool_retirement;
+mod new_update_proposal;
+mod new_update_vote;
 mod new_vote_cast;
 mod new_vote_plan;
 mod new_vote_tally;
@@ -12,14 +14,14 @@ mod weighted_pool_ids;
 
 pub(crate) use self::sign::{
     committee_encrypted_vote_tally_sign, committee_vote_plan_sign, committee_vote_tally_sign,
-    pool_owner_sign, stake_delegation_account_binding_sign,
+    pool_owner_sign, stake_delegation_account_binding_sign, update_proposal_sign, update_vote_sign,
 };
 
 use crate::jcli_lib::utils::{
     io, key_parser,
     vote::{SharesError, VotePlanError},
 };
-use chain_impl_mockchain::block::BlockDate;
+use chain_impl_mockchain::{block::BlockDate, certificate::DecryptedPrivateTallyError};
 use jormungandr_lib::interfaces::{self, CertificateFromBech32Error, CertificateFromStrError};
 use std::{
     fmt::Display,
@@ -61,6 +63,8 @@ pub enum Error {
     ExpectingOnlyOneSigningKey { got: usize },
     #[error("owner stake delegation does not need a signature")]
     OwnerStakeDelegationDoesntNeedSignature,
+    #[error("mint token does not need a signature")]
+    MintTokenDoesntNeedSignature,
     #[error("vote plan certificate does not need a signature")]
     VotePlanDoesntNeedSignature,
     #[error("vote cast certificate does not need a signature")]
@@ -69,8 +73,8 @@ pub enum Error {
     KeyNotFound { index: usize },
     #[error("Invalid input, expected Signed Certificate or just Certificate")]
     ExpectedSignedOrNotCertificate,
-    #[error("Invalid data")]
-    InvalidBech32(#[from] bech32::Error),
+    #[error("Invalid bech32 data")]
+    InvalidBech32(#[from] chain_crypto::bech32::Error),
     #[error("attempted to build delegation with zero weight")]
     PoolDelegationWithZeroWeight,
     #[error("pool delegation rates sum up to {actual}, maximum is 255")]
@@ -97,8 +101,8 @@ pub enum Error {
     VotePlanConfig(#[source] serde_yaml::Error),
     #[error("invalid base64 encoded bytes")]
     Base64(#[source] base64::DecodeError),
-    #[error("invalid vote encrypting key")]
-    VoteEncryptingKey,
+    #[error("invalid election public key")]
+    ElectionPublicKey,
     #[error("invalid bech32 public key, expected {expected} hrp got {actual}")]
     InvalidBech32Key { expected: String, actual: String },
     #[error("invalid shares JSON representation")]
@@ -111,6 +115,10 @@ pub enum Error {
     SharesError(#[from] SharesError),
     #[error("expected decrypted private tally, found {found}")]
     PrivateTallyExpected { found: &'static str },
+    #[error(transparent)]
+    PrivateTallyError(#[from] DecryptedPrivateTallyError),
+    #[error("config file corrupted")]
+    ConfigFileCorrupted(#[source] serde_yaml::Error),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -163,6 +171,10 @@ pub enum NewArgs {
     VoteTally(new_vote_tally::VoteTallyRegistration),
     /// create a new encrypted vote tally certificate
     EncryptedVoteTally(new_encrypted_vote_tally::EncryptedVoteTally),
+    /// create a new update vote certificate
+    UpdateVote(new_update_vote::UpdateVote),
+    /// create a new update proposal certificate
+    UpdateProposal(new_update_proposal::UpdateProposal),
     /// create a vote cast certificate
     VoteCast(new_vote_cast::VoteCastCmd),
 }
@@ -196,6 +208,8 @@ impl NewArgs {
             NewArgs::VoteTally(args) => args.exec()?,
             NewArgs::VoteCast(args) => args.exec()?,
             NewArgs::EncryptedVoteTally(args) => args.exec()?,
+            NewArgs::UpdateVote(args) => args.exec()?,
+            NewArgs::UpdateProposal(args) => args.exec()?,
         }
         Ok(())
     }
@@ -224,7 +238,8 @@ impl Certificate {
 
 fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certificate, Error> {
     let cert_str = read_input(input)?.trim_end().to_owned();
-    let (hrp, _) = bech32::decode(&cert_str)?;
+    let (hrp, _, _variant) =
+        bech32::decode(&cert_str).map_err(chain_crypto::bech32::Error::from)?;
 
     match hrp.as_ref() {
         interfaces::SIGNED_CERTIFICATE_HRP => {
@@ -242,6 +257,8 @@ fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certific
                 SignedCertificate::VotePlan(vp, _) => Certificate::VotePlan(vp),
                 SignedCertificate::VoteTally(vt, _) => Certificate::VoteTally(vt),
                 SignedCertificate::EncryptedVoteTally(vt, _) => Certificate::EncryptedVoteTally(vt),
+                SignedCertificate::UpdateProposal(vt, _) => Certificate::UpdateProposal(vt),
+                SignedCertificate::UpdateVote(vt, _) => Certificate::UpdateVote(vt),
             };
 
             Ok(interfaces::Certificate(cert))
@@ -257,7 +274,7 @@ fn read_cert(input: Option<&Path>) -> Result<interfaces::Certificate, Error> {
     use std::str::FromStr as _;
 
     let cert_str = read_input(input)?;
-    let cert = interfaces::Certificate::from_str(&cert_str.trim_end())?;
+    let cert = interfaces::Certificate::from_str(cert_str.trim_end())?;
     Ok(cert)
 }
 

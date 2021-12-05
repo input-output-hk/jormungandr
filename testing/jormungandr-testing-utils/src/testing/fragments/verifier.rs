@@ -15,6 +15,13 @@ pub enum FragmentVerifierError {
         #[debug(skip)]
         logs: Vec<String>,
     },
+    #[error("fragment sent to node: {alias} is not rejected :({status:?})")]
+    FragmentNotRejected {
+        alias: String,
+        status: FragmentStatus,
+        #[debug(skip)]
+        logs: Vec<String>,
+    },
     #[error("transaction is pending for too long")]
     FragmentIsPendingForTooLong {
         fragment_id: FragmentId,
@@ -61,6 +68,7 @@ impl FragmentVerifierError {
             | FragmentIsPendingForTooLong { logs, .. }
             | FragmentsArePendingForTooLong { logs, .. }
             | FragmentNotInMemPoolLogs { logs, .. }
+            | FragmentNotRejected { logs, .. }
             | FragmentNode(FragmentNodeError::CannotSendFragment { logs, .. }) => Some(logs),
             AtLeastOneRejectedFragment { logs, .. } => Some(logs),
             TimeoutReachedWhileWaitingForAllFragmentsInBlock { logs } => Some(logs),
@@ -78,7 +86,6 @@ pub struct FragmentVerifier;
 
 impl FragmentVerifier {
     pub fn wait_until_all_processed<A: FragmentNode + ?Sized>(
-        &self,
         wait: Wait,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
@@ -111,36 +118,56 @@ impl FragmentVerifier {
     }
 
     pub fn wait_and_verify_all_are_in_block<A: FragmentNode + ?Sized>(
-        &self,
         duration: Duration,
         checks: Vec<MemPoolCheck>,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
         for check in checks {
-            let status = self.wait_fragment(duration, check, node)?;
-            self.is_in_block(status, node)?;
+            let status = Self::wait_fragment(duration, check, Default::default(), node)?;
+            Self::is_in_block(status, node)?;
         }
         Ok(())
     }
 
     pub fn wait_and_verify_is_in_block<A: FragmentNode + ?Sized>(
-        &self,
         duration: Duration,
         check: MemPoolCheck,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
-        let status = self.wait_fragment(duration, check, node)?;
-        self.is_in_block(status, node)
+        let status = Self::wait_fragment(duration, check, Default::default(), node)?;
+        Self::is_in_block(status, node)
+    }
+
+    pub fn wait_and_verify_is_rejected<A: FragmentNode + ?Sized>(
+        duration: Duration,
+        check: MemPoolCheck,
+        node: &A,
+    ) -> Result<(), FragmentVerifierError> {
+        let status = Self::wait_fragment(duration, check, Default::default(), node)?;
+        Self::is_rejected(status, node)
     }
 
     pub fn is_in_block<A: FragmentNode + ?Sized>(
-        &self,
         status: FragmentStatus,
         node: &A,
     ) -> Result<(), FragmentVerifierError> {
         if !status.is_in_a_block() {
             return Err(FragmentVerifierError::FragmentNotInBlock {
-                alias: node.alias().to_string(),
+                alias: node.alias(),
+                status,
+                logs: node.log_content(),
+            });
+        }
+        Ok(())
+    }
+
+    pub fn is_rejected<A: FragmentNode + ?Sized>(
+        status: FragmentStatus,
+        node: &A,
+    ) -> Result<(), FragmentVerifierError> {
+        if !status.is_rejected() {
+            return Err(FragmentVerifierError::FragmentNotRejected {
+                alias: node.alias(),
                 status,
                 logs: node.log_content(),
             });
@@ -149,7 +176,6 @@ impl FragmentVerifier {
     }
 
     pub fn fragment_status<A: FragmentNode + ?Sized>(
-        &self,
         check: MemPoolCheck,
         node: &A,
     ) -> Result<FragmentStatus, FragmentVerifierError> {
@@ -171,21 +197,21 @@ impl FragmentVerifier {
         }
 
         Err(FragmentVerifierError::FragmentNotInMemPoolLogs {
-            alias: node.alias().to_string(),
+            alias: node.alias(),
             fragment_id: *check.fragment_id(),
             logs: node.log_content(),
         })
     }
 
     pub fn wait_fragment<A: FragmentNode + ?Sized>(
-        &self,
         duration: Duration,
         check: MemPoolCheck,
+        exit_strategy: ExitStrategy,
         node: &A,
     ) -> Result<FragmentStatus, FragmentVerifierError> {
         let max_try = 50;
         for _ in 0..max_try {
-            let status_result = self.fragment_status(check.clone(), node);
+            let status_result = Self::fragment_status(check.clone(), node);
 
             if status_result.is_err() {
                 std::thread::sleep(duration);
@@ -194,9 +220,10 @@ impl FragmentVerifier {
 
             let status = status_result.unwrap();
 
-            match status {
-                FragmentStatus::Rejected { .. } => return Ok(status),
-                FragmentStatus::InABlock { .. } => return Ok(status),
+            match (&status, exit_strategy) {
+                (FragmentStatus::Rejected { .. }, _) => return Ok(status),
+                (FragmentStatus::InABlock { .. }, _) => return Ok(status),
+                (FragmentStatus::Pending, ExitStrategy::OnPending) => return Ok(status),
                 _ => (),
             }
             std::thread::sleep(duration);
@@ -205,13 +232,12 @@ impl FragmentVerifier {
         Err(FragmentVerifierError::FragmentIsPendingForTooLong {
             fragment_id: *check.fragment_id(),
             timeout: Duration::from_secs(duration.as_secs() * max_try),
-            alias: node.alias().to_string(),
+            alias: node.alias(),
             logs: node.log_content(),
         })
     }
 
     pub fn wait_for_all_fragments<A: FragmentNode + ?Sized>(
-        &self,
         duration: Duration,
         node: &A,
     ) -> Result<HashMap<FragmentId, FragmentLog>, FragmentVerifierError> {
@@ -241,8 +267,22 @@ impl FragmentVerifier {
 
         Err(FragmentVerifierError::FragmentsArePendingForTooLong {
             timeout: Duration::from_secs(duration.as_secs() * max_try),
-            alias: node.alias().to_string(),
+            alias: node.alias(),
             logs: node.log_content(),
         })
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum ExitStrategy {
+    /// Exit as soon as the fragment enters the mempool
+    OnPending,
+    /// Exit when the fragment has been processed (i.e. either Rejected or InABlock)
+    OnProcessed,
+}
+
+impl Default for ExitStrategy {
+    fn default() -> Self {
+        ExitStrategy::OnProcessed
     }
 }

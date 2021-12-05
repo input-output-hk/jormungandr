@@ -1,7 +1,8 @@
 use super::config::{P2p, TrustedPeer};
 use crate::testing::node::configuration::legacy::NodeConfig;
 use crate::testing::node::configuration::JormungandrParams;
-use crate::testing::node::{version_0_8_19, Version};
+use crate::testing::node::{version_0_13_0, Version};
+use jormungandr_lib::interfaces::NodeId;
 use jormungandr_lib::interfaces::{NodeConfig as NewestNodeConfig, Rest};
 use rand::RngCore;
 use rand_core::OsRng;
@@ -44,7 +45,7 @@ impl LegacyConfigConverter {
             params.node_config_path(),
             params.genesis_block_path(),
             params.genesis_block_hash(),
-            params.secret_model_paths(),
+            params.secret_model_path(),
             params.block0_configuration().clone(),
             params.rewards_history(),
             params.log_file_path(),
@@ -66,13 +67,64 @@ impl LegacyNodeConfigConverter {
         &self,
         source: &NewestNodeConfig,
     ) -> Result<NodeConfig, LegacyConfigConverterError> {
-        if self.version > version_0_8_19() {
-            return Ok(self.build_node_config_after_0_8_19(source));
+        if self.version >= version_0_13_0() {
+            return Ok(self.build_node_config_after_0_13_0(source));
+        }
+        if self.version.major == 0 && self.version.minor == 12 {
+            return Ok(self.build_node_config_after_0_12_0(source));
         }
         Ok(self.build_node_config_before_0_8_19(source))
     }
 
-    fn build_node_config_after_0_8_19(&self, source: &NewestNodeConfig) -> NodeConfig {
+    fn build_node_config_after_0_13_0(&self, source: &NewestNodeConfig) -> NodeConfig {
+        let mut rng = OsRng;
+
+        let trusted_peers: Vec<TrustedPeer> = source
+            .p2p
+            .trusted_peers
+            .iter()
+            .map(|peer| {
+                let id = NodeId::from(
+                    <chain_crypto::SecretKey<chain_crypto::Ed25519>>::generate(&mut rng)
+                        .to_public(),
+                );
+
+                TrustedPeer {
+                    id: Some(id.to_string()),
+                    address: peer.address.clone(),
+                }
+            })
+            .collect();
+
+        NodeConfig {
+            storage: source.storage.clone(),
+            single_log: source.log.clone().map(Into::into),
+            log: None,
+            rest: Rest {
+                listen: source.rest.listen,
+                cors: None,
+                tls: None,
+            },
+            p2p: P2p {
+                trusted_peers,
+                public_address: source.p2p.public_address.clone(),
+                listen: None,
+                max_inbound_connections: None,
+                max_connections: None,
+                topics_of_interest: None,
+                allow_private_addresses: source.p2p.allow_private_addresses,
+                policy: source.p2p.policy.clone(),
+                layers: source.p2p.layers.clone(),
+                public_id: None,
+            },
+            mempool: source.mempool.clone(),
+            explorer: source.explorer.clone(),
+            bootstrap_from_trusted_peers: source.bootstrap_from_trusted_peers,
+            skip_bootstrap: source.skip_bootstrap,
+        }
+    }
+
+    fn build_node_config_after_0_12_0(&self, source: &NewestNodeConfig) -> NodeConfig {
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
             .trusted_peers
@@ -85,7 +137,8 @@ impl LegacyNodeConfigConverter {
 
         NodeConfig {
             storage: source.storage.clone(),
-            log: source.log.clone().map(Into::into),
+            single_log: source.log.clone().map(Into::into),
+            log: None,
             rest: Rest {
                 listen: source.rest.listen,
                 cors: None,
@@ -97,14 +150,10 @@ impl LegacyNodeConfigConverter {
                 listen: None,
                 max_inbound_connections: None,
                 max_connections: None,
-                topics_of_interest: source
-                    .p2p
-                    .layers
-                    .as_ref()
-                    .and_then(|c| c.topics_of_interest.clone()),
+                topics_of_interest: None,
                 allow_private_addresses: source.p2p.allow_private_addresses,
                 policy: source.p2p.policy.clone(),
-                layers: None,
+                layers: source.p2p.layers.clone(),
                 public_id: None,
             },
             mempool: source.mempool.clone(),
@@ -145,6 +194,7 @@ impl LegacyNodeConfigConverter {
         NodeConfig {
             storage: source.storage.clone(),
             log: source.log.clone().map(Into::into),
+            single_log: None,
             rest: Rest {
                 listen: source.rest.listen,
                 cors: None,

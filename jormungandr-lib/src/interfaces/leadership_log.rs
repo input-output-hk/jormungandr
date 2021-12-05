@@ -1,17 +1,10 @@
 use crate::{crypto::hash::Hash, interfaces::BlockDate, time::SystemTime};
 use serde::{Deserialize, Serialize};
-use std::fmt;
-
-#[derive(
-    Default, Debug, Deserialize, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize,
-)]
-#[serde(transparent)]
-pub struct EnclaveLeaderId(u32);
 
 /// log identifier in the leadership log. Can be used to update
 /// back some.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LeadershipLogId(EnclaveLeaderId, BlockDate);
+pub struct LeadershipLogId(BlockDate);
 
 /// the status of a leadership log
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -37,25 +30,10 @@ pub struct LeadershipLog {
     wake_at_time: Option<SystemTime>,
     finished_at_time: Option<SystemTime>,
     status: LeadershipLogStatus,
-    enclave_leader_id: EnclaveLeaderId,
-}
-
-impl EnclaveLeaderId {
-    pub fn new() -> Self {
-        EnclaveLeaderId(0)
-    }
-
-    pub fn next(self) -> Self {
-        Self(self.0 + 1)
-    }
 }
 
 impl LeadershipLog {
-    pub fn new(
-        enclave_leader_id: EnclaveLeaderId,
-        scheduled_at_date: BlockDate,
-        scheduled_at_time: SystemTime,
-    ) -> Self {
+    pub fn new(scheduled_at_date: BlockDate, scheduled_at_time: SystemTime) -> Self {
         LeadershipLog {
             created_at_time: SystemTime::now(),
             scheduled_at_time,
@@ -63,13 +41,12 @@ impl LeadershipLog {
             wake_at_time: None,
             finished_at_time: None,
             status: LeadershipLogStatus::Pending,
-            enclave_leader_id,
         }
     }
 
     /// retrieve a unique identifier to this log
     pub fn leadership_log_id(&self) -> LeadershipLogId {
-        LeadershipLogId(self.enclave_leader_id, self.scheduled_at_date)
+        LeadershipLogId(self.scheduled_at_date)
     }
 
     pub fn created_at_time(&self) -> &SystemTime {
@@ -86,9 +63,6 @@ impl LeadershipLog {
     }
     pub fn finished_at_time(&self) -> &Option<SystemTime> {
         &self.finished_at_time
-    }
-    pub fn enclave_leader_id(&self) -> &EnclaveLeaderId {
-        &self.enclave_leader_id
     }
     pub fn status(&self) -> &LeadershipLogStatus {
         &self.status
@@ -126,23 +100,5 @@ impl LeadershipLog {
     /// set the leadership log status.
     pub fn set_status(&mut self, status: LeadershipLogStatus) {
         self.status = status
-    }
-}
-
-impl fmt::Display for EnclaveLeaderId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-impl From<EnclaveLeaderId> for u32 {
-    fn from(enclave_leader_id: EnclaveLeaderId) -> u32 {
-        enclave_leader_id.0
-    }
-}
-
-impl From<u32> for EnclaveLeaderId {
-    fn from(inner: u32) -> EnclaveLeaderId {
-        EnclaveLeaderId(inner)
     }
 }

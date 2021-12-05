@@ -1,14 +1,16 @@
-use crate::common::jormungandr::ConfigurationBuilder;
-use crate::common::startup;
-use assert_fs::fixture::PathChild;
-use assert_fs::TempDir;
+use std::time::Duration;
+
+use assert_fs::{fixture::PathChild, TempDir};
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{Mempool, PersistentLog};
-use jormungandr_testing_utils::testing::fragments::PersistentLogViewer;
 use jormungandr_testing_utils::testing::{
-    BatchFragmentGenerator, FragmentSenderSetup, FragmentStatusProvider,
+    fragments::PersistentLogViewer, jormungandr::ConfigurationBuilder, startup,
+    BatchFragmentGenerator, BlockDateGenerator, FragmentSenderSetup, FragmentStatusProvider,
 };
-pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
-use jortestkit::load::{self, Configuration, Monitor};
+pub use jortestkit::{
+    console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode},
+    load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor},
+};
 
 #[test]
 pub fn persistent_log_load_test() {
@@ -21,7 +23,6 @@ pub fn persistent_log_load_test() {
         vec![&faucet],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_slot_duration(1)
             .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
@@ -33,24 +34,33 @@ pub fn persistent_log_load_test() {
     )
     .unwrap();
 
-    let batch_size = 100;
+    let batch_size = 10;
     let requests_per_thread = 50;
     let threads_count = 1;
 
-    let configuration = Configuration::requests_per_thread(
-        threads_count,
-        requests_per_thread,
-        1,
-        Monitor::Standard(100),
-        1,
-        1,
-    );
+    let configuration = LoadConfigurationBuilder::requests_per_thread(requests_per_thread)
+        .thread_no(threads_count)
+        .step_delay(Duration::from_secs(1))
+        .monitor(Monitor::Standard(100))
+        .shutdown_grace_period(Duration::from_secs(1))
+        .status_pace(Duration::from_millis(30))
+        .build();
+
+    let settings = jormungandr.rest().settings().unwrap();
 
     let mut request_generator = BatchFragmentGenerator::new(
         FragmentSenderSetup::no_verify(),
         jormungandr.to_remote(),
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
+        BlockDateGenerator::rolling(
+            &settings,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            false,
+        ),
         batch_size,
     );
     request_generator.fill_from_faucet(&mut faucet);

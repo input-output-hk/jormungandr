@@ -1,6 +1,11 @@
 name: API Check
 on:
   push:
+    branches:
+      - master
+    paths:
+      - 'doc/api/*.yaml'
+  pull_request:
     paths:
       - 'doc/api/*.yaml'
 jobs:

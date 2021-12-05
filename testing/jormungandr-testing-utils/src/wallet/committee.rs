@@ -1,15 +1,18 @@
-use super::WalletError as Error;
-use crate::testing::network_builder::WalletAlias;
+use crate::testing::network::WalletAlias;
 use assert_fs::fixture::{ChildPath, PathChild};
-use bech32::FromBase32;
-use bech32::ToBase32;
+use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::{
-    certificate::{DecryptedPrivateTally, DecryptedPrivateTallyProposal},
+    certificate::{
+        DecryptedPrivateTally, DecryptedPrivateTallyError, DecryptedPrivateTallyProposal,
+    },
     vote::VotePlanStatus,
 };
 use chain_vote::{
-    committee::ElectionPublicKey, Crs, EncryptingVoteKey, MemberCommunicationKey,
-    MemberCommunicationPublicKey, MemberPublicKey, MemberState, OpeningVoteKey,
+    committee::{
+        ElectionPublicKey, MemberCommunicationKey, MemberCommunicationPublicKey, MemberPublicKey,
+        MemberState,
+    },
+    tally::{Crs, OpeningVoteKey},
 };
 use jormungandr_lib::crypto::account::Identifier;
 use rand_core::{CryptoRng, RngCore};
@@ -17,10 +20,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
 use std::io::Write;
-
-pub const COMMUNICATION_SK_HRP: &str = "p256k1_vcommsk";
-pub const MEMBER_SK_HRP: &str = "p256k1_membersk";
-pub const ENCRYPTING_VOTE_PK_HRP: &str = "p256k1_votepk";
 
 #[derive(Clone)]
 pub struct PrivateVoteCommitteeData {
@@ -56,7 +55,7 @@ impl PrivateVoteCommitteeData {
         self.member_secret_key.clone()
     }
 
-    pub fn encrypting_vote_key(&self) -> ElectionPublicKey {
+    pub fn election_public_key(&self) -> ElectionPublicKey {
         self.election_public_key.clone()
     }
 
@@ -74,54 +73,14 @@ impl PrivateVoteCommitteeData {
         let path = directory.child("communication_key.sk");
         let mut file = File::create(path.path()).unwrap();
 
-        writeln!(
-            file,
-            "{}",
-            bech32::encode(
-                COMMUNICATION_SK_HRP,
-                self.communication_key.to_bytes().to_base32()
-            )
-            .unwrap()
-        )
-        .unwrap()
+        writeln!(file, "{}", self.communication_key.to_bech32_str()).unwrap()
     }
 
     fn write_member_secret_key(&self, directory: &ChildPath) {
         let path = directory.child("member_secret_key.sk");
         let mut file = File::create(path.path()).unwrap();
-        writeln!(
-            file,
-            "{}",
-            bech32::encode(
-                MEMBER_SK_HRP,
-                self.member_secret_key().to_bytes().to_base32()
-            )
-            .unwrap()
-        )
-        .unwrap()
+        writeln!(file, "{}", self.member_secret_key().to_bech32_str()).unwrap()
     }
-}
-
-pub trait ElectionPublicKeyExtension {
-    fn to_base32(&self) -> Result<String, bech32::Error>;
-}
-
-impl ElectionPublicKeyExtension for ElectionPublicKey {
-    fn to_base32(&self) -> Result<String, bech32::Error> {
-        bech32::encode(ENCRYPTING_VOTE_PK_HRP, self.to_bytes().to_base32())
-    }
-}
-
-pub fn encrypting_key_from_base32(key: &str) -> Result<ElectionPublicKey, Error> {
-    let (hrp, data) = bech32::decode(&key).map_err(Error::InvalidBech32)?;
-    if hrp != ENCRYPTING_VOTE_PK_HRP {
-        return Err(Error::InvalidBech32Key {
-            expected: ENCRYPTING_VOTE_PK_HRP.to_string(),
-            actual: hrp,
-        });
-    }
-    let key_bin = Vec::<u8>::from_base32(&data)?;
-    chain_vote::EncryptingVoteKey::from_bytes(&key_bin).ok_or(Error::VoteEncryptingKey)
 }
 
 impl fmt::Debug for PrivateVoteCommitteeData {
@@ -174,7 +133,7 @@ impl PrivateVoteCommitteeDataManager {
             let ms = MemberState::new(&mut rng, threshold, &crs, &communication_public_keys, index);
 
             let communication_secret_key = communication_secret_keys.get(index).unwrap();
-            let encrypting_vote_key =
+            let election_public_key =
                 ElectionPublicKey::from_participants(&[ms.public_key().clone()]);
 
             data.insert(
@@ -184,7 +143,7 @@ impl PrivateVoteCommitteeDataManager {
                     communication_secret_key.clone(),
                     ms.secret_key().clone(),
                     ms.public_key().clone(),
-                    encrypting_vote_key,
+                    election_public_key,
                 ),
             );
         }
@@ -196,8 +155,8 @@ impl PrivateVoteCommitteeDataManager {
         self.data.get(identifier)
     }
 
-    pub fn encrypting_vote_key(&self) -> EncryptingVoteKey {
-        chain_vote::EncryptingVoteKey::from_participants(&self.member_public_keys())
+    pub fn election_public_key(&self) -> ElectionPublicKey {
+        chain_vote::ElectionPublicKey::from_participants(&self.member_public_keys())
     }
 
     pub fn members(&self) -> Vec<PrivateVoteCommitteeData> {
@@ -206,7 +165,7 @@ impl PrivateVoteCommitteeDataManager {
 
     pub fn write_to(&self, directory: ChildPath) -> std::io::Result<()> {
         std::fs::create_dir_all(directory.path()).unwrap();
-        self.write_encrypting_vote_key(&directory);
+        self.write_election_public_key(&directory);
         for (id, data) in self.data.iter() {
             let item_directory = directory.child(id.to_bech32_str());
             data.write_to(item_directory);
@@ -214,17 +173,20 @@ impl PrivateVoteCommitteeDataManager {
         Ok(())
     }
 
-    fn write_encrypting_vote_key(&self, directory: &ChildPath) {
-        let path = directory.child("encrypting_vote_key.sk");
+    fn write_election_public_key(&self, directory: &ChildPath) {
+        let path = directory.child("election_public_key.sk");
         let mut file = File::create(path.path()).unwrap();
-        writeln!(file, "{}", self.encrypting_vote_key().to_base32().unwrap()).unwrap()
+        writeln!(file, "{}", self.election_public_key().to_bech32_str()).unwrap()
     }
 
     pub fn member_public_keys(&self) -> Vec<MemberPublicKey> {
         self.data.values().map(|x| x.member_public_key()).collect()
     }
 
-    pub fn decrypt_tally(&self, vote_plan_status: &VotePlanStatus) -> DecryptedPrivateTally {
+    pub fn decrypt_tally(
+        &self,
+        vote_plan_status: &VotePlanStatus,
+    ) -> Result<DecryptedPrivateTally, DecryptedPrivateTallyError> {
         let encrypted_tally = vote_plan_status
             .proposals
             .iter()
@@ -250,11 +212,18 @@ impl PrivateVoteCommitteeDataManager {
                     .members()
                     .iter()
                     .map(|member| member.member_secret_key())
-                    .map(|secret_key| encrypted_tally.finish(&secret_key).1)
+                    .map(|secret_key| {
+                        encrypted_tally.partial_decrypt(&mut rand::thread_rng(), &secret_key)
+                    })
                     .collect::<Vec<_>>();
-                let tally_state = encrypted_tally.state();
-                let tally =
-                    chain_vote::tally(max_votes, &tally_state, &decrypt_shares, &table).unwrap();
+                let tally = encrypted_tally
+                    .validate_partial_decryptions(
+                        &vote_plan_status.committee_public_keys,
+                        &decrypt_shares,
+                    )
+                    .unwrap()
+                    .decrypt_tally(max_votes, &table)
+                    .unwrap();
                 DecryptedPrivateTallyProposal {
                     decrypt_shares: decrypt_shares.into_boxed_slice(),
                     tally_result: tally.votes.into_boxed_slice(),

@@ -1,6 +1,6 @@
 [package]
 name = "jormungandr-lib"
-version = "0.11.1"
+version = "0.13.0"
 authors = ["dev@iohk.io"]
 edition = "2018"
 
@@ -9,7 +9,7 @@ description = "Data structures and formats used by Jormungandr node API and conf
 [dependencies]
 bincode = "1.3"
 serde = { version = "1.0", features = ["derive"] }
-serde_with = { version = "1.0", features = ["macros"] }
+serde_with = { version = "1.9", features = ["macros"] }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
@@ -21,12 +21,12 @@ typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branc
 rand = "0.8"
 rand_core = "0.6"
 rand_chacha = "0.3"
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4.19", features = ["serde"] }
 humantime = "2.0"
 thiserror = "1.0"
 multiaddr = { package = "parity-multiaddr", version = "0.11", default-features = false }
 hex = "0.4"
-bech32 = "0.7"
+bech32 = "0.8"
 base64 = "0.13.0"
 http = "0.2.2"
 eccoxide = { git = "https://github.com/eugene-babichenko/eccoxide.git", branch = "fast-u64-scalar-mul", features = ["fast-u64-scalar-mul"], optional = true }
@@ -39,6 +39,6 @@ rand07 = { package = "rand", version = "0.7" }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-ed25519-bip32 = "0.3"
+ed25519-bip32 = "0.4"
 serde_yaml = "0.8"
 serde_json = "1.0"

@@ -6,7 +6,6 @@ use crate::{
     },
     secure::enclave::Enclave as SecureEnclave,
 };
-use jormungandr_lib::interfaces::EnclaveLeaderId as LeaderId;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -14,8 +13,8 @@ pub use crate::secure::enclave::Schedule;
 
 #[derive(Debug, Clone, Error)]
 pub enum EnclaveError {
-    #[error("This leader {id} is not in the enclave")]
-    NotInEnclave { id: LeaderId },
+    #[error("Enclave does not have a leader set")]
+    EmptyEnclave,
 }
 
 /// represent the client side of an enclave. From there we will query the
@@ -63,15 +62,14 @@ impl Enclave {
     ///
     /// TODO: for now we are querying the whole with the block builder but on the long
     ///       run we will only need the block signing data.
-    pub async fn query_header_bft_finalize(
+    pub fn query_header_bft_finalize(
         &self,
         block_builder: HeaderBftBuilder<HeaderSetConsensusSignature>,
-        id: LeaderId,
     ) -> Result<HeaderBft, EnclaveError> {
-        if let Some(block) = self.inner.create_header_bft(block_builder, id).await {
+        if let Some(block) = self.inner.create_header_bft(block_builder) {
             Ok(block)
         } else {
-            Err(EnclaveError::NotInEnclave { id })
+            Err(EnclaveError::EmptyEnclave)
         }
     }
 
@@ -80,19 +78,14 @@ impl Enclave {
     ///
     /// TODO: for now we are querying the whole with the block builder but on the long
     ///       run we will only need the block signing data.
-    pub async fn query_header_genesis_praos_finalize(
+    pub fn query_header_genesis_praos_finalize(
         &self,
         block_builder: HeaderGenesisPraosBuilder<HeaderSetConsensusSignature>,
-        id: LeaderId,
     ) -> Result<HeaderGenesisPraos, EnclaveError> {
-        if let Some(block) = self
-            .inner
-            .create_header_genesis_praos(block_builder, id)
-            .await
-        {
+        if let Some(block) = self.inner.create_header_genesis_praos(block_builder) {
             Ok(block)
         } else {
-            Err(EnclaveError::NotInEnclave { id })
+            Err(EnclaveError::EmptyEnclave)
         }
     }
 }

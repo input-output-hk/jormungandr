@@ -149,7 +149,7 @@ impl ExplorerBlock {
     /// This function relies on the given block to be validated previously, and will panic
     /// otherwise
     pub fn resolve_from(block: &Block, context: ExplorerBlockBuildingContext) -> ExplorerBlock {
-        let fragments = block.contents.iter();
+        let fragments = block.contents().iter();
         let id = block.id();
         let chain_length = block.chain_length();
 
@@ -287,13 +287,13 @@ impl ExplorerBlock {
             },
         );
 
-        let producer = match block.header.proof() {
+        let producer = match block.header().proof() {
             Proof::GenesisPraos(_proof) => {
                 // Unwrap is safe in this pattern match
-                BlockProducer::StakePool(block.header.get_stakepool_id().unwrap())
+                BlockProducer::StakePool(block.header().get_stakepool_id().unwrap())
             }
             Proof::Bft(_proof) => {
-                BlockProducer::BftLeader(block.header.get_bft_leader_id().unwrap())
+                BlockProducer::BftLeader(block.header().get_bft_leader_id().unwrap())
             }
             Proof::None => BlockProducer::None,
         };
@@ -316,7 +316,7 @@ impl ExplorerBlock {
             id,
             transactions,
             chain_length,
-            date: block.header.block_date(),
+            date: block.header().block_date(),
             parent_hash: block.parent_id(),
             producer,
             total_input,
@@ -373,7 +373,7 @@ impl ExplorerTransaction {
             .map(|i| i.to_enum())
             .zip(witnesses)
             .filter_map(|input_with_witness| match input_with_witness {
-                (InputEnum::AccountInput(id, value), Witness::Account(_)) => {
+                (InputEnum::AccountInput(id, value), Witness::Account(_, _)) => {
                     let kind = chain_addr::Kind::Account(
                         id.to_single_account()
                             .expect("the input to be validated")
@@ -382,7 +382,7 @@ impl ExplorerTransaction {
                     let address = ExplorerAddress::New(Address(context.discrimination, kind));
                     Some(ExplorerInput { address, value })
                 }
-                (InputEnum::AccountInput(id, value), Witness::Multisig(_)) => {
+                (InputEnum::AccountInput(id, value), Witness::Multisig(_, _)) => {
                     let kind = chain_addr::Kind::Multisig(
                         id.to_multi_account()
                             .as_ref()
@@ -402,7 +402,7 @@ impl ExplorerTransaction {
                         .and_then(|block_id| {
                             context
                                 .prev_blocks
-                                .lookup(&block_id)
+                                .lookup(block_id)
                                 .map(|block| &block.transactions[&tx].outputs[index as usize])
                         })
                         .or_else(|| {

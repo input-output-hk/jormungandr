@@ -1,17 +1,14 @@
-#![cfg(feature = "testnet")]
-
-use crate::{
-    common::{
-        configuration::JormungandrParams,
-        jcli::JCli,
-        jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupVerificationMode},
-    },
-    jormungandr::genesis::stake_pool::{create_new_stake_pool, delegate_stake, retire_stake_pool},
+use crate::jormungandr::genesis::stake_pool::{
+    create_new_stake_pool, delegate_stake, retire_stake_pool,
 };
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
-use jormungandr_lib::interfaces::Log;
-use jormungandr_lib::interfaces::{LogEntry, LogOutput, TrustedPeer};
+use jormungandr_lib::interfaces::{BlockDate, Log, LogEntry, LogOutput, TrustedPeer};
+use jormungandr_testing_utils::testing::{
+    configuration::JormungandrParams,
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupVerificationMode},
+};
 use jormungandr_testing_utils::{
     testing::node::{
         download_last_n_releases, get_jormungandr_bin, storage_loading_benchmark_from_log,
@@ -28,7 +25,6 @@ pub struct TestnetConfig {
     block0_hash: String,
     public_ip: String,
     public_port: String,
-    listen_port: String,
     trusted_peers: Vec<TrustedPeer>,
 }
 
@@ -62,10 +58,6 @@ impl TestnetConfig {
         let public_port = env::var(public_port_var_name)
             .unwrap_or_else(|_| panic!("{} env is not set", public_port_var_name));
 
-        let listen_port_var_name = "LISTEN_PORT";
-        let listen_port = env::var(listen_port_var_name)
-            .unwrap_or_else(|_| panic!("{} env is not set", listen_port_var_name));
-
         let trusted_peers = Self::initialize_trusted_peers(prefix);
 
         TestnetConfig {
@@ -73,7 +65,6 @@ impl TestnetConfig {
             block0_hash,
             public_ip,
             public_port,
-            listen_port,
             trusted_peers,
         }
     }
@@ -142,12 +133,12 @@ impl TestnetConfig {
 
 fn create_actor_account(private_key: &str, jormungandr: &JormungandrProcess) -> Wallet {
     let jcli: JCli = Default::default();
-    let actor_account = Wallet::from_existing_account(&private_key, None);
+    let actor_account = Wallet::from_existing_account(private_key, None);
     let account_state = jcli
         .rest()
         .v0()
         .account_stats(actor_account.address().to_string(), jormungandr.rest_uri());
-    Wallet::from_existing_account(&private_key, Some(account_state.counter()))
+    Wallet::from_existing_account(private_key, Some(account_state.counters()[0].into()))
 }
 
 fn bootstrap_current(testnet_config: TestnetConfig, network_alias: &str) {
@@ -283,7 +274,7 @@ pub fn itn_bootstrap_current() {
 fn get_legacy_app(temp_dir: &TempDir) -> (PathBuf, Version) {
     let releases = download_last_n_releases(1);
     let last_release = releases.get(0).unwrap();
-    let jormungandr = get_jormungandr_bin(&last_release, temp_dir);
+    let jormungandr = get_jormungandr_bin(last_release, temp_dir);
     (jormungandr, last_release.version())
 }
 
@@ -334,14 +325,21 @@ fn e2e_stake_pool(testnet_config: TestnetConfig) {
         .sleep_between_tries(120)
         .build();
 
+    let tx_expiry_date = BlockDate::new(1, 0);
     //register stake pool
-    let stake_pool_id =
-        create_new_stake_pool(&mut actor_account, &block0_hash, &jormungandr, &long_wait);
+    let stake_pool_id = create_new_stake_pool(
+        &mut actor_account,
+        &block0_hash,
+        tx_expiry_date,
+        &jormungandr,
+        &long_wait,
+    );
 
     delegate_stake(
         &mut actor_account,
         &stake_pool_id,
         &block0_hash,
+        tx_expiry_date,
         &jormungandr,
         &long_wait,
     );
@@ -349,6 +347,7 @@ fn e2e_stake_pool(testnet_config: TestnetConfig) {
         &stake_pool_id,
         &mut actor_account,
         &block0_hash,
+        tx_expiry_date,
         &jormungandr,
         &long_wait,
     );

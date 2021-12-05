@@ -12,6 +12,7 @@ servers:
 
 tags:
   - name: fragment
+  - name: vote
 
 paths:
   /api/v1/fragments:
@@ -114,7 +115,7 @@ paths:
                 {
                   '68dcc12fe0dfe5e7b66ca6f8c959f9aa43b273e120a77fc3e4e2f04f1ecd7968': 'Pending',
                 }
-  /api/v0/fragments/logs:
+  /api/v1/fragments/logs:
     get:
       description: Gets logs from node message pool
       operationId: FragmentLogs
@@ -240,6 +241,73 @@ paths:
                           },
                       },
                     ]
+
+  /api/v1/votes/plan/{votePlanId}/account-votes/{account_id}:
+    get:
+      description: Get numbers of proposals within a vote plan a given user have voted for.
+      operationId: AccountVotesWithPlan
+      tags:
+        - vote
+      parameters:
+        - in: path
+          name: votePlanId
+          required: true
+          description: The ID of the vote plan to query.
+          schema:
+            type: string
+            pattern: '[0-9a-f]+'
+        - in: path
+          name: account_id
+          required: true
+          description: Hex-encoded account ID to get the information from.
+          schema:
+            type: string
+            pattern: '[0-9a-f]+'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+        '404':
+          description: The requested vote plan does not exist or is not active.
+
+  /api/v1/votes/plan/account-votes/{account_id}:
+    get:
+      description: Get indexes of proposals a given user has voted for across all active vote plans.
+      operationId: AccountVotes
+      tags:
+        - vote
+      parameters:
+        - in: path
+          name: account_id
+          required: true
+          description: Hex-encoded account ID to get the information from.
+          schema:
+            type: string
+            pattern: '[0-9a-f]+'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    vote_plan_id:
+                      description: The ID of the vote plan.
+                      type: string
+                      pattern: '[0-9a-f]+'
+                    votes:
+                      description: Numbers of proposals within a vote plan.
+                      type: array
+                      items:
+                        type: integer
 
 components:
   schemas:

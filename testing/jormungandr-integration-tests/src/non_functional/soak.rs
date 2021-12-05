@@ -1,8 +1,9 @@
-use crate::common::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
-};
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed, Mempool};
 use jormungandr_testing_utils::testing::{benchmark_consumption, benchmark_endurance};
+use jormungandr_testing_utils::testing::{
+    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
+};
 use jortestkit::process::Wait;
 use std::time::Duration;
 
@@ -44,6 +45,7 @@ pub fn test_blocks_are_being_created_for_7_hours() {
             .transaction_to(
                 &jormungandr.genesis_block_hash(),
                 &jormungandr.fees(),
+                BlockDate::first().next_epoch(),
                 receiver.address(),
                 1.into(),
             )

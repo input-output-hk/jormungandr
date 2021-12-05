@@ -1,20 +1,27 @@
-pub use super::proto::{
-    node_server::{Node, NodeServer},
-    {
-        Block, BlockEvent, BlockIds, ClientAuthRequest, ClientAuthResponse, Fragment, FragmentIds,
-        Gossip, HandshakeRequest, HandshakeResponse, Header, PeersRequest, PeersResponse,
-        PullBlocksRequest, PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse,
-        TipRequest, TipResponse, UploadBlocksResponse,
+use crate::testing::{
+    node::grpc::node::{
+        node_server::{Node, NodeServer},
+        {
+            BlockEvent, ClientAuthRequest, ClientAuthResponse, Gossip, HandshakeRequest,
+            HandshakeResponse, PeersRequest, PeersResponse, PullBlocksRequest,
+            PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse, TipRequest,
+            TipResponse, UploadBlocksResponse,
+        },
     },
+    node::grpc::types::{Block, BlockIds, Fragment, FragmentIds, Header},
+    Block0ConfigurationBuilder,
 };
-
+use chain_core::{
+    mempack::{ReadBuf, Readable},
+    property::{Header as BlockHeader, Serialize},
+};
+use chain_impl_mockchain::{block::BlockVersion, chaintypes::ConsensusVersion, key::Hash};
+use std::fmt;
+use std::sync::Arc;
 use std::sync::RwLock;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
-
-use std::fmt;
-use std::sync::Arc;
 use tracing::info;
 
 mod builder;
@@ -23,9 +30,9 @@ mod data;
 mod logger;
 mod verifier;
 
-pub use builder::MockBuilder;
+pub use builder::{start_thread, MockBuilder};
 pub use controller::MockController;
-pub use data::{header, MockServerData};
+pub use data::MockServerData;
 pub use logger::{MethodType, MockLogger};
 pub use verifier::MockVerifier;
 
@@ -39,6 +46,15 @@ pub enum MockExitCode {
 pub enum ProtocolVersion {
     Bft = 0,
     GenesisPraos = 1,
+}
+
+impl From<ConsensusVersion> for ProtocolVersion {
+    fn from(from: ConsensusVersion) -> Self {
+        match from {
+            ConsensusVersion::Bft => Self::Bft,
+            ConsensusVersion::GenesisPraos => Self::GenesisPraos,
+        }
+    }
 }
 
 impl fmt::Display for ProtocolVersion {
@@ -119,7 +135,14 @@ impl Node for JormungandrServerImpl {
     ) -> Result<tonic::Response<TipResponse>, tonic::Status> {
         info!(method = %MethodType::Tip, "Tip request received");
         let tip_response = TipResponse {
-            block_header: self.data.read().unwrap().tip().to_raw().to_vec(),
+            block_header: self
+                .data
+                .read()
+                .unwrap()
+                .tip()
+                .map_err(|e| tonic::Status::internal(format!("invalid tip {}", e)))?
+                .to_raw()
+                .to_vec(),
         };
         Ok(Response::new(tip_response))
     }
@@ -143,13 +166,51 @@ impl Node for JormungandrServerImpl {
     }
     async fn get_blocks(
         &self,
-        _request: tonic::Request<BlockIds>,
+        request: tonic::Request<BlockIds>,
     ) -> Result<tonic::Response<Self::GetBlocksStream>, tonic::Status> {
         info!(
             method = %MethodType::GetBlocks,
             "Get blocks request received"
         );
-        let (_tx, rx) = mpsc::channel(1);
+
+        let block_ids = request.into_inner();
+
+        let mut blocks = vec![];
+
+        for block_id in block_ids.ids.iter() {
+            let block_hash = Hash::read(&mut ReadBuf::from(block_id.as_ref())).unwrap();
+
+            let mut block = self
+                .data
+                .read()
+                .unwrap()
+                .get_block(block_hash)
+                .map_err(|_| tonic::Status::not_found(format!("{} not available", block_hash)));
+
+            if self.data.read().unwrap().invalid_block0_hash()
+                && block
+                    .as_ref()
+                    .map(|b| b.header().version() == BlockVersion::Genesis)
+                    .unwrap_or(false)
+            {
+                block = Ok(Block0ConfigurationBuilder::new().build().to_block());
+            }
+
+            blocks.push(block);
+        }
+
+        let (tx, rx) = mpsc::channel(blocks.len());
+
+        for block in blocks {
+            tx.send(block.map(|b| {
+                let mut bytes = vec![];
+                b.serialize(&mut bytes).unwrap();
+                Block { content: bytes }
+            }))
+            .await
+            .unwrap();
+        }
+
         Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn get_headers(
@@ -187,13 +248,40 @@ impl Node for JormungandrServerImpl {
     }
     async fn pull_blocks(
         &self,
-        _request: tonic::Request<PullBlocksRequest>,
+        request: tonic::Request<PullBlocksRequest>,
     ) -> Result<tonic::Response<Self::PullBlocksStream>, tonic::Status> {
         info!(
             method = %MethodType::PullBlocks,
             "PullBlocks request received",
         );
-        let (_tx, rx) = mpsc::channel(1);
+        let request = request.into_inner();
+        let (distance, block_iter) = {
+            let data = self.data.read().unwrap();
+
+            let (from, to) = (request.from[0].as_ref(), request.to.as_ref());
+
+            let distance = data
+                .storage()
+                // This ignores all checkpoints except the first one, we don't need it for now
+                .is_ancestor(from, to)
+                .map_err(|e| tonic::Status::not_found(e.to_string()))?
+                .ok_or_else(|| tonic::Status::invalid_argument("from is not an ancestor of to"))?;
+            let iter = data.storage().iter(request.to.as_ref(), distance).unwrap();
+            (distance, iter)
+        };
+
+        let (tx, rx) = mpsc::channel(distance as usize);
+        for block in block_iter {
+            tx.send(
+                block
+                    .map(|b| Block {
+                        content: b.as_ref().into(),
+                    })
+                    .map_err(|e| tonic::Status::aborted(e.to_string())),
+            )
+            .await
+            .unwrap();
+        }
         Ok(Response::new(ReceiverStream::new(rx)))
     }
     async fn pull_blocks_to_tip(

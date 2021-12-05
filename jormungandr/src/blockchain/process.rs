@@ -1,15 +1,15 @@
 use super::{
     candidate,
     chain::{self, AppliedBlock, CheckHeaderProof, LeadershipBlock},
-    chain_selection::{self, ComparisonResult},
-    Blockchain, Error, PreCheckedHeader, Ref, Tip, MAIN_BRANCH_TAG,
+    tip::TipUpdater,
+    Blockchain, Error, PreCheckedHeader, Ref, Tip,
 };
 use crate::{
-    blockcfg::{Block, FragmentId, Header, HeaderHash},
+    blockcfg::{Block, Header, HeaderHash},
     blockchain::Checkpoints,
-    intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg},
+    intercom::{self, BlockMsg, ExplorerMsg, NetworkMsg, PropagateMsg, TransactionMsg, WatchMsg},
+    metrics::{Metrics, MetricsBackend},
     network::p2p::Address,
-    stats_counter::StatsCounter,
     utils::{
         async_msg::{self, MessageBox, MessageQueue},
         fire_forget_scheduler::{
@@ -18,8 +18,7 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
-use chain_core::property::{Block as _, Fragment as _, HasHeader as _, Header as _};
-use jormungandr_lib::interfaces::FragmentStatus;
+use chain_core::property::{Block as _, Header as _};
 
 use futures::prelude::*;
 use tracing::{span, Level};
@@ -30,7 +29,7 @@ use std::{sync::Arc, time::Duration};
 type PullHeadersScheduler = FireForgetScheduler<HeaderHash, Address, Checkpoints>;
 type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, Address, ()>;
 
-const BRANCH_REPROCESSING_INTERVAL: Duration = Duration::from_secs(60);
+const TIP_UPDATE_QUEUE_SIZE: usize = 5;
 
 const DEFAULT_TIMEOUT_PROCESS_LEADERSHIP: u64 = 5;
 const DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT: u64 = 5;
@@ -51,92 +50,205 @@ const GET_NEXT_BLOCK_SCHEDULER_CONFIG: FireForgetSchedulerConfig = FireForgetSch
     timeout: Duration::from_millis(500),
 };
 
-pub struct Process {
+pub struct TaskData {
     pub blockchain: Blockchain,
     pub blockchain_tip: Tip,
-    pub stats_counter: StatsCounter,
+    pub stats_counter: Metrics,
     pub network_msgbox: MessageBox<NetworkMsg>,
     pub fragment_msgbox: MessageBox<TransactionMsg>,
     pub explorer_msgbox: Option<MessageBox<ExplorerMsg>>,
+    pub watch_msgbox: MessageBox<WatchMsg>,
     pub garbage_collection_interval: Duration,
 }
 
+/// The blockchain process is comprised mainly of two parts:
+///
+/// * Bookkeeping of all blocks known to the node:
+///     This is the most resource heavy operation but can be parallelized depending on the chain structure.
+/// * Tip selection and update:
+///     Tip updates must be serialized to avoid inconsistent states but are very light on resources.
+///     No performance penalty should come from this synchronization point.
+struct Process {
+    blockchain: Blockchain,
+    blockchain_tip: Tip,
+    stats_counter: Metrics,
+    network_msgbox: MessageBox<NetworkMsg>,
+    fragment_msgbox: MessageBox<TransactionMsg>,
+    explorer_msgbox: Option<MessageBox<ExplorerMsg>>,
+    watch_msgbox: MessageBox<WatchMsg>,
+    garbage_collection_interval: Duration,
+    tip_update_mbox: MessageBox<Arc<Ref>>,
+    pull_headers_scheduler: PullHeadersScheduler,
+    get_next_block_scheduler: GetNextBlockScheduler,
+    service_info: TokioServiceInfo,
+}
+
+fn spawn_pull_headers_scheduler(
+    network_mbox: MessageBox<NetworkMsg>,
+    info: &TokioServiceInfo,
+) -> PullHeadersScheduler {
+    let scheduler_future = FireForgetSchedulerFuture::new(
+        &PULL_HEADERS_SCHEDULER_CONFIG,
+        move |to, node_address, from| {
+            network_mbox
+                .clone()
+                .try_send(NetworkMsg::PullHeaders {
+                    node_address,
+                    from,
+                    to,
+                })
+                .unwrap_or_else(|e| {
+                    tracing::error!(reason = %e.to_string(), "cannot send PullHeaders request to network")
+                })
+        },
+    );
+    let scheduler = scheduler_future.scheduler();
+    let future = scheduler_future
+        .map_err(move |e| tracing::error!(reason = ?e, "pull headers scheduling failed"));
+    info.spawn_fallible("pull headers scheduling", future);
+    scheduler
+}
+
+fn spawn_get_next_block_scheduler(
+    network_mbox: MessageBox<NetworkMsg>,
+    info: &TokioServiceInfo,
+) -> GetNextBlockScheduler {
+    let scheduler_future = FireForgetSchedulerFuture::new(
+        &GET_NEXT_BLOCK_SCHEDULER_CONFIG,
+        move |header_id, node_id, ()| {
+            network_mbox
+                .clone()
+                .try_send(NetworkMsg::GetNextBlock(node_id, header_id))
+                .unwrap_or_else(|e| {
+                    tracing::error!(
+                        reason = ?e,
+                        "cannot send GetNextBlock request to network"
+                    )
+                });
+        },
+    );
+    let scheduler = scheduler_future.scheduler();
+    let future = scheduler_future
+        .map_err(move |e| tracing::error!(reason = ?e, "get next block scheduling failed"));
+    info.spawn_fallible("get next block scheduling", future);
+    scheduler
+}
+
+pub async fn start(
+    task_data: TaskData,
+    service_info: TokioServiceInfo,
+    input: MessageQueue<BlockMsg>,
+) {
+    let TaskData {
+        blockchain,
+        blockchain_tip,
+        stats_counter,
+        network_msgbox,
+        fragment_msgbox,
+        explorer_msgbox,
+        garbage_collection_interval,
+        watch_msgbox,
+    } = task_data;
+
+    let (tip_update_mbox, tip_update_queue) = async_msg::channel(TIP_UPDATE_QUEUE_SIZE);
+    let pull_headers_scheduler =
+        spawn_pull_headers_scheduler(network_msgbox.clone(), &service_info);
+    let get_next_block_scheduler =
+        spawn_get_next_block_scheduler(network_msgbox.clone(), &service_info);
+
+    Process {
+        blockchain,
+        blockchain_tip,
+        stats_counter,
+        network_msgbox,
+        fragment_msgbox,
+        explorer_msgbox,
+        watch_msgbox,
+        garbage_collection_interval,
+        tip_update_mbox,
+        pull_headers_scheduler,
+        get_next_block_scheduler,
+        service_info,
+    }
+    .start(input, tip_update_queue)
+    .await
+}
+
 impl Process {
-    pub async fn start(
+    async fn start(
         mut self,
-        service_info: TokioServiceInfo,
         mut input: MessageQueue<BlockMsg>,
+        tip_update_queue: MessageQueue<Arc<Ref>>,
     ) {
-        self.start_branch_reprocessing(&service_info);
-        self.start_garbage_collector(&service_info);
-        let pull_headers_scheduler = self.spawn_pull_headers_scheduler(&service_info);
-        let get_next_block_scheduler = self.spawn_get_next_block_scheduler(&service_info);
-        while let Some(msg) = input.next().await {
-            self.handle_input(
-                &service_info,
-                msg,
-                &pull_headers_scheduler,
-                &get_next_block_scheduler,
-            );
+        self.start_garbage_collector(&self.service_info);
+
+        let mut tip_updater = TipUpdater::new(
+            self.blockchain_tip.clone(),
+            self.blockchain.clone(),
+            Some(self.fragment_msgbox.clone()),
+            self.explorer_msgbox.clone(),
+            Some(self.watch_msgbox.clone()),
+            self.stats_counter.clone(),
+        );
+
+        self.service_info.spawn("tip updater", async move {
+            tip_updater.run(tip_update_queue).await
+        });
+
+        while let Some(input) = input.next().await {
+            self.handle_input(input);
         }
     }
 
-    fn handle_input(
-        &mut self,
-        info: &TokioServiceInfo,
-        input: BlockMsg,
-        pull_headers_scheduler: &PullHeadersScheduler,
-        get_next_block_scheduler: &GetNextBlockScheduler,
-    ) {
+    fn handle_input(&mut self, input: BlockMsg) {
         let blockchain = self.blockchain.clone();
         let blockchain_tip = self.blockchain_tip.clone();
         let network_msg_box = self.network_msgbox.clone();
         let explorer_msg_box = self.explorer_msgbox.clone();
-        let tx_msg_box = self.fragment_msgbox.clone();
+        let watch_msg_box = self.watch_msgbox.clone();
         let stats_counter = self.stats_counter.clone();
-
+        tracing::trace!("handling new blockchain task item");
         match input {
             BlockMsg::LeadershipBlock(leadership_block) => {
                 let span = span!(
-                    parent: info.span(),
-                    Level::TRACE,
+                    parent: self.service_info.span(),
+                    Level::DEBUG,
                     "process_leadership_block",
-                    hash = %leadership_block.block.header.hash().to_string(),
-                    parent = %leadership_block.block.header.parent_id().to_string(),
-                    date = %leadership_block.block.header.block_date().to_string()
+                    hash = %leadership_block.block.header().hash(),
+                    parent = %leadership_block.block.header().parent_id(),
+                    date = %leadership_block.block.header().block_date()
                 );
                 let _enter = span.enter();
-                tracing::info!("receiving block from leadership service");
+                tracing::debug!("receiving block from leadership service");
 
-                info.timeout_spawn_fallible(
+                self.service_info.timeout_spawn_fallible(
                     "process leadership block",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_LEADERSHIP),
                     process_leadership_block(
                         blockchain,
-                        blockchain_tip,
-                        tx_msg_box,
+                        self.tip_update_mbox.clone(),
                         network_msg_box,
                         explorer_msg_box,
+                        watch_msg_box,
                         leadership_block,
-                        stats_counter,
                     )
                     .instrument(span.clone()),
                 );
             }
             BlockMsg::AnnouncedBlock(header, node_id) => {
                 let span = span!(
-                    parent: info.span(),
-                    Level::TRACE,
+                    parent: self.service_info.span(),
+                    Level::DEBUG,
                     "process_announced_block",
-                    hash = %header.hash().to_string(),
-                    parent = %header.parent_id().to_string(),
-                    date = %header.block_date().to_string(),
-                    peer = %node_id.to_string()
+                    hash = %header.hash(),
+                    parent = %header.parent_id(),
+                    date = %header.block_date(),
+                    peer = %node_id
                 );
                 let _enter = span.enter();
-                tracing::info!("received block announcement from network");
+                tracing::debug!("received block announcement from network");
 
-                info.timeout_spawn_fallible(
+                self.service_info.timeout_spawn_fallible(
                     "process block announcement",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT),
                     process_block_announcement(
@@ -144,61 +256,56 @@ impl Process {
                         blockchain_tip,
                         header,
                         node_id,
-                        pull_headers_scheduler.clone(),
-                        get_next_block_scheduler.clone(),
-                    ),
+                        self.pull_headers_scheduler.clone(),
+                        self.get_next_block_scheduler.clone(),
+                    )
+                    .instrument(span.clone()),
                 )
             }
             BlockMsg::NetworkBlocks(handle) => {
-                tracing::info!("receiving block stream from network");
+                let span = span!(
+                    parent: self.service_info.span(),
+                    Level::DEBUG,
+                    "process_network_blocks",
+                );
+                let _guard = span.enter();
+                tracing::debug!("receiving block stream from network");
 
-                let get_next_block_scheduler = get_next_block_scheduler.clone();
-
-                info.timeout_spawn_fallible(
+                self.service_info.timeout_spawn_fallible(
                     "process network blocks",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_BLOCKS),
                     process_network_blocks(
                         self.blockchain.clone(),
-                        blockchain_tip,
-                        tx_msg_box,
+                        self.tip_update_mbox.clone(),
                         network_msg_box,
                         explorer_msg_box,
-                        get_next_block_scheduler,
+                        watch_msg_box,
+                        self.get_next_block_scheduler.clone(),
                         handle,
                         stats_counter,
-                    ),
+                    )
+                    .instrument(span.clone()),
                 );
             }
             BlockMsg::ChainHeaders(handle) => {
-                tracing::info!("receiving header stream from network");
-                let span = span!(parent: info.span(), Level::TRACE, "process_chain_headers", sub_task = "chain_pull");
+                let span = span!(parent: self.service_info.span(), Level::DEBUG, "process_chain_headers", sub_task = "chain_pull");
                 let _enter = span.enter();
-                let pull_headers_scheduler = pull_headers_scheduler.clone();
+                tracing::debug!("receiving header stream from network");
 
-                info.timeout_spawn(
+                self.service_info.timeout_spawn(
                     "process network headers",
                     Duration::from_secs(DEFAULT_TIMEOUT_PROCESS_HEADERS),
                     process_chain_headers(
                         blockchain,
                         handle,
-                        pull_headers_scheduler,
+                        self.pull_headers_scheduler.clone(),
                         network_msg_box,
-                    ),
+                    )
+                    .instrument(span.clone()),
                 );
             }
         }
-    }
-
-    fn start_branch_reprocessing(&self, info: &TokioServiceInfo) {
-        let tip = self.blockchain_tip.clone();
-        let blockchain = self.blockchain.clone();
-        let explorer = self.explorer_msgbox.clone();
-
-        info.run_periodic_fallible(
-            "branch reprocessing",
-            BRANCH_REPROCESSING_INTERVAL,
-            move || reprocess_tip(blockchain.clone(), tip.clone(), explorer.clone()),
-        )
+        tracing::trace!("item handling finished");
     }
 
     fn start_garbage_collector(&self, info: &TokioServiceInfo) {
@@ -215,181 +322,37 @@ impl Process {
             move || blockchain_gc(blockchain.clone(), tip.clone()),
         )
     }
-
-    fn spawn_pull_headers_scheduler(&self, info: &TokioServiceInfo) -> PullHeadersScheduler {
-        let network_msgbox = self.network_msgbox.clone();
-        let scheduler_future = FireForgetSchedulerFuture::new(
-            &PULL_HEADERS_SCHEDULER_CONFIG,
-            move |to, node_address, from| {
-                network_msgbox
-                    .clone()
-                    .try_send(NetworkMsg::PullHeaders {
-                        node_address,
-                        from,
-                        to,
-                    })
-                    .unwrap_or_else(|e| {
-                        tracing::error!(reason = %e.to_string(), "cannot send PullHeaders request to network")
-                    })
-            },
-        );
-        let scheduler = scheduler_future.scheduler();
-        let future = scheduler_future
-            .map_err(move |e| tracing::error!(reason = ?e, "get blocks scheduling failed"));
-        info.spawn_fallible("pull headers scheduling", future);
-        scheduler
-    }
-
-    fn spawn_get_next_block_scheduler(&self, info: &TokioServiceInfo) -> GetNextBlockScheduler {
-        let network_msgbox = self.network_msgbox.clone();
-        let scheduler_future = FireForgetSchedulerFuture::new(
-            &GET_NEXT_BLOCK_SCHEDULER_CONFIG,
-            move |header_id, node_id, ()| {
-                network_msgbox
-                    .clone()
-                    .try_send(NetworkMsg::GetNextBlock(node_id, header_id))
-                    .unwrap_or_else(|e| {
-                        tracing::error!(
-                            reason = ?e,
-                            "cannot send GetNextBlock request to network"
-                        )
-                    });
-            },
-        );
-        let scheduler = scheduler_future.scheduler();
-        let future = scheduler_future
-            .map_err(move |e| tracing::error!(reason = ?e, "get next block scheduling failed"));
-        info.spawn_fallible("get next block scheduling", future);
-        scheduler
-    }
-}
-
-fn try_request_fragment_removal(
-    tx_msg_box: &mut MessageBox<TransactionMsg>,
-    fragment_ids: Vec<FragmentId>,
-    header: &Header,
-) -> Result<(), async_msg::TrySendError<TransactionMsg>> {
-    let hash = header.hash().into();
-    let date = header.block_date().clone().into();
-    let status = FragmentStatus::InABlock { date, block: hash };
-    tx_msg_box.try_send(TransactionMsg::RemoveTransactions(fragment_ids, status))
-}
-
-/// this function will re-process the tip against the different branches
-/// this is because a branch may have become more interesting with time
-/// moving forward and branches may have been dismissed
-async fn reprocess_tip(
-    mut blockchain: Blockchain,
-    tip: Tip,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-) -> Result<(), Error> {
-    let branches: Vec<Arc<Ref>> = blockchain.branches().branches().await;
-
-    let tip_as_ref = tip.get_ref().await;
-
-    let others = branches
-        .iter()
-        .filter(|r| !Arc::ptr_eq(&r, &tip_as_ref))
-        .collect::<Vec<_>>();
-
-    for other in others {
-        process_new_ref(
-            &mut blockchain,
-            tip.clone(),
-            Arc::clone(other),
-            explorer_msg_box.clone(),
-        )
-        .await?
-    }
-
-    Ok(())
-}
-
-/// process a new candidate block on top of the blockchain, this function may:
-///
-/// * update the current tip if the candidate's parent is the current tip;
-/// * update a branch if the candidate parent is that branch's tip;
-/// * create a new branch if none of the above;
-///
-/// If the current tip is not the one being updated we will then trigger
-/// chain selection after updating that other branch as it may be possible that
-/// this branch just became more interesting for the current consensus algorithm.
-pub async fn process_new_ref(
-    blockchain: &mut Blockchain,
-    mut tip: Tip,
-    candidate: Arc<Ref>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
-) -> Result<(), Error> {
-    let candidate_hash = candidate.hash();
-    let tip_ref = tip.get_ref().await;
-
-    match chain_selection::compare_against(blockchain.storage(), &tip_ref, &candidate) {
-        ComparisonResult::PreferCurrent => {
-            tracing::info!(
-                "create new branch with tip {} | current-tip {}",
-                candidate.header().description(),
-                tip_ref.header().description(),
-            );
-        }
-        ComparisonResult::PreferCandidate => {
-            if tip_ref.hash() == candidate.block_parent_hash() {
-                tracing::info!(
-                    "update current branch tip: {} -> {}",
-                    tip_ref.header().description(),
-                    candidate.header().description(),
-                );
-
-                blockchain
-                    .storage()
-                    .put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
-
-                tip.update_ref(candidate).await;
-            } else {
-                tracing::info!(
-                    "switching branch from {} to {}",
-                    tip_ref.header().description(),
-                    candidate.header().description(),
-                );
-
-                blockchain
-                    .storage()
-                    .put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
-
-                let branch = blockchain.branches_mut().apply_or_create(candidate).await;
-                tip.swap(branch).await;
-            }
-
-            if let Some(mut msg_box) = explorer_msg_box {
-                msg_box
-                    .send(ExplorerMsg::NewTip(candidate_hash))
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::error!("cannot send new tip to explorer: {}", err)
-                    });
-            }
-        }
-    }
-
-    Ok(())
 }
 
 async fn process_and_propagate_new_ref(
-    blockchain: &mut Blockchain,
-    tip: Tip,
     new_block_ref: Arc<Ref>,
+    mut tip_update_mbox: MessageBox<Arc<Ref>>,
     mut network_msg_box: MessageBox<NetworkMsg>,
-    explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
 ) -> chain::Result<()> {
     let header = new_block_ref.header().clone();
-    tracing::debug!("processing the new block and propagating");
+    let span = span!(Level::DEBUG, "process_and_propagate_new_ref", block = %header.hash());
 
-    process_new_ref(blockchain, tip, new_block_ref, explorer_msg_box).await?;
+    async {
+        tracing::debug!("processing the new block and propagating");
+        // Even if this fails because the queue is full we periodically recompute the tip
+        tip_update_mbox
+            .try_send(new_block_ref)
+            .unwrap_or_else(|err| {
+                tracing::error!(
+                    "cannot send new ref to be evaluated as candidate tip: {}",
+                    err
+                )
+            });
 
-    tracing::debug!("propagating block to the network");
+        tracing::debug!("propagating block to the network");
 
-    network_msg_box
-        .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
-        .await?;
+        network_msg_box
+            .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+            .await?;
+        Ok::<(), Error>(())
+    }
+    .instrument(span)
+    .await?;
 
     Ok(())
 }
@@ -397,36 +360,25 @@ async fn process_and_propagate_new_ref(
 #[allow(clippy::too_many_arguments)]
 async fn process_leadership_block(
     mut blockchain: Blockchain,
-    blockchain_tip: Tip,
-    mut tx_msg_box: MessageBox<TransactionMsg>,
+    tip_update_mbox: MessageBox<Arc<Ref>>,
     network_msg_box: MessageBox<NetworkMsg>,
     explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    mut watch_msg_box: MessageBox<WatchMsg>,
     leadership_block: LeadershipBlock,
-    stats_counter: StatsCounter,
 ) -> chain::Result<()> {
     let block = leadership_block.block.clone();
     let new_block_ref = process_leadership_block_inner(&mut blockchain, leadership_block).await?;
 
-    let fragments = block.fragments().map(|f| f.id()).collect();
-
-    tracing::trace!("updating fragments log");
-    try_request_fragment_removal(&mut tx_msg_box, fragments, new_block_ref.header())?;
-
-    process_and_propagate_new_ref(
-        &mut blockchain,
-        blockchain_tip,
-        Arc::clone(&new_block_ref),
-        network_msg_box,
-        explorer_msg_box.clone(),
-    )
-    .await?;
-
-    // Track block as new new tip block
-    stats_counter.set_tip_block(Arc::new(block.clone()));
+    watch_msg_box
+        .send(WatchMsg::NewBlock(block.clone()))
+        .await?;
 
     if let Some(mut msg_box) = explorer_msg_box {
         msg_box.send(ExplorerMsg::NewBlock(block)).await?;
     }
+
+    process_and_propagate_new_ref(Arc::clone(&new_block_ref), tip_update_mbox, network_msg_box)
+        .await?;
 
     Ok(())
 }
@@ -493,29 +445,27 @@ async fn process_block_announcement(
 
 #[allow(clippy::too_many_arguments)]
 async fn process_network_blocks(
-    mut blockchain: Blockchain,
-    blockchain_tip: Tip,
-    mut tx_msg_box: MessageBox<TransactionMsg>,
+    blockchain: Blockchain,
+    tip_update_mbox: MessageBox<Arc<Ref>>,
     network_msg_box: MessageBox<NetworkMsg>,
     mut explorer_msg_box: Option<MessageBox<ExplorerMsg>>,
+    mut watch_msg_box: MessageBox<WatchMsg>,
     mut get_next_block_scheduler: GetNextBlockScheduler,
     handle: intercom::RequestStreamHandle<Block, ()>,
-    stats_counter: StatsCounter,
+    stats_counter: Metrics,
 ) -> Result<(), Error> {
     let (mut stream, reply) = handle.into_stream_and_reply();
     let mut candidate = None;
-    let mut latest_block: Option<Arc<Block>> = None;
 
     let maybe_updated: Option<Arc<Ref>> = loop {
         let (maybe_block, stream_tail) = stream.into_future().await;
         match maybe_block {
             Some(block) => {
-                latest_block = Some(Arc::new(block.clone()));
                 let res = process_network_block(
                     &blockchain,
                     block.clone(),
-                    &mut tx_msg_box,
                     explorer_msg_box.as_mut(),
+                    &mut watch_msg_box,
                     &mut get_next_block_scheduler,
                 )
                 .await;
@@ -549,18 +499,11 @@ async fn process_network_blocks(
     match maybe_updated {
         Some(new_block_ref) => {
             process_and_propagate_new_ref(
-                &mut blockchain,
-                blockchain_tip,
                 Arc::clone(&new_block_ref),
+                tip_update_mbox,
                 network_msg_box,
-                explorer_msg_box,
             )
             .await?;
-
-            // Add block if found
-            if let Some(b) = latest_block {
-                stats_counter.set_tip_block(b);
-            };
             Ok(())
         }
         None => Ok(()),
@@ -570,96 +513,95 @@ async fn process_network_blocks(
 async fn process_network_block(
     blockchain: &Blockchain,
     block: Block,
-    tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
+    watch_msg_box: &mut MessageBox<WatchMsg>,
     get_next_block_scheduler: &mut GetNextBlockScheduler,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
-    get_next_block_scheduler
-        .declare_completed(block.id())
-        .unwrap_or_else(
-            |e| tracing::error!(reason = ?e, "get next block schedule completion failed"),
-        );
-    let header = block.header();
-    let pre_checked = blockchain.pre_check_header(header, false).await?;
-    match pre_checked {
-        PreCheckedHeader::AlreadyPresent { header, .. } => {
-            tracing::debug!(
-                hash = %header.hash(),
-                parent = %header.parent_id(),
-                date = %header.block_date(),
-                "block is already present"
+    let header = block.header().clone();
+    let span = tracing::span!(
+        Level::DEBUG,
+        "network_block",
+        block = %header.hash(),
+        parent = %header.parent_id(),
+        date = %header.block_date(),
+    );
+
+    async {
+        get_next_block_scheduler
+            .declare_completed(block.id())
+            .unwrap_or_else(
+                |e| tracing::error!(reason = ?e, "get next block schedule completion failed"),
             );
-            Ok(None)
-        }
-        PreCheckedHeader::MissingParent { header, .. } => {
-            let parent_hash = header.parent_id();
-            tracing::debug!(
-                hash = %header.hash(),
-                parent = %parent_hash,
-                date = %header.block_date(),
-                "block is missing a locally stored parent"
-            );
-            Err(Error::MissingParentBlock(parent_hash))
-        }
-        PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
-            let r =
-                check_and_apply_block(blockchain, parent_ref, block, tx_msg_box, explorer_msg_box)
-                    .await;
-            r
+        let pre_checked = blockchain.pre_check_header(header, false).await?;
+        match pre_checked {
+            PreCheckedHeader::AlreadyPresent { .. } => {
+                tracing::debug!("block is already present");
+                Ok(None)
+            }
+            PreCheckedHeader::MissingParent { header } => {
+                let parent_hash = header.parent_id();
+                tracing::debug!("block is missing a locally stored parent");
+                Err(Error::MissingParentBlock(parent_hash))
+            }
+            PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
+                let r = check_and_apply_block(
+                    blockchain,
+                    parent_ref,
+                    block,
+                    explorer_msg_box,
+                    watch_msg_box,
+                )
+                .await;
+                r
+            }
         }
     }
+    .instrument(span)
+    .await
 }
 
 async fn check_and_apply_block(
     blockchain: &Blockchain,
     parent_ref: Arc<Ref>,
     block: Block,
-    tx_msg_box: &mut MessageBox<TransactionMsg>,
     explorer_msg_box: Option<&mut MessageBox<ExplorerMsg>>,
+    watch_msg_box: &mut MessageBox<WatchMsg>,
 ) -> Result<Option<Arc<Ref>>, chain::Error> {
     let explorer_enabled = explorer_msg_box.is_some();
     let post_checked = blockchain
-        .post_check_header(block.header(), parent_ref, CheckHeaderProof::Enabled)
+        .post_check_header(
+            block.header().clone(),
+            parent_ref,
+            CheckHeaderProof::Enabled,
+        )
         .await?;
-    let header = post_checked.header();
-    let block_hash = header.hash();
-    tracing::debug!(
-        hash = %block_hash,
-        parent = %header.parent_id(),
-        date = %header.block_date(),
-        "applying block to storage"
-    );
+    tracing::debug!("applying block to storage");
     let mut block_for_explorer = if explorer_enabled {
         Some(block.clone())
     } else {
         None
     };
-    let fragment_ids = block.fragments().map(|f| f.id()).collect::<Vec<_>>();
+    let block_for_watchers = block.clone();
     let applied_block = blockchain
         .apply_and_store_block(post_checked, block)
         .await?;
     if let AppliedBlock::New(block_ref) = applied_block {
-        let header = block_ref.header();
-        tracing::debug!(
-            hash = %block_hash,
-            parent = %header.parent_id(),
-            date = %header.block_date(),
-            "applied block to storage"
-        );
-        try_request_fragment_removal(tx_msg_box, fragment_ids, header).unwrap_or_else(
-            |err| tracing::error!(reason = %err, "cannot remove fragments from pool"),
-        );
+        tracing::debug!("applied block to storage");
         if let Some(msg_box) = explorer_msg_box {
             msg_box
                 .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
                 .unwrap_or_else(|err| tracing::error!("cannot add block to explorer: {}", err));
         }
+
+        watch_msg_box
+            .try_send(WatchMsg::NewBlock(block_for_watchers))
+            .unwrap_or_else(|err| {
+                tracing::error!("cannot propagate block to watch clients: {}", err)
+            });
+
         Ok(Some(block_ref))
     } else {
-        tracing::debug!(
-            hash = %block_hash,
-            "block is already present in storage, not applied"
-        );
+        tracing::debug!("block is already present in storage, not applied");
         Ok(None)
     }
 }

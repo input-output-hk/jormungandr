@@ -1,5 +1,5 @@
-use crate::common::jcli::JCli;
 use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_testing_utils::testing::jcli::JCli;
 
 lazy_static! {
     static ref FAKE_INPUT_TRANSACTION_ID: Hash = {

@@ -1,10 +1,11 @@
-use crate::common::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
-};
-use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash},
     interfaces::{ActiveSlotCoefficient, Stake, StakeDistributionDto},
+};
+use jormungandr_testing_utils::testing::{
+    jcli::JCli, jormungandr::ConfigurationBuilder, node::time, startup,
+    transaction_utils::TransactionHash,
 };
 use std::str::FromStr;
 
@@ -50,6 +51,7 @@ pub fn stake_distribution() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             stake_pool_owner_1.address(),
             transaction_amount.into(),
         )
@@ -60,7 +62,7 @@ pub fn stake_distribution() {
         .send(&transaction)
         .assert_in_block();
 
-    startup::sleep_till_next_epoch(10, jormungandr.block0_configuration());
+    time::wait_for_epoch(2, jormungandr.rest());
 
     let identifier: AccountIdentifier = stake_pool_owner_1.identifier().into();
     let reward: u64 = (*jormungandr
@@ -77,7 +79,7 @@ pub fn stake_distribution() {
         jormungandr.rest_uri(),
     );
 
-    startup::sleep_till_epoch(3, 10, &jormungandr.block0_configuration());
+    time::wait_for_epoch(3, jormungandr.rest());
 
     jcli.rest().v0().account_stats(
         stake_pool_owner_1.address().to_string(),
@@ -95,7 +97,7 @@ pub fn stake_distribution() {
     );
 }
 
-pub fn assert_distribution(
+fn assert_distribution(
     unassigned: u64,
     dangling: u64,
     pool_stake: (Hash, u64),

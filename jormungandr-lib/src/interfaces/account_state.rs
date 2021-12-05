@@ -87,7 +87,7 @@ impl LastRewards {
 pub struct AccountState {
     delegation: DelegationType,
     value: Value,
-    counter: u32,
+    counters: Vec<u32>,
     last_rewards: LastRewards,
 }
 
@@ -107,12 +107,13 @@ impl AccountState {
         &self.value
     }
 
-    /// the transaction counter. This is used as part of the parameter when adding
-    /// a new account input to a transaction.
+    /// The transaction counters for spending lanes.
+    /// A counter in one of the existing lanes is used as part of the parameter
+    /// when adding a new account input to a transaction.
     ///
     #[inline]
-    pub fn counter(&self) -> u32 {
-        self.counter
+    pub fn counters(&self) -> Vec<u32> {
+        self.counters.clone()
     }
 
     /// the last rewards transfered to account
@@ -147,7 +148,12 @@ impl<E> From<account::AccountState<E>> for AccountState {
         AccountState {
             delegation: account.delegation().clone().into(),
             value: account.value().into(),
-            counter: account.get_counter(),
+            counters: account
+                .spending
+                .get_valid_counters()
+                .into_iter()
+                .map(Into::into)
+                .collect(),
             last_rewards: account.last_rewards.into(),
         }
     }
@@ -158,7 +164,12 @@ impl<'a, E> From<&'a account::AccountState<E>> for AccountState {
         AccountState {
             delegation: account.delegation().clone().into(),
             value: account.value().into(),
-            counter: account.get_counter(),
+            counters: account
+                .spending
+                .get_valid_counters()
+                .into_iter()
+                .map(Into::into)
+                .collect(),
             last_rewards: account.last_rewards.clone().into(),
         }
     }

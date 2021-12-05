@@ -1,14 +1,17 @@
-use crate::common::jormungandr::{ConfigurationBuilder, Starter};
-use crate::common::startup;
 use assert_fs::TempDir;
 use chain_core::property::Fragment;
-use jormungandr_lib::interfaces::BlockDate;
+use chain_impl_mockchain::block::BlockDate;
+use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
 use jormungandr_lib::interfaces::FragmentRejectionReason;
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::Mempool;
+use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_testing_utils::testing::node::assert_accepted_rejected;
 use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::{FragmentSenderSetup, FragmentVerifier};
+use jormungandr_testing_utils::testing::startup;
+use jormungandr_testing_utils::testing::{
+    fragments::VerifyExitStrategy, FragmentSenderSetup, FragmentVerifier,
+};
 use std::time::Duration;
 
 #[test]
@@ -51,6 +54,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -62,6 +66,7 @@ pub fn test_mempool_pool_max_entries_limit() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -69,20 +74,23 @@ pub fn test_mempool_pool_max_entries_limit() {
 
     let mempools = assert_accepted_rejected(
         vec![first_transaction.id()],
-        vec![
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
-            ),
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
-            ),
-        ],
+        vec![(
+            second_transaction.id(),
+            FragmentRejectionReason::PoolOverflow,
+        )],
         jormungandr
             .rest()
             .send_fragment_batch(vec![first_transaction, second_transaction], false),
     );
+
+    // Wait until the fragment enters the mempool
+    FragmentVerifier::wait_fragment(
+        Duration::from_millis(100),
+        mempools[0].clone(),
+        VerifyExitStrategy::OnPending,
+        &jormungandr,
+    )
+    .unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -90,9 +98,12 @@ pub fn test_mempool_pool_max_entries_limit() {
         .assert_size(1)
         .assert_contains_only(mempools[0].fragment_id());
 
-    FragmentVerifier
-        .wait_and_verify_is_in_block(Duration::from_secs(2), mempools[0].clone(), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_and_verify_is_in_block(
+        Duration::from_secs(2),
+        mempools[0].clone(),
+        &jormungandr,
+    )
+    .unwrap();
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 1.into())
@@ -117,7 +128,6 @@ pub fn test_mempool_pool_max_entries_equal_0() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 0.into(),
             log_max_entries: 100.into(),
@@ -139,6 +149,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -150,6 +161,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -160,19 +172,11 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         vec![
             (
                 first_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+                FragmentRejectionReason::PoolOverflow,
             ),
             (
                 second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
-            ),
-            (
-                first_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
-            ),
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
+                FragmentRejectionReason::PoolOverflow,
             ),
         ],
         jormungandr
@@ -185,7 +189,7 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .fragment_logs()
         .assert_empty();
 
-    time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
+    time::wait_for_date(BlockDateDto::new(0, 10), jormungandr.rest());
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
 }
 
@@ -207,7 +211,6 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 1.into(),
             log_max_entries: 1.into(),
@@ -229,6 +232,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -240,6 +244,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -247,20 +252,23 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
 
     let mempools = assert_accepted_rejected(
         vec![first_transaction.id()],
-        vec![
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
-            ),
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
-            ),
-        ],
+        vec![(
+            second_transaction.id(),
+            FragmentRejectionReason::PoolOverflow,
+        )],
         jormungandr
             .rest()
             .send_fragment_batch(vec![first_transaction, second_transaction], false),
     );
+
+    // Wait until the fragment enters the mempool
+    FragmentVerifier::wait_fragment(
+        Duration::from_millis(100),
+        mempools[0].clone(),
+        VerifyExitStrategy::OnPending,
+        &jormungandr,
+    )
+    .unwrap();
 
     jormungandr
         .correct_state_verifier()
@@ -268,9 +276,12 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .assert_size(1)
         .assert_contains_only(mempools[0].fragment_id());
 
-    FragmentVerifier
-        .wait_and_verify_is_in_block(Duration::from_secs(12), mempools[0].clone(), &jormungandr)
-        .unwrap();
+    FragmentVerifier::wait_and_verify_is_in_block(
+        Duration::from_secs(12),
+        mempools[0].clone(),
+        &jormungandr,
+    )
+    .unwrap();
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 1.into())
@@ -295,7 +306,6 @@ pub fn test_mempool_log_max_entries_equals_0() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 0.into(),
             log_max_entries: 0.into(),
@@ -317,6 +327,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -328,6 +339,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -338,19 +350,11 @@ pub fn test_mempool_log_max_entries_equals_0() {
         vec![
             (
                 first_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
+                FragmentRejectionReason::PoolOverflow,
             ),
             (
                 second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 0 },
-            ),
-            (
-                first_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
-            ),
-            (
-                second_transaction.id(),
-                FragmentRejectionReason::PoolOverflow { pool_number: 1 },
+                FragmentRejectionReason::PoolOverflow,
             ),
         ],
         jormungandr
@@ -363,7 +367,7 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .fragment_logs()
         .assert_empty();
 
-    time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
+    time::wait_for_date(BlockDateDto::new(0, 10), jormungandr.rest());
 
     verifier.no_changes(vec![&sender, &receiver]).unwrap();
 }
@@ -386,7 +390,6 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(1)
         .with_mempool(Mempool {
             pool_max_entries: 2.into(),
             log_max_entries: 0.into(),
@@ -410,6 +413,7 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
@@ -421,12 +425,13 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         .transaction_to(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
             receiver.address(),
             1.into(),
         )
         .unwrap();
 
-    fragment_sender
+    let summary = fragment_sender
         .send_batch_fragments(
             vec![first_transaction, second_transaction],
             false,
@@ -434,12 +439,21 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
         )
         .unwrap();
 
+    // Wait until the fragment enters the mempool
+    FragmentVerifier::wait_fragment(
+        Duration::from_millis(100),
+        summary.fragment_ids()[0].into(),
+        VerifyExitStrategy::OnPending,
+        &jormungandr,
+    )
+    .unwrap();
+
     jormungandr
         .correct_state_verifier()
         .fragment_logs()
         .assert_size(2);
 
-    time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
+    time::wait_for_date(BlockDateDto::new(0, 10), jormungandr.rest());
 
     verifier
         .value_moved_between_wallets(&sender, &receiver, 2.into())

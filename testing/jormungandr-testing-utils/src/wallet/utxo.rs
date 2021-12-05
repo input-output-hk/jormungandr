@@ -5,7 +5,7 @@ use jormungandr_lib::{
         hash::Hash,
         key::{self, Identifier},
     },
-    interfaces::{Address, UTxOInfo},
+    interfaces::Address,
 };
 use rand_chacha::ChaChaRng;
 use rand_core::{CryptoRng, RngCore, SeedableRng};
@@ -14,19 +14,10 @@ pub type SpendingKey = key::SigningKey<chain_crypto::Ed25519Extended>;
 /// wallet for an account
 #[derive(Debug, Clone)]
 pub struct Wallet {
-    /// this is the root seed of the wallet, everytime we will require
-    /// the wallet to update we will update the rng, we keep the `seed`
-    /// so we may reproduce the steps of the wallet
-    seed: [u8; 32],
-
     rng: ChaChaRng,
 
     /// the spending key
     signing_keys: Vec<SpendingKey>,
-
-    /// utxos with the index in the `signing_keys` so we can later
-    /// sign the witness for the next transaction,
-    utxos: Vec<(usize, UTxOInfo)>,
 
     discrimination: Discrimination,
 }
@@ -41,9 +32,7 @@ impl Wallet {
 
         let mut wallet = Self {
             signing_keys: Vec::new(),
-            seed,
             rng: ChaChaRng::from_seed(seed),
-            utxos: Vec::new(),
             discrimination,
         };
         wallet.generate_new_signing_key();

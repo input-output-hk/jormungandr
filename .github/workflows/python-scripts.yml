@@ -2,6 +2,9 @@ name: Python scripts linters
 
 on:
   push:
+    branches:
+      - master
+  pull_request:
 
 jobs:
   lint:

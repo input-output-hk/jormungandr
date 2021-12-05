@@ -1,14 +1,18 @@
-use crate::mjolnir_app::MjolnirError;
+use crate::mjolnir_app::{args::parse_shift, build_monitor, MjolnirError};
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::{
-    testing::{fragments::TransactionGenerator, FragmentSenderSetup, RemoteJormungandrBuilder},
+    testing::{
+        fragments::{BlockDateGenerator, TransactionGenerator},
+        FragmentSenderSetup, RemoteJormungandrBuilder,
+    },
     wallet::Wallet,
 };
-use jortestkit::prelude::parse_progress_bar_mode_from_str;
 use jortestkit::{
-    load::{Configuration, Monitor},
-    prelude::ProgressBarMode,
+    load::ConfigurationBuilder,
+    prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
 };
+use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 #[derive(StructOpt, Debug)]
@@ -22,9 +26,9 @@ pub struct TxOnly {
     #[structopt(short = "a", long = "address")]
     pub endpoint: String,
 
-    /// amount of delay [seconds] between sync attempts
-    #[structopt(short = "p", long = "pace", default_value = "2")]
-    pub pace: u64,
+    /// amount of delay [milliseconds] between sync attempts
+    #[structopt(long = "delay", default_value = "50")]
+    pub delay: u64,
 
     /// amount of delay [seconds] between sync attempts
     #[structopt(short = "d", long = "duration")]
@@ -47,6 +51,14 @@ pub struct TxOnly {
 
     #[structopt(long = "spending-counter", short = "s")]
     faucet_spending_counter: u32,
+
+    /// Transaction validity deadline (inclusive)
+    #[structopt(short = "v", long = "valid-until", conflicts_with = "ttl")]
+    valid_until: Option<BlockDate>,
+
+    /// Transaction time to live (can be negative e.g. ~4.2)
+    #[structopt(short = "t", long= "ttl", default_value = "1.0", parse(try_from_str = parse_shift))]
+    ttl: (BlockDate, bool),
 }
 
 impl TxOnly {
@@ -54,7 +66,7 @@ impl TxOnly {
         let title = "standard load only transactions";
         let mut faucet = Wallet::import_account(
             self.faucet_key_file.clone(),
-            Some(self.faucet_spending_counter),
+            Some(self.faucet_spending_counter.into()),
         );
         let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
         builder.with_rest(self.endpoint.parse().unwrap());
@@ -65,32 +77,28 @@ impl TxOnly {
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
 
+        let expiry_generator = self
+            .valid_until
+            .map(BlockDateGenerator::Fixed)
+            .unwrap_or_else(|| BlockDateGenerator::rolling(&settings, self.ttl.0, self.ttl.1));
+
         let mut generator = TransactionGenerator::new(
             FragmentSenderSetup::no_verify(),
             remote_jormungandr,
             block0_hash,
             fees,
+            expiry_generator,
         );
         generator.fill_from_faucet(&mut faucet);
 
-        let config = Configuration::duration(
-            self.count,
-            std::time::Duration::from_secs(self.duration),
-            self.pace,
-            self.build_monitor(),
-            30,
-            1,
-        );
+        let config = ConfigurationBuilder::duration(Duration::from_secs(self.duration))
+            .thread_no(self.count)
+            .step_delay(Duration::from_millis(self.delay))
+            .monitor(build_monitor(&self.progress_bar_mode))
+            .shutdown_grace_period(Duration::from_secs(30))
+            .build();
         let stats = jortestkit::load::start_sync(generator, config, title);
         stats.print_summary(title);
         Ok(())
-    }
-
-    fn build_monitor(&self) -> Monitor {
-        match self.progress_bar_mode {
-            ProgressBarMode::Monitor => Monitor::Progress(100),
-            ProgressBarMode::Standard => Monitor::Standard(100),
-            ProgressBarMode::None => Monitor::Disabled(10),
-        }
     }
 }

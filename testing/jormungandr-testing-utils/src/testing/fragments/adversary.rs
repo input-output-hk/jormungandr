@@ -1,4 +1,4 @@
-use super::{FragmentBuilderError, FragmentExporter, FragmentExporterError};
+use super::{BlockDateGenerator, FragmentBuilderError, FragmentExporter, FragmentExporterError};
 use crate::{
     testing::{
         ensure_node_is_in_sync_with_others,
@@ -9,6 +9,7 @@ use crate::{
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
+    block::BlockDate,
     certificate::{Certificate, PoolId},
     fee::LinearFee,
     fragment::Fragment,
@@ -16,10 +17,7 @@ use chain_impl_mockchain::{
     transaction::{Input, Output, TransactionSignDataHash, TxBuilder, Witness},
 };
 use chain_impl_mockchain::{fee::FeeAlgorithm, ledger::OutputAddress, value::Value};
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{BlockDate, FragmentStatus},
-};
+use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentStatus};
 use rand::{thread_rng, Rng};
 use std::{path::PathBuf, time::Duration};
 
@@ -30,7 +28,7 @@ pub enum AdversaryFragmentSenderError {
     #[error("fragment sent to node: {alias} is not in rejected, date: '{date}', block: '{block}'")]
     FragmentNotRejected {
         alias: String,
-        date: BlockDate,
+        date: jormungandr_lib::interfaces::BlockDate,
         block: Hash,
         #[debug(skip)]
         logs: Vec<String>,
@@ -41,7 +39,7 @@ pub enum AdversaryFragmentSenderError {
     SendFragmentError(#[from] super::node::FragmentNodeError),
     #[error("cannot send fragment")]
     FragmentVerifierError(#[from] super::FragmentVerifierError),
-    #[error("fragment exporter error")]
+    #[error(transparent)]
     FragmentExporterError(#[from] FragmentExporterError),
     #[error("cannot sync node before sending fragment")]
     SyncNodeError(#[from] crate::testing::SyncNodeError),
@@ -62,6 +60,7 @@ impl AdversaryFragmentSenderError {
     }
 }
 
+#[derive(Clone)]
 pub struct AdversaryFragmentSenderSetup<'a, A: SyncNode + Send> {
     pub verify: bool,
     pub sync_nodes: Vec<&'a A>,
@@ -118,23 +117,35 @@ impl<'a> AdversaryFragmentSenderSetup<'a, DummySyncNode> {
 
 use super::DummySyncNode;
 
+#[derive(Clone)]
 pub struct AdversaryFragmentSender<'a, S: SyncNode + Send> {
     block0_hash: Hash,
     fees: LinearFee,
     setup: AdversaryFragmentSenderSetup<'a, S>,
+    expiry_generator: BlockDateGenerator,
 }
 
 impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
     pub fn new(
         block0_hash: Hash,
         fees: LinearFee,
+        expiry_generator: BlockDateGenerator,
         setup: AdversaryFragmentSenderSetup<'a, S>,
     ) -> Self {
         Self {
             block0_hash,
             fees,
             setup,
+            expiry_generator,
         }
+    }
+
+    pub fn block0_hash(&self) -> Hash {
+        self.block0_hash
+    }
+
+    pub fn fees(&self) -> LinearFee {
+        self.fees
     }
 
     pub fn send_random_faulty_transaction<A: FragmentNode + SyncNode + Sized + Send>(
@@ -151,7 +162,11 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
     fn random_faulty_transaction(&self, from: &Wallet, to: &Wallet) -> Fragment {
         let mut rng = thread_rng();
         let option: u8 = rng.gen();
-        let faulty_tx_builder = FaultyTransactionBuilder::new(self.block0_hash, self.fees);
+        let faulty_tx_builder = FaultyTransactionBuilder::new(
+            self.block0_hash,
+            self.fees,
+            self.expiry_generator.clone(),
+        );
         match option % 7 {
             0 => faulty_tx_builder.wrong_block0_hash(from, to),
             1 => faulty_tx_builder.no_input(to),
@@ -172,7 +187,11 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         via: &A,
     ) -> Result<Vec<MemPoolCheck>, AdversaryFragmentSenderError> {
         let mut mem_checks = Vec::new();
-        let faulty_tx_builder = FaultyTransactionBuilder::new(self.block0_hash, self.fees);
+        let faulty_tx_builder = FaultyTransactionBuilder::new(
+            self.block0_hash,
+            self.fees,
+            self.expiry_generator.clone(),
+        );
 
         for _ in 0..n {
             let fragment = faulty_tx_builder.wrong_counter(from, to);
@@ -189,7 +208,11 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         to: &Wallet,
         via: &A,
     ) -> Result<Vec<MemPoolCheck>, AdversaryFragmentSenderError> {
-        let faulty_tx_builder = FaultyTransactionBuilder::new(self.block0_hash, self.fees);
+        let faulty_tx_builder = FaultyTransactionBuilder::new(
+            self.block0_hash,
+            self.fees,
+            self.expiry_generator.clone(),
+        );
         let mut mem_checks = Vec::new();
 
         for fragment in vec![
@@ -209,12 +232,13 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
 
     pub fn send_faulty_full_delegation<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
+        valid_until: BlockDate,
         from: &mut Wallet,
         to: PoolId,
         via: &A,
     ) -> Result<MemPoolCheck, AdversaryFragmentSenderError> {
         let cert = build_owner_stake_full_delegation(to);
-        let fragment = self.random_faulty_cert(from, cert)?;
+        let fragment = self.random_faulty_cert(from, valid_until, cert)?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(fragment, via)
     }
@@ -222,6 +246,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
     fn random_faulty_cert(
         &self,
         from: &Wallet,
+        valid_until: BlockDate,
         cert: Certificate,
     ) -> Result<Fragment, FragmentBuilderError> {
         let mut rng = thread_rng();
@@ -230,6 +255,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
             self.block0_hash.into_hash(),
             self.fees,
             cert,
+            valid_until,
             from.clone().into(),
         );
         match option % 3 {
@@ -250,7 +276,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         self.send_faulty_transactions_with_iteration_delay(
             n,
             &mut wallet1,
-            &wallet2,
+            wallet2,
             node,
             std::time::Duration::from_secs(0),
         )
@@ -268,7 +294,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
     ) -> Result<Vec<MemPoolCheck>, AdversaryFragmentSenderError> {
         let mut mem_checks = Vec::new();
         for _ in 0..n {
-            mem_checks.push(self.send_random_faulty_transaction(&mut wallet1, &wallet2, node)?);
+            mem_checks.push(self.send_random_faulty_transaction(&mut wallet1, wallet2, node)?);
             std::thread::sleep(duration);
         }
         Ok(mem_checks)
@@ -279,12 +305,16 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         check: &MemPoolCheck,
         node: &A,
     ) -> Result<(), AdversaryFragmentSenderError> {
-        let verifier = FragmentVerifier;
-        match verifier.wait_fragment(Duration::from_secs(2), check.clone(), node)? {
+        match FragmentVerifier::wait_fragment(
+            Duration::from_secs(2),
+            check.clone(),
+            Default::default(),
+            node,
+        )? {
             FragmentStatus::Rejected { .. } => Ok(()),
             FragmentStatus::InABlock { date, block } => {
                 Err(AdversaryFragmentSenderError::FragmentNotRejected {
-                    alias: FragmentNode::alias(node).to_string(),
+                    alias: FragmentNode::alias(node),
                     date,
                     block,
                     logs: FragmentNode::log_content(node),
@@ -345,11 +375,16 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
 pub struct FaultyTransactionBuilder {
     block0_hash: Hash,
     fees: LinearFee,
+    expiry_generator: BlockDateGenerator,
 }
 
 impl FaultyTransactionBuilder {
-    pub fn new(block0_hash: Hash, fees: LinearFee) -> Self {
-        Self { block0_hash, fees }
+    pub fn new(block0_hash: Hash, fees: LinearFee, expiry_generator: BlockDateGenerator) -> Self {
+        Self {
+            block0_hash,
+            fees,
+            expiry_generator,
+        }
     }
 
     pub fn wrong_block0_hash(&self, from: &Wallet, to: &Wallet) -> Fragment {
@@ -411,6 +446,7 @@ impl FaultyTransactionBuilder {
         make_witnesses: F,
     ) -> Fragment {
         let builder = TxBuilder::new().set_nopayload();
+        let builder = builder.set_expiry_date(self.expiry_generator.block_date());
         let builder = builder.set_ios(inputs, outputs);
         let witnesses = make_witnesses(&builder.get_auth_data_for_witness().hash());
         let builder = builder.set_witnesses_unchecked(&witnesses);
