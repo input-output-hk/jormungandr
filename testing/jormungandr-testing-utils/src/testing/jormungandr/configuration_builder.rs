@@ -347,6 +347,22 @@ impl ConfigurationBuilder {
 
         let block0_config = self.build_block0();
 
+        let default_log_file = || temp_dir.child("node.log").path().to_path_buf();
+
+        match (&node_config.log, self.configure_default_log) {
+            (Some(log), _) => log.file_path().map_or_else(default_log_file, Into::into),
+            (None, false) => default_log_file(),
+            (None, true) => {
+                let path = default_log_file();
+                node_config.log = Some(Log(LogEntry {
+                    level: "trace".to_string(),
+                    format: "json".to_string(),
+                    output: LogOutput::Stdout,
+                }));
+                path
+            }
+        };
+
         let path_to_output_block = build_genesis_block(&block0_config, temp_dir);
         let genesis_block_hash = match self.block0_hash {
             Some(ref value) => value.clone(),

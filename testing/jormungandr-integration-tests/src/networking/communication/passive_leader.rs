@@ -192,7 +192,7 @@ pub fn leader_restart() {
         .unwrap();
 
     wait(qurantine_duration * 2);
-    
+
     assert!(leader.ports_are_opened());
     let leader = controller
         .spawn(

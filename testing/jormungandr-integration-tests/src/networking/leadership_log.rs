@@ -20,7 +20,7 @@ pub fn leader_restart_preserves_leadership_log() {
         .blockchain_config(
             BlockchainBuilder::default()
                 .consensus(ConsensusVersion::Bft)
-                .slots_per_epoch(120)
+                .slots_per_epoch(60)
                 .slot_duration(2)
                 .leader(LEADER_1)
                 .leader(LEADER_2)
@@ -32,7 +32,7 @@ pub fn leader_restart_preserves_leadership_log() {
     let leader_1 = controller.spawn(SpawnParams::new(LEADER_1)).unwrap();
 
     //wait more than half an epoch
-    time::wait_for_date(BlockDate::new(0, 60), leader_1.rest());
+    time::wait_for_date(BlockDate::new(0, 40), leader_1.rest());
 
     //start bft node 2
     let leader_2 = controller.spawn(SpawnParams::new(LEADER_2)).unwrap();
