@@ -345,22 +345,6 @@ impl ConfigurationBuilder {
             trusted_peer.id = None;
         }
 
-        let default_log_file = || temp_dir.child("node.log").path().to_path_buf();
-
-        let log_file_path = match (&node_config.log, self.configure_default_log) {
-            (Some(log), _) => log.file_path().map_or_else(default_log_file, Into::into),
-            (None, false) => default_log_file(),
-            (None, true) => {
-                let path = default_log_file();
-                node_config.log = Some(Log(LogEntry {
-                    level: "trace".to_string(),
-                    format: "json".to_string(),
-                    output: LogOutput::Stdout,
-                }));
-                path
-            }
-        };
-
         let block0_config = self.build_block0();
 
         let path_to_output_block = build_genesis_block(&block0_config, temp_dir);
@@ -396,7 +380,6 @@ impl ConfigurationBuilder {
             secret_model_path,
             block0_config,
             self.rewards_history,
-            log_file_path,
         );
 
         params.write_node_config();

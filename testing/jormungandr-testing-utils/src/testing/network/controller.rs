@@ -292,12 +292,11 @@ impl Controller {
             peer.id = None;
         }
 
-        let log_file_path = dir.child("node.log");
         config.log = Some(Log(LogEntry {
             format: "json".into(),
             level: spawn_params
                 .get_log_level()
-                .unwrap_or(&LogLevel::DEBUG)
+                .unwrap_or(&LogLevel::TRACE)
                 .to_string(),
             output: LogOutput::Stdout,
         }));
@@ -327,7 +326,6 @@ impl Controller {
             secret_file.path(),
             self.settings.block0.clone(),
             false,
-            log_file_path.path().to_path_buf(),
         );
 
         let mut starter = Starter::new();

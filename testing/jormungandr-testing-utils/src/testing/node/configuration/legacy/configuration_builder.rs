@@ -48,7 +48,6 @@ impl LegacyConfigConverter {
             params.secret_model_path(),
             params.block0_configuration().clone(),
             params.rewards_history(),
-            params.log_file_path(),
         )
     }
 }
