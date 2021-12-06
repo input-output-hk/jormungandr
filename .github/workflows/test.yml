@@ -192,8 +192,8 @@ jobs:
       - name: Share test binary
         uses: actions/upload-artifact@v2
         with:
-          name: target-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
-          path: target/
+          name: project-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
+          path: .
           retention-days: 1
 
   std_tests:
@@ -211,14 +211,11 @@ jobs:
             profile: debug
             toolchain: nightly
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
       - name: Fetch test binary
         uses: actions/download-artifact@v2
         with:
-          name: target-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
-          path: target/
+          name: project-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
+          path: .
 
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -255,14 +252,11 @@ jobs:
             profile: debug
             toolchain: nightly
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
       - name: Fetch test binary
         uses: actions/download-artifact@v2
         with:
-          name: target-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
-          path: target/
+          name: project-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
+          path: .
       
       - name: Run network tests
         uses: actions-rs/cargo@v1
