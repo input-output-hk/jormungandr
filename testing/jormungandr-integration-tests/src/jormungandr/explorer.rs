@@ -25,7 +25,7 @@ pub fn explorer_schema_diff_test() {
     let temp_dir = TempDir::new().unwrap();
     let config = ConfigurationBuilder::new().build(&temp_dir);
 
-    let jormungandr = Starter::new()
+    let _jormungandr = Starter::new()
         .temp_dir(temp_dir)
         .config(config)
         .start()
