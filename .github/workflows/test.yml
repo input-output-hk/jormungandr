@@ -94,7 +94,7 @@ jobs:
       - name: Fetch dependencies and update cargo registry
         run: cargo fetch --locked
 
-  build_tests:
+  build:
     name: Build Tests
     needs: [cache_info, update_deps]
     runs-on: ${{ matrix.os }}
@@ -103,6 +103,7 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
         profile: [debug, release]
+        test_features: ["", "network"]
         toolchain: [stable]
         include:
           - os: ubuntu-latest
@@ -184,45 +185,12 @@ jobs:
           command: build
           args: --tests --all-features ${{ env.CARGO_FLAGS }}
 
-      - name: Remove intermediate artifacts
-        shell: bash
-        run : |
-          rm -r target/${{ matrix.profile }}/incremental
-      
-      - name: Share test binary
-        uses: actions/upload-artifact@v2
-        with:
-          name: project-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
-          path: .
-          retention-days: 1
-
-  std_tests:
-    name: Run standard tests
-    needs: [cache_info, update_deps, build_tests]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-        profile: [debug, release]
-        toolchain: [stable]
-        include:
-          - os: ubuntu-latest
-            profile: debug
-            toolchain: nightly
-    steps:
-      - name: Fetch test binary
-        uses: actions/download-artifact@v2
-        with:
-          name: project-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
-          path: .
-
       - name: Run tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 90
         with:
           command: test
-          args: --tests ${{ env.CARGO_FLAGS }}
+          args: --tests ${{ env.CARGO_FLAGS }} --features "${{ matrix.test_features }}" -- ${{ matrix.test_features }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # TMPDIR and TMP are used respectively on unix and windows
@@ -233,51 +201,9 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
-            name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
+            name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-${{ matrix.network }}-tests
             path: ${{ runner.temp }}/jormungandr_*
             retention-days: 30
-
-  network_tests:
-    name: Run network tests
-    needs: [cache_info, update_deps, build_tests]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-        profile: [debug, release]
-        toolchain: [stable]
-        include:
-          - os: ubuntu-latest
-            profile: debug
-            toolchain: nightly
-    steps:
-      - name: Fetch test binary
-        uses: actions/download-artifact@v2
-        with:
-          name: project-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
-          path: .
-      
-      - name: Run network tests
-        uses: actions-rs/cargo@v1
-        timeout-minutes: 90
-        with:
-          command: test
-          args: --tests ${{ env.CARGO_FLAGS }} --features network -- network --test-threads 1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # TMPDIR and TMP are used respectively on unix and windows
-          TMPDIR: ${{ runner.temp }}
-          TMP: ${{ runner.temp }}
-      
-      - name: Pack logs from failed tests
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v2
-        with:
-            name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-network-tests
-            path: ${{ runner.temp }}/jormungandr_*
-            retention-days: 30
-      
 
   lints:
     name: Lints
