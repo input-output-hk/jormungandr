@@ -68,7 +68,7 @@ pub fn start_stake_pool(
     initial_funds: &[Wallet],
     config_builder: &mut ConfigurationBuilder,
 ) -> Result<(JormungandrProcess, Vec<StakePool>), StartupError> {
-    let stake_pools: Vec<StakePool> = owners.iter().map(|x| StakePool::new(x)).collect();
+    let stake_pools: Vec<StakePool> = owners.iter().map(StakePool::new).collect();
 
     let stake_pool_registration_certs: Vec<SignedCertificate> = stake_pools
         .iter()

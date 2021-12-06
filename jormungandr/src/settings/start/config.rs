@@ -63,7 +63,7 @@ pub struct ConfigLogSettings {
     pub output: Option<LogOutput>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct P2pConfig {
     /// The public address to which other peers may connect to
@@ -155,26 +155,6 @@ pub struct Explorer {
 #[serde(deny_unknown_fields)]
 pub struct Prometheus {
     pub enabled: bool,
-}
-
-impl Default for P2pConfig {
-    fn default() -> Self {
-        P2pConfig {
-            public_address: None,
-            listen: None,
-            node_key_file: None,
-            trusted_peers: None,
-            max_connections: None,
-            max_inbound_connections: None,
-            max_connections_threshold: None,
-            allow_private_addresses: false,
-            policy: QuarantineConfig::default(),
-            layers: LayersConfig::default(),
-            gossip_interval: None,
-            network_stuck_check: None,
-            max_bootstrap_attempts: None,
-        }
-    }
 }
 
 impl Default for Leadership {

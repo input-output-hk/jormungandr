@@ -13,7 +13,7 @@ pub struct PersistentLog {
     pub dir: PathBuf,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Mempool {
     /// maximum number of entries in the mempool
@@ -36,16 +36,6 @@ impl Default for PoolMaxEntries {
 impl Default for LogMaxEntries {
     fn default() -> Self {
         LogMaxEntries(100_000)
-    }
-}
-
-impl Default for Mempool {
-    fn default() -> Self {
-        Mempool {
-            pool_max_entries: PoolMaxEntries::default(),
-            log_max_entries: LogMaxEntries::default(),
-            persistent_log: None,
-        }
     }
 }
 

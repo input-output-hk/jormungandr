@@ -385,7 +385,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     pub fn send_transactions<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         n: u32,
-        mut wallet1: &mut Wallet,
+        wallet1: &mut Wallet,
         wallet2: &Wallet,
         node: &A,
         value: Value,
@@ -395,7 +395,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, wallet2, node, value)?;
+            self.send_transaction(wallet1, wallet2, node, value)?;
         }
         Ok(())
     }
@@ -403,7 +403,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     pub fn send_transactions_with_iteration_delay<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         n: u32,
-        mut wallet1: &mut Wallet,
+        wallet1: &mut Wallet,
         wallet2: &mut Wallet,
         node: &A,
         value: Value,
@@ -414,7 +414,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, wallet2, node, value)?;
+            self.send_transaction(wallet1, wallet2, node, value)?;
             std::thread::sleep(duration);
         }
         Ok(())
@@ -423,8 +423,8 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     pub fn send_transactions_round_trip<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         n: u32,
-        mut wallet1: &mut Wallet,
-        mut wallet2: &mut Wallet,
+        wallet1: &mut Wallet,
+        wallet2: &mut Wallet,
         node: &A,
         value: Value,
     ) -> Result<(), FragmentSenderError> {
@@ -433,8 +433,8 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         }
 
         for _ in 0..n {
-            self.send_transaction(&mut wallet1, wallet2, node, value)?;
-            self.send_transaction(&mut wallet2, wallet1, node, value)?;
+            self.send_transaction(wallet1, wallet2, node, value)?;
+            self.send_transaction(wallet2, wallet1, node, value)?;
         }
         Ok(())
     }

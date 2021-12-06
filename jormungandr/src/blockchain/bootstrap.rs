@@ -16,7 +16,7 @@ use std::sync::Arc;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    BlockchainError(#[from] super::Error),
+    BlockchainError(Box<super::Error>),
     #[error("received block {0} is not connected to the block chain")]
     BlockMissingParent(HeaderHash),
     #[error("bootstrap pull stream failed")]
@@ -71,7 +71,7 @@ where
                 blockchain
                     .handle_bootstrap_block(block, CheckHeaderProof::Enabled)
                     .await
-                    .map_err(Error::from)
+                    .map_err(|e| Error::BlockchainError(Box::new(e)))
             }
             Err(err) => Err(err),
         };
@@ -81,7 +81,10 @@ where
             }
             Err(err) => {
                 if let Some(bootstrap_tip) = maybe_parent_tip {
-                    tip_updater.process_new_ref(bootstrap_tip).await?;
+                    tip_updater
+                        .process_new_ref(bootstrap_tip)
+                        .await
+                        .map_err(|e| Error::BlockchainError(Box::new(e)))?;
                 }
                 return Err(err);
             }
@@ -89,7 +92,10 @@ where
     }
 
     if let Some(ref bootstrap_tip) = maybe_parent_tip {
-        tip_updater.process_new_ref(bootstrap_tip.clone()).await?;
+        tip_updater
+            .process_new_ref(bootstrap_tip.clone())
+            .await
+            .map_err(|e| Error::BlockchainError(Box::new(e)))?;
     } else {
         tracing::info!("no new blocks received from the network");
     }
