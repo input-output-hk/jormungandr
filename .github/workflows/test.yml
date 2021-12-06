@@ -184,6 +184,18 @@ jobs:
           command: build
           args: --tests --all-features ${{ env.CARGO_FLAGS }}
 
+      - name: Remove intermediate artifacts
+        shell: bash
+        run : |
+          rm -r target/${{ matrix.profile }}/incremental
+      
+      - name: Share test binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: target-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
+          path: target/
+          retention-days: 1
+
   std_tests:
     name: Run standard tests
     needs: [cache_info, update_deps, build_tests]
@@ -199,6 +211,15 @@ jobs:
             profile: debug
             toolchain: nightly
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Fetch test binary
+        uses: actions/download-artifact@v2
+        with:
+          name: target-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
+          path: target/
+
       - name: Run tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 90
@@ -210,6 +231,14 @@ jobs:
           # TMPDIR and TMP are used respectively on unix and windows
           TMPDIR: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
+      
+      - name: Pack logs from failed tests
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+            name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
+            path: ${{ runner.temp }}/jormungandr_*
+            retention-days: 30
 
   network_tests:
     name: Run network tests
@@ -226,6 +255,15 @@ jobs:
             profile: debug
             toolchain: nightly
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Fetch test binary
+        uses: actions/download-artifact@v2
+        with:
+          name: target-${{ matrix.os }}-${{ matrix.toolchain }}-${{ matrix.profile }}
+          path: target/
+      
       - name: Run network tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 90
@@ -237,29 +275,15 @@ jobs:
           # TMPDIR and TMP are used respectively on unix and windows
           TMPDIR: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
-
-  pack_logs:
-    name: Pack logs from failed tests
-    needs: [cache_info, update_deps, build_tests, network_tests, std_tests]
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-        profile: [debug, release]
-        toolchain: [stable]
-        include:
-          - os: ubuntu-latest
-            profile: debug
-            toolchain: nightly
-    steps:
+      
       - name: Pack logs from failed tests
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
-            name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
+            name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-network-tests
             path: ${{ runner.temp }}/jormungandr_*
             retention-days: 30
+      
 
   lints:
     name: Lints
