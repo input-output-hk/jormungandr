@@ -94,8 +94,8 @@ jobs:
       - name: Fetch dependencies and update cargo registry
         run: cargo fetch --locked
 
-  tests:
-    name: Tests
+  build_tests:
+    name: Build Tests
     needs: [cache_info, update_deps]
     runs-on: ${{ matrix.os }}
     strategy:
@@ -184,25 +184,47 @@ jobs:
           command: build
           args: --tests --all-features ${{ env.CARGO_FLAGS }}
 
+  std_tests:
+    name: Run standard tests
+    needs: [cache_info, update_deps, build_tests]
+    runs-on: ${{ matrix.os }}
+    steps:
       - name: Run tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 90
         with:
           command: test
-          args: --tests ${{ env.CARGO_FLAGS }} --features network
+          args: --tests ${{ env.CARGO_FLAGS }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # TMPDIR and TMP are used respectively on unix and windows
           TMPDIR: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
 
-      - name: Pack logs from failed tests
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v2
+  network_tests:
+    name: Run network tests
+    needs: [cache_info, update_deps, build_tests]
+    runs-on: ${{ matrix.os }}
+      - name: Run network tests
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 90
         with:
-          name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
-          path: ${{ runner.temp }}/jormungandr_*
-          retention-days: 30
+          command: test
+          args: --tests ${{ env.CARGO_FLAGS }} --features network -- network --test-threads 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TMPDIR and TMP are used respectively on unix and windows
+          TMPDIR: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+
+  pack_logs:
+    name: Pack logs from failed tests
+    if: ${{ failure() }}
+    uses: actions/upload-artifact@v2
+      with:
+        name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
+        path: ${{ runner.temp }}/jormungandr_*
+        retention-days: 30
 
   lints:
     name: Lints
