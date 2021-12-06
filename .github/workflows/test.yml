@@ -205,6 +205,7 @@ jobs:
     name: Run network tests
     needs: [cache_info, update_deps, build_tests]
     runs-on: ${{ matrix.os }}
+    steps:
       - name: Run network tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 90
@@ -219,12 +220,16 @@ jobs:
 
   pack_logs:
     name: Pack logs from failed tests
-    if: ${{ failure() }}
-    uses: actions/upload-artifact@v2
-      with:
-        name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
-        path: ${{ runner.temp }}/jormungandr_*
-        retention-days: 30
+    needs: [cache_info, update_deps, build_tests, network_tests, std_tests]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Pack logs from failed tests
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+          with:
+            name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
+            path: ${{ runner.temp }}/jormungandr_*
+            retention-days: 30
 
   lints:
     name: Lints
