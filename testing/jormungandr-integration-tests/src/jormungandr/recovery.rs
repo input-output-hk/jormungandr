@@ -1,6 +1,7 @@
 use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
+    node::LogLevel,
     startup,
 };
 
@@ -91,6 +92,7 @@ pub fn test_node_recovers_from_node_restart() {
             value: 100.into(),
         }])
         .with_storage(&temp_dir.child("storage"))
+        .with_log_level(LogLevel::TRACE.to_string())
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();

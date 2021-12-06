@@ -288,7 +288,7 @@ pub fn point_to_point() {
     let mut wallet2 = controller.wallet(BOB).unwrap();
 
     FragmentSender::from(controller.settings())
-        .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
+        .send_transactions_round_trip(5, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
         .unwrap();
 
     let leaders = [&leader1, &leader2, &leader3, &leader4];
@@ -518,7 +518,7 @@ pub fn relay() {
 
     FragmentSender::from(controller.settings())
         .clone_with_setup(setup)
-        .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
+        .send_transactions_round_trip(5, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
         .unwrap();
 
     let leaders = [

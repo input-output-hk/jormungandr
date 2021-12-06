@@ -120,7 +120,7 @@ pub fn get_command<Conf: TestConfig + Serialize>(
     from_genesis: FromGenesis,
 ) -> Command {
     let bin_path = bin_path.as_ref();
-    let mut builder = CommandBuilder::new(bin_path)
+    let builder = CommandBuilder::new(bin_path)
         .config(params.node_config_path())
         .rewards_history(params.rewards_history());
 

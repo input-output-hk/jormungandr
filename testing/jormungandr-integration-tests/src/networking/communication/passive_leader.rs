@@ -4,6 +4,7 @@ use jormungandr_testing_utils::testing::network::{
     builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder,
 };
 use jormungandr_testing_utils::testing::network::{Node, SpawnParams, Topology};
+use jormungandr_testing_utils::testing::node::LogLevel;
 use jormungandr_testing_utils::testing::sync::{
     measure_and_log_sync_time, MeasurementReportInterval,
 };
@@ -140,8 +141,10 @@ pub fn leader_restart() {
         .unwrap()
         .into_persistent();
 
+    let qurantine_duration = 5;
+
     let policy = Policy {
-        quarantine_duration: Some(Duration::new(5, 0).into()),
+        quarantine_duration: Some(Duration::new(qurantine_duration, 0).into()),
         quarantine_whitelist: None,
     };
 
@@ -169,7 +172,7 @@ pub fn leader_restart() {
 
     FragmentSender::from(controller.settings())
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
-        .send_transactions_round_trip(10, &mut alice, &mut bob, &passive, 1_000.into())
+        .send_transactions_round_trip(2, &mut alice, &mut bob, &passive, 1_000.into())
         .unwrap();
 
     leader.shutdown();
@@ -179,7 +182,7 @@ pub fn leader_restart() {
     FragmentSender::from(controller.settings())
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_with_iteration_delay(
-            10,
+            4,
             &mut alice,
             &mut bob,
             &passive,
@@ -188,15 +191,21 @@ pub fn leader_restart() {
         )
         .unwrap();
 
-    wait(5);
-
+    wait(qurantine_duration * 2);
+    
+    assert!(leader.ports_are_opened());
     let leader = controller
-        .spawn(SpawnParams::new(LEADER).verbose(true))
+        .spawn(
+            SpawnParams::new(LEADER)
+                .verbose(true)
+                .in_memory()
+                .log_level(LogLevel::TRACE),
+        )
         .unwrap();
 
     FragmentSender::from(controller.settings())
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
-        .send_transactions_round_trip(10, &mut alice, &mut bob, &passive, 1_000.into())
+        .send_transactions_round_trip(2, &mut alice, &mut bob, &passive, 1_000.into())
         .unwrap();
 
     measure_and_log_sync_time(
