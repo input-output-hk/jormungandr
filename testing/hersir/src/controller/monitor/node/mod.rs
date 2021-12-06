@@ -235,16 +235,6 @@ impl Node {
             })
     }
 
-    fn ports_are_opened(&self) -> bool {
-        self.port_opened(self.process.rest_address().port())
-            && self.port_opened(self.process.p2p_listen_addr().port())
-    }
-
-    fn port_opened(&self, port: u16) -> bool {
-        use std::net::TcpListener;
-        TcpListener::bind(("127.0.0.1", port)).is_ok()
-    }
-
     pub fn is_up(&self) -> bool {
         match self.status() {
             Ok(status) => status == Status::Running,
