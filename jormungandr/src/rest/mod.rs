@@ -138,11 +138,25 @@ async fn setup_cors<App>(
 
         let mut cors = warp::cors().allow_origins(allowed_origins);
 
+        for header in cors_config.allowed_headers {
+            cors = cors.allow_header(header.0);
+        }
+
+        for method in cors_config.allowed_methods {
+            cors = cors.allow_method(method.0);
+        }
+
         if let Some(max_age) = cors_config.max_age_secs {
             cors = cors.max_age(Duration::from_secs(max_age));
         }
 
-        run_server_with_app(app.with(cors), config.listen, config.tls, shutdown_signal).await;
+        run_server_with_app(
+            app.with(cors.build()),
+            config.listen,
+            config.tls,
+            shutdown_signal,
+        )
+        .await;
     } else {
         run_server_with_app(app, config.listen, config.tls, shutdown_signal).await;
     }
