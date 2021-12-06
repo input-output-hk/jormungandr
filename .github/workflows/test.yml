@@ -188,6 +188,16 @@ jobs:
     name: Run standard tests
     needs: [cache_info, update_deps, build_tests]
     runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        profile: [debug, release]
+        toolchain: [stable]
+        include:
+          - os: ubuntu-latest
+            profile: debug
+            toolchain: nightly
     steps:
       - name: Run tests
         uses: actions-rs/cargo@v1
@@ -205,6 +215,16 @@ jobs:
     name: Run network tests
     needs: [cache_info, update_deps, build_tests]
     runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        profile: [debug, release]
+        toolchain: [stable]
+        include:
+          - os: ubuntu-latest
+            profile: debug
+            toolchain: nightly
     steps:
       - name: Run network tests
         uses: actions-rs/cargo@v1
@@ -222,6 +242,16 @@ jobs:
     name: Pack logs from failed tests
     needs: [cache_info, update_deps, build_tests, network_tests, std_tests]
     runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        profile: [debug, release]
+        toolchain: [stable]
+        include:
+          - os: ubuntu-latest
+            profile: debug
+            toolchain: nightly
     steps:
       - name: Pack logs from failed tests
         if: ${{ failure() }}
