@@ -4,7 +4,7 @@ pub mod multiverse;
 pub mod persistent_sequence;
 mod tally;
 
-use self::error::{ExplorerError as Error, Result};
+use self::error::{BlockNotFound, ExplorerError as Error};
 use self::indexing::{
     Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
     ExplorerVote, ExplorerVotePlan, ExplorerVoteProposal, StakePool, StakePoolBlocks,
@@ -102,7 +102,7 @@ pub struct Settings {
 }
 
 impl ExplorerDb {
-    pub fn bootstrap(block0: Block) -> Result<Self> {
+    pub fn bootstrap(block0: Block) -> Result<Self, Error> {
         let blockchain_config = BlockchainConfig::from_config_params(
             block0
                 .contents()
@@ -170,7 +170,7 @@ impl ExplorerDb {
     /// chain length is greater than the current.
     /// This doesn't perform any validation on the given block and the previous state, it
     /// is assumed that the Block is valid
-    pub async fn apply_block(&self, block: Block) -> Result<multiverse::Ref> {
+    pub async fn apply_block(&self, block: Block) -> Result<multiverse::Ref, Error> {
         let previous_block = block.header().block_parent_hash();
         let chain_length = block.header().chain_length();
         let block_id = block.header().hash();
@@ -242,14 +242,14 @@ impl ExplorerDb {
         None
     }
 
-    pub async fn set_tip(&self, hash: HeaderHash) -> bool {
+    pub async fn set_tip(&self, hash: HeaderHash) -> Result<(), BlockNotFound> {
         // the tip changes which means now a block is confirmed (at least after
         // the initial epoch_stability_depth blocks).
 
         let state_ref = if let Some(state_ref) = self.multiverse.get_ref(&hash).await {
             state_ref
         } else {
-            return false;
+            return Err(BlockNotFound { hash });
         };
 
         let state = state_ref.state();
@@ -282,7 +282,7 @@ impl ExplorerDb {
 
         let _ = self.tip_broadcast.send((hash, state_ref));
 
-        true
+        Ok(())
     }
 
     pub async fn get_block_with_branches(
@@ -432,7 +432,7 @@ impl ExplorerDb {
     pub fn tip_subscription(
         &self,
     ) -> impl Stream<
-        Item = std::result::Result<
+        Item = Result<
             (HeaderHash, multiverse::Ref),
             tokio_stream::wrappers::errors::BroadcastStreamRecvError,
         >,
@@ -444,7 +444,7 @@ impl ExplorerDb {
 fn apply_block_to_transactions(
     mut transactions: Transactions,
     block: &ExplorerBlock,
-) -> Result<Transactions> {
+) -> Result<Transactions, Error> {
     let block_id = block.id();
     let ids = block.transactions.values().map(|tx| tx.id());
 
@@ -457,7 +457,7 @@ fn apply_block_to_transactions(
     Ok(transactions)
 }
 
-fn apply_block_to_blocks(blocks: Blocks, block: &ExplorerBlock) -> Result<Blocks> {
+fn apply_block_to_blocks(blocks: Blocks, block: &ExplorerBlock) -> Result<Blocks, Error> {
     let block_id = block.id();
     blocks
         .insert(block_id, Arc::new(block.clone()))
@@ -518,7 +518,7 @@ fn apply_block_to_epochs(epochs: Epochs, block: &ExplorerBlock) -> Epochs {
 fn apply_block_to_chain_lengths(
     chain_lengths: ChainLengths,
     block: &ExplorerBlock,
-) -> Result<ChainLengths> {
+) -> Result<ChainLengths, Error> {
     let new_block_chain_length = block.chain_length();
     let new_block_hash = block.id();
     chain_lengths
@@ -538,7 +538,7 @@ fn apply_block_to_stake_pools(
         indexing::BlockProducer::StakePool(id) => blocks
             .update(
                 id,
-                |array: &Arc<PersistentSequence<HeaderHash>>| -> std::result::Result<_, Infallible> {
+                |array: &Arc<PersistentSequence<HeaderHash>>| -> Result<_, Infallible> {
                     Ok(Some(Arc::new(array.append(block.id()))))
                 },
             )

@@ -6,8 +6,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error, Clone)]
 pub enum ExplorerError {
-    #[error("block {0} not found in explorer")]
-    BlockNotFound(HeaderHash),
+    #[error(transparent)]
+    BlockNotFound(#[from] BlockNotFound),
     #[error("ancestor of block '{0}' not found in explorer")]
     AncestorNotFound(HeaderHash),
     #[error("transaction '{0}' is already indexed")]
@@ -18,6 +18,12 @@ pub enum ExplorerError {
     ChainLengthBlockAlreadyExists(ChainLength),
     #[error("the explorer's database couldn't be initialized: {0}")]
     BootstrapError(String),
+}
+
+#[derive(Debug, Error, Clone)]
+#[error("block {hash} not found in explorer")]
+pub struct BlockNotFound {
+    pub hash: HeaderHash,
 }
 
 pub type Result<T> = std::result::Result<T, ExplorerError>;

@@ -1,3 +1,4 @@
+use crate::db::error::BlockNotFound;
 use crate::db::ExplorerDb;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::block::HeaderId as HeaderHash;
@@ -53,13 +54,15 @@ impl Indexer {
     }
 
     pub async fn set_tip(&self, tip: HeaderHash) {
-        let successful = self.db.set_tip(tip).await;
-
-        if !successful {
-            let mut guard = self.tip_candidate.lock().await;
-            guard.replace(tip);
-        } else {
-            tracing::info!("tip set to {}", tip);
+        match self.db.set_tip(tip).await {
+            Ok(_) => {
+                tracing::info!("tip set to {}", tip);
+            }
+            Err(BlockNotFound { hash: _ }) => {
+                // we don't use the value in the error since `tip` is copy anyway
+                let mut guard = self.tip_candidate.lock().await;
+                guard.replace(tip);
+            }
         }
     }
 }
