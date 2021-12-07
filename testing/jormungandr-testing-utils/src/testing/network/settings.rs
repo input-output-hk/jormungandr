@@ -15,7 +15,7 @@ use chain_impl_mockchain::{
     certificate::VotePlan, chaintypes::ConsensusVersion, fee::LinearFee, vote::PayloadType,
 };
 use jormungandr_lib::crypto::account::Identifier;
-use jormungandr_lib::interfaces::{try_initials_vec_from_messages, VotePlan as VotePLanLib};
+use jormungandr_lib::interfaces::{try_initial_fragment_from_message, VotePlan as VotePLanLib};
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
@@ -77,6 +77,7 @@ impl Settings {
                     LinearFee::new(1, 2, 3),
                 ),
                 initial: Vec::new(),
+                initial_tokens: Vec::new(),
             },
             stake_pools: HashMap::new(),
             vote_plans: HashMap::new(),
@@ -335,9 +336,11 @@ impl Settings {
             self.vote_plans
                 .insert(vote_plan_key.clone(), vote_plan_settings);
         }
-        self.block0
-            .initial
-            .extend(try_initials_vec_from_messages(vote_plans_fragments.iter()).unwrap())
+        self.block0.initial.extend(
+            vote_plans_fragments
+                .iter()
+                .map(|message| try_initial_fragment_from_message(message).unwrap().unwrap()),
+        )
     }
 
     pub fn dump_private_vote_keys(&self, directory: ChildPath) {

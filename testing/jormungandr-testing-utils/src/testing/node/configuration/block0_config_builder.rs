@@ -6,9 +6,9 @@ use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::{
     interfaces::{
         ActiveSlotCoefficient, Block0Configuration, BlockContentMaxSize, BlockchainConfiguration,
-        CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, FeesGoTo, Initial, InitialUTxO,
-        KesUpdateSpeed, NumberOfSlotsPerEpoch, ProposalExpiration, Ratio, RewardConstraints,
-        RewardParams, SlotDuration, TaxType, Value,
+        CommitteeIdDef, ConsensusLeaderId, EpochStabilityDepth, FeesGoTo, Initial, InitialTokens,
+        InitialUTxO, KesUpdateSpeed, NumberOfSlotsPerEpoch, ProposalExpiration, Ratio,
+        RewardConstraints, RewardParams, SlotDuration, TaxType, Value,
     },
     time::SecondsSinceUnixEpoch,
 };
@@ -23,6 +23,7 @@ use std::vec::Vec;
 pub struct Block0ConfigurationBuilder {
     pub blockchain_configuration: BlockchainConfiguration,
     pub initial: Vec<Initial>,
+    pub initial_tokens: Vec<InitialTokens>,
 }
 
 impl Default for Block0ConfigurationBuilder {
@@ -69,11 +70,17 @@ impl Block0ConfigurationBuilder {
                 tx_max_expiry_epochs: Some(100),
             },
             initial: vec![],
+            initial_tokens: vec![],
         }
     }
 
     pub fn with_funds(&mut self, funds: Vec<Initial>) -> &mut Self {
         self.initial.extend(funds.iter().cloned());
+        self
+    }
+
+    pub fn with_tokens(&mut self, tokens: Vec<InitialTokens>) -> &mut Self {
+        self.initial_tokens.extend(tokens.iter().cloned());
         self
     }
 
@@ -227,6 +234,7 @@ impl Block0ConfigurationBuilder {
         Block0Configuration {
             blockchain_configuration: self.blockchain_configuration.clone(),
             initial: self.initial.clone(),
+            initial_tokens: self.initial_tokens.clone(),
         }
     }
 }

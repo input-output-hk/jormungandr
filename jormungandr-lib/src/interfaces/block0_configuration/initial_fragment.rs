@@ -1,4 +1,4 @@
-use crate::interfaces::{mint_token::MintToken, Address, OldAddress, SignedCertificate, Value};
+use crate::interfaces::{Address, OldAddress, SignedCertificate, Value};
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate,
@@ -16,7 +16,6 @@ pub enum Initial {
     Fund(Vec<InitialUTxO>),
     Cert(SignedCertificate),
     LegacyFund(Vec<LegacyUTxO>),
-    Token(MintToken),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -44,56 +43,43 @@ pub struct LegacyUTxO {
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("first message of block 0 is not initial")]
-    FirstBlock0MessageNotInit,
-    #[error("non-first message of block 0 has unexpected type")]
-    Block0MessageUnexpected,
     #[error("initial UTXO has input")]
     InitUtxoHasInput,
 }
 
-pub fn try_initials_vec_from_messages<'a>(
-    messages: impl Iterator<Item = &'a Fragment>,
-) -> Result<Vec<Initial>, Error> {
-    let mut inits = Vec::new();
-    for message in messages {
-        match message {
-            Fragment::Transaction(tx) => try_extend_inits_with_tx(&mut inits, &tx.as_slice())?,
-            Fragment::OldUtxoDeclaration(utxo) => extend_inits_with_legacy_utxo(&mut inits, utxo),
-            Fragment::PoolRegistration(tx) => {
-                let tx = tx.as_slice();
-                let cert = tx.payload().into_payload();
-                let auth = tx.payload_auth().into_payload_auth();
-                let cert = certificate::SignedCertificate::PoolRegistration(cert, auth);
-                inits.push(Initial::Cert(cert.into()))
-            }
-            Fragment::StakeDelegation(tx) => {
-                let tx = tx.as_slice();
-                let cert = tx.payload().into_payload();
-                let auth = tx.payload_auth().into_payload_auth();
-                let cert = certificate::SignedCertificate::StakeDelegation(cert, auth);
-                inits.push(Initial::Cert(cert.into()))
-            }
-            Fragment::VotePlan(tx) => {
-                let tx = tx.as_slice();
-                let cert = tx.payload().into_payload();
-                // the pattern match here is to make sure we are actually expecting the `()`
-                // and that if it changes the compiler will detect it and tell us about the
-                // change so we are reminded of a breaking change
-                let auth = tx.payload_auth().into_payload_auth();
-                let cert = certificate::SignedCertificate::VotePlan(cert, auth);
-                inits.push(Initial::Cert(cert.into()))
-            }
-            _ => return Err(Error::Block0MessageUnexpected),
+pub fn try_initial_fragment_from_message(message: &Fragment) -> Result<Option<Initial>, Error> {
+    match message {
+        Fragment::Transaction(tx) => Ok(Some(try_extend_inits_with_tx(&tx.as_slice())?)),
+        Fragment::OldUtxoDeclaration(utxo) => Ok(Some(extend_inits_with_legacy_utxo(utxo))),
+        Fragment::PoolRegistration(tx) => {
+            let tx = tx.as_slice();
+            let cert = tx.payload().into_payload();
+            let auth = tx.payload_auth().into_payload_auth();
+            let cert = certificate::SignedCertificate::PoolRegistration(cert, auth);
+            Ok(Some(Initial::Cert(cert.into())))
         }
+        Fragment::StakeDelegation(tx) => {
+            let tx = tx.as_slice();
+            let cert = tx.payload().into_payload();
+            let auth = tx.payload_auth().into_payload_auth();
+            let cert = certificate::SignedCertificate::StakeDelegation(cert, auth);
+            Ok(Some(Initial::Cert(cert.into())))
+        }
+        Fragment::VotePlan(tx) => {
+            let tx = tx.as_slice();
+            let cert = tx.payload().into_payload();
+            // the pattern match here is to make sure we are actually expecting the `()`
+            // and that if it changes the compiler will detect it and tell us about the
+            // change so we are reminded of a breaking change
+            let auth = tx.payload_auth().into_payload_auth();
+            let cert = certificate::SignedCertificate::VotePlan(cert, auth);
+            Ok(Some(Initial::Cert(cert.into())))
+        }
+        _ => Ok(None),
     }
-    Ok(inits)
 }
 
-fn try_extend_inits_with_tx<'a>(
-    initials: &mut Vec<Initial>,
-    tx: &TransactionSlice<'a, NoExtra>,
-) -> Result<(), Error> {
+fn try_extend_inits_with_tx<'a>(tx: &TransactionSlice<'a, NoExtra>) -> Result<Initial, Error> {
     if tx.nb_inputs() != 0 {
         return Err(Error::InitUtxoHasInput);
     }
@@ -101,11 +87,10 @@ fn try_extend_inits_with_tx<'a>(
         address: output.address.clone().into(),
         value: output.value.into(),
     });
-    initials.push(Initial::Fund(inits_iter.collect()));
-    Ok(())
+    Ok(Initial::Fund(inits_iter.collect()))
 }
 
-fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDeclaration) {
+fn extend_inits_with_legacy_utxo(utxo_decl: &UtxoDeclaration) -> Initial {
     if utxo_decl.addrs.is_empty() {
         panic!("old utxo declaration has no element")
     }
@@ -121,7 +106,7 @@ fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDe
         value: (*value).into(),
     });
     let inits: Vec<_> = inits_iter.collect();
-    initials.push(Initial::LegacyFund(inits))
+    Initial::LegacyFund(inits)
 }
 
 impl<'a> From<&'a Initial> for Fragment {
@@ -130,7 +115,6 @@ impl<'a> From<&'a Initial> for Fragment {
             Initial::Fund(utxo) => pack_utxo_in_message(utxo),
             Initial::Cert(cert) => pack_certificate_in_empty_tx_fragment(cert),
             Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(utxo),
-            Initial::Token(mint_token) => pack_mint_token_in_fragment(mint_token),
         }
     }
 }
@@ -205,11 +189,6 @@ fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Fragment {
     }
 }
 
-fn pack_mint_token_in_fragment(mint_token: &MintToken) -> Fragment {
-    let mint_token: &certificate::MintToken = &mint_token.clone().into();
-    Fragment::MintToken(Transaction::block0_payload(mint_token, &()))
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -234,7 +213,6 @@ mod test {
                         .take(number_entries)
                         .collect(),
                 ),
-                3 => Initial::Token(Arbitrary::arbitrary(g)),
                 _ => unreachable!(),
             }
         }
