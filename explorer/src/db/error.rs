@@ -25,5 +25,3 @@ pub enum ExplorerError {
 pub struct BlockNotFound {
     pub hash: HeaderHash,
 }
-
-pub type Result<T> = std::result::Result<T, ExplorerError>;
