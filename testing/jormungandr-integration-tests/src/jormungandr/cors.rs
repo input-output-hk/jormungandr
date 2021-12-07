@@ -13,6 +13,8 @@ pub fn cors_illegal_domain() -> Result<(), Box<dyn std::error::Error>> {
         .with_rest_cors_config(Cors {
             allowed_origins: vec!["http://domain.com".to_owned().into()],
             max_age_secs: None,
+            allowed_headers: vec![],
+            allowed_methods: vec![],
         })
         .build(&temp_dir);
 
@@ -42,6 +44,8 @@ pub fn cors_malformed_domain_no_http() -> Result<(), Box<dyn std::error::Error>>
         .with_rest_cors_config(Cors {
             allowed_origins: vec!["domain.com".to_owned().into()],
             max_age_secs: None,
+            allowed_headers: vec![],
+            allowed_methods: vec![],
         })
         .build(&temp_dir);
 
@@ -82,6 +86,8 @@ pub fn cors_wrong_delimiter() -> Result<(), Box<dyn std::error::Error>> {
                 .to_owned()
                 .into()],
             max_age_secs: None,
+            allowed_headers: vec![],
+            allowed_methods: vec![],
         })
         .build(&temp_dir);
 
@@ -100,6 +106,8 @@ pub fn cors_single_domain() -> Result<(), Box<dyn std::error::Error>> {
         .with_rest_cors_config(Cors {
             allowed_origins: vec!["http://domain.com".to_owned().into()],
             max_age_secs: None,
+            allowed_headers: vec![],
+            allowed_methods: vec![],
         })
         .build(&temp_dir);
 
@@ -122,6 +130,8 @@ pub fn cors_https() -> Result<(), Box<dyn std::error::Error>> {
         .with_rest_cors_config(Cors {
             allowed_origins: vec!["https://domain.com".to_owned().into()],
             max_age_secs: None,
+            allowed_headers: vec![],
+            allowed_methods: vec![],
         })
         .build(&temp_dir);
 
@@ -145,6 +155,8 @@ pub fn cors_multi_domain() -> Result<(), Box<dyn std::error::Error>> {
                 .to_owned()
                 .into()],
             max_age_secs: None,
+            allowed_headers: vec![],
+            allowed_methods: vec![],
         })
         .build(&temp_dir);
 
