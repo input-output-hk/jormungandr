@@ -31,6 +31,7 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
 use std::process::ExitStatus;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
@@ -306,11 +307,21 @@ impl JormungandrProcess {
     }
 
     pub fn time_era(&self) -> TimeEra {
-        let block_date = self.explorer().current_time();
+        let block_date = BlockDate::from_str(
+            self.rest()
+                .stats()
+                .unwrap()
+                .stats
+                .unwrap()
+                .last_block_date
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
 
         TimeEra::new(
-            (block_date.slot() as u64).into(),
-            chain_time::Epoch(block_date.epoch()),
+            (block_date.slot_id as u64).into(),
+            chain_time::Epoch(block_date.epoch),
             self.block0_configuration
                 .blockchain_configuration
                 .slots_per_epoch
