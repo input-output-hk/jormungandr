@@ -64,6 +64,8 @@ pub fn cors_ip_versus_domain() -> Result<(), Box<dyn std::error::Error>> {
         .with_rest_cors_config(Cors {
             allowed_origins: vec!["http://127.0.0.1".to_owned().into()],
             max_age_secs: None,
+            allowed_headers: vec![],
+            allowed_methods: vec![],
         })
         .build(&temp_dir);
 
