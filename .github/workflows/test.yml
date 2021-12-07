@@ -195,6 +195,13 @@ jobs:
           command: build
           args: --tests --all-features ${{ env.CARGO_FLAGS }}
 
+      - name: Build explorer
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 30
+        with:
+          command: build
+          args: -p explorer ${{ env.CARGO_FLAGS }}
+
       - name: Run tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 90
