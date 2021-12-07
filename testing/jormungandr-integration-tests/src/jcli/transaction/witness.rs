@@ -132,7 +132,7 @@ pub fn test_make_witness_with_non_existing_private_key_file_fails() {
         None,
     );
     witness.private_key_path = PathBuf::from("a");
-    transaction_wrapper.make_witness_expect_fail(&witness, "No such file or directory");
+    transaction_wrapper.make_witness_expect_fail(&witness, "os error 2");
 }
 
 #[test]
