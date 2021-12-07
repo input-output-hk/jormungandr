@@ -232,5 +232,3 @@ initial_tokens:
         value: 22
       - address: {initial_funds_account_identifier_2}
         value: 66
-    
-
