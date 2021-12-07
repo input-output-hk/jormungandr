@@ -586,7 +586,7 @@ impl Module {
                         leadership,
                     };
                     sender
-                        .send(BlockMsg::LeadershipBlock(leadership_block))
+                        .send(BlockMsg::LeadershipBlock(Box::new(leadership_block)))
                         .map_err(|_send_error| LeadershipError::CannotSendLeadershipBlock)
                         .await?;
                     event_logs

@@ -154,7 +154,7 @@ impl Encode for Gossips {
         let nodes = self
             .0
             .iter()
-            .map(|node| Gossip::encode(node))
+            .map(Gossip::encode)
             .collect::<Vec<net_data::gossip::Node>>()
             .into_boxed_slice();
         net_data::gossip::Gossip { nodes }

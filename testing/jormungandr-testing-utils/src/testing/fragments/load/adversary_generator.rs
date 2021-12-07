@@ -53,18 +53,13 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentGenerator<'a, S> {
 
         let mut additional_wallets = Vec::new();
 
-        for mut wallet in wallets.iter_mut().take(10) {
+        for wallet in wallets.iter_mut().take(10) {
             let mut pack_of_wallets: Vec<Wallet> =
                 std::iter::from_fn(|| Some(Wallet::new_account(&mut self.rand)))
                     .take(90)
                     .collect();
             fragment_sender
-                .send_transaction_to_many(
-                    &mut wallet,
-                    &pack_of_wallets,
-                    &self.jormungandr,
-                    1000.into(),
-                )
+                .send_transaction_to_many(wallet, &pack_of_wallets, &self.jormungandr, 1000.into())
                 .unwrap();
             additional_wallets.append(&mut pack_of_wallets);
         }
@@ -82,11 +77,11 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentGenerator<'a, S> {
     pub fn send_transaction(&mut self) -> Result<FragmentId, RequestFailure> {
         self.increment_split_marker();
         let (senders, recievers) = self.wallets.split_at_mut(self.split_marker);
-        let mut sender = senders.get_mut(senders.len() - 1).unwrap();
+        let sender = senders.get_mut(senders.len() - 1).unwrap();
         let reciever = recievers.get(0).unwrap();
 
         self.adversary_fragment_sender
-            .send_random_faulty_transaction(&mut sender, reciever, &self.jormungandr)
+            .send_random_faulty_transaction(sender, reciever, &self.jormungandr)
             .map(|x| *x.fragment_id())
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))
     }

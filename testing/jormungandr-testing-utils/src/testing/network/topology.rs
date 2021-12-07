@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 pub type NodeAlias = String;
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Topology {
     pub nodes: HashMap<NodeAlias, Node>,
 }
@@ -13,13 +13,6 @@ impl Topology {
     }
 }
 
-impl Default for Topology {
-    fn default() -> Self {
-        Self {
-            nodes: HashMap::new(),
-        }
-    }
-}
 #[derive(Debug, Clone)]
 pub struct Node {
     pub alias: NodeAlias,

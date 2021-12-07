@@ -230,7 +230,7 @@ impl Process {
                         network_msg_box,
                         explorer_msg_box,
                         watch_msg_box,
-                        leadership_block,
+                        *leadership_block,
                     )
                     .instrument(span.clone()),
                 );
@@ -254,7 +254,7 @@ impl Process {
                     process_block_announcement(
                         blockchain,
                         blockchain_tip,
-                        header,
+                        *header,
                         node_id,
                         self.pull_headers_scheduler.clone(),
                         self.get_next_block_scheduler.clone(),
@@ -347,7 +347,9 @@ async fn process_and_propagate_new_ref(
         tracing::debug!("propagating block to the network");
 
         network_msg_box
-            .send(NetworkMsg::Propagate(PropagateMsg::Block(header)))
+            .send(NetworkMsg::Propagate(Box::new(PropagateMsg::Block(
+                Box::new(header),
+            ))))
             .await?;
         Ok::<(), Error>(())
     }
@@ -374,7 +376,7 @@ async fn process_leadership_block(
         .await?;
 
     if let Some(mut msg_box) = explorer_msg_box {
-        msg_box.send(ExplorerMsg::NewBlock(block)).await?;
+        msg_box.send(ExplorerMsg::NewBlock(Box::new(block))).await?;
     }
 
     process_and_propagate_new_ref(Arc::clone(&new_block_ref), tip_update_mbox, network_msg_box)
@@ -589,7 +591,9 @@ async fn check_and_apply_block(
         tracing::debug!("applied block to storage");
         if let Some(msg_box) = explorer_msg_box {
             msg_box
-                .try_send(ExplorerMsg::NewBlock(block_for_explorer.take().unwrap()))
+                .try_send(ExplorerMsg::NewBlock(Box::new(
+                    block_for_explorer.take().unwrap(),
+                )))
                 .unwrap_or_else(|err| tracing::error!("cannot add block to explorer: {}", err));
         }
 

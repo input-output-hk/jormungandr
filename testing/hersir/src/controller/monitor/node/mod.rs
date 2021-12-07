@@ -222,8 +222,7 @@ impl Node {
         self.process
             .wait_for_shutdown(Duration::from_secs(150))
             .map_err(|e| {
-                self.progress_bar
-                    .log_info(format!("shutdown error: {}", e.to_string()));
+                self.progress_bar.log_info(format!("shutdown error: {}", e));
                 Error::NodeFailedToShutdown {
                     alias: self.alias(),
                     e,

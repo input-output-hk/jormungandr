@@ -102,7 +102,7 @@ pub fn get_headers_incorrect_hash() {
     assert_eq!(
         MockClientError::InvalidRequest(format!(
             "not found (block {} is not known to this node)",
-            fake_hash.to_string()
+            fake_hash
         )),
         setup.client.headers(&[fake_hash]).err().unwrap(),
         "wrong error"
@@ -126,7 +126,7 @@ pub fn get_blocks_incorrect_hash() {
     assert_eq!(
         MockClientError::InvalidRequest(format!(
             "not found (block {} is not known to this node)",
-            fake_hash.to_string()
+            fake_hash
         )),
         setup.client.headers(&[fake_hash]).err().unwrap(),
         "wrong error"
