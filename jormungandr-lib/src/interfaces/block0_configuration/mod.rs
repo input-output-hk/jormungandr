@@ -220,6 +220,10 @@ mod test {
         }
 
         fn block0_configuration_to_block_from_block(block0_configuration: Block0Configuration) -> TestResult {
+            // it is intentionally because we do not have a strict order for initial_tokens
+            let mut block0_configuration = block0_configuration;
+            block0_configuration.initial_tokens.clear(); 
+
             let block = block0_configuration.to_block();
             let block0_configuration_dec = Block0Configuration::from_block(&block).unwrap();
 
