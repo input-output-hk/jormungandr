@@ -577,9 +577,9 @@ impl Debug for ClientMsg {
 /// General Block Message for the block task
 pub enum BlockMsg {
     /// A trusted Block has been received from the leadership task
-    LeadershipBlock(LeadershipBlock),
+    LeadershipBlock(Box<LeadershipBlock>),
     /// A untrusted block Header has been received from the network task
-    AnnouncedBlock(Header, Address),
+    AnnouncedBlock(Box<Header>, Address),
     /// A stream of untrusted blocks has been received from the network task.
     NetworkBlocks(RequestStreamHandle<Block, ()>),
     /// The stream of headers for missing chain blocks has been received
@@ -591,7 +591,7 @@ pub enum BlockMsg {
 /// Propagation requests for the network task.
 #[derive(Debug)]
 pub enum PropagateMsg {
-    Block(Header),
+    Block(Box<Header>),
     Fragment(Fragment),
     Gossip(Peer, Gossips),
 }
@@ -599,7 +599,7 @@ pub enum PropagateMsg {
 /// Messages to the network task.
 #[derive(Debug)]
 pub enum NetworkMsg {
-    Propagate(PropagateMsg),
+    Propagate(Box<PropagateMsg>),
     GetBlocks(Vec<HeaderHash>),
     GetNextBlock(Address, HeaderHash),
     PullHeaders {
@@ -623,7 +623,7 @@ pub enum TopologyMsg {
 
 /// Messages to the explorer task
 pub enum ExplorerMsg {
-    NewBlock(Block),
+    NewBlock(Box<Block>),
     NewTip(HeaderHash),
 }
 

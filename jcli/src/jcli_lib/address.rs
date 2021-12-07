@@ -145,10 +145,7 @@ fn mk_discrimination(testing: bool) -> Discrimination {
 
 fn mk_address(prefix: &str, discrimination: Discrimination, kind: Kind) {
     let address = chain_addr::Address(discrimination, kind);
-    println!(
-        "{}",
-        AddressReadable::from_address(prefix, &address).to_string()
-    );
+    println!("{}", AddressReadable::from_address(prefix, &address));
 }
 
 fn mk_address_1<A, F>(prefix: &str, s: PublicKey<A>, testing: bool, f: F)

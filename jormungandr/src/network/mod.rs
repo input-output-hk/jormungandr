@@ -317,7 +317,7 @@ async fn handle_network_input(
         tracing::trace!("handling new network task item");
         match msg {
             NetworkMsg::Propagate(msg) => {
-                handle_propagation_msg(msg, state.clone(), channels.clone())
+                handle_propagation_msg(*msg, state.clone(), channels.clone())
                     .await
                     .unwrap_or_else(|e| tracing::error!("Error while propagating message: {}", e));
             }

@@ -57,7 +57,7 @@ impl<'a> From<&'a InitialTokens> for Vec<Fragment> {
 fn pack_in_fragments(
     token_id: &TokenIdentifier,
     policy: &MintingPolicy,
-    to: &Vec<Destination>,
+    to: &[Destination],
 ) -> Vec<Fragment> {
     let token_id: identifier::TokenIdentifier = token_id.clone().into();
     to.iter()

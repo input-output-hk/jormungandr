@@ -79,7 +79,7 @@ pub fn try_initial_fragment_from_message(message: &Fragment) -> Result<Option<In
     }
 }
 
-fn try_extend_inits_with_tx<'a>(tx: &TransactionSlice<'a, NoExtra>) -> Result<Initial, Error> {
+fn try_extend_inits_with_tx(tx: &TransactionSlice<NoExtra>) -> Result<Initial, Error> {
     if tx.nb_inputs() != 0 {
         return Err(Error::InitUtxoHasInput);
     }

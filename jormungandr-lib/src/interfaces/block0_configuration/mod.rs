@@ -233,6 +233,10 @@ mod test {
         fn block0_configuration_to_serialize(block0_configuration: Block0Configuration) -> TestResult {
             use chain_core::property::{Serialize as _, Deserialize as _};
 
+            // it is intentionally because we do not have a strict order for initial_tokens
+            let mut block0_configuration = block0_configuration;
+            block0_configuration.initial_tokens.clear();
+
             let block = block0_configuration.to_block();
 
             let bytes = block.serialize_as_vec().unwrap();

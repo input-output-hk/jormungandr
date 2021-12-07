@@ -32,21 +32,16 @@ impl NodeConfigBuilder {
     pub fn new() -> NodeConfigBuilder {
         let rest_port = super::get_available_port();
         let public_address_port = super::get_available_port();
-        let grpc_public_address: Multiaddr = format!(
-            "/ip4/{}/tcp/{}",
-            DEFAULT_HOST,
-            public_address_port.to_string()
-        )
-        .parse()
-        .unwrap();
+        let grpc_public_address: Multiaddr =
+            format!("/ip4/{}/tcp/{}", DEFAULT_HOST, public_address_port)
+                .parse()
+                .unwrap();
 
         NodeConfigBuilder {
             storage: None,
             log: None,
             rest: Rest {
-                listen: format!("{}:{}", DEFAULT_HOST, rest_port.to_string())
-                    .parse()
-                    .unwrap(),
+                listen: format!("{}:{}", DEFAULT_HOST, rest_port).parse().unwrap(),
                 tls: None,
                 cors: None,
             },
