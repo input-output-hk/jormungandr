@@ -136,32 +136,6 @@ pub fn test_make_witness_with_non_existing_private_key_file_fails() {
 }
 
 #[test]
-#[cfg(not(target_os = "linux"))]
-pub fn test_make_witness_with_readonly_private_key_file_fails() {
-    use jortestkit::file::make_readonly;
-    let jcli: JCli = Default::default();
-    let receiver = startup::create_new_utxo_address();
-    let mut transaction_wrapper = JCli::default().transaction_builder(TestGen::hash().into());
-    let private_key = jcli.key().generate_default();
-    transaction_wrapper
-        .new_transaction()
-        .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, "100")
-        .add_output(&receiver.address_bech32(Discrimination::Test), 100.into())
-        .set_expiry_date(BlockDate::first().into())
-        .finalize();
-    let witness = Witness::new(
-        transaction_wrapper.staging_dir(),
-        &FAKE_GENESIS_HASH,
-        &FAKE_INPUT_TRANSACTION_ID,
-        "utxo",
-        &private_key,
-        None,
-    );
-    make_readonly(&witness.private_key_path);
-    transaction_wrapper.make_witness_expect_fail(&witness, "denied");
-}
-
-#[test]
 pub fn test_account_transaction_different_lane_is_accepted() {
     let receiver = startup::create_new_utxo_address();
 
