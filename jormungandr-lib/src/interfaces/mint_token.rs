@@ -6,7 +6,7 @@ use chain_impl_mockchain::{
     tokens::{identifier, minting_policy, name},
 };
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, str::FromStr};
+use std::convert::TryFrom;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct TokenName(name::TokenName);
@@ -88,8 +88,7 @@ impl<'de> Deserialize<'de> for TokenIdentifier {
         if deserializer.is_human_readable() {
             let s = String::deserialize(deserializer)?;
             Ok(Self(
-                identifier::TokenIdentifier::from_str(&s)
-                    .map_err(<D::Error as serde::de::Error>::custom)?,
+                s.parse().map_err(<D::Error as serde::de::Error>::custom)?,
             ))
         } else {
             let bytes = <Vec<u8>>::deserialize(deserializer)?;

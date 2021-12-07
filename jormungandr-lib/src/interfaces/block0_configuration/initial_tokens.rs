@@ -11,13 +11,19 @@ use chain_impl_mockchain::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Destination {
+    address: Identifier,
+    value: Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub struct InitialTokens {
     token_id: TokenIdentifier,
     // TODO add a serde implementation for the MintingPolicy when it will be well specified
     #[serde(skip)]
     policy: MintingPolicy,
-    to: Vec<(Identifier, Value)>,
+    to: Vec<Destination>,
 }
 
 pub fn initial_tokens_from_messages(message: &Fragment) -> Option<InitialTokens> {
@@ -32,7 +38,10 @@ pub fn initial_tokens_from_messages(message: &Fragment) -> Option<InitialTokens>
             Some(InitialTokens {
                 token_id: token_id.into(),
                 policy: mint_token.policy.into(),
-                to: vec![(mint_token.to.into(), mint_token.value.into())],
+                to: vec![Destination {
+                    address: mint_token.to.into(),
+                    value: mint_token.value.into(),
+                }],
             })
         }
         _ => None,
@@ -48,16 +57,16 @@ impl<'a> From<&'a InitialTokens> for Vec<Fragment> {
 fn pack_in_fragments(
     token_id: &TokenIdentifier,
     policy: &MintingPolicy,
-    to: &Vec<(Identifier, Value)>,
+    to: &Vec<Destination>,
 ) -> Vec<Fragment> {
     let token_id: identifier::TokenIdentifier = token_id.clone().into();
     to.iter()
-        .map(|(account, value)| {
+        .map(|to| {
             let mint_token = certificate::MintToken {
                 name: token_id.token_name.clone(),
                 policy: policy.clone().into(),
-                to: (*account).to_inner(),
-                value: (*value).into(),
+                to: to.address.to_inner(),
+                value: to.value.into(),
             };
             Fragment::MintToken(Transaction::block0_payload(&mint_token, &()))
         })
@@ -68,6 +77,15 @@ fn pack_in_fragments(
 mod test {
     use super::*;
     use quickcheck::Arbitrary;
+
+    impl Arbitrary for Destination {
+        fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+            Self {
+                address: Arbitrary::arbitrary(g),
+                value: Arbitrary::arbitrary(g),
+            }
+        }
+    }
 
     impl Arbitrary for InitialTokens {
         fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {

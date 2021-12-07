@@ -204,14 +204,10 @@ initial:
   # Initial deposits present in the blockchain
   - fund:
       # UTxO addresses or account
-      - address: {initial_funds_address}
+      - address: {initial_funds_address_1}
         value: 10000
-
-  # Initial token distribution present in the blockchain
-  - token:
-      name: "7e5d6abc"
-      to: {initial_funds_account_identifier}
-      value: 100
+      - address: {initial_funds_address_2}
+        value: 10000
 
   # Initial certificates
   #- cert: ..
@@ -221,3 +217,20 @@ initial:
   #    # Legacy Cardano address
   #    - address: 48mDfYyQn21iyEPzCfkATEHTwZBcZJqXhRJezmswfvc6Ne89u1axXsiazmgd7SwT8VbafbVnCvyXhBSMhSkPiCezMkqHC4dmxRahRC86SknFu6JF6hwSg8
   #      value: 123
+
+# Initial token distribution
+initial_tokens:
+  - token_id: 00000000000000000000000000000000000000000000000000000000.7e5d6abc
+    to:
+      - address: {initial_funds_account_identifier_1}
+        value: 150
+      - address: {initial_funds_account_identifier_2}
+        value: 255
+  - token_id: 00000000000000000000000000000000000000000000000000000000.6c1e8abc
+    to:
+      - address: {initial_funds_account_identifier_1}
+        value: 22
+      - address: {initial_funds_account_identifier_2}
+        value: 66
+    
+

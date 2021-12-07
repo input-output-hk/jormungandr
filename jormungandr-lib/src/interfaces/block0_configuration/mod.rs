@@ -139,15 +139,25 @@ pub fn block0_configuration_documented_example() -> String {
 
     const DISCRIMINATION: chain_addr::Discrimination = chain_addr::Discrimination::Test;
 
-    let sk: SecretKey<Ed25519> = SecretKey::generate(&mut rng);
-    let pk: PublicKey<Ed25519> = sk.to_public();
+    let sk1: SecretKey<Ed25519> = SecretKey::generate(&mut rng);
+    let pk1: PublicKey<Ed25519> = sk1.to_public();
+
+    let sk2: SecretKey<Ed25519> = SecretKey::generate(&mut rng);
+    let pk2: PublicKey<Ed25519> = sk2.to_public();
+
     let leader_1: KeyPair<Ed25519> = KeyPair::generate(&mut rng);
     let leader_2: KeyPair<Ed25519> = KeyPair::generate(&mut rng);
 
-    let initial_funds_address =
-        chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Account(pk.clone()));
-    let initial_funds_address = crate::interfaces::Address::from(initial_funds_address);
-    let initial_funds_account_identifier_pk = pk.to_bech32_str();
+    let initial_funds_address_1 =
+        chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Account(pk1.clone()));
+    let initial_funds_address_1 = crate::interfaces::Address::from(initial_funds_address_1);
+    let initial_funds_account_identifier_pk_1 = pk1.to_bech32_str();
+
+    let initial_funds_address_2 =
+        chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Account(pk2.clone()));
+    let initial_funds_address_2 = crate::interfaces::Address::from(initial_funds_address_2);
+    let initial_funds_account_identifier_pk_2 = pk2.to_bech32_str();
+
     let leader_1_pk = leader_1.public_key().to_bech32_str();
     let leader_2_pk = leader_2.public_key().to_bech32_str();
 
@@ -164,8 +174,10 @@ pub fn block0_configuration_documented_example() -> String {
         default_proposal_expiration = ProposalExpiration::default(),
         leader_1 = leader_1_pk,
         leader_2 = leader_2_pk,
-        initial_funds_address = initial_funds_address,
-        initial_funds_account_identifier = initial_funds_account_identifier_pk
+        initial_funds_address_1 = initial_funds_address_1,
+        initial_funds_address_2 = initial_funds_address_2,
+        initial_funds_account_identifier_1 = initial_funds_account_identifier_pk_1,
+        initial_funds_account_identifier_2 = initial_funds_account_identifier_pk_2
     )
 }
 
