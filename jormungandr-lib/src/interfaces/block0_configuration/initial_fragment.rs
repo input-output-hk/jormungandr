@@ -57,6 +57,8 @@ pub enum Error {
     Block0MessageUnexpected,
     #[error("invalid address type for initializing tokens, should be 'Account' or 'Single' ")]
     TokenInvalidAddressType,
+    #[error("invalid token identifier, mintinting policy hash mismatch")]
+    TokenIdentifierMintingPolicyHashMismatch,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -262,6 +264,11 @@ fn pack_tokens_in_mint_token_fragments(token: &InitialToken) -> Result<Vec<Fragm
                 to: to.clone().into(),
                 value: destination.value.into(),
             };
+
+            if mint_token.policy.hash() != token_id.policy_hash {
+                return Err(Error::TokenIdentifierMintingPolicyHashMismatch);
+            }
+
             Ok(Fragment::MintToken(Transaction::block0_payload(
                 &mint_token,
                 &(),
