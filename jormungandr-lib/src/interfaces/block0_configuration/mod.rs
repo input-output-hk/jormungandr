@@ -81,10 +81,12 @@ impl Block0Configuration {
             _ => return Err(Block0ConfigurationError::FirstBlock0MessageNotInit),
         };
 
+        let discrimination = blockchain_configuration.discrimination;
+
         Ok(Block0Configuration {
             blockchain_configuration,
             initial: messages
-                .map(try_initial_fragment_from_message)
+                .map(|message| try_initial_fragment_from_message(discrimination, message))
                 .collect::<Result<Vec<_>, _>>()?,
         })
     }
@@ -94,8 +96,8 @@ impl Block0Configuration {
         content_builder.push(Fragment::Initial(
             self.blockchain_configuration.clone().into(),
         ));
-        for fragments in self.initial.iter().map(<Vec<Fragment>>::from) {
-            content_builder.push_many(fragments);
+        for fragments in self.initial.iter().map(<Vec<Fragment>>::try_from) {
+            content_builder.push_many(fragments.unwrap());
         }
         let content = content_builder.into();
         block::builder(BlockVersion::Genesis, content, |hdr| {
@@ -130,14 +132,12 @@ pub fn block0_configuration_documented_example() -> String {
     let leader_2: KeyPair<Ed25519> = KeyPair::generate(&mut rng);
 
     let initial_funds_address_1 =
-        chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Account(pk1.clone()));
+        chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Account(pk1));
     let initial_funds_address_1 = crate::interfaces::Address::from(initial_funds_address_1);
-    let initial_funds_account_identifier_pk_1 = pk1.to_bech32_str();
 
     let initial_funds_address_2 =
-        chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Account(pk2.clone()));
+        chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Account(pk2));
     let initial_funds_address_2 = crate::interfaces::Address::from(initial_funds_address_2);
-    let initial_funds_account_identifier_pk_2 = pk2.to_bech32_str();
 
     let leader_1_pk = leader_1.public_key().to_bech32_str();
     let leader_2_pk = leader_2.public_key().to_bech32_str();
@@ -157,8 +157,6 @@ pub fn block0_configuration_documented_example() -> String {
         leader_2 = leader_2_pk,
         initial_funds_address_1 = initial_funds_address_1,
         initial_funds_address_2 = initial_funds_address_2,
-        initial_funds_account_identifier_1 = initial_funds_account_identifier_pk_1,
-        initial_funds_account_identifier_2 = initial_funds_account_identifier_pk_2
     )
 }
 

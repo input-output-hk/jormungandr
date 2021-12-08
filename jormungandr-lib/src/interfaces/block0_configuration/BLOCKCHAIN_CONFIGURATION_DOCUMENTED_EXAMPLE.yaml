@@ -212,16 +212,16 @@ initial:
   - token:
       token_id: 00000000000000000000000000000000000000000000000000000000.7e5d6abc
       to:
-        - address: {initial_funds_account_identifier_1}
+        - address: {initial_funds_address_1}
           value: 150
-        - address: {initial_funds_account_identifier_2}
+        - address: {initial_funds_address_2}
           value: 255
   - token:
       token_id: 00000000000000000000000000000000000000000000000000000000.6c1e8abc
       to:
-        - address: {initial_funds_account_identifier_1}
+        - address: {initial_funds_address_1}
           value: 22
-        - address: {initial_funds_account_identifier_2}
+        - address: {initial_funds_address_2}
           value: 66
 
   # Initial certificates

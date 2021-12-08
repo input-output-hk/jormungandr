@@ -1,10 +1,10 @@
-use crate::{
-    crypto::account::Identifier,
-    interfaces::{
-        mint_token::{MintingPolicy, TokenIdentifier},
-        Address, OldAddress, SignedCertificate, Value,
-    },
+use std::convert::TryFrom;
+
+use crate::interfaces::{
+    mint_token::{MintingPolicy, TokenIdentifier},
+    Address, OldAddress, SignedCertificate, Value,
 };
+use chain_addr::{Discrimination, Kind};
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate,
@@ -55,11 +55,13 @@ pub enum Error {
     InitUtxoHasInput,
     #[error("non-first message of block 0 has unexpected type")]
     Block0MessageUnexpected,
+    #[error("invalid address type for initializing tokens, should be 'Account' or 'Single' ")]
+    TokenInvalidAddressType,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Destination {
-    address: Identifier,
+    address: Address,
     value: Value,
 }
 
@@ -72,7 +74,10 @@ pub struct InitialToken {
     to: Vec<Destination>,
 }
 
-pub fn try_initial_fragment_from_message(message: &Fragment) -> Result<Initial, Error> {
+pub fn try_initial_fragment_from_message(
+    discrimination: Discrimination,
+    message: &Fragment,
+) -> Result<Initial, Error> {
     match message {
         Fragment::Transaction(tx) => Ok(try_extend_inits_with_tx(&tx.as_slice())?),
         Fragment::OldUtxoDeclaration(utxo) => Ok(extend_inits_with_legacy_utxo(utxo)),
@@ -111,7 +116,11 @@ pub fn try_initial_fragment_from_message(message: &Fragment) -> Result<Initial, 
                 token_id: token_id.into(),
                 policy: mint_token.policy.into(),
                 to: vec![Destination {
-                    address: mint_token.to.into(),
+                    address: chain_addr::Address(
+                        discrimination,
+                        chain_addr::Kind::Account(mint_token.to.into()),
+                    )
+                    .into(),
                     value: mint_token.value.into(),
                 }],
             }))
@@ -150,12 +159,13 @@ fn extend_inits_with_legacy_utxo(utxo_decl: &UtxoDeclaration) -> Initial {
     Initial::LegacyFund(inits)
 }
 
-impl<'a> From<&'a Initial> for Vec<Fragment> {
-    fn from(initial: &'a Initial) -> Vec<Fragment> {
+impl<'a> TryFrom<&'a Initial> for Vec<Fragment> {
+    type Error = Error;
+    fn try_from(initial: &'a Initial) -> Result<Self, Self::Error> {
         match initial {
-            Initial::Fund(utxo) => pack_utxo_in_message(utxo),
-            Initial::Cert(cert) => pack_certificate_in_empty_tx_fragment(cert),
-            Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(utxo),
+            Initial::Fund(utxo) => Ok(pack_utxo_in_message(utxo)),
+            Initial::Cert(cert) => Ok(pack_certificate_in_empty_tx_fragment(cert)),
+            Initial::LegacyFund(utxo) => Ok(pack_legacy_utxo_in_message(utxo)),
             Initial::Token(token) => pack_tokens_in_mint_token_fragments(token),
         }
     }
@@ -231,7 +241,7 @@ fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Vec<Fragme
     }]
 }
 
-fn pack_tokens_in_mint_token_fragments(token: &InitialToken) -> Vec<Fragment> {
+fn pack_tokens_in_mint_token_fragments(token: &InitialToken) -> Result<Vec<Fragment>, Error> {
     let InitialToken {
         token_id,
         policy,
@@ -239,21 +249,31 @@ fn pack_tokens_in_mint_token_fragments(token: &InitialToken) -> Vec<Fragment> {
     } = token;
     let token_id: identifier::TokenIdentifier = token_id.clone().into();
     to.iter()
-        .map(|to| {
+        .map(|destination| {
+            let to = match &destination.address.1 .1 {
+                Kind::Account(pk) => pk,
+                Kind::Single(pk) => pk,
+                _ => return Err(Error::TokenInvalidAddressType),
+            };
+
             let mint_token = certificate::MintToken {
                 name: token_id.token_name.clone(),
                 policy: policy.clone().into(),
-                to: to.address.to_inner(),
-                value: to.value.into(),
+                to: to.clone().into(),
+                value: destination.value.into(),
             };
-            Fragment::MintToken(Transaction::block0_payload(&mint_token, &()))
+            Ok(Fragment::MintToken(Transaction::block0_payload(
+                &mint_token,
+                &(),
+            )))
         })
-        .collect()
+        .collect::<Result<Vec<_>, _>>()
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::crypto::key::KeyPair;
     use crate::interfaces::ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
@@ -306,8 +326,15 @@ mod test {
 
     impl Arbitrary for Destination {
         fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+            let kp: KeyPair<chain_crypto::Ed25519> = KeyPair::arbitrary(g);
+            let pk: chain_crypto::PublicKey<chain_crypto::Ed25519> =
+                kp.identifier().into_public_key();
+
+            let mut address = Address::arbitrary(g);
+            address.1 = chain_addr::Address(address.1 .0, chain_addr::Kind::Account(pk));
+
             Self {
-                address: Arbitrary::arbitrary(g),
+                address,
                 value: Arbitrary::arbitrary(g),
             }
         }

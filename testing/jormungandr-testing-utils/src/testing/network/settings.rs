@@ -335,10 +335,12 @@ impl Settings {
             self.vote_plans
                 .insert(vote_plan_key.clone(), vote_plan_settings);
         }
+
+        let disctimination = self.block0.blockchain_configuration.discrimination;
         self.block0.initial.extend(
             vote_plans_fragments
                 .iter()
-                .map(|message| try_initial_fragment_from_message(message).unwrap()),
+                .map(|message| try_initial_fragment_from_message(disctimination, message).unwrap()),
         )
     }
 
