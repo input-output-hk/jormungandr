@@ -84,7 +84,7 @@ impl Block0Configuration {
         Ok(Block0Configuration {
             blockchain_configuration,
             initial: messages
-                .map(|message| try_initial_fragment_from_message(message))
+                .map(try_initial_fragment_from_message)
                 .collect::<Result<Vec<_>, _>>()?,
         })
     }
