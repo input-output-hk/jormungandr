@@ -21,7 +21,7 @@ pub use self::fees_go_to::FeesGoTo;
 pub use self::fees_go_to::TryFromFeesGoToError;
 pub use self::initial_config::{BlockchainConfiguration, ConsensusVersionDef, DiscriminationDef};
 pub use self::initial_fragment::{
-    try_initials_vec_from_messages, Initial, InitialUTxO, LegacyUTxO,
+    try_initial_fragment_from_message, Initial, InitialUTxO, LegacyUTxO,
 };
 pub use self::kes_update_speed::KesUpdateSpeed;
 pub use self::kes_update_speed::TryFromKesUpdateSpeedError;
@@ -81,9 +81,13 @@ impl Block0Configuration {
             _ => return Err(Block0ConfigurationError::FirstBlock0MessageNotInit),
         };
 
+        let discrimination = blockchain_configuration.discrimination;
+
         Ok(Block0Configuration {
             blockchain_configuration,
-            initial: initial_fragment::try_initials_vec_from_messages(messages)?,
+            initial: messages
+                .map(|message| try_initial_fragment_from_message(discrimination, message))
+                .collect::<Result<Vec<_>, _>>()?,
         })
     }
 
@@ -92,7 +96,9 @@ impl Block0Configuration {
         content_builder.push(Fragment::Initial(
             self.blockchain_configuration.clone().into(),
         ));
-        content_builder.push_many(self.initial.iter().map(Fragment::from));
+        for fragments in self.initial.iter().map(<Vec<Fragment>>::try_from) {
+            content_builder.push_many(fragments.unwrap());
+        }
         let content = content_builder.into();
         block::builder(BlockVersion::Genesis, content, |hdr| {
             let r: Result<Header, Infallible> = Ok(hdr
@@ -116,13 +122,23 @@ pub fn block0_configuration_documented_example() -> String {
 
     const DISCRIMINATION: chain_addr::Discrimination = chain_addr::Discrimination::Test;
 
-    let sk: SecretKey<Ed25519> = SecretKey::generate(&mut rng);
-    let pk: PublicKey<Ed25519> = sk.to_public();
+    let sk1: SecretKey<Ed25519> = SecretKey::generate(&mut rng);
+    let pk1: PublicKey<Ed25519> = sk1.to_public();
+
+    let sk2: SecretKey<Ed25519> = SecretKey::generate(&mut rng);
+    let pk2: PublicKey<Ed25519> = sk2.to_public();
+
     let leader_1: KeyPair<Ed25519> = KeyPair::generate(&mut rng);
     let leader_2: KeyPair<Ed25519> = KeyPair::generate(&mut rng);
 
-    let initial_funds_address = chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Single(pk));
-    let initial_funds_address = crate::interfaces::Address::from(initial_funds_address);
+    let initial_funds_address_1 =
+        chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Account(pk1));
+    let initial_funds_address_1 = crate::interfaces::Address::from(initial_funds_address_1);
+
+    let initial_funds_address_2 =
+        chain_addr::Address(DISCRIMINATION, chain_addr::Kind::Account(pk2));
+    let initial_funds_address_2 = crate::interfaces::Address::from(initial_funds_address_2);
+
     let leader_1_pk = leader_1.public_key().to_bech32_str();
     let leader_2_pk = leader_2.public_key().to_bech32_str();
 
@@ -139,7 +155,8 @@ pub fn block0_configuration_documented_example() -> String {
         default_proposal_expiration = ProposalExpiration::default(),
         leader_1 = leader_1_pk,
         leader_2 = leader_2_pk,
-        initial_funds_address = initial_funds_address
+        initial_funds_address_1 = initial_funds_address_1,
+        initial_funds_address_2 = initial_funds_address_2,
     )
 }
 

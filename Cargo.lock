@@ -613,7 +613,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#b2ec99289f03f69118525fff82a92f75069b3fce"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "chain-core",
  "chain-crypto",
  "const_format",
