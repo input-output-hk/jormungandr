@@ -55,6 +55,21 @@ impl<'de> Deserialize<'de> for TokenName {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenIdentifier(identifier::TokenIdentifier);
 
+impl PartialOrd for TokenIdentifier {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0
+            .token_name
+            .as_ref()
+            .partial_cmp(other.0.token_name.as_ref())
+    }
+}
+
+impl Ord for TokenIdentifier {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.token_name.as_ref().cmp(other.0.token_name.as_ref())
+    }
+}
+
 impl From<identifier::TokenIdentifier> for TokenIdentifier {
     fn from(val: identifier::TokenIdentifier) -> Self {
         Self(val)

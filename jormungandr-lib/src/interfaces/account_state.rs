@@ -1,7 +1,9 @@
 use crate::{crypto::hash::Hash, interfaces::Value};
 use chain_impl_mockchain::{accounting::account, block::Epoch};
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
+use std::{collections::BTreeMap, convert::TryInto};
+
+use super::mint_token::TokenIdentifier;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct DelegationType {
@@ -83,11 +85,12 @@ impl LastRewards {
 ///
 /// [`UTxOInfo`]: ./struct.UTxOInfo.html
 ///
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AccountState {
     delegation: DelegationType,
     value: Value,
     counters: Vec<u32>,
+    tokens: BTreeMap<TokenIdentifier, Value>,
     last_rewards: LastRewards,
 }
 
@@ -154,6 +157,16 @@ impl<E> From<account::AccountState<E>> for AccountState {
                 .into_iter()
                 .map(Into::into)
                 .collect(),
+            tokens: account
+                .tokens
+                .iter()
+                .map(|(identifier, value)| {
+                    (
+                        TokenIdentifier::from(identifier.clone()),
+                        Value::from(*value),
+                    )
+                })
+                .collect(),
             last_rewards: account.last_rewards.into(),
         }
     }
@@ -169,6 +182,16 @@ impl<'a, E> From<&'a account::AccountState<E>> for AccountState {
                 .get_valid_counters()
                 .into_iter()
                 .map(Into::into)
+                .collect(),
+            tokens: account
+                .tokens
+                .iter()
+                .map(|(identifier, value)| {
+                    (
+                        TokenIdentifier::from(identifier.clone()),
+                        Value::from(*value),
+                    )
+                })
                 .collect(),
             last_rewards: account.last_rewards.clone().into(),
         }
