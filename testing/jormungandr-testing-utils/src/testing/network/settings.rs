@@ -77,7 +77,6 @@ impl Settings {
                     LinearFee::new(1, 2, 3),
                 ),
                 initial: Vec::new(),
-                initial_tokens: Vec::new(),
             },
             stake_pools: HashMap::new(),
             vote_plans: HashMap::new(),
@@ -339,7 +338,7 @@ impl Settings {
         self.block0.initial.extend(
             vote_plans_fragments
                 .iter()
-                .map(|message| try_initial_fragment_from_message(message).unwrap().unwrap()),
+                .map(|message| try_initial_fragment_from_message(message).unwrap()),
         )
     }
 

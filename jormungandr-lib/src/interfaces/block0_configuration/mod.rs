@@ -5,7 +5,6 @@ mod epoch_stability_depth;
 mod fees_go_to;
 mod initial_config;
 mod initial_fragment;
-mod initial_tokens;
 mod kes_update_speed;
 mod leader_id;
 mod number_of_slots_per_epoch;
@@ -24,7 +23,6 @@ pub use self::initial_config::{BlockchainConfiguration, ConsensusVersionDef, Dis
 pub use self::initial_fragment::{
     try_initial_fragment_from_message, Initial, InitialUTxO, LegacyUTxO,
 };
-pub use self::initial_tokens::{initial_tokens_from_messages, InitialTokens};
 pub use self::kes_update_speed::KesUpdateSpeed;
 pub use self::kes_update_speed::TryFromKesUpdateSpeedError;
 pub use self::leader_id::ConsensusLeaderId;
@@ -62,9 +60,6 @@ pub struct Block0Configuration {
     /// * initial certificates (delegation, stake pool...)
     #[serde(default)]
     pub initial: Vec<Initial>,
-
-    /// the initial token distribution
-    pub initial_tokens: Vec<InitialTokens>,
 }
 
 #[derive(Debug, Error)]
@@ -75,8 +70,6 @@ pub enum Block0ConfigurationError {
     BlockchainConfiguration(#[from] initial_config::FromConfigParamsError),
     #[error("Invalid fragments")]
     InitialFragments(#[from] initial_fragment::Error),
-    #[error("non-first message of block 0 has unexpected type")]
-    Block0MessageUnexpected,
 }
 
 impl Block0Configuration {
@@ -88,22 +81,11 @@ impl Block0Configuration {
             _ => return Err(Block0ConfigurationError::FirstBlock0MessageNotInit),
         };
 
-        let mut initial = Vec::new();
-        let mut initial_tokens = Vec::new();
-        for message in messages {
-            match try_initial_fragment_from_message(message)? {
-                Some(val) => initial.push(val),
-                None => match initial_tokens_from_messages(message) {
-                    Some(val) => initial_tokens.push(val),
-                    None => return Err(Block0ConfigurationError::Block0MessageUnexpected),
-                },
-            }
-        }
-
         Ok(Block0Configuration {
             blockchain_configuration,
-            initial,
-            initial_tokens,
+            initial: messages
+                .map(|message| try_initial_fragment_from_message(message))
+                .collect::<Result<Vec<_>, _>>()?,
         })
     }
 
@@ -112,9 +94,8 @@ impl Block0Configuration {
         content_builder.push(Fragment::Initial(
             self.blockchain_configuration.clone().into(),
         ));
-        content_builder.push_many(self.initial.iter().map(Fragment::from));
-        for tokens in self.initial_tokens.iter().map(<Vec<Fragment>>::from) {
-            content_builder.push_many(tokens);
+        for fragments in self.initial.iter().map(<Vec<Fragment>>::from) {
+            content_builder.push_many(fragments);
         }
         let content = content_builder.into();
         block::builder(BlockVersion::Genesis, content, |hdr| {
@@ -198,9 +179,6 @@ mod test {
                 initial: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
                     .take(number_initial)
                     .collect(),
-                initial_tokens: std::iter::repeat_with(|| Arbitrary::arbitrary(g))
-                    .take(number_initial)
-                    .collect(),
             }
         }
     }
@@ -220,10 +198,6 @@ mod test {
         }
 
         fn block0_configuration_to_block_from_block(block0_configuration: Block0Configuration) -> TestResult {
-            // it is intentionally because we do not have a strict order for initial_tokens
-            let mut block0_configuration = block0_configuration;
-            block0_configuration.initial_tokens.clear();
-
             let block = block0_configuration.to_block();
             let block0_configuration_dec = Block0Configuration::from_block(&block).unwrap();
 
@@ -232,10 +206,6 @@ mod test {
 
         fn block0_configuration_to_serialize(block0_configuration: Block0Configuration) -> TestResult {
             use chain_core::property::{Serialize as _, Deserialize as _};
-
-            // it is intentionally because we do not have a strict order for initial_tokens
-            let mut block0_configuration = block0_configuration;
-            block0_configuration.initial_tokens.clear();
 
             let block = block0_configuration.to_block();
 
