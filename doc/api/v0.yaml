@@ -74,6 +74,17 @@ paths:
                     description: Number of transactions performed with this account
                     type: integer
                     minimum: 0
+                  tokens:
+                    description: Current state of the token balances of this account
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        token_id:
+                          type: string
+                        value:
+                          type: integer
+                          minimum: 0
                   last_rewards:
                     description: the last rewards
                     type: object
@@ -104,6 +115,7 @@ paths:
                               ],
                             ],
                         },
+                      'tokens': {'00000000000000000000000000000000000000000000000000000000.6c1e8abc' : 15, "00000000000000000000000000000000000000000000000000000000.7e5d6abc": 22},
                       'last_rewards': { 'epoch': 42, 'reward': 2028 },
                       'value': 990,
                     }
