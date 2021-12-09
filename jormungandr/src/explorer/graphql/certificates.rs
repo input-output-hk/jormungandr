@@ -2,6 +2,7 @@ use super::config_param::ConfigParams;
 use super::error::ApiError;
 use async_graphql::{Context, FieldResult, Object, Union};
 use chain_impl_mockchain::certificate;
+use chain_impl_mockchain::tokens::identifier;
 use std::convert::TryFrom;
 
 use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
@@ -282,8 +283,20 @@ impl UpdateVote {
 
 #[Object]
 impl MintToken {
-    pub async fn name(&self) -> String {
-        format!("{:?}", self.0.name)
+    pub async fn identifier(&self) -> String {
+        identifier::TokenIdentifier {
+            token_name: self.0.name.clone(),
+            policy_hash: self.0.policy.hash(),
+        }
+        .to_string()
+    }
+
+    pub async fn to(&self) -> String {
+        self.0.to.to_string()
+    }
+
+    pub async fn value(&self) -> String {
+        self.0.value.to_string()
     }
 }
 
