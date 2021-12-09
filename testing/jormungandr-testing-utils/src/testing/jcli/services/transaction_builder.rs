@@ -32,6 +32,10 @@ impl TransactionBuilder {
         self.staging_dir.child("transaction.tx")
     }
 
+    pub fn staging_dir(&self) -> &TempDir {
+        &self.staging_dir
+    }
+
     pub fn staging_file_path(&self) -> PathBuf {
         PathBuf::from(self.staging_file().path())
     }
