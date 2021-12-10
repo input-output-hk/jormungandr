@@ -12,7 +12,7 @@ use crate::jormungandr::{
     FragmentNode, FragmentNodeError, LogLevel, MemPoolCheck, RemoteJormungandr,
     RemoteJormungandrBuilder,
 };
-use crate::testing::SyncNode;
+use crate::testing::{collector::OutputCollector, SyncNode};
 use ::multiaddr::Multiaddr;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fee::LinearFee;
@@ -26,6 +26,7 @@ use jormungandr_lib::{
     interfaces::{Block0Configuration, BlockDate, FragmentsProcessingSummary, TrustedPeer},
 };
 use jortestkit::prelude::NamedProcess;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::Path;
@@ -50,9 +51,12 @@ impl From<NodeState> for Status {
     }
 }
 
+// FIX: we use a RefCell because it would be very labor intensive to change
+// the rest of the testing framework to take a mutable reference to the logger
 pub struct JormungandrProcess {
     pub child: Child,
     pub logger: JormungandrLogger,
+    stderr: RefCell<OutputCollector>,
     grpc_client: JormungandrClient,
     temp_dir: Option<TestingDirectory>,
     alias: String,
@@ -71,10 +75,12 @@ impl JormungandrProcess {
         alias: String,
     ) -> Result<Self, StartupError> {
         let stdout = child.stdout.take().unwrap();
+        let stderr = RefCell::new(OutputCollector::new(child.stderr.take().unwrap()));
 
         Ok(JormungandrProcess {
             child,
             temp_dir,
+            stderr,
             alias,
             grpc_client: JormungandrClient::new(node_config.p2p_listen_address()),
             logger: JormungandrLogger::new(stdout),
@@ -257,6 +263,13 @@ impl JormungandrProcess {
                 error_lines: format!("{:?}", error_lines),
             });
         }
+
+        let stderr = self.stderr.borrow_mut().get_available_input().to_vec();
+        if !stderr.is_empty() {
+            return Err(JormungandrError::StdErr {
+                stderr: stderr.join("\n"),
+            });
+        }
         Ok(())
     }
 
@@ -343,10 +356,13 @@ impl Drop for JormungandrProcess {
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
 
-        crate::testing::panic::persist_dir_on_panic(
-            self.temp_dir.take(),
-            vec![("node.log", &self.logger.get_log_content())],
-        );
+        let mut to_persist = vec![("node.log", SyncNode::log_content(self))];
+        let stderr = self.stderr.borrow_mut().take_available_input();
+        if !stderr.is_empty() {
+            to_persist.push(("stderr", stderr.join("\n")));
+        }
+
+        crate::testing::panic::persist_dir_on_panic(self.temp_dir.take(), to_persist);
     }
 }
 
@@ -374,13 +390,24 @@ impl SyncNode for JormungandrProcess {
     }
 
     fn log_content(&self) -> String {
-        self.logger.get_log_content()
+        [
+            self.logger.get_log_content(),
+            self.stderr.borrow_mut().get_available_input().join("\n"),
+        ]
+        .join("\n")
     }
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
         self.logger
             .get_lines_with_level(LogLevel::ERROR)
             .map(|x| x.to_string())
+            .chain(
+                self.stderr
+                    .borrow_mut()
+                    .get_available_input()
+                    .iter()
+                    .map(|s| s.to_string()),
+            )
             .collect()
     }
 

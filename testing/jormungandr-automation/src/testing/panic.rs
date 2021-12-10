@@ -1,10 +1,11 @@
 use crate::jormungandr::TestingDirectory;
+
 use fs_extra::dir::{move_dir, CopyOptions};
 use std::thread::panicking;
 
-pub fn persist_dir_on_panic(
+pub fn persist_dir_on_panic<S: AsRef<str>>(
     temp_dir: Option<TestingDirectory>,
-    additional_contents: Vec<(&str, &str)>,
+    additional_contents: Vec<(&str, S)>,
 ) {
     if panicking() {
         let logs_dir = match tempfile::Builder::new().prefix("jormungandr_").tempdir() {
@@ -31,7 +32,7 @@ pub fn persist_dir_on_panic(
         }
 
         for (filename, content) in additional_contents {
-            std::fs::write(logs_dir.join(filename), content)
+            std::fs::write(logs_dir.join(filename), content.as_ref())
                 .unwrap_or_else(|e| eprint!("Could not write {} to disk: {}", filename, e));
         }
     }

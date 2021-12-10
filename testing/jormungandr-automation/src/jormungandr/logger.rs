@@ -1,4 +1,4 @@
-use crate::testing::Timestamp;
+use crate::testing::{collector::OutputCollector, Timestamp};
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
@@ -8,17 +8,15 @@ use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt;
-use std::io::{BufRead, Read};
+use std::io::Read;
 use std::ops::Index;
-use std::sync::mpsc::{self, Receiver};
-use std::time::Instant;
 use strum::AsRefStr;
 
 // TODO: we use a RefCell because it would be very labor intensive to change
 // the rest of the testing framework to take a mutable reference to the logger
 pub struct JormungandrLogger {
     collected: RefCell<Vec<LogEntry>>,
-    rx: Receiver<(Instant, String)>,
+    collector: RefCell<OutputCollector>,
 }
 
 // The name is used to serialize/deserialize
@@ -201,34 +199,19 @@ impl From<LogEntry> for Timestamp {
 
 impl JormungandrLogger {
     pub fn new<R: Read + Send + 'static>(source: R) -> Self {
-        let (tx, rx) = mpsc::channel();
-        std::thread::spawn(move || {
-            let lines = std::io::BufReader::new(source).lines();
-            for line in lines {
-                tx.send((Instant::now(), line.unwrap())).unwrap();
-            }
-        });
         JormungandrLogger {
-            rx,
+            collector: RefCell::new(OutputCollector::new(source)),
             collected: RefCell::new(Vec::new()),
         }
     }
 
     fn collect_available_input(&self) {
         let collected = &mut self.collected.borrow_mut();
-        let now = Instant::now();
-        while let Ok((time, line)) = self.rx.try_recv() {
-            // we are reading from logs produced by the node, if they are not valid there is something wrong
+        for line in self.collector.borrow_mut().take_available_input() {
             let entry = Self::try_parse_line_as_entry(&line).unwrap();
             // Filter out logs produced by other libraries
             if entry.target.starts_with("jormungandr") {
                 collected.push(entry);
-            }
-            // Stop reading if the are more recent messages available, otherwise
-            // we risk that a very active process could result in endless collection
-            // of its output
-            if time > now {
-                break;
             }
         }
     }
