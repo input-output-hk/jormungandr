@@ -14,6 +14,7 @@ mod fragments_batch;
 mod fragments_processing_summary;
 mod leadership_log;
 mod linear_fee;
+mod mint_token;
 mod old_address;
 mod peer_stats;
 mod ratio;

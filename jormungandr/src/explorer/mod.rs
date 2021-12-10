@@ -128,7 +128,7 @@ impl Explorer {
                         info.spawn_fallible::<_, Error>(
                             "apply block to explorer",
                             async move {
-                                let _state_ref = explorer_db.apply_block(block.clone()).await?;
+                                let _state_ref = explorer_db.apply_block(*block.clone()).await?;
 
                                 let mut guard = tip_candidate.lock().await;
                                 if guard

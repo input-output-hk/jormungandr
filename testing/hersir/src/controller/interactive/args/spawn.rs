@@ -40,9 +40,9 @@ pub struct SpawnPassiveNode {
 }
 
 impl SpawnPassiveNode {
-    pub fn exec(&self, mut controller: &mut UserInteractionController) -> Result<(), Error> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         spawn_node(
-            &mut controller,
+            controller,
             LeadershipMode::Passive,
             self.storage,
             &self.alias,
@@ -136,9 +136,9 @@ fn spawn_node(
 }
 
 impl SpawnLeaderNode {
-    pub fn exec(&self, mut controller: &mut UserInteractionController) -> Result<(), Error> {
+    pub fn exec(&self, controller: &mut UserInteractionController) -> Result<(), Error> {
         spawn_node(
-            &mut controller,
+            controller,
             LeadershipMode::Leader,
             self.storage,
             &self.alias,

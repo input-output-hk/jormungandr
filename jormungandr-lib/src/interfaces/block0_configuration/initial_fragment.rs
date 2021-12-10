@@ -1,9 +1,16 @@
-use crate::interfaces::{Address, OldAddress, SignedCertificate, Value};
+use std::convert::TryFrom;
+
+use crate::interfaces::{
+    mint_token::{MintingPolicy, TokenIdentifier},
+    Address, OldAddress, SignedCertificate, Value,
+};
+use chain_addr::{Discrimination, Kind};
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate,
     fragment::Fragment,
     legacy::UtxoDeclaration,
+    tokens::identifier,
     transaction::{NoExtra, Output, Payload, Transaction, TransactionSlice, TxBuilder},
 };
 use serde::{Deserialize, Serialize};
@@ -16,6 +23,7 @@ pub enum Initial {
     Fund(Vec<InitialUTxO>),
     Cert(SignedCertificate),
     LegacyFund(Vec<LegacyUTxO>),
+    Token(InitialToken),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,56 +51,87 @@ pub struct LegacyUTxO {
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("first message of block 0 is not initial")]
-    FirstBlock0MessageNotInit,
-    #[error("non-first message of block 0 has unexpected type")]
-    Block0MessageUnexpected,
     #[error("initial UTXO has input")]
     InitUtxoHasInput,
+    #[error("non-first message of block 0 has unexpected type")]
+    Block0MessageUnexpected,
+    #[error("invalid address type for initializing tokens, should be 'Account' or 'Single' ")]
+    TokenInvalidAddressType,
+    #[error("invalid token identifier, mintinting policy hash mismatch")]
+    TokenIdentifierMintingPolicyHashMismatch,
 }
 
-pub fn try_initials_vec_from_messages<'a>(
-    messages: impl Iterator<Item = &'a Fragment>,
-) -> Result<Vec<Initial>, Error> {
-    let mut inits = Vec::new();
-    for message in messages {
-        match message {
-            Fragment::Transaction(tx) => try_extend_inits_with_tx(&mut inits, &tx.as_slice())?,
-            Fragment::OldUtxoDeclaration(utxo) => extend_inits_with_legacy_utxo(&mut inits, utxo),
-            Fragment::PoolRegistration(tx) => {
-                let tx = tx.as_slice();
-                let cert = tx.payload().into_payload();
-                let auth = tx.payload_auth().into_payload_auth();
-                let cert = certificate::SignedCertificate::PoolRegistration(cert, auth);
-                inits.push(Initial::Cert(cert.into()))
-            }
-            Fragment::StakeDelegation(tx) => {
-                let tx = tx.as_slice();
-                let cert = tx.payload().into_payload();
-                let auth = tx.payload_auth().into_payload_auth();
-                let cert = certificate::SignedCertificate::StakeDelegation(cert, auth);
-                inits.push(Initial::Cert(cert.into()))
-            }
-            Fragment::VotePlan(tx) => {
-                let tx = tx.as_slice();
-                let cert = tx.payload().into_payload();
-                // the pattern match here is to make sure we are actually expecting the `()`
-                // and that if it changes the compiler will detect it and tell us about the
-                // change so we are reminded of a breaking change
-                let auth = tx.payload_auth().into_payload_auth();
-                let cert = certificate::SignedCertificate::VotePlan(cert, auth);
-                inits.push(Initial::Cert(cert.into()))
-            }
-            _ => return Err(Error::Block0MessageUnexpected),
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Destination {
+    address: Address,
+    value: Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct InitialToken {
+    token_id: TokenIdentifier,
+    // TODO add a serde implementation for the MintingPolicy when it will be well specified
+    #[serde(skip)]
+    policy: MintingPolicy,
+    to: Vec<Destination>,
+}
+
+pub fn try_initial_fragment_from_message(
+    discrimination: Discrimination,
+    message: &Fragment,
+) -> Result<Initial, Error> {
+    match message {
+        Fragment::Transaction(tx) => Ok(try_extend_inits_with_tx(&tx.as_slice())?),
+        Fragment::OldUtxoDeclaration(utxo) => Ok(extend_inits_with_legacy_utxo(utxo)),
+        Fragment::PoolRegistration(tx) => {
+            let tx = tx.as_slice();
+            let cert = tx.payload().into_payload();
+            let auth = tx.payload_auth().into_payload_auth();
+            let cert = certificate::SignedCertificate::PoolRegistration(cert, auth);
+            Ok(Initial::Cert(cert.into()))
         }
+        Fragment::StakeDelegation(tx) => {
+            let tx = tx.as_slice();
+            let cert = tx.payload().into_payload();
+            let auth = tx.payload_auth().into_payload_auth();
+            let cert = certificate::SignedCertificate::StakeDelegation(cert, auth);
+            Ok(Initial::Cert(cert.into()))
+        }
+        Fragment::VotePlan(tx) => {
+            let tx = tx.as_slice();
+            let cert = tx.payload().into_payload();
+            // the pattern match here is to make sure we are actually expecting the `()`
+            // and that if it changes the compiler will detect it and tell us about the
+            // change so we are reminded of a breaking change
+            let auth = tx.payload_auth().into_payload_auth();
+            let cert = certificate::SignedCertificate::VotePlan(cert, auth);
+            Ok(Initial::Cert(cert.into()))
+        }
+        Fragment::MintToken(tx) => {
+            let tx = tx.as_slice();
+            let mint_token = tx.payload().into_payload();
+            let token_id = identifier::TokenIdentifier {
+                token_name: mint_token.name,
+                policy_hash: mint_token.policy.hash(),
+            };
+            Ok(Initial::Token(InitialToken {
+                token_id: token_id.into(),
+                policy: mint_token.policy.into(),
+                to: vec![Destination {
+                    address: chain_addr::Address(
+                        discrimination,
+                        chain_addr::Kind::Account(mint_token.to.into()),
+                    )
+                    .into(),
+                    value: mint_token.value.into(),
+                }],
+            }))
+        }
+        _ => Err(Error::Block0MessageUnexpected),
     }
-    Ok(inits)
 }
 
-fn try_extend_inits_with_tx<'a>(
-    initials: &mut Vec<Initial>,
-    tx: &TransactionSlice<'a, NoExtra>,
-) -> Result<(), Error> {
+fn try_extend_inits_with_tx(tx: &TransactionSlice<NoExtra>) -> Result<Initial, Error> {
     if tx.nb_inputs() != 0 {
         return Err(Error::InitUtxoHasInput);
     }
@@ -100,11 +139,10 @@ fn try_extend_inits_with_tx<'a>(
         address: output.address.clone().into(),
         value: output.value.into(),
     });
-    initials.push(Initial::Fund(inits_iter.collect()));
-    Ok(())
+    Ok(Initial::Fund(inits_iter.collect()))
 }
 
-fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDeclaration) {
+fn extend_inits_with_legacy_utxo(utxo_decl: &UtxoDeclaration) -> Initial {
     if utxo_decl.addrs.is_empty() {
         panic!("old utxo declaration has no element")
     }
@@ -120,20 +158,22 @@ fn extend_inits_with_legacy_utxo(initials: &mut Vec<Initial>, utxo_decl: &UtxoDe
         value: (*value).into(),
     });
     let inits: Vec<_> = inits_iter.collect();
-    initials.push(Initial::LegacyFund(inits))
+    Initial::LegacyFund(inits)
 }
 
-impl<'a> From<&'a Initial> for Fragment {
-    fn from(initial: &'a Initial) -> Fragment {
+impl<'a> TryFrom<&'a Initial> for Vec<Fragment> {
+    type Error = Error;
+    fn try_from(initial: &'a Initial) -> Result<Self, Self::Error> {
         match initial {
-            Initial::Fund(utxo) => pack_utxo_in_message(utxo),
-            Initial::Cert(cert) => pack_certificate_in_empty_tx_fragment(cert),
-            Initial::LegacyFund(utxo) => pack_legacy_utxo_in_message(utxo),
+            Initial::Fund(utxo) => Ok(pack_utxo_in_message(utxo)),
+            Initial::Cert(cert) => Ok(pack_certificate_in_empty_tx_fragment(cert)),
+            Initial::LegacyFund(utxo) => Ok(pack_legacy_utxo_in_message(utxo)),
+            Initial::Token(token) => pack_tokens_in_mint_token_fragments(token),
         }
     }
 }
 
-fn pack_utxo_in_message(v: &[InitialUTxO]) -> Fragment {
+fn pack_utxo_in_message(v: &[InitialUTxO]) -> Vec<Fragment> {
     let outputs: Vec<_> = v.iter().map(|utxo| utxo.to_output()).collect();
 
     if outputs.is_empty() {
@@ -151,10 +191,10 @@ fn pack_utxo_in_message(v: &[InitialUTxO]) -> Fragment {
         .set_ios(&[], &outputs[..])
         .set_witnesses(&[])
         .set_payload_auth(&());
-    Fragment::Transaction(tx)
+    vec![Fragment::Transaction(tx)]
 }
 
-fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Fragment {
+fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Vec<Fragment> {
     if v.is_empty() {
         panic!("cannot create a singular legacy declaration fragment with 0 declaration")
     }
@@ -165,15 +205,15 @@ fn pack_legacy_utxo_in_message(v: &[LegacyUTxO]) -> Fragment {
         .iter()
         .map(|utxo| (utxo.address.clone().into(), utxo.value.into()))
         .collect();
-    Fragment::OldUtxoDeclaration(UtxoDeclaration { addrs })
+    vec![Fragment::OldUtxoDeclaration(UtxoDeclaration { addrs })]
 }
 
 fn empty_auth_tx<P: Payload>(payload: &P, payload_auth: &P::Auth) -> Transaction<P> {
     Transaction::block0_payload(payload, payload_auth)
 }
 
-fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Fragment {
-    match &cert.0 {
+fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Vec<Fragment> {
+    vec![match &cert.0 {
         certificate::SignedCertificate::StakeDelegation(c, a) => {
             Fragment::StakeDelegation(empty_auth_tx(c, a))
         }
@@ -200,12 +240,47 @@ fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Fragment {
         certificate::SignedCertificate::UpdateVote(c, a) => {
             Fragment::UpdateVote(empty_auth_tx(c, a))
         }
-    }
+    }]
+}
+
+fn pack_tokens_in_mint_token_fragments(token: &InitialToken) -> Result<Vec<Fragment>, Error> {
+    let InitialToken {
+        token_id,
+        policy,
+        to,
+    } = token;
+    let token_id: identifier::TokenIdentifier = token_id.clone().into();
+    to.iter()
+        .map(|destination| {
+            let to = match &destination.address.1 .1 {
+                Kind::Account(pk) => pk,
+                Kind::Single(pk) => pk,
+                _ => return Err(Error::TokenInvalidAddressType),
+            };
+
+            let mint_token = certificate::MintToken {
+                name: token_id.token_name.clone(),
+                policy: policy.clone().into(),
+                to: to.clone().into(),
+                value: destination.value.into(),
+            };
+
+            if mint_token.policy.hash() != token_id.policy_hash {
+                return Err(Error::TokenIdentifierMintingPolicyHashMismatch);
+            }
+
+            Ok(Fragment::MintToken(Transaction::block0_payload(
+                &mint_token,
+                &(),
+            )))
+        })
+        .collect::<Result<Vec<_>, _>>()
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::crypto::key::KeyPair;
     use crate::interfaces::ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
@@ -252,6 +327,32 @@ mod test {
             LegacyUTxO {
                 address: Arbitrary::arbitrary(g),
                 value: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for Destination {
+        fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+            let kp: KeyPair<chain_crypto::Ed25519> = KeyPair::arbitrary(g);
+            let pk: chain_crypto::PublicKey<chain_crypto::Ed25519> =
+                kp.identifier().into_public_key();
+
+            let mut address = Address::arbitrary(g);
+            address.1 = chain_addr::Address(address.1 .0, chain_addr::Kind::Account(pk));
+
+            Self {
+                address,
+                value: Arbitrary::arbitrary(g),
+            }
+        }
+    }
+
+    impl Arbitrary for InitialToken {
+        fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+            Self {
+                token_id: Arbitrary::arbitrary(g),
+                policy: Arbitrary::arbitrary(g),
+                to: vec![Arbitrary::arbitrary(g)],
             }
         }
     }

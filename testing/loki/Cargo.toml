@@ -13,5 +13,5 @@ chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.gi
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 serde_yaml = "0.8.21"
-structopt = "0.3.23"
+structopt = "0.3.25"
 thiserror = "1.0"

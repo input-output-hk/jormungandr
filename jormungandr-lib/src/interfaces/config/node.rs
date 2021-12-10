@@ -4,7 +4,7 @@ use crate::multiaddr as multiaddr_utils;
 use crate::time::Duration;
 use chain_crypto::Ed25519;
 use multiaddr::Multiaddr;
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize};
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, net::SocketAddr, path::PathBuf, str::FromStr};
 const DEFAULT_PREFERRED_VIEW_MAX: usize = 20;
 
@@ -37,6 +37,13 @@ pub struct Cors {
     pub allowed_origins: Vec<CorsOrigin>,
     /// If none provided, CORS responses won't be cached
     pub max_age_secs: Option<u64>,
+    /// If none provided, the list is empty, and all preflight with a request header will be
+    /// rejected.
+    #[serde(default)]
+    pub allowed_headers: Vec<HeaderName>,
+    /// If none provided, the list is empty and all preflight requests will be rejected
+    #[serde(default)]
+    pub allowed_methods: Vec<HttpMethod>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, PartialEq, Eq)]
@@ -90,6 +97,85 @@ impl AsRef<str> for CorsOrigin {
 impl From<String> for CorsOrigin {
     fn from(from_str: String) -> Self {
         Self(from_str)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct HeaderName(pub http::header::HeaderName);
+
+impl<'de> Deserialize<'de> for HeaderName {
+    fn deserialize<D>(deserializer: D) -> Result<HeaderName, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct HeaderNameVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for HeaderNameVisitor {
+            type Value = HeaderName;
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a sequence of valid http header names")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                http::header::HeaderName::from_str(value)
+                    .map(HeaderName)
+                    .map_err(serde::de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_str(HeaderNameVisitor)
+    }
+}
+
+impl Serialize for HeaderName {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.0.as_ref())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HttpMethod(pub http::method::Method);
+
+impl<'de> Deserialize<'de> for HttpMethod {
+    fn deserialize<D>(deserializer: D) -> Result<HttpMethod, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct Visitor;
+
+        impl<'de> serde::de::Visitor<'de> for Visitor {
+            type Value = HttpMethod;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("a http method(verb)")
+            }
+
+            fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                http::method::Method::from_str(value)
+                    .map(HttpMethod)
+                    .map_err(serde::de::Error::custom)
+            }
+        }
+
+        deserializer.deserialize_str(Visitor)
+    }
+}
+
+impl Serialize for HttpMethod {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.0.as_ref())
     }
 }
 

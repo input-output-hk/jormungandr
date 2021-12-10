@@ -129,7 +129,9 @@ impl Process {
             let gossip = self.topology.initiate_gossips(&peer.id());
             self.network_msgbox
                 // do not block the current thread to avoid deadlocks
-                .try_send(NetworkMsg::Propagate(PropagateMsg::Gossip(peer, gossip)))
+                .try_send(NetworkMsg::Propagate(Box::new(PropagateMsg::Gossip(
+                    peer, gossip,
+                ))))
                 .unwrap_or_else(|e| {
                     tracing::error!(
                         reason = ?e,

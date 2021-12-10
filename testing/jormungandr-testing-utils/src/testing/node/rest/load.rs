@@ -63,49 +63,49 @@ impl RequestGenerator for RestRequestGen {
         let start = Instant::now();
         match self.next_usize() % 9 {
             0 => {
-                self.rest_client.p2p_available().map_err(|e| {
-                    RequestFailure::General(format!("Rest - p2p_available: {}", e.to_string()))
-                })?;
+                self.rest_client
+                    .p2p_available()
+                    .map_err(|e| RequestFailure::General(format!("Rest - p2p_available: {}", e)))?;
             }
             1 => {
-                self.rest_client.fragment_logs().map_err(|e| {
-                    RequestFailure::General(format!("Rest - fragment_logs: {}", e.to_string()))
-                })?;
+                self.rest_client
+                    .fragment_logs()
+                    .map_err(|e| RequestFailure::General(format!("Rest - fragment_logs: {}", e)))?;
             }
             2 => {
-                self.rest_client.leaders_log().map_err(|e| {
-                    RequestFailure::General(format!("Rest - leaders_log: {}", e.to_string()))
-                })?;
+                self.rest_client
+                    .leaders_log()
+                    .map_err(|e| RequestFailure::General(format!("Rest - leaders_log: {}", e)))?;
             }
             3 => {
                 self.rest_client.reward_history(1).map_err(|e| {
-                    RequestFailure::General(format!("Rest - reward_history: {}", e.to_string()))
+                    RequestFailure::General(format!("Rest - reward_history: {}", e))
                 })?;
             }
             4 => {
                 self.rest_client.vote_plan_statuses().map_err(|e| {
-                    RequestFailure::General(format!("Rest - vote_plan_statuses: {}", e.to_string()))
+                    RequestFailure::General(format!("Rest - vote_plan_statuses: {}", e))
                 })?;
             }
             5 => {
                 self.rest_client.reward_history(1).map_err(|e| {
-                    RequestFailure::General(format!("Rest - reward_history: {}", e.to_string()))
+                    RequestFailure::General(format!("Rest - reward_history: {}", e))
                 })?;
             }
             6 => {
-                self.rest_client.stats().map_err(|e| {
-                    RequestFailure::General(format!("Rest - stats: {}", e.to_string()))
-                })?;
+                self.rest_client
+                    .stats()
+                    .map_err(|e| RequestFailure::General(format!("Rest - stats: {}", e)))?;
             }
             7 => {
-                self.rest_client.network_stats().map_err(|e| {
-                    RequestFailure::General(format!("Rest - network_stats: {}", e.to_string()))
-                })?;
+                self.rest_client
+                    .network_stats()
+                    .map_err(|e| RequestFailure::General(format!("Rest - network_stats: {}", e)))?;
             }
             8 => {
-                self.rest_client.tip().map_err(|e| {
-                    RequestFailure::General(format!("Rest - tip: {}", e.to_string()))
-                })?;
+                self.rest_client
+                    .tip()
+                    .map_err(|e| RequestFailure::General(format!("Rest - tip: {}", e)))?;
             }
             _ => unreachable!(),
         }

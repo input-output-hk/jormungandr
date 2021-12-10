@@ -173,11 +173,7 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
             .into_iter()
             .find(|utxo| *utxo.address() == wallet.address())
             .unwrap_or_else(|| panic!("No UTxO found in block 0 for address '{:?}'", wallet));
-        println!(
-            "Utxo found for address {}: {:?}",
-            wallet.address().to_string(),
-            &utxo
-        );
+        println!("Utxo found for address {}: {:?}", wallet.address(), &utxo);
         utxo
     }
 }

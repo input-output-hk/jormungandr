@@ -30,7 +30,7 @@ pub fn test_all_fragments() {
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[faucet.clone()],
         &[full_delegator.clone(), split_delegator.clone()],
-        &mut ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
+        ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
     )
     .unwrap();
 
@@ -166,7 +166,7 @@ pub fn test_all_adversary_fragments() {
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner.clone()],
         &[full_delegator.clone(), split_delegator, faucet.clone()],
-        &mut ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
+        ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
     )
     .unwrap();
 
@@ -231,7 +231,7 @@ pub fn test_increased_block_content_max_size() {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner.clone()],
         &[],
-        &mut ConfigurationBuilder::new()
+        ConfigurationBuilder::new()
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_block_content_max_size(8192.into()),
     )
@@ -275,7 +275,7 @@ pub fn test_block_content_max_size_below_transaction_size() {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner.clone()],
         &[],
-        &mut ConfigurationBuilder::new()
+        ConfigurationBuilder::new()
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_block_content_max_size(4092.into()),
     )

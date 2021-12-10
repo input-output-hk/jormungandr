@@ -1,6 +1,6 @@
 use reqwest::Certificate;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct RestSettings {
     pub enable_debug: bool,
     pub use_https: bool,
@@ -13,17 +13,6 @@ impl RestSettings {
         RestSettings {
             enable_debug: false,
             use_https: true,
-            certificate: None,
-            cors: None,
-        }
-    }
-}
-
-impl Default for RestSettings {
-    fn default() -> Self {
-        RestSettings {
-            enable_debug: false,
-            use_https: false,
             certificate: None,
             cors: None,
         }

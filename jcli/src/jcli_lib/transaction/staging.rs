@@ -502,6 +502,9 @@ impl Staging {
                         Certificate::VoteCast(vote_cast) => {
                             self.make_fragment(&vote_cast, &(), Fragment::VoteCast)
                         }
+                        Certificate::MintToken(mint_token) => {
+                            self.make_fragment(&mint_token, &(), Fragment::MintToken)
+                        }
                         _ => unreachable!(),
                     },
                 }
