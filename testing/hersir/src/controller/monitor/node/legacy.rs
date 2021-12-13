@@ -7,7 +7,6 @@ use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::FragmentsProcessingSummary;
-use jormungandr_lib::multiaddr;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog},
@@ -105,21 +104,6 @@ impl LegacyNode {
                 alias: self.alias(),
                 e,
             })
-    }
-
-    #[allow(deprecated)]
-    fn ports_are_opened(&self) -> bool {
-        self.port_opened(self.legacy_settings.rest.listen.port())
-            && self.port_opened(
-                multiaddr::to_tcp_socket_addr(&self.legacy_settings.p2p.public_address)
-                    .unwrap()
-                    .port(),
-            )
-    }
-
-    fn port_opened(&self, port: u16) -> bool {
-        use std::net::TcpListener;
-        TcpListener::bind(("127.0.0.1", port)).is_ok()
     }
 
     pub fn logger(&self) -> &JormungandrLogger {

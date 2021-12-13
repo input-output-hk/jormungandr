@@ -1,6 +1,7 @@
 use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
+    node::LogLevel,
     startup,
 };
 
@@ -91,6 +92,7 @@ pub fn test_node_recovers_from_node_restart() {
             value: 100.into(),
         }])
         .with_storage(&temp_dir.child("storage"))
+        .with_log_level(LogLevel::TRACE.to_string())
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
@@ -106,7 +108,7 @@ pub fn test_node_recovers_from_node_restart() {
     let snapshot_before = take_snapshot(&account_receiver, &jormungandr, new_utxo.clone());
     jcli.rest().v0().shutdown(jormungandr.rest_uri());
 
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    std::thread::sleep(std::time::Duration::from_secs(5));
 
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)
@@ -163,6 +165,8 @@ pub fn test_node_recovers_kill_signal() {
     // Wait before stopping so transactions are flushed to disk
     std::thread::sleep(std::time::Duration::from_secs(1));
     jormungandr.stop();
+
+    std::thread::sleep(std::time::Duration::from_secs(5));
 
     let jormungandr = Starter::new()
         .temp_dir(temp_dir)

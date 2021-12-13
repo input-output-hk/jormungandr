@@ -342,6 +342,16 @@ impl JormungandrProcess {
         )
     }
 
+    pub fn ports_are_opened(&self) -> bool {
+        self.port_opened(self.rest_address().port())
+            && self.port_opened(self.p2p_listen_addr().port())
+    }
+
+    fn port_opened(&self, port: u16) -> bool {
+        use std::net::TcpListener;
+        TcpListener::bind(("127.0.0.1", port)).is_ok()
+    }
+
     pub fn to_remote(&self) -> RemoteJormungandr {
         let mut builder = RemoteJormungandrBuilder::new(self.alias.clone());
         builder.with_rest(self.rest_socket_addr);

@@ -155,6 +155,8 @@ pub fn non_existing_folder() {
     )
     .unwrap();
 
+    std::thread::sleep(Duration::from_secs(5)); // give node some time to create the file
+
     let path = persistent_log_path.path();
 
     assert!(path.exists());

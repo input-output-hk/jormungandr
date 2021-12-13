@@ -54,7 +54,7 @@ features = ["blocking", "json", "rustls-tls"]
 
 [features]
 testnet = []
-netwok = []
+network = []
 non-functional = []
 soak = []
 sanity = []

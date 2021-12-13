@@ -109,7 +109,7 @@ pub fn retire_stake_pool_explorer() {
         .send_pool_retire(&mut spo_3, &stake_pool_3, &leader_1)
         .unwrap();
 
-    std::thread::sleep(std::time::Duration::from_secs(70));
+    time::wait_for_date(BlockDate::new(1, 30), leader_1.rest());
 
     let created_block_count = leader_3.logger.get_created_blocks_hashes().len();
     let start_time_no_block = std::time::SystemTime::now();
@@ -136,7 +136,7 @@ pub fn retire_stake_pool_explorer() {
     );
 
     //proof 3: no more minted blocks hashes in logs
-    std::thread::sleep(std::time::Duration::from_secs(60));
+    std::thread::sleep(std::time::Duration::from_secs(10));
     assert!(
         leader_3
             .logger
