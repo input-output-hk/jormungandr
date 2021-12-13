@@ -10,7 +10,7 @@ const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
 
 #[test]
-pub fn leader_restart_preserves_leadership_log() {
+pub fn leader_late_start_preserves_leadership_log() {
     let mut controller = NetworkBuilder::default()
         .topology(
             Topology::default()
@@ -36,7 +36,11 @@ pub fn leader_restart_preserves_leadership_log() {
 
     //start bft node 2
     let leader_2 = controller.spawn(SpawnParams::new(LEADER_2)).unwrap();
-    // logs during epoch 0 should be empty
+
+    // wait a bit so leader 2 has time to produce blocks
+    time::wait_for_date(BlockDate::new(0, 90), leader_1.rest());
+
+    // logs during epoch 0 should not be empty
     assert!(
         !leader_2.rest().leaders_log().unwrap().is_empty(),
         "leadership log should NOT be empty in current epoch",
@@ -44,7 +48,7 @@ pub fn leader_restart_preserves_leadership_log() {
 
     time::wait_for_date(BlockDate::new(1, 0), leader_1.rest());
 
-    // logs during epoch 0 should be empty
+    // logs during epoch 1 should not be empty
     assert!(
         !leader_2.rest().leaders_log().unwrap().is_empty(),
         "leadership log should NOT be empty in new epoch",
