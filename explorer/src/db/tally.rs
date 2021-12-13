@@ -7,14 +7,8 @@ pub fn compute_private_tally(
     proposal: &ExplorerVoteProposal,
     tally: &DecryptedPrivateTallyProposal,
 ) -> ExplorerVoteTally {
-    let mut results = vec![0u64; proposal.options.choice_range().end as usize];
-
-    for (choice, &weight) in tally.tally_result.iter().enumerate() {
-        results[choice] = results[choice].saturating_add(weight);
-    }
-
     ExplorerVoteTally::Private {
-        results: Some(results.drain(..).map(u64::into).collect()),
+        results: Some(tally.tally_result.iter().cloned().map(Into::into).collect()),
         options: proposal.options.clone(),
     }
 }
