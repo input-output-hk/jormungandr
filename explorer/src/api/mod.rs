@@ -31,12 +31,12 @@ pub async fn setup_cors<API>(
                 cors = cors.max_age(Duration::from_secs(max_age));
             }
 
-            tracing::info!("listening on: {}", listen_addr);
-
             serve(api.with(cors), listen_addr, tls_config, shutdown_signal).await;
         }
         None => serve(api, listen_addr, tls_config, shutdown_signal).await,
     }
+
+    tracing::info!("listening on: {}", listen_addr);
 }
 
 async fn serve<API>(
