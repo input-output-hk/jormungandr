@@ -676,35 +676,46 @@ fn apply_block_to_vote_plans(
                             .unwrap(),
                     }
                 }
-                Certificate::VoteTally(vote_tally) => {
-                    let decrypted_tally = vote_tally.tally_decrypted().unwrap();
-                    vote_plans
-                        .update(vote_tally.id(), |vote_plan| {
-                            let proposals = vote_plan
+                Certificate::VoteTally(vote_tally) => vote_plans
+                    .update(vote_tally.id(), |vote_plan| {
+                        let proposals = match vote_tally.tally_type() {
+                            PayloadType::Public => vote_plan
                                 .proposals
                                 .clone()
                                 .into_iter()
-                                .zip(decrypted_tally.iter())
-                                .map(|(mut proposal, decrypted_tally)| {
-                                    proposal.tally = Some(match vote_tally.tally_type() {
-                                        PayloadType::Public => {
-                                            compute_public_tally(&proposal, stake)
-                                        }
-                                        PayloadType::Private => {
-                                            compute_private_tally(&proposal, decrypted_tally)
-                                        }
-                                    });
+                                .map(|mut proposal| {
+                                    proposal.tally = Some(compute_public_tally(&proposal, stake));
+
                                     proposal
                                 })
-                                .collect();
-                            let vote_plan = ExplorerVotePlan {
-                                proposals,
-                                ..(**vote_plan).clone()
-                            };
-                            Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
-                        })
-                        .unwrap()
-                }
+                                .collect(),
+                            PayloadType::Private => {
+                                let decrypted_tally = vote_tally
+                                    .tally_decrypted()
+                                    .expect("tally type is private but no decrypted tally found");
+
+                                vote_plan
+                                    .proposals
+                                    .clone()
+                                    .into_iter()
+                                    .zip(decrypted_tally.iter())
+                                    .map(|(mut proposal, decrypted_tally)| {
+                                        proposal.tally =
+                                            Some(compute_private_tally(&proposal, decrypted_tally));
+
+                                        proposal
+                                    })
+                                    .collect()
+                            }
+                        };
+
+                        let vote_plan = ExplorerVotePlan {
+                            proposals,
+                            ..(**vote_plan).clone()
+                        };
+                        Ok::<_, std::convert::Infallible>(Some(Arc::new(vote_plan)))
+                    })
+                    .unwrap(),
                 _ => vote_plans,
             }
         }
