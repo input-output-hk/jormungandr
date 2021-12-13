@@ -11,6 +11,7 @@ use jormungandr_testing_utils::testing::network::SpawnParams;
 use jormungandr_testing_utils::testing::network::Topology;
 
 const CLIENT: &str = "CLIENT";
+const CLIENT_2: &str = "CLIENT_2";
 const SERVER: &str = "SERVER";
 
 const ALICE: &str = "ALICE";
@@ -101,7 +102,7 @@ pub fn node_does_not_quarantine_whitelisted_node() {
         .spawn(SpawnParams::new(CLIENT_2).policy(policy).in_memory())
         .unwrap();
 
-    process_utils::sleep(20);
+    utils::wait(20);
 
     assert_node_stats(&client2, 2, 0, 2, "after starting client2");
     assert_empty_quarantine(&client2, "after starting client2");
@@ -143,7 +144,7 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
     assert_node_stats(&server, 1, 0, 1, "before starting client2");
     assert_empty_quarantine(&server, "before starting client2");
 
-    process_utils::sleep(20);
+    utils::wait(20);
 
     let client2 = network_controller
         .spawn(
@@ -163,7 +164,7 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
         )
         .unwrap();
 
-    process_utils::sleep(20);
+    utils::wait(20);
 
     assert_node_stats(&client2, 1, 1, 2, "after starting client2");
     assert_are_in_quarantine(&client2, vec![&client], "after starting client2");
@@ -202,13 +203,13 @@ pub fn node_does_not_quarantine_trusted_node() {
         .spawn(SpawnParams::new(CLIENT).in_memory())
         .unwrap();
 
-    process_utils::sleep(5);
+    utils::wait(5);
 
     assert_node_stats(&server, 1, 0, 1, "before stopping client");
     assert_empty_quarantine(&server, "before stopping client");
 
     client.shutdown();
-    process_utils::sleep(20);
+    utils::wait(20);
 
     // The server "forgets" the client but does not quarantine it
     assert_node_stats(&server, 1, 0, 1, "before restarting client");
