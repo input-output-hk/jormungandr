@@ -10,10 +10,10 @@ edition = "2018"
 assert_fs = "1.0"
 custom_debug = "0.5"
 ctrlc = "3.2.1"
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-chain-crypto      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-core      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "stack-debug" }
+chain-crypto      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "stack-debug", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "stack-debug", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/Zeegomo/chain-libs.git", branch = "stack-debug" }
 indicatif = "0.15"
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
