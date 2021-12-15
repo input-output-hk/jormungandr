@@ -1,4 +1,6 @@
-use crate::block::BlockBuilder;
+use chain_addr::Discrimination;
+use crate::testing::{adversary::block::BlockBuilder, startup, FragmentBuilder};
+use crate::wallet::account;
 use chain_impl_mockchain::{
     block::{Block, BlockDate, ContentsBuilder},
     chaintypes::ConsensusType,
@@ -105,7 +107,7 @@ pub(super) fn invalid_fragment(request: Request, context: Context) -> impl Reply
                 BlockDate::first().next_epoch(),
             )
             .transaction(
-                &startup::create_new_account_address(),
+                &account::Wallet::generate(&mut rand::rngs::OsRng,Discrimination::Test),
                 startup::create_new_account_address().address(),
                 42.into(),
             )

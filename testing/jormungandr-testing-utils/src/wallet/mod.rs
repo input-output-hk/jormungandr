@@ -4,11 +4,8 @@ pub mod delegation;
 pub mod discrimination;
 pub mod utxo;
 
+use crate::testing::{FragmentBuilder, FragmentBuilderError};
 use crate::wallet::discrimination::DiscriminationExtension;
-use crate::{
-    stake_pool::StakePool,
-    testing::{FragmentBuilder, FragmentBuilderError},
-};
 use chain_addr::AddressReadable;
 use chain_addr::Discrimination;
 use chain_crypto::{Ed25519, Ed25519Extended, SecretKey, Signature};
@@ -25,7 +22,6 @@ pub use chain_impl_mockchain::{
 };
 use chain_impl_mockchain::{
     block::BlockDate,
-    certificate::{VotePlan, VoteTallyPayload},
     fee::FeeAlgorithm,
     key::EitherEd25519SecretKey,
     testing::data::{AddressData, AddressDataValue, Wallet as WalletLib},
@@ -34,7 +30,7 @@ use chain_impl_mockchain::{
         TransactionSignDataHash, UnspecifiedAccountIdentifier, Witness,
     },
     value::Value as ValueLib,
-    vote::{Choice, CommitteeId},
+    vote::CommitteeId,
 };
 pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
 use jormungandr_lib::{
@@ -273,8 +269,12 @@ impl Wallet {
     }
 
     pub fn confirm_transaction(&mut self) {
+        self.confirm_transaction_at_lane(DEFAULT_LANE)
+    }
+
+    pub fn confirm_transaction_at_lane(&mut self, lane: usize) {
         match self {
-            Wallet::Account(account) => account.increment_counter(DEFAULT_LANE),
+            Wallet::Account(account) => account.increment_counter(lane),
             _ => unimplemented!(),
         }
     }
@@ -305,168 +305,6 @@ impl Wallet {
         FragmentBuilder::full_delegation_cert_for_block0(valid_until, self, pool_id)
     }
 
-    pub fn transaction_to(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        address: Address,
-        value: Value,
-    ) -> Result<Fragment, WalletError> {
-        FragmentBuilder::new(block0_hash, fees, valid_until)
-            .transaction(self, address, value)
-            .map_err(WalletError::FragmentError)
-    }
-
-    pub fn transaction_to_many(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        address: &[Address],
-        value: Value,
-    ) -> Result<Fragment, WalletError> {
-        FragmentBuilder::new(block0_hash, fees, valid_until)
-            .transaction_to_many(self, address, value)
-            .map_err(WalletError::FragmentError)
-    }
-
-    pub fn issue_pool_retire_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        stake_pool: &StakePool,
-    ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
-            .stake_pool_retire(vec![self], stake_pool))
-    }
-
-    pub fn issue_pool_registration_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        stake_pool: &StakePool,
-    ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
-            .stake_pool_registration(self, stake_pool))
-    }
-
-    pub fn issue_pool_update_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        stake_pool: &StakePool,
-        update_stake_pool: &StakePool,
-    ) -> Result<Fragment, WalletError> {
-        Ok(
-            FragmentBuilder::new(block0_hash, fees, valid_until).stake_pool_update(
-                vec![self],
-                stake_pool,
-                update_stake_pool,
-            ),
-        )
-    }
-
-    pub fn issue_full_delegation_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        stake_pool: &StakePool,
-    ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).delegation(self, stake_pool))
-    }
-
-    pub fn issue_owner_delegation_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        stake_pool: &StakePool,
-    ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).owner_delegation(self, stake_pool))
-    }
-
-    pub fn issue_split_delegation_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        distribution: Vec<(&StakePool, u8)>,
-    ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
-            .delegation_to_many(self, distribution))
-    }
-
-    pub fn remove_delegation_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-    ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).delegation_remove(self))
-    }
-
-    pub fn issue_vote_plan_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        vote_plan: &VotePlan,
-    ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).vote_plan(self, vote_plan))
-    }
-
-    pub fn issue_vote_cast_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        vote_plan: &VotePlan,
-        proposal_index: u8,
-        choice: &Choice,
-    ) -> Result<Fragment, WalletError> {
-        match vote_plan.payload_type() {
-            chain_impl_mockchain::vote::PayloadType::Public => Ok(FragmentBuilder::new(
-                block0_hash,
-                fees,
-                valid_until,
-            )
-            .public_vote_cast(self, vote_plan, proposal_index, choice)),
-            chain_impl_mockchain::vote::PayloadType::Private => Ok(FragmentBuilder::new(
-                block0_hash,
-                fees,
-                valid_until,
-            )
-            .private_vote_cast(self, vote_plan, proposal_index, choice)),
-        }
-    }
-
-    pub fn issue_encrypted_tally_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        vote_plan: &VotePlan,
-    ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until).encrypted_tally(self, vote_plan))
-    }
-
-    pub fn issue_vote_tally_cert(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        vote_plan: &VotePlan,
-        tally_type: VoteTallyPayload,
-    ) -> Result<Fragment, WalletError> {
-        Ok(FragmentBuilder::new(block0_hash, fees, valid_until)
-            .vote_tally(self, vote_plan, tally_type))
-    }
-
     pub fn to_committee_id(&self) -> CommitteeIdDef {
         CommitteeIdDef::from(CommitteeId::from(
             self.address().1.public_key().unwrap().clone(),
@@ -485,7 +323,7 @@ impl From<Wallet> for WalletLib {
         let address_data = match wallet {
             Wallet::Account(account) => AddressData::new(
                 account.signing_key().as_ref().clone(),
-                account.spending_counter().clone(),
+                account.spending_counter(),
                 account.address().into(),
             ),
             Wallet::UTxO(utxo) => AddressData::new(

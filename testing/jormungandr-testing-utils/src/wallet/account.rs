@@ -105,6 +105,10 @@ impl Wallet {
         self.internal_counters.get_valid_counters()
     }
 
+    pub fn spending_counter(&self) -> SpendingCounterIncreasing {
+        self.internal_counters.clone()
+    }
+
     pub fn stake_key(&self) -> UnspecifiedAccountIdentifier {
         UnspecifiedAccountIdentifier::from_single_account(self.identifier().clone().to_inner())
     }
