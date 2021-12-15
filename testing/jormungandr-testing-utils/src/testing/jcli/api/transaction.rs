@@ -1,5 +1,8 @@
 use crate::testing::process::ProcessOutput;
-use crate::testing::{jcli::command::TransactionCommand, witness::Witness};
+use crate::testing::{
+    jcli::command::TransactionCommand,
+    witness::{Witness, WitnessType},
+};
 use crate::wallet::Wallet;
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::TempDir;
@@ -172,7 +175,7 @@ impl Transaction {
             .make_witness(
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
-                &witness.addr_type,
+                witness.addr_type,
                 witness.account_spending_counter,
                 &witness.file,
                 &witness.private_key_path,
@@ -187,7 +190,7 @@ impl Transaction {
             .make_witness(
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
-                &witness.addr_type,
+                witness.addr_type,
                 witness.account_spending_counter,
                 &witness.file,
                 &witness.private_key_path,
@@ -210,7 +213,7 @@ impl Transaction {
                 staging_dir,
                 genesis_hash,
                 &account.signing_key().to_bech32_str(),
-                "account",
+                WitnessType::Account,
                 Some(account.internal_counter()),
                 staging_file,
             ),
@@ -218,7 +221,7 @@ impl Transaction {
                 staging_dir,
                 genesis_hash,
                 &utxo.last_signing_key().to_bech32_str(),
-                "utxo",
+                WitnessType::UTxO,
                 None,
                 staging_file,
             ),
@@ -226,7 +229,7 @@ impl Transaction {
                 staging_dir,
                 genesis_hash,
                 &delegation.last_signing_key().to_bech32_str(),
-                "utxo",
+                WitnessType::UTxO,
                 None,
                 staging_file,
             ),
@@ -238,7 +241,7 @@ impl Transaction {
         staging_dir: &TempDir,
         genesis_hash: Hash,
         private_key: &str,
-        addr_type: &str,
+        addr_type: WitnessType,
         spending_counter: Option<SpendingCounter>,
         staging_file: P,
     ) -> Witness {
