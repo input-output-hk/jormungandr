@@ -296,7 +296,7 @@ pub fn upload_block_nonexisting_stake_pool() {
 // L1020 Get fragments
 #[test]
 pub fn get_fragments() {
-    let mut sender = startup::create_new_account_address();
+    let sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
     let config = ConfigurationBuilder::new()
         .with_slot_duration(4)
@@ -309,16 +309,14 @@ pub fn get_fragments() {
     let setup = setup::client::bootstrap(config);
     let output_value = 1u64;
     let jcli: JCli = Default::default();
-    let transaction = sender
-        .transaction_to(
-            &setup.server.genesis_block_hash(),
-            &setup.server.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            output_value.into(),
-        )
-        .unwrap()
-        .encode();
+    let transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &setup.server.genesis_block_hash(),
+        &setup.server.fees(),
+        BlockDate::first().next_epoch(),
+    )
+    .transaction(&sender, receiver.address(), output_value.into())
+    .unwrap()
+    .encode();
 
     let fragment_id = jcli
         .fragment_sender(&setup.server)

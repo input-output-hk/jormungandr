@@ -11,10 +11,12 @@ pub use self::{
     sender::{BlockDateGenerator, FragmentSender, FragmentSenderError},
     setup::DummySyncNode,
     setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
-    transaction::{transaction_to, transaction_to_many},
     verifier::{ExitStrategy as VerifyExitStrategy, FragmentVerifier, FragmentVerifierError},
 };
-use crate::{stake_pool::StakePool, wallet::Wallet};
+use crate::{stake_pool::StakePool, wallet::{account,Wallet}};
+use chain_impl_mockchain::fee::FeeAlgorithm;
+use chain_impl_mockchain::transaction::InputOutputBuilder;
+use chain_impl_mockchain::transaction::TxBuilder;
 use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload};
 use chain_impl_mockchain::{
     certificate::{EncryptedVoteTally, PoolId, VoteCast, VotePlan, VoteTally},
@@ -23,6 +25,7 @@ use chain_impl_mockchain::{
     testing::{
         data::{StakePool as StakePoolLib, Wallet as WalletLib},
         scenario::FragmentFactory,
+        WitnessMode,
     },
     vote::{Choice, Payload},
 };
@@ -42,7 +45,6 @@ mod node;
 mod persistent_log;
 mod sender;
 mod setup;
-mod transaction;
 mod verifier;
 
 #[derive(Error, Debug)]
@@ -58,54 +60,67 @@ pub enum FragmentBuilderError {
 }
 
 pub struct FragmentBuilder {
-    block0_hash: Hash,
-    fees: LinearFee,
+    fragment_factory: FragmentFactory,
     valid_until: BlockDate,
 }
 
 impl FragmentBuilder {
     pub fn new(block0_hash: &Hash, fees: &LinearFee, valid_until: BlockDate) -> Self {
         Self {
-            block0_hash: *block0_hash,
-            fees: *fees,
+            fragment_factory: FragmentFactory::new(block0_hash.into_hash(), *fees),
             valid_until,
         }
     }
 
-    fn fragment_factory(&self) -> FragmentFactory {
-        FragmentFactory::new(self.block0_hash.into_hash(), self.fees)
+    pub fn witness_mode(mut self, witness_mode: WitnessMode) -> Self {
+        self.fragment_factory = self.fragment_factory.witness_mode(witness_mode);
+        self
     }
 
     pub fn transaction(
         &self,
-        from: &Wallet,
+        from: &account::Wallet,
         address: Address,
         value: Value,
     ) -> Result<Fragment, FragmentBuilderError> {
-        transaction_to(
-            &self.block0_hash,
-            &self.fees,
-            self.valid_until,
-            from,
-            address,
-            value,
-        )
+        self.transaction_to_many(from, &[address], value)
     }
 
     pub fn transaction_to_many(
         &self,
-        from: &Wallet,
+        from: &account::Wallet,
         addresses: &[Address],
         value: Value,
     ) -> Result<Fragment, FragmentBuilderError> {
-        transaction_to_many(
-            &self.block0_hash,
-            &self.fees,
-            self.valid_until,
-            from,
-            addresses,
-            value,
-        )
+        let mut iobuilder = InputOutputBuilder::empty();
+
+        for address in addresses {
+            iobuilder
+                .add_output(address.clone().into(), value.into())
+                .unwrap();
+        }
+
+        let value_u64: u64 = value.into();
+        let input_without_fees: Value = (value_u64 * addresses.len() as u64).into();
+        let input_value = self
+            .fragment_factory
+            .fee
+            .calculate(None, 1, addresses.len() as u8)
+            + input_without_fees.into();
+        let input = from.add_input_with_value(input_value.unwrap().into());
+        iobuilder.add_input(&input).unwrap();
+
+        let ios = iobuilder.build();
+        let txbuilder = TxBuilder::new()
+            .set_nopayload()
+            .set_expiry_date(self.valid_until)
+            .set_ios(&ios.inputs, &ios.outputs);
+
+        let sign_data = txbuilder.get_auth_data_for_witness().hash();
+        let witness = from.mk_witness(&self.fragment_factory.block0_hash.into(), &sign_data);
+        let witnesses = vec![witness];
+        let tx = txbuilder.set_witnesses(&witnesses).set_payload_auth(&());
+        Ok(Fragment::Transaction(tx))
     }
 
     pub fn full_delegation_cert_for_block0(
@@ -118,7 +133,7 @@ impl FragmentBuilder {
 
     pub fn stake_pool_registration(&self, funder: &Wallet, stake_pool: &StakePool) -> Fragment {
         let inner_wallet = funder.clone().into();
-        self.fragment_factory().stake_pool_registration(
+        self.fragment_factory.stake_pool_registration(
             self.valid_until,
             &inner_wallet,
             &stake_pool.clone().into(),
@@ -127,7 +142,7 @@ impl FragmentBuilder {
 
     pub fn delegation(&self, from: &Wallet, stake_pool: &StakePool) -> Fragment {
         let inner_wallet = from.clone().into();
-        self.fragment_factory().delegation(
+        self.fragment_factory.delegation(
             self.valid_until,
             &inner_wallet,
             &stake_pool.clone().into(),
@@ -136,7 +151,7 @@ impl FragmentBuilder {
 
     pub fn delegation_remove(&self, from: &Wallet) -> Fragment {
         let inner_wallet = from.clone().into();
-        self.fragment_factory()
+        self.fragment_factory
             .delegation_remove(self.valid_until, &inner_wallet)
     }
 
@@ -161,7 +176,7 @@ impl FragmentBuilder {
             inner_distribution.push((inner_stake_pool, factor));
         }
 
-        self.fragment_factory().delegation_to_many(
+        self.fragment_factory.delegation_to_many(
             self.valid_until,
             &inner_wallet,
             &inner_distribution[..],
@@ -170,7 +185,7 @@ impl FragmentBuilder {
 
     pub fn owner_delegation(&self, from: &Wallet, stake_pool: &StakePool) -> Fragment {
         let inner_wallet = from.clone().into();
-        self.fragment_factory().owner_delegation(
+        self.fragment_factory.owner_delegation(
             self.valid_until,
             &inner_wallet,
             &stake_pool.clone().into(),
@@ -188,7 +203,7 @@ impl FragmentBuilder {
             .collect();
 
         let ref_inner_owners: Vec<&WalletLib> = inner_owners.iter().collect();
-        self.fragment_factory().stake_pool_retire(
+        self.fragment_factory.stake_pool_retire(
             self.valid_until,
             ref_inner_owners,
             &stake_pool.clone().into(),
@@ -211,7 +226,7 @@ impl FragmentBuilder {
             .collect();
 
         let ref_inner_owners: Vec<&WalletLib> = inner_owners.iter().collect();
-        self.fragment_factory().stake_pool_update(
+        self.fragment_factory.stake_pool_update(
             self.valid_until,
             ref_inner_owners,
             &old_stake_pool.clone().into(),
@@ -221,7 +236,7 @@ impl FragmentBuilder {
 
     pub fn vote_plan(&self, wallet: &Wallet, vote_plan: &VotePlan) -> Fragment {
         let inner_wallet = wallet.clone().into();
-        self.fragment_factory()
+        self.fragment_factory
             .vote_plan(self.valid_until, &inner_wallet, vote_plan.clone())
     }
 
@@ -238,7 +253,7 @@ impl FragmentBuilder {
             proposal_index as u8,
             Payload::public(*choice),
         );
-        self.fragment_factory()
+        self.fragment_factory
             .vote_cast(self.valid_until, &inner_wallet, vote_cast)
     }
 
@@ -284,13 +299,13 @@ impl FragmentBuilder {
 
         let inner_wallet = wallet.clone().into();
 
-        self.fragment_factory()
+        self.fragment_factory
             .vote_cast(self.valid_until, &inner_wallet, vote_cast)
     }
 
     pub fn encrypted_tally(&self, owner: &Wallet, vote_plan: &VotePlan) -> Fragment {
         let encrypted_tally = EncryptedVoteTally::new(vote_plan.to_id());
-        self.fragment_factory().vote_encrypted_tally(
+        self.fragment_factory.vote_encrypted_tally(
             self.valid_until,
             &owner.clone().into(),
             encrypted_tally,
@@ -309,7 +324,7 @@ impl FragmentBuilder {
             VoteTallyPayload::Public => VoteTally::new_public(vote_plan.to_id()),
             VoteTallyPayload::Private { inner } => VoteTally::new_private(vote_plan.to_id(), inner),
         };
-        self.fragment_factory()
+        self.fragment_factory
             .vote_tally(self.valid_until, &inner_wallet, vote_tally)
     }
 }

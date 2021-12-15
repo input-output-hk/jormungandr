@@ -57,7 +57,7 @@ pub fn explorer_schema_diff_test() {
 #[test]
 pub fn explorer_sanity_test() {
     let jcli: JCli = Default::default();
-    let mut faucet = startup::create_new_account_address();
+    let faucet = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
 
     let mut config = ConfigurationBuilder::new();
@@ -68,16 +68,14 @@ pub fn explorer_sanity_test() {
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
-    let transaction = faucet
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1_000.into(),
-        )
-        .unwrap()
-        .encode();
+    let transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    )
+    .transaction(&faucet, receiver.address(), 1_000.into())
+    .unwrap()
+    .encode();
 
     let wait = Wait::new(Duration::from_secs(3), 20);
     let fragment_id = jcli

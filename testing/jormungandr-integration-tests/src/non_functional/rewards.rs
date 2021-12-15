@@ -48,16 +48,14 @@ pub fn collect_reward_for_15_minutes() {
             .start();
 
     loop {
-        let new_transaction = sender
-            .transaction_to(
-                &jormungandr.genesis_block_hash(),
-                &jormungandr.fees(),
-                BlockDate::first().next_epoch(),
-                receiver.address(),
-                10.into(),
-            )
-            .unwrap()
-            .encode();
+        let new_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+            &jormungandr.genesis_block_hash(),
+            &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
+        )
+        .transaction(&sender, receiver.address(), 10.into())
+        .unwrap()
+        .encode();
 
         jcli.rest()
             .v0()

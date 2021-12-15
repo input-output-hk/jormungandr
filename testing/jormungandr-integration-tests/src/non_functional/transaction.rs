@@ -265,18 +265,16 @@ pub fn test_expired_transactions_processing_speed() {
     let output_value = 1;
     let transactions: Vec<Fragment> = (0..N_TRANSACTIONS)
         .map(|_| {
-            let tx = sender
-                .transaction_to(
-                    &jormungandr.genesis_block_hash(),
-                    &LinearFee::new(0, 0, 0),
-                    BlockDate {
-                        epoch: 0,
-                        slot_id: 0,
-                    },
-                    receiver.address(),
-                    output_value.into(),
-                )
-                .unwrap();
+            let tx = jormungandr_testing_utils::testing::FragmentBuilder::new(
+                &jormungandr.genesis_block_hash(),
+                &jormungandr.fees(),
+                BlockDate {
+                    epoch: 0,
+                    slot_id: 0,
+                },
+            )
+            .transaction(&sender, receiver.address(), output_value.into())
+            .unwrap();
             sender.confirm_transaction();
             tx
         })
@@ -343,15 +341,13 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
 
     let transactions: Vec<Fragment> = (0..N_TRANSACTIONS)
         .map(|_| {
-            let tx = sender
-                .transaction_to(
-                    &jormungandr.genesis_block_hash(),
-                    &LinearFee::new(0, 0, 0),
-                    block_date_generator.block_date(),
-                    receiver.address(),
-                    output_value.into(),
-                )
-                .unwrap();
+            let tx = jormungandr_testing_utils::testing::FragmentBuilder::new(
+                &jormungandr.genesis_block_hash(),
+                &jormungandr.fees(),
+                block_date_generator.block_date(),
+            )
+            .transaction(&sender, receiver.address(), output_value.into())
+            .unwrap();
             sender.confirm_transaction();
             tx
         })

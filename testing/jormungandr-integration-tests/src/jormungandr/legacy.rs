@@ -59,12 +59,16 @@ pub fn test_legacy_node_all_fragments() {
         Default::default(),
     );
 
+    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
     // 1. send simple transaction
-    let mut fragment = first_stake_pool_owner
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
+    let mut fragment = fragment_builder
+        .transaction(
+            &first_stake_pool_owner,
             second_stake_pool_owner.address(),
             1_000.into(),
         )
@@ -77,14 +81,7 @@ pub fn test_legacy_node_all_fragments() {
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
 
     // 2a). send pool registration certificate
-    fragment = first_stake_pool_owner
-        .issue_pool_registration_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            &first_stake_pool,
-        )
-        .expect("cannot create pool registration fragment for first stake pool owner");
+    fragment = fragment_builder.stake_pool_registration(&first_stake_pool_owner, &first_stake_pool);
 
     fragment_sender
         .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)
@@ -93,14 +90,8 @@ pub fn test_legacy_node_all_fragments() {
     let second_stake_pool = StakePool::new(&second_stake_pool_owner);
 
     // 2b). send pool registration certificate
-    fragment = second_stake_pool_owner
-        .issue_pool_registration_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            &second_stake_pool,
-        )
-        .expect("cannot create pool registration fragment for second stake owner");
+    fragment =
+        fragment_builder.stake_pool_registration(&second_stake_pool_owner, &second_stake_pool);
 
     fragment_sender
         .send_fragment(&mut second_stake_pool_owner, fragment, &jormungandr)
@@ -120,14 +111,7 @@ pub fn test_legacy_node_all_fragments() {
     );
 
     // 3. send owner delegation certificate
-    fragment = first_stake_pool_owner
-        .issue_owner_delegation_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            &first_stake_pool,
-        )
-        .unwrap();
+    fragment = fragment_builder.owner_delegation(&first_stake_pool_owner, &first_stake_pool);
 
     fragment_sender
         .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)
@@ -145,14 +129,7 @@ pub fn test_legacy_node_all_fragments() {
     );
 
     // 4. send full delegation certificate
-    fragment = full_delegator
-        .issue_full_delegation_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            &first_stake_pool,
-        )
-        .expect("error while sending full delegation certificate");
+    fragment = fragment_builder.delegation(&full_delegator, &first_stake_pool);
 
     fragment_sender
         .send_fragment(&mut full_delegator, fragment, &jormungandr)
@@ -169,14 +146,10 @@ pub fn test_legacy_node_all_fragments() {
     );
 
     // 5. send split delegation certificate
-    fragment = split_delegator
-        .issue_split_delegation_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            vec![(&first_stake_pool, 1u8), (&second_stake_pool, 1u8)],
-        )
-        .expect("error while sending split delegation certificate");
+    fragment = fragment_builder.delegation_to_many(
+        &split_delegator,
+        vec![(&first_stake_pool, 1u8), (&second_stake_pool, 1u8)],
+    );
 
     fragment_sender
         .send_fragment(&mut split_delegator, fragment, &jormungandr)
@@ -210,15 +183,11 @@ pub fn test_legacy_node_all_fragments() {
     // 6. send pool update certificate
 
     time::wait_for_epoch(2, jormungandr.rest());
-    fragment = first_stake_pool_owner
-        .issue_pool_update_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            &first_stake_pool,
-            &new_stake_pool,
-        )
-        .unwrap();
+    fragment = fragment_builder.stake_pool_update(
+        vec![&first_stake_pool_owner],
+        &first_stake_pool,
+        &new_stake_pool,
+    );
 
     jcli.fragment_sender(&jormungandr)
         .send(&fragment.encode())
@@ -226,14 +195,7 @@ pub fn test_legacy_node_all_fragments() {
     first_stake_pool_owner.confirm_transaction();
 
     // 7. send pool retire certificate
-    fragment = first_stake_pool_owner
-        .issue_pool_retire_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            &first_stake_pool,
-        )
-        .expect("error while sending stake pool retirement certificate");
+    fragment = fragment_builder.stake_pool_retire(vec![&first_stake_pool_owner], &first_stake_pool);
 
     fragment_sender
         .send_fragment(&mut first_stake_pool_owner, fragment, &jormungandr)

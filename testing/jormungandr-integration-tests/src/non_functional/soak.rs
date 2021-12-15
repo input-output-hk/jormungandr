@@ -41,16 +41,14 @@ pub fn test_blocks_are_being_created_for_7_hours() {
             .start();
 
     loop {
-        let new_transaction = sender
-            .transaction_to(
-                &jormungandr.genesis_block_hash(),
-                &jormungandr.fees(),
-                BlockDate::first().next_epoch(),
-                receiver.address(),
-                1.into(),
-            )
-            .unwrap()
-            .encode();
+        let new_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+            &jormungandr.genesis_block_hash(),
+            &jormungandr.fees(),
+            BlockDate::first().next_epoch(),
+        )
+        .transaction(&sender, receiver.address(), 1.into())
+        .unwrap()
+        .encode();
 
         let wait: Wait = Wait::new(Duration::from_secs(10), 10);
 
