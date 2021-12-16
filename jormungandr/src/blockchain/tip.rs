@@ -10,15 +10,18 @@ use crate::{
 };
 use chain_core::property::{Block as _, Fragment as _};
 use chain_impl_mockchain::block::Block;
+use futures::prelude::*;
 use jormungandr_lib::interfaces::FragmentStatus;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use tokio::time::MissedTickBehavior;
-
-use futures::prelude::*;
+use tracing::instrument;
 
 use std::time::Duration;
 
-const BRANCH_REPROCESSING_INTERVAL: Duration = Duration::from_secs(60);
+// no point in updating again the tip if the old one was not processed
+const INTERNAL_TIP_UPDATE_QUEUE_SIZE: usize = 1;
+const BRANCH_REPROCESSING_INTERVAL: Duration = Duration::from_secs(120);
 
 /// Handles updates to the tip.
 /// Only one of this structs should be active at any given time.
@@ -51,17 +54,24 @@ impl TipUpdater {
         }
     }
 
-    pub async fn run(&mut self, mut input: MessageQueue<Arc<Ref>>) {
+    pub async fn run(&mut self, input: MessageQueue<Arc<Ref>>) {
         let mut reprocessing_interval = tokio::time::interval(BRANCH_REPROCESSING_INTERVAL);
         reprocessing_interval.set_missed_tick_behavior(MissedTickBehavior::Delay);
+
+        let (internal_mbox, internal_queue) = async_msg::channel(INTERNAL_TIP_UPDATE_QUEUE_SIZE);
+        let mut stream = futures::stream::select(input, internal_queue);
         loop {
             tokio::select! {
-                Some(candidate) = input.next() => {
+                Some(candidate) = stream.next() => {
                     self.process_new_ref(candidate).await.unwrap_or_else(|e| tracing::error!("could not process new ref:` {}", e))
                 }
 
                 _ = reprocessing_interval.tick() => {
-                    self.reprocess_tip().await.unwrap_or_else(|e| tracing::error!("could not reprocess tip:` {}", e))
+                    let current_tip = self.tip.get_ref().await;
+                    let blockchain = self.blockchain.clone();
+                    let mbox = internal_mbox.clone();
+                    // Spawn this in a new task so that it does not block updates to the tip
+                    tokio::spawn(Self::reprocess_tip(blockchain, current_tip, mbox));
                 }
 
             }
@@ -96,12 +106,7 @@ impl TipUpdater {
             .storage()
             .put_tag(MAIN_BRANCH_TAG, candidate_hash)?;
 
-        let branch = self
-            .blockchain
-            .branches_mut()
-            .apply_or_create(candidate)
-            .await;
-        self.tip.swap(branch).await;
+        self.tip.update_ref(candidate).await;
         Ok(())
     }
 
@@ -126,33 +131,28 @@ impl TipUpdater {
     /// process a new candidate block on top of the blockchain, this function may:
     ///
     /// * update the current tip if the candidate's parent is the current tip;
-    /// * update a branch if the candidate parent is that branch's tip;
-    /// * create a new branch if none of the above;
     ///
     /// If the current tip is not the one being updated we will then trigger
     /// chain selection after updating that other branch as it may be possible that
     /// this branch just became more interesting for the current consensus algorithm.
+    #[instrument(level = "debug", skip(self, candidate), fields(candidate = %candidate.header().description()))]
     pub async fn process_new_ref(&mut self, candidate: Arc<Ref>) -> Result<(), Error> {
         let candidate_hash = candidate.hash();
         let storage = self.blockchain.storage();
         let tip_ref = self.tip.get_ref().await;
-        let block = storage
-            .get(candidate_hash)?
-            .ok_or(storage::Error::BlockNotFound)?;
 
         match chain_selection::compare_against(storage, &tip_ref, &candidate) {
             ComparisonResult::PreferCurrent => {
                 tracing::info!(
-                    "create new branch with tip {} | current-tip {}",
+                    "rejecting candidate {} for the tip {}",
                     candidate.header().description(),
                     tip_ref.header().description(),
                 );
-                self.blockchain
-                    .branches_mut()
-                    .apply_or_create(candidate.clone())
-                    .await;
             }
             ComparisonResult::PreferCandidate => {
+                let block = storage
+                    .get(candidate_hash)?
+                    .ok_or(storage::Error::BlockNotFound)?;
                 let tip_hash = tip_ref.hash();
                 if tip_hash == candidate.block_parent_hash() {
                     tracing::info!(
@@ -216,52 +216,69 @@ impl TipUpdater {
         Ok(())
     }
 
-    /// this function will re-process the tip against the different branches
+    /// this function will re-process the tip against the different branches.
     /// this is because a branch may have become more interesting with time
     /// moving forward and branches may have been dismissed
-    async fn reprocess_tip(&mut self) -> Result<(), Error> {
-        let branches: Vec<Arc<Ref>> = self.blockchain.branches().branches().await;
-        let tip_as_ref = self.tip.get_ref().await;
+    #[instrument(level = "debug", skip_all, fields(current_tip = %tip.header().description()))]
+    async fn reprocess_tip(
+        blockchain: Blockchain,
+        tip: Arc<Ref>,
+        mut mbox: MessageBox<Arc<Ref>>,
+    ) -> Result<(), Error> {
+        use std::cmp::Ordering;
+        let branches = blockchain.branches().await?;
+        let storage = blockchain.storage();
 
-        let others = branches
-            .iter()
-            .filter(|r| !Arc::ptr_eq(r, &tip_as_ref))
-            .collect::<Vec<_>>();
+        let best_branch = branches.into_iter().map(Branch::into_ref).max_by(|a, b| {
+            match chain_selection::compare_against(storage, &a, &b) {
+                ComparisonResult::PreferCurrent => Ordering::Greater,
+                ComparisonResult::PreferCandidate => Ordering::Less,
+            }
+        });
 
-        for other in others {
-            self.process_new_ref(Arc::clone(other)).await?
+        if let Some(new_tip) = best_branch {
+            if !Arc::ptr_eq(&tip, &new_tip) {
+                tracing::info!(
+                    "branch reprocessing found {} as the new best tip",
+                    new_tip.header().description()
+                );
+                mbox.try_send(new_tip).unwrap_or_else(|e| {
+                    tracing::error!(
+                        "{}: unable to send reprocessed tip for update, is the node overloaded?",
+                        e
+                    )
+                });
+            } else {
+                tracing::debug!("reprocessing concluded, current tip is still the best branch");
+            }
+        } else {
+            tracing::warn!("no branches found in the storage");
         }
-
         Ok(())
     }
 }
 
 #[derive(Clone)]
 pub struct Tip {
-    branch: Branch,
+    branch: Arc<RwLock<Branch>>,
 }
 
 impl Tip {
     pub(super) fn new(branch: Branch) -> Self {
-        Tip { branch }
+        Tip {
+            branch: Arc::new(RwLock::new(branch)),
+        }
     }
 
     pub async fn get_ref(&self) -> Arc<Ref> {
-        self.branch.get_ref().await
+        self.branch.read().await.get_ref()
     }
 
-    async fn update_ref(&mut self, new_ref: Arc<Ref>) -> Arc<Ref> {
-        self.branch.update_ref(new_ref).await
+    async fn update_ref(&mut self, new_ref: Arc<Ref>) {
+        *self.branch.write().await = Branch::new(new_ref);
     }
 
-    async fn swap(&mut self, mut branch: Branch) {
-        let mut tip_branch = self.branch.clone();
-        let tr = self.branch.get_ref().await;
-        let br = branch.update_ref(tr).await;
-        tip_branch.update_ref(br).await;
-    }
-
-    pub fn branch(&self) -> &Branch {
-        &self.branch
+    pub async fn branch(&self) -> Branch {
+        (*self.branch.read().await).clone()
     }
 }
