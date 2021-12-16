@@ -265,8 +265,8 @@ impl ExplorerDb {
             })
             .await?;
 
-        for branch in blockchain.branches().branches().await.iter() {
-            let mut hash = branch.hash();
+        for branch in blockchain.branches().await.map_err(Box::new)?.iter() {
+            let mut hash = branch.get_ref().hash();
             let mut blocks = vec![];
             loop {
                 if db.get_block(&hash).await.is_some() {
