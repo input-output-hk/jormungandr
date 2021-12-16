@@ -114,7 +114,6 @@ pub fn dump_send_invalid_fragments() {
         vec![&sender, &receiver],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_slot_duration(1)
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
