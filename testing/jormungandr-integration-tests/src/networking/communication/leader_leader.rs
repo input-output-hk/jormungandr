@@ -1,8 +1,8 @@
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
 use jormungandr_testing_utils::testing::sync::{
     measure_and_log_sync_time, MeasurementReportInterval,
 };
@@ -49,7 +49,7 @@ pub fn two_transaction_to_two_leaders() {
     let mut alice = controller.wallet(ALICE).unwrap();
     let mut bob = controller.wallet(BOB).unwrap();
 
-    let fragment_sender = FragmentSender::from(&controller);
+    let fragment_sender = FragmentSender::from(&controller.settings().block0);
 
     for _ in 0..10 {
         fragment_sender

@@ -1,11 +1,11 @@
+use hersir::builder::blockchain::BlockchainBuilder;
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
 use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::Explorer;
-use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::FragmentSender;
 const LEADER_1: &str = "Leader_1";
@@ -79,7 +79,7 @@ pub fn passive_node_explorer() {
     let mut alice = controller.wallet(ALICE).unwrap();
     let bob = controller.wallet(BOB).unwrap();
 
-    let mem_pool_check = FragmentSender::from(&controller)
+    let mem_pool_check = FragmentSender::from(&controller.settings().block0)
         .send_transaction(&mut alice, &bob, &leader_1, 1_000.into())
         .unwrap();
 

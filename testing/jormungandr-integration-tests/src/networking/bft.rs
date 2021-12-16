@@ -1,9 +1,9 @@
 use crate::networking::utils;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
 use jormungandr_testing_utils::testing::sync::MeasurementReportInterval;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::FragmentVerifier;
@@ -92,7 +92,7 @@ pub fn bft_cascade() {
 
     std::thread::sleep(std::time::Duration::from_secs(60));
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(40, &mut alice, &mut bob, &leader5, 1_000.into())
         .unwrap();
 
@@ -162,7 +162,7 @@ pub fn bft_passive_propagation() {
     let mut alice_wallet = controller.wallet(ALICE).unwrap();
     let bob_wallet = controller.wallet(BOB).unwrap();
 
-    let mem_pool_check = FragmentSender::from(controller.settings())
+    let mem_pool_check = FragmentSender::from(&controller.settings().block0)
         .send_transaction(&mut alice_wallet, &bob_wallet, &leader2, 1_000.into())
         .unwrap();
 

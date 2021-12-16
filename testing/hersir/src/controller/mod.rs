@@ -296,7 +296,6 @@ impl Controller {
             secret_file.path(),
             self.settings.block0.clone(),
             false,
-            log_file_path.path().to_path_buf(),
         );
 
         let mut starter = Starter::new();

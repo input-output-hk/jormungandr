@@ -1,12 +1,12 @@
 use crate::networking::p2p::connections::parse_timestamp;
 use crate::networking::utils::wait;
 use crate::non_functional::network::*;
-use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
+use hersir::builder::blockchain::BlockchainBuilder;
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
 use jormungandr_testing_utils::testing::node::LogLevel;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::SyncWaitParams;
@@ -138,7 +138,7 @@ pub fn relay_soak() {
 
     let now = SystemTime::now();
 
-    let fragment_sender = FragmentSender::from(controller.settings());
+    let fragment_sender = FragmentSender::from(&controller.settings().block0);
 
     loop {
         let check1 = fragment_sender
