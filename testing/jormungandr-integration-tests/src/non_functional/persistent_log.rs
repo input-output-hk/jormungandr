@@ -4,13 +4,14 @@ use assert_fs::{fixture::PathChild, TempDir};
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{Mempool, PersistentLog};
 use jormungandr_testing_utils::testing::{
-    fragments::PersistentLogViewer, jormungandr::ConfigurationBuilder, startup,
-    BatchFragmentGenerator, BlockDateGenerator, FragmentSenderSetup, FragmentStatusProvider,
+    fragments::PersistentLogViewer, jormungandr::ConfigurationBuilder, startup, BlockDateGenerator,
+    FragmentSenderSetup,
 };
 pub use jortestkit::{
     console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode},
     load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor},
 };
+use mjolnir::generators::{BatchFragmentGenerator, FragmentStatusProvider};
 
 #[test]
 pub fn persistent_log_load_test() {

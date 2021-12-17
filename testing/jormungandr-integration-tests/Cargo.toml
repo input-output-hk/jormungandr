@@ -20,6 +20,7 @@ chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 hersir = { path = "../hersir" }
+mjolnir = { path = "../mjolnir" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 rand = "0.8"

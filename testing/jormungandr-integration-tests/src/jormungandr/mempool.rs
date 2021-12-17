@@ -17,9 +17,10 @@ use jormungandr_testing_utils::testing::{
     },
     node::time,
     startup, AdversaryFragmentSender, AdversaryFragmentSenderSetup, BlockDateGenerator,
-    FragmentBuilder, FragmentGenerator, FragmentNode, FragmentSender, FragmentSenderSetup,
-    FragmentVerifier, MemPoolCheck,
+    FragmentBuilder, FragmentNode, FragmentSender, FragmentSenderSetup, FragmentVerifier,
+    MemPoolCheck,
 };
+use mjolnir::generators::FragmentGenerator;
 use std::fs::metadata;
 use std::path::Path;
 use std::thread::sleep;

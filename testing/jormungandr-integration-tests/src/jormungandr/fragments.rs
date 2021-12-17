@@ -3,9 +3,9 @@ use jormungandr_testing_utils::testing::{jormungandr::ConfigurationBuilder, star
 use chain_impl_mockchain::{chaintypes::ConsensusType, fee::LinearFee};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, BlockDate, Mempool};
 use jormungandr_testing_utils::testing::{
-    node::time, FragmentGenerator, FragmentSender, FragmentSenderSetup, FragmentVerifier,
-    MemPoolCheck,
+    node::time, FragmentSender, FragmentSenderSetup, FragmentVerifier, MemPoolCheck,
 };
+use mjolnir::generators::FragmentGenerator;
 use std::time::Duration;
 
 #[test]
