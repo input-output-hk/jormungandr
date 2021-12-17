@@ -227,7 +227,7 @@ impl Pool {
         for (fragment, id) in new_fragments {
             tracing::debug!(fragment_id=?id, "inserted fragment to the pool");
             accepted.push(id);
-            let fragment_msg = NetworkMsg::Propagate(PropagateMsg::Fragment(fragment));
+            let fragment_msg = NetworkMsg::Propagate(Box::new(PropagateMsg::Fragment(fragment)));
             network_msg_box
                 .send(fragment_msg)
                 .await
@@ -507,6 +507,9 @@ pub(super) mod internal {
 
     unsafe impl<K: Send, V: Send> Send for IndexedDeqeue<K, V> {}
     unsafe impl<K: Sync, V: Sync> Sync for IndexedDeqeue<K, V> {}
+
+    unsafe impl<K: Send, V: Send> Send for IndexedDequeueEntry<K, V> {}
+    unsafe impl<K: Send> Send for IndexedDequeueKeyRef<K> {}
 
     impl<K: PartialEq> PartialEq for IndexedDequeueKeyRef<K> {
         fn eq(&self, other: &IndexedDequeueKeyRef<K>) -> bool {

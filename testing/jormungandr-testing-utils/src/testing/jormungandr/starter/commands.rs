@@ -120,12 +120,10 @@ pub fn get_command<Conf: TestConfig + Serialize>(
     from_genesis: FromGenesis,
 ) -> Command {
     let bin_path = bin_path.as_ref();
-    let mut builder = CommandBuilder::new(bin_path)
+    let builder = CommandBuilder::new(bin_path)
         .config(params.node_config_path())
         .rewards_history(params.rewards_history());
-    if params.node_config().log_file_path().is_none() {
-        builder = builder.stderr_to_log_file(params.log_file_path());
-    }
+
     let builder = match (leadership_mode, from_genesis) {
         (LeadershipMode::Passive, _) => builder.genesis_block_hash(params.genesis_block_hash()),
         (LeadershipMode::Leader, FromGenesis::File) => builder

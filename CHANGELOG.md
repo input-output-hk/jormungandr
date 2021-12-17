@@ -12,6 +12,8 @@
 - Add new grpc watch service implementation for external (non-node) clients.
 - update explorer, add new GraphQL objects as `UpdateProposal`, `UpdateVote`, `ConfigParam` etc.
 - Add jcli option to specify a spending counter lane in a user-friendly way
+- Add CORS config params: allowed headers and allowed methods.
+- Update REST API `/api/v0/account/{account_id}`, add new field with the token's state info.
 
 ## Release 0.13.0
 

@@ -18,7 +18,7 @@ impl InteractiveCommandExec for JormungandrInteractiveCommandExec {
         tokens: Vec<String>,
         console: ConsoleWriter,
     ) -> std::result::Result<(), InteractiveCommandError> {
-        match InteractiveCommand::from_iter_safe(&mut tokens.iter().map(|x| OsStr::new(x))) {
+        match InteractiveCommand::from_iter_safe(&mut tokens.iter().map(OsStr::new)) {
             Ok(interactive) => {
                 if let Err(err) = {
                     match interactive {

@@ -20,7 +20,6 @@ pub struct JormungandrParams<Conf = NodeConfig> {
     secret_model_path: PathBuf,
     block0_configuration: Block0Configuration,
     rewards_history: bool,
-    log_file_path: PathBuf,
 }
 
 impl<Conf: TestConfig> JormungandrParams<Conf> {
@@ -33,7 +32,6 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
         secret_model_path: impl Into<PathBuf>,
         block0_configuration: Block0Configuration,
         rewards_history: bool,
-        log_file_path: impl Into<PathBuf>,
     ) -> Self {
         JormungandrParams {
             node_config,
@@ -43,7 +41,6 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
             secret_model_path: secret_model_path.into(),
             block0_configuration,
             rewards_history,
-            log_file_path: log_file_path.into(),
         }
     }
 
@@ -69,10 +66,6 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
 
     pub fn rewards_history(&self) -> bool {
         self.rewards_history
-    }
-
-    pub fn log_file_path(&self) -> &Path {
-        &self.log_file_path
     }
 
     pub fn secret_model_path(&self) -> &Path {
@@ -101,6 +94,18 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
                 .parse()
                 .unwrap(),
         );
+    }
+
+    fn recreate_log_file(&mut self) {
+        if let Some(path) = self.node_config.log_file_path() {
+            std::fs::remove_file(path).unwrap_or_else(|e| {
+                println!(
+                    "Failed to remove log file {}: {}",
+                    path.to_string_lossy(),
+                    e
+                );
+            });
+        }
     }
 
     pub fn fees(&self) -> LinearFee {
@@ -173,11 +178,7 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
             .into_iter()
             .find(|utxo| *utxo.address() == wallet.address())
             .unwrap_or_else(|| panic!("No UTxO found in block 0 for address '{:?}'", wallet));
-        println!(
-            "Utxo found for address {}: {:?}",
-            wallet.address().to_string(),
-            &utxo
-        );
+        println!("Utxo found for address {}: {:?}", wallet.address(), &utxo);
         utxo
     }
 }
@@ -192,5 +193,6 @@ impl<Conf: TestConfig + Serialize> JormungandrParams<Conf> {
     pub fn refresh_instance_params(&mut self) {
         self.regenerate_ports();
         self.write_node_config();
+        self.recreate_log_file();
     }
 }

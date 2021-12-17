@@ -108,7 +108,7 @@ impl Default for Starter {
 impl Starter {
     pub fn new() -> Self {
         Starter {
-            timeout: Duration::from_secs(300),
+            timeout: Duration::from_secs(30),
             sleep: 2,
             alias: "".to_owned(),
             leadership_mode: LeadershipMode::Leader,
@@ -374,11 +374,6 @@ where
     fn start_process(&self) -> Child {
         let verbose = self.starter.verbose;
         cond_println!(verbose, "Starting node");
-        cond_println!(
-            verbose,
-            "Log file: {}",
-            self.params.log_file_path().to_string_lossy()
-        );
         cond_println!(verbose, "Blockchain configuration:");
         cond_println!(verbose, "{:#?}", self.params.block0_configuration());
         cond_println!(verbose, "Node settings configuration:");
@@ -446,14 +441,6 @@ where
                         "Port already in use error detected. Retrying with different port... "
                     );
                     self.params.refresh_instance_params();
-                    let path = self.params.log_file_path();
-                    std::fs::remove_file(path).unwrap_or_else(|e| {
-                        println!(
-                            "Failed to remove log file {}: {}",
-                            path.to_string_lossy(),
-                            e
-                        );
-                    })
                 }
                 (Err(err), OnFail::Panic) => {
                     panic!("Jormungandr node cannot start due to error: {}", err);

@@ -1,9 +1,13 @@
 use crate::testing::node::grpc::read_into;
 
-use super::proto::{
-    node_client::NodeClient, Block, BlockIds, Fragment, FragmentIds, HandshakeRequest,
-    HandshakeResponse, Header, PullBlocksRequest, PullBlocksToTipRequest, PullHeadersRequest,
-    TipRequest,
+use super::node::{
+    node_client::NodeClient, HandshakeRequest, HandshakeResponse, PullBlocksRequest,
+    PullBlocksToTipRequest, PullHeadersRequest, TipRequest,
+};
+use super::types::{Block, BlockIds, Fragment, FragmentIds, Header};
+use super::watch::{
+    watch_client::WatchClient, BlockSubscriptionRequest, SyncMultiverseRequest,
+    TipSubscriptionRequest,
 };
 
 use chain_core::property::FromStr;
@@ -15,6 +19,7 @@ use chain_impl_mockchain::{
 use futures::stream;
 use std::fmt;
 use std::net::SocketAddr;
+use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 use tokio::runtime::{Builder, Runtime};
 use tonic::transport::Channel;
@@ -301,5 +306,161 @@ impl JormungandrClient {
                 .map_err(|err| MockClientError::InvalidRequest(err.message().to_string()))?;
             self.fragment_stream_to_vec(response.into_inner()).await
         })
+    }
+}
+
+pub struct JormungandrWatchClient {
+    addr: SocketAddr,
+    inner_client: WatchClient<Channel>,
+    rt: Arc<Runtime>,
+}
+
+impl Clone for JormungandrWatchClient {
+    fn clone(&self) -> Self {
+        JormungandrWatchClient::new(self.addr)
+    }
+}
+
+impl fmt::Debug for JormungandrWatchClient {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("JormungandrWatchClient")
+            .field("host", &self.addr)
+            .finish()
+    }
+}
+
+pub type WatchTipNotifier = Arc<(Mutex<Result<LibHeader, tonic::Status>>, Condvar)>;
+
+impl JormungandrWatchClient {
+    pub fn from_address(address: &str) -> Result<Self, MockClientError> {
+        let addr = address
+            .parse()
+            .map_err(|_| MockClientError::InvalidAddressFormat(address.to_owned()))?;
+        Ok(Self::new(addr))
+    }
+
+    pub fn new(addr: SocketAddr) -> Self {
+        let rt = Arc::new(Builder::new_current_thread().enable_all().build().unwrap());
+        let inner_client = rt.block_on(async {
+            WatchClient::new(
+                tonic::transport::Endpoint::from_shared(format!("http://{}", addr))
+                    .unwrap()
+                    .connect_lazy(),
+            )
+        });
+
+        Self {
+            addr,
+            inner_client,
+            rt,
+        }
+    }
+
+    fn client(&self) -> WatchClient<Channel> {
+        self.inner_client.clone()
+    }
+
+    pub fn tip_subscription(&self) -> WatchTipNotifier {
+        use futures::StreamExt;
+
+        let rt = Arc::clone(&self.rt);
+        let mut client = self.client();
+
+        let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+
+        std::thread::spawn(move || {
+            rt.block_on(async {
+                let stream = client
+                    .tip_subscription(TipSubscriptionRequest {})
+                    .await
+                    .unwrap()
+                    .into_inner();
+
+                let mut stream = stream.fuse();
+
+                let mut cond_var: Option<WatchTipNotifier> = None;
+
+                while let Some(header) = stream.next().await {
+                    let new_tip: Result<LibHeader, tonic::Status> =
+                        header.map(|header| read_into(&header.content));
+
+                    if let Some(signal) = &cond_var {
+                        let (guard, signal) = &**signal;
+                        *guard.lock().unwrap() = new_tip;
+
+                        signal.notify_one();
+                    } else {
+                        let pair = Arc::new((Mutex::new(new_tip), Condvar::new()));
+
+                        sender.send(Arc::clone(&pair)).unwrap();
+
+                        cond_var.replace(pair);
+                    }
+                }
+            })
+        });
+
+        receiver.recv().unwrap()
+    }
+
+    pub fn block_subscription(
+        &self,
+        sender: std::sync::mpsc::Sender<Result<LibBlock, tonic::Status>>,
+    ) {
+        use futures::StreamExt;
+
+        let rt = Arc::clone(&self.rt);
+        let mut client = self.client();
+
+        std::thread::spawn(move || {
+            rt.block_on(async {
+                let stream = client
+                    .block_subscription(BlockSubscriptionRequest {})
+                    .await
+                    .unwrap()
+                    .into_inner();
+
+                let mut stream = stream.fuse();
+
+                while let Some(block) = stream.next().await {
+                    if sender
+                        .send(block.map(|block| read_into(&block.content)))
+                        .is_err()
+                    {
+                        break;
+                    }
+                }
+            })
+        });
+    }
+
+    pub fn sync_multiverse(&self, from: Vec<Hash>) -> Vec<LibBlock> {
+        use futures::StreamExt;
+
+        let mut blocks = vec![];
+
+        let rt = Arc::clone(&self.rt);
+        let mut client = self.client();
+
+        rt.block_on(async {
+            let stream = client
+                .sync_multiverse(SyncMultiverseRequest {
+                    from: from
+                        .into_iter()
+                        .map(|hash| hash.as_bytes().to_vec())
+                        .collect(),
+                })
+                .await
+                .unwrap()
+                .into_inner();
+
+            let mut stream = stream.fuse();
+
+            while let Some(block) = stream.next().await {
+                blocks.push(read_into(&block.unwrap().content))
+            }
+        });
+
+        blocks
     }
 }

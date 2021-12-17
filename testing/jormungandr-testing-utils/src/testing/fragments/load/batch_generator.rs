@@ -59,18 +59,13 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
 
         let mut additional_wallets = Vec::new();
 
-        for mut wallet in wallets.iter_mut().take(10) {
+        for wallet in wallets.iter_mut().take(10) {
             let mut pack_of_wallets: Vec<Wallet> =
                 std::iter::from_fn(|| Some(Wallet::new_account(&mut self.rand)))
                     .take(90)
                     .collect();
             fragment_sender
-                .send_transaction_to_many(
-                    &mut wallet,
-                    &pack_of_wallets,
-                    &self.jormungandr,
-                    1000.into(),
-                )
+                .send_transaction_to_many(wallet, &pack_of_wallets, &self.jormungandr, 1000.into())
                 .unwrap();
             additional_wallets.append(&mut pack_of_wallets);
         }

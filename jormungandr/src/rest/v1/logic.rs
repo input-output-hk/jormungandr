@@ -59,7 +59,7 @@ pub async fn get_fragment_statuses<'a>(
 ) -> Result<HashMap<String, FragmentStatus>, Error> {
     let ids = ids
         .into_iter()
-        .map(|s| FragmentId::from_str(s))
+        .map(FragmentId::from_str)
         .collect::<Result<Vec<_>, _>>()?;
     let span = span!(parent: context.span()?, Level::TRACE, "fragment_statuses", request = "message_statuses");
     async move {

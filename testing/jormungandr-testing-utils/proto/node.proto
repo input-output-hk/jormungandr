@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "types.proto";
+
 // gRPC protocol for a blockchain node
 package iohk.chain.node;
 
@@ -46,49 +48,11 @@ message TipResponse {
   bytes block_header = 1;
 }
 
-// A sequence of block identifiers used in fetch requests and solicitation.
-message BlockIds {
-  // The identifiers of blocks for loading.
-  repeated bytes ids = 1;
-}
-
-// A sequence of fragment identifiers used in fetch requests.
-message FragmentIds {
-  // The identifiers of fragments.
-  repeated bytes ids = 1;
-}
-
 // Request for peers
 message PeersRequest { uint32 limit = 1; }
 
-// Responses as a bunch of peers
-message PeersResponse {
-  // Serialized descriptions of nodes.
-  repeated bytes peers = 2;
-}
-
-// A Peer on the network
-message Peer {
-  // FIXME: make the port field common, indicate TCP protocol selection
-  // by the field number.
-  oneof peer {
-    PeerV4 v4 = 1;
-    PeerV6 v6 = 2;
-  }
-}
-
-// An ipv4 peer
-message PeerV4 {
-  fixed32 ip = 1;
-  fixed32 port = 2; // FIXME: uint32 is more efficient for port numbers
-}
-
-// An ipv6 peer
-message PeerV6 {
-  fixed64 ip_high = 1;
-  fixed64 ip_low = 2;
-  fixed32 port = 3; // FIXME: uint32 is more efficient for port numbers
-}
+// Responses as a bunch of peers, similar to Gossip
+message PeersResponse { repeated bytes peers = 2; }
 
 // Request message for method PullHeaders.
 // This message can also be send by the service as a BlockEvent variant.
@@ -122,25 +86,6 @@ message PushHeadersResponse {}
 // Response message for method UploadBlocks.
 message UploadBlocksResponse {}
 
-// Representation of a block.
-message Block {
-  // The serialized content of the block.
-  bytes content = 1;
-}
-
-// Representation of a block header.
-message Header {
-  // The serialized content of the block header.
-  bytes content = 1;
-}
-
-// Representation of a block fragment, that is, a transaction or other
-// content item.
-message Fragment {
-  // The serialized content of the fragment.
-  bytes content = 1;
-}
-
 // Gossip message with information on nodes in the network.
 message Gossip {
   // Serialized descriptions of nodes.
@@ -151,10 +96,10 @@ message Gossip {
 message BlockEvent {
   oneof item {
     // Announcement of a new block, carrying the block's header.
-    Header announce = 1;
+    types.Header announce = 1;
     // Solicitation to upload identified blocks with an UploadBlocks
     // method call.
-    BlockIds solicit = 2;
+    types.BlockIds solicit = 2;
     // Solicitation to push the chain of block headers with a PushHeaders
     // method call.
     PullHeadersRequest missing = 3;
@@ -174,13 +119,13 @@ service Node {
   // Requests for some peers
   rpc Peers(PeersRequest) returns (PeersResponse);
 
-  rpc GetBlocks(BlockIds) returns (stream Block) {
+  rpc GetBlocks(types.BlockIds) returns (stream types.Block) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  rpc GetHeaders(BlockIds) returns (stream Header) {
+  rpc GetHeaders(types.BlockIds) returns (stream types.Header) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
-  rpc GetFragments(FragmentIds) returns (stream Fragment) {
+  rpc GetFragments(types.FragmentIds) returns (stream types.Fragment) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
@@ -188,35 +133,36 @@ service Node {
   // given a selection of possible starting blocks known by the requester,
   // and the identifier of the end block to be included in the returned
   // sequence.
-  rpc PullHeaders(PullHeadersRequest) returns (stream Header) {
+  rpc PullHeaders(PullHeadersRequest) returns (stream types.Header) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Requests blocks in the chain in the chronological order, given a selection
   // of possible starting blocks known by the requester, and the identifier of
   // the end block to be included in the returned sequence.
-  rpc PullBlocks(PullBlocksRequest) returns (stream Block) {
+  rpc PullBlocks(PullBlocksRequest) returns (stream types.Block) {
     option idempotency_level = NO_SIDE_EFFECTS;
   }
 
-  rpc PullBlocksToTip(PullBlocksToTipRequest) returns (stream Block);
+  rpc PullBlocksToTip(PullBlocksToTipRequest) returns (stream types.Block);
 
   // Sends headers of blocks to the service in response to a `missing`
   // item received from the BlockSubscription response stream.
   // The headers are streamed the in chronological order of the chain.
-  rpc PushHeaders(stream Header) returns (PushHeadersResponse);
+  rpc PushHeaders(stream types.Header) returns (PushHeadersResponse);
 
   // Uploads blocks to the service in response to a `solicit` item
   // received from the BlockSubscription response stream.
-  rpc UploadBlocks(stream Block) returns (UploadBlocksResponse);
+  rpc UploadBlocks(stream types.Block) returns (UploadBlocksResponse);
 
   // Establishes a bidirectional stream to exchange information on new
   // blocks created or accepted by the peers.
-  rpc BlockSubscription(stream Header) returns (stream BlockEvent);
+  rpc BlockSubscription(stream types.Header) returns (stream BlockEvent);
 
   // Establishes a bidirectional stream to exchange information on new
   // block fragments created or accepted by the peers.
-  rpc FragmentSubscription(stream Fragment) returns (stream Fragment);
+  rpc FragmentSubscription(stream types.Fragment)
+      returns (stream types.Fragment);
 
   // Establishes a bidirectional stream to exchange information on new
   // network peers.

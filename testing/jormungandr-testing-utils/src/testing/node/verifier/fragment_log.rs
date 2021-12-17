@@ -62,7 +62,7 @@ impl FragmentLogVerifier {
         ids.iter()
             .for_each(|id| match statuses.get(&id.to_string()) {
                 Some(status) => self.assert_in_block(status),
-                None => panic!("{} not found", id.to_string()),
+                None => panic!("{} not found", id),
             });
         self
     }
@@ -76,7 +76,7 @@ impl FragmentLogVerifier {
 
         ids.iter().for_each(|id| match statuses.get(id) {
             Some(status) => self.assert_in_block(status),
-            None => panic!("{} not found", id.to_string()),
+            None => panic!("{} not found", id),
         });
         self
     }
@@ -97,7 +97,7 @@ impl FragmentLogVerifier {
 
         ids.iter().for_each(|id| match statuses.get(id) {
             Some(status) => self.assert_not_in_block(status),
-            None => panic!("{} not found", id.to_string()),
+            None => panic!("{} not found", id),
         });
         self
     }

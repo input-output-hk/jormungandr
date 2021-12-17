@@ -226,7 +226,7 @@ impl Sink<net_data::Header> for BlockAnnouncementProcessor {
         })?;
         let node_id = self.node_id;
         self.mbox
-            .start_send(BlockMsg::AnnouncedBlock(header, node_id))
+            .start_send(BlockMsg::AnnouncedBlock(Box::new(header), node_id))
             .map_err(handle_mbox_error)?;
         self.refresh_stat();
         Ok(())

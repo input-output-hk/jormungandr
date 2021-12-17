@@ -196,6 +196,20 @@ jobs:
           TMPDIR: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
 
+      - name: Run network tests
+        # Network tests are a bit flaky when run on debug builds
+        if: ${{ matrix.profile == 'release' }}
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 90
+        with:
+          command: test
+          args: --tests ${{ env.CARGO_FLAGS }} --features network
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TMPDIR and TMP are used respectively on unix and windows
+          TMPDIR: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+
       - name: Pack logs from failed tests
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2

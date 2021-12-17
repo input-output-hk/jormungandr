@@ -44,7 +44,7 @@ impl<'a, S: SyncNode + Send> VoteCastsGenerator<'a, S> {
     pub fn send(&mut self) -> Result<MemPoolCheck, FragmentSenderError> {
         self.send_marker = (self.send_marker + 1) % self.voters.len();
 
-        let mut voter = self.voters.get_mut(self.send_marker).unwrap();
+        let voter = self.voters.get_mut(self.send_marker).unwrap();
         let vote_casts = self
             .votes_register
             .advance_single(self.send_marker)
@@ -54,7 +54,7 @@ impl<'a, S: SyncNode + Send> VoteCastsGenerator<'a, S> {
         let choice = Choice::new((self.rand.next_u32() % 3) as u8);
 
         self.fragment_sender.send_vote_cast(
-            &mut voter,
+            voter,
             &self.vote_plan,
             vote_cast.first(),
             &choice,

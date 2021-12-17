@@ -233,6 +233,13 @@ impl Controller {
         Ok(self.make_starter_for(spawn_params)?.start()?)
     }
 
+    pub fn spawn_async(
+        &mut self,
+        spawn_params: SpawnParams,
+    ) -> Result<JormungandrProcess, ControllerError> {
+        Ok(self.make_starter_for(spawn_params)?.start_async()?)
+    }
+
     pub fn spawn_legacy(
         &mut self,
         input_params: SpawnParams,
@@ -285,14 +292,13 @@ impl Controller {
             peer.id = None;
         }
 
-        let log_file_path = dir.child("node.log");
         config.log = Some(Log(LogEntry {
             format: "json".into(),
             level: spawn_params
                 .get_log_level()
-                .unwrap_or(&LogLevel::DEBUG)
+                .unwrap_or(&LogLevel::TRACE)
                 .to_string(),
-            output: LogOutput::File(log_file_path.path().to_path_buf()),
+            output: LogOutput::Stdout,
         }));
 
         if let PersistenceMode::Persistent = spawn_params.get_persistence_mode() {
@@ -320,7 +326,6 @@ impl Controller {
             secret_file.path(),
             self.settings.block0.clone(),
             false,
-            log_file_path.path().to_path_buf(),
         );
 
         let mut starter = Starter::new();

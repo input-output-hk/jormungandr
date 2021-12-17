@@ -62,7 +62,7 @@ async fn fetch_block0_http(base_services: &[String], block0_id: &HeaderId) -> Op
 
     for base_url in base_services {
         // trying to fetch from service base url
-        let url = format!("{}/{}.block0", base_url, block0_id.to_string());
+        let url = format!("{}/{}.block0", base_url, block0_id);
         match fetch_one(block0_id, &url).await {
             Err(e) => {
                 tracing::debug!("HTTP fetch : fail to get from {} : error {}", base_url, e);

@@ -65,7 +65,7 @@ impl VotePlanExtension for VotePlan {
                                                             "value": {}
                                                         }}
                                                     }}
-                                                }}"#,value.to_string())).unwrap();
+                                                }}"#,value)).unwrap();
                         }
                     }
                 }
@@ -82,7 +82,7 @@ impl VotePlanExtension for VotePlan {
                                         "value": {}
                                     }},
                                 }}
-                            }}"#,value.to_string())).unwrap();
+                            }}"#,value)).unwrap();
                         }
                     }
                 }
