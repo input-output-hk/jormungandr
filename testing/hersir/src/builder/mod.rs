@@ -1,17 +1,31 @@
-use crate::testing::jormungandr::TestingDirectory;
-use crate::testing::utils::{Event, Observable, Observer};
-use crate::testing::{
-    network::{
-        controller::{Controller, ControllerError},
-        Blockchain, NodeAlias, NodeSetting, Random, Seed, Settings, Topology, WalletTemplate,
-    },
-    NodeConfigBuilder,
-};
+pub mod blockchain;
+pub mod rng;
+pub mod settings;
+pub mod spawn_params;
+pub mod topology;
+pub mod vote;
+mod vote_plan_settings;
+pub mod wallet;
+
+use crate::controller::Controller;
+pub use crate::controller::Error as ControllerError;
+pub use blockchain::Blockchain;
 use jormungandr_lib::crypto::key::SigningKey;
 use jormungandr_lib::interfaces::NodeSecret;
+use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
+pub use jormungandr_testing_utils::testing::node::NodeAlias;
+use jormungandr_testing_utils::testing::utils::{Event, Observable, Observer};
+use jormungandr_testing_utils::testing::NodeConfigBuilder;
+pub use rng::{Random, Seed};
+pub use settings::{NodeSetting, Settings};
+pub use spawn_params::SpawnParams;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::rc::Weak;
+pub use topology::{Node, Topology};
+pub use vote::VotePlanKey;
+pub use vote_plan_settings::VotePlanSettings;
+pub use wallet::{ExternalWalletTemplate, Wallet, WalletTemplate, WalletType};
 
 #[derive(Default)]
 pub struct NetworkBuilder {

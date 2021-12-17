@@ -1,6 +1,4 @@
 use super::{FragmentExporter, FragmentExporterError};
-use crate::testing::network::controller::Controller;
-use crate::testing::network::Settings;
 use crate::testing::DummySyncNode;
 use crate::{
     stake_pool::StakePool,
@@ -19,6 +17,7 @@ use chain_impl_mockchain::{
     fragment::Fragment,
     vote::Choice,
 };
+use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_lib::interfaces::BlockchainConfiguration;
 use jormungandr_lib::interfaces::{Address, FragmentsProcessingSummary};
 use jormungandr_lib::{
@@ -565,13 +564,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     }
 }
 
-impl<'a> From<&Settings> for FragmentSender<'a, DummySyncNode> {
-    fn from(settings: &Settings) -> Self {
+impl<'a> From<&Block0Configuration> for FragmentSender<'a, DummySyncNode> {
+    fn from(block0: &Block0Configuration) -> Self {
         Self::new(
-            settings.block0.to_block().header().hash().into(),
-            settings.block0.blockchain_configuration.linear_fees,
+            block0.to_block().header().hash().into(),
+            block0.blockchain_configuration.linear_fees,
             BlockDateGenerator::rolling_from_blockchain_config(
-                &settings.block0.blockchain_configuration,
+                &block0.blockchain_configuration,
                 BlockDate {
                     epoch: 1,
                     slot_id: 0,
@@ -580,12 +579,6 @@ impl<'a> From<&Settings> for FragmentSender<'a, DummySyncNode> {
             ),
             Default::default(),
         )
-    }
-}
-
-impl<'a> From<&Controller> for FragmentSender<'a, DummySyncNode> {
-    fn from(controller: &Controller) -> Self {
-        FragmentSender::from(controller.settings())
     }
 }
 

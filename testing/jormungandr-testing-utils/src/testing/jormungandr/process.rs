@@ -1,8 +1,8 @@
 use super::{starter::StartupError, JormungandrError};
 use crate::testing::jcli::JCli;
 use crate::testing::jormungandr::TestingDirectory;
-use crate::testing::network::NodeAlias;
 use crate::testing::node::grpc::JormungandrClient;
+use crate::testing::node::NodeAlias;
 use crate::testing::{
     node::{
         uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,

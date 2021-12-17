@@ -1,10 +1,10 @@
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use hersir::builder::blockchain::BlockchainBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
 use jormungandr_lib::interfaces::BlockDate;
-use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
 use jormungandr_testing_utils::testing::node::time;
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";

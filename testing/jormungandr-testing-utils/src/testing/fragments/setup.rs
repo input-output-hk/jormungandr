@@ -1,5 +1,6 @@
 use super::FragmentNode;
-use crate::testing::{network::NodeAlias, SyncNode};
+use crate::testing::node::NodeAlias;
+use crate::testing::SyncNode;
 use std::fmt;
 use std::path::PathBuf;
 

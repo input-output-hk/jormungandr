@@ -1,5 +1,9 @@
 mod node;
 
+use crate::builder::NetworkBuilder;
+use crate::builder::Settings;
+use crate::builder::{Blockchain, SpawnParams, Topology, Wallet as WalletSetting};
+use crate::controller::Controller as InnerController;
 use crate::controller::{Context, Error};
 use crate::style;
 use crate::utils::Dotifier;
@@ -7,21 +11,12 @@ use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_lib::interfaces::Block0Configuration;
+use jormungandr_testing_utils::testing::jormungandr::LeadershipMode;
+use jormungandr_testing_utils::testing::jormungandr::PersistenceMode;
 use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
-use jormungandr_testing_utils::testing::network::Settings;
-use jormungandr_testing_utils::testing::network::WalletAlias;
-use jormungandr_testing_utils::testing::network::{
-    builder::NetworkBuilder, controller::Controller as InnerController,
-};
 use jormungandr_testing_utils::testing::utils::{Event, Observable, Observer};
-use jormungandr_testing_utils::{
-    stake_pool::StakePool,
-    testing::network::{
-        Blockchain, LeadershipMode, PersistenceMode, SpawnParams, Topology, Wallet as WalletSetting,
-    },
-    wallet::Wallet,
-    Version,
-};
+use jormungandr_testing_utils::wallet::WalletAlias;
+use jormungandr_testing_utils::{stake_pool::StakePool, wallet::Wallet, Version};
 pub use node::{Error as NodeError, LegacyNode, Node, ProgressBarController};
 use std::net::SocketAddr;
 use std::{

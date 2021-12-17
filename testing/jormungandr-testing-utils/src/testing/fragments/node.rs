@@ -1,4 +1,4 @@
-use crate::testing::network::NodeAlias;
+use crate::testing::node::NodeAlias;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
     crypto::hash::Hash,

@@ -1,9 +1,7 @@
 use crate::networking::utils::wait;
+use hersir::builder::{wallet::template::builder::WalletTemplateBuilder, NetworkBuilder};
+use hersir::builder::{Node, SpawnParams, Topology};
 use jormungandr_lib::interfaces::Policy;
-use jormungandr_testing_utils::testing::network::{
-    builder::NetworkBuilder, wallet::template::builder::WalletTemplateBuilder,
-};
-use jormungandr_testing_utils::testing::network::{Node, SpawnParams, Topology};
 use jormungandr_testing_utils::testing::node::LogLevel;
 use jormungandr_testing_utils::testing::sync::{
     measure_and_log_sync_time, MeasurementReportInterval,
@@ -98,7 +96,7 @@ pub fn transaction_to_passive() {
     let mut alice = controller.wallet(ALICE).unwrap();
     let mut bob = controller.wallet(BOB).unwrap();
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(10, &mut alice, &mut bob, &passive, 1_000.into())
         .unwrap();
 
@@ -170,7 +168,7 @@ pub fn leader_restart() {
     let mut alice = controller.wallet(ALICE).unwrap();
     let mut bob = controller.wallet(BOB).unwrap();
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_round_trip(2, &mut alice, &mut bob, &passive, 1_000.into())
         .unwrap();
@@ -179,7 +177,7 @@ pub fn leader_restart() {
     leader
         .wait_for_shutdown(std::time::Duration::from_secs(10))
         .unwrap();
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_with_iteration_delay(
             4,
@@ -203,7 +201,7 @@ pub fn leader_restart() {
         )
         .unwrap();
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
         .send_transactions_round_trip(2, &mut alice, &mut bob, &passive, 1_000.into())
         .unwrap();
@@ -246,7 +244,7 @@ pub fn passive_node_is_updated() {
     let mut alice = controller.wallet(ALICE).unwrap();
     let mut bob = controller.wallet(BOB).unwrap();
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(40, &mut alice, &mut bob, &leader, 1_000.into())
         .unwrap();
 

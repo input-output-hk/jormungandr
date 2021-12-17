@@ -1,9 +1,7 @@
-use crate::{args::Args, config::Config, error::Error};
-use jormungandr_testing_utils::testing::network::Topology;
-use jormungandr_testing_utils::testing::{
-    jormungandr::JormungandrProcess,
-    network::{builder::NetworkBuilder, NodeAlias},
-};
+use crate::builder::NetworkBuilder;
+use crate::{args::Args, builder::Topology, config::Config, error::Error};
+use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
+use jormungandr_testing_utils::testing::node::NodeAlias;
 use std::collections::HashMap;
 use std::time::Duration;
 

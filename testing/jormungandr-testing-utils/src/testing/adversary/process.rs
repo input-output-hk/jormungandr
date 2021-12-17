@@ -1,5 +1,4 @@
 use crate::testing::jormungandr::TestingDirectory;
-use crate::testing::network::NodeAlias;
 use crate::testing::node::grpc::{
     client::MockClientError,
     server::{
@@ -7,6 +6,7 @@ use crate::testing::node::grpc::{
     },
     JormungandrClient,
 };
+use crate::testing::node::NodeAlias;
 use crate::testing::{utils, FragmentSender, FragmentSenderSetup, SyncNode};
 use ::multiaddr::{Multiaddr, Protocol};
 use chain_impl_mockchain::{

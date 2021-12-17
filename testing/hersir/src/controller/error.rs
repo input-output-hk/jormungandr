@@ -1,6 +1,5 @@
 use crate::controller::InteractiveCommandError;
 use jormungandr_testing_utils::testing::jormungandr::StartupError;
-use jormungandr_testing_utils::testing::network::controller::ControllerError;
 use jormungandr_testing_utils::testing::node::ExplorerError;
 use jormungandr_testing_utils::testing::FragmentSenderError;
 use jormungandr_testing_utils::testing::LegacyConfigConverterError;
@@ -42,9 +41,6 @@ pub enum Error {
     VotePlanNotFound(String),
 
     #[error(transparent)]
-    Controller(#[from] ControllerError),
-
-    #[error(transparent)]
     Startup(#[from] StartupError),
 
     #[error("cannot spawn the node")]
@@ -58,4 +54,7 @@ pub enum Error {
 
     #[error(transparent)]
     FragmentSender(#[from] FragmentSenderError),
+
+    #[error(transparent)]
+    Serialization(#[from] serde_yaml::Error),
 }

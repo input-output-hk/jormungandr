@@ -1,4 +1,4 @@
-use jormungandr_testing_utils::testing::network::controller::Controller;
+use hersir::controller::Controller;
 use jormungandr_testing_utils::testing::FragmentNode;
 use jormungandr_testing_utils::testing::FragmentSender;
 pub use jormungandr_testing_utils::testing::{
@@ -31,7 +31,7 @@ pub fn measure_single_transaction_propagation_speed<A: SyncNode + FragmentNode +
     report_node_stats_interval: MeasurementReportInterval,
 ) {
     let node = leaders.iter().next().unwrap();
-    let check = FragmentSender::from(controller.settings())
+    let check = FragmentSender::from(&controller.settings().block0)
         .send_transaction(wallet1, wallet2, *node, 1_000.into())
         .unwrap();
     let fragment_id = check.fragment_id();

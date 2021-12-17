@@ -4,11 +4,11 @@ use chain_impl_mockchain::{
     chaintypes::{ConsensusType, ConsensusVersion},
     fee::LinearFee,
 };
+use hersir::builder::{Blockchain, NetworkBuilder, Node, SpawnParams, Topology};
 use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::{
     adversary::{block::BlockBuilder, process::AdversaryNodeBuilder},
     jormungandr::{ConfigurationBuilder, Starter},
-    network::{builder::NetworkBuilder, Blockchain, Node, SpawnParams, Topology},
     startup, FragmentBuilder,
 };
 

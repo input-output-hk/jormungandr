@@ -1,13 +1,13 @@
 use super::{ALICE, BOB, CLARICE, DAVID};
 use super::{LEADER, PASSIVE};
 use function_name::named;
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
 use hersir::controller::Context;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::controller::Controller;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
+use hersir::controller::Controller;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::{
     stake_pool::StakePool,
@@ -170,7 +170,7 @@ fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized + Send>(
     let leader_stake_pool = controller.stake_pool(LEADER).unwrap();
     let david_stake_pool = StakePool::new(&david);
 
-    let sender = FragmentSender::from(controller.settings());
+    let sender = FragmentSender::from(&controller.settings().block0);
 
     sender
         .send_transaction(&mut alice, &bob, passive, 10.into())

@@ -1,5 +1,5 @@
+use crate::testing::node::NodeAlias;
 use crate::testing::{
-    network::NodeAlias,
     node::{
         grpc::JormungandrClient, uri_from_socket_addr, JormungandrLogger, JormungandrRest, LogLevel,
     },

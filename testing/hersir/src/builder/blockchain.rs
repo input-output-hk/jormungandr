@@ -1,5 +1,5 @@
-use super::{ExternalWalletTemplate, NodeAlias, WalletAlias, WalletTemplate};
-use crate::testing::network::VotePlanKey;
+use super::{ExternalWalletTemplate, NodeAlias, WalletTemplate};
+use crate::builder::VotePlanKey;
 use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::fee::LinearFee;
@@ -10,6 +10,7 @@ use jormungandr_lib::interfaces::{
     SlotDuration, VotePlan,
 };
 use jormungandr_lib::time::SecondsSinceUnixEpoch;
+use jormungandr_testing_utils::wallet::WalletAlias;
 use serde::Deserialize;
 use std::collections::HashMap;
 
