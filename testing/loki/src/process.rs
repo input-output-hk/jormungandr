@@ -9,7 +9,6 @@ use jormungandr_lib::{
     interfaces::{Block0Configuration, TrustedPeer},
 };
 use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
-use jormungandr_testing_utils::testing::node::NodeAlias;
 use jormungandr_testing_utils::testing::node::grpc::{
     client::MockClientError,
     server::{
@@ -17,6 +16,7 @@ use jormungandr_testing_utils::testing::node::grpc::{
     },
     JormungandrClient,
 };
+use jormungandr_testing_utils::testing::node::NodeAlias;
 use jormungandr_testing_utils::testing::{utils, FragmentSender, FragmentSenderSetup, SyncNode};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
