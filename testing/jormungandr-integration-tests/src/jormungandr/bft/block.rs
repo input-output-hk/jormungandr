@@ -51,11 +51,11 @@ fn block_with_wrong_leader() {
     const LEADER_1: &str = "Abbott";
     const LEADER_2: &str = "Costello";
 
-    let mut blockchain_config = Blockchain::default();
-    blockchain_config.set_consensus(ConsensusVersion::Bft);
-    blockchain_config.set_slot_duration(SlotDuration::new(10).unwrap());
-    blockchain_config.add_leader(LEADER_1);
-    blockchain_config.add_leader(LEADER_2);
+    let blockchain_config = Blockchain::default()
+        .with_consensus(ConsensusVersion::Bft)
+        .with_slot_duration(SlotDuration::new(10).unwrap())
+        .with_leader(LEADER_1)
+        .with_leader(LEADER_2);
 
     let mut controller = NetworkBuilder::default()
         .blockchain_config(blockchain_config)
