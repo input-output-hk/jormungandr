@@ -12,16 +12,16 @@ Midgard Serpent
 edition = "2018"
 
 [dependencies]
-chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
-chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
-chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
-chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
-chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
-cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
-imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions" }
+chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 
 arc-swap = "^1.1.0"
 async-trait = "0.1.51"
@@ -72,9 +72,9 @@ features = ["rustls-tls"]
 tokio = { version = "^1.4", features = ["full"] }
 quickcheck = "0.9"
 quickcheck_macros = "0.9"
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions", features = [ "property-test-api" ] }
-chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions", features = [ "property-test-api" ] }
-chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-ledger-transactions", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 
 [build-dependencies]
 versionisator = "1.0.2"
