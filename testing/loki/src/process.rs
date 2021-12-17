@@ -1,13 +1,3 @@
-use crate::testing::jormungandr::TestingDirectory;
-use crate::testing::node::grpc::{
-    client::MockClientError,
-    server::{
-        start_thread, MockBuilder, MockController, MockServerData as NodeData, ProtocolVersion,
-    },
-    JormungandrClient,
-};
-use crate::testing::node::NodeAlias;
-use crate::testing::{utils, FragmentSender, FragmentSenderSetup, SyncNode};
 use ::multiaddr::{Multiaddr, Protocol};
 use chain_impl_mockchain::{
     block::{Block, BlockDate},
@@ -18,6 +8,16 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Block0Configuration, TrustedPeer},
 };
+use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
+use jormungandr_testing_utils::testing::node::grpc::{
+    client::MockClientError,
+    server::{
+        start_thread, MockBuilder, MockController, MockServerData as NodeData, ProtocolVersion,
+    },
+    JormungandrClient,
+};
+use jormungandr_testing_utils::testing::node::NodeAlias;
+use jormungandr_testing_utils::testing::{utils, FragmentSender, FragmentSenderSetup, SyncNode};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, RwLock};

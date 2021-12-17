@@ -2040,6 +2040,7 @@ dependencies = [
  "jortestkit",
  "json",
  "lazy_static",
+ "loki",
  "mjolnir",
  "parity-multiaddr",
  "poldercast",
@@ -2296,12 +2297,18 @@ version = "0.1.0"
 dependencies = [
  "chain-addr",
  "chain-core",
+ "chain-crypto",
  "chain-impl-mockchain",
  "jormungandr-lib",
  "jormungandr-testing-utils",
+ "parity-multiaddr",
+ "reqwest",
+ "serde",
  "serde_yaml",
  "structopt",
  "thiserror",
+ "tokio",
+ "warp",
 ]
 
 [[package]]

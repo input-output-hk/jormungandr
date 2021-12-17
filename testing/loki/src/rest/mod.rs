@@ -1,9 +1,10 @@
 mod handlers;
 
-use crate::testing::{adversary::AdversaryNode, configuration::get_available_port};
+use crate::process::AdversaryNode;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{block::Header, testing::data::StakePool};
 use jormungandr_lib::crypto::{hash::Hash, key::SigningKey};
+use jormungandr_testing_utils::testing::configuration::get_available_port;
 use serde::{Deserialize, Serialize};
 use std::{
     net::SocketAddr,

@@ -1,4 +1,3 @@
-use crate::testing::startup;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
     block::{builder, Block, BlockDate, BlockVersion, Contents, Header},
@@ -8,6 +7,7 @@ use chain_impl_mockchain::{
     testing::{data::StakePool, TestGen},
 };
 use jormungandr_lib::crypto::key::SigningKey;
+use jormungandr_testing_utils::testing::startup;
 
 pub struct BlockBuilder {
     block_date: BlockDate,
