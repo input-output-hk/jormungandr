@@ -1,12 +1,12 @@
 use crate::networking::utils;
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
 use jormungandr_lib::interfaces::TopicsOfInterest;
 use jormungandr_lib::interfaces::TrustedPeer;
 use jormungandr_lib::time::Duration;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
 use jormungandr_testing_utils::testing::node::LogLevel;
 use jormungandr_testing_utils::testing::DummySyncNode;
 use jormungandr_testing_utils::testing::FragmentSender;
@@ -269,7 +269,7 @@ pub fn topics_of_interest_influences_node_sync_ability() {
     let mut bob = network_controller.wallet(BOB).unwrap();
 
     let fragment_sender: FragmentSender<DummySyncNode> =
-        FragmentSender::from(network_controller.settings());
+        FragmentSender::from(&network_controller.settings().block0);
     fragment_sender
         .send_transactions_round_trip(40, &mut alice, &mut bob, &server, 100.into())
         .unwrap();

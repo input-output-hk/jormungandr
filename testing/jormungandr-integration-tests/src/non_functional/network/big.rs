@@ -3,20 +3,18 @@ use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::milli::Milli;
 use chain_impl_mockchain::value::Value;
 use function_name::named;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::{Blockchain, Topology, WalletTemplate};
+use hersir::controller::Controller;
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jormungandr_lib::interfaces::SlotDuration;
-use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::PersistenceMode;
-use jormungandr_testing_utils::testing::network::SpawnParams;
+use jormungandr_testing_utils::testing::jormungandr::{JormungandrProcess, PersistenceMode};
+use jormungandr_testing_utils::testing::node::{download_last_n_releases, get_jormungandr_bin};
 use jormungandr_testing_utils::testing::sync::MeasurementReportInterval;
 use jormungandr_testing_utils::testing::SyncNode;
 use jormungandr_testing_utils::testing::SyncWaitParams;
-use jormungandr_testing_utils::testing::{
-    network::{controller::Controller, Blockchain, Topology, WalletTemplate},
-    node::{download_last_n_releases, get_jormungandr_bin},
-};
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE: &str = "Relay";

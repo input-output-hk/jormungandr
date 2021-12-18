@@ -1,11 +1,9 @@
+use crate::builder::SpawnParams;
 use crate::controller::{Error, UserInteractionController};
 use crate::style;
+use jormungandr_testing_utils::testing::jormungandr::{LeadershipMode, PersistenceMode};
 use jormungandr_testing_utils::{
-    testing::{
-        jormungandr::StartupVerificationMode,
-        network::{LeadershipMode, PersistenceMode, SpawnParams},
-        node::download_last_n_releases,
-    },
+    testing::{jormungandr::StartupVerificationMode, node::download_last_n_releases},
     Version,
 };
 use jortestkit::console::InteractiveCommandError;

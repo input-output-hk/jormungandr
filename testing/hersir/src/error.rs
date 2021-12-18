@@ -1,7 +1,6 @@
 use crate::controller::Error as ControllerError;
 use jormungandr_testing_utils::testing::{
-    network::controller::ControllerError as InnerControllerError, node::ExplorerError,
-    node::RestError, ConsumptionBenchmarkError, FragmentSenderError,
+    node::ExplorerError, node::RestError, ConsumptionBenchmarkError, FragmentSenderError,
 };
 use jortestkit::prelude::InteractiveCommandError;
 use thiserror::Error;
@@ -12,8 +11,6 @@ pub enum Error {
     MonitorNode(#[from] crate::controller::NodeError),
     #[error(transparent)]
     InteractiveCommand(#[from] InteractiveCommandError),
-    #[error(transparent)]
-    InnerController(#[from] InnerControllerError),
     #[error(transparent)]
     Controller(#[from] ControllerError),
     #[error(transparent)]

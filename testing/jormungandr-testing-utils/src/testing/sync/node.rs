@@ -1,4 +1,4 @@
-use crate::testing::network::NodeAlias;
+use crate::testing::node::NodeAlias;
 use jormungandr_lib::crypto::hash::Hash;
 use std::{fmt, time::Duration};
 use thiserror::Error;

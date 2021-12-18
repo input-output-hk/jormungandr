@@ -2,13 +2,13 @@ use crate::networking::p2p::assert_are_in_quarantine;
 use crate::networking::p2p::assert_empty_quarantine;
 use crate::networking::p2p::assert_node_stats;
 use crate::networking::utils;
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
 use jormungandr_lib::interfaces::Policy;
 use jormungandr_lib::time::Duration;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
 
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";

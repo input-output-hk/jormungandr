@@ -1,7 +1,8 @@
+use crate::builder::NetworkBuilder;
+use crate::builder::Topology;
 use crate::controller::JormungandrInteractiveCommandExec;
 use crate::controller::UserInteractionController;
 use crate::{config::Config, error::Error};
-use jormungandr_testing_utils::testing::network::{builder::NetworkBuilder, Topology};
 use jortestkit::prelude::UserInteraction;
 
 pub fn spawn_network(config: Config, topology: Topology) -> Result<(), Error> {

@@ -11,18 +11,18 @@ use crate::testing::{
 };
 use crate::{
     testing::{
-        network::LeadershipMode, node::configuration::legacy, JormungandrParams,
-        LegacyConfigConverter, LegacyConfigConverterError, SpeedBenchmarkDef, SpeedBenchmarkRun,
-        TestConfig,
+        node::configuration::legacy, JormungandrParams, LegacyConfigConverter,
+        LegacyConfigConverterError, SpeedBenchmarkDef, SpeedBenchmarkRun, TestConfig,
     },
     Version,
 };
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::fixture::FixtureError;
 use assert_fs::TempDir;
+use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::NodeConfig;
 use jortestkit::process::{self as process_utils, ProcessError};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::path::Path;
 use std::path::PathBuf;
@@ -59,6 +59,34 @@ pub enum StartupError {
     ProcessExited(ExitStatus),
     #[error("Cannot get rest status")]
     CannotGetRestStatus(#[from] RestError),
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct FaketimeConfig {
+    /// Clock drift (1 = no drift, 2 = double speed)
+    pub drift: f32,
+    /// Offset from the real clock in seconds
+    pub offset: i32,
+}
+
+#[derive(Debug, Copy, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum LeadershipMode {
+    Leader,
+    Passive,
+}
+
+#[derive(Debug, Copy, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum PersistenceMode {
+    Persistent,
+    InMemory,
+}
+
+#[derive(Debug, Clone)]
+pub enum NodeBlock0 {
+    Hash(HeaderId),
+    File(PathBuf),
 }
 
 #[derive(Clone, Debug, Copy)]

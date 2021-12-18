@@ -1,11 +1,11 @@
+use hersir::builder::blockchain::BlockchainBuilder;
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
 use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::Explorer;
-use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
 use jormungandr_testing_utils::testing::node::time;
 use jormungandr_testing_utils::testing::FragmentSender;
 const LEADER_1: &str = "Leader_1";
@@ -99,7 +99,7 @@ pub fn retire_stake_pool_explorer() {
     let mut david = controller.wallet(DAVID).unwrap();
     let mut spo_3 = stake_pool_3.owner().clone();
 
-    let fragment_sender = FragmentSender::from(controller.settings());
+    let fragment_sender = FragmentSender::from(&controller.settings().block0);
 
     fragment_sender
         .send_transaction(&mut david, &spo_3, &leader_1, 100.into())

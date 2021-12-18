@@ -1,9 +1,9 @@
 use crate::networking::utils;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
 use jormungandr_testing_utils::testing::sync::MeasurementReportInterval;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
@@ -71,7 +71,7 @@ pub fn fully_connected() {
     let mut wallet1 = controller.wallet(ALICE).unwrap();
     let mut wallet2 = controller.wallet(BOB).unwrap();
 
-    let fragment_sender = FragmentSender::from(&controller);
+    let fragment_sender = FragmentSender::from(&controller.settings().block0);
 
     fragment_sender
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
@@ -142,7 +142,7 @@ pub fn star() {
     let mut wallet1 = controller.wallet(ALICE).unwrap();
     let mut wallet2 = controller.wallet(BOB).unwrap();
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
         .unwrap();
 
@@ -222,7 +222,7 @@ pub fn mesh() {
     let mut wallet1 = controller.wallet(ALICE).unwrap();
     let mut wallet2 = controller.wallet(BOB).unwrap();
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(4, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
         .unwrap();
 
@@ -287,7 +287,7 @@ pub fn point_to_point() {
     let mut wallet1 = controller.wallet(ALICE).unwrap();
     let mut wallet2 = controller.wallet(BOB).unwrap();
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(5, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
         .unwrap();
 
@@ -344,7 +344,7 @@ pub fn point_to_point_on_file_storage() {
     let mut wallet1 = controller.wallet(ALICE).unwrap();
     let mut wallet2 = controller.wallet(BOB).unwrap();
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
         .unwrap();
 
@@ -421,7 +421,7 @@ pub fn tree() {
     let mut wallet1 = controller.wallet(ALICE).unwrap();
     let mut wallet2 = controller.wallet(BOB).unwrap();
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
         .unwrap();
 
@@ -516,7 +516,7 @@ pub fn relay() {
 
     let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&core, &relay1, &relay2]);
 
-    FragmentSender::from(controller.settings())
+    FragmentSender::from(&controller.settings().block0)
         .clone_with_setup(setup)
         .send_transactions_round_trip(5, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
         .unwrap();

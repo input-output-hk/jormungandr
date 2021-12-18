@@ -1,14 +1,7 @@
-mod args;
-mod error;
-
-use args::Args;
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::block::Block;
-use error::Error;
 use jormungandr_lib::interfaces::NodeSecret;
-use jormungandr_testing_utils::testing::adversary::{
-    process::AdversaryNodeBuilder, rest::AdversaryRest,
-};
+use loki::{args::Args, error::Error, process::AdversaryNodeBuilder, rest::AdversaryRest};
 use std::{fs::File, io::BufReader};
 use structopt::StructOpt;
 

@@ -1,6 +1,6 @@
 use crate::testing::{
     jormungandr::starter::FromGenesis,
-    network::{FaketimeConfig, LeadershipMode},
+    jormungandr::{FaketimeConfig, LeadershipMode},
     JormungandrParams, TestConfig,
 };
 use serde::Serialize;

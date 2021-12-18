@@ -14,10 +14,10 @@ use jormungandr_lib::{
 use jormungandr_testing_utils::testing::jormungandr::StartupError;
 use jormungandr_testing_utils::testing::node::configuration::legacy::NodeConfig as LegacyConfig;
 use jormungandr_testing_utils::testing::node::LogLevel;
+use jormungandr_testing_utils::testing::node::NodeAlias;
 use jormungandr_testing_utils::testing::SyncNode;
 pub use jormungandr_testing_utils::testing::{
     jormungandr::{JormungandrProcess, StartupVerificationMode, Status},
-    network::{LeadershipMode, NodeAlias, NodeBlock0, NodeSetting, PersistenceMode, Settings},
     node::{grpc::JormungandrClient, BackwardCompatibleRest, JormungandrLogger, JormungandrRest},
     FragmentNode, FragmentNodeError, MemPoolCheck,
 };

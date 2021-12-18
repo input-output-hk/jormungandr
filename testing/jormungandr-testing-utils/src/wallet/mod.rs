@@ -45,6 +45,8 @@ use rand_core::{CryptoRng, RngCore};
 use std::{fs::File, path::Path};
 use thiserror::Error;
 
+pub type WalletAlias = String;
+
 #[derive(Error, Debug)]
 pub enum WalletError {
     #[error("couldn't create file")]

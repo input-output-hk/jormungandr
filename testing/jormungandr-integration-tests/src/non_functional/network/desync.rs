@@ -1,13 +1,14 @@
 use crate::non_functional::network::*;
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use jormungandr_testing_utils::testing::network::blockchain::BlockchainBuilder;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
+use hersir::builder::blockchain::BlockchainBuilder;
+use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::NetworkBuilder;
+use hersir::builder::Node;
+use hersir::builder::SpawnParams;
+use hersir::builder::Topology;
+use jormungandr_testing_utils::testing::jormungandr::FaketimeConfig;
 use jormungandr_testing_utils::testing::FragmentSender;
-use jormungandr_testing_utils::{testing::network::FaketimeConfig, wallet::Wallet};
+use jormungandr_testing_utils::wallet::Wallet;
 
 #[test]
 pub fn bft_forks() {
@@ -64,7 +65,7 @@ pub fn bft_forks() {
         // Sooner or later this will fail because a transaction will settle
         // in the fork and the spending counter will not be correct anymore
         let mut alice_clone = alice.clone();
-        FragmentSender::from(controller.settings())
+        FragmentSender::from(&controller.settings().block0)
             .send_transaction(
                 &mut alice_clone,
                 &bob,

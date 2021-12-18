@@ -6,8 +6,7 @@ use jormungandr_testing_utils::testing::{
 };
 
 use jormungandr_lib::interfaces::{AccountState, BlockDate, InitialUTxO, SettingsDto, UTxOInfo};
-use jormungandr_testing_utils::testing::{network::LeadershipMode, SyncNode};
-use jormungandr_testing_utils::wallet::Wallet;
+use jormungandr_testing_utils::{testing::jormungandr::LeadershipMode, wallet::Wallet};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
@@ -185,7 +184,7 @@ pub fn test_node_recovers_kill_signal() {
         .unwrap_or_else(|_| {
             panic!(
                 "timeout occured when pooling address endpoint. \nNode logs: {}",
-                jormungandr.log_content()
+                jormungandr.logger.get_log_content()
             )
         });
 
