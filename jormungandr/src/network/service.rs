@@ -21,7 +21,7 @@ use chain_network::error::{Code as ErrorCode, Error};
 use async_trait::async_trait;
 use futures::prelude::*;
 use futures::try_join;
-use tracing::instrument;
+use tracing::{instrument, Span};
 use tracing_futures::Instrument;
 
 use std::convert::TryFrom;
@@ -230,13 +230,14 @@ impl BlockService for NodeService {
         join_streams(stream, sink, reply).await
     }
 
-    #[instrument(level = "debug", skip(self, stream, subscriber), fields(peer = %subscriber))]
+    #[instrument(level = "debug", skip_all, fields(addr = %subscriber, id))]
     async fn block_subscription(
         &self,
         subscriber: Peer,
         stream: PushStream<Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let peer_id = self.peer_id(subscriber.addr()).await?;
+        Span::current().record("id", &peer_id.to_string().as_str());
         self.global_state.spawn(
             subscription::process_block_announcements(
                 stream,
@@ -265,13 +266,14 @@ impl FragmentService for NodeService {
         Err(Error::unimplemented())
     }
 
-    #[instrument(level = "debug", skip(self, stream, subscriber), fields(direction = "in", peer = %subscriber))]
+    #[instrument(level = "debug", skip_all, fields(direction = "in", addr = %subscriber, id))]
     async fn fragment_subscription(
         &self,
         subscriber: Peer,
         stream: PushStream<Fragment>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let peer_id = self.peer_id(subscriber.addr()).await?;
+        Span::current().record("id", &peer_id.to_string().as_str());
         self.global_state.spawn(
             subscription::process_fragments(
                 stream,
@@ -295,13 +297,14 @@ impl FragmentService for NodeService {
 impl GossipService for NodeService {
     type SubscriptionStream = SubscriptionStream<GossipSubscription>;
 
-    #[instrument(level = "debug", skip(self, stream, subscriber), fields(direction = "in", peer = %subscriber))]
+    #[instrument(level = "debug", skip_all, fields(direction = "in", addr = %subscriber, id))]
     async fn gossip_subscription(
         &self,
         subscriber: Peer,
         stream: PushStream<Gossip>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let peer_id = self.peer_id(subscriber.addr()).await?;
+        Span::current().record("id", &peer_id.to_string().as_str());
         self.global_state.spawn(
             subscription::process_gossip(
                 stream,

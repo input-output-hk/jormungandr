@@ -152,7 +152,7 @@ impl P2pTopology {
         for gossip in gossips {
             let peer = Profile::from_gossip(gossip);
             let peer_id = NodeId(peer.id());
-            tracing::trace!(node = %peer.address(), "received peer from gossip");
+            tracing::trace!(addr = %peer.address(), %peer_id, "received peer from incoming gossip");
             if self.topology.add_peer(peer) {
                 self.quarantine.record_new_gossip(&peer_id);
                 self.stats_counter

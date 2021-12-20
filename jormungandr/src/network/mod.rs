@@ -81,7 +81,7 @@ use crate::utils::async_msg::{MessageBox, MessageQueue};
 use chain_network::data::NodeKeyPair;
 use rand::seq::SliceRandom;
 use tonic::transport;
-use tracing::{field, instrument, span, Level, Span};
+use tracing::{instrument, span, Level, Span};
 use tracing_futures::Instrument;
 
 use std::collections::HashSet;
@@ -369,7 +369,7 @@ where
     Ok(res)
 }
 
-#[instrument(level = "debug", skip(msg, state, channels), fields(peer = field::Empty, hash = field::Empty))]
+#[instrument(level = "debug", skip_all, fields(addr, hash, id))]
 async fn handle_propagation_msg(
     msg: PropagateMsg,
     state: GlobalStateR,
@@ -407,7 +407,8 @@ async fn handle_propagation_msg(
             .await?
         }
         PropagateMsg::Gossip(peer, gossips) => {
-            Span::current().record("peer", &peer.address().to_string().as_str());
+            Span::current().record("addr", &peer.address().to_string().as_str());
+            Span::current().record("id", &peer.address().to_string().as_str());
             tracing::debug!("gossip to propagate");
             let gossip = gossips.encode();
             match prop_state
@@ -467,7 +468,7 @@ fn connect_and_propagate(
     }
     drop(_enter);
     let peer = Peer::new(addr);
-    let conn_span = span!(parent: &state.span, Level::DEBUG, "client", addr = %addr);
+    let conn_span = span!(parent: &state.span, Level::DEBUG, "client", %addr, %id);
     let spawn_state = state.clone();
     let cf = async move {
         let conn_state = ConnectionState::new(state.clone(), &peer, Span::current());
