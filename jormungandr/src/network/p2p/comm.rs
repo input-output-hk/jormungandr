@@ -531,7 +531,9 @@ impl Peers {
         F: FnOnce([u8; NONCE_LEN]) -> Result<(), Error>,
     {
         let mut map = self.inner().await;
-        map.complete_handshake(peer_addr, id, verify)
+        map.complete_handshake(peer_addr, id, verify)?;
+        tracing::debug!(addr = %peer_addr, %id, "authenticated client peer node");
+        Ok(())
     }
 
     pub async fn client_id(&self, peer_addr: Address) -> Option<NodeId> {
