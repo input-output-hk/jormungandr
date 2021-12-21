@@ -61,7 +61,7 @@ pub struct Configuration {
 
     pub public_address: Option<Address>,
 
-    // Secret key used to authenticate gossips, the public part is used as an identifier of the node
+    // Secret key used to authenticate communications, the public part is used as an identifier of the node
     pub node_key: SigningKey<Ed25519>,
 
     /// list of trusted addresses

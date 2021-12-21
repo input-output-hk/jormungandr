@@ -40,7 +40,7 @@ impl PreferredListLayer {
             peers: config
                 .peers
                 .iter()
-                .map(|peer| (peer.addr, peer.id.clone()))
+                .map(|peer| (peer.addr, peer.id))
                 .collect(),
             current_peers: HashSet::new(),
             prng,

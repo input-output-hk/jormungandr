@@ -16,8 +16,6 @@ mod subscription;
 use self::convert::Encode;
 
 use futures::{future, prelude::*};
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaChaRng;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 
@@ -76,14 +74,14 @@ use self::p2p::comm::Peers;
 use crate::blockcfg::{Block, HeaderHash};
 use crate::blockchain::{Blockchain as NewBlockchain, Tip};
 use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TopologyMsg, TransactionMsg};
-use crate::metrics::{Metrics, MetricsBackend};
+use crate::metrics::Metrics;
 use crate::settings::start::network::{Configuration, Peer, Protocol};
 use crate::topology::{self, NodeId};
 use crate::utils::async_msg::{MessageBox, MessageQueue};
 use chain_network::data::NodeKeyPair;
 use rand::seq::SliceRandom;
 use tonic::transport;
-use tracing::{field, instrument, span, Level, Span};
+use tracing::{instrument, span, Level, Span};
 use tracing_futures::Instrument;
 
 use std::collections::HashSet;
@@ -152,7 +150,6 @@ impl Clone for Channels {
 pub struct GlobalState {
     block0_hash: HeaderHash,
     config: Configuration,
-    stats_counter: Metrics,
     peers: Peers,
     keypair: NodeKeyPair,
     span: Span,
@@ -170,18 +167,15 @@ impl GlobalState {
         stats_counter: Metrics,
         span: Span,
     ) -> Self {
-        let peers = Peers::new(config.max_connections);
+        let peers = Peers::new(config.max_connections, stats_counter);
 
-        let mut rng_seed = [0; 32];
-        rand::thread_rng().fill(&mut rng_seed);
-        let mut prng = ChaChaRng::from_seed(rng_seed);
-
-        let keypair = NodeKeyPair::generate(&mut prng);
+        //TODO: move this to a secure enclave
+        let keypair =
+            NodeKeyPair::from(<chain_crypto::SecretKey<_>>::from(config.node_key.clone()));
 
         GlobalState {
             block0_hash,
             config,
-            stats_counter,
             peers,
             keypair,
             span,
@@ -205,17 +199,15 @@ impl GlobalState {
     }
 
     fn inc_client_count(&self) {
-        self.stats_counter.add_peer_connected_cnt(1);
-        self.connected_count.fetch_add(1, Ordering::Relaxed);
+        self.connected_count.fetch_add(1, Ordering::AcqRel);
     }
 
     fn dec_client_count(&self) {
-        self.stats_counter.sub_peer_connected_cnt(1);
-        self.connected_count.fetch_sub(1, Ordering::Relaxed);
+        self.connected_count.fetch_sub(1, Ordering::AcqRel);
     }
 
     fn client_count(&self) -> usize {
-        self.connected_count.load(Ordering::Relaxed)
+        self.connected_count.load(Ordering::Acquire)
     }
 
     // How many client connections to bump when a new one is about to be
@@ -327,18 +319,14 @@ async fn handle_network_input(
             NetworkMsg::GetNextBlock(node_id, block_id) => {
                 state
                     .peers
-                    .solicit_blocks_peer(node_id, Box::new([block_id.encode()]))
+                    .solicit_blocks_peer(&node_id, Box::new([block_id.encode()]))
                     .await;
             }
-            NetworkMsg::PullHeaders {
-                node_address,
-                from,
-                to,
-            } => {
+            NetworkMsg::PullHeaders { node_id, from, to } => {
                 let from: Vec<_> = from.into();
                 state
                     .peers
-                    .pull_headers(node_address, from.encode(), to.encode())
+                    .pull_headers(&node_id, from.encode(), to.encode())
                     .await;
             }
             NetworkMsg::PeerInfo(reply) => {
@@ -358,7 +346,7 @@ async fn propagate_message<F, Fut, E, T>(
 ) -> Result<Vec<topology::Peer>, PropagateError>
 where
     T: Clone,
-    F: Fn(SocketAddr, T) -> Fut,
+    F: Fn(NodeId, T) -> Fut,
     Fut: Future<Output = Result<(), E>>,
 {
     let (reply_handle, reply_future) = crate::intercom::unary_reply();
@@ -370,8 +358,8 @@ where
     // and ids.
     let mut res = Vec::new();
     for peer in peers {
-        if f(peer.address(), arg.clone())
-            .instrument(span!(Level::DEBUG, "p2p_comm", peer = %peer.address()))
+        if f(peer.id(), arg.clone())
+            .instrument(span!(Level::DEBUG, "p2p_comm", peer = %peer.address(), id = %peer.id()))
             .await
             .is_err()
         {
@@ -381,7 +369,7 @@ where
     Ok(res)
 }
 
-#[instrument(level = "debug", skip(msg, state, channels), fields(peer = field::Empty, hash = field::Empty))]
+#[instrument(level = "debug", skip_all, fields(addr, hash, id))]
 async fn handle_propagation_msg(
     msg: PropagateMsg,
     state: GlobalStateR,
@@ -395,7 +383,7 @@ async fn handle_propagation_msg(
             tracing::debug!("received new block to propagate");
             let header = header.encode();
             propagate_message(
-                |addr, header| prop_state.peers.propagate_block(addr, header),
+                |id, header| prop_state.peers.propagate_block(id, header),
                 Selection::Topic {
                     topic: crate::topology::topic::BLOCKS,
                 },
@@ -409,7 +397,7 @@ async fn handle_propagation_msg(
             tracing::debug!(hash = %fragment.hash(), "fragment to propagate");
             let fragment = fragment.encode();
             propagate_message(
-                |addr, fragment| prop_state.peers.propagate_fragment(addr, fragment),
+                |id, fragment| prop_state.peers.propagate_fragment(id, fragment),
                 Selection::Topic {
                     topic: crate::topology::topic::MESSAGES,
                 },
@@ -419,12 +407,13 @@ async fn handle_propagation_msg(
             .await?
         }
         PropagateMsg::Gossip(peer, gossips) => {
-            Span::current().record("peer", &peer.address().to_string().as_str());
+            Span::current().record("addr", &peer.address().to_string().as_str());
+            Span::current().record("id", &peer.address().to_string().as_str());
             tracing::debug!("gossip to propagate");
             let gossip = gossips.encode();
             match prop_state
                 .peers
-                .propagate_gossip_to(peer.address(), gossip)
+                .propagate_gossip_to(peer.id(), gossip)
                 .await
             {
                 Err(_) => vec![peer.clone()],
@@ -463,8 +452,8 @@ async fn handle_propagation_msg(
 // node_id should be missing only for trusted peer for which we do not know
 // the public key
 fn connect_and_propagate(
-    node_addr: SocketAddr,
-    node_id: NodeId,
+    addr: SocketAddr,
+    id: NodeId,
     state: GlobalStateR,
     mut channels: Channels,
     mut options: p2p::comm::ConnectOptions,
@@ -472,20 +461,20 @@ fn connect_and_propagate(
     let _enter = state.span.enter();
     options.evict_clients = state.num_clients_to_bump();
     if let Some(self_addr) = state.node_address() {
-        if node_addr == self_addr {
-            tracing::error!(peer = %node_addr, "topology tells the node to connect to itself, ignoring");
+        if addr == self_addr {
+            tracing::error!(peer = %addr, "topology tells the node to connect to itself, ignoring");
             return;
         }
     }
     drop(_enter);
-    let peer = Peer::new(node_addr);
-    let conn_span = span!(parent: &state.span, Level::DEBUG, "client", addr = %node_addr);
+    let peer = Peer::new(addr);
+    let conn_span = span!(parent: &state.span, Level::DEBUG, "client", %addr, %id);
     let spawn_state = state.clone();
     let cf = async move {
         let conn_state = ConnectionState::new(state.clone(), &peer, Span::current());
         tracing::info!("connecting to peer");
         let (handle, connecting) = client::connect(conn_state, channels.clone());
-        state.peers.add_connecting(node_addr, handle, options).await;
+        state.peers.add_connecting(id, addr, handle, options).await;
         match connecting.await {
             Err(e) => {
                 let benign = match e {
@@ -509,24 +498,24 @@ fn connect_and_propagate(
                 if !benign {
                     channels
                         .topology_box
-                        .send(TopologyMsg::DemotePeer(node_id))
+                        .send(TopologyMsg::DemotePeer(id))
                         .await
                         .unwrap_or_else(|e| {
                             tracing::error!("Error sending message to topology task: {}", e)
                         });
-                    state.peers.remove_peer(node_addr).await;
+                    state.peers.remove_peer(&id).await;
                 }
             }
             Ok(client) => {
                 // This enforce processing any pending operation that could
                 // have been scheduled on this peer
-                state.peers.update_entry(node_addr).await;
+                state.peers.update_entry(id).await;
 
                 state.inc_client_count();
 
                 channels
                     .topology_box
-                    .send(TopologyMsg::PromotePeer(node_id))
+                    .send(TopologyMsg::PromotePeer(id))
                     .await
                     .unwrap_or_else(|e| {
                         tracing::error!("Error sending message to topology task: {}", e)

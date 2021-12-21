@@ -6,7 +6,8 @@ use jormungandr_lib::interfaces::Subscription;
 use jormungandr_lib::time::SystemTime;
 use serde::Serialize;
 use serde::Serializer;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
+use std::fmt;
 use std::hash::{Hash, Hasher};
 
 mod gossip;
@@ -47,7 +48,7 @@ pub mod limits {
 }
 
 /// Unique identifier of a node in the topology
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub struct NodeId(keynesis::key::ed25519::PublicKey);
 
 impl From<jormungandr_lib::interfaces::NodeId> for NodeId {
@@ -60,6 +61,24 @@ impl From<jormungandr_lib::interfaces::NodeId> for NodeId {
 impl From<NodeId> for jormungandr_lib::interfaces::NodeId {
     fn from(node_id: NodeId) -> jormungandr_lib::interfaces::NodeId {
         jormungandr_lib::interfaces::NodeId::from_hex(&node_id.0.to_string()).unwrap()
+    }
+}
+
+impl TryFrom<&[u8]> for NodeId {
+    type Error = chain_crypto::PublicKeyError;
+
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        use chain_crypto::{Ed25519, PublicKey};
+        Ok(Self::from(
+            PublicKey::<Ed25519>::from_binary(bytes)
+                .map(jormungandr_lib::interfaces::NodeId::from)?,
+        ))
+    }
+}
+
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

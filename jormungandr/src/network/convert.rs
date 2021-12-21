@@ -1,6 +1,6 @@
 use crate::blockcfg::{Block, Fragment, Header, HeaderId};
 use crate::intercom;
-use crate::topology::{Gossip, Gossips};
+use crate::topology::{Gossip, Gossips, NodeId};
 use chain_core::mempack::{ReadBuf, Readable};
 use chain_core::property::{Deserialize, Serialize};
 use chain_network::data as net_data;
@@ -94,6 +94,13 @@ impl Decode for net_data::gossip::Node {
     }
 }
 
+impl Decode for net_data::NodeId {
+    type Object = NodeId;
+    fn decode(self) -> Result<Self::Object, Error> {
+        NodeId::try_from(self.as_bytes()).map_err(|e| Error::new(Code::InvalidArgument, e))
+    }
+}
+
 impl<T, N> Encode for Vec<T>
 where
     T: Encode<NetworkData = N>,
@@ -158,5 +165,13 @@ impl Encode for Gossips {
             .collect::<Vec<net_data::gossip::Node>>()
             .into_boxed_slice();
         net_data::gossip::Gossip { nodes }
+    }
+}
+
+impl Encode for NodeId {
+    type NetworkData = net_data::NodeId;
+
+    fn encode(&self) -> Self::NetworkData {
+        net_data::NodeId::try_from(self.as_ref().as_ref()).unwrap()
     }
 }

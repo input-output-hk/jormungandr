@@ -152,7 +152,7 @@ impl P2pTopology {
         for gossip in gossips {
             let peer = Profile::from_gossip(gossip);
             let peer_id = NodeId(peer.id());
-            tracing::trace!(node = %peer.address(), "received peer from gossip");
+            tracing::trace!(addr = %peer.address(), %peer_id, "received peer from incoming gossip");
             if self.topology.add_peer(peer) {
                 self.quarantine.record_new_gossip(&peer_id);
                 self.stats_counter
@@ -209,7 +209,7 @@ impl P2pTopology {
     }
 
     /// register a strike against the given peer
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip_all, level = "debug", fields(%node_id))]
     pub fn report_node(&mut self, node_id: &NodeId) {
         if let Some(node) = self.topology.get(node_id.as_ref()).cloned() {
             let result = self

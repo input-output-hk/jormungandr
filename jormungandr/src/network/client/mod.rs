@@ -7,15 +7,13 @@ use super::{
         self,
         client::{BlockSubscription, FragmentSubscription, GossipSubscription},
     },
-    p2p::{
-        comm::{OutboundSubscription, PeerComms},
-        Address,
-    },
-    subscription::{BlockAnnouncementProcessor, FragmentProcessor, GossipProcessor},
+    p2p::comm::{OutboundSubscription, PeerComms},
+    subscription::{BlockAnnouncementProcessor, Direction, FragmentProcessor, GossipProcessor},
     Channels, GlobalStateR,
 };
 use crate::{
     intercom::{self, BlockMsg, ClientMsg},
+    topology::NodeId,
     utils::async_msg::MessageBox,
 };
 use chain_network::data as net_data;
@@ -71,18 +69,19 @@ impl Client {
 
         let block_sink = BlockAnnouncementProcessor::new(
             builder.channels.block_box,
-            inbound.peer_address,
+            inbound.peer_id,
             global_state.clone(),
         );
         let fragment_sink = FragmentProcessor::new(
             builder.channels.transaction_box,
-            inbound.peer_address,
+            inbound.peer_id,
             global_state.clone(),
         );
         let gossip_sink = GossipProcessor::new(
             builder.channels.topology_box,
-            inbound.peer_address,
+            inbound.peer_id,
             global_state.clone(),
+            Direction::Client,
         );
 
         Client {
@@ -104,7 +103,7 @@ impl Client {
 }
 
 struct InboundSubscriptions {
-    pub peer_address: Address,
+    pub peer_id: NodeId,
     pub block_events: BlockSubscription,
     pub fragments: FragmentSubscription,
     pub gossip: GossipSubscription,
@@ -151,7 +150,7 @@ impl Progress {
 }
 
 impl Client {
-    #[instrument(level = "debug", skip(self, cx))]
+    #[instrument(skip_all, level = "debug")]
     fn process_block_event(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
         // Drive sending of a message to block task to clear the buffered
@@ -242,7 +241,7 @@ impl Client {
         Ok(Continue).into()
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(skip_all, level = "debug")]
     fn upload_blocks(&mut self, block_ids: BlockIds) -> Result<(), ()> {
         if block_ids.is_empty() {
             tracing::info!("peer has sent an empty block solicitation");
@@ -292,7 +291,7 @@ impl Client {
         Ok(())
     }
 
-    #[instrument(level = "debug", skip(self, req))]
+    #[instrument(skip_all, level = "debug")]
     fn push_missing_headers(&mut self, req: ChainPullRequest) -> Result<(), ()> {
         let from = req.from.decode().map_err(|e| {
             tracing::info!(
@@ -344,7 +343,7 @@ impl Client {
         Ok(())
     }
 
-    #[instrument(level = "debug", skip(self, req))]
+    #[instrument(skip_all, level = "debug")]
     fn pull_headers(&mut self, req: ChainPullRequest) {
         let mut block_box = self.block_sink.message_box();
 
@@ -390,7 +389,7 @@ impl Client {
         );
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(skip_all, level = "debug")]
     fn solicit_blocks(&mut self, block_ids: BlockIds) {
         let mut block_box = self.block_sink.message_box();
         let (handle, sink, _) = intercom::stream_request(buffer_sizes::inbound::BLOCKS);
@@ -435,7 +434,7 @@ impl Client {
         );
     }
 
-    #[instrument(level = "debug", skip(self, cx), fields(direction = "in"))]
+    #[instrument(skip_all, level = "debug", fields(direction = "in"))]
     fn process_fragments(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
         let mut fragment_sink = Pin::new(&mut self.fragment_sink);
@@ -469,7 +468,7 @@ impl Client {
         }
     }
 
-    #[instrument(level = "debug", skip(self, cx), fields(direction = "in"))]
+    #[instrument(skip_all, level = "debug", fields(direction = "in"))]
     fn process_gossip(&mut self, cx: &mut Context<'_>) -> Poll<Result<ProcessingOutcome, ()>> {
         use self::ProcessingOutcome::*;
         let mut gossip_sink = Pin::new(&mut self.gossip_sink);
