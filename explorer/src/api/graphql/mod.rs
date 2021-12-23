@@ -877,11 +877,9 @@ impl Transaction {
         &self,
         context: &Context<'_>,
     ) -> FieldResult<Option<certificates::Certificate>> {
-        let transaction = self.get_contents(context).await?;
-        match transaction.certificate {
-            Some(c) => Certificate::try_from(c).map(Some).map_err(|e| e.into()),
-            None => Ok(None),
-        }
+        self.get_contents(context)
+            .await
+            .map(|transaction| transaction.certificate.map(Certificate::from))
     }
 }
 
