@@ -66,11 +66,7 @@ pub fn retire_stake_pool_explorer() {
         .unwrap();
 
     let leader_1 = controller
-        .spawn(
-            SpawnParams::new(LEADER_1)
-                .in_memory()
-                .explorer(Explorer { enabled: true }),
-        )
+        .spawn(SpawnParams::new(LEADER_1).in_memory())
         .unwrap();
     let _leader_2 = controller
         .spawn(SpawnParams::new(LEADER_2).in_memory())

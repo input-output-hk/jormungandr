@@ -70,12 +70,7 @@ pub fn passive_node_explorer() {
         .unwrap();
 
     let passive = controller
-        .spawn(
-            SpawnParams::new(PASSIVE)
-                .passive()
-                .in_memory()
-                .explorer(Explorer { enabled: true }),
-        )
+        .spawn(SpawnParams::new(PASSIVE).passive().in_memory())
         .unwrap();
     let mut alice = controller.wallet(ALICE).unwrap();
     let bob = controller.wallet(BOB).unwrap();
