@@ -6,7 +6,6 @@ use super::{
 use super::{error::ApiError, extract_context};
 use async_graphql::{Context, FieldResult, Object, Union};
 use chain_impl_mockchain::certificate;
-use std::convert::TryFrom;
 
 // interface for grouping certificates as a graphl union
 #[derive(Union)]
@@ -277,36 +276,33 @@ impl MintToken {
 /*------- Conversions ---------*/
 /*----------------------------*/
 
-impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
-    type Error = super::error::ApiError;
-    fn try_from(
-        original: chain_impl_mockchain::certificate::Certificate,
-    ) -> Result<Certificate, Self::Error> {
+impl From<chain_impl_mockchain::certificate::Certificate> for Certificate {
+    fn from(original: chain_impl_mockchain::certificate::Certificate) -> Certificate {
         match original {
             certificate::Certificate::StakeDelegation(c) => {
-                Ok(Certificate::StakeDelegation(StakeDelegation(c)))
+                Certificate::StakeDelegation(StakeDelegation(c))
             }
             certificate::Certificate::OwnerStakeDelegation(c) => {
-                Ok(Certificate::OwnerStakeDelegation(OwnerStakeDelegation(c)))
+                Certificate::OwnerStakeDelegation(OwnerStakeDelegation(c))
             }
             certificate::Certificate::PoolRegistration(c) => {
-                Ok(Certificate::PoolRegistration(PoolRegistration(c)))
+                Certificate::PoolRegistration(PoolRegistration(c))
             }
             certificate::Certificate::PoolRetirement(c) => {
-                Ok(Certificate::PoolRetirement(PoolRetirement(c)))
+                Certificate::PoolRetirement(PoolRetirement(c))
             }
-            certificate::Certificate::PoolUpdate(c) => Ok(Certificate::PoolUpdate(PoolUpdate(c))),
-            certificate::Certificate::VotePlan(c) => Ok(Certificate::VotePlan(VotePlan(c))),
-            certificate::Certificate::VoteCast(c) => Ok(Certificate::VoteCast(VoteCast(c))),
-            certificate::Certificate::VoteTally(c) => Ok(Certificate::VoteTally(VoteTally(c))),
+            certificate::Certificate::PoolUpdate(c) => Certificate::PoolUpdate(PoolUpdate(c)),
+            certificate::Certificate::VotePlan(c) => Certificate::VotePlan(VotePlan(c)),
+            certificate::Certificate::VoteCast(c) => Certificate::VoteCast(VoteCast(c)),
+            certificate::Certificate::VoteTally(c) => Certificate::VoteTally(VoteTally(c)),
             certificate::Certificate::EncryptedVoteTally(c) => {
-                Ok(Certificate::EncryptedVoteTally(EncryptedVoteTally(c)))
+                Certificate::EncryptedVoteTally(EncryptedVoteTally(c))
             }
             certificate::Certificate::UpdateProposal(c) => {
-                Ok(Certificate::UpdateProposal(UpdateProposal(c)))
+                Certificate::UpdateProposal(UpdateProposal(c))
             }
-            certificate::Certificate::UpdateVote(c) => Ok(Certificate::UpdateVote(UpdateVote(c))),
-            certificate::Certificate::MintToken(c) => Ok(Certificate::MintToken(MintToken(c))),
+            certificate::Certificate::UpdateVote(c) => Certificate::UpdateVote(UpdateVote(c)),
+            certificate::Certificate::MintToken(c) => Certificate::MintToken(MintToken(c)),
         }
     }
 }
