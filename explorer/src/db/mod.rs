@@ -166,8 +166,7 @@ impl ExplorerDb {
     }
 
     /// Try to add a new block to the indexes, this can fail if the parent of the block is
-    /// not processed. Also, update the longest seen chain with this block as tip if its
-    /// chain length is greater than the current.
+    /// not processed.
     /// This doesn't perform any validation on the given block and the previous state, it
     /// is assumed that the Block is valid
     pub async fn apply_block(&self, block: Block) -> Result<multiverse::Ref, Error> {
