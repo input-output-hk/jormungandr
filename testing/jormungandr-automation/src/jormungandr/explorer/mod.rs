@@ -1,3 +1,5 @@
+use crate::testing::configuration::{get_available_port, get_explorer_app};
+
 use self::{
     client::GraphQlClient,
     data::{
@@ -10,7 +12,12 @@ use graphql_client::GraphQLQuery;
 use graphql_client::*;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::BlockDate;
-use std::str::FromStr;
+use std::{
+    process::{Command, Stdio},
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
+};
 mod client;
 // Macro here expand to something containing PUBLIC/PRIVATE fields that
 // do not respect the naming convention
@@ -21,7 +28,7 @@ mod wrappers;
 pub use wrappers::LastBlockResponse;
 
 use data::PoolId;
-use jortestkit::file;
+use jortestkit::{file, process::Wait};
 use serde::Serialize;
 use std::path::Path;
 use std::path::PathBuf;
@@ -41,15 +48,82 @@ pub enum ExplorerError {
 pub struct Explorer {
     client: GraphQlClient,
     print_log: bool,
+    _process: Arc<ExplorerProcess>,
+}
+
+struct ExplorerProcess {
+    handler: Option<std::process::Child>,
+    logs_dir: Option<std::path::PathBuf>,
+}
+
+impl Drop for ExplorerProcess {
+    fn drop(&mut self) {
+        let output = if let Some(mut handler) = self.handler.take() {
+            let _ = handler.kill();
+            handler.wait_with_output().unwrap()
+        } else {
+            return;
+        };
+
+        if std::thread::panicking() {
+            if let Some(logs_dir) = &self.logs_dir {
+                println!(
+                    "persisting explorer logs after panic: {}",
+                    logs_dir.display()
+                );
+
+                std::fs::write(logs_dir.join("explorer.log"), output.stdout)
+                    .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
+
+                std::fs::write(logs_dir.join("explorer.err"), output.stderr)
+                    .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
+            }
+        }
+    }
 }
 
 impl Explorer {
-    pub fn new<S: Into<String>>(address: S) -> Explorer {
+    pub fn new(node_address: String, logs_dir: Option<std::path::PathBuf>) -> Explorer {
         let print_log = true;
 
+        let path = get_explorer_app();
+        let explorer_port = get_available_port();
+        let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
+
+        let _process = Arc::new(ExplorerProcess {
+            handler: Some(
+                Command::new(path)
+                    .args(&[
+                        "--node",
+                        node_address.as_ref(),
+                        "--binding-address",
+                        explorer_listen_address.as_ref(),
+                    ])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .expect("failed to execute explorer process"),
+            ),
+            logs_dir,
+        });
+
+        let mut wait_bootstrap = Wait::new(Duration::from_secs(1), 10);
+        while !wait_bootstrap.timeout_reached() {
+            if reqwest::blocking::Client::new()
+                .head(format!("http://{}/", &explorer_listen_address))
+                .send()
+                .is_ok()
+            {
+                break;
+            };
+
+            wait_bootstrap.advance();
+        }
+
         Explorer {
-            client: GraphQlClient::new(address),
+            client: GraphQlClient::new(explorer_listen_address),
             print_log,
+            _process,
         }
     }
 

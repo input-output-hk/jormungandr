@@ -296,7 +296,18 @@ impl JormungandrProcess {
     }
 
     pub fn explorer(&self) -> Explorer {
-        Explorer::new(self.rest_socket_addr.to_string())
+        let mut p2p_public_address = self.p2p_public_address.clone();
+        let port = match p2p_public_address.pop().unwrap() {
+            multiaddr::Protocol::Tcp(port) => port,
+            _ => todo!("explorer can only be attached through grpc(http)"),
+        };
+
+        let address = match p2p_public_address.pop().unwrap() {
+            multiaddr::Protocol::Ip4(address) => address,
+            _ => todo!("only ipv4 supported for now"),
+        };
+
+        Explorer::new(format!("http://{}:{}/", address, port), self.temp_dir())
     }
 
     pub fn to_trusted_peer(&self) -> TrustedPeer {

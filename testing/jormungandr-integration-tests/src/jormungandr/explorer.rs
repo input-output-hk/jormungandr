@@ -8,8 +8,8 @@ use jormungandr_automation::{
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
-use std::{process::Command, str::FromStr};
-use std::{process::Stdio, time::Duration};
+use std::str::FromStr;
+use std::time::Duration;
 
 /// test checks if there is upto date schema
 /// prereq:
@@ -63,30 +63,7 @@ pub fn explorer_sanity_test() {
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
-    let path = get_explorer_app();
-
-    let explorer_port = get_available_port();
-    let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
-
-    // TODO: encapsulate this
-    let _process = ExplorerProcess {
-        handler: Some(
-            Command::new(path)
-                .args(&[
-                    "--node",
-                    format!("http://{}", jormungandr.address().to_string()).as_ref(),
-                    "--binding-address",
-                    explorer_listen_address.as_ref(),
-                ])
-                .stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .spawn()
-                .expect("failed to execute explorer process"),
-        ),
-        logs_dir: jormungandr.temp_dir(),
-    };
-
-    let explorer: Explorer = Explorer::new(explorer_listen_address);
+    let explorer = jormungandr.explorer();
 
     let transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
@@ -103,14 +80,7 @@ pub fn explorer_sanity_test() {
         .send(&transaction)
         .assert_in_block_with_wait(&wait);
 
-    // retry a few times, in case the query runs before the block is propagated through the grpc
-    // subscription to the explorer and properly indexed.
-    let mut wait_for_explorer = Wait::new(Duration::from_secs(1), 3);
-    while !wait_for_explorer.timeout_reached() {
-        transaction_by_id(&explorer, fragment_id);
-        wait_for_explorer.advance();
-    }
-
+    transaction_by_id(&explorer, fragment_id);
     blocks(&explorer, jormungandr.logger.get_created_blocks_hashes());
     stake_pools(&explorer, initial_stake_pools.as_ref());
     stake_pool(&explorer, initial_stake_pools.as_ref());
