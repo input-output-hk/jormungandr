@@ -99,6 +99,7 @@ impl VotePlanExtension for VotePlan {
         }
 
         data["committee_member_public_keys"] = committee_member_public_keys;
+        data["voting_token"] = self.voting_token().to_string().into();
         data
     }
 
