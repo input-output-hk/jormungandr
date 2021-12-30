@@ -16,9 +16,9 @@ pub fn test_correct_proposal_number_is_returned() {
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
-        .with_vote_start(BlockDate::from_epoch_slot_id(0, 0))
-        .with_tally_start(BlockDate::from_epoch_slot_id(1, 0))
-        .with_tally_end(BlockDate::from_epoch_slot_id(2, 0))
+        .vote_start(BlockDate::from_epoch_slot_id(0, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(2, 0))
         .public()
         .build();
 

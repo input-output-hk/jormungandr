@@ -37,21 +37,6 @@ impl VotePlanBuilder {
         }
     }
 
-    pub fn with_vote_start(&mut self, block_date: BlockDate) -> &mut Self {
-        self.vote_start = block_date;
-        self
-    }
-
-    pub fn with_tally_start(&mut self, block_date: BlockDate) -> &mut Self {
-        self.tally_start = block_date;
-        self
-    }
-
-    pub fn with_tally_end(&mut self, block_date: BlockDate) -> &mut Self {
-        self.tally_end = block_date;
-        self
-    }
-
     pub fn proposals_count(&mut self, proposals_count: usize) -> &mut Self {
         self.proposals_count = proposals_count;
         self

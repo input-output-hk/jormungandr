@@ -154,9 +154,9 @@ pub fn test_vote_flow_bft() {
                 value: Value(rewards_increase),
             },
         })
-        .with_vote_start(BlockDate::from_epoch_slot_id(0, 0))
-        .with_tally_start(BlockDate::from_epoch_slot_id(1, 0))
-        .with_tally_end(BlockDate::from_epoch_slot_id(2, 0))
+        .vote_start(BlockDate::from_epoch_slot_id(0, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(2, 0))
         .public()
         .build();
 
@@ -472,9 +472,9 @@ pub fn jcli_e2e_flow() {
                 value: Value(rewards_increase),
             },
         })
-        .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
-        .with_tally_start(BlockDate::from_epoch_slot_id(2, 0))
-        .with_tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
         .public()
         .build();
 
@@ -658,9 +658,9 @@ pub fn duplicated_vote() {
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
-        .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
-        .with_tally_start(BlockDate::from_epoch_slot_id(2, 0))
-        .with_tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
         .public()
         .build();
 
@@ -715,9 +715,9 @@ pub fn non_duplicated_vote() {
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
-        .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
-        .with_tally_start(BlockDate::from_epoch_slot_id(2, 0))
-        .with_tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
         .public()
         .build();
 

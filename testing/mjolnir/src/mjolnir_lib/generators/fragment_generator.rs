@@ -90,9 +90,9 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             Some(
                 VotePlanBuilder::new()
                     .proposals_count(256)
-                    .with_vote_start(start_block_date.shift_slot(5, &time_era).into())
-                    .with_tally_start(start_block_date.shift_epoch(5).into())
-                    .with_tally_end(start_block_date.shift_epoch(6).into())
+                    .vote_start(start_block_date.shift_slot(5, &time_era).into())
+                    .tally_start(start_block_date.shift_epoch(5).into())
+                    .tally_end(start_block_date.shift_epoch(6).into())
                     .build(),
             )
         })
@@ -102,9 +102,9 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         let vote_plans_for_tally: Vec<VotePlan> = iter::from_fn(|| {
             Some(
                 VotePlanBuilder::new()
-                    .with_vote_start(start_block_date.shift_slot(10, &time_era).into())
-                    .with_tally_start(start_block_date.shift_slot(11, &time_era).into())
-                    .with_tally_end(start_block_date.shift_epoch(5).into())
+                    .vote_start(start_block_date.shift_slot(10, &time_era).into())
+                    .tally_start(start_block_date.shift_slot(11, &time_era).into())
+                    .tally_end(start_block_date.shift_epoch(5).into())
                     .build(),
             )
         })
@@ -258,9 +258,9 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     self.slots_per_epoch,
                 );
                 let vote_plan = VotePlanBuilder::new()
-                    .with_vote_start(block_date.shift_slot(5, &time_era).into())
-                    .with_tally_start(block_date.shift_slot(6, &time_era).into())
-                    .with_tally_end(block_date.shift_epoch(4).into())
+                    .vote_start(block_date.shift_slot(5, &time_era).into())
+                    .tally_start(block_date.shift_slot(6, &time_era).into())
+                    .tally_end(block_date.shift_epoch(4).into())
                     .build();
                 self.fragment_sender
                     .send_vote_plan(&mut self.sender, &vote_plan, &self.node)
