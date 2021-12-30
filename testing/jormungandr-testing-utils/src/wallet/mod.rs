@@ -485,7 +485,7 @@ impl From<Wallet> for WalletLib {
         let address_data = match wallet {
             Wallet::Account(account) => AddressData::new(
                 account.signing_key().as_ref().clone(),
-                account.internal_counters_increasing().clone(),
+                account.spending_counter().clone(),
                 account.address().into(),
             ),
             Wallet::UTxO(utxo) => AddressData::new(

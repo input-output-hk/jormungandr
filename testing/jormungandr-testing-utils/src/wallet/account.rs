@@ -92,7 +92,7 @@ impl Wallet {
         ))
     }
 
-    pub fn internal_counters_increasing(&self) -> &SpendingCounterIncreasing {
+    pub fn spending_counter(&self) -> &SpendingCounterIncreasing {
         &self.internal_counters
     }
 

@@ -60,11 +60,6 @@ impl VotePlanBuilder {
         self
     }
 
-    pub fn with_voting_token(&mut self, voting_token: TokenIdentifier) -> &mut Self {
-        self.voting_token = voting_token;
-        self
-    }
-
     pub fn proposals_count(&mut self, proposals_count: usize) -> &mut Self {
         self.proposals_count = proposals_count;
         self
