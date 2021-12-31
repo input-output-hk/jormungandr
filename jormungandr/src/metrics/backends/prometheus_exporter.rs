@@ -268,6 +268,7 @@ impl MetricsBackend for Prometheus {
                     Fragment::MintToken(tx) => totals(tx),
                     Fragment::UpdateProposal(tx) => totals(tx),
                     Fragment::UpdateVote(tx) => totals(tx),
+                    Fragment::Evm(tx) => totals(tx),
                     Fragment::Initial(_) | Fragment::OldUtxoDeclaration(_) => return Ok(()),
                 }?;
                 block_tx_count += 1;

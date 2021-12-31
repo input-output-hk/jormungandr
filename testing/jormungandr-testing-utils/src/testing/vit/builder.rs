@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
 use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate::{Proposal, Proposals, VoteAction, VotePlan},
     testing::VoteTestGen,
+    tokens::identifier::TokenIdentifier,
     vote::{Options, PayloadType},
 };
 use chain_vote::MemberPublicKey;
@@ -14,6 +17,7 @@ pub struct VotePlanBuilder {
     vote_start: BlockDate,
     tally_start: BlockDate,
     tally_end: BlockDate,
+    voting_token: TokenIdentifier,
     options_size: u8,
 }
 
@@ -34,6 +38,10 @@ impl VotePlanBuilder {
             vote_start: BlockDate::from_epoch_slot_id(0, 0),
             tally_start: BlockDate::from_epoch_slot_id(1, 0),
             tally_end: BlockDate::from_epoch_slot_id(2, 0),
+            voting_token: TokenIdentifier::from_str(
+                "00000000000000000000000000000000000000000000000000000000.00000000",
+            )
+            .unwrap(),
         }
     }
 
@@ -99,6 +107,11 @@ impl VotePlanBuilder {
         self
     }
 
+    pub fn voting_token(&mut self, voting_token: TokenIdentifier) -> &mut Self {
+        self.voting_token = voting_token;
+        self
+    }
+
     pub fn options_size(&mut self, size: u8) -> &mut Self {
         self.options_size = size;
         self
@@ -127,6 +140,7 @@ impl VotePlanBuilder {
             proposals,
             self.payload,
             self.member_keys.clone(),
+            self.voting_token.clone(),
         )
     }
 }

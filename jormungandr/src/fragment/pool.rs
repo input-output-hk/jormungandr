@@ -351,6 +351,7 @@ fn is_fragment_valid(fragment: &Fragment) -> bool {
         Fragment::VoteTally(ref tx) => is_transaction_valid(tx),
         Fragment::EncryptedVoteTally(ref tx) => is_transaction_valid(tx),
         Fragment::MintToken(ref tx) => is_transaction_valid(tx),
+        Fragment::Evm(ref tx) => is_transaction_valid(tx),
     }
 }
 
@@ -375,6 +376,7 @@ fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
         Fragment::VoteTally(tx) => Some(tx.as_slice().valid_until()),
         Fragment::EncryptedVoteTally(tx) => Some(tx.as_slice().valid_until()),
         Fragment::MintToken(tx) => Some(tx.as_slice().valid_until()),
+        Fragment::Evm(tx) => Some(tx.as_slice().valid_until()),
     }
 }
 

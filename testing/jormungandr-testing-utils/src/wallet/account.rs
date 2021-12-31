@@ -92,6 +92,10 @@ impl Wallet {
         ))
     }
 
+    pub fn spending_counter(&self) -> &SpendingCounterIncreasing {
+        &self.internal_counters
+    }
+
     /// Use the default counter
     pub fn internal_counter(&self) -> SpendingCounter {
         self.internal_counters.get_valid_counter()

@@ -485,17 +485,17 @@ impl From<Wallet> for WalletLib {
         let address_data = match wallet {
             Wallet::Account(account) => AddressData::new(
                 account.signing_key().as_ref().clone(),
-                Some(account.internal_counter()),
+                account.spending_counter().clone(),
                 account.address().into(),
             ),
             Wallet::UTxO(utxo) => AddressData::new(
                 EitherEd25519SecretKey::Extended(utxo.last_signing_key().as_ref().clone()),
-                None,
+                Default::default(),
                 utxo.address().into(),
             ),
             Wallet::Delegation(delegation) => AddressData::new(
                 EitherEd25519SecretKey::Extended(delegation.last_signing_key().as_ref().clone()),
-                None,
+                Default::default(),
                 delegation.address().into(),
             ),
         };

@@ -76,6 +76,7 @@ proposals:
       treasury:
         transfer_to_rewards:
           value: 100
+voting_token: "00000000000000000000000000000000000000000000000000000000.00000000"
     "#;
 
     let vote_plan_config_path = temp_dir.child("vote_plan.yaml");
