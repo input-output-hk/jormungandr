@@ -1,13 +1,13 @@
-use crate::testing::fragments::sender::BlockDateGenerator;
-use crate::testing::FragmentBuilder;
-use crate::testing::FragmentSender;
-use crate::testing::FragmentSenderSetup;
-use crate::testing::RemoteJormungandr;
-use crate::testing::SyncNode;
-use crate::wallet::LinearFee;
-use crate::wallet::Wallet;
 use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_testing_utils::testing::BlockDateGenerator;
+use jormungandr_testing_utils::testing::FragmentBuilder;
+use jormungandr_testing_utils::testing::FragmentSender;
+use jormungandr_testing_utils::testing::FragmentSenderSetup;
+use jormungandr_testing_utils::testing::RemoteJormungandr;
+use jormungandr_testing_utils::testing::SyncNode;
+use jormungandr_testing_utils::wallet::LinearFee;
+use jormungandr_testing_utils::wallet::Wallet;
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
 use std::time::Instant;
@@ -87,20 +87,15 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
         let sender = senders.get_mut(senders.len() - 1).unwrap();
         let reciever = recievers.get(0).unwrap();
 
-        if let crate::wallet::Wallet::Account(account) = sender {
-            let fragment = FragmentBuilder::new(
-                &self.fragment_sender.block0_hash(),
-                &self.fragment_sender.fees(),
-                self.fragment_sender.date(),
-            )
-            .transaction(account, reciever.address(), 1.into())
-            .map_err(|e| RequestFailure::General(format!("{:?}", e)));
-            sender.confirm_transaction();
-            fragment    
-        } else {
-            Err(RequestFailure::General("only accounts are supported for transaction input".to_string()))
-        }
-        
+        let fragment = FragmentBuilder::new(
+            &self.fragment_sender.block0_hash(),
+            &self.fragment_sender.fees(),
+            self.fragment_sender.date(),
+        )
+        .transaction(sender, reciever.address(), 1.into())
+        .map_err(|e| RequestFailure::General(format!("{:?}", e)));
+        sender.confirm_transaction();
+        fragment
     }
 
     pub fn batch_size(&self) -> u8 {

@@ -13,7 +13,7 @@ pub use self::{
     setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
     verifier::{ExitStrategy as VerifyExitStrategy, FragmentVerifier, FragmentVerifierError},
 };
-use crate::{stake_pool::StakePool, wallet::{account,Wallet}};
+use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::fee::FeeAlgorithm;
 use chain_impl_mockchain::transaction::InputOutputBuilder;
 use chain_impl_mockchain::transaction::TxBuilder;
@@ -79,7 +79,7 @@ impl FragmentBuilder {
 
     pub fn transaction(
         &self,
-        from: &account::Wallet,
+        from: &Wallet,
         address: Address,
         value: Value,
     ) -> Result<Fragment, FragmentBuilderError> {
@@ -88,7 +88,7 @@ impl FragmentBuilder {
 
     pub fn transaction_to_many(
         &self,
-        from: &account::Wallet,
+        from: &Wallet,
         addresses: &[Address],
         value: Value,
     ) -> Result<Fragment, FragmentBuilderError> {

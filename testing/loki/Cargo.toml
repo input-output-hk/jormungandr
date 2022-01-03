@@ -20,6 +20,7 @@ serde = { version = "1.0", features = ["derive"] }
 structopt = "0.3.23"
 thiserror = "1.0"
 warp = "0.3"
+rand = "0.8"
 
 [dependencies.reqwest]
 version = "0.11"

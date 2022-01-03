@@ -1,14 +1,14 @@
 pub mod template;
 
-use crate::wallet::SpendingCounter;
-use crate::wallet::{
-    account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner,
-};
 use chain_impl_mockchain::{
     block::BlockDate, certificate::PoolId, transaction::UnspecifiedAccountIdentifier,
     vote::CommitteeId,
 };
 use jormungandr_lib::interfaces::{Address, Initial};
+use jormungandr_testing_utils::wallet::SpendingCounter;
+use jormungandr_testing_utils::wallet::{
+    account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner,
+};
 use rand_core::{CryptoRng, RngCore};
 use serde::Deserialize;
 use std::path::Path;

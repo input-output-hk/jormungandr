@@ -184,6 +184,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         )
         .witness_mode(self.witness_mode)
         .transaction(from, to.address(), value)?;
+
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
