@@ -15,6 +15,7 @@ use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
 use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_lib::interfaces::BlockContentMaxSize;
+use jormungandr_lib::interfaces::InitialToken;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo,
     Initial, InitialUTxO, KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
@@ -209,6 +210,11 @@ impl ConfigurationBuilder {
     pub fn with_certs(&mut self, initial: Vec<SignedCertificate>) -> &mut Self {
         self.certs
             .extend(initial.iter().cloned().map(Initial::Cert));
+        self
+    }
+
+    pub fn with_token(&mut self, token: InitialToken) -> &mut Self {
+        self.funds.push(Initial::Token(token));
         self
     }
 

@@ -39,7 +39,7 @@ use chain_impl_mockchain::{
 pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
-    interfaces::{Address, CommitteeIdDef, Initial, InitialUTxO, Value},
+    interfaces::{Address, CommitteeIdDef, Destination, Initial, InitialUTxO, Value},
 };
 use rand_core::{CryptoRng, RngCore};
 use std::{fs::File, path::Path};
@@ -116,6 +116,13 @@ impl Wallet {
 
     pub fn to_initial_fund(&self, value: u64) -> InitialUTxO {
         InitialUTxO {
+            address: self.address(),
+            value: value.into(),
+        }
+    }
+
+    pub fn to_initial_token(&self, value: u64) -> Destination {
+        Destination {
             address: self.address(),
             value: value.into(),
         }
