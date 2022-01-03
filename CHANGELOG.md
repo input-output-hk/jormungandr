@@ -3,7 +3,7 @@
 ## Unreleased
 
 - fix incorrect keys bech32 HRP by always using the ones provided by the library
-- update REST API: add new endpoint AccountVotes (/api/v1/votes/plan/account-votes/{account_id})
+- update REST API: add new endpoint AccountVotes (`/api/v1/votes/plan/account-votes/{account_id}`)
 - Support parallel lanes in spending counters on account outputs. This allows
   submitting transactions that can spend from the same account without
   requiring any particular order between the transactions.
@@ -11,6 +11,7 @@
 - add feature for changing blockchain config during the network run. Add new certificates `UpdateProposal` and `UpdateVote`, updated `jcli` with these new transactions.
 - Add new grpc watch service implementation for external (non-node) clients.
 - update explorer, add new GraphQL objects as `UpdateProposal`, `UpdateVote`, `ConfigParam` etc.
+- update REST API: add new endpoint account based votes count (`/api/v1/votes/plan/accounts-votes-count`)
 - Add jcli option to specify a spending counter lane in a user-friendly way
 - Add CORS config params: allowed headers and allowed methods.
 - Update REST API `/api/v0/account/{account_id}`, add new field with the token's state info.

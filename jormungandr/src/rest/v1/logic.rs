@@ -12,6 +12,7 @@ use chain_impl_mockchain::{
     value::ValueError,
 };
 use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
+use hex::ToHex;
 use jormungandr_lib::interfaces::{
     AccountVotes, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch,
     FragmentsProcessingSummary, VotePlanId,
@@ -199,6 +200,32 @@ pub async fn get_account_votes(
             .collect();
 
         Ok(Some(result))
+    }
+    .instrument(span)
+    .await
+}
+
+pub async fn get_accounts_votes_count(context: &Context) -> Result<HashMap<String, u64>, Error> {
+    let span = span!(parent: context.span()?, Level::TRACE, "get_accounts_votes", request = "get_accounts_votes");
+
+    async {
+        let mut result = HashMap::new();
+        for vote_plan in context
+            .blockchain_tip()?
+            .get_ref()
+            .await
+            .ledger()
+            .active_vote_plans()
+            .into_iter()
+        {
+            for status in vote_plan.proposals.into_iter() {
+                for (account, _) in status.votes.iter() {
+                    *result.entry(account.encode_hex()).or_insert(0) += 1;
+                }
+            }
+        }
+
+        Ok(result)
     }
     .instrument(span)
     .await
