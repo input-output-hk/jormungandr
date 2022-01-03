@@ -32,16 +32,22 @@ fn rejected_fragments_have_no_log() {
 
     let jcli = JCli::default();
 
-    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let correct_fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         BlockDate::first().next_epoch(),
     );
 
+    let faulty_fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first(),
+    );
+
     // Should be rejected without a log entry
     jcli.fragment_sender(&jormungandr)
         .send(
-            &fragment_builder
+            &faulty_fragment_builder
                 .transaction(&sender, receiver.address(), 100.into())
                 .unwrap()
                 .encode(),
@@ -51,7 +57,7 @@ fn rejected_fragments_have_no_log() {
     // Should be accepted with a log entry
     jcli.fragment_sender(&jormungandr)
         .send(
-            &fragment_builder
+            &correct_fragment_builder
                 .transaction(&sender, receiver.address(), 101.into())
                 .unwrap()
                 .encode(),
@@ -61,14 +67,10 @@ fn rejected_fragments_have_no_log() {
     // Should be rejected without a log entry
     jcli.fragment_sender(&jormungandr)
         .send(
-            &jormungandr_testing_utils::testing::FragmentBuilder::new(
-                &jormungandr.genesis_block_hash(),
-                &jormungandr.fees(),
-                BlockDate::first().next_epoch(),
-            )
-            .transaction(&sender, receiver.address(), 102.into())
-            .unwrap()
-            .encode(),
+            &faulty_fragment_builder
+                .transaction(&sender, receiver.address(), 102.into())
+                .unwrap()
+                .encode(),
         )
         .assert_rejected_summary();
 
