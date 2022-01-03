@@ -1,9 +1,7 @@
 use chain_impl_mockchain::testing::WitnessMode;
-use jormungandr_testing_utils::testing::network::builder::NetworkBuilder;
-use jormungandr_testing_utils::testing::network::wallet::template::builder::WalletTemplateBuilder;
-use jormungandr_testing_utils::testing::network::Node;
-use jormungandr_testing_utils::testing::network::SpawnParams;
-use jormungandr_testing_utils::testing::network::Topology;
+use hersir::builder::{
+    wallet::template::builder::WalletTemplateBuilder, NetworkBuilder, Node, SpawnParams, Topology,
+};
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
 
@@ -68,8 +66,8 @@ pub fn account_send_4_parallel_transaction_through_4_proxies() {
     let mut alice = controller.wallet(ALICE).unwrap();
     let bob = controller.wallet(BOB).unwrap();
 
-    let mut fragment_sender =
-        FragmentSender::from(&controller).clone_with_setup(FragmentSenderSetup::no_verify());
+    let mut fragment_sender = FragmentSender::from(&controller.settings().block0)
+        .clone_with_setup(FragmentSenderSetup::no_verify());
     let mut checks = vec![];
 
     let mut lanes: Vec<usize> = (1..=4).collect();
