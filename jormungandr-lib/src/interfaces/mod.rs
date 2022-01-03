@@ -7,6 +7,7 @@ mod certificate;
 mod committee;
 mod config;
 mod config_params;
+mod evm_transaction;
 mod fragment;
 mod fragment_log;
 mod fragment_log_persistent;

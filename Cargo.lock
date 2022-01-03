@@ -454,7 +454,7 @@ dependencies = [
 [[package]]
 name = "cardano-legacy-address"
 version = "0.1.1"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 dependencies = [
  "cbor_event",
  "chain-ser",
@@ -498,7 +498,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "chain-addr"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 dependencies = [
  "bech32 0.8.1",
  "chain-core",
@@ -512,7 +512,7 @@ dependencies = [
 [[package]]
 name = "chain-core"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 dependencies = [
  "chain-ser",
 ]
@@ -520,7 +520,7 @@ dependencies = [
 [[package]]
 name = "chain-crypto"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 dependencies = [
  "bech32 0.8.1",
  "cryptoxide",
@@ -542,7 +542,7 @@ dependencies = [
 [[package]]
 name = "chain-impl-mockchain"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 dependencies = [
  "cardano-legacy-address",
  "chain-addr",
@@ -572,7 +572,7 @@ dependencies = [
 [[package]]
 name = "chain-network"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 dependencies = [
  "async-trait",
  "chain-crypto",
@@ -589,12 +589,12 @@ dependencies = [
 [[package]]
 name = "chain-ser"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 
 [[package]]
 name = "chain-storage"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 dependencies = [
  "criterion",
  "data-pile",
@@ -607,7 +607,7 @@ dependencies = [
 [[package]]
 name = "chain-time"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 dependencies = [
  "chain-core",
  "chain-ser",
@@ -619,7 +619,7 @@ dependencies = [
 [[package]]
 name = "chain-vote"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 dependencies = [
  "cfg-if 0.1.10",
  "chain-core",
@@ -1852,7 +1852,7 @@ dependencies = [
 [[package]]
 name = "imhamt"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 dependencies = [
  "thiserror",
 ]
@@ -3727,7 +3727,7 @@ dependencies = [
 [[package]]
 name = "sparse-array"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 
 [[package]]
 name = "spin"
@@ -4427,7 +4427,7 @@ dependencies = [
 [[package]]
 name = "typed-bytes"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=add-evm-transaction-arbitrary-impl#d4fb3b394d6f8d668d45d8521784b9a18b98dccb"
 
 [[package]]
 name = "typenum"
