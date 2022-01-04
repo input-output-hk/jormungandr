@@ -17,15 +17,15 @@ bech32 = "0.8"
 bytesize = "1.1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl", features = [ "property-test-api" ] }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl", features = [ "property-test-api" ] }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl", features = ["with-bench"] }
-chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = ["with-bench"] }
+chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 rand = "0.8"

@@ -55,20 +55,20 @@ impl<'de> Deserialize<'de> for EvmTransaction {
     }
 }
 
-#[cfg(all(test, feature = "evm"))]
+#[cfg(test)]
 mod test {
     use super::*;
     use quickcheck::Arbitrary;
 
     impl Arbitrary for EvmTransaction {
         fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-            Self(evm::EvmTransaction::arbirary(g))
+            Self(evm::EvmTransaction::arbitrary(g))
         }
     }
 
     quickcheck! {
         fn evm_transaction_bincode_serde_test(evm_transaction: EvmTransaction) -> bool {
-            let decoded_evm_transaction: EvmTransaction =  bincode::deserialize(bincode::serialize(&evm_transaction).unwrap().as_slice()).unwrap();
+            let decoded_evm_transaction: EvmTransaction = bincode::deserialize(bincode::serialize(&evm_transaction).unwrap().as_slice()).unwrap();
             decoded_evm_transaction == evm_transaction
         }
 

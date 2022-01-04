@@ -12,16 +12,16 @@ Midgard Serpent
 edition = "2018"
 
 [dependencies]
-chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
-imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl" }
+chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
 
 arc-swap = "^1.1.0"
 async-trait = "0.1.51"
@@ -72,9 +72,9 @@ features = ["rustls-tls"]
 tokio = { version = "^1.4", features = ["full"] }
 quickcheck = "0.9"
 quickcheck_macros = "0.9"
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl", features = [ "property-test-api" ] }
-chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl", features = [ "property-test-api" ] }
-chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "add-evm-transaction-arbitrary-impl", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
+chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
+chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
 
 [build-dependencies]
 versionisator = "1.0.2"
