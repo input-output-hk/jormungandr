@@ -126,7 +126,7 @@ impl LogSettings {
                         let layer = tracing_subscriber::fmt::Layer::new()
                             .json()
                             .with_level(true)
-                            .with_timer(tracing_subscriber::fmt::time::ChronoLocal::default())
+                            .with_timer(tracing_subscriber::fmt::time::UtcTime::rfc_3339())
                             .with_writer(non_blocking);
                         tracing_subscriber::registry()
                             .with(self.config.level)
@@ -152,7 +152,7 @@ impl LogSettings {
                         let layer = tracing_subscriber::fmt::Layer::new()
                             .json()
                             .with_level(true)
-                            .with_timer(tracing_subscriber::fmt::time::ChronoLocal::default())
+                            .with_timer(tracing_subscriber::fmt::time::UtcTime::rfc_3339())
                             .with_writer(non_blocking);
                         tracing_subscriber::registry()
                             .with(self.config.level)
@@ -188,7 +188,7 @@ impl LogSettings {
                         let layer = tracing_subscriber::fmt::Layer::new()
                             .json()
                             .with_level(true)
-                            .with_timer(tracing_subscriber::fmt::time::ChronoLocal::default())
+                            .with_timer(tracing_subscriber::fmt::time::UtcTime::rfc_3339())
                             .with_writer(non_blocking);
                         tracing_subscriber::registry()
                             .with(self.config.level)
