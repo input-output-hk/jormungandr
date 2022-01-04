@@ -1,5 +1,6 @@
 pub mod add_account;
 mod add_certificate;
+mod add_evm_transaction;
 mod add_input;
 pub mod add_output;
 mod add_witness;
@@ -48,6 +49,7 @@ pub enum Transaction {
     /// an extra certificate in the transaction it will be replaced
     /// with the new one.
     AddCertificate(add_certificate::AddCertificate),
+    AddEvmTransaction(add_evm_transaction::AddEvmTransaction),
     /// Lock a transaction and start adding witnesses
     Finalize(finalize::Finalize),
     /// Finalize the transaction
@@ -243,6 +245,7 @@ impl Transaction {
             Transaction::AddOutput(add_output) => add_output.exec(),
             Transaction::AddWitness(add_witness) => add_witness.exec(),
             Transaction::AddCertificate(add_certificate) => add_certificate.exec(),
+            Transaction::AddEvmTransaction(add_evm_transaction) => add_evm_transaction.exec(),
             Transaction::Finalize(finalize) => finalize.exec(),
             Transaction::Seal(seal) => seal.exec(),
             Transaction::FragmentId(common) => display_fragment_id(common),

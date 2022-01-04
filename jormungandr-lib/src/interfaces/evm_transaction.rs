@@ -1,10 +1,20 @@
-use chain_core::mempack::{ReadBuf, Readable};
+use chain_core::mempack::{ReadBuf, ReadError, Readable};
 use chain_impl_mockchain::evm;
 use serde::{Deserialize, Serialize};
+use std::{fmt, str::FromStr};
+use thiserror::Error;
 use typed_bytes::ByteBuilder;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvmTransaction(evm::EvmTransaction);
+
+#[derive(Debug, Error)]
+pub enum EvmTransactionFromStrError {
+    #[error("Invalid evm transaction")]
+    InvalidEvmTransaction(#[from] ReadError),
+    #[error("expected evm transaction in hex")]
+    InvalidHex(#[from] hex::FromHexError),
+}
 
 impl From<evm::EvmTransaction> for EvmTransaction {
     fn from(val: evm::EvmTransaction) -> Self {
@@ -15,6 +25,24 @@ impl From<evm::EvmTransaction> for EvmTransaction {
 impl From<EvmTransaction> for evm::EvmTransaction {
     fn from(val: EvmTransaction) -> Self {
         val.0
+    }
+}
+
+impl fmt::Display for EvmTransaction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            hex::encode(self.0.serialize_in(ByteBuilder::new()).finalize_as_vec())
+        )
+    }
+}
+
+impl FromStr for EvmTransaction {
+    type Err = EvmTransactionFromStrError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let data = hex::decode(&s)?;
+        Ok(Self(evm::EvmTransaction::read(&mut ReadBuf::from(&data))?))
     }
 }
 

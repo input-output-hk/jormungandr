@@ -46,6 +46,7 @@ pub use self::certificate::{
 pub use self::committee::CommitteeIdDef;
 pub use self::config::*;
 pub use self::config_params::{config_params_documented_example, ConfigParam, ConfigParams};
+pub use self::evm_transaction::EvmTransaction;
 pub use self::fragment::FragmentDef;
 pub use self::fragment_log::{FragmentLog, FragmentOrigin, FragmentStatus};
 pub use self::fragment_log_persistent::{
