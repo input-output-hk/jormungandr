@@ -6,6 +6,7 @@ use chain_impl_mockchain::{
 use chain_time::TimeEra;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
+use jormungandr_testing_utils::testing::FragmentBuilder;
 use jormungandr_testing_utils::testing::FragmentVerifier;
 use jormungandr_testing_utils::testing::SyncNode;
 use jormungandr_testing_utils::testing::VoteCastCounter;
@@ -113,41 +114,23 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
 
         for stake_pool in &stake_pools {
             fragments.push(
-                self.sender
-                    .issue_pool_registration_cert(
-                        &block0_hash,
-                        &fees,
-                        self.fragment_sender.date(),
-                        stake_pool,
-                    )
-                    .unwrap(),
+                FragmentBuilder::new(&block0_hash, &fees, self.fragment_sender.date())
+                    .stake_pool_registration(&self.sender, stake_pool),
             );
             self.sender.confirm_transaction();
         }
         for vote_plan_for_casting in &votes_plan_for_casting {
             fragments.push(
-                self.sender
-                    .issue_vote_plan_cert(
-                        &block0_hash,
-                        &fees,
-                        self.fragment_sender.date(),
-                        vote_plan_for_casting,
-                    )
-                    .unwrap(),
+                FragmentBuilder::new(&block0_hash, &fees, self.fragment_sender.date())
+                    .vote_plan(&self.sender, vote_plan_for_casting),
             );
             self.sender.confirm_transaction();
         }
 
         for vote_plan_for_tally in &vote_plans_for_tally {
             fragments.push(
-                self.sender
-                    .issue_vote_plan_cert(
-                        &block0_hash,
-                        &fees,
-                        self.fragment_sender.date(),
-                        vote_plan_for_tally,
-                    )
-                    .unwrap(),
+                FragmentBuilder::new(&block0_hash, &fees, self.fragment_sender.date())
+                    .vote_plan(&self.sender, vote_plan_for_tally),
             );
             self.sender.confirm_transaction();
         }

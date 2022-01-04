@@ -19,7 +19,7 @@ use jormungandr_testing_utils::{
 fn test_connectivity_between_master_and_legacy_app(release: Release, temp_dir: &TempDir) {
     println!("Testing version: {}", release.version());
 
-    let mut sender = startup::create_new_account_address();
+    let sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
 
     let leader_config = ConfigurationBuilder::new()
@@ -47,16 +47,14 @@ fn test_connectivity_between_master_and_legacy_app(release: Release, temp_dir: &
         .start()
         .unwrap();
 
-    let new_transaction = sender
-        .transaction_to(
-            &leader_jormungandr.genesis_block_hash(),
-            &leader_jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
-        .unwrap()
-        .encode();
+    let new_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &leader_jormungandr.genesis_block_hash(),
+        &leader_jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    )
+    .transaction(&sender, receiver.address(), 1.into())
+    .unwrap()
+    .encode();
 
     let message = format!(
         "Unable to connect newest master with node from {} version",

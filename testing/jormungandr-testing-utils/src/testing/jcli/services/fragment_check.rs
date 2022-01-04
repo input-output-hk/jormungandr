@@ -165,6 +165,11 @@ impl<'a> FragmentCheck<'a> {
     }
 
     pub fn assert_rejected_summary(&self) {
-        assert!(self.summary.rejected.iter().any(|i| i.id == self.id));
+        assert!(
+            self.summary.rejected.iter().any(|i| i.id == self.id),
+            "expected transaction '{}' to be rejected. Log: {:?}",
+            self.id,
+            self.summary
+        );
     }
 }

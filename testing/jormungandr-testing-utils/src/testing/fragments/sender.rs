@@ -1,5 +1,6 @@
 use super::{FragmentExporter, FragmentExporterError};
 use crate::testing::DummySyncNode;
+use crate::testing::FragmentBuilder;
 use crate::{
     stake_pool::StakePool,
     testing::{
@@ -15,6 +16,7 @@ use chain_impl_mockchain::{
     certificate::{DecryptedPrivateTally, VotePlan, VoteTallyPayload},
     fee::LinearFee,
     fragment::Fragment,
+    testing::WitnessMode,
     vote::Choice,
 };
 use jormungandr_lib::interfaces::Block0Configuration;
@@ -52,6 +54,8 @@ pub enum FragmentSenderError {
     TransactionAutoConfirmDisabledError,
     #[error(transparent)]
     FragmentExporterError(#[from] FragmentExporterError),
+    #[error(transparent)]
+    FragmentBuilder(#[from] crate::testing::FragmentBuilderError),
 }
 
 impl FragmentSenderError {
@@ -75,6 +79,7 @@ pub struct FragmentSender<'a, S: SyncNode + Send> {
     fees: LinearFee,
     setup: FragmentSenderSetup<'a, S>,
     expiry_generator: BlockDateGenerator,
+    witness_mode: WitnessMode,
 }
 
 impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
@@ -89,6 +94,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
             fees,
             setup,
             expiry_generator,
+            witness_mode: Default::default(),
         }
     }
 
@@ -102,6 +108,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
 
     pub fn date(&self) -> BlockDate {
         self.expiry_generator.block_date()
+    }
+
+    pub fn witness_mode(self, witness_mode: WitnessMode) -> Self {
+        Self {
+            witness_mode,
+            ..self
+        }
     }
 
     pub fn set_valid_until(self, valid_until: BlockDate) -> Self {
@@ -120,6 +133,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
             block0_hash: self.block0_hash(),
             expiry_generator: self.expiry_generator.clone(),
             setup,
+            witness_mode: Default::default(),
         }
     }
 
@@ -163,14 +177,14 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         via: &A,
         value: Value,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let address = to.address();
-        let fragment = from.transaction_to(
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            address,
-            value,
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .transaction(from, to.address(), value)?;
+
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -183,13 +197,14 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         value: Value,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         let addresses: Vec<Address> = to.iter().map(|x| x.address()).collect();
-        let fragment = from.transaction_to_many(
+
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            &addresses,
-            value,
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .transaction_to_many(from, &addresses, value)?;
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -200,12 +215,14 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_full_delegation_cert(
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            to,
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .delegation(from, to);
+
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -216,12 +233,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         distribution: &[(&StakePool, u8)],
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_split_delegation_cert(
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            distribution.to_vec(),
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .delegation_to_many(from, distribution.to_vec());
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -232,12 +250,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_owner_delegation_cert(
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            to,
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .owner_delegation(from, to);
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -248,12 +267,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_pool_registration_cert(
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            to,
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .stake_pool_registration(from, to);
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -265,13 +285,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         update_stake_pool: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_pool_update_cert(
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            to,
-            update_stake_pool,
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .stake_pool_update(vec![from], to, update_stake_pool);
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -282,12 +302,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         to: &StakePool,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_pool_retire_cert(
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            to,
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .stake_pool_retire(vec![from], to);
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -298,12 +319,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         vote_plan: &VotePlan,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_vote_plan_cert(
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            vote_plan,
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .vote_plan(from, vote_plan);
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -316,14 +338,21 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         choice: &Choice,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_vote_cast_cert(
+        let builder = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            vote_plan,
-            proposal_index,
-            choice,
-        )?;
+        )
+        .witness_mode(self.witness_mode);
+
+        let fragment = match vote_plan.payload_type() {
+            chain_impl_mockchain::vote::PayloadType::Public => {
+                builder.public_vote_cast(from, vote_plan, proposal_index, choice)
+            }
+            chain_impl_mockchain::vote::PayloadType::Private => {
+                builder.private_vote_cast(from, vote_plan, proposal_index, choice)
+            }
+        };
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -343,12 +372,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         vote_plan: &VotePlan,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_encrypted_tally_cert(
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            vote_plan,
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .encrypted_tally(from, vote_plan);
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
@@ -370,13 +400,13 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         via: &A,
         tally_type: VoteTallyPayload,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = from.issue_vote_tally_cert(
+        let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
-            vote_plan,
-            tally_type,
-        )?;
+        )
+        .witness_mode(self.witness_mode)
+        .vote_tally(from, vote_plan, tally_type);
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }

@@ -1,3 +1,4 @@
+use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, InitialUTxO, UTxOInfo},
@@ -6,9 +7,8 @@ use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     startup,
+    witness::WitnessType,
 };
-
-use chain_impl_mockchain::fee::LinearFee;
 
 use assert_fs::TempDir;
 
@@ -50,8 +50,8 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize();
 
-    let witness1 = transaction_builder.create_witness_default("utxo", None);
-    let witness2 = transaction_builder.create_witness_default("utxo", None);
+    let witness1 = transaction_builder.create_witness_default(WitnessType::UTxO, None);
+    let witness2 = transaction_builder.create_witness_default(WitnessType::UTxO, None);
 
     transaction_builder
         .make_witness(&witness1)

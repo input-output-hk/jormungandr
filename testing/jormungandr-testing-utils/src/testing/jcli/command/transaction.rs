@@ -1,3 +1,4 @@
+use crate::testing::witness::WitnessType;
 use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee};
 use std::path::Path;
 use std::process::Command;
@@ -107,7 +108,7 @@ impl TransactionCommand {
         mut self,
         block0_hash: &str,
         tx_id: &str,
-        addr_type: &str,
+        addr_type: WitnessType,
         account_spending_counter: Option<SpendingCounter>,
         witness_file: P,
         witness_key: Q,
@@ -118,7 +119,7 @@ impl TransactionCommand {
             .arg("--genesis-block-hash")
             .arg(block0_hash)
             .arg("--type")
-            .arg(&addr_type)
+            .arg(addr_type.to_string())
             .arg(&tx_id)
             .arg(witness_file.as_ref())
             .arg("--account-spending-counter")

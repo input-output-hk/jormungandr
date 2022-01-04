@@ -1,6 +1,7 @@
 use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_testing_utils::testing::BlockDateGenerator;
+use jormungandr_testing_utils::testing::FragmentBuilder;
 use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use jormungandr_testing_utils::testing::RemoteJormungandr;
@@ -86,15 +87,13 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
         let sender = senders.get_mut(senders.len() - 1).unwrap();
         let reciever = recievers.get(0).unwrap();
 
-        let fragment = sender
-            .transaction_to(
-                &self.fragment_sender.block0_hash(),
-                &self.fragment_sender.fees(),
-                self.fragment_sender.date(),
-                reciever.address(),
-                1.into(),
-            )
-            .map_err(|e| RequestFailure::General(format!("{:?}", e)));
+        let fragment = FragmentBuilder::new(
+            &self.fragment_sender.block0_hash(),
+            &self.fragment_sender.fees(),
+            self.fragment_sender.date(),
+        )
+        .transaction(sender, reciever.address(), 1.into())
+        .map_err(|e| RequestFailure::General(format!("{:?}", e)));
         sender.confirm_transaction();
         fragment
     }

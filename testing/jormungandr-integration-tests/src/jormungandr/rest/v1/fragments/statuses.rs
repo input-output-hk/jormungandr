@@ -6,8 +6,8 @@ use rstest::*;
 
 #[fixture]
 fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
-    let mut alice = startup::create_new_account_address();
-    let mut bob = startup::create_new_account_address();
+    let alice = startup::create_new_account_address();
+    let bob = startup::create_new_account_address();
     let mut clarice = startup::create_new_account_address();
 
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
@@ -19,24 +19,18 @@ fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
 
     let transaction_sender = jormungandr.fragment_sender(FragmentSenderSetup::resend_3_times());
 
-    let alice_fragment = alice
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            bob.address(),
-            100.into(),
-        )
+    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let alice_fragment = fragment_builder
+        .transaction(&alice, bob.address(), 100.into())
         .unwrap();
 
-    let bob_fragment = bob
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            alice.address(),
-            100.into(),
-        )
+    let bob_fragment = fragment_builder
+        .transaction(&bob, alice.address(), 100.into())
         .unwrap();
 
     let clarice_tx = transaction_sender
