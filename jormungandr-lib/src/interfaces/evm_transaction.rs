@@ -68,12 +68,12 @@ mod test {
 
     quickcheck! {
         fn evm_transaction_bincode_serde_test(evm_transaction: EvmTransaction) -> bool {
-            let decoded_evm_transaction: EvmTransaction =  bincode::deserialize(bincode::serialize(&mint_token).unwrap().as_slice()).unwrap();
+            let decoded_evm_transaction: EvmTransaction =  bincode::deserialize(bincode::serialize(&evm_transaction).unwrap().as_slice()).unwrap();
             decoded_evm_transaction == evm_transaction
         }
 
         fn evm_transaction_yaml_serde_test(evm_transaction: EvmTransaction) -> bool {
-            let decoded_evm_transaction: EvmTransaction = serde_yaml::from_str(&serde_yaml::to_string(&mint_token).unwrap()).unwrap();
+            let decoded_evm_transaction: EvmTransaction = serde_yaml::from_str(&serde_yaml::to_string(&evm_transaction).unwrap()).unwrap();
             decoded_evm_transaction == evm_transaction
         }
     }
