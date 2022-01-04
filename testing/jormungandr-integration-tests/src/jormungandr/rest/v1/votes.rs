@@ -29,9 +29,9 @@ pub fn list_casted_votes_for_active_vote_plan() {
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
-        .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
-        .with_tally_start(BlockDate::from_epoch_slot_id(20, 0))
-        .with_tally_end(BlockDate::from_epoch_slot_id(30, 0))
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(20, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(30, 0))
         .public()
         .build();
 
@@ -115,9 +115,9 @@ pub fn list_casted_votes_for_already_finished_vote_plan() {
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
-        .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
-        .with_tally_start(BlockDate::from_epoch_slot_id(2, 0))
-        .with_tally_end(BlockDate::from_epoch_slot_id(2, 1))
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(2, 1))
         .public()
         .build();
 
@@ -181,9 +181,9 @@ pub fn list_casted_votes_for_non_voted() {
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
-        .with_vote_start(BlockDate::from_epoch_slot_id(1, 0))
-        .with_tally_start(BlockDate::from_epoch_slot_id(20, 0))
-        .with_tally_end(BlockDate::from_epoch_slot_id(30, 0))
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(20, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(30, 0))
         .public()
         .build();
 
