@@ -21,7 +21,7 @@ pub use self::fees_go_to::FeesGoTo;
 pub use self::fees_go_to::TryFromFeesGoToError;
 pub use self::initial_config::{BlockchainConfiguration, ConsensusVersionDef, DiscriminationDef};
 pub use self::initial_fragment::{
-    try_initial_fragment_from_message, Initial, InitialUTxO, LegacyUTxO,
+    try_initial_fragment_from_message, Destination, Initial, InitialToken, InitialUTxO, LegacyUTxO,
 };
 pub use self::kes_update_speed::KesUpdateSpeed;
 pub use self::kes_update_speed::TryFromKesUpdateSpeedError;
