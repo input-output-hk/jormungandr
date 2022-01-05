@@ -9,12 +9,13 @@ pub struct AddEvmTransaction {
     pub common: common::CommonTransaction,
 
     /// hex encoded evm transaction
-    pub certificate: EvmTransaction,
+    pub evm_transaction: EvmTransaction,
 }
 
 impl AddEvmTransaction {
     pub fn exec(self) -> Result<(), Error> {
         let mut transaction = self.common.load()?;
+        transaction.set_evm_transaction(self.evm_transaction)?;
         self.common.store(&transaction)
     }
 }

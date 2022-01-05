@@ -46,9 +46,14 @@ pub enum Transaction {
     /// set a transaction expiration date
     SetExpiryDate(set_expiry_date::SetExpiryDate),
     /// set a certificate to the Transaction. If there is already
-    /// an extra certificate in the transaction it will be replaced
-    /// with the new one.
+    /// an evm transaction in the transaction it will be reseted.
+    /// If there is already an extra certificate in the transaction
+    /// it will be replaced with the new one.
     AddCertificate(add_certificate::AddCertificate),
+    /// set a evm transaction to the Transaction. If there is already
+    /// an extra certificate in the transaction it will be reseted.
+    /// If there is already an evm transaction in the transaction
+    /// it will be replaced with the new one.
     AddEvmTransaction(add_evm_transaction::AddEvmTransaction),
     /// Lock a transaction and start adding witnesses
     Finalize(finalize::Finalize),

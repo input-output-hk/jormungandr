@@ -15,7 +15,7 @@ pub struct AddCertificate {
 impl AddCertificate {
     pub fn exec(self) -> Result<(), Error> {
         let mut transaction = self.common.load()?;
-        transaction.set_extra(self.certificate.into())?;
+        transaction.set_extra(self.certificate)?;
         self.common.store(&transaction)
     }
 }
