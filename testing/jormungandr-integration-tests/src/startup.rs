@@ -1,43 +1,15 @@
-use super::jcli::JCli;
-use crate::testing::{
+use assert_fs::fixture::TempDir;
+use chain_crypto::Ed25519;
+use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use jormungandr_lib::{
+    crypto::key::Identifier,
+    interfaces::{ConsensusLeaderId, InitialUTxO, NodeSecret, SignedCertificate},
+};
+use jormungandr_testing_utils::testing::{
     configuration::SecretModelFactory,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
 };
-use crate::{
-    stake_pool::StakePool,
-    testing::{signed_delegation_cert, signed_stake_pool_cert},
-    wallet::Wallet,
-};
-use assert_fs::fixture::{ChildPath, PathChild, TempDir};
-use assert_fs::prelude::*;
-use chain_crypto::{AsymmetricKey, Ed25519};
-use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use jormungandr_lib::{
-    crypto::key::{Identifier, KeyPair},
-    interfaces::{
-        Block0Configuration, ConsensusLeaderId, InitialUTxO, NodeSecret, SignedCertificate,
-    },
-};
-use std::path::PathBuf;
-
-pub fn build_genesis_block(
-    block0_config: &Block0Configuration,
-    temp_dir: &impl PathChild,
-) -> PathBuf {
-    let config_file = temp_dir.child("genesis.yaml");
-    write_block0_config(block0_config, &config_file);
-    let output_block_file = temp_dir.child("block-0.bin");
-    let jcli: JCli = Default::default();
-    jcli.genesis()
-        .encode(config_file.path(), &output_block_file);
-
-    output_block_file.path().into()
-}
-
-pub fn write_block0_config(block0_config: &Block0Configuration, output_file: &ChildPath) {
-    let content = serde_yaml::to_string(&block0_config).unwrap();
-    output_file.write_str(&content).unwrap();
-}
+use thor::{signed_delegation_cert, signed_stake_pool_cert, StakePool, Wallet};
 
 pub fn create_new_utxo_address() -> Wallet {
     Wallet::new_utxo(&mut rand::rngs::OsRng)
@@ -57,10 +29,6 @@ pub fn create_new_delegation_address_for(delegation_identifier: &Identifier<Ed25
         &delegation_identifier.clone().into(),
         &mut rand::rngs::OsRng,
     )
-}
-
-pub fn create_new_key_pair<K: AsymmetricKey>() -> KeyPair<K> {
-    KeyPair::generate(rand::rngs::OsRng)
 }
 
 pub fn start_stake_pool(
