@@ -1,15 +1,11 @@
 use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
 use jormungandr_testing_utils::testing::SyncNode;
-use jormungandr_testing_utils::{
-    testing::{
-        FragmentSender, FragmentSenderError, MemPoolCheck, RemoteJormungandr, VoteCastCounter,
-    },
-    wallet::Wallet,
-};
+use jormungandr_testing_utils::testing::{MemPoolCheck, RemoteJormungandr, VoteCastCounter};
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
 use rand_core::RngCore;
 use std::time::Instant;
+use thor::{FragmentSender, FragmentSenderError, Wallet};
 
 pub struct VoteCastsGenerator<'a, S: SyncNode + Send> {
     voters: Vec<Wallet>,
