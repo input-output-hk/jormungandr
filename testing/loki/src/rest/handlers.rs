@@ -3,9 +3,9 @@ use chain_impl_mockchain::{
     block::{Block, BlockDate, ContentsBuilder},
     chaintypes::ConsensusType,
 };
-use jormungandr_testing_utils::testing::{startup, FragmentBuilder};
 use reqwest::StatusCode;
 use std::net::SocketAddr;
+use thor::FragmentBuilder;
 use warp::{reply::WithStatus, Reply};
 
 use super::{Context, Request};
@@ -105,8 +105,8 @@ pub(super) fn invalid_fragment(request: Request, context: Context) -> impl Reply
                 BlockDate::first().next_epoch(),
             )
             .transaction(
-                &startup::create_new_account_address(),
-                startup::create_new_account_address().address(),
+                &thor::Wallet::default(),
+                thor::Wallet::default().address(),
                 42.into(),
             )
             .unwrap(),

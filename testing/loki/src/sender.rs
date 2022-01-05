@@ -1,12 +1,6 @@
-use super::{BlockDateGenerator, FragmentBuilderError, FragmentExporter, FragmentExporterError};
-use crate::{
-    testing::{
-        ensure_node_is_in_sync_with_others,
-        fragments::node::{FragmentNode, MemPoolCheck},
-        FragmentVerifier, SyncNode, SyncNodeError, SyncWaitParams,
-    },
-    wallet::Wallet,
-};
+use thor::{BlockDateGenerator, FragmentBuilderError, FragmentExporter, FragmentExporterError};
+use thor::{DummySyncNode, FragmentVerifier, Wallet};
+
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
     block::BlockDate,
@@ -18,6 +12,10 @@ use chain_impl_mockchain::{
 };
 use chain_impl_mockchain::{fee::FeeAlgorithm, ledger::OutputAddress, value::Value};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentStatus};
+use jormungandr_testing_utils::testing::{
+    ensure_node_is_in_sync_with_others, FragmentNode, MemPoolCheck, SyncNode, SyncNodeError,
+    SyncWaitParams,
+};
 use rand::{thread_rng, Rng};
 use std::{path::PathBuf, time::Duration};
 
@@ -34,15 +32,15 @@ pub enum AdversaryFragmentSenderError {
         logs: Vec<String>,
     },
     #[error("cannot build fragment")]
-    FragmentBuilderError(#[from] super::FragmentBuilderError),
+    FragmentBuilderError(#[from] thor::FragmentBuilderError),
     #[error("cannot send fragment")]
-    SendFragmentError(#[from] super::node::FragmentNodeError),
+    SendFragmentError(#[from] jormungandr_testing_utils::testing::FragmentNodeError),
     #[error("cannot send fragment")]
-    FragmentVerifierError(#[from] super::FragmentVerifierError),
+    FragmentVerifierError(#[from] thor::FragmentVerifierError),
     #[error(transparent)]
     FragmentExporterError(#[from] FragmentExporterError),
     #[error("cannot sync node before sending fragment")]
-    SyncNodeError(#[from] crate::testing::SyncNodeError),
+    SyncNodeError(#[from] jormungandr_testing_utils::testing::SyncNodeError),
 }
 
 impl AdversaryFragmentSenderError {
@@ -114,8 +112,6 @@ impl<'a> AdversaryFragmentSenderSetup<'a, DummySyncNode> {
         }
     }
 }
-
-use super::DummySyncNode;
 
 #[derive(Clone)]
 pub struct AdversaryFragmentSender<'a, S: SyncNode + Send> {
