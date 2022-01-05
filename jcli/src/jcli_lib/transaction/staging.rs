@@ -381,9 +381,10 @@ impl Staging {
                     fee_algorithm,
                     output_policy,
                 ),
-                Some(tx) => {
-                    let tx: chain::evm::EvmTransaction = tx.clone().into();
-                    self.finalize_payload(&tx, fee_algorithm, output_policy)
+                Some(_tx) => {
+                    // let tx: chain::evm::EvmTransaction = tx.clone().into();
+                    // self.finalize_payload(&tx, fee_algorithm, output_policy)
+                    unreachable!()
                 }
             },
             Some(c) => match c.clone().into() {
@@ -605,9 +606,10 @@ impl Staging {
         let res = match &self.extra {
             None => match &self.evm_transaction {
                 None => self.transaction_sign_data_hash_on(TxBuilder::new().set_nopayload()),
-                Some(tx) => {
-                    let tx: chain::evm::EvmTransaction = tx.clone().into();
-                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&tx))
+                Some(_tx) => {
+                    // let tx: chain::evm::EvmTransaction = tx.clone().into();
+                    // self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&tx))
+                    unreachable!()
                 }
             },
             Some(c) => match c.clone().into() {

@@ -36,9 +36,12 @@ quickcheck = "0.9"
 quickcheck_macros = "0.9"
 # FIXME required to work with quickcheck 0.9. Remove after migrating another crate or newer quickcheck
 rand07 = { package = "rand", version = "0.7" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api", "evm" ] }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
 chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
 chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
 ed25519-bip32 = "0.4"
 serde_yaml = "0.8"
 serde_json = "1.0"
+
+[features]
+evm = ["chain-impl-mockchain/evm"]
