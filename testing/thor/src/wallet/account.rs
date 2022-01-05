@@ -1,4 +1,4 @@
-use crate::testing::FragmentBuilderError;
+use crate::fragment::FragmentBuilderError;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     account::SpendingCounter,

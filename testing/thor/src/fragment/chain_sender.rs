@@ -1,20 +1,20 @@
-use crate::testing::node::time;
-use crate::testing::BlockDateGenerator;
-use crate::testing::FragmentSender;
-use crate::testing::FragmentSenderError;
-use crate::testing::FragmentSenderSetup;
-use crate::testing::FragmentVerifier;
-use crate::testing::FragmentVerifierError;
-use crate::testing::MemPoolCheck;
-use crate::testing::RemoteJormungandr;
-use crate::testing::SyncNode;
+use crate::fragment::verifier::FragmentVerifier;
+use crate::fragment::verifier::FragmentVerifierError;
 use crate::wallet::Wallet;
+use crate::BlockDateGenerator;
+use crate::FragmentSender;
+use crate::FragmentSenderError;
+use crate::FragmentSenderSetup;
 use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::certificate::VotePlan;
 use chain_impl_mockchain::certificate::VoteTallyPayload;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_lib::interfaces::Block0Configuration;
+use jormungandr_testing_utils::testing::node::time;
+use jormungandr_testing_utils::testing::RemoteJormungandr;
+use jormungandr_testing_utils::testing::{MemPoolCheck, SyncNode};
 
 pub struct FragmentChainSender<'a, S: SyncNode + Send> {
     sender: FragmentSender<'a, S>,
@@ -23,6 +23,18 @@ pub struct FragmentChainSender<'a, S: SyncNode + Send> {
 }
 
 impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
+    pub fn from_with_setup(
+        block0_configuration: &Block0Configuration,
+        node: RemoteJormungandr,
+        setup: FragmentSenderSetup<'a, S>,
+    ) -> Self {
+        Self {
+            sender: FragmentSender::from(block0_configuration).clone_with_setup(setup),
+            node,
+            last_mempool_check: None,
+        }
+    }
+
     pub fn new(
         block0_hash: Hash,
         fees: LinearFee,

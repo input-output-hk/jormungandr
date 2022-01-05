@@ -1,15 +1,10 @@
 use super::{FragmentExporter, FragmentExporterError};
-use crate::testing::DummySyncNode;
-use crate::testing::FragmentBuilder;
-use crate::{
-    stake_pool::StakePool,
-    testing::{
-        ensure_node_is_in_sync_with_others,
-        fragments::node::{FragmentNode, MemPoolCheck},
-        FragmentSenderSetup, FragmentVerifier, SyncNode, SyncNodeError, SyncWaitParams,
-    },
-    wallet::Wallet,
-};
+use crate::DummySyncNode;
+use crate::FragmentBuilder;
+use crate::FragmentSenderSetup;
+use crate::FragmentVerifier;
+use crate::StakePool;
+use crate::Wallet;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
     block::BlockDate,
@@ -26,6 +21,10 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentStatus, SettingsDto, Value},
     time::SystemTime,
+};
+use jormungandr_testing_utils::testing::{
+    ensure_node_is_in_sync_with_others, FragmentNode, MemPoolCheck, SyncNode, SyncNodeError,
+    SyncWaitParams,
 };
 use std::time::Duration;
 
@@ -45,9 +44,9 @@ pub enum FragmentSenderError {
     #[error("fragment verifier error")]
     FragmentVerifierError(#[from] super::FragmentVerifierError),
     #[error(transparent)]
-    SendFragmentError(#[from] super::node::FragmentNodeError),
+    SendFragmentError(#[from] jormungandr_testing_utils::testing::FragmentNodeError),
     #[error("cannot sync node before sending fragment")]
-    SyncNodeError(#[from] crate::testing::SyncNodeError),
+    SyncNodeError(#[from] jormungandr_testing_utils::testing::SyncNodeError),
     #[error("wallet error")]
     WalletError(#[from] crate::wallet::WalletError),
     #[error("wrong sender configuration: cannot use disable transaction auto confirm when sending more than one transaction")]
@@ -55,7 +54,7 @@ pub enum FragmentSenderError {
     #[error(transparent)]
     FragmentExporterError(#[from] FragmentExporterError),
     #[error(transparent)]
-    FragmentBuilder(#[from] crate::testing::FragmentBuilderError),
+    FragmentBuilder(#[from] crate::FragmentBuilderError),
 }
 
 impl FragmentSenderError {
@@ -83,6 +82,13 @@ pub struct FragmentSender<'a, S: SyncNode + Send> {
 }
 
 impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
+    pub fn from_with_setup(
+        block0_configuration: &Block0Configuration,
+        setup: FragmentSenderSetup<'a, S>,
+    ) -> Self {
+        FragmentSender::from(block0_configuration).clone_with_setup(setup)
+    }
+
     pub fn new(
         block0_hash: Hash,
         fees: LinearFee,
