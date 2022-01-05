@@ -621,7 +621,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#c30099ab1c44eeb766ca98354f4fceca1199c793"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chain-core",
  "chain-crypto",
  "const_format",
@@ -873,7 +873,7 @@ checksum = "22813a6dc45b335f9bade10bf7271dc477e81113e89eb251a0bc2a8a81c536e1"
 dependencies = [
  "bstr",
  "csv-core",
- "itoa",
+ "itoa 0.4.7",
  "ryu",
  "serde",
 ]
@@ -1702,7 +1702,7 @@ checksum = "527e8c9ac747e28542699a951517aa9a6945af506cd1f2e1b53a576c17b6cc11"
 dependencies = [
  "bytes",
  "fnv",
- "itoa",
+ "itoa 0.4.7",
 ]
 
 [[package]]
@@ -1759,7 +1759,7 @@ dependencies = [
  "http-body",
  "httparse",
  "httpdate",
- "itoa",
+ "itoa 0.4.7",
  "pin-project-lite",
  "socket2",
  "tokio",
@@ -1917,6 +1917,12 @@ name = "itoa"
 version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dd25036021b0de88a0aff6b850051563c6516d0bf53f8638938edbb9de732736"
+
+[[package]]
+name = "itoa"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aab8fc367588b89dcee83ab0fd66b72b50b72fa1904d7095045ace2b0c81c35"
 
 [[package]]
 name = "jcli"
@@ -3550,11 +3556,11 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.64"
+version = "1.0.74"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "799e97dc9fdae36a5c8b8f2cae9ce2ee9fdce2058c57a93e6099d919fd982f79"
+checksum = "ee2bb9cd061c5865d345bb02ca49fcef1391741b672b54a0bf7b679badec3142"
 dependencies = [
- "itoa",
+ "itoa 1.0.1",
  "ryu",
  "serde",
 ]
@@ -3566,7 +3572,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edfa57a7f8d9c1d260a549e7224100f6c43d43f9103e06dd8b4095a9b2b43ce9"
 dependencies = [
  "form_urlencoded",
- "itoa",
+ "itoa 0.4.7",
  "ryu",
  "serde",
 ]
