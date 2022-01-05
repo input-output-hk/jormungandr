@@ -1,14 +1,11 @@
 #![allow(dead_code)]
 
-use crate::testing::{
-    jcli::JCli,
-    witness::{Witness, WitnessType},
-};
-use crate::wallet::Wallet;
+use crate::testing::jcli::{JCli, Witness, WitnessData, WitnessType};
 use assert_fs::fixture::ChildPath;
 use assert_fs::{prelude::*, TempDir};
 use chain_core::property::Deserialize;
 use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee, fragment::Fragment};
+use jormungandr_lib::interfaces::Address;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::BlockDate,
@@ -47,9 +44,9 @@ impl TransactionBuilder {
         self,
         utxo: &UTxOInfo,
         input_amount: Value,
-        sender: &Wallet,
+        witness_data: WitnessData,
         output_amount: Value,
-        receiver: &Wallet,
+        receiver_address: &Address,
         valid_until: BlockDate,
     ) -> String {
         TransactionBuilder::new(self.jcli, self.genesis_hash)
@@ -59,10 +56,10 @@ impl TransactionBuilder {
                 utxo.index_in_transaction(),
                 &input_amount.to_string(),
             )
-            .add_output(&receiver.address().to_string(), output_amount)
+            .add_output(&receiver_address.to_string(), output_amount)
             .set_expiry_date(valid_until)
             .finalize()
-            .seal_with_witness_for_address(sender)
+            .seal_with_witness_data(witness_data)
             .to_message()
     }
 
@@ -189,26 +186,15 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn make_and_add_witness_default(&mut self, wallet: &Wallet) -> &mut Self {
-        let witness = self.create_witness_from_wallet(wallet);
+    pub fn make_and_add_witness_default(&mut self, witness_data: WitnessData) -> &mut Self {
+        let witness = self.create_witness(witness_data);
         self.make_witness(&witness);
         self.add_witness(&witness);
         self
     }
 
-    pub fn seal_with_witness_for_address(&mut self, wallet: &Wallet) -> &mut Self {
-        let witness = self.create_witness_from_wallet(wallet);
-        self.seal_with_witness(&witness);
-        self
-    }
-
-    pub fn seal_with_witness_default(
-        &mut self,
-        private_key: &str,
-        witness_type: WitnessType,
-        spending_key: Option<SpendingCounter>,
-    ) -> &mut Self {
-        let witness = self.create_witness_from_key(private_key, witness_type, spending_key);
+    pub fn seal_with_witness_data(&mut self, witness_data: WitnessData) -> &mut Self {
+        let witness = self.create_witness(witness_data);
         self.seal_with_witness(&witness);
         self
     }
@@ -232,50 +218,21 @@ impl TransactionBuilder {
         self
     }
 
-    pub fn create_witness_from_wallet(&self, wallet: &Wallet) -> Witness {
-        match wallet {
-            Wallet::Account(account) => self.create_witness_from_key(
-                &account.signing_key().to_bech32_str(),
-                WitnessType::Account,
-                Some(account.internal_counter()),
-            ),
-            Wallet::UTxO(utxo) => self.create_witness_from_key(
-                &utxo.last_signing_key().to_bech32_str(),
-                WitnessType::UTxO,
-                None,
-            ),
-            Wallet::Delegation(delegation) => self.create_witness_from_key(
-                &delegation.last_signing_key().to_bech32_str(),
-                WitnessType::UTxO,
-                None,
-            ),
-        }
-    }
-
-    pub fn create_witness_from_key(
-        &self,
-        private_key: &str,
-        addr_type: WitnessType,
-        spending_key: Option<SpendingCounter>,
-    ) -> Witness {
+    pub fn create_witness(&self, witness_data: WitnessData) -> Witness {
         let transaction_id = self.transaction_id();
-        Witness::new(
-            &self.staging_dir,
-            &self.genesis_hash,
-            &transaction_id,
-            addr_type,
-            private_key,
-            spending_key,
-        )
+        witness_data.into_witness(&self.staging_dir, &self.genesis_hash, &transaction_id)
     }
 
     pub fn create_witness_default(
         &self,
         addr_type: WitnessType,
-        spending_key: Option<SpendingCounter>,
+        spending_counter: Option<SpendingCounter>,
     ) -> Witness {
-        let private_key = self.jcli.key().generate_default();
-        self.create_witness_from_key(&private_key, addr_type, spending_key)
+        self.create_witness(WitnessData {
+            secret_bech32: self.jcli.key().generate_default(),
+            addr_type: addr_type.to_owned(),
+            spending_counter,
+        })
     }
 
     pub fn add_witness_expect_fail(&mut self, witness: &Witness, expected_part: &str) {

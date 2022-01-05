@@ -74,6 +74,12 @@ version = "0.11"
 default-features = false
 features = ["blocking", "json", "rustls-tls"]
 
+[dependencies.tracing-subscriber]
+version = "0.3"
+default-features = false
+features = ["json","fmt"]
+
+
 [features]
 default = []
 property-test-api = [ ]

@@ -1,11 +1,12 @@
 use super::RestSettings;
-use crate::{testing::node::RestError, wallet::Wallet};
+use crate::testing::node::RestError;
 use bech32::FromBase32;
 use chain_core::property::Serialize;
 use chain_crypto::PublicKey;
 use chain_impl_mockchain::account;
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::header::HeaderId;
+use jormungandr_lib::crypto::account::Identifier;
 use jormungandr_lib::interfaces::{Address, FragmentsBatch, VotePlanId};
 use jortestkit::process::Wait;
 use reqwest::{
@@ -133,8 +134,8 @@ impl RawRest {
         self.get("stake")
     }
 
-    pub fn account_state(&self, wallet: &Wallet) -> Result<Response, reqwest::Error> {
-        self.account_state_by_pk(&wallet.identifier().to_bech32_str())
+    pub fn account_state(&self, id: &Identifier) -> Result<Response, reqwest::Error> {
+        self.account_state_by_pk(&id.to_bech32_str())
     }
 
     pub fn account_state_by_pk(&self, bech32_str: &str) -> Result<Response, reqwest::Error> {
