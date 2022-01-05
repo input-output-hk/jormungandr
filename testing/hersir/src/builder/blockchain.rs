@@ -10,9 +10,9 @@ use jormungandr_lib::interfaces::{
     SlotDuration, VotePlan,
 };
 use jormungandr_lib::time::SecondsSinceUnixEpoch;
-use jormungandr_testing_utils::wallet::WalletAlias;
 use serde::Deserialize;
 use std::collections::HashMap;
+use thor::WalletAlias;
 
 #[derive(Clone, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]

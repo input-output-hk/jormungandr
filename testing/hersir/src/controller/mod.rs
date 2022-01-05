@@ -23,24 +23,23 @@ pub use interactive::{
     UserInteractionController,
 };
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
-use jormungandr_testing_utils::stake_pool::StakePool;
 use jormungandr_testing_utils::testing::jormungandr::ConfiguredStarter;
 use jormungandr_testing_utils::testing::jormungandr::PersistenceMode;
 use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
 use jormungandr_testing_utils::testing::node::configuration::legacy::NodeConfig as LegacyNodeConfig;
 use jormungandr_testing_utils::testing::node::NodeAlias;
+use jormungandr_testing_utils::testing::JormungandrParams;
 use jormungandr_testing_utils::testing::LegacyNodeConfigConverter;
 use jormungandr_testing_utils::testing::{
     jormungandr::starter::Starter, jormungandr::JormungandrProcess, node::LogLevel,
 };
-use jormungandr_testing_utils::wallet::WalletAlias;
 use jormungandr_testing_utils::Version;
-use jormungandr_testing_utils::{testing::JormungandrParams, wallet::Wallet};
 pub use monitor::{
     LegacyNode as MonitorLegacyNode, MonitorController, MonitorControllerBuilder,
     Node as MonitorNode, NodeError,
 };
 use std::path::PathBuf;
+use thor::{StakePool, Wallet, WalletAlias};
 
 const NODE_CONFIG_FILE: &str = "node_config.yaml";
 const NODE_SECRETS_FILE: &str = "node_secret.yaml";

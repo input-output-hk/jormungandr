@@ -2,7 +2,7 @@ use crate::builder::WalletTemplate;
 use chain_addr::Discrimination;
 use chain_impl_mockchain::value::Value;
 use jormungandr_testing_utils::testing::node::NodeAlias;
-use jormungandr_testing_utils::wallet::WalletAlias;
+use thor::WalletAlias;
 
 pub struct WalletTemplateBuilder {
     alias: WalletAlias,

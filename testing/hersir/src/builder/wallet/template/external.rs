@@ -1,7 +1,7 @@
 use chain_impl_mockchain::value::Value;
 use jormungandr_lib::interfaces::ValueDef;
-use jormungandr_testing_utils::wallet::WalletAlias;
 use serde::Deserialize;
+use thor::WalletAlias;
 
 /// Struct can be used to differentiate wallet template
 /// which only adress is known and controller cannot control it

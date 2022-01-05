@@ -17,6 +17,7 @@ chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.gi
 indicatif = "0.15"
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
+thor = { path = "../thor" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 hex = "0.4"
 serde = "1.0"

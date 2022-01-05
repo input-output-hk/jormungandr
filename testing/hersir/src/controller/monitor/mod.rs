@@ -15,8 +15,7 @@ use jormungandr_testing_utils::testing::jormungandr::LeadershipMode;
 use jormungandr_testing_utils::testing::jormungandr::PersistenceMode;
 use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
 use jormungandr_testing_utils::testing::utils::{Event, Observable, Observer};
-use jormungandr_testing_utils::wallet::WalletAlias;
-use jormungandr_testing_utils::{stake_pool::StakePool, wallet::Wallet, Version};
+use jormungandr_testing_utils::Version;
 pub use node::{Error as NodeError, LegacyNode, Node, ProgressBarController};
 use std::net::SocketAddr;
 use std::{
@@ -24,6 +23,7 @@ use std::{
     rc::Rc,
     sync::Arc,
 };
+use thor::{StakePool, Wallet, WalletAlias};
 
 pub struct MonitorControllerBuilder {
     title: String,

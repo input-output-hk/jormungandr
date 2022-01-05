@@ -5,10 +5,9 @@ use crate::controller::Error;
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::Value;
 use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
-use jormungandr_testing_utils::testing::FragmentSender;
-use jormungandr_testing_utils::wallet::Wallet;
 use jormungandr_testing_utils::Version;
 use jortestkit::prelude::InteractiveCommandError;
+use thor::{FragmentSender, Wallet};
 
 pub struct UserInteractionController {
     controller: Controller,

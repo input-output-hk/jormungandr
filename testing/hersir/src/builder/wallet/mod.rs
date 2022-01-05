@@ -1,18 +1,16 @@
 pub mod template;
 
+use chain_impl_mockchain::accounting::account::SpendingCounter;
 use chain_impl_mockchain::{
     block::BlockDate, certificate::PoolId, transaction::UnspecifiedAccountIdentifier,
     vote::CommitteeId,
 };
 use jormungandr_lib::interfaces::{Address, Initial};
-use jormungandr_testing_utils::wallet::SpendingCounter;
-use jormungandr_testing_utils::wallet::{
-    account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner,
-};
 use rand_core::{CryptoRng, RngCore};
 use serde::Deserialize;
 use std::path::Path;
 pub use template::{ExternalWalletTemplate, WalletTemplate};
+use thor::{AccountWallet, UTxOWallet, Wallet as Inner};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "lowercase")]
@@ -52,7 +50,7 @@ impl Wallet {
         RNG: CryptoRng + RngCore,
     {
         Wallet {
-            inner: Inner::UTxO(UtxOWallet::generate(rng, template.discrimination())),
+            inner: Inner::UTxO(UTxOWallet::generate(rng, template.discrimination())),
             template,
         }
     }
