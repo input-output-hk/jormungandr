@@ -2220,8 +2220,6 @@ paths:
                     - committee_end
                     - committee_member_keys
                     - proposals
-                    - tally
-                    - votes_cast
                   properties:
                     id:
                       type: string
@@ -2316,6 +2314,9 @@ paths:
                             type: integer
                             description: votes cast
                             minimum: 0
+                    voting_token:
+                      type: string
+                      description: voting token identifier
               examples:
                 voteplan:
                   value:
@@ -2327,6 +2328,7 @@ paths:
                         'vote_end': '13.6',
                         'committee_end': '10.12',
                         'committee_member_keys': ['ristretto255_memberpk1wen0g55xqfvysgaqq3dw7k5j75w66xqghdkqswewfzwkex9raadqkp798t', 'ristretto255_memberpk1ntsvm9j0tp8r7hf6ptyyrlgk8x6w80qpykzrct6lzr2h5g3fjf6szhzsa2'],
+                        'voting_token': "00000000000000000000000000000000000000000000000000000000.6c1e8abc",
                         'proposals':
                           [
                             {
