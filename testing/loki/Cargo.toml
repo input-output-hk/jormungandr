@@ -7,10 +7,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction", features = [ "property-test-api" ] }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "fix-evm-transaction" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 tokio = { version = "1.4", features = ["macros","rt","rt-multi-thread"] }
