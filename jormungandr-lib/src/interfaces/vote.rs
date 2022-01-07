@@ -451,6 +451,7 @@ pub struct VotePlanStatus {
     #[serde(with = "serde_committee_member_public_keys")]
     pub committee_member_keys: Vec<MemberPublicKey>,
     pub proposals: Vec<VoteProposalStatus>,
+    pub voting_token: TokenIdentifier,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -728,6 +729,7 @@ impl From<vote::VotePlanStatus> for VotePlanStatus {
             payload: this.payload,
             committee_member_keys: this.committee_public_keys,
             proposals: this.proposals.into_iter().map(|p| p.into()).collect(),
+            voting_token: this.voting_token.into(),
         }
     }
 }
@@ -746,6 +748,7 @@ impl From<VotePlanStatus> for vote::VotePlanStatus {
                 .into_iter()
                 .map(|p| p.into())
                 .collect(),
+            voting_token: vote_plan_status.voting_token.into(),
         }
     }
 }
