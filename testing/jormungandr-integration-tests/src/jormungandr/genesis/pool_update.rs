@@ -12,7 +12,7 @@ pub fn update_pool_fees_is_not_allowed() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let mut stake_pool_owner = startup::create_new_account_address();
+    let stake_pool_owner = startup::create_new_account_address();
 
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner.clone()],
@@ -30,19 +30,16 @@ pub fn update_pool_fees_is_not_allowed() {
     // 6. send pool update certificate
     time::wait_for_epoch(2, jormungandr.rest());
 
-    let transaction = stake_pool_owner
-        .issue_pool_update_cert(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            chain_impl_mockchain::block::BlockDate {
-                epoch: 3,
-                slot_id: 0,
-            },
-            stake_pool,
-            &new_stake_pool,
-        )
-        .unwrap()
-        .encode();
+    let transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 3,
+            slot_id: 0,
+        },
+    )
+    .stake_pool_update(vec![&stake_pool_owner], stake_pool, &new_stake_pool)
+    .encode();
 
     jcli.fragment_sender(&jormungandr)
         .send(&transaction)

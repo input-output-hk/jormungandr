@@ -12,7 +12,7 @@ use std::str::FromStr;
 #[test]
 pub fn stake_distribution() {
     let jcli: JCli = Default::default();
-    let mut sender = startup::create_new_account_address();
+    let sender = startup::create_new_account_address();
     let receiver = startup::create_new_account_address();
 
     let stake_pool_owner_1 = startup::create_new_account_address();
@@ -47,16 +47,18 @@ pub fn stake_distribution() {
         jormungandr.rest().stake_distribution().unwrap(),
     );
 
-    let transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            stake_pool_owner_1.address(),
-            transaction_amount.into(),
-        )
-        .unwrap()
-        .encode();
+    let transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    )
+    .transaction(
+        &sender,
+        stake_pool_owner_1.address(),
+        transaction_amount.into(),
+    )
+    .unwrap()
+    .encode();
 
     jcli.fragment_sender(&jormungandr)
         .send(&transaction)

@@ -46,12 +46,17 @@ pub fn filter(
 
     let votes = warp::path!("votes" / "plan" / "account-votes" / String)
         .and(warp::get())
-        .and(with_context)
+        .and(with_context.clone())
         .and_then(handlers::get_account_votes);
+
+    let votes_count = warp::path!("votes" / "plan" / "accounts-votes-count")
+        .and(warp::get())
+        .and(with_context)
+        .and_then(handlers::get_accounts_votes_count);
 
     let routes = fragments;
 
-    root.and(routes.or(votes_with_plan).or(votes))
+    root.and(routes.or(votes_with_plan).or(votes).or(votes_count))
         .recover(handle_rejection)
         .boxed()
 }

@@ -42,15 +42,15 @@ pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
                 value: Value(quick_config.rewards_increase()),
             },
         })
-        .with_vote_start(BlockDate::from_epoch_slot_id(
+        .vote_start(BlockDate::from_epoch_slot_id(
             quick_config.voting_timing()[0],
             0,
         ))
-        .with_tally_start(BlockDate::from_epoch_slot_id(
+        .tally_start(BlockDate::from_epoch_slot_id(
             quick_config.voting_timing()[1],
             0,
         ))
-        .with_tally_end(BlockDate::from_epoch_slot_id(
+        .tally_end(BlockDate::from_epoch_slot_id(
             quick_config.voting_timing()[2],
             0,
         ))
@@ -189,15 +189,15 @@ pub fn adversary_public_vote_load_scenario(
                 value: Value(quick_config.rewards_increase()),
             },
         })
-        .with_vote_start(BlockDate::from_epoch_slot_id(
+        .vote_start(BlockDate::from_epoch_slot_id(
             quick_config.voting_timing()[0],
             0,
         ))
-        .with_tally_start(BlockDate::from_epoch_slot_id(
+        .tally_start(BlockDate::from_epoch_slot_id(
             quick_config.voting_timing()[1],
             0,
         ))
-        .with_tally_end(BlockDate::from_epoch_slot_id(
+        .tally_end(BlockDate::from_epoch_slot_id(
             quick_config.voting_timing()[2],
             0,
         ))

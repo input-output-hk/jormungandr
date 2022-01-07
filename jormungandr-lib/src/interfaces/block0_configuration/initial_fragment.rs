@@ -63,17 +63,17 @@ pub enum Error {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Destination {
-    address: Address,
-    value: Value,
+    pub address: Address,
+    pub value: Value,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct InitialToken {
-    token_id: TokenIdentifier,
+    pub token_id: TokenIdentifier,
     // TODO add a serde implementation for the MintingPolicy when it will be well specified
     #[serde(skip)]
-    policy: MintingPolicy,
-    to: Vec<Destination>,
+    pub policy: MintingPolicy,
+    pub to: Vec<Destination>,
 }
 
 pub fn try_initial_fragment_from_message(

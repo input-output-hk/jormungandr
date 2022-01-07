@@ -12,5 +12,6 @@ pub mod persistent_log;
 pub mod recovery;
 pub mod rest;
 pub mod tls;
+pub mod tokens;
 pub mod transactions;
 pub mod vit;

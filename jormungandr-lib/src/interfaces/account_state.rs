@@ -124,6 +124,12 @@ impl AccountState {
     pub fn last_rewards(&self) -> &LastRewards {
         &self.last_rewards
     }
+
+    /// the current tokens associated to this account
+    #[inline]
+    pub fn tokens(&self) -> &BTreeMap<TokenIdentifier, Value> {
+        &self.tokens
+    }
 }
 
 /* ---------------- Conversion --------------------------------------------- */

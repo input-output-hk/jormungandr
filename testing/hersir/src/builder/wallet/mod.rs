@@ -1,17 +1,13 @@
 pub mod template;
 
 use chain_impl_mockchain::{
-    block::BlockDate, certificate::PoolId, fee::LinearFee, fragment::Fragment,
-    transaction::UnspecifiedAccountIdentifier, vote::CommitteeId,
+    block::BlockDate, certificate::PoolId, transaction::UnspecifiedAccountIdentifier,
+    vote::CommitteeId,
 };
+use jormungandr_lib::interfaces::{Address, Initial};
 use jormungandr_testing_utils::wallet::SpendingCounter;
 use jormungandr_testing_utils::wallet::{
-    account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner, WalletError,
-};
-
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{Address, Initial, Value},
+    account::Wallet as AccountWallet, utxo::Wallet as UtxOWallet, Wallet as Inner,
 };
 use rand_core::{CryptoRng, RngCore};
 use serde::Deserialize;
@@ -94,18 +90,6 @@ impl Wallet {
             Inner::Account(account) => account.identifier().to_inner(),
             _ => unimplemented!(),
         }
-    }
-
-    pub fn transaction_to(
-        &mut self,
-        block0_hash: &Hash,
-        fees: &LinearFee,
-        valid_until: BlockDate,
-        address: Address,
-        value: Value,
-    ) -> Result<Fragment, WalletError> {
-        self.inner
-            .transaction_to(block0_hash, fees, valid_until, address, value)
     }
 }
 

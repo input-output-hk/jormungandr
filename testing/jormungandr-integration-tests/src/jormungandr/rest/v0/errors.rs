@@ -24,17 +24,15 @@ fn world() -> (JormungandrProcess, Wallet, Wallet, Wallet) {
 
 #[rstest]
 pub fn fragment_already_in_log(world: (JormungandrProcess, Wallet, Wallet, Wallet)) {
-    let (jormungandr, mut alice, bob, _) = world;
+    let (jormungandr, alice, bob, _) = world;
 
-    let alice_fragment = alice
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            bob.address(),
-            100.into(),
-        )
-        .unwrap();
+    let alice_fragment = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    )
+    .transaction(&alice, bob.address(), 100.into())
+    .unwrap();
 
     let response = jormungandr
         .rest()

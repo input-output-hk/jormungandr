@@ -17,10 +17,10 @@ fn world() -> (
     Fragment,
     Fragment,
 ) {
-    let mut alice = startup::create_new_account_address();
-    let mut bob = startup::create_new_account_address();
-    let mut clarice = startup::create_new_account_address();
-    let mut david = startup::create_new_account_address();
+    let alice = startup::create_new_account_address();
+    let bob = startup::create_new_account_address();
+    let clarice = startup::create_new_account_address();
+    let david = startup::create_new_account_address();
 
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
@@ -29,43 +29,25 @@ fn world() -> (
     )
     .unwrap();
 
-    let alice_fragment = alice
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            bob.address(),
-            100.into(),
-        )
+    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let alice_fragment = fragment_builder
+        .transaction(&alice, bob.address(), 100.into())
         .unwrap();
 
-    let bob_fragment = bob
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            alice.address(),
-            100.into(),
-        )
+    let bob_fragment = fragment_builder
+        .transaction(&bob, alice.address(), 100.into())
         .unwrap();
-    let clarice_fragment = clarice
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            alice.address(),
-            100.into(),
-        )
+    let clarice_fragment = fragment_builder
+        .transaction(&clarice, alice.address(), 100.into())
         .unwrap();
 
-    let late_invalid_fragment = david
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            alice.address(),
-            100.into(),
-        )
+    let late_invalid_fragment = fragment_builder
+        .transaction(&david, alice.address(), 100.into())
         .unwrap();
 
     let faulty_tx_builder = FaultyTransactionBuilder::new(

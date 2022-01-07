@@ -50,26 +50,20 @@ pub fn test_mempool_pool_max_entries_limit() {
         .correct_state_verifier()
         .record_wallets_state(vec![&sender, &receiver]);
 
-    let first_transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
+    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let first_transaction = fragment_builder
+        .transaction(&sender, receiver.address(), 1.into())
         .unwrap();
 
     sender.confirm_transaction();
 
-    let second_transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
+    let second_transaction = fragment_builder
+        .transaction(&sender, receiver.address(), 1.into())
         .unwrap();
 
     let mempools = assert_accepted_rejected(
@@ -145,26 +139,20 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .correct_state_verifier()
         .record_wallets_state(vec![&sender, &receiver]);
 
-    let first_transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
+    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let first_transaction = fragment_builder
+        .transaction(&sender, receiver.address(), 1.into())
         .unwrap();
 
     sender.confirm_transaction();
 
-    let second_transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
+    let second_transaction = fragment_builder
+        .transaction(&sender, receiver.address(), 1.into())
         .unwrap();
 
     assert_accepted_rejected(
@@ -228,26 +216,20 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
         .correct_state_verifier()
         .record_wallets_state(vec![&sender, &receiver]);
 
-    let first_transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
+    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let first_transaction = fragment_builder
+        .transaction(&sender, receiver.address(), 1.into())
         .unwrap();
 
     sender.confirm_transaction();
 
-    let second_transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
+    let second_transaction = fragment_builder
+        .transaction(&sender, receiver.address(), 1.into())
         .unwrap();
 
     let mempools = assert_accepted_rejected(
@@ -323,26 +305,20 @@ pub fn test_mempool_log_max_entries_equals_0() {
         .correct_state_verifier()
         .record_wallets_state(vec![&sender, &receiver]);
 
-    let first_transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
+    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let first_transaction = fragment_builder
+        .transaction(&sender, receiver.address(), 1.into())
         .unwrap();
 
     sender.confirm_transaction();
 
-    let second_transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
+    let second_transaction = fragment_builder
+        .transaction(&sender, receiver.address(), 1.into())
         .unwrap();
 
     assert_accepted_rejected(
@@ -409,26 +385,20 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
 
     let fragment_sender = jormungandr.fragment_sender(FragmentSenderSetup::no_verify());
 
-    let first_transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
+    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let first_transaction = fragment_builder
+        .transaction(&sender, receiver.address(), 1.into())
         .unwrap();
 
     sender.confirm_transaction();
 
-    let second_transaction = sender
-        .transaction_to(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-            receiver.address(),
-            1.into(),
-        )
+    let second_transaction = fragment_builder
+        .transaction(&sender, receiver.address(), 1.into())
         .unwrap();
 
     let summary = fragment_sender
