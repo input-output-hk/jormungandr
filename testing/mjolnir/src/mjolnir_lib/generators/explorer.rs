@@ -1,5 +1,4 @@
-use crate::testing::node::Explorer;
-use crate::testing::node::ExplorerError;
+use jormungandr_automation::jormungandr::{Explorer, ExplorerError};
 use jortestkit::load::Request;
 use jortestkit::load::RequestFailure;
 use jortestkit::load::RequestGenerator;

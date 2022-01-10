@@ -1,4 +1,4 @@
-use super::{JormungandrRest, RestError};
+use jormungandr_automation::jormungandr::{JormungandrRest, RestError};
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
