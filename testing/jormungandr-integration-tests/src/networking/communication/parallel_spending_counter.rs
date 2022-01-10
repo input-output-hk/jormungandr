@@ -2,8 +2,7 @@ use chain_impl_mockchain::testing::WitnessMode;
 use hersir::builder::{
     wallet::template::builder::WalletTemplateBuilder, NetworkBuilder, Node, SpawnParams, Topology,
 };
-use jormungandr_testing_utils::testing::FragmentSender;
-use jormungandr_testing_utils::testing::FragmentSenderSetup;
+use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
 
 const LEADER: &str = "Leader";
 const PASSIVE_1: &str = "Passive1";
@@ -101,7 +100,7 @@ pub fn account_send_4_parallel_transaction_through_4_proxies() {
             .unwrap(),
     );
 
-    jormungandr_testing_utils::testing::FragmentVerifier::wait_and_verify_all_are_in_block(
+    FragmentVerifier::wait_and_verify_all_are_in_block(
         std::time::Duration::from_secs(10),
         checks,
         &leader,

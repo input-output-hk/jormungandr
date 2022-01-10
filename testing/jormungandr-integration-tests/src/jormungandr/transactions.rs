@@ -1,18 +1,15 @@
+use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, Mempool, Value};
 use jormungandr_testing_utils::testing::node::time::wait_for_epoch;
-use jormungandr_testing_utils::testing::{
-    jcli::JCli,
-    jormungandr::ConfigurationBuilder,
-    startup::{self},
-    transaction_utils::TransactionHash,
-};
+use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder};
+use thor::TransactionHash;
 
 #[test]
 pub fn accounts_funds_are_updated_after_transaction() {
     let jcli: JCli = Default::default();
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
     let fee = LinearFee::new(1, 1, 1);
     let value_to_send = 1;
 
@@ -44,7 +41,7 @@ pub fn accounts_funds_are_updated_after_transaction() {
     let sender_value_before = sender_account_state_before.value();
     let receiver_value_before = receiever_account_state_before.value();
 
-    let new_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let new_transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         BlockDate::first().next_epoch(),
@@ -94,8 +91,8 @@ pub fn accounts_funds_are_updated_after_transaction() {
 
 #[test]
 fn expired_transactions_rejected() {
-    let receiver = startup::create_new_account_address();
-    let sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let sender = thor::Wallet::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -114,7 +111,7 @@ fn expired_transactions_rejected() {
 
     let jcli = JCli::default();
 
-    let valid_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let valid_transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         chain_impl_mockchain::block::BlockDate::first().next_epoch(),
@@ -129,7 +126,7 @@ fn expired_transactions_rejected() {
 
     wait_for_epoch(2, jormungandr.rest());
 
-    let expired_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let expired_transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         chain_impl_mockchain::block::BlockDate::first().next_epoch(),
@@ -149,8 +146,8 @@ fn expired_transactions_rejected() {
 fn transactions_with_long_time_to_live_rejected() {
     const MAX_EXPIRY_EPOCHS: u8 = 5;
 
-    let receiver = startup::create_new_account_address();
-    let sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let sender = thor::Wallet::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -170,7 +167,7 @@ fn transactions_with_long_time_to_live_rejected() {
 
     let jcli = JCli::default();
 
-    let valid_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let valid_transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         chain_impl_mockchain::block::BlockDate {
@@ -186,7 +183,7 @@ fn transactions_with_long_time_to_live_rejected() {
         .send(&valid_transaction)
         .assert_in_block();
 
-    let expired_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let expired_transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         chain_impl_mockchain::block::BlockDate {

@@ -1,14 +1,14 @@
+use crate::startup;
 use jormungandr_lib::interfaces::LeadershipLogStatus;
 use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, StartupVerificationMode},
-    startup,
 };
 use std::time::Duration;
 
 #[test]
 fn verify_genesis_praos_leadership_logs_parent_hash() {
-    let faucet = startup::create_new_account_address();
+    let faucet = thor::Wallet::default();
     let (jormungandr, _) =
         startup::start_stake_pool(&[faucet], &[], &mut ConfigurationBuilder::new()).unwrap();
 
@@ -18,7 +18,7 @@ fn verify_genesis_praos_leadership_logs_parent_hash() {
 #[test]
 fn verify_bft_leadership_logs_parent_hash() {
     let jormungandr = startup::start_bft(
-        vec![&startup::create_new_account_address()],
+        vec![&thor::Wallet::default()],
         &mut ConfigurationBuilder::new(),
     )
     .unwrap();

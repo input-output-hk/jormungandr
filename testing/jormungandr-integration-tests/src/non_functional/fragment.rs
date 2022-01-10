@@ -1,3 +1,4 @@
+use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockDate as BlockDateDto, KesUpdateSpeed,
@@ -6,7 +7,6 @@ use jormungandr_testing_utils::testing::{
     jcli::{FragmentsCheck, JCli},
     jormungandr::ConfigurationBuilder,
     node::time,
-    startup, BlockDateGenerator, FragmentSender, FragmentSenderSetup,
 };
 pub use jortestkit::{
     console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode},
@@ -17,11 +17,12 @@ use mjolnir::generators::{
     BatchFragmentGenerator, FragmentGenerator, FragmentStatusProvider, TransactionGenerator,
 };
 use std::time::Duration;
+use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup};
 
 #[test]
 pub fn fragment_load_test() {
-    let faucet = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let faucet = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
 
     let (mut jormungandr, _) = startup::start_stake_pool(
         &[faucet.clone()],
@@ -88,7 +89,7 @@ pub fn fragment_load_test() {
 
 #[test]
 pub fn fragment_batch_load_test() {
-    let mut faucet = startup::create_new_account_address();
+    let mut faucet = thor::Wallet::default();
 
     let (mut jormungandr, _) = startup::start_stake_pool(
         &[faucet.clone()],
@@ -141,7 +142,7 @@ pub fn fragment_batch_load_test() {
 
 #[test]
 pub fn transaction_load_test() {
-    let mut faucet = startup::create_new_account_address();
+    let mut faucet = thor::Wallet::default();
 
     let (mut jormungandr, _) = startup::start_stake_pool(
         &[faucet.clone()],

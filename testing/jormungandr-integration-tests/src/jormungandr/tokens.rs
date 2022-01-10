@@ -1,13 +1,12 @@
+use crate::startup;
 use assert_fs::TempDir;
 use chain_impl_mockchain::testing::TestGen;
 use chain_impl_mockchain::tokens::identifier::TokenIdentifier;
 use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{fee::LinearFee, value::Value};
 use jormungandr_lib::interfaces::InitialToken;
-use jormungandr_testing_utils::testing::{
-    jormungandr::{ConfigurationBuilder, Starter},
-    startup, FragmentSender, FragmentVerifier,
-};
+use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
+use thor::{FragmentSender, FragmentVerifier};
 
 #[test]
 pub fn rest_shows_initial_token_state() {
@@ -37,7 +36,10 @@ pub fn rest_shows_initial_token_state() {
         .start()
         .unwrap();
 
-    let alice_account_state = jormungandr.rest().account_state(&alice).unwrap();
+    let alice_account_state = jormungandr
+        .rest()
+        .account_state(&alice.account_id())
+        .unwrap();
     assert_eq!(
         alice_account_state.tokens()[&token_id.into()],
         Value(initial_token_value).into()
@@ -45,8 +47,7 @@ pub fn rest_shows_initial_token_state() {
 }
 
 #[test]
-#[should_panic]
-pub fn cannot_assign_token_to_non_existing_account() {
+pub fn can_assign_token_to_non_existing_account() {
     let temp_dir = TempDir::new().unwrap();
     let alice = startup::create_new_account_address();
 
@@ -107,7 +108,10 @@ pub fn setup_0_token_assigned() {
         .start()
         .unwrap();
 
-    let alice_account_state = jormungandr.rest().account_state(&alice).unwrap();
+    let alice_account_state = jormungandr
+        .rest()
+        .account_state(&alice.account_id())
+        .unwrap();
     assert_eq!(
         alice_account_state.tokens()[&token_id.into()],
         Value(0).into()
@@ -160,7 +164,10 @@ pub fn transaction_does_not_influence_token_count() {
     )
     .unwrap();
 
-    let alice_account_state = jormungandr.rest().account_state(&alice).unwrap();
+    let alice_account_state = jormungandr
+        .rest()
+        .account_state(&alice.account_id())
+        .unwrap();
     assert_eq!(
         alice_account_state.tokens()[&token_id.into()],
         Value(initial_token_value).into()

@@ -1,18 +1,19 @@
+use crate::startup;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate;
 use chain_impl_mockchain::certificate::VoteTallyPayload;
 use chain_impl_mockchain::{certificate::VoteAction, fee::LinearFee, vote::Choice};
 use jormungandr_lib::interfaces::AccountVotes;
+use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
 use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use jormungandr_testing_utils::testing::VotePlanBuilder;
-use jormungandr_testing_utils::testing::{jormungandr::ConfigurationBuilder, startup};
 use std::time::Duration;
+use thor::FragmentSenderSetup;
 
 #[test]
 pub fn list_casted_votes_for_active_vote_plan() {
-    let mut alice = startup::create_new_account_address();
-    let bob = startup::create_new_account_address();
+    let mut alice = thor::Wallet::default();
+    let bob = thor::Wallet::default();
     let wait_time = Duration::from_secs(2);
     let discrimination = Discrimination::Test;
 
@@ -46,25 +47,28 @@ pub fn list_casted_votes_for_active_vote_plan() {
 
     let proposals_ids = vec![0u8, 1u8, 2u8];
 
-    jormungandr
-        .fragment_chain_sender(FragmentSenderSetup::no_verify())
-        .send_vote_plan(&mut alice, &vote_plan)
-        .unwrap()
-        .and_verify_is_in_block(wait_time)
-        .unwrap()
-        .then_wait_for_epoch(1)
-        .cast_vote(&mut alice, &vote_plan, proposals_ids[0], &Choice::new(1))
-        .unwrap()
-        .and_verify_is_in_block(wait_time)
-        .unwrap()
-        .cast_vote(&mut alice, &vote_plan, proposals_ids[1], &Choice::new(1))
-        .unwrap()
-        .and_verify_is_in_block(wait_time)
-        .unwrap()
-        .cast_vote(&mut alice, &vote_plan, proposals_ids[2], &Choice::new(1))
-        .unwrap()
-        .and_verify_is_in_block(wait_time)
-        .unwrap();
+    thor::FragmentChainSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        jormungandr.to_remote(),
+        FragmentSenderSetup::no_verify(),
+    )
+    .send_vote_plan(&mut alice, &vote_plan)
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .then_wait_for_epoch(1)
+    .cast_vote(&mut alice, &vote_plan, proposals_ids[0], &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .cast_vote(&mut alice, &vote_plan, proposals_ids[1], &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .cast_vote(&mut alice, &vote_plan, proposals_ids[2], &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap();
 
     assert_eq!(
         Some(proposals_ids.clone()),
@@ -98,7 +102,7 @@ pub fn list_casted_votes_for_active_vote_plan() {
 
 #[test]
 pub fn list_casted_votes_for_already_finished_vote_plan() {
-    let mut alice = startup::create_new_account_address();
+    let mut alice = thor::Wallet::default();
     let wait_time = Duration::from_secs(2);
     let discrimination = Discrimination::Test;
 
@@ -123,29 +127,32 @@ pub fn list_casted_votes_for_already_finished_vote_plan() {
 
     let proposals_ids = vec![0u8, 1u8, 2u8];
 
-    jormungandr
-        .fragment_chain_sender(FragmentSenderSetup::no_verify())
-        .send_vote_plan(&mut alice, &vote_plan)
-        .unwrap()
-        .and_verify_is_in_block(wait_time)
-        .unwrap()
-        .then_wait_for_epoch(1)
-        .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(1))
-        .unwrap()
-        .and_verify_is_in_block(wait_time)
-        .unwrap()
-        .cast_vote(&mut alice, &vote_plan, 1, &Choice::new(1))
-        .unwrap()
-        .and_verify_is_in_block(wait_time)
-        .unwrap()
-        .cast_vote(&mut alice, &vote_plan, 2, &Choice::new(1))
-        .unwrap()
-        .and_verify_is_in_block(wait_time)
-        .unwrap()
-        .then_wait_for_epoch(2)
-        .tally_vote(&mut alice, &vote_plan, VoteTallyPayload::Public)
-        .unwrap()
-        .then_wait_for_epoch(3);
+    thor::FragmentChainSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        jormungandr.to_remote(),
+        FragmentSenderSetup::no_verify(),
+    )
+    .send_vote_plan(&mut alice, &vote_plan)
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .then_wait_for_epoch(1)
+    .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .cast_vote(&mut alice, &vote_plan, 1, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .cast_vote(&mut alice, &vote_plan, 2, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .then_wait_for_epoch(2)
+    .tally_vote(&mut alice, &vote_plan, VoteTallyPayload::Public)
+    .unwrap()
+    .then_wait_for_epoch(3);
 
     assert_eq!(
         Some(proposals_ids.clone()),
@@ -165,7 +172,7 @@ pub fn list_casted_votes_for_already_finished_vote_plan() {
 
 #[test]
 pub fn list_casted_votes_for_non_voted() {
-    let alice = startup::create_new_account_address();
+    let alice = thor::Wallet::default();
     let discrimination = Discrimination::Test;
 
     let jormungandr = startup::start_bft(

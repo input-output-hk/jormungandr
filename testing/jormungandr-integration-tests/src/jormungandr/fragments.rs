@@ -1,17 +1,16 @@
-use jormungandr_testing_utils::testing::{jormungandr::ConfigurationBuilder, startup};
-
+use crate::startup;
 use chain_impl_mockchain::{chaintypes::ConsensusType, fee::LinearFee};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, BlockDate, Mempool};
-use jormungandr_testing_utils::testing::{
-    node::time, FragmentSender, FragmentSenderSetup, FragmentVerifier, MemPoolCheck,
-};
+use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
+use jormungandr_testing_utils::testing::{node::time, MemPoolCheck};
 use mjolnir::generators::FragmentGenerator;
 use std::time::Duration;
+use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
 
 #[test]
 pub fn send_all_fragments() {
-    let receiver = startup::create_new_account_address();
-    let sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let sender = thor::Wallet::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -32,10 +31,8 @@ pub fn send_all_fragments() {
     )
     .unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        jormungandr.default_block_date_generator(),
+    let fragment_sender = FragmentSender::from_with_setup(
+        jormungandr.block0_configuration(),
         FragmentSenderSetup::no_verify(),
     );
 

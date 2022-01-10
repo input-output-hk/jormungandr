@@ -15,28 +15,32 @@ use hersir::builder::WalletTemplate;
 use jormungandr_lib::interfaces::{
     BlockDate as BlockDateDto, InitialUTxO, Mempool, PersistentLog, SlotDuration,
 };
+use jormungandr_testing_utils::testing::FragmentNode;
 
+use crate::startup;
 use jormungandr_testing_utils::testing::{
-    fragments::{FragmentExporter, PersistentLogViewer},
     jormungandr::{ConfigurationBuilder, LeadershipMode, Starter},
     node::time,
-    startup, AdversaryFragmentSender, AdversaryFragmentSenderSetup, BlockDateGenerator,
-    FragmentBuilder, FragmentNode, FragmentSender, FragmentSenderSetup, FragmentVerifier,
     MemPoolCheck,
 };
+use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::FragmentGenerator;
 use std::fs::metadata;
 use std::path::Path;
 use std::thread::sleep;
 use std::time::Duration;
+use thor::{
+    BlockDateGenerator, FragmentBuilder, FragmentExporter, FragmentSender, FragmentSenderSetup,
+    FragmentVerifier, PersistentLogViewer,
+};
 
 #[test]
 pub fn dump_send_correct_fragments() {
     let temp_dir = TempDir::new().unwrap();
     let dump_folder = temp_dir.child("dump");
     let persistent_log_path = temp_dir.child("persistent_log");
-    let receiver = startup::create_new_account_address();
-    let sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let sender = thor::Wallet::default();
 
     let jormungandr = startup::start_bft(
         vec![&sender, &receiver],
@@ -54,10 +58,8 @@ pub fn dump_send_correct_fragments() {
     )
     .unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        jormungandr.default_block_date_generator(),
+    let fragment_sender = FragmentSender::from_with_setup(
+        jormungandr.block0_configuration(),
         FragmentSenderSetup::dump_into(dump_folder.path().to_path_buf()),
     );
 
@@ -94,8 +96,8 @@ pub fn dump_send_invalid_fragments() {
     let temp_dir = TempDir::new().unwrap();
     let dump_folder = temp_dir.child("dump");
     let persistent_log_path = temp_dir.child("persistent_log");
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let jormungandr = startup::start_bft(
         vec![&sender, &receiver],
@@ -142,8 +144,8 @@ pub fn non_existing_folder() {
     let temp_dir = TempDir::new().unwrap();
     let dump_folder = temp_dir.child("dump");
     let persistent_log_path = dump_folder.child("persistent_log");
-    let receiver = startup::create_new_account_address();
-    let sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let sender = thor::Wallet::default();
 
     let _jormungandr = startup::start_bft(
         vec![&sender, &receiver],
@@ -195,8 +197,8 @@ pub fn fragment_which_reached_mempool_should_be_persisted() {
     let temp_dir = TempDir::new().unwrap();
     let dump_folder = temp_dir.child("dump_folder");
     let persistent_log_path = temp_dir.child("persistent_log");
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let jormungandr = startup::start_bft(
         vec![&sender, &receiver],
@@ -235,8 +237,8 @@ pub fn fragment_which_is_not_in_fragment_log_should_be_persisted() {
     let temp_dir = TempDir::new().unwrap();
     let dump_folder = temp_dir.child("dump_folder");
     let persistent_log_path = temp_dir.child("persistent_log");
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let jormungandr = startup::start_bft(
         vec![&sender, &receiver],
@@ -275,8 +277,8 @@ pub fn pending_fragment_should_be_persisted() {
     let temp_dir = TempDir::new().unwrap();
     let dump_folder = temp_dir.child("dump_folder");
     let persistent_log_path = temp_dir.child("persistent_log");
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let jormungandr = startup::start_bft(
         vec![&sender, &receiver],
@@ -322,8 +324,8 @@ pub fn node_should_pickup_log_after_restart() {
     let temp_dir = TempDir::new().unwrap();
     let dump_folder = temp_dir.child("dump_folder");
     let persistent_log_path = temp_dir.child("persistent_log");
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let config = ConfigurationBuilder::new()
         .with_slots_per_epoch(60)
@@ -401,8 +403,8 @@ pub fn node_should_pickup_log_after_restart() {
 pub fn expired_fragment_should_be_rejected_by_leader_praos_node() {
     const N_FRAGMENTS: u32 = 10;
 
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -448,8 +450,8 @@ pub fn expired_fragment_should_be_rejected_by_leader_praos_node() {
 fn expired_fragment_should_be_rejected_by_passive_bft_node() {
     const N_FRAGMENTS: u32 = 10;
 
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let leader = startup::start_bft(
         vec![&receiver, &sender],
@@ -480,10 +482,8 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
         .start()
         .unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        passive.genesis_block_hash(),
-        LinearFee::new(0, 0, 0),
-        passive.default_block_date_generator(),
+    let fragment_sender = FragmentSender::from_with_setup(
+        passive.block0_configuration(),
         FragmentSenderSetup::no_verify(),
     );
 

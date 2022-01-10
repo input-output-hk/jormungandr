@@ -4,12 +4,11 @@ use jormungandr_lib::{
     interfaces::{BlockDate, InitialUTxO, UTxOInfo},
 };
 use jormungandr_testing_utils::testing::{
-    jcli::JCli,
+    jcli::{JCli, WitnessType},
     jormungandr::{ConfigurationBuilder, Starter},
-    startup,
-    witness::WitnessType,
 };
 
+use crate::startup;
 use assert_fs::TempDir;
 
 lazy_static! {
@@ -25,8 +24,8 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
             address: sender.address(),
@@ -39,7 +38,7 @@ pub fn test_utxo_transaction_with_more_than_one_witness_per_input_is_rejected() 
         .config(config.clone())
         .start()
         .unwrap();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
 
     let mut transaction_builder = jcli.transaction_builder(block0_hash);
@@ -68,9 +67,9 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
 
-    let sender = startup::create_new_utxo_address();
-    let middle_man = startup::create_new_utxo_address();
-    let receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let middle_man = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
@@ -85,16 +84,16 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
         .start()
         .unwrap();
 
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = jcli.genesis().hash(config.genesis_block_path());
     let first_transaction = jcli
         .transaction_builder(block0_hash)
         .build_transaction_from_utxo(
             &utxo,
             *utxo.associated_fund(),
-            &sender,
+            sender.witness_data(),
             *utxo.associated_fund(),
-            &middle_man,
+            &middle_man.address(),
             BlockDate::new(1, 0),
         );
 
@@ -110,7 +109,7 @@ pub fn test_two_correct_utxo_to_utxo_transactions_are_accepted_by_node() {
         .add_output(&receiver.address().to_string(), 100.into())
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&middle_man)
+        .seal_with_witness_data(middle_man.witness_data())
         .to_message();
     jcli.fragment_sender(&jormungandr)
         .send(&second_transaction)
@@ -122,8 +121,8 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     println!("Sender: {:?}", sender);
     println!("Receiver: {:?}", sender);
 
@@ -140,7 +139,7 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
         .start()
         .unwrap();
 
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli
         .transaction_builder(block0_hash)
@@ -149,7 +148,7 @@ pub fn test_correct_utxo_transaction_is_accepted_by_node() {
         .add_output(&receiver.address().to_string(), *utxo.associated_fund())
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -164,8 +163,8 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
 
     let temp_dir = TempDir::new().unwrap();
 
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
@@ -180,7 +179,7 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
         .start()
         .unwrap();
     let rest_addr = jormungandr.rest_uri();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
 
     let mut tx = jcli.transaction_builder(block0_hash);
@@ -190,7 +189,7 @@ pub fn test_correct_utxo_transaction_replaces_old_utxo_by_node() {
         .add_output(&receiver.address().to_string(), *utxo.associated_fund())
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
     let new_utxo = UTxOInfo::new(tx.fragment_id(), 0, receiver.address(), TX_VALUE.into());
 
@@ -219,8 +218,8 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
 
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_account_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::default();
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
@@ -235,7 +234,7 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
         .config(config.clone())
         .start()
         .unwrap();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
 
     let transaction_message = jcli
@@ -245,7 +244,7 @@ pub fn test_account_is_created_if_transaction_out_is_account() {
         .add_output(&receiver.address().to_string(), transfer_amount)
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
 
     // assert utxo does contains TX
@@ -298,7 +297,7 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
         .config(config.clone())
         .start()
         .unwrap();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli
         .transaction_builder(block0_hash)
@@ -307,7 +306,7 @@ pub fn test_transaction_from_delegation_to_delegation_is_accepted_by_node() {
         .add_output(&receiver.address().to_string(), transfer_amount)
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -321,7 +320,7 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
     let jcli: JCli = Default::default();
 
     let sender = startup::create_new_delegation_address();
-    let receiver = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
@@ -336,7 +335,7 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
         .config(config.clone())
         .start()
         .unwrap();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli
         .transaction_builder(block0_hash)
@@ -345,7 +344,7 @@ pub fn test_transaction_from_delegation_to_account_is_accepted_by_node() {
         .add_output(&receiver.address().to_string(), transfer_amount)
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -359,7 +358,7 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
     let jcli: JCli = Default::default();
 
     let sender = startup::create_new_delegation_address();
-    let receiver = startup::create_new_utxo_address();
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
@@ -374,7 +373,7 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
         .config(config.clone())
         .start()
         .unwrap();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
 
     let transaction_message = jcli
@@ -384,7 +383,7 @@ pub fn test_transaction_from_delegation_to_utxo_is_accepted_by_node() {
         .add_output(&receiver.address().to_string(), transfer_amount)
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -397,8 +396,8 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_account_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::default();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
@@ -412,7 +411,7 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
         .config(config.clone())
         .start()
         .unwrap();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli
         .transaction_builder(block0_hash)
@@ -421,7 +420,7 @@ pub fn test_transaction_from_utxo_to_account_is_accepted_by_node() {
         .add_output(&receiver.address().to_string(), *utxo.associated_fund())
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -434,8 +433,8 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
     let transfer_amount = 100.into();
 
     let config = ConfigurationBuilder::new()
@@ -458,7 +457,7 @@ pub fn test_transaction_from_account_to_account_is_accepted_by_node() {
         .add_output(&receiver.address().to_string(), transfer_amount)
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -471,7 +470,7 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let sender = startup::create_new_account_address();
+    let sender = thor::Wallet::default();
     let receiver = startup::create_new_delegation_address();
     let transfer_amount = 100.into();
 
@@ -495,7 +494,7 @@ pub fn test_transaction_from_account_to_delegation_is_accepted_by_node() {
         .add_output(&receiver.address().to_string(), transfer_amount)
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
     jcli.fragment_sender(&jormungandr)
         .send(&transaction_message)
@@ -507,7 +506,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let sender = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let receiver = startup::create_new_delegation_address();
     let transfer_amount = 100.into();
 
@@ -524,7 +523,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
         .start()
         .unwrap();
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let transaction_message = jcli
         .transaction_builder(block0_hash)
         .new_transaction()
@@ -532,7 +531,7 @@ pub fn test_transaction_from_utxo_to_delegation_is_accepted_by_node() {
         .add_output(&receiver.address().to_string(), transfer_amount)
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -545,8 +544,8 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
             address: sender.address(),
@@ -560,15 +559,15 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
         .start()
         .unwrap();
     let block0_hash = jcli.genesis().hash(&config.genesis_block_path());
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let transaction_message = jcli
         .transaction_builder(block0_hash)
         .build_transaction_from_utxo(
             &utxo,
             99.into(),
-            &receiver,
+            sender.witness_data(),
             99.into(),
-            &sender,
+            &receiver.address(),
             BlockDate::new(1, 0),
         );
 
@@ -583,8 +582,8 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
 pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
             address: sender.address(),
@@ -604,7 +603,7 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
         .add_output(&receiver.address().to_string(), 100.into())
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -617,7 +616,7 @@ pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node()
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let sender = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
             address: sender.address(),
@@ -630,14 +629,14 @@ pub fn test_transaction_with_input_address_equal_to_output_is_accepted_by_node()
         .config(config.clone())
         .start()
         .unwrap();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let transaction_message = jcli.transaction_builder(block).build_transaction_from_utxo(
         &utxo,
         *utxo.associated_fund(),
-        &sender,
+        sender.witness_data(),
         *utxo.associated_fund(),
-        &sender,
+        &sender.address(),
         BlockDate::new(1, 0),
     );
 
@@ -651,8 +650,8 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
             address: sender.address(),
@@ -665,7 +664,7 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
         .config(config.clone())
         .start()
         .unwrap();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
 
     let transaction_message = jcli
@@ -673,9 +672,9 @@ pub fn test_input_with_no_spending_utxo_is_rejected_by_node() {
         .build_transaction_from_utxo(
             &utxo,
             100.into(),
-            &sender,
+            sender.witness_data(),
             50.into(),
-            &receiver,
+            &receiver.address(),
             BlockDate::new(1, 0),
         );
 
@@ -689,8 +688,8 @@ pub fn test_transaction_with_non_zero_linear_fees() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
 
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let fee = LinearFee::new(10, 1, 0);
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
@@ -705,7 +704,7 @@ pub fn test_transaction_with_non_zero_linear_fees() {
         .config(config.clone())
         .start()
         .unwrap();
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let mut tx = jcli.transaction_builder(block0_hash);
     let transaction_message = tx
@@ -714,7 +713,7 @@ pub fn test_transaction_with_non_zero_linear_fees() {
         .add_output(&receiver.address().to_string(), 50.into())
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize_with_fee(&sender.address().to_string(), &fee)
-        .seal_with_witness_for_address(&sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
     let tx_id = tx.fragment_id();
     let rest_uri = jormungandr.rest_uri();
@@ -743,15 +742,15 @@ fn test_cannot_create_transaction_without_expiration() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
 
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
             address: sender.address(),
             value: 100.into(),
         }])
         .build(&temp_dir);
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     jcli.transaction_builder(block0_hash)
         .new_transaction()
@@ -765,15 +764,15 @@ fn test_different_transaction_expiry_yields_different_id() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
 
-    let sender = startup::create_new_utxo_address();
-    let receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
             address: sender.address(),
             value: 100.into(),
         }])
         .build(&temp_dir);
-    let utxo = config.block0_utxo_for_address(&sender);
+    let utxo = config.block0_utxo_for_address(&sender.address());
     let block0_hash = Hash::from_hex(config.genesis_block_hash()).unwrap();
     let first_id = jcli
         .transaction_builder(block0_hash)

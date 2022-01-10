@@ -8,17 +8,15 @@ use chain_impl_mockchain::value::Value;
 use jormungandr_lib::interfaces::{
     BlockContentMaxSize, BlockDate, ConfigParam, ConfigParams, ConsensusLeaderId,
 };
-use jormungandr_testing_utils::{
-    testing::{
-        jcli::JCli,
-        jormungandr::{ConfigurationBuilder, Starter},
-        node::time::{get_current_date, wait_for_epoch},
-    },
-    wallet::Wallet,
+use jormungandr_testing_utils::testing::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+    node::time::{get_current_date, wait_for_epoch},
 };
 use jortestkit::process::Wait;
 use rand_core::OsRng;
 use std::time::Duration;
+use thor::Wallet;
 
 #[test]
 fn basic_change_config_test() {
@@ -84,7 +82,7 @@ fn basic_change_config_test() {
         .add_certificate(&update_proposal_cert)
         .set_expiry_date(BlockDate::new(3, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
     alice.confirm_transaction();
@@ -102,7 +100,7 @@ fn basic_change_config_test() {
         .add_certificate(&update_vote_cert)
         .set_expiry_date(BlockDate::new(3, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(&alice_sk.path())
         .to_message();
     alice.confirm_transaction();
@@ -120,7 +118,7 @@ fn basic_change_config_test() {
         .add_certificate(&update_vote_cert)
         .set_expiry_date(BlockDate::new(3, 0))
         .finalize()
-        .seal_with_witness_for_address(&bob)
+        .seal_with_witness_data(bob.witness_data())
         .add_auth(bob_sk.path())
         .to_message();
     bob.confirm_transaction();

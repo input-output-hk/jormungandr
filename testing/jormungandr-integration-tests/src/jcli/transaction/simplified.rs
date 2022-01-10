@@ -1,7 +1,7 @@
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{BlockDate, InitialUTxO};
 use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::starter::Starter, startup};
+use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::starter::Starter};
 
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
@@ -12,7 +12,7 @@ pub fn test_make_test_transaction() {
     let temp_dir = TempDir::new().unwrap();
 
     let jcli: JCli = Default::default();
-    let sender = startup::create_new_account_address();
+    let sender = thor::Wallet::default();
 
     let sk_file_path = temp_dir.join("sender.sk");
 
@@ -58,8 +58,8 @@ pub fn test_make_transaction_to_receiver_account() {
     let temp_dir = TempDir::new().unwrap();
 
     let jcli: JCli = Default::default();
-    let sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
 
     let sk_file_path = temp_dir.join("sender.sk");
 
@@ -105,8 +105,8 @@ pub fn test_make_transaction_to_receiver_account_with_fees() {
     let temp_dir = TempDir::new().unwrap();
 
     let jcli: JCli = Default::default();
-    let sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
 
     let sk_file_path = temp_dir.join("sender.sk");
 
@@ -153,8 +153,8 @@ pub fn test_make_transaction_to_receiver_account_with_fees_and_post() {
     let temp_dir = TempDir::new().unwrap();
 
     let jcli: JCli = Default::default();
-    let sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
 
     let sk_file_path = temp_dir.join("sender.sk");
 

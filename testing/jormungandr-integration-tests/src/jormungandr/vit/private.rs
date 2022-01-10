@@ -19,9 +19,9 @@ use jormungandr_testing_utils::testing::{
     jormungandr::{ConfigurationBuilder, Starter},
 };
 use jormungandr_testing_utils::testing::{VotePlanBuilder, VotePlanExtension};
-use jormungandr_testing_utils::wallet::Wallet;
 use jortestkit::prelude::read_file;
 use rand::rngs::OsRng;
+use thor::Wallet;
 
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
@@ -94,7 +94,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
         .with_treasury(1000.into())
         .with_discrimination(Discrimination::Production)
-        .with_committees(&[&alice])
+        .with_committees(&[alice.to_committee_id()])
         .with_slot_duration(4)
         .with_slots_per_epoch(10)
         .build(&temp_dir);
@@ -111,7 +111,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&vote_plan_cert)
         .set_expiry_date(BlockDateDto::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 
@@ -149,7 +149,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&yes_vote_cast)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -165,7 +165,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&yes_vote_cast)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&bob)
+        .seal_with_witness_data(bob.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -179,7 +179,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&no_vote_cast)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&clarice)
+        .seal_with_witness_data(clarice.witness_data())
         .to_message();
     jcli.fragment_sender(&jormungandr)
         .send(&tx)
@@ -201,7 +201,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&encrypted_vote_tally_cert)
         .set_expiry_date(BlockDateDto::new(3, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 
@@ -256,7 +256,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&vote_tally_cert)
         .set_expiry_date(BlockDateDto::new(3, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 
@@ -345,7 +345,7 @@ pub fn jcli_private_vote_invalid_proof() {
         .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
         .with_treasury(1000.into())
         .with_discrimination(Discrimination::Production)
-        .with_committees(&[&alice])
+        .with_committees(&[alice.to_committee_id()])
         .with_slot_duration(4)
         .with_slots_per_epoch(10)
         .build(&temp_dir);
@@ -362,7 +362,7 @@ pub fn jcli_private_vote_invalid_proof() {
         .add_certificate(&vote_plan_cert)
         .set_expiry_date(BlockDateDto::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 
@@ -392,7 +392,7 @@ pub fn jcli_private_vote_invalid_proof() {
         .add_certificate(&encrypted_vote_tally_cert)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 

@@ -347,7 +347,6 @@ impl ConfigurationBuilder {
         }
 
         let block0_config = self.build_block0();
-
         let default_log_file = || temp_dir.child("node.log").path().to_path_buf();
 
         match (&node_config.log, self.configure_default_log) {

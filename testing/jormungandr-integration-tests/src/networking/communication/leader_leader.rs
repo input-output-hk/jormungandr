@@ -6,8 +6,8 @@ use hersir::builder::Topology;
 use jormungandr_testing_utils::testing::sync::{
     measure_and_log_sync_time, MeasurementReportInterval,
 };
-use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::SyncWaitParams;
+use thor::FragmentSender;
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";

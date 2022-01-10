@@ -1,21 +1,22 @@
+use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash},
     interfaces::{ActiveSlotCoefficient, Stake, StakeDistributionDto},
 };
 use jormungandr_testing_utils::testing::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, node::time, startup,
-    transaction_utils::TransactionHash,
+    jcli::JCli, jormungandr::ConfigurationBuilder, node::time,
 };
 use std::str::FromStr;
+use thor::TransactionHash;
 
 #[test]
 pub fn stake_distribution() {
     let jcli: JCli = Default::default();
-    let sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
 
-    let stake_pool_owner_1 = startup::create_new_account_address();
+    let stake_pool_owner_1 = thor::Wallet::default();
     let fee = LinearFee::new(1, 1, 1);
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner_1.clone()],
@@ -47,7 +48,7 @@ pub fn stake_distribution() {
         jormungandr.rest().stake_distribution().unwrap(),
     );
 
-    let transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         BlockDate::first().next_epoch(),

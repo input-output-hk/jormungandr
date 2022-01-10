@@ -2,25 +2,19 @@ use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::InitialUTxO;
+use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_testing_utils::testing::Release;
-use jormungandr_testing_utils::testing::{
-    jormungandr::{ConfigurationBuilder, Starter},
-    startup,
-    transaction_utils::TransactionHash,
-};
 use jormungandr_testing_utils::{
-    testing::{
-        node::{download_last_n_releases, get_jormungandr_bin},
-        FragmentSender,
-    },
+    testing::node::{download_last_n_releases, get_jormungandr_bin},
     Version,
 };
+use thor::{FragmentSender, TransactionHash};
 
 fn test_connectivity_between_master_and_legacy_app(release: Release, temp_dir: &TempDir) {
     println!("Testing version: {}", release.version());
 
-    let sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
 
     let leader_config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
@@ -47,7 +41,7 @@ fn test_connectivity_between_master_and_legacy_app(release: Release, temp_dir: &
         .start()
         .unwrap();
 
-    let new_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let new_transaction = thor::FragmentBuilder::new(
         &leader_jormungandr.genesis_block_hash(),
         &leader_jormungandr.fees(),
         BlockDate::first().next_epoch(),
@@ -96,8 +90,8 @@ pub fn test_upgrade_downgrade() {
 fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: &TempDir) {
     println!("Testing version: {}", version);
 
-    let mut sender = startup::create_new_account_address();
-    let mut receiver = startup::create_new_account_address();
+    let mut sender = thor::Wallet::default();
+    let mut receiver = thor::Wallet::default();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![

@@ -86,7 +86,7 @@ impl WitnessData {
     }
 
     pub fn spending_counter(&self) -> Option<SpendingCounter> {
-        self.spending_counter.clone()
+        self.spending_counter
     }
 
     pub fn into_witness(

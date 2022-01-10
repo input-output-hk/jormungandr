@@ -7,11 +7,12 @@ use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
+use jormungandr_testing_utils::testing::ensure_nodes_are_in_sync;
 use jormungandr_testing_utils::testing::node::LogLevel;
-use jormungandr_testing_utils::testing::FragmentSender;
 use jormungandr_testing_utils::testing::SyncWaitParams;
-use jormungandr_testing_utils::testing::{ensure_nodes_are_in_sync, FragmentVerifier};
 use std::time::{Duration, SystemTime};
+use thor::FragmentSender;
+use thor::FragmentVerifier;
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE_1: &str = "Relay1";
