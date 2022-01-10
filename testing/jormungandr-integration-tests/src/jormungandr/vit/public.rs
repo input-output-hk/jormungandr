@@ -15,19 +15,19 @@ use chain_impl_mockchain::{
     value::Value,
     vote::{Choice, CommitteeId},
 };
+use jormungandr_automation::testing::asserts::VotePlanStatusAssert;
+use jormungandr_automation::testing::time::{self, wait_for_epoch};
+use jormungandr_automation::testing::VotePlanExtension;
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+};
 use jormungandr_lib::{
     crypto::key::KeyPair,
     interfaces::{
         AccountVotes, ActiveSlotCoefficient, BlockDate as BlockDateDto, CommitteeIdDef, FeesGoTo,
         KesUpdateSpeed, Tally, VotePlanStatus,
     },
-};
-use jormungandr_testing_utils::testing::asserts::VotePlanStatusAssert;
-use jormungandr_testing_utils::testing::node::time::{self, wait_for_epoch};
-use jormungandr_testing_utils::testing::VotePlanExtension;
-use jormungandr_testing_utils::testing::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Starter},
 };
 use rand::rngs::OsRng;
 use rand_core::{CryptoRng, RngCore};
@@ -127,7 +127,7 @@ pub fn test_get_initial_vote_plan() {
     );
 }
 use chain_addr::Discrimination;
-use jormungandr_testing_utils::testing::VotePlanBuilder;
+use jormungandr_automation::testing::VotePlanBuilder;
 
 #[test]
 pub fn test_vote_flow_bft() {

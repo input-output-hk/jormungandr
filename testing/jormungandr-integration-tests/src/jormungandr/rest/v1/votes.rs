@@ -3,10 +3,10 @@ use chain_addr::Discrimination;
 use chain_core::property::BlockDate;
 use chain_impl_mockchain::certificate::VoteTallyPayload;
 use chain_impl_mockchain::{certificate::VoteAction, fee::LinearFee, vote::Choice};
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
+use jormungandr_automation::testing::time;
+use jormungandr_automation::testing::VotePlanBuilder;
 use jormungandr_lib::interfaces::AccountVotes;
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::VotePlanBuilder;
 use std::time::Duration;
 use thor::FragmentSenderSetup;
 

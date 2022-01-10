@@ -6,20 +6,20 @@ use crate::style;
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::header::HeaderId;
+use jormungandr_automation::jormungandr::LegacyNodeConfig;
+use jormungandr_automation::jormungandr::LogLevel;
+use jormungandr_automation::jormungandr::NodeAlias;
+use jormungandr_automation::jormungandr::StartupError;
+pub use jormungandr_automation::jormungandr::{
+    grpc::JormungandrClient, BackwardCompatibleRest, FragmentNode, FragmentNodeError,
+    JormungandrLogger, JormungandrProcess, JormungandrRest, MemPoolCheck, StartupVerificationMode,
+    Status,
+};
+use jormungandr_automation::testing::SyncNode;
 use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog},
-};
-use jormungandr_testing_utils::testing::jormungandr::StartupError;
-use jormungandr_testing_utils::testing::node::configuration::legacy::NodeConfig as LegacyConfig;
-use jormungandr_testing_utils::testing::node::LogLevel;
-use jormungandr_testing_utils::testing::node::NodeAlias;
-use jormungandr_testing_utils::testing::SyncNode;
-pub use jormungandr_testing_utils::testing::{
-    jormungandr::{JormungandrProcess, StartupVerificationMode, Status},
-    node::{grpc::JormungandrClient, BackwardCompatibleRest, JormungandrLogger, JormungandrRest},
-    FragmentNode, FragmentNodeError, MemPoolCheck,
 };
 use std::collections::HashMap;
 
@@ -31,14 +31,14 @@ use yaml_rust::{Yaml, YamlLoader};
 pub struct LegacyNode {
     pub process: JormungandrProcess,
     pub progress_bar: ProgressBarController,
-    pub legacy_settings: LegacyConfig,
+    pub legacy_settings: LegacyNodeConfig,
 }
 
 impl LegacyNode {
     pub fn new(
         process: JormungandrProcess,
         progress_bar: ProgressBarController,
-        legacy_settings: LegacyConfig,
+        legacy_settings: LegacyNodeConfig,
     ) -> Self {
         let node = LegacyNode {
             process,

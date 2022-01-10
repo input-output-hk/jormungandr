@@ -1,13 +1,12 @@
 use assert_fs::fixture::TempDir;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use jormungandr_automation::jormungandr::{
+    ConfigurationBuilder, JormungandrProcess, SecretModelFactory, Starter, StartupError,
+};
 use jormungandr_lib::{
     crypto::key::Identifier,
     interfaces::{ConsensusLeaderId, InitialUTxO, NodeSecret, SignedCertificate},
-};
-use jormungandr_testing_utils::testing::{
-    configuration::SecretModelFactory,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupError},
 };
 use thor::{signed_delegation_cert, signed_stake_pool_cert, StakePool, Wallet};
 

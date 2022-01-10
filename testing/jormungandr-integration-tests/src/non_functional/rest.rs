@@ -1,7 +1,8 @@
 use crate::startup;
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
-use jormungandr_testing_utils::testing::{jormungandr::ConfigurationBuilder, node::RestRequestGen};
 use jortestkit::load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor};
+use mjolnir::generators::RestRequestGen;
 use std::time::Duration;
 
 #[test]

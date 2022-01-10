@@ -3,8 +3,8 @@ use std::time::Duration;
 use crate::startup;
 use assert_fs::{fixture::PathChild, TempDir};
 use chain_impl_mockchain::block::BlockDate;
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
 use jormungandr_lib::interfaces::{Mempool, PersistentLog};
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
 pub use jortestkit::{
     console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode},
     load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor},

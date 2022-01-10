@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 jormungandr-lib = { path = "../../jormungandr-lib" }
-jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
+jormungandr-automation = { path = "../jormungandr-automation" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }

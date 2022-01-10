@@ -5,11 +5,11 @@ use chain_impl_mockchain::{
     header::HeaderBuilder,
     testing::TestGen,
 };
-use jormungandr_lib::interfaces::SlotDuration;
-use jormungandr_testing_utils::testing::{
-    jormungandr::{ConfigurationBuilder, LeadershipMode, Starter},
-    keys, Block0ConfigurationBuilder,
+use jormungandr_automation::{
+    jormungandr::{Block0ConfigurationBuilder, ConfigurationBuilder, LeadershipMode, Starter},
+    testing::keys,
 };
+use jormungandr_lib::interfaces::SlotDuration;
 use loki::process::AdversaryNodeBuilder;
 
 #[test]

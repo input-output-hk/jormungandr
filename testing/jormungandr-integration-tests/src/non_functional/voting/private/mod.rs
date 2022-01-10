@@ -14,10 +14,10 @@ use chain_impl_mockchain::{
     testing::decrypt_tally,
     value::Value,
 };
+use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
+use jormungandr_automation::testing::time::{wait_for_date, wait_for_epoch};
+use jormungandr_automation::testing::{benchmark_consumption, VotePlanBuilder};
 use jormungandr_lib::interfaces::BlockDate as BlockDateLib;
-use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_testing_utils::testing::node::time::{wait_for_date, wait_for_epoch};
-use jormungandr_testing_utils::testing::{benchmark_consumption, VotePlanBuilder};
 use jortestkit::load::Configuration;
 use jortestkit::measurement::Status;
 use loki::AdversaryFragmentSender;

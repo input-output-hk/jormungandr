@@ -1,7 +1,6 @@
 use crate::controller::Error as ControllerError;
-use jormungandr_testing_utils::testing::{
-    node::ExplorerError, node::RestError, ConsumptionBenchmarkError,
-};
+use jormungandr_automation::jormungandr::{ExplorerError, RestError};
+use jormungandr_automation::testing::ConsumptionBenchmarkError;
 use jortestkit::prelude::InteractiveCommandError;
 use thiserror::Error;
 
@@ -14,7 +13,7 @@ pub enum Error {
     #[error(transparent)]
     Controller(#[from] ControllerError),
     #[error(transparent)]
-    Verification(#[from] jormungandr_testing_utils::testing::VerificationError),
+    Verification(#[from] jormungandr_automation::testing::VerificationError),
     #[error(transparent)]
     FragmentVerifier(#[from] thor::FragmentVerifierError),
     #[error(transparent)]

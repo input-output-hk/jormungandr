@@ -1,7 +1,7 @@
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
+use jormungandr_automation::{jcli::JCli, jormungandr::Starter};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::{BlockDate, InitialUTxO};
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::starter::Starter};
 
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;

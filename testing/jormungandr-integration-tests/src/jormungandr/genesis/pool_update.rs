@@ -1,7 +1,7 @@
 use crate::startup;
 use chain_impl_mockchain::rewards::TaxType;
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder};
+use jormungandr_automation::testing::time;
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use thor::TransactionHash;
 
 use assert_fs::prelude::*;

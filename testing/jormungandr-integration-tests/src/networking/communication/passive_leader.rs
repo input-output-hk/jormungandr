@@ -1,13 +1,12 @@
 use crate::networking::utils::wait;
 use hersir::builder::{wallet::template::builder::WalletTemplateBuilder, NetworkBuilder};
 use hersir::builder::{Node, SpawnParams, Topology};
-use jormungandr_lib::interfaces::Policy;
-use jormungandr_testing_utils::testing::node::LogLevel;
-use jormungandr_testing_utils::testing::sync::{
+use jormungandr_automation::jormungandr::{LogLevel, MemPoolCheck};
+use jormungandr_automation::testing::benchmark::{
     measure_and_log_sync_time, MeasurementReportInterval,
 };
-use jormungandr_testing_utils::testing::MemPoolCheck;
-use jormungandr_testing_utils::testing::SyncWaitParams;
+use jormungandr_automation::testing::SyncWaitParams;
+use jormungandr_lib::interfaces::Policy;
 use std::time::Duration;
 use thor::FragmentSender;
 use thor::FragmentSenderSetup;

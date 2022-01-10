@@ -1,7 +1,7 @@
 use crate::controller::InteractiveCommandError;
-use jormungandr_testing_utils::testing::jormungandr::StartupError;
-use jormungandr_testing_utils::testing::node::ExplorerError;
-use jormungandr_testing_utils::testing::LegacyConfigConverterError;
+use jormungandr_automation::jormungandr::ExplorerError;
+use jormungandr_automation::jormungandr::LegacyConfigConverterError;
+use jormungandr_automation::jormungandr::StartupError;
 use thiserror::Error;
 use thor::FragmentSenderError;
 

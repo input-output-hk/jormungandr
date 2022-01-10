@@ -22,18 +22,16 @@ pub use interactive::{
     do_for_all_alias, InteractiveCommandError, JormungandrInteractiveCommandExec,
     UserInteractionController,
 };
+use jormungandr_automation::jormungandr::ConfiguredStarter;
+use jormungandr_automation::jormungandr::JormungandrParams;
+use jormungandr_automation::jormungandr::LegacyNodeConfig;
+use jormungandr_automation::jormungandr::LegacyNodeConfigConverter;
+use jormungandr_automation::jormungandr::NodeAlias;
+use jormungandr_automation::jormungandr::PersistenceMode;
+use jormungandr_automation::jormungandr::TestingDirectory;
+use jormungandr_automation::jormungandr::Version;
+use jormungandr_automation::jormungandr::{JormungandrProcess, LogLevel, Starter};
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
-use jormungandr_testing_utils::testing::jormungandr::ConfiguredStarter;
-use jormungandr_testing_utils::testing::jormungandr::PersistenceMode;
-use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
-use jormungandr_testing_utils::testing::node::configuration::legacy::NodeConfig as LegacyNodeConfig;
-use jormungandr_testing_utils::testing::node::NodeAlias;
-use jormungandr_testing_utils::testing::JormungandrParams;
-use jormungandr_testing_utils::testing::LegacyNodeConfigConverter;
-use jormungandr_testing_utils::testing::{
-    jormungandr::starter::Starter, jormungandr::JormungandrProcess, node::LogLevel,
-};
-use jormungandr_testing_utils::Version;
 pub use monitor::{
     LegacyNode as MonitorLegacyNode, MonitorController, MonitorControllerBuilder,
     Node as MonitorNode, NodeError,

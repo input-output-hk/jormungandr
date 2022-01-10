@@ -1,5 +1,6 @@
-use jormungandr_testing_utils::testing::{
-    configuration::NodeConfigBuilder, jcli::JCli, jormungandr::starter::Starter,
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{NodeConfigBuilder, Starter},
 };
 
 #[test]

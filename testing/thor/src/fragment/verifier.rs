@@ -1,7 +1,7 @@
 use chain_impl_mockchain::fragment::FragmentId;
+use jormungandr_automation::jormungandr::{FragmentNode, FragmentNodeError, MemPoolCheck};
 use jormungandr_lib::interfaces::FragmentLog;
 use jormungandr_lib::interfaces::FragmentStatus;
-use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError, MemPoolCheck};
 use jortestkit::prelude::Wait;
 use std::collections::HashMap;
 use std::time::Duration;

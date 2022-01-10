@@ -8,13 +8,10 @@ use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
 use hersir::controller::Context;
 use hersir::controller::Controller;
-use jormungandr_testing_utils::{
-    testing::{
-        node::{download_last_n_releases, get_jormungandr_bin},
-        FragmentNode, SyncNode,
-    },
-    version_0_8_19, Version,
+use jormungandr_automation::jormungandr::{
+    download_last_n_releases, get_jormungandr_bin, version_0_8_19, FragmentNode, Version,
 };
+use jormungandr_automation::testing::SyncNode;
 use std::path::PathBuf;
 use thor::{FragmentSender, StakePool};
 

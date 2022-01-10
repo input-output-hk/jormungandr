@@ -1,11 +1,11 @@
 use crate::startup;
 use chain_impl_mockchain::value::Value;
+use jormungandr_automation::testing::time;
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, EpochRewardsInfo, StakePoolStats, Value as LibValue},
 };
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use std::str::FromStr;
 
 #[test]

@@ -8,12 +8,9 @@ use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
 use hersir::controller::Context;
-use jormungandr_testing_utils::testing::sync::MeasurementReportInterval;
-use jormungandr_testing_utils::testing::SyncNode;
-use jormungandr_testing_utils::testing::SyncWaitParams;
-use jormungandr_testing_utils::{
-    testing::node::{download_last_n_releases, get_jormungandr_bin},
-    Version,
+use jormungandr_automation::{
+    jormungandr::{download_last_n_releases, get_jormungandr_bin, Version},
+    testing::{benchmark::MeasurementReportInterval, SyncNode, SyncWaitParams},
 };
 use rstest::rstest;
 use std::path::PathBuf;

@@ -1,14 +1,12 @@
 use super::ScenarioProgressBar;
 use assert_fs::TempDir;
 use indicatif::{MultiProgress, ProgressBar};
+use jormungandr_automation::testing::{benchmark_speed, SpeedBenchmarkFinish, SpeedBenchmarkRun};
 use jormungandr_lib::interfaces::NodeState;
-use jormungandr_testing_utils::testing::{
-    benchmark_speed, node::LogLevel, SpeedBenchmarkFinish, SpeedBenchmarkRun,
-};
 
 use crate::mjolnir_lib::bootstrap::ClientLoadConfig;
 use crate::mjolnir_lib::MjolnirError;
-use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
+use jormungandr_automation::jormungandr::{JormungandrProcess, LogLevel};
 use std::{
     thread,
     time::{Duration, Instant},

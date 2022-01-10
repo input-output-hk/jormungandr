@@ -1,8 +1,8 @@
 use crate::startup;
 use chain_impl_mockchain::{chaintypes::ConsensusType, fee::LinearFee};
+use jormungandr_automation::jormungandr::{ConfigurationBuilder, MemPoolCheck};
+use jormungandr_automation::testing::time;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, BlockDate, Mempool};
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::{node::time, MemPoolCheck};
 use mjolnir::generators::FragmentGenerator;
 use std::time::Duration;
 use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};

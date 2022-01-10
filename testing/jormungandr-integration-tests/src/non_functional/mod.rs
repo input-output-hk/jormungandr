@@ -32,12 +32,11 @@ pub mod persistent_log;
 pub mod rewards;
 pub mod voting;
 
-use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
-use jormungandr_testing_utils::testing::node::ExplorerError;
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::{
     jcli::{self, JCli},
-    jormungandr::{JormungandrError, JormungandrProcess},
+    jormungandr::{ExplorerError, JormungandrError, JormungandrProcess},
 };
+use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
 use thiserror::Error;
 use thor::Wallet;
 

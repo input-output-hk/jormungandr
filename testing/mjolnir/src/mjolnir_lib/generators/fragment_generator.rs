@@ -4,12 +4,12 @@ use chain_impl_mockchain::{
     vote::Choice,
 };
 use chain_time::TimeEra;
+use jormungandr_automation::jormungandr::MemPoolCheck;
+use jormungandr_automation::jormungandr::RemoteJormungandr;
+use jormungandr_automation::testing::SyncNode;
+use jormungandr_automation::testing::{VoteCastCounter, VotePlanBuilder};
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
-use jormungandr_testing_utils::testing::MemPoolCheck;
-use jormungandr_testing_utils::testing::SyncNode;
-use jormungandr_testing_utils::testing::VoteCastCounter;
-use jormungandr_testing_utils::testing::{RemoteJormungandr, VotePlanBuilder};
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;

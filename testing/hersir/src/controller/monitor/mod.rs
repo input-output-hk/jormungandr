@@ -10,12 +10,12 @@ use crate::utils::Dotifier;
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
 use indicatif::{MultiProgress, ProgressBar};
+use jormungandr_automation::jormungandr::LeadershipMode;
+use jormungandr_automation::jormungandr::PersistenceMode;
+use jormungandr_automation::jormungandr::TestingDirectory;
+use jormungandr_automation::jormungandr::Version;
+use jormungandr_automation::testing::observer::{Event, Observable, Observer};
 use jormungandr_lib::interfaces::Block0Configuration;
-use jormungandr_testing_utils::testing::jormungandr::LeadershipMode;
-use jormungandr_testing_utils::testing::jormungandr::PersistenceMode;
-use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
-use jormungandr_testing_utils::testing::utils::{Event, Observable, Observer};
-use jormungandr_testing_utils::Version;
 pub use node::{Error as NodeError, LegacyNode, Node, ProgressBarController};
 use std::net::SocketAddr;
 use std::{

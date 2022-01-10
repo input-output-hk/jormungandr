@@ -1,9 +1,8 @@
 use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fragment::Fragment};
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
-use jormungandr_testing_utils::testing::node::assert_bad_request;
-use jormungandr_testing_utils::testing::MemPoolCheck;
+use jormungandr_automation::jormungandr::{
+    assert_bad_request, ConfigurationBuilder, JormungandrProcess, MemPoolCheck,
+};
 use loki::FaultyTransactionBuilder;
 use rstest::*;
 use std::time::Duration;

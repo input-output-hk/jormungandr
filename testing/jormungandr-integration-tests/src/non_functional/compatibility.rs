@@ -1,13 +1,11 @@
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_testing_utils::testing::Release;
-use jormungandr_testing_utils::{
-    testing::node::{download_last_n_releases, get_jormungandr_bin},
-    Version,
+use jormungandr_automation::jormungandr::{
+    download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter, Version,
 };
+use jormungandr_automation::testing::Release;
+use jormungandr_lib::interfaces::InitialUTxO;
 use thor::{FragmentSender, TransactionHash};
 
 fn test_connectivity_between_master_and_legacy_app(release: Release, temp_dir: &TempDir) {

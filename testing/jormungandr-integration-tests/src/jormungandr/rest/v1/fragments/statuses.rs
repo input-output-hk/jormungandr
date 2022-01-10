@@ -1,8 +1,8 @@
 use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId};
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
-use jormungandr_testing_utils::testing::MemPoolCheck;
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
+use jormungandr_automation::jormungandr::JormungandrProcess;
+use jormungandr_automation::jormungandr::MemPoolCheck;
 use rstest::*;
 use thor::FragmentSender;
 use thor::FragmentSenderSetup;

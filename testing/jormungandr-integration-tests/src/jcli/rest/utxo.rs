@@ -1,10 +1,10 @@
 use crate::startup;
 use assert_fs::TempDir;
-use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{starter::Starter, ConfigurationBuilder},
+    jormungandr::{ConfigurationBuilder, Starter},
 };
+use jormungandr_lib::interfaces::InitialUTxO;
 
 #[test]
 pub fn test_correct_utxos_are_read_from_node() {

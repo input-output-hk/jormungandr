@@ -1,12 +1,12 @@
 use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, BlockDate as BlockDateDto, KesUpdateSpeed,
-};
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::{
     jcli::{FragmentsCheck, JCli},
     jormungandr::ConfigurationBuilder,
-    node::time,
+    testing::time,
+};
+use jormungandr_lib::interfaces::{
+    ActiveSlotCoefficient, BlockDate as BlockDateDto, KesUpdateSpeed,
 };
 pub use jortestkit::{
     console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode},

@@ -34,11 +34,11 @@ use chain_impl_mockchain::{
 };
 pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
 use discrimination::DiscriminationExtension;
+use jormungandr_automation::jcli::WitnessData;
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
     interfaces::{Address, CommitteeIdDef, Destination, Initial, InitialUTxO, Value},
 };
-use jormungandr_testing_utils::testing::jcli::WitnessData;
 use rand_core::{CryptoRng, RngCore};
 use std::{fs::File, path::Path};
 use thiserror::Error;

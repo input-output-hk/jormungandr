@@ -2,11 +2,9 @@ use crate::generators::AdversaryVoteCastsGenerator;
 use crate::generators::FragmentStatusProvider;
 use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
 use chain_impl_mockchain::block::BlockDate;
+use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
+use jormungandr_automation::testing::block0::{get_block, Block0ConfigurationExtension};
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_testing_utils::testing::{
-    block0::{get_block, Block0ConfigurationExtension},
-    RemoteJormungandrBuilder,
-};
 use jortestkit::{
     load::ConfigurationBuilder,
     prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
