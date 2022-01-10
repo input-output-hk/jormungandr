@@ -52,7 +52,7 @@ pub fn explorer_schema_diff_test() {
     .wait()
     .unwrap();
 
-    jormungandr_automation::testing::node::explorer::compare_schema(actual_schema_path.path());
+    jormungandr_automation::jormungandr::compare_explorer_schema(actual_schema_path.path());
 }
 
 #[test]
