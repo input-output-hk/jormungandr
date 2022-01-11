@@ -579,6 +579,7 @@ mod test {
                     .take(counter_committee)
                     .collect(),
                 tx_max_expiry_epochs: Arbitrary::arbitrary(g),
+                #[cfg(feature = "evm")]
                 evm_params: Arbitrary::arbitrary(g),
             }
         }
