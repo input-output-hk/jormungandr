@@ -76,6 +76,7 @@ features = ["blocking", "json", "rustls-tls"]
 
 [features]
 default = []
+evm = []
 property-test-api = [ ]
 
 [build-dependencies]

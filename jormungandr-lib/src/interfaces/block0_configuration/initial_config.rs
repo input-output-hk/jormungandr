@@ -142,6 +142,11 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub committees: Vec<CommitteeIdDef>,
+
+    #[cfg(feature = "evm")]
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evm_params: Option<crate::interfaces::evm_params::EvmConfigParams>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -208,6 +213,8 @@ impl BlockchainConfiguration {
             reward_parameters: None,
             reward_constraints: RewardConstraints::default(),
             committees: Vec::new(),
+            #[cfg(feature = "evm")]
+            evm_params: None,
         }
     }
 
@@ -238,6 +245,8 @@ impl BlockchainConfiguration {
         let mut reward_constraints = RewardConstraints::default();
         let mut committees = Vec::new();
         let mut tx_max_expiry_epochs = None;
+        #[cfg(feature = "evm")]
+        let mut evm_params = None;
 
         for param in params.iter().cloned() {
             match param {
@@ -324,6 +333,10 @@ impl BlockchainConfiguration {
                 ConfigParam::TransactionMaxExpiryEpochs(value) => tx_max_expiry_epochs
                     .replace(value)
                     .map(|_| "tx_max_expiry_epochs"),
+                #[cfg(feature = "evm")]
+                ConfigParam::EvmParams(params) => {
+                    evm_params.replace((*params).into()).map(|_| "evm_params")
+                }
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
@@ -367,6 +380,8 @@ impl BlockchainConfiguration {
             reward_constraints,
             committees,
             tx_max_expiry_epochs,
+            #[cfg(feature = "evm")]
+            evm_params,
         })
     }
 
@@ -392,6 +407,8 @@ impl BlockchainConfiguration {
             reward_constraints,
             committees,
             tx_max_expiry_epochs,
+            #[cfg(feature = "evm")]
+            evm_params,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -465,6 +482,11 @@ impl BlockchainConfiguration {
             params.push(ConfigParam::TransactionMaxExpiryEpochs(
                 tx_max_expiry_epochs,
             ));
+        }
+
+        #[cfg(feature = "evm")]
+        if let Some(evm_params) = evm_params {
+            params.push(ConfigParam::EvmParams(Box::new(evm_params.into())));
         }
 
         let params = consensus_leader_ids
@@ -557,6 +579,7 @@ mod test {
                     .take(counter_committee)
                     .collect(),
                 tx_max_expiry_epochs: Arbitrary::arbitrary(g),
+                evm_params: Arbitrary::arbitrary(g),
             }
         }
     }
