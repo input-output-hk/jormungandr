@@ -51,7 +51,7 @@ pub enum Transaction {
     /// it will be replaced with the new one.
     AddCertificate(add_certificate::AddCertificate),
     /// set a evm transaction to the Transaction. If there is already
-    /// an extra certificate in the transaction it will be reseted.
+    /// an extra certificate in the transaction it will be reset.
     /// If there is already an evm transaction in the transaction
     /// it will be replaced with the new one.
     AddEvmTransaction(add_evm_transaction::AddEvmTransaction),
