@@ -108,29 +108,24 @@ pub struct BlockchainConfiguration {
 
     /// Fees go to settings, the default being `rewards`.
     ///
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fees_go_to: Option<FeesGoTo>,
 
     /// Set the default value in the treasury. if omitted then the treasury starts with the value of 0
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub treasury: Option<Value>,
 
     /// set the treasure parameters, i.e. the first value the treasury will take from the
     /// rewards pot and fees.
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub treasury_parameters: Option<TaxType>,
 
     /// Set the value of the reward pot. if omitted then the reward pot is empty
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub total_reward_supply: Option<Value>,
 
     /// The reward settings for the reward policy. No reward settings means no reward
     /// distributed at all.
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reward_parameters: Option<RewardParams>,
 
@@ -139,12 +134,10 @@ pub struct BlockchainConfiguration {
     pub reward_constraints: RewardConstraints,
 
     /// the committee members for the voting management
-    #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub committees: Vec<CommitteeIdDef>,
 
     #[cfg(feature = "evm")]
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub evm_params: Option<crate::interfaces::evm_params::EvmConfigParams>,
 }
