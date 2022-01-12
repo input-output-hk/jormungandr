@@ -3,19 +3,14 @@ use crate::generators::FragmentStatusProvider;
 use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_testing_utils::{
-    testing::{
-        fragments::BlockDateGenerator, node::time, startup, FragmentSender, FragmentSenderSetup,
-        RemoteJormungandrBuilder,
-    },
-    wallet::Wallet,
-};
+use jormungandr_testing_utils::testing::{node::time, RemoteJormungandrBuilder};
 use jortestkit::load::ConfigurationBuilder;
 use jortestkit::prelude::parse_progress_bar_mode_from_str;
 use jortestkit::prelude::ProgressBarMode;
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
+use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
 
 #[derive(StructOpt, Debug)]
 pub struct AllFragments {
@@ -79,7 +74,7 @@ impl AllFragments {
             &self.faucet_key_file,
             Some(self.faucet_spending_counter.into()),
         );
-        let receiver = startup::create_new_account_address();
+        let receiver = thor::Wallet::default();
         let mut builder = RemoteJormungandrBuilder::new("node".to_string());
         builder.with_rest(self.endpoint.parse().unwrap());
         let remote_jormungandr = builder.build();

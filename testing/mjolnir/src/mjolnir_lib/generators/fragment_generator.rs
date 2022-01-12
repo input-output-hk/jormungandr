@@ -6,22 +6,19 @@ use chain_impl_mockchain::{
 use chain_time::TimeEra;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
-use jormungandr_testing_utils::testing::FragmentBuilder;
-use jormungandr_testing_utils::testing::FragmentVerifier;
+use jormungandr_testing_utils::testing::MemPoolCheck;
 use jormungandr_testing_utils::testing::SyncNode;
 use jormungandr_testing_utils::testing::VoteCastCounter;
-use jormungandr_testing_utils::testing::{FragmentSender, FragmentSenderError, MemPoolCheck};
-use jormungandr_testing_utils::{
-    stake_pool::StakePool,
-    testing::{RemoteJormungandr, VotePlanBuilder},
-    wallet::Wallet,
-};
+use jormungandr_testing_utils::testing::{RemoteJormungandr, VotePlanBuilder};
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
 use std::iter;
 use std::time::Duration;
 use std::time::Instant;
+use thor::{
+    FragmentBuilder, FragmentSender, FragmentSenderError, FragmentVerifier, StakePool, Wallet,
+};
 
 pub struct FragmentGenerator<'a, S: SyncNode + Send> {
     sender: Wallet,

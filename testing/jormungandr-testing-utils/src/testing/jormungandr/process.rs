@@ -8,14 +8,11 @@ use crate::testing::{
         uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
         JormungandrStateVerifier, LogLevel,
     },
-    utils, BlockDateGenerator, SyncNode, TestConfig,
+    utils, SyncNode, TestConfig,
 };
-use crate::testing::{
-    FragmentChainSender, FragmentSender, FragmentSenderSetup, RemoteJormungandr,
-    RemoteJormungandrBuilder,
-};
+use crate::testing::{RemoteJormungandr, RemoteJormungandrBuilder};
 use ::multiaddr::Multiaddr;
-use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
+use chain_impl_mockchain::fee::LinearFee;
 use chain_time::TimeEra;
 use jormungandr_lib::interfaces::NodeState;
 use jormungandr_lib::{
@@ -92,42 +89,6 @@ impl JormungandrProcess {
 
     pub fn grpc(&self) -> JormungandrClient {
         self.grpc_client.clone()
-    }
-
-    pub fn fragment_sender<'a, S: SyncNode + Send>(
-        &self,
-        setup: FragmentSenderSetup<'a, S>,
-    ) -> FragmentSender<'a, S> {
-        FragmentSender::new(
-            self.genesis_block_hash(),
-            self.fees(),
-            self.default_block_date_generator(),
-            setup,
-        )
-    }
-
-    pub fn default_block_date_generator(&self) -> BlockDateGenerator {
-        BlockDateGenerator::rolling_from_blockchain_config(
-            &self.block0_configuration.blockchain_configuration,
-            BlockDate {
-                epoch: 1,
-                slot_id: 0,
-            },
-            false,
-        )
-    }
-
-    pub fn fragment_chain_sender<'a, S: SyncNode + Send>(
-        &self,
-        setup: FragmentSenderSetup<'a, S>,
-    ) -> FragmentChainSender<'a, S> {
-        FragmentChainSender::new(
-            self.genesis_block_hash(),
-            self.fees(),
-            self.default_block_date_generator(),
-            setup,
-            self.to_remote(),
-        )
     }
 
     pub fn wait_for_bootstrap(

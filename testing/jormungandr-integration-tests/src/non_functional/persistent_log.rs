@@ -1,21 +1,20 @@
 use std::time::Duration;
 
+use crate::startup;
 use assert_fs::{fixture::PathChild, TempDir};
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::interfaces::{Mempool, PersistentLog};
-use jormungandr_testing_utils::testing::{
-    fragments::PersistentLogViewer, jormungandr::ConfigurationBuilder, startup, BlockDateGenerator,
-    FragmentSenderSetup,
-};
+use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
 pub use jortestkit::{
     console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode},
     load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor},
 };
 use mjolnir::generators::{BatchFragmentGenerator, FragmentStatusProvider};
+use thor::{BlockDateGenerator, FragmentSenderSetup, PersistentLogViewer};
 
 #[test]
 pub fn persistent_log_load_test() {
-    let mut faucet = startup::create_new_account_address();
+    let mut faucet = thor::Wallet::default();
 
     let temp_dir = TempDir::new().unwrap();
     let persistent_log_path = temp_dir.child("fragment_dump");

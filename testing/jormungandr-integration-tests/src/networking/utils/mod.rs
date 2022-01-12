@@ -1,6 +1,5 @@
 use hersir::controller::Controller;
 use jormungandr_testing_utils::testing::FragmentNode;
-use jormungandr_testing_utils::testing::FragmentSender;
 pub use jormungandr_testing_utils::testing::{
     assert, assert_equals,
     node::LogLevel,
@@ -10,12 +9,10 @@ pub use jormungandr_testing_utils::testing::{
     },
     FragmentNodeError, MeasurementReportInterval, MemPoolCheck,
 };
+use jormungandr_testing_utils::testing::{Speed, Thresholds};
 pub use jormungandr_testing_utils::testing::{SyncNode, SyncWaitParams};
-use jormungandr_testing_utils::{
-    testing::{Speed, Thresholds},
-    wallet::Wallet,
-};
 use std::time::Duration;
+use thor::{FragmentSender, Wallet};
 
 pub fn wait(seconds: u64) {
     std::thread::sleep(Duration::from_secs(seconds));

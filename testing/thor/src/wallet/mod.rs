@@ -4,8 +4,8 @@ pub mod delegation;
 pub mod discrimination;
 pub mod utxo;
 
-use crate::testing::{FragmentBuilder, FragmentBuilderError};
-use crate::wallet::discrimination::DiscriminationExtension;
+use crate::FragmentBuilder;
+use crate::FragmentBuilderError;
 use chain_addr::AddressReadable;
 use chain_addr::Discrimination;
 use chain_crypto::{Ed25519, Ed25519Extended, SecretKey, Signature};
@@ -33,10 +33,12 @@ use chain_impl_mockchain::{
     vote::CommitteeId,
 };
 pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
+use discrimination::DiscriminationExtension;
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
     interfaces::{Address, CommitteeIdDef, Destination, Initial, InitialUTxO, Value},
 };
+use jormungandr_testing_utils::testing::jcli::WitnessData;
 use rand_core::{CryptoRng, RngCore};
 use std::{fs::File, path::Path};
 use thiserror::Error;
@@ -69,6 +71,12 @@ pub enum Wallet {
     Account(account::Wallet),
     UTxO(utxo::Wallet),
     Delegation(delegation::Wallet),
+}
+
+impl Default for Wallet {
+    fn default() -> Self {
+        Self::new_account(&mut rand::rngs::OsRng)
+    }
 }
 
 impl Wallet {
@@ -230,6 +238,14 @@ impl Wallet {
         }
     }
 
+    pub fn account_id(&self) -> AccountIdentifier {
+        match self {
+            Wallet::Account(account) => account.identifier().as_ref().clone().into(),
+            Wallet::UTxO(_utxo) => unimplemented!(),
+            Wallet::Delegation(_delegation) => unimplemented!(),
+        }
+    }
+
     pub fn delegation_key(&self) -> Identifier<Ed25519> {
         match self {
             Wallet::Delegation(delegation) => {
@@ -321,6 +337,19 @@ impl Wallet {
     pub fn update_counter(&mut self, counter: SpendingCounter) {
         if let Wallet::Account(account) = self {
             account.set_counter(counter)
+        }
+    }
+
+    pub fn witness_data(&self) -> WitnessData {
+        match self {
+            Self::Account(account) => WitnessData::new_account(
+                &account.signing_key().to_bech32_str(),
+                account.internal_counter(),
+            ),
+            Self::UTxO(utxo) => WitnessData::new_utxo(&utxo.last_signing_key().to_bech32_str()),
+            Self::Delegation(delegation) => {
+                WitnessData::new_utxo(&delegation.last_signing_key().to_bech32_str())
+            }
         }
     }
 }

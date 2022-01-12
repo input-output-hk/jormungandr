@@ -21,6 +21,7 @@ chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 jormungandr-lib = { path = "../../jormungandr-lib" }
 hersir = { path = "../hersir" }
 loki = { path = "../loki" }
+thor = { path = "../thor" }
 mjolnir = { path = "../mjolnir" }
 jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }

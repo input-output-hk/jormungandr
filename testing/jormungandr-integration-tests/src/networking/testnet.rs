@@ -13,11 +13,11 @@ use jormungandr_testing_utils::{
     testing::node::{
         download_last_n_releases, get_jormungandr_bin, storage_loading_benchmark_from_log,
     },
-    wallet::Wallet,
     Version,
 };
 use jortestkit::process::WaitBuilder;
 use std::{env, path::PathBuf, time::Duration};
+use thor::Wallet;
 
 #[derive(Clone, Debug)]
 pub struct TestnetConfig {

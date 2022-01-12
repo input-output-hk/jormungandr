@@ -1,15 +1,14 @@
+use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
-use jormungandr_testing_utils::stake_pool::StakePool;
 use jormungandr_testing_utils::testing::node::Explorer;
-use jormungandr_testing_utils::testing::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
-};
+use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jortestkit::process::Wait;
 use std::str::FromStr;
 use std::time::Duration;
+use thor::{StakePool, TransactionHash};
 
 /// test checks if there is upto date schema
 /// prereq:
@@ -57,8 +56,8 @@ pub fn explorer_schema_diff_test() {
 #[test]
 pub fn explorer_sanity_test() {
     let jcli: JCli = Default::default();
-    let faucet = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let faucet = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
 
     let mut config = ConfigurationBuilder::new();
     config
@@ -68,7 +67,7 @@ pub fn explorer_sanity_test() {
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
-    let transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         BlockDate::first().next_epoch(),

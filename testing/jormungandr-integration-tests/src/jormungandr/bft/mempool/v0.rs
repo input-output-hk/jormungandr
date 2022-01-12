@@ -4,18 +4,15 @@ use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::Mempool;
 use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::startup;
-use jormungandr_testing_utils::testing::{
-    fragments::VerifyExitStrategy, FragmentSenderSetup, FragmentVerifier,
-};
 use std::time::Duration;
+use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier, VerifyExitStrategy};
 
 #[test]
 pub fn test_mempool_pool_max_entries_limit() {
     let temp_dir = TempDir::new().unwrap();
 
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let leader_config = ConfigurationBuilder::new()
         .with_funds(vec![
@@ -44,11 +41,14 @@ pub fn test_mempool_pool_max_entries_limit() {
         .start()
         .unwrap();
 
-    let fragment_sender = jormungandr.fragment_sender(FragmentSenderSetup::no_verify());
+    let fragment_sender = FragmentSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        FragmentSenderSetup::no_verify(),
+    );
 
     let verifier = jormungandr
         .correct_state_verifier()
-        .record_wallets_state(vec![&sender, &receiver]);
+        .record_address_state(vec![&sender.address(), &receiver.address()]);
 
     let mempool_check = fragment_sender
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
@@ -81,7 +81,7 @@ pub fn test_mempool_pool_max_entries_limit() {
     .unwrap();
 
     verifier
-        .value_moved_between_wallets(&sender, &receiver, 1.into())
+        .value_moved_between_addresses(&sender.address(), &receiver.address(), 1.into())
         .unwrap();
 }
 
@@ -89,8 +89,8 @@ pub fn test_mempool_pool_max_entries_limit() {
 pub fn test_mempool_pool_max_entries_equal_0() {
     let temp_dir = TempDir::new().unwrap();
 
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
@@ -118,9 +118,12 @@ pub fn test_mempool_pool_max_entries_equal_0() {
 
     let verifier = jormungandr
         .correct_state_verifier()
-        .record_wallets_state(vec![&sender, &receiver]);
+        .record_address_state(vec![&sender.address(), &receiver.address()]);
 
-    let fragment_sender = jormungandr.fragment_sender(FragmentSenderSetup::no_verify());
+    let fragment_sender = FragmentSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        FragmentSenderSetup::no_verify(),
+    );
 
     fragment_sender
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
@@ -136,15 +139,17 @@ pub fn test_mempool_pool_max_entries_equal_0() {
         .assert_empty();
 
     time::wait_for_date(BlockDate::new(0, 5), jormungandr.rest());
-    verifier.no_changes(vec![&sender, &receiver]).unwrap();
+    verifier
+        .no_changes(vec![&sender.address(), &receiver.address()])
+        .unwrap();
 }
 
 #[test]
 pub fn test_mempool_log_max_entries_only_one_fragment() {
     let temp_dir = TempDir::new().unwrap();
 
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
@@ -175,9 +180,12 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
 
     let verifier = jormungandr
         .correct_state_verifier()
-        .record_wallets_state(vec![&sender, &receiver]);
+        .record_address_state(vec![&sender.address(), &receiver.address()]);
 
-    let fragment_sender = jormungandr.fragment_sender(FragmentSenderSetup::no_verify());
+    let fragment_sender = FragmentSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        FragmentSenderSetup::no_verify(),
+    );
 
     let first_fragment = fragment_sender
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
@@ -210,7 +218,7 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
     .unwrap();
 
     verifier
-        .value_moved_between_wallets(&sender, &receiver, 1.into())
+        .value_moved_between_addresses(&sender.address(), &receiver.address(), 1.into())
         .unwrap();
 }
 
@@ -218,8 +226,8 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
 pub fn test_mempool_log_max_entries_equals_0() {
     let temp_dir = TempDir::new().unwrap();
 
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
@@ -247,9 +255,12 @@ pub fn test_mempool_log_max_entries_equals_0() {
 
     let verifier = jormungandr
         .correct_state_verifier()
-        .record_wallets_state(vec![&sender, &receiver]);
+        .record_address_state(vec![&sender.address(), &receiver.address()]);
 
-    let fragment_sender = jormungandr.fragment_sender(FragmentSenderSetup::no_verify());
+    let fragment_sender = FragmentSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        FragmentSenderSetup::no_verify(),
+    );
 
     fragment_sender
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
@@ -266,15 +277,17 @@ pub fn test_mempool_log_max_entries_equals_0() {
 
     time::wait_for_date(BlockDate::new(0, 5), jormungandr.rest());
 
-    verifier.no_changes(vec![&sender, &receiver]).unwrap();
+    verifier
+        .no_changes(vec![&sender.address(), &receiver.address()])
+        .unwrap();
 }
 
 #[test]
 pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
     let temp_dir = TempDir::new().unwrap();
 
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
@@ -302,9 +315,9 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
 
     let verifier = jormungandr
         .correct_state_verifier()
-        .record_wallets_state(vec![&sender, &receiver]);
+        .record_address_state(vec![&sender.address(), &receiver.address()]);
 
-    let fragment_sender = jormungandr.fragment_sender(FragmentSenderSetup::no_verify());
+    let fragment_sender = FragmentSender::from(jormungandr.block0_configuration());
 
     fragment_sender
         .send_transaction(&mut sender, &receiver, &jormungandr, 1.into())
@@ -331,6 +344,6 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
     time::wait_for_date(BlockDate::new(0, 10), jormungandr.rest());
 
     verifier
-        .value_moved_between_wallets(&sender, &receiver, 2.into())
+        .value_moved_between_addresses(&sender.address(), &receiver.address(), 2.into())
         .unwrap();
 }

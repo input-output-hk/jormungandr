@@ -7,7 +7,7 @@ use chain_impl_mockchain::{
     testing::{data::StakePool, TestGen},
 };
 use jormungandr_lib::crypto::key::SigningKey;
-use jormungandr_testing_utils::testing::startup;
+use jormungandr_testing_utils::testing::keys::create_new_key_pair;
 
 pub struct BlockBuilder {
     block_date: BlockDate,
@@ -113,8 +113,8 @@ impl BlockBuilder {
 
             let header = match consensus_protocol {
                 ConsensusVersion::Bft => {
-                    let signing_key =
-                        signing_key.unwrap_or_else(|| startup::create_new_key_pair().signing_key());
+                    let signing_key = signing_key
+                        .unwrap_or_else(|| create_new_key_pair::<Ed25519>().signing_key());
 
                     let bft_builder = builder.into_bft_builder().unwrap();
 

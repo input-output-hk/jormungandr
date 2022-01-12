@@ -8,7 +8,7 @@ use chain_impl_mockchain::{
 use jormungandr_lib::interfaces::SlotDuration;
 use jormungandr_testing_utils::testing::{
     jormungandr::{ConfigurationBuilder, LeadershipMode, Starter},
-    startup, Block0ConfigurationBuilder,
+    keys, Block0ConfigurationBuilder,
 };
 use loki::process::AdversaryNodeBuilder;
 
@@ -35,7 +35,7 @@ fn genesis_praos_block0_with_incorrect_hash() {
 /// Ensures that blocks with an incorrect content hash are rejected by a BFT leader node
 fn block_with_incorrect_hash(consensus: ConsensusType) {
     let temp_dir = TempDir::new().unwrap();
-    let keys = startup::create_new_key_pair();
+    let keys = keys::create_new_key_pair();
 
     let node_params = ConfigurationBuilder::default()
         .with_block0_consensus(consensus)

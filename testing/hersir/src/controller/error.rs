@@ -1,9 +1,9 @@
 use crate::controller::InteractiveCommandError;
 use jormungandr_testing_utils::testing::jormungandr::StartupError;
 use jormungandr_testing_utils::testing::node::ExplorerError;
-use jormungandr_testing_utils::testing::FragmentSenderError;
 use jormungandr_testing_utils::testing::LegacyConfigConverterError;
 use thiserror::Error;
+use thor::FragmentSenderError;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -11,7 +11,7 @@ pub enum Error {
     Node(#[from] super::monitor::NodeError),
 
     #[error(transparent)]
-    Wallet(#[from] jormungandr_testing_utils::wallet::WalletError),
+    Wallet(#[from] thor::WalletError),
 
     #[error(transparent)]
     FsFixture(#[from] assert_fs::fixture::FixtureError),

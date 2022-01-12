@@ -1,4 +1,5 @@
-use crate::{stake_pool::StakePool, wallet::Wallet};
+use crate::stake_pool::StakePool;
+use crate::wallet::Wallet;
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate::{

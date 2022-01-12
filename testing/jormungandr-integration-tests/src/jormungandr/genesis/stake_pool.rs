@@ -1,17 +1,16 @@
-use jormungandr_testing_utils::testing::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
-    startup,
-};
-
 use chain_crypto::{RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, InitialUTxO, Ratio, TaxType, Value},
 };
-use jormungandr_testing_utils::wallet::Wallet;
+use jormungandr_testing_utils::testing::keys;
+use jormungandr_testing_utils::testing::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
+};
 use jortestkit::process::Wait;
+use thor::Wallet;
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
@@ -21,7 +20,7 @@ use std::str::FromStr;
 pub fn create_delegate_retire_stake_pool() {
     let temp_dir = TempDir::new().unwrap();
 
-    let mut actor_account = startup::create_new_account_address();
+    let mut actor_account = thor::Wallet::default();
 
     let config = ConfigurationBuilder::new()
         .with_linear_fees(LinearFee::new(100, 100, 200))
@@ -72,8 +71,8 @@ pub fn create_new_stake_pool(
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let kes = startup::create_new_key_pair::<RistrettoGroup2HashDh>();
-    let vrf = startup::create_new_key_pair::<SumEd25519_12>();
+    let kes = keys::create_new_key_pair::<RistrettoGroup2HashDh>();
+    let vrf = keys::create_new_key_pair::<SumEd25519_12>();
 
     let owner_stake_key = temp_dir.child("stake_key.private_key");
     owner_stake_key
@@ -108,7 +107,7 @@ pub fn create_new_stake_pool(
         .add_certificate(&stake_pool_certificate)
         .set_expiry_date(valid_until)
         .finalize_with_fee(&account.address().to_string(), &fees)
-        .seal_with_witness_for_address(account)
+        .seal_with_witness_data(account.witness_data())
         .add_auth(owner_stake_key.path())
         .to_message();
 
@@ -164,7 +163,7 @@ pub fn delegate_stake(
         .add_certificate(&stake_pool_delegation)
         .set_expiry_date(valid_until)
         .finalize_with_fee(&account.address().to_string(), &fees)
-        .seal_with_witness_for_address(account)
+        .seal_with_witness_data(account.witness_data())
         .add_auth(owner_stake_key.path())
         .to_message();
 
@@ -219,7 +218,7 @@ pub fn retire_stake_pool(
         .add_certificate(&retirement_cert)
         .set_expiry_date(valid_until)
         .finalize_with_fee(&account.address().to_string(), &fees)
-        .seal_with_witness_for_address(account)
+        .seal_with_witness_data(account.witness_data())
         .add_auth(owner_stake_key.path())
         .to_message();
 

@@ -7,7 +7,7 @@ use hersir::builder::Topology;
 use jormungandr_lib::interfaces::BlockDate;
 use jormungandr_lib::interfaces::Explorer;
 use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::FragmentSender;
+use thor::FragmentSender;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
 const LEADER_3: &str = "Leader_3";

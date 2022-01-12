@@ -2,10 +2,11 @@ mod load;
 mod raw;
 mod settings;
 
-use crate::{testing::node::legacy, testing::MemPoolCheck, wallet::Wallet};
+use crate::{testing::node::legacy, testing::MemPoolCheck};
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::header::HeaderId;
+use jormungandr_lib::crypto::account::Identifier;
 use jormungandr_lib::interfaces::{
     AccountVotes, Address, FragmentStatus, FragmentsProcessingSummary, Value, VotePlanId,
 };
@@ -157,9 +158,8 @@ impl JormungandrRest {
         serde_json::from_str(stats).map_err(RestError::CannotDeserialize)
     }
 
-    pub fn account_state(&self, wallet: &Wallet) -> Result<AccountState, RestError> {
-        serde_json::from_str(&self.inner.account_state(wallet)?)
-            .map_err(RestError::CannotDeserialize)
+    pub fn account_state(&self, id: &Identifier) -> Result<AccountState, RestError> {
+        serde_json::from_str(&self.inner.account_state(id)?).map_err(RestError::CannotDeserialize)
     }
 
     pub fn account_state_by_pk_raw(&self, bech32_str: &str) -> Result<String, RestError> {

@@ -10,4 +10,5 @@ members = [
   "testing/loki",
   "testing/mjolnir",
   "testing/hersir",
+  "testing/thor",
 ]

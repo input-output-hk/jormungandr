@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use bincode::Options;
 use chain_core::property::Serialize;
 use chain_impl_mockchain::fragment::Fragment;

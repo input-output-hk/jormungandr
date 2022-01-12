@@ -1,8 +1,10 @@
 mod api;
 mod command;
+mod data;
 mod services;
 
 pub use command::JCliCommand;
+pub use data::{Witness, WitnessData, WitnessType};
 pub use services::FragmentCheck;
 
 pub use services::Error;

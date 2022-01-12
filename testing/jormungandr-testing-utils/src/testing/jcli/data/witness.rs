@@ -1,8 +1,8 @@
-use chain_impl_mockchain::account::SpendingCounter;
-use jormungandr_lib::crypto::hash::Hash;
-
 use assert_fs::fixture::PathChild;
 use assert_fs::prelude::*;
+use assert_fs::TempDir;
+use chain_impl_mockchain::account::SpendingCounter;
+use jormungandr_lib::crypto::hash::Hash;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -60,4 +60,48 @@ fn write_witness_key(temp_dir: &impl PathChild, witness_key: &str) -> PathBuf {
     let path = file.path().to_path_buf();
     println!("Witness key saved into: {:?}", path);
     path
+}
+
+pub struct WitnessData {
+    pub secret_bech32: String,
+    pub addr_type: WitnessType,
+    pub spending_counter: Option<SpendingCounter>,
+}
+
+impl WitnessData {
+    pub fn new_account(signing_key: &str, spending_counter: SpendingCounter) -> Self {
+        Self {
+            secret_bech32: signing_key.to_owned(),
+            addr_type: WitnessType::Account,
+            spending_counter: Some(spending_counter),
+        }
+    }
+
+    pub fn new_utxo(signing_key: &str) -> Self {
+        Self {
+            secret_bech32: signing_key.to_owned(),
+            addr_type: WitnessType::UTxO,
+            spending_counter: None,
+        }
+    }
+
+    pub fn spending_counter(&self) -> Option<SpendingCounter> {
+        self.spending_counter
+    }
+
+    pub fn into_witness(
+        &self,
+        staging_dir: &TempDir,
+        genesis_hash: &Hash,
+        transaction_id: &Hash,
+    ) -> Witness {
+        Witness::new(
+            staging_dir,
+            genesis_hash,
+            transaction_id,
+            self.addr_type,
+            &self.secret_bech32,
+            self.spending_counter(),
+        )
+    }
 }

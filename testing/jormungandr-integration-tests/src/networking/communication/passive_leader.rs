@@ -6,11 +6,11 @@ use jormungandr_testing_utils::testing::node::LogLevel;
 use jormungandr_testing_utils::testing::sync::{
     measure_and_log_sync_time, MeasurementReportInterval,
 };
-use jormungandr_testing_utils::testing::FragmentSender;
-use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use jormungandr_testing_utils::testing::MemPoolCheck;
 use jormungandr_testing_utils::testing::SyncWaitParams;
 use std::time::Duration;
+use thor::FragmentSender;
+use thor::FragmentSenderSetup;
 
 const PASSIVE: &str = "PASSIVE";
 const LEADER: &str = "LEADER";
@@ -48,8 +48,7 @@ pub fn two_nodes_communication() {
     let mut alice = network_controller.wallet(ALICE).unwrap();
     let mut bob = network_controller.wallet(BOB).unwrap();
 
-    passive
-        .fragment_sender(Default::default())
+    FragmentSender::from(&network_controller.settings().block0)
         .send_transactions_round_trip(5, &mut alice, &mut bob, &passive, 100.into())
         .expect("fragment send error");
 

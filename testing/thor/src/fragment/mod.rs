@@ -1,18 +1,15 @@
 pub use self::{
-    adversary::{
-        AdversaryFragmentSender, AdversaryFragmentSenderError, AdversaryFragmentSenderSetup,
-        FaultyTransactionBuilder,
-    },
     chain_sender::FragmentChainSender,
     export::{FragmentExporter, FragmentExporterError},
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
-    node::{FragmentNode, FragmentNodeError, MemPoolCheck},
     persistent_log::{write_into_persistent_log, PersistentLogViewer},
     sender::{BlockDateGenerator, FragmentSender, FragmentSenderError},
     setup::DummySyncNode,
     setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
     verifier::{ExitStrategy as VerifyExitStrategy, FragmentVerifier, FragmentVerifierError},
 };
+pub use transaction_utils::TransactionHash;
+
 use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_impl_mockchain::fee::FeeAlgorithm;
 use chain_impl_mockchain::transaction::InputOutputBuilder;
@@ -33,18 +30,18 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Initial, Value},
 };
+
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
 use thiserror::Error;
 
-mod adversary;
 mod chain_sender;
 mod export;
 mod initial_certificates;
-mod node;
 mod persistent_log;
 mod sender;
 mod setup;
+mod transaction_utils;
 mod verifier;
 
 #[derive(Error, Debug)]

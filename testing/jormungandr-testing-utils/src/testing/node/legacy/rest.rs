@@ -1,13 +1,11 @@
-use crate::{
-    testing::{
-        node::{RawRest, RestError, RestSettings},
-        MemPoolCheck,
-    },
-    wallet::Wallet,
+use crate::testing::{
+    node::{RawRest, RestError, RestSettings},
+    MemPoolCheck,
 };
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::header::HeaderId;
+use jormungandr_lib::crypto::account::Identifier;
 use jormungandr_lib::interfaces::{
     Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
 };
@@ -84,8 +82,8 @@ impl BackwardCompatibleRest {
         Ok(response_text)
     }
 
-    pub fn account_state(&self, wallet: &Wallet) -> Result<String, reqwest::Error> {
-        self.account_state_by_pk(&wallet.identifier().to_bech32_str())
+    pub fn account_state(&self, id: &Identifier) -> Result<String, reqwest::Error> {
+        self.account_state_by_pk(&id.to_bech32_str())
     }
 
     pub fn account_votes(&self, wallet_address: Address) -> Result<String, reqwest::Error> {

@@ -1,5 +1,5 @@
 use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
-use jormungandr_testing_utils::testing::{jcli::JCli, startup};
+use jormungandr_testing_utils::testing::jcli::JCli;
 
 lazy_static! {
     static ref FAKE_INPUT_TRANSACTION_ID: Hash = {
@@ -16,7 +16,7 @@ lazy_static! {
 
 #[test]
 pub fn test_unbalanced_output_utxo_transaction_is_not_finalized() {
-    let receiver = startup::create_new_utxo_address();
+    let receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
     let jcli: JCli = Default::default();
 
     jcli.transaction_builder(*FAKE_GENESIS_HASH)

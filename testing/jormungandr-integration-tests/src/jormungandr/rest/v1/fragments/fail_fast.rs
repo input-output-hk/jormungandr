@@ -1,12 +1,14 @@
+use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fragment::Fragment};
-use jormungandr_testing_utils::testing::fragments::FaultyTransactionBuilder;
+use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
 use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
 use jormungandr_testing_utils::testing::node::assert_bad_request;
-use jormungandr_testing_utils::testing::FragmentVerifier;
-use jormungandr_testing_utils::testing::{jormungandr::ConfigurationBuilder, startup};
-use jormungandr_testing_utils::testing::{FragmentSenderSetup, MemPoolCheck};
+use jormungandr_testing_utils::testing::MemPoolCheck;
+use loki::FaultyTransactionBuilder;
 use rstest::*;
 use std::time::Duration;
+use thor::FragmentSender;
+use thor::FragmentVerifier;
 
 #[fixture]
 fn world() -> (
@@ -17,10 +19,10 @@ fn world() -> (
     Fragment,
     Fragment,
 ) {
-    let alice = startup::create_new_account_address();
-    let bob = startup::create_new_account_address();
-    let clarice = startup::create_new_account_address();
-    let david = startup::create_new_account_address();
+    let alice = thor::Wallet::default();
+    let bob = thor::Wallet::default();
+    let clarice = thor::Wallet::default();
+    let david = thor::Wallet::default();
 
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
@@ -29,7 +31,7 @@ fn world() -> (
     )
     .unwrap();
 
-    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let fragment_builder = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         BlockDate::first().next_epoch(),
@@ -79,7 +81,7 @@ pub fn fail_fast_on_all_valid(
     ),
 ) {
     let (jormungandr, valid_fragment_1, valid_fragment_2, valid_fragment_3, _, _) = world;
-    let transaction_sender = jormungandr.fragment_sender(FragmentSenderSetup::resend_3_times());
+    let transaction_sender = FragmentSender::from(jormungandr.block0_configuration());
     let tx_ids: Vec<MemPoolCheck> = transaction_sender
         .send_batch_fragments(
             vec![valid_fragment_1, valid_fragment_2, valid_fragment_3],
@@ -112,7 +114,7 @@ pub fn fail_fast_off_all_valid(
     ),
 ) {
     let (jormungandr, valid_fragment_1, valid_fragment_2, valid_fragment_3, _, _) = world;
-    let transaction_sender = jormungandr.fragment_sender(FragmentSenderSetup::resend_3_times());
+    let transaction_sender = FragmentSender::from(jormungandr.block0_configuration());
     let tx_ids: Vec<MemPoolCheck> = transaction_sender
         .send_batch_fragments(
             vec![valid_fragment_1, valid_fragment_2, valid_fragment_3],
@@ -173,8 +175,7 @@ pub fn fail_fast_on_first_late_invalid(
 
     let fragments = vec![late_invalid_fragment, valid_fragment_1, valid_fragment_2];
 
-    let transaction_sender = jormungandr.fragment_sender(FragmentSenderSetup::resend_3_times());
-    transaction_sender
+    FragmentSender::from(jormungandr.block0_configuration())
         .send_batch_fragments(fragments.clone(), true, &jormungandr)
         .unwrap();
 

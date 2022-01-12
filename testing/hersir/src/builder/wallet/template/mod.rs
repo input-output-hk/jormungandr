@@ -7,8 +7,8 @@ use chain_impl_mockchain::value::Value;
 pub use external::ExternalWalletTemplate;
 use jormungandr_lib::interfaces::{DiscriminationDef, ValueDef};
 use jormungandr_testing_utils::testing::node::NodeAlias;
-use jormungandr_testing_utils::wallet::WalletAlias;
 use serde::Deserialize;
+use thor::WalletAlias;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Hash)]
 pub struct WalletTemplate {

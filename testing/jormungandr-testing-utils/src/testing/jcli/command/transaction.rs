@@ -1,4 +1,4 @@
-use crate::testing::witness::WitnessType;
+use crate::testing::jcli::WitnessType;
 use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee};
 use std::path::Path;
 use std::process::Command;

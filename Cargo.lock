@@ -1674,6 +1674,7 @@ dependencies = [
  "serde_yaml",
  "structopt",
  "thiserror",
+ "thor",
  "yaml-rust",
 ]
 
@@ -2063,6 +2064,7 @@ dependencies = [
  "serde_yaml",
  "tempfile",
  "thiserror",
+ "thor",
  "tokio",
  "tonic",
  "tracing",
@@ -2304,15 +2306,18 @@ dependencies = [
  "chain-core",
  "chain-crypto",
  "chain-impl-mockchain",
+ "custom_debug",
  "jormungandr-lib",
  "jormungandr-testing-utils",
  "parity-multiaddr",
  "rand 0.8.4",
+ "rand_core 0.6.3",
  "reqwest",
  "serde",
  "serde_yaml",
  "structopt",
  "thiserror",
+ "thor",
  "tokio",
  "warp",
 ]
@@ -2441,10 +2446,12 @@ dependencies = [
  "jormungandr-lib",
  "jormungandr-testing-utils",
  "jortestkit",
+ "loki",
  "rand 0.8.4",
  "rand_core 0.6.3",
  "structopt",
  "thiserror",
+ "thor",
  "tokio",
  "versionisator",
 ]
@@ -4011,6 +4018,30 @@ dependencies = [
  "proc-macro2 1.0.28",
  "quote 1.0.9",
  "syn 1.0.74",
+]
+
+[[package]]
+name = "thor"
+version = "0.1.0"
+dependencies = [
+ "assert_fs",
+ "bech32 0.8.1",
+ "bincode",
+ "chain-addr",
+ "chain-core",
+ "chain-crypto",
+ "chain-impl-mockchain",
+ "chain-vote",
+ "chrono",
+ "custom_debug",
+ "hex",
+ "jormungandr-lib",
+ "jormungandr-testing-utils",
+ "jortestkit",
+ "rand 0.8.4",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.3",
+ "thiserror",
 ]
 
 [[package]]

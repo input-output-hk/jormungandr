@@ -1,15 +1,10 @@
-use crate::{
-    testing::{
-        configuration,
-        jcli::JCli,
-        jormungandr::JormungandrProcess,
-        startup::{build_genesis_block, create_new_key_pair},
-        Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
-    },
-    wallet::Wallet,
+use crate::testing::{
+    configuration, jormungandr::JormungandrProcess, Block0ConfigurationBuilder, JormungandrParams,
+    NodeConfigBuilder, SecretModelFactory,
 };
 use assert_fs::fixture::{ChildPath, PathChild};
 use chain_addr::Discrimination;
+use chain_core::property::Serialize;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
 use jormungandr_lib::crypto::key::KeyPair;
@@ -78,7 +73,7 @@ impl ConfigurationBuilder {
             rewards_history: false,
             configure_default_log: true,
             committee_ids: vec![],
-            leader_key_pair: create_new_key_pair::<Ed25519>(),
+            leader_key_pair: KeyPair::generate(&mut rand::thread_rng()),
             fees_go_to: None,
             treasury: None,
             total_reward_supply: None,
@@ -89,8 +84,8 @@ impl ConfigurationBuilder {
         }
     }
 
-    pub fn with_committees(&mut self, wallets: &[&Wallet]) -> &mut Self {
-        self.committee_ids = wallets.iter().map(|w| w.to_committee_id()).collect();
+    pub fn with_committees(&mut self, committees: &[CommitteeIdDef]) -> &mut Self {
+        self.committee_ids = committees.to_vec();
         self
     }
 
@@ -352,7 +347,6 @@ impl ConfigurationBuilder {
         }
 
         let block0_config = self.build_block0();
-
         let default_log_file = || temp_dir.child("node.log").path().to_path_buf();
 
         match (&node_config.log, self.configure_default_log) {
@@ -369,14 +363,14 @@ impl ConfigurationBuilder {
             }
         };
 
-        let path_to_output_block = build_genesis_block(&block0_config, temp_dir);
         let genesis_block_hash = match self.block0_hash {
             Some(ref value) => value.clone(),
-            None => {
-                let jcli: JCli = Default::default();
-                jcli.genesis().hash(&path_to_output_block).to_string()
-            }
+            None => block0_config.to_block().header().hash().to_string(),
         };
+
+        let path_to_output_block = temp_dir.child("block0.bin");
+        let file = std::fs::File::create(path_to_output_block.path()).unwrap();
+        block0_config.to_block().serialize(file).unwrap();
 
         fn write_secret(secret: &NodeSecret, output_file: ChildPath) -> PathBuf {
             configuration::write_secret(secret, &output_file);
@@ -397,7 +391,7 @@ impl ConfigurationBuilder {
         let params = JormungandrParams::new(
             node_config,
             config_file.path(),
-            path_to_output_block,
+            path_to_output_block.path(),
             genesis_block_hash,
             secret_model_path,
             block0_config,

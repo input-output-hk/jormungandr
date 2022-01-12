@@ -33,12 +33,13 @@ pub mod rewards;
 pub mod voting;
 
 use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
+use jormungandr_testing_utils::testing::node::ExplorerError;
 use jormungandr_testing_utils::testing::{
     jcli::{self, JCli},
     jormungandr::{JormungandrError, JormungandrProcess},
 };
-use jormungandr_testing_utils::{testing::node::ExplorerError, wallet::Wallet};
 use thiserror::Error;
+use thor::Wallet;
 
 #[derive(Error, Debug)]
 pub enum NodeStuckError {

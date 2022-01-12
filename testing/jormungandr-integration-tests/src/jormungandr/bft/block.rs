@@ -6,17 +6,16 @@ use chain_impl_mockchain::{
 };
 use hersir::builder::{Blockchain, NetworkBuilder, Node, SpawnParams, Topology};
 use jormungandr_lib::interfaces::SlotDuration;
-use jormungandr_testing_utils::testing::{
-    jormungandr::{ConfigurationBuilder, Starter},
-    startup, FragmentBuilder,
-};
+use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
+use jormungandr_testing_utils::testing::keys;
 use loki::{block::BlockBuilder, process::AdversaryNodeBuilder};
+use thor::FragmentBuilder;
 
 #[test]
 /// Ensures that blocks with an incorrect signature are rejected by a BFT leader node
 fn block_with_incorrect_signature() {
     let temp_dir = TempDir::new().unwrap();
-    let keys = startup::create_new_key_pair();
+    let keys = keys::create_new_key_pair();
 
     let node_params = ConfigurationBuilder::default()
         .with_block0_consensus(ConsensusType::Bft)
@@ -158,7 +157,7 @@ fn block_with_nonexistent_leader() {
 /// wallet- are rejected by a BFT leader node
 fn block_with_invalid_fragment() {
     let temp_dir = TempDir::new().unwrap();
-    let keys = startup::create_new_key_pair();
+    let keys = keys::create_new_key_pair();
 
     let node_params = ConfigurationBuilder::default()
         .with_block0_consensus(ConsensusType::Bft)
@@ -179,8 +178,8 @@ fn block_with_invalid_fragment() {
             BlockDate::first().next_epoch(),
         )
         .transaction(
-            &startup::create_new_account_address(),
-            startup::create_new_account_address().address(),
+            &thor::Wallet::default(),
+            thor::Wallet::default().address(),
             42.into(),
         )
         .unwrap(),

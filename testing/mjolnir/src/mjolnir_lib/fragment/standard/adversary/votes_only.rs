@@ -3,13 +3,9 @@ use crate::generators::FragmentStatusProvider;
 use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_testing_utils::{
-    testing::{
-        block0::{get_block, Block0ConfigurationExtension},
-        fragments::BlockDateGenerator,
-        FragmentSender, FragmentSenderSetup, RemoteJormungandrBuilder,
-    },
-    wallet::Wallet,
+use jormungandr_testing_utils::testing::{
+    block0::{get_block, Block0ConfigurationExtension},
+    RemoteJormungandrBuilder,
 };
 use jortestkit::{
     load::ConfigurationBuilder,
@@ -17,6 +13,7 @@ use jortestkit::{
 };
 use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
+use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
 
 #[derive(StructOpt, Debug)]
 pub struct VotesOnly {

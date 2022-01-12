@@ -9,8 +9,6 @@ use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
 use hersir::controller::Context;
 use jormungandr_testing_utils::testing::sync::MeasurementReportInterval;
-use jormungandr_testing_utils::testing::FragmentSender;
-use jormungandr_testing_utils::testing::FragmentSenderSetup;
 use jormungandr_testing_utils::testing::SyncNode;
 use jormungandr_testing_utils::testing::SyncWaitParams;
 use jormungandr_testing_utils::{
@@ -19,6 +17,8 @@ use jormungandr_testing_utils::{
 };
 use rstest::rstest;
 use std::path::PathBuf;
+use thor::FragmentSender;
+use thor::FragmentSenderSetup;
 
 #[rstest]
 #[case(0)]

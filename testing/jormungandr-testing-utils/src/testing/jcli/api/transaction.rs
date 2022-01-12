@@ -1,13 +1,9 @@
+use crate::testing::jcli::{command::TransactionCommand, data::Witness, WitnessData};
 use crate::testing::process::ProcessOutput;
-use crate::testing::{
-    jcli::command::TransactionCommand,
-    witness::{Witness, WitnessType},
-};
-use crate::wallet::Wallet;
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::TempDir;
 use chain_core::property::Deserialize;
-use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee, fragment::Fragment};
+use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, LegacyUTxO, UTxOInfo, Value},
@@ -201,59 +197,15 @@ impl Transaction {
             .stderr(predicates::str::contains(expected_msg));
     }
 
-    pub fn create_witness_from_wallet<P: AsRef<Path>>(
+    pub fn create_witness<P: AsRef<Path>>(
         self,
         staging_dir: &TempDir,
         genesis_hash: Hash,
-        wallet: &Wallet,
-        staging_file: P,
-    ) -> Witness {
-        match wallet {
-            Wallet::Account(account) => self.create_witness_from_key(
-                staging_dir,
-                genesis_hash,
-                &account.signing_key().to_bech32_str(),
-                WitnessType::Account,
-                Some(account.internal_counter()),
-                staging_file,
-            ),
-            Wallet::UTxO(utxo) => self.create_witness_from_key(
-                staging_dir,
-                genesis_hash,
-                &utxo.last_signing_key().to_bech32_str(),
-                WitnessType::UTxO,
-                None,
-                staging_file,
-            ),
-            Wallet::Delegation(delegation) => self.create_witness_from_key(
-                staging_dir,
-                genesis_hash,
-                &delegation.last_signing_key().to_bech32_str(),
-                WitnessType::UTxO,
-                None,
-                staging_file,
-            ),
-        }
-    }
-
-    pub fn create_witness_from_key<P: AsRef<Path>>(
-        self,
-        staging_dir: &TempDir,
-        genesis_hash: Hash,
-        private_key: &str,
-        addr_type: WitnessType,
-        spending_counter: Option<SpendingCounter>,
+        witness_data: WitnessData,
         staging_file: P,
     ) -> Witness {
         let transaction_id = self.id(staging_file);
-        Witness::new(
-            staging_dir,
-            &genesis_hash,
-            &transaction_id,
-            addr_type,
-            private_key,
-            spending_counter,
-        )
+        witness_data.into_witness(staging_dir, &genesis_hash, &transaction_id)
     }
 
     pub fn add_witness_expect_fail<P: AsRef<Path>>(

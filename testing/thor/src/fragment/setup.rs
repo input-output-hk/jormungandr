@@ -1,6 +1,6 @@
-use super::FragmentNode;
-use crate::testing::node::NodeAlias;
-use crate::testing::SyncNode;
+use jormungandr_lib::crypto::hash::Hash;
+use jormungandr_testing_utils::testing::node::NodeAlias;
+use jormungandr_testing_utils::testing::{FragmentNode, SyncNode};
 use std::fmt;
 use std::path::PathBuf;
 
@@ -99,7 +99,6 @@ impl<'a, S: SyncNode + Send> FragmentSenderSetup<'a, S> {
 
 #[derive(Clone)]
 pub struct DummySyncNode;
-use crate::testing::fragments::Hash;
 
 impl SyncNode for DummySyncNode {
     fn alias(&self) -> NodeAlias {

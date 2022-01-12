@@ -3,7 +3,7 @@ use chain_impl_mockchain::{
     certificate::PoolId, testing::builders::cert_builder::build_stake_pool_retirement_cert,
 };
 use jormungandr_lib::interfaces::Certificate;
-use jormungandr_testing_utils::testing::{jcli::JCli, startup::create_new_key_pair};
+use jormungandr_testing_utils::testing::{jcli::JCli, keys::create_new_key_pair};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;

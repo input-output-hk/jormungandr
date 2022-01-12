@@ -1,25 +1,25 @@
-use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
-
+use crate::startup;
 use chain_impl_mockchain::value::Value;
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, EpochRewardsInfo, StakePoolStats, Value as LibValue},
 };
 use jormungandr_testing_utils::testing::node::time;
+use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use std::str::FromStr;
 
 #[test]
 pub fn collect_reward() {
     let jcli: JCli = Default::default();
     let stake_pool_owners = [
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
     ];
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &stake_pool_owners,
@@ -68,14 +68,14 @@ pub fn reward_history() {
     let jcli: JCli = Default::default();
 
     let stake_pool_owners = [
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
     ];
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &stake_pool_owners,

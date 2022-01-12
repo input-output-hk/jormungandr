@@ -1,11 +1,9 @@
 #![allow(dead_code)]
 
 use super::TestConfig;
-use crate::wallet::Wallet;
 use chain_core::mempack;
 use chain_impl_mockchain::{block::Block, fee::LinearFee, fragment::Fragment};
-use jormungandr_lib::interfaces::{Block0Configuration, NodeConfig, UTxOInfo};
-
+use jormungandr_lib::interfaces::{Address, Block0Configuration, NodeConfig, UTxOInfo};
 use serde::Serialize;
 use std::fs::File;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
@@ -172,13 +170,13 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
             .collect()
     }
 
-    pub fn block0_utxo_for_address(&self, wallet: &Wallet) -> UTxOInfo {
+    pub fn block0_utxo_for_address(&self, address: &Address) -> UTxOInfo {
         let utxo = self
             .block0_utxo()
             .into_iter()
-            .find(|utxo| *utxo.address() == wallet.address())
-            .unwrap_or_else(|| panic!("No UTxO found in block 0 for address '{:?}'", wallet));
-        println!("Utxo found for address {}: {:?}", wallet.address(), &utxo);
+            .find(|utxo| utxo.address() == address)
+            .unwrap_or_else(|| panic!("No UTxO found in block 0 for address '{:?}'", address));
+        println!("Utxo found for address {}: {:?}", address, &utxo);
         utxo
     }
 }

@@ -1,3 +1,5 @@
+use crate::startup;
+use crate::startup::start_stake_pool;
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
     TempDir,
@@ -21,23 +23,16 @@ use jormungandr_lib::{
     },
 };
 use jormungandr_testing_utils::testing::asserts::VotePlanStatusAssert;
-use jormungandr_testing_utils::testing::startup::start_stake_pool;
+use jormungandr_testing_utils::testing::node::time::{self, wait_for_epoch};
 use jormungandr_testing_utils::testing::VotePlanExtension;
 use jormungandr_testing_utils::testing::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
-    startup,
-};
-use jormungandr_testing_utils::{
-    testing::{
-        node::time::{self, wait_for_epoch},
-        vote_plan_cert, FragmentSender, FragmentSenderSetup,
-    },
-    wallet::Wallet,
 };
 use rand::rngs::OsRng;
 use rand_core::{CryptoRng, RngCore};
 use std::time::Duration;
+use thor::{vote_plan_cert, FragmentSender, FragmentSenderSetup, Wallet};
 
 const TEST_COMMITTEE_SIZE: usize = 3;
 
@@ -177,7 +172,11 @@ pub fn test_vote_flow_bft() {
                 .map(|x| x.to_initial_fund(initial_fund_per_wallet))
                 .collect(),
         )
-        .with_committees(&wallets)
+        .with_committees(&[
+            alice.to_committee_id(),
+            bob.to_committee_id(),
+            clarice.to_committee_id(),
+        ])
         .with_slots_per_epoch(60)
         .with_certs(vec![vote_plan_cert])
         .with_explorer()
@@ -331,7 +330,11 @@ pub fn test_vote_flow_praos() {
     .into();
     let mut config = ConfigurationBuilder::new();
     config
-        .with_committees(&[&alice, &bob, &clarice])
+        .with_committees(&[
+            alice.to_committee_id(),
+            bob.to_committee_id(),
+            clarice.to_committee_id(),
+        ])
         .with_slots_per_epoch(60)
         .with_consensus_genesis_praos_active_slot_coeff(
             ActiveSlotCoefficient::new(Milli::from_millis(1_000)).unwrap(),
@@ -494,7 +497,7 @@ pub fn jcli_e2e_flow() {
         .with_treasury(Value::zero().into())
         .with_total_rewards_supply(Value::zero().into())
         .with_discrimination(Discrimination::Production)
-        .with_committees(&[&alice])
+        .with_committees(&[alice.to_committee_id()])
         .with_slots_per_epoch(60)
         .with_consensus_genesis_praos_active_slot_coeff(
             ActiveSlotCoefficient::new(Milli::from_millis(100)).unwrap(),
@@ -522,7 +525,7 @@ pub fn jcli_e2e_flow() {
         .add_certificate(&vote_plan_cert)
         .set_expiry_date(BlockDateDto::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 
@@ -548,7 +551,7 @@ pub fn jcli_e2e_flow() {
         .add_certificate(&vote_cast)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -564,7 +567,7 @@ pub fn jcli_e2e_flow() {
         .add_certificate(&vote_cast)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&bob)
+        .seal_with_witness_data(bob.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -578,7 +581,7 @@ pub fn jcli_e2e_flow() {
         .add_certificate(&vote_cast)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&clarice)
+        .seal_with_witness_data(clarice.witness_data())
         .to_message();
     jcli.fragment_sender(&jormungandr)
         .send(&tx)
@@ -595,7 +598,7 @@ pub fn jcli_e2e_flow() {
         .add_certificate(&vote_tally_cert)
         .set_expiry_date(BlockDateDto::new(3, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 
@@ -642,7 +645,7 @@ pub fn jcli_e2e_flow() {
 
 #[test]
 pub fn duplicated_vote() {
-    let mut alice = startup::create_new_account_address();
+    let mut alice = thor::Wallet::default();
 
     let jormungandr = startup::start_bft(
         vec![&alice],
@@ -653,7 +656,10 @@ pub fn duplicated_vote() {
     )
     .unwrap();
 
-    let alice_account_state = jormungandr.rest().account_state(&alice).unwrap();
+    let alice_account_state = jormungandr
+        .rest()
+        .account_state(&alice.account_id())
+        .unwrap();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
@@ -664,27 +670,30 @@ pub fn duplicated_vote() {
         .public()
         .build();
 
-    jormungandr
-        .fragment_chain_sender(FragmentSenderSetup::no_verify())
-        .send_vote_plan(&mut alice, &vote_plan)
-        .unwrap()
-        .and_verify_is_in_block(Duration::from_secs(2))
-        .unwrap()
-        .then_wait_for_epoch(1)
-        .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(1))
-        .unwrap()
-        .and_verify_is_in_block(Duration::from_secs(2))
-        .unwrap()
-        .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(1))
-        .unwrap()
-        .and_verify_is_rejected(Duration::from_secs(2))
-        .unwrap()
-        .update_wallet(&mut alice, &|alice: &mut Wallet| alice.decrement_counter())
-        .then_wait_for_epoch(2)
-        .tally_vote(&mut alice, &vote_plan, VoteTallyPayload::Public)
-        .unwrap()
-        .and_verify_is_in_block(Duration::from_secs(2))
-        .unwrap();
+    thor::FragmentChainSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        jormungandr.to_remote(),
+        FragmentSenderSetup::no_verify(),
+    )
+    .send_vote_plan(&mut alice, &vote_plan)
+    .unwrap()
+    .and_verify_is_in_block(Duration::from_secs(2))
+    .unwrap()
+    .then_wait_for_epoch(1)
+    .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(Duration::from_secs(2))
+    .unwrap()
+    .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_rejected(Duration::from_secs(2))
+    .unwrap()
+    .update_wallet(&mut alice, &|alice: &mut Wallet| alice.decrement_counter())
+    .then_wait_for_epoch(2)
+    .tally_vote(&mut alice, &vote_plan, VoteTallyPayload::Public)
+    .unwrap()
+    .and_verify_is_in_block(Duration::from_secs(2))
+    .unwrap();
 
     let vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
     vote_plans.assert_all_proposals_are_tallied();
@@ -697,7 +706,7 @@ pub fn duplicated_vote() {
 
 #[test]
 pub fn non_duplicated_vote() {
-    let mut alice = startup::create_new_account_address();
+    let mut alice = thor::Wallet::default();
 
     let jormungandr = startup::start_bft(
         vec![&alice],
@@ -708,9 +717,16 @@ pub fn non_duplicated_vote() {
     )
     .unwrap();
 
-    let alice_account_state = jormungandr.rest().account_state(&alice).unwrap();
+    let alice_account_state = jormungandr
+        .rest()
+        .account_state(&alice.account_id())
+        .unwrap();
 
-    let fragment_sender_chain = jormungandr.fragment_chain_sender(FragmentSenderSetup::no_verify());
+    let fragment_sender_chain = thor::FragmentChainSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        jormungandr.to_remote(),
+        FragmentSenderSetup::no_verify(),
+    );
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
