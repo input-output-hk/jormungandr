@@ -382,7 +382,10 @@ impl Staging {
                     output_policy,
                 ),
                 Some(tx) => {
-                    let tx: chain_impl_mockchain::evm::EvmTransaction = tx.clone().into();
+                    #[allow(unreachable_code)]
+                    #[allow(unused_variables)]
+                    let tx: chain::evm::EvmTransaction = tx.clone().into();
+                    #[allow(unreachable_code)]
                     self.finalize_payload(&tx, fee_algorithm, output_policy)
                 }
             },
