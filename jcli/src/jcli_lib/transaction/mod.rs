@@ -46,7 +46,7 @@ pub enum Transaction {
     /// set a transaction expiration date
     SetExpiryDate(set_expiry_date::SetExpiryDate),
     /// set a certificate to the Transaction. If there is already
-    /// an evm transaction in the transaction it will be reseted.
+    /// an evm transaction in the transaction it will be reset.
     /// If there is already an extra certificate in the transaction
     /// it will be replaced with the new one.
     AddCertificate(add_certificate::AddCertificate),
