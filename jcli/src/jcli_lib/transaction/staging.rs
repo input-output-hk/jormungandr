@@ -381,12 +381,14 @@ impl Staging {
                     fee_algorithm,
                     output_policy,
                 ),
-                Some(tx) => {
-                    #[allow(unreachable_code)]
-                    #[allow(unused_variables)]
-                    let tx: chain::evm::EvmTransaction = tx.clone().into();
-                    #[allow(unreachable_code)]
-                    self.finalize_payload(&tx, fee_algorithm, output_policy)
+                Some(_tx) => {
+                    #[cfg(feature = "evm")]
+                    {
+                        let _tx: chain::evm::EvmTransaction = _tx.clone().into();
+                        self.finalize_payload(&_tx, fee_algorithm, output_policy)
+                    }
+                    #[cfg(not(feature = "evm"))]
+                    unreachable!()
                 }
             },
             Some(c) => match c.clone().into() {
@@ -609,8 +611,12 @@ impl Staging {
             None => match &self.evm_transaction {
                 None => self.transaction_sign_data_hash_on(TxBuilder::new().set_nopayload()),
                 Some(_tx) => {
-                    // let tx: chain::evm::EvmTransaction = tx.clone().into();
-                    // self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&tx))
+                    #[cfg(feature = "evm")]
+                    {
+                        let _tx: chain::evm::EvmTransaction = _tx.clone().into();
+                        self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&_tx))
+                    }
+                    #[cfg(not(feature = "evm"))]
                     unreachable!()
                 }
             },
