@@ -23,6 +23,7 @@ const DEFAULT_SLOT_DURATION: u8 = 2;
 #[derive(Clone, Debug)]
 pub struct ConfigurationBuilder {
     funds: Vec<Initial>,
+    tokens: Vec<Initial>,
     certs: Vec<Initial>,
     block0_hash: Option<String>,
     block0_consensus: ConsensusVersion,
@@ -58,6 +59,7 @@ impl ConfigurationBuilder {
     pub fn new() -> Self {
         ConfigurationBuilder {
             funds: vec![],
+            tokens: vec![],
             certs: vec![],
             consensus_leader_ids: vec![],
             secret: None,
@@ -209,7 +211,7 @@ impl ConfigurationBuilder {
     }
 
     pub fn with_token(&mut self, token: InitialToken) -> &mut Self {
-        self.funds.push(Initial::Token(token));
+        self.tokens.push(Initial::Token(token));
         self
     }
 
@@ -309,6 +311,7 @@ impl ConfigurationBuilder {
 
         let mut initial: Vec<Initial> = Vec::new();
         initial.extend(self.funds.iter().cloned());
+        initial.extend(self.tokens.iter().cloned());
         initial.extend(self.certs.iter().cloned());
 
         let mut block0_config_builder = Block0ConfigurationBuilder::new();
