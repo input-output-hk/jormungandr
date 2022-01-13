@@ -342,6 +342,10 @@ pub fn test_vote_flow_praos() {
         &vote_plan,
     )
     .into();
+
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
     let mut config = ConfigurationBuilder::new();
     config
         .with_committees(&[
@@ -349,6 +353,15 @@ pub fn test_vote_flow_praos() {
             bob.to_committee_id(),
             clarice.to_committee_id(),
         ])
+        .with_token(InitialToken {
+            token_id: token_id.clone().into(),
+            policy: minting_policy.into(),
+            to: vec![
+                alice.to_initial_token(1_000_000),
+                bob.to_initial_token(1_000_000),
+                clarice.to_initial_token(1_000_000),
+            ],
+        })
         .with_slots_per_epoch(60)
         .with_consensus_genesis_praos_active_slot_coeff(
             ActiveSlotCoefficient::new(Milli::from_millis(1_000)).unwrap(),
