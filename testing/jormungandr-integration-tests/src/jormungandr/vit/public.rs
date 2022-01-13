@@ -686,20 +686,6 @@ pub fn jcli_e2e_flow() {
 pub fn duplicated_vote() {
     let mut alice = thor::Wallet::default();
 
-    let jormungandr = startup::start_bft(
-        vec![&alice],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(20)
-            .with_slot_duration(3)
-            .with_linear_fees(LinearFee::new(0, 0, 0)),
-    )
-    .unwrap();
-
-    let alice_account_state = jormungandr
-        .rest()
-        .account_state(&alice.account_id())
-        .unwrap();
-
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
@@ -708,6 +694,28 @@ pub fn duplicated_vote() {
         .tally_end(BlockDate::from_epoch_slot_id(3, 0))
         .public()
         .build();
+
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
+    let jormungandr = startup::start_bft(
+        vec![&alice],
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(20)
+            .with_slot_duration(3)
+            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_token(InitialToken {
+                token_id: token_id.clone().into(),
+                policy: minting_policy.into(),
+                to: vec![alice.to_initial_token(1_000_000_000)],
+            }),
+    )
+    .unwrap();
+
+    let alice_account_state = jormungandr
+        .rest()
+        .account_state(&alice.account_id())
+        .unwrap();
 
     thor::FragmentChainSender::from_with_setup(
         jormungandr.block0_configuration(),
