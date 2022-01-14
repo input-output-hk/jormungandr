@@ -15,7 +15,7 @@ rand = "0.8"
 thiserror = "1.0"
 structopt = "^0.3"
 assert_fs = "1.0"
-indicatif = "0.15"
+indicatif = "0.16"
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }

@@ -1653,7 +1653,7 @@ dependencies = [
  "ctrlc",
  "custom_debug",
  "hex",
- "indicatif",
+ "indicatif 0.16.2",
  "jormungandr-automation",
  "jormungandr-lib",
  "jortestkit",
@@ -1868,7 +1868,19 @@ checksum = "7baab56125e25686df467fe470785512329883aab42696d661247aca2a2896e4"
 dependencies = [
  "console 0.15.0",
  "lazy_static",
- "number_prefix",
+ "number_prefix 0.3.0",
+ "regex",
+]
+
+[[package]]
+name = "indicatif"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d207dc617c7a380ab07ff572a6e52fa202a2a8f355860ac9c38e23f8196be1b"
+dependencies = [
+ "console 0.15.0",
+ "lazy_static",
+ "number_prefix 0.4.0",
  "regex",
 ]
 
@@ -2092,7 +2104,7 @@ dependencies = [
  "futures",
  "hersir",
  "hex",
- "indicatif",
+ "indicatif 0.16.2",
  "jormungandr-automation",
  "jormungandr-lib",
  "jortestkit",
@@ -2177,7 +2189,7 @@ dependencies = [
  "fs_extra",
  "hex",
  "humantime",
- "indicatif",
+ "indicatif 0.15.0",
  "lazy_static",
  "os_info",
  "predicates 1.0.8",
@@ -2425,7 +2437,7 @@ dependencies = [
  "chain-storage",
  "chain-time",
  "chain-vote",
- "indicatif",
+ "indicatif 0.16.2",
  "jormungandr-automation",
  "jormungandr-lib",
  "jortestkit",
@@ -2616,6 +2628,12 @@ name = "number_prefix"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
+
+[[package]]
+name = "number_prefix"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "object"
