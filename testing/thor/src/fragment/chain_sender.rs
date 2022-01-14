@@ -10,11 +10,11 @@ use chain_impl_mockchain::certificate::VotePlan;
 use chain_impl_mockchain::certificate::VoteTallyPayload;
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::vote::Choice;
+use jormungandr_automation::jormungandr::{MemPoolCheck, RemoteJormungandr};
+use jormungandr_automation::testing::time;
+use jormungandr_automation::testing::SyncNode;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::Block0Configuration;
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::RemoteJormungandr;
-use jormungandr_testing_utils::testing::{MemPoolCheck, SyncNode};
 
 pub struct FragmentChainSender<'a, S: SyncNode + Send> {
     sender: FragmentSender<'a, S>,

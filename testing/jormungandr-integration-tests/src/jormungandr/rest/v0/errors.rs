@@ -1,9 +1,9 @@
 use crate::startup;
 use chain_core::property::Fragment;
 use chain_impl_mockchain::block::BlockDate;
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
+use jormungandr_automation::jormungandr::JormungandrProcess;
 use jormungandr_lib::interfaces::FragmentsProcessingSummary;
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
 use rstest::*;
 use thor::Wallet;
 

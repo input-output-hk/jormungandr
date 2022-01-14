@@ -5,13 +5,13 @@ use assert_fs::{
 use chain_addr::Discrimination;
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::value::Value;
-use jormungandr_lib::interfaces::{
-    BlockContentMaxSize, BlockDate, ConfigParam, ConfigParams, ConsensusLeaderId,
-};
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::testing::time::{get_current_date, wait_for_epoch};
+use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
-    node::time::{get_current_date, wait_for_epoch},
+};
+use jormungandr_lib::interfaces::{
+    BlockContentMaxSize, BlockDate, ConfigParam, ConfigParams, ConsensusLeaderId,
 };
 use jortestkit::process::Wait;
 use rand_core::OsRng;

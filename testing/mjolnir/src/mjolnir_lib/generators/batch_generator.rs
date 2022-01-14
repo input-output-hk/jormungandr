@@ -1,8 +1,8 @@
 use chain_impl_mockchain::fee::LinearFee;
 use chain_impl_mockchain::fragment::Fragment;
+use jormungandr_automation::jormungandr::RemoteJormungandr;
+use jormungandr_automation::testing::SyncNode;
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_testing_utils::testing::RemoteJormungandr;
-use jormungandr_testing_utils::testing::SyncNode;
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
 use std::time::Instant;

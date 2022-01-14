@@ -1,13 +1,14 @@
 use assert_fs::TempDir;
 use chain_core::property::Fragment;
 use chain_impl_mockchain::block::BlockDate;
+use jormungandr_automation::jormungandr::{
+    assert_accepted_rejected, ConfigurationBuilder, Starter,
+};
+use jormungandr_automation::testing::time;
 use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
 use jormungandr_lib::interfaces::FragmentRejectionReason;
 use jormungandr_lib::interfaces::InitialUTxO;
 use jormungandr_lib::interfaces::Mempool;
-use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_testing_utils::testing::node::assert_accepted_rejected;
-use jormungandr_testing_utils::testing::node::time;
 use std::time::Duration;
 use thor::{FragmentSender, FragmentVerifier, VerifyExitStrategy};
 

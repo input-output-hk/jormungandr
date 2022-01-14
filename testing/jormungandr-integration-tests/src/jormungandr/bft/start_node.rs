@@ -1,5 +1,5 @@
+use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput};
-use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;

@@ -12,6 +12,7 @@ use chain_impl_mockchain::testing::create_initial_vote_plan;
 use chain_impl_mockchain::{
     certificate::VotePlan, chaintypes::ConsensusVersion, fee::LinearFee, vote::PayloadType,
 };
+use jormungandr_automation::jormungandr::NodeAlias;
 use jormungandr_lib::crypto::account::Identifier;
 use jormungandr_lib::interfaces::{try_initial_fragment_from_message, VotePlan as VotePLanLib};
 use jormungandr_lib::{
@@ -21,7 +22,6 @@ use jormungandr_lib::{
         GenesisPraos, Initial, InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
     },
 };
-use jormungandr_testing_utils::testing::node::NodeAlias;
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
 use thor::PrivateVoteCommitteeDataManager;

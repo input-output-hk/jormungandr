@@ -6,7 +6,7 @@ use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
-use jormungandr_testing_utils::testing::jormungandr::FaketimeConfig;
+use jormungandr_automation::jormungandr::FaketimeConfig;
 use thor::FragmentSender;
 use thor::Wallet;
 

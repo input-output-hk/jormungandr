@@ -1,6 +1,6 @@
+use jormungandr_automation::jormungandr::{FragmentNode, NodeAlias};
+use jormungandr_automation::testing::SyncNode;
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_testing_utils::testing::node::NodeAlias;
-use jormungandr_testing_utils::testing::{FragmentNode, SyncNode};
 use std::fmt;
 use std::path::PathBuf;
 

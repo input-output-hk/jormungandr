@@ -1,13 +1,13 @@
 use super::NodeAlias;
+use jormungandr_automation::jormungandr::FaketimeConfig;
+use jormungandr_automation::jormungandr::LeadershipMode;
+use jormungandr_automation::jormungandr::PersistenceMode;
+use jormungandr_automation::jormungandr::{LogLevel, Version};
 use jormungandr_lib::interfaces::{
     Explorer, LayersConfig, Mempool, NodeConfig, PersistentLog, Policy, PreferredListConfig,
     TopicsOfInterest, TrustedPeer,
 };
 use jormungandr_lib::time::Duration;
-use jormungandr_testing_utils::testing::jormungandr::FaketimeConfig;
-use jormungandr_testing_utils::testing::jormungandr::LeadershipMode;
-use jormungandr_testing_utils::testing::jormungandr::PersistenceMode;
-use jormungandr_testing_utils::testing::node::{LogLevel, Version};
 use multiaddr::Multiaddr;
 use serde::Deserialize;
 use std::net::SocketAddr;

@@ -1,11 +1,10 @@
 use crate::builder::SpawnParams;
 use crate::controller::{Error, UserInteractionController};
 use crate::style;
-use jormungandr_testing_utils::testing::jormungandr::{LeadershipMode, PersistenceMode};
-use jormungandr_testing_utils::{
-    testing::{jormungandr::StartupVerificationMode, node::download_last_n_releases},
-    Version,
+use jormungandr_automation::jormungandr::{
+    download_last_n_releases, StartupVerificationMode, Version,
 };
+use jormungandr_automation::jormungandr::{LeadershipMode, PersistenceMode};
 use jortestkit::console::InteractiveCommandError;
 use std::time::Duration;
 use structopt::StructOpt;

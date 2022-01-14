@@ -1,6 +1,7 @@
 use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
-use jormungandr_testing_utils::testing::SyncNode;
-use jormungandr_testing_utils::testing::{MemPoolCheck, RemoteJormungandr, VoteCastCounter};
+use jormungandr_automation::jormungandr::{MemPoolCheck, RemoteJormungandr};
+use jormungandr_automation::testing::SyncNode;
+use jormungandr_automation::testing::VoteCastCounter;
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
 use rand_core::RngCore;

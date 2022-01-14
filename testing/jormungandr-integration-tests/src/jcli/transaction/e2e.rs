@@ -1,11 +1,11 @@
 use chain_impl_mockchain::fee::LinearFee;
+use jormungandr_automation::{
+    jcli::{JCli, WitnessType},
+    jormungandr::{ConfigurationBuilder, Starter},
+};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, InitialUTxO, UTxOInfo},
-};
-use jormungandr_testing_utils::testing::{
-    jcli::{JCli, WitnessType},
-    jormungandr::{ConfigurationBuilder, Starter},
 };
 
 use crate::startup;

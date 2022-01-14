@@ -2,7 +2,7 @@ use crate::config::SessionMode;
 use crate::config::SessionSettings;
 use assert_fs::fixture::{ChildPath, PathChild};
 use assert_fs::prelude::*;
-use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
+use jormungandr_automation::jormungandr::TestingDirectory;
 use std::path::{Path, PathBuf};
 
 impl From<SessionSettings> for Context {

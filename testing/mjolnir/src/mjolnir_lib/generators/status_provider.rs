@@ -1,10 +1,10 @@
 use chain_impl_mockchain::fragment::FragmentId;
+use jormungandr_automation::jormungandr::FragmentNode;
+use jormungandr_automation::jormungandr::RemoteJormungandr;
 use jormungandr_lib::{
     interfaces::{FragmentLog, FragmentStatus},
     time::SystemTime,
 };
-use jormungandr_testing_utils::testing::FragmentNode;
-use jormungandr_testing_utils::testing::RemoteJormungandr;
 use jortestkit::load::RequestStatusProvider;
 use jortestkit::load::{Id, Status};
 

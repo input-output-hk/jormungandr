@@ -6,8 +6,8 @@ use chain_impl_mockchain::{
     key::BftLeaderId,
     testing::{data::StakePool, TestGen},
 };
+use jormungandr_automation::testing::keys::create_new_key_pair;
 use jormungandr_lib::crypto::key::SigningKey;
-use jormungandr_testing_utils::testing::keys::create_new_key_pair;
 
 pub struct BlockBuilder {
     block_date: BlockDate,

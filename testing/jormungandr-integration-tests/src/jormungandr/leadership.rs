@@ -1,9 +1,9 @@
 use crate::startup;
-use jormungandr_lib::interfaces::LeadershipLogStatus;
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, StartupVerificationMode},
 };
+use jormungandr_lib::interfaces::LeadershipLogStatus;
 use std::time::Duration;
 
 #[test]

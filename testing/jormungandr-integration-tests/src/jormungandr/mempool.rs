@@ -12,16 +12,15 @@ use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
 use hersir::builder::WalletTemplate;
+use jormungandr_automation::jormungandr::FragmentNode;
 use jormungandr_lib::interfaces::{
     BlockDate as BlockDateDto, InitialUTxO, Mempool, PersistentLog, SlotDuration,
 };
-use jormungandr_testing_utils::testing::FragmentNode;
 
 use crate::startup;
-use jormungandr_testing_utils::testing::{
-    jormungandr::{ConfigurationBuilder, LeadershipMode, Starter},
-    node::time,
-    MemPoolCheck,
+use jormungandr_automation::{
+    jormungandr::{ConfigurationBuilder, LeadershipMode, MemPoolCheck, Starter},
+    testing::time,
 };
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::FragmentGenerator;

@@ -1,6 +1,6 @@
 use chain_impl_mockchain::fragment::FragmentId;
-use jormungandr_testing_utils::testing::RemoteJormungandr;
-use jormungandr_testing_utils::testing::SyncNode;
+use jormungandr_automation::jormungandr::RemoteJormungandr;
+use jormungandr_automation::testing::SyncNode;
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use loki::AdversaryFragmentSender;
 use rand_core::OsRng;

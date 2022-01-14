@@ -1,9 +1,9 @@
 use crate::startup;
 use assert_fs::TempDir;
 use chain_impl_mockchain::{chaintypes::ConsensusType, testing::WitnessMode};
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
+use jormungandr_automation::jormungandr::Starter;
 use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
-use jormungandr_testing_utils::testing::jormungandr::Starter;
 use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
 
 #[test]

@@ -1,8 +1,10 @@
 use assert_fs::TempDir;
 use chain_core::property::BlockDate;
 use chain_impl_mockchain::vote::Choice;
-use jormungandr_testing_utils::testing::{
-    jcli::JCli, jormungandr::starter::Starter, jormungandr::ConfigurationBuilder, VotePlanBuilder,
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+    testing::VotePlanBuilder,
 };
 use thor::{vote_plan_cert, FragmentSender, FragmentSenderSetup, Wallet};
 

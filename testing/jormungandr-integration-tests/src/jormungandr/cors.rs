@@ -1,9 +1,6 @@
 use assert_fs::TempDir;
+use jormungandr_automation::jormungandr::{ConfigurationBuilder, JormungandrRest, Starter};
 use jormungandr_lib::interfaces::Cors;
-use jormungandr_testing_utils::testing::{
-    jormungandr::{ConfigurationBuilder, Starter},
-    node::JormungandrRest,
-};
 
 #[test]
 pub fn cors_illegal_domain() -> Result<(), Box<dyn std::error::Error>> {

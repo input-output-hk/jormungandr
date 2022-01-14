@@ -11,7 +11,7 @@ chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
+jormungandr-automation = { path = "../jormungandr-automation" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 thor = {path = "../thor"}
 tokio = { version = "1.15", features = ["macros","rt","rt-multi-thread"] }

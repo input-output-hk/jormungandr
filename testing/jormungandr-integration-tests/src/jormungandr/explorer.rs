@@ -2,9 +2,11 @@ use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Explorer},
+};
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
-use jormungandr_testing_utils::testing::node::Explorer;
-use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jortestkit::process::Wait;
 use std::str::FromStr;
 use std::time::Duration;
@@ -19,7 +21,7 @@ use thor::{StakePool, TransactionHash};
 #[cfg(unix)]
 pub fn explorer_schema_diff_test() {
     use assert_fs::{fixture::PathChild, TempDir};
-    use jormungandr_testing_utils::testing::jormungandr::Starter;
+    use jormungandr_automation::jormungandr::Starter;
 
     let temp_dir = TempDir::new().unwrap();
     let config = ConfigurationBuilder::new().with_explorer().build(&temp_dir);
@@ -34,7 +36,7 @@ pub fn explorer_schema_diff_test() {
     let actual_schema_path = schema_temp_dir.child("new_schema.graphql");
 
     std::process::Command::new(
-        "../jormungandr-testing-utils/resources/explorer/graphql/generate_schema.sh",
+        "../jormungandr-automation/resources/explorer/graphql/generate_schema.sh",
     )
     .args(&[
         jormungandr.explorer().uri(),
@@ -50,7 +52,7 @@ pub fn explorer_schema_diff_test() {
     .wait()
     .unwrap();
 
-    jormungandr_testing_utils::testing::node::explorer::compare_schema(actual_schema_path.path());
+    jormungandr_automation::jormungandr::compare_explorer_schema(actual_schema_path.path());
 }
 
 #[test]

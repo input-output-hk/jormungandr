@@ -3,10 +3,10 @@ use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
-use jormungandr_testing_utils::testing::sync::{
+use jormungandr_automation::testing::benchmark::sync::{
     measure_and_log_sync_time, MeasurementReportInterval,
 };
-use jormungandr_testing_utils::testing::SyncWaitParams;
+use jormungandr_automation::testing::SyncWaitParams;
 use thor::FragmentSender;
 
 const LEADER_1: &str = "Leader1";

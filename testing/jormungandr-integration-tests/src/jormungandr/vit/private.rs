@@ -12,13 +12,13 @@ use chain_impl_mockchain::{
     ledger::governance::TreasuryGovernanceAction, value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
-use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, KesUpdateSpeed};
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::testing::time;
+use jormungandr_automation::testing::{VotePlanBuilder, VotePlanExtension};
+use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
 };
-use jormungandr_testing_utils::testing::{VotePlanBuilder, VotePlanExtension};
+use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, KesUpdateSpeed};
 use jortestkit::prelude::read_file;
 use rand::rngs::OsRng;
 use thor::Wallet;

@@ -1,14 +1,13 @@
 use crate::startup;
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
+use jormungandr_automation::testing::{
+    benchmark_efficiency, benchmark_endurance, benchmark_speed, time, EfficiencyBenchmarkDef,
+    EfficiencyBenchmarkFinish, Endurance, Thresholds,
+};
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockDate as JLibBlockDate, KesUpdateSpeed, Mempool,
-};
-use jormungandr_testing_utils::testing::{
-    benchmark_efficiency, benchmark_endurance, benchmark_speed,
-    node::time,
-    EfficiencyBenchmarkDef, EfficiencyBenchmarkFinish, Endurance, Thresholds,
-    {jcli::JCli, jormungandr::ConfigurationBuilder},
 };
 use std::{iter, time::Duration};
 use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};

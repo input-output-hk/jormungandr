@@ -4,8 +4,8 @@ use chain_impl_mockchain::testing::TestGen;
 use chain_impl_mockchain::tokens::identifier::TokenIdentifier;
 use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{fee::LinearFee, value::Value};
+use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_lib::interfaces::InitialToken;
-use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
 use thor::{FragmentSender, FragmentVerifier};
 
 #[test]

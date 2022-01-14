@@ -1,13 +1,13 @@
 use chain_crypto::{RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::fee::LinearFee;
+use jormungandr_automation::testing::keys;
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
+};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, InitialUTxO, Ratio, TaxType, Value},
-};
-use jormungandr_testing_utils::testing::keys;
-use jormungandr_testing_utils::testing::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
 };
 use jortestkit::process::Wait;
 use thor::Wallet;

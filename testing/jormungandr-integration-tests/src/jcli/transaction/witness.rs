@@ -1,8 +1,8 @@
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{account::SpendingCounter, header::BlockDate, testing::TestGen};
+use jormungandr_automation::jcli::JCli;
+use jormungandr_automation::jcli::{Witness, WitnessData, WitnessType};
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_testing_utils::testing::jcli::JCli;
-use jormungandr_testing_utils::testing::jcli::{Witness, WitnessData, WitnessType};
 use std::path::PathBuf;
 
 lazy_static::lazy_static! {

@@ -1,16 +1,18 @@
 use super::NodeStuckError;
 use crate::startup;
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess},
+    testing::{
+        benchmark_consumption, benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
+    },
+};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, BlockDate, KesUpdateSpeed},
 };
-use jormungandr_testing_utils::testing::{
-    benchmark_consumption, benchmark_endurance,
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess},
-    node::explorer::load::ExplorerRequestGen,
-    Endurance, EnduranceBenchmarkRun, Thresholds,
-};
+use mjolnir::generators::ExplorerRequestGen;
+
 use jortestkit::load::{ConfigurationBuilder as LoadConfigurationBuilder, Monitor};
 use std::{str::FromStr, time::Duration};
 use thor::{BlockDateGenerator, Wallet};

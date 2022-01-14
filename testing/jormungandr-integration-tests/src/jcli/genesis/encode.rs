@@ -3,12 +3,11 @@ use chain_impl_mockchain::{
     fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee},
     vote::CommitteeId,
 };
-use jormungandr_lib::interfaces::{Block0Configuration, Initial, InitialUTxO, LegacyUTxO};
-use jormungandr_testing_utils::testing::{
-    configuration::{Block0ConfigurationBuilder, JormungandrParams},
+use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::ConfigurationBuilder,
+    jormungandr::{Block0ConfigurationBuilder, ConfigurationBuilder, JormungandrParams},
 };
+use jormungandr_lib::interfaces::{Block0Configuration, Initial, InitialUTxO, LegacyUTxO};
 
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;

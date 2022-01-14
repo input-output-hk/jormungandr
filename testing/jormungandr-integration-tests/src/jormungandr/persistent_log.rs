@@ -2,9 +2,9 @@ use crate::startup;
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
 use chain_impl_mockchain::block::BlockDate;
+use jormungandr_automation::jcli::JCli;
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
 use jormungandr_lib::interfaces::{Mempool, PersistentLog};
-use jormungandr_testing_utils::testing::jcli::JCli;
-use jormungandr_testing_utils::testing::jormungandr::ConfigurationBuilder;
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 use thor::{PersistentLogViewer, TransactionHash};
 

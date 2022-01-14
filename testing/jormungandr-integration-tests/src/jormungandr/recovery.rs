@@ -1,11 +1,10 @@
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
-    node::LogLevel,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, LogLevel, Starter},
 };
 
+use jormungandr_automation::jormungandr::LeadershipMode;
 use jormungandr_lib::interfaces::{AccountState, BlockDate, InitialUTxO, SettingsDto, UTxOInfo};
-use jormungandr_testing_utils::testing::jormungandr::LeadershipMode;
 use thor::Wallet;
 
 use assert_fs::prelude::*;
