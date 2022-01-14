@@ -53,7 +53,7 @@ graphql_client = "0.10.0"
 semver = { version = "1.0", features = ["serde"] }
 json = "0.12.4"
 symmetric-cipher = { git = "https://github.com/input-output-hk/chain-wallet-libs.git", branch = "master" }
-qrcodegen = "1.6"
+qrcodegen = "1.7"
 quircs = "0.10.0"
 image = "0.23.12"
 strum = { version = "0.22", features = ["derive"] }
