@@ -96,6 +96,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eab1c04a571841102f5345a8fc0f6bb3d31c315dec879b5c6e42e40ce7ffa34e"
 
 [[package]]
+name = "ascii_utils"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71938f30533e4d95a6d17aa530939da3842c2ab6f4f84b9dae68447e4129f74a"
+
+[[package]]
 name = "assert_cmd"
 version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -125,13 +131,13 @@ dependencies = [
 
 [[package]]
 name = "async-graphql"
-version = "2.9.9"
+version = "2.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6745cb39edc36e207b5d6e35d6684fd8d7721f071010a7eff31aaeb5684e3da6"
+checksum = "8e6a9edeab4427f8162ac1ccd49152fa656affab3ccfaed7eeaf8e2f9ce12ee0"
 dependencies = [
- "async-graphql-derive",
- "async-graphql-parser",
- "async-graphql-value",
+ "async-graphql-derive 2.11.3",
+ "async-graphql-parser 2.11.3",
+ "async-graphql-value 2.11.3",
  "async-stream",
  "async-trait",
  "bytes",
@@ -139,6 +145,7 @@ dependencies = [
  "futures-util",
  "http",
  "indexmap",
+ "mime",
  "multer",
  "once_cell",
  "pin-project-lite",
@@ -151,13 +158,43 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-graphql-derive"
-version = "2.9.9"
+name = "async-graphql"
+version = "3.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63ad0f21d7fab6d70b5cc5c78688ff1d73d2a7fedf7622e1f3cb76b84e6619b9"
+checksum = "bf8133c82d84be4006797ae96b1e938564fa5f27a07f8ef852733d535d75e40f"
+dependencies = [
+ "async-graphql-derive 3.0.22",
+ "async-graphql-parser 3.0.22",
+ "async-graphql-value 3.0.22",
+ "async-stream",
+ "async-trait",
+ "bytes",
+ "fast_chemail",
+ "fnv",
+ "futures-util",
+ "http",
+ "indexmap",
+ "mime",
+ "multer",
+ "num-traits",
+ "once_cell",
+ "pin-project-lite",
+ "regex",
+ "serde",
+ "serde_json",
+ "static_assertions",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "async-graphql-derive"
+version = "2.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8be34933c1bca0b5aedb6d8b66ad3e27045eb8304f198cc1efaed6b6dd87835"
 dependencies = [
  "Inflector",
- "async-graphql-parser",
+ "async-graphql-parser 2.11.3",
  "darling 0.12.4",
  "proc-macro-crate 1.0.0",
  "proc-macro2 1.0.28",
@@ -167,12 +204,41 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-graphql-parser"
-version = "2.9.9"
+name = "async-graphql-derive"
+version = "3.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ba07ce86d05abe3aa8948fde3fd1c76f44bb754b9c6156d9c885ae1491edcc2"
+checksum = "c7548a7cd7a946d85b6b2b9814b11f71bdda424143c755209a4f378849d75f45"
 dependencies = [
- "async-graphql-value",
+ "Inflector",
+ "async-graphql-parser 3.0.22",
+ "darling 0.13.0",
+ "proc-macro-crate 1.0.0",
+ "proc-macro2 1.0.28",
+ "quote 1.0.9",
+ "syn 1.0.74",
+ "thiserror",
+]
+
+[[package]]
+name = "async-graphql-parser"
+version = "2.11.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "99841c1f890fda6712054e7e37b207738f4aa97870cb1bffcab2f09f2df0957a"
+dependencies = [
+ "async-graphql-value 2.11.3",
+ "pest",
+ "pest_derive",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "async-graphql-parser"
+version = "3.0.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa38c108e7b562fa9ccaa3d016827f61976375d79fa1e39ade9be005c0a8e2d4"
+dependencies = [
+ "async-graphql-value 3.0.22",
  "pest",
  "pest_derive",
  "serde",
@@ -181,11 +247,24 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-value"
-version = "2.9.9"
+version = "2.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a0957e87f88e9e62a161e80662d6aa6e78e6d863c24aea55dc43ee8dc384ed9"
+checksum = "6cecac7ab6737364cff7b16e9273dd51fac7cfbd14ab5d84127df5a56ca9d422"
 dependencies = [
  "bytes",
+ "indexmap",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "async-graphql-value"
+version = "3.0.22"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "34394798dfadb4cf2840ce2477a93c9e241b06c5703a0b31388b3a8837f0071e"
+dependencies = [
+ "bytes",
+ "indexmap",
  "serde",
  "serde_json",
 ]
@@ -196,7 +275,7 @@ version = "2.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edd37032999dddbe659cb970f565435d159fc525d15d17ea8f27eecfad5299b2"
 dependencies = [
- "async-graphql",
+ "async-graphql 2.11.3",
  "futures-util",
  "serde_json",
  "warp",
@@ -454,7 +533,7 @@ dependencies = [
 [[package]]
 name = "cardano-legacy-address"
 version = "0.1.1"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
  "cbor_event",
  "chain-ser",
@@ -498,7 +577,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "chain-addr"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
  "bech32 0.8.1",
  "chain-core",
@@ -512,7 +591,7 @@ dependencies = [
 [[package]]
 name = "chain-core"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
  "chain-ser",
 ]
@@ -520,7 +599,7 @@ dependencies = [
 [[package]]
 name = "chain-crypto"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
  "bech32 0.8.1",
  "cryptoxide",
@@ -542,7 +621,7 @@ dependencies = [
 [[package]]
 name = "chain-impl-mockchain"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
  "cardano-legacy-address",
  "chain-addr",
@@ -572,7 +651,7 @@ dependencies = [
 [[package]]
 name = "chain-network"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
  "async-trait",
  "chain-crypto",
@@ -589,12 +668,12 @@ dependencies = [
 [[package]]
 name = "chain-ser"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 
 [[package]]
 name = "chain-storage"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
  "criterion",
  "data-pile",
@@ -607,7 +686,7 @@ dependencies = [
 [[package]]
 name = "chain-time"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
  "chain-core",
  "chain-ser",
@@ -619,7 +698,7 @@ dependencies = [
 [[package]]
 name = "chain-vote"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
  "cfg-if 1.0.0",
  "chain-core",
@@ -1208,6 +1287,15 @@ name = "fake-simd"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e88a8acf291dafb59c2d96e8f59828f3838bb1a70398823ade51a84de6a6deed"
+
+[[package]]
+name = "fast_chemail"
+version = "0.9.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "495a39d30d624c2caabe6312bfead73e7717692b44e0b32df168c275a2e8e9e4"
+dependencies = [
+ "ascii_utils",
+]
 
 [[package]]
 name = "filetime"
@@ -1845,7 +1933,7 @@ dependencies = [
 [[package]]
 name = "imhamt"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
  "thiserror",
 ]
@@ -1858,6 +1946,7 @@ checksum = "bc633605454125dec4b66843673f01c7df2b89479b32e0ed634e43a91cff62a5"
 dependencies = [
  "autocfg",
  "hashbrown",
+ "serde",
 ]
 
 [[package]]
@@ -1948,7 +2037,7 @@ name = "jormungandr"
 version = "0.13.0"
 dependencies = [
  "arc-swap",
- "async-graphql",
+ "async-graphql 3.0.22",
  "async-graphql-warp",
  "async-trait",
  "base64",
@@ -3745,7 +3834,7 @@ dependencies = [
 [[package]]
 name = "sparse-array"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 
 [[package]]
 name = "spin"
@@ -4469,7 +4558,7 @@ dependencies = [
 [[package]]
 name = "typed-bytes"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#4d2c52ace7dc3d76e9c6bfc777e1d3fa6cd68053"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 
 [[package]]
 name = "typenum"
