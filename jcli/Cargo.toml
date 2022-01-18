@@ -52,7 +52,7 @@ assert_fs = "1.0"
 predicates = "2.0"
 
 [build-dependencies]
-versionisator = "1.0.2"
+versionisator = "1.1.0"
 
 [lib]
 name = "jcli_lib"

@@ -28,4 +28,4 @@ thor = { path = "../thor" }
 loki = { path = "../loki" }
 
 [build-dependencies]
-versionisator = "1.0.2"
+versionisator = "1.1.0"

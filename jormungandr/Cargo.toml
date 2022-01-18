@@ -77,7 +77,7 @@ chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch
 chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 
 [build-dependencies]
-versionisator = "1.0.2"
+versionisator = "1.1.0"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.93"
