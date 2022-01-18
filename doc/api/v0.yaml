@@ -633,7 +633,7 @@ paths:
                   blockContentSizeAvg:
                     description: 'Moving average of the last 3 blocks size'
                     type: integer
-                    format: 0
+                    minimum: 0
                   peerAvailableCnt:
                     description: Number of nodes that are available for p2p discovery and events propagation
                     type: integer
