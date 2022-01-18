@@ -126,6 +126,10 @@ jobs:
           esac
           echo "JORMUNGANDR_FEATURES=$features" >> $GITHUB_ENV
 
+          if [ '${{ matrix.profile }}' == debug ] && [ '${{ matrix.os }}' == windows-latest ]; then
+            echo "RUSTFLAGS=$RUSTFLAGS -C link-args=/STACK:2000000" >> $GITHUB_ENV
+          fi
+
           mkdir .cargo
           cat > .cargo/config.toml <<EOF
           [profile.release]
