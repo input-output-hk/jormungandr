@@ -7,18 +7,17 @@ use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::header::BlockDate;
+use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{
     certificate::VoteAction, chaintypes::ConsensusType,
     ledger::governance::TreasuryGovernanceAction, value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
+use jormungandr_automation::jcli::JCli;
+use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_automation::testing::time;
 use jormungandr_automation::testing::{VotePlanBuilder, VotePlanExtension};
-use jormungandr_automation::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Starter},
-};
-use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, KesUpdateSpeed};
+use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed};
 use jortestkit::prelude::read_file;
 use rand::rngs::OsRng;
 use thor::Wallet;
@@ -83,6 +82,9 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let vote_plan_cert = jcli.certificate().new_vote_plan(vote_plan_json.path());
 
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
     let config = ConfigurationBuilder::new()
         .with_explorer()
         .with_funds(vec![
@@ -90,6 +92,15 @@ pub fn jcli_e2e_flow_private_vote() {
             bob.to_initial_fund(wallet_initial_funds),
             clarice.to_initial_fund(wallet_initial_funds),
         ])
+        .with_token(InitialToken {
+            token_id: token_id.clone().into(),
+            policy: minting_policy.into(),
+            to: vec![
+                alice.to_initial_token(wallet_initial_funds),
+                bob.to_initial_token(wallet_initial_funds),
+                clarice.to_initial_token(wallet_initial_funds),
+            ],
+        })
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
         .with_treasury(1000.into())
@@ -338,9 +349,17 @@ pub fn jcli_private_vote_invalid_proof() {
 
     let vote_plan_cert = jcli.certificate().new_vote_plan(vote_plan_json.path());
 
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
     let config = ConfigurationBuilder::new()
         .with_explorer()
         .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
+        .with_token(InitialToken {
+            token_id: token_id.clone().into(),
+            policy: minting_policy.into(),
+            to: vec![alice.to_initial_token(wallet_initial_funds)],
+        })
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
         .with_treasury(1000.into())

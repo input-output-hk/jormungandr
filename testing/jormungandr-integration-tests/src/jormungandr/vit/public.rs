@@ -12,6 +12,7 @@ use chain_impl_mockchain::{
     ledger::governance::TreasuryGovernanceAction,
     milli::Milli,
     testing::VoteTestGen,
+    tokens::minting_policy::MintingPolicy,
     value::Value,
     vote::{Choice, CommitteeId},
 };
@@ -26,7 +27,7 @@ use jormungandr_lib::{
     crypto::key::KeyPair,
     interfaces::{
         AccountVotes, ActiveSlotCoefficient, BlockDate as BlockDateDto, CommitteeIdDef, FeesGoTo,
-        KesUpdateSpeed, Tally, VotePlanStatus,
+        InitialToken, KesUpdateSpeed, Tally, VotePlanStatus,
     },
 };
 use rand::rngs::OsRng;
@@ -165,6 +166,10 @@ pub fn test_vote_flow_bft() {
     )
     .into();
     let wallets = [&alice, &bob, &clarice];
+
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
     let config = ConfigurationBuilder::new()
         .with_funds(
             wallets
@@ -172,6 +177,15 @@ pub fn test_vote_flow_bft() {
                 .map(|x| x.to_initial_fund(initial_fund_per_wallet))
                 .collect(),
         )
+        .with_token(InitialToken {
+            token_id: token_id.clone().into(),
+            policy: minting_policy.into(),
+            to: vec![
+                alice.to_initial_token(initial_fund_per_wallet),
+                bob.to_initial_token(initial_fund_per_wallet),
+                clarice.to_initial_token(initial_fund_per_wallet),
+            ],
+        })
         .with_committees(&[
             alice.to_committee_id(),
             bob.to_committee_id(),
@@ -328,6 +342,10 @@ pub fn test_vote_flow_praos() {
         &vote_plan,
     )
     .into();
+
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
     let mut config = ConfigurationBuilder::new();
     config
         .with_committees(&[
@@ -335,6 +353,15 @@ pub fn test_vote_flow_praos() {
             bob.to_committee_id(),
             clarice.to_committee_id(),
         ])
+        .with_token(InitialToken {
+            token_id: token_id.clone().into(),
+            policy: minting_policy.into(),
+            to: vec![
+                alice.to_initial_token(1_000_000),
+                bob.to_initial_token(1_000_000),
+                clarice.to_initial_token(1_000_000),
+            ],
+        })
         .with_slots_per_epoch(60)
         .with_consensus_genesis_praos_active_slot_coeff(
             ActiveSlotCoefficient::new(Milli::from_millis(1_000)).unwrap(),
@@ -484,6 +511,9 @@ pub fn jcli_e2e_flow() {
     let vote_plan_json = temp_dir.child("vote_plan.json");
     vote_plan_json.write_str(&vote_plan.as_json_str()).unwrap();
 
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
     let config = ConfigurationBuilder::new()
         .with_explorer()
         .with_funds(vec![
@@ -491,6 +521,15 @@ pub fn jcli_e2e_flow() {
             bob.to_initial_fund(1_000_000),
             clarice.to_initial_fund(1_000_000),
         ])
+        .with_token(InitialToken {
+            token_id: token_id.clone().into(),
+            policy: minting_policy.into(),
+            to: vec![
+                alice.to_initial_token(1_000_000),
+                bob.to_initial_token(1_000_000),
+                clarice.to_initial_token(1_000_000),
+            ],
+        })
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
         .with_fees_go_to(FeesGoTo::Rewards)
@@ -647,20 +686,6 @@ pub fn jcli_e2e_flow() {
 pub fn duplicated_vote() {
     let mut alice = thor::Wallet::default();
 
-    let jormungandr = startup::start_bft(
-        vec![&alice],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(20)
-            .with_slot_duration(3)
-            .with_linear_fees(LinearFee::new(0, 0, 0)),
-    )
-    .unwrap();
-
-    let alice_account_state = jormungandr
-        .rest()
-        .account_state(&alice.account_id())
-        .unwrap();
-
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
@@ -669,6 +694,28 @@ pub fn duplicated_vote() {
         .tally_end(BlockDate::from_epoch_slot_id(3, 0))
         .public()
         .build();
+
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
+    let jormungandr = startup::start_bft(
+        vec![&alice],
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(20)
+            .with_slot_duration(3)
+            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_token(InitialToken {
+                token_id: token_id.clone().into(),
+                policy: minting_policy.into(),
+                to: vec![alice.to_initial_token(1_000_000_000)],
+            }),
+    )
+    .unwrap();
+
+    let alice_account_state = jormungandr
+        .rest()
+        .account_state(&alice.account_id())
+        .unwrap();
 
     thor::FragmentChainSender::from_with_setup(
         jormungandr.block0_configuration(),
@@ -708,9 +755,26 @@ pub fn duplicated_vote() {
 pub fn non_duplicated_vote() {
     let mut alice = thor::Wallet::default();
 
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::OffChain)
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .public()
+        .build();
+
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
     let jormungandr = startup::start_bft(
         vec![&alice],
         ConfigurationBuilder::new()
+            .with_token(InitialToken {
+                token_id: token_id.clone().into(),
+                policy: minting_policy.into(),
+                to: vec![alice.to_initial_token(1_000_000_000)],
+            })
             .with_slots_per_epoch(20)
             .with_slot_duration(3)
             .with_linear_fees(LinearFee::new(0, 0, 0)),
@@ -727,15 +791,6 @@ pub fn non_duplicated_vote() {
         jormungandr.to_remote(),
         FragmentSenderSetup::no_verify(),
     );
-
-    let vote_plan = VotePlanBuilder::new()
-        .proposals_count(3)
-        .action_type(VoteAction::OffChain)
-        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
-        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
-        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
-        .public()
-        .build();
 
     fragment_sender_chain
         .send_vote_plan(&mut alice, &vote_plan)
