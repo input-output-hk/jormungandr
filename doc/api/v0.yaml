@@ -589,32 +589,13 @@ paths:
               schema:
                 type: object
                 required:
-                  - blockRecvCnt
-                  - lastReceivedBlockTime
-                  - lastBlockContentSize
-                  - lastBlockFees
-                  - lastBlockSum
-                  - lastBlockTx
                   - state
-                  - txRecvCnt
-                  - txRejectedCnt
-                  - txPending
-                  - votesCast
-                  - uptime
                   - version
-                  - peerAvailableCnt
-                  - peerQuarantinedCnt
-                  - peerTotalCnt
-                  - nodeId
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
                     type: integer
                     minimum: 0
-                  lastReceivedBlockTime:
-                    description: 'The time at which we received the last block, not necessarily the current tip block'
-                    type: string
-                    format: date-time
                   lastBlockContentSize:
                     description: Size in bytes of all transactions in last block
                     type: integer
@@ -645,11 +626,20 @@ paths:
                     description: Number of transactions in last block
                     type: integer
                     minimum: 0
-                  nodeId:
-                    description: 24 bytes encoded in hexadecimal Node ID
+                  lastReceivedBlockTime:
+                    description: 'The time at which we received the last block, not necessarily the current tip block'
                     type: string
+                    format: date-time
+                  blockContentSizeAvg:
+                    description: 'Moving average of the last 3 blocks size'
+                    type: integer
+                    format: 0
                   peerAvailableCnt:
                     description: Number of nodes that are available for p2p discovery and events propagation
+                    type: integer
+                    minimum: 0
+                  peerConnectedCnt:
+                    description: Number of nodes we have established a connection with
                     type: integer
                     minimum: 0
                   peerQuarantinedCnt:
@@ -674,12 +664,16 @@ paths:
                     description: Number of transactions received by node
                     type: integer
                     minimum: 0
-                  txRejectedCnt:
-                    description: Number of transactions rejected by the ledger
-                    type: integer
-                    minimum: 0
                   txPending:
                     description: Number of pending transactions in the mempool
+                    type: integer
+                    minimum: 0
+                  txPendingTotalSize:
+                    description: Total size of pending transactions in the mempool
+                    type: integer
+                    minimum: 0
+                  txRejectedCnt:
+                    description: Number of transactions rejected by the ledger
                     type: integer
                     minimum: 0
                   votesCast:
