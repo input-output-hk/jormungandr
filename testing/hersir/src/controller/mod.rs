@@ -1,6 +1,6 @@
 mod context;
 mod error;
-mod interactive;
+pub mod interactive;
 mod monitor;
 
 use crate::builder::NodeSetting;
@@ -34,7 +34,7 @@ use jormungandr_automation::jormungandr::{JormungandrProcess, LogLevel, Starter}
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 pub use monitor::{
     LegacyNode as MonitorLegacyNode, MonitorController, MonitorControllerBuilder,
-    Node as MonitorNode, NodeError,
+    Node as MonitorNode, NodeError, ProgressBarController,
 };
 use std::path::PathBuf;
 use thor::{StakePool, Wallet, WalletAlias};

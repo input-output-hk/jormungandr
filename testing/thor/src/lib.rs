@@ -12,5 +12,6 @@ pub use fragment::{
 pub use stake_pool::StakePool;
 pub use wallet::{
     account::Wallet as AccountWallet, delegation::Wallet as DelegationWallet,
-    utxo::Wallet as UTxOWallet, PrivateVoteCommitteeDataManager, Wallet, WalletAlias, WalletError,
+    discrimination::DiscriminationExtension, utxo::Wallet as UTxOWallet,
+    PrivateVoteCommitteeDataManager, Wallet, WalletAlias, WalletError,
 };
