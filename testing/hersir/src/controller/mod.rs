@@ -1,6 +1,6 @@
 mod context;
 mod error;
-mod interactive;
+pub mod interactive;
 mod monitor;
 
 use crate::builder::NodeSetting;
