@@ -171,6 +171,7 @@ impl JormungandrProcess {
             StartupVerificationMode::Rest => {
                 let output = self.rest().stats();
                 if let Err(err) = output {
+                    println!("{}", err);
                     return Err(StartupError::CannotGetRestStatus(err));
                 }
 

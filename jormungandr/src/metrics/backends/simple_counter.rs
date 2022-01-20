@@ -10,7 +10,7 @@ use jormungandr_lib::time::{SecondsSinceUnixEpoch, SystemTime};
 
 use std::convert::TryInto;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
 use arc_swap::ArcSwapOption;
@@ -20,8 +20,11 @@ const EXP_MOVING_AVERAGE_COEFF: f64 = 0.5;
 pub struct SimpleCounter {
     tx_recv_cnt: AtomicUsize,
     tx_rejected_cnt: AtomicUsize,
-    tx_pending_cnt: AtomicUsize,
-    tx_pending_total_size: AtomicUsize,
+    // no atomics for float in the std and bit-fiddling
+    // to re-use an AtomicU64 for the porpose
+    // seems like unneded complexity for this case
+    mempool_usage_ratio: RwLock<f64>,
+    mempool_total_size: AtomicUsize,
     votes_cast: AtomicU64,
     block_recv_cnt: AtomicUsize,
     slot_start_time: AtomicU64,
@@ -37,7 +40,7 @@ struct BlockCounters {
     block_input_sum: u64,
     block_fee_sum: u64,
     content_size: u32,
-    avg_content_size: u32,
+    avg_content_size: f64,
     date: String,
     hash: String,
     chain_length: String,
@@ -80,13 +83,9 @@ impl SimpleCounter {
             peer_quarantined_cnt,
             peer_total_cnt,
             tx_recv_cnt: self.tx_recv_cnt.load(Ordering::Relaxed).try_into().unwrap(),
-            tx_pending: self
-                .tx_pending_cnt
-                .load(Ordering::Relaxed)
-                .try_into()
-                .unwrap(),
-            tx_pending_total_size: self
-                .tx_pending_total_size
+            mempool_usage_ratio: *self.mempool_usage_ratio.read().unwrap(),
+            mempool_total_size: self
+                .mempool_total_size
                 .load(Ordering::Relaxed)
                 .try_into()
                 .unwrap(),
@@ -106,8 +105,8 @@ impl Default for SimpleCounter {
         Self {
             tx_recv_cnt: Default::default(),
             tx_rejected_cnt: Default::default(),
-            tx_pending_cnt: Default::default(),
-            tx_pending_total_size: Default::default(),
+            mempool_usage_ratio: Default::default(),
+            mempool_total_size: Default::default(),
             votes_cast: Default::default(),
             block_recv_cnt: Default::default(),
             slot_start_time: Default::default(),
@@ -120,9 +119,8 @@ impl Default for SimpleCounter {
     }
 }
 
-fn calc_running_block_size_average(last_avg: u32, new_value: u32) -> u32 {
-    (last_avg as f64 * (1.0 - EXP_MOVING_AVERAGE_COEFF)
-        + new_value as f64 * EXP_MOVING_AVERAGE_COEFF) as u32
+fn calc_running_block_size_average(last_avg: f64, new_value: f64) -> f64 {
+    last_avg * (1.0 - EXP_MOVING_AVERAGE_COEFF) + new_value * EXP_MOVING_AVERAGE_COEFF
 }
 
 impl MetricsBackend for SimpleCounter {
@@ -134,12 +132,12 @@ impl MetricsBackend for SimpleCounter {
         self.tx_rejected_cnt.fetch_add(count, Ordering::Relaxed);
     }
 
-    fn set_tx_pending_cnt(&self, count: usize) {
-        self.tx_pending_cnt.store(count, Ordering::Relaxed);
+    fn set_mempool_usage_ratio(&self, ratio: f64) {
+        *self.mempool_usage_ratio.write().unwrap() = ratio;
     }
 
-    fn set_tx_pending_total_size(&self, size: usize) {
-        self.tx_pending_total_size.store(size, Ordering::Relaxed);
+    fn set_mempool_total_size(&self, size: usize) {
+        self.mempool_total_size.store(size, Ordering::Relaxed);
     }
 
     fn add_block_recv_cnt(&self, count: usize) {
@@ -216,10 +214,12 @@ impl MetricsBackend for SimpleCounter {
             .expect("should be good");
 
         let content_size = block.header().block_content_size();
+        let content_size_ratio =
+            content_size as f64 / block_ref.epoch_ledger_parameters().block_content_max_size as f64;
         let last_avg = if let Some(data) = self.tip_block.load().as_deref() {
             data.avg_content_size
         } else {
-            content_size // jump start moving average from first known value
+            content_size_ratio // jump start moving average from first known value
         };
 
         let block_data = BlockCounters {
@@ -227,7 +227,7 @@ impl MetricsBackend for SimpleCounter {
             block_input_sum: block_input_sum.0,
             block_fee_sum: block_fee_sum.0,
             content_size,
-            avg_content_size: calc_running_block_size_average(last_avg, content_size),
+            avg_content_size: calc_running_block_size_average(last_avg, content_size_ratio),
             date: block.header().block_date().to_string(),
             hash: block.header().hash().to_string(),
             chain_length: block.header().chain_length().to_string(),

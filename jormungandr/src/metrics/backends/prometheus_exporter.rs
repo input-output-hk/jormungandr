@@ -20,8 +20,8 @@ pub struct Prometheus {
 
     tx_recv_cnt: IntCounter,
     tx_rejected_cnt: IntCounter,
-    tx_pending_cnt: UIntGauge,
-    tx_pending_size_bytes_total: UIntGauge,
+    mempool_usage_ratio: Gauge,
+    mempool_size_bytes_total: UIntGauge,
     votes_casted_cnt: IntCounter,
     block_recv_cnt: IntCounter,
     peer_connected_cnt: UIntGauge,
@@ -79,12 +79,14 @@ impl Default for Prometheus {
 
         let tx_recv_cnt = IntCounter::new("txRecvCnt", "txRecvCnt").unwrap();
         registry.register(Box::new(tx_recv_cnt.clone())).unwrap();
-        let tx_pending_cnt = UIntGauge::new("txPending", "txPending").unwrap();
-        registry.register(Box::new(tx_pending_cnt.clone())).unwrap();
-        let tx_pending_size_bytes_total =
-            UIntGauge::new("txPendingSizeBytesTotal", "txPendingSizeBytesTotal").unwrap();
+        let mempool_usage_ratio = Gauge::new("mempoolUsageRatio", "mempoolUsageRatio").unwrap();
         registry
-            .register(Box::new(tx_pending_size_bytes_total.clone()))
+            .register(Box::new(mempool_usage_ratio.clone()))
+            .unwrap();
+        let mempool_size_bytes_total =
+            UIntGauge::new("mempoolSizeBytesTotal", "mempoolSizeBytesTotal").unwrap();
+        registry
+            .register(Box::new(mempool_size_bytes_total.clone()))
             .unwrap();
         let tx_rejected_cnt = IntCounter::new("txRejectedCnt", "txRejectedCnt").unwrap();
         registry
@@ -155,8 +157,8 @@ impl Default for Prometheus {
             registry,
             tx_recv_cnt,
             tx_rejected_cnt,
-            tx_pending_cnt,
-            tx_pending_size_bytes_total,
+            mempool_usage_ratio,
+            mempool_size_bytes_total,
             votes_casted_cnt,
             block_recv_cnt,
             peer_connected_cnt,
@@ -189,14 +191,14 @@ impl MetricsBackend for Prometheus {
         self.tx_rejected_cnt.inc_by(count);
     }
 
-    fn set_tx_pending_cnt(&self, count: usize) {
+    fn set_mempool_usage_ratio(&self, ratio: f64) {
         let count = count.try_into().unwrap();
-        self.tx_pending_cnt.set(count);
+        self.mempool_usage_ratio.set(count);
     }
 
-    fn set_tx_pending_total_size(&self, size: usize) {
+    fn set_mempool_total_size(&self, size: usize) {
         let size = size.try_into().unwrap();
-        self.tx_pending_size_bytes_total.set(size);
+        self.mempool_size_bytes_total.set(size);
     }
 
     fn add_block_recv_cnt(&self, count: usize) {
