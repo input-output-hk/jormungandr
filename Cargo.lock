@@ -2190,7 +2190,6 @@ dependencies = [
  "chain-storage",
  "chain-time",
  "chain-vote",
- "chrono",
  "futures",
  "hex",
  "http-zipkin",
@@ -2217,6 +2216,7 @@ dependencies = [
  "serde_yaml",
  "structopt",
  "thiserror",
+ "time 0.3.7",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -2249,7 +2249,6 @@ dependencies = [
  "chain-storage",
  "chain-time",
  "chain-vote",
- "chrono",
  "custom_debug",
  "flate2",
  "fs_extra",
@@ -2361,7 +2360,6 @@ dependencies = [
  "chain-impl-mockchain",
  "chain-time",
  "chain-vote",
- "chrono",
  "ed25519-bip32",
  "hex",
  "http",
@@ -2378,6 +2376,7 @@ dependencies = [
  "serde_with",
  "serde_yaml",
  "thiserror",
+ "time 0.3.7",
  "typed-bytes",
 ]
 
@@ -4458,7 +4457,6 @@ dependencies = [
  "chain-crypto",
  "chain-impl-mockchain",
  "chain-vote",
- "chrono",
  "custom_debug",
  "hex",
  "jormungandr-automation",
@@ -4468,6 +4466,7 @@ dependencies = [
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "thiserror",
+ "time 0.3.7",
 ]
 
 [[package]]
@@ -4499,7 +4498,15 @@ dependencies = [
  "itoa 1.0.1",
  "libc",
  "num_threads",
+ "serde",
+ "time-macros",
 ]
+
+[[package]]
+name = "time-macros"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
 
 [[package]]
 name = "tiny-keccak"

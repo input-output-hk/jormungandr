@@ -7,9 +7,9 @@
 //! [`LocalDateTime`]: ./struct.LocalDateTime.html
 //! [`Duration`]: ./struct.Duration.html
 
-use chrono::prelude::{DateTime, Local, TimeZone as _, Utc};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{convert::TryFrom, fmt, str, time};
+use std::{convert::TryFrom, fmt, str};
+use time::OffsetDateTime;
 
 /// time in seconds since [UNIX Epoch]
 ///
@@ -50,7 +50,7 @@ pub struct SecondsSinceUnixEpoch(pub(crate) u64);
 /// [UNIX Epoch]: https://en.wikipedia.org/wiki/Unix_time
 ///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SystemTime(time::SystemTime);
+pub struct SystemTime(std::time::SystemTime);
 
 /// local date and time. While the [`SystemTime`] will give us a number of seconds
 /// since [UNIX Epoch] this will take into account the locality of the caller, taking
@@ -70,7 +70,7 @@ pub struct SystemTime(time::SystemTime);
 /// [`SystemTime`]: ./struct.SystemTime.html
 /// [UNIX Epoch]: https://en.wikipedia.org/wiki/Unix_time
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LocalDateTime(DateTime<Local>);
+pub struct LocalDateTime(OffsetDateTime);
 
 /// Length of time between 2 events.
 ///
@@ -88,7 +88,7 @@ pub struct LocalDateTime(DateTime<Local>);
 ///
 /// [UNIX Epoch]: https://en.wikipedia.org/wiki/Unix_time
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Duration(time::Duration);
+pub struct Duration(std::time::Duration);
 
 impl SecondsSinceUnixEpoch {
     /// maximum authorized Time in seconds since unix epoch
@@ -107,15 +107,13 @@ impl SystemTime {
     /// [UNIX Epoch]: https://en.wikipedia.org/wiki/Unix_time
     #[inline]
     pub fn now() -> Self {
-        SystemTime(time::SystemTime::now())
+        SystemTime(std::time::SystemTime::now())
     }
 
-    fn utc_date_time(&self) -> DateTime<Utc> {
-        let timestamps = self.0.duration_since(time::UNIX_EPOCH).unwrap();
-        Utc.timestamp(timestamps.as_secs() as i64, timestamps.subsec_nanos())
-    }
-
-    pub fn duration_since(&self, earlier: SystemTime) -> Result<Duration, time::SystemTimeError> {
+    pub fn duration_since(
+        &self,
+        earlier: SystemTime,
+    ) -> Result<Duration, std::time::SystemTimeError> {
         self.0.duration_since(earlier.0).map(Duration)
     }
 }
@@ -123,14 +121,14 @@ impl SystemTime {
 impl LocalDateTime {
     #[inline]
     pub fn now() -> Self {
-        LocalDateTime(Local::now())
+        LocalDateTime(OffsetDateTime::now_local().expect("could not get local offset"))
     }
 }
 
 impl Duration {
     #[inline]
     pub fn new(secs: u64, nanos: u32) -> Self {
-        Duration(time::Duration::new(secs, nanos))
+        Duration(std::time::Duration::new(secs, nanos))
     }
 
     pub fn as_secs(&self) -> u64 {
@@ -150,7 +148,7 @@ impl Duration {
     }
 
     pub fn from_millis(millis: u64) -> Self {
-        Duration(time::Duration::from_millis(millis))
+        Duration(std::time::Duration::from_millis(millis))
     }
 
     pub fn checked_add(self, rhs: Duration) -> Option<Duration> {
@@ -188,41 +186,41 @@ impl str::FromStr for Duration {
 
 impl fmt::Display for SystemTime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.utc_date_time().to_rfc3339().fmt(f)
+        // time-rs's format_into requires an implementor of std::io::Write, which fmt::Formatter is not
+        let formatted = OffsetDateTime::from(self.0)
+            .format(&time::format_description::well_known::Rfc3339)
+            .map_err(|_| fmt::Error)?;
+        write!(f, "{}", formatted)
     }
 }
 
 impl str::FromStr for SystemTime {
-    type Err = chrono::ParseError;
+    type Err = time::error::Parse;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let dt: DateTime<chrono::FixedOffset> = DateTime::parse_from_rfc3339(s)?;
-        let seconds = dt.timestamp() as u64;
-        let nsecs = dt.timestamp_subsec_nanos();
-
-        let elapsed = time::Duration::new(seconds, nsecs);
-
-        let time = time::SystemTime::UNIX_EPOCH.checked_add(elapsed).unwrap();
-
-        Ok(SystemTime(time))
+        Ok(Self(
+            OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)?.into(),
+        ))
     }
 }
 
 impl fmt::Display for LocalDateTime {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.to_rfc2822().fmt(f)
+        // time-rs's format_into requires an implementor of std::io::Write, which fmt::Formatter is not
+        let formatted = self
+            .0
+            .format(&time::format_description::well_known::Rfc2822)
+            .map_err(|_| fmt::Error)?;
+        write!(f, "{}", formatted)
     }
 }
 
 impl str::FromStr for LocalDateTime {
-    type Err = chrono::ParseError;
+    type Err = time::error::Parse;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let dt: DateTime<chrono::FixedOffset> = DateTime::parse_from_rfc2822(s)?;
-        let seconds = dt.timestamp();
-        let nsecs = dt.timestamp_subsec_nanos();
-
-        let time = Local.timestamp(seconds, nsecs);
-
-        Ok(LocalDateTime(time))
+        Ok(Self(OffsetDateTime::parse(
+            s,
+            &time::format_description::well_known::Rfc2822,
+        )?))
     }
 }
 
@@ -241,20 +239,20 @@ impl str::FromStr for SecondsSinceUnixEpoch {
 
 /* --------------------- AsRef --------------------------------------------- */
 
-impl AsRef<time::Duration> for Duration {
-    fn as_ref(&self) -> &time::Duration {
+impl AsRef<std::time::Duration> for Duration {
+    fn as_ref(&self) -> &std::time::Duration {
         &self.0
     }
 }
 
-impl AsRef<time::SystemTime> for SystemTime {
-    fn as_ref(&self) -> &time::SystemTime {
+impl AsRef<std::time::SystemTime> for SystemTime {
+    fn as_ref(&self) -> &std::time::SystemTime {
         &self.0
     }
 }
 
-impl AsRef<chrono::DateTime<chrono::Local>> for LocalDateTime {
-    fn as_ref(&self) -> &chrono::DateTime<chrono::Local> {
+impl AsRef<time::OffsetDateTime> for LocalDateTime {
+    fn as_ref(&self) -> &time::OffsetDateTime {
         &self.0
     }
 }
@@ -262,30 +260,28 @@ impl AsRef<chrono::DateTime<chrono::Local>> for LocalDateTime {
 /* --------------------- Conversion ---------------------------------------- */
 
 impl TryFrom<SystemTime> for LocalDateTime {
-    type Error = time::SystemTimeError;
+    type Error = std::time::SystemTimeError;
     fn try_from(system_time: SystemTime) -> Result<Self, Self::Error> {
-        let timestamps = system_time.0.duration_since(time::UNIX_EPOCH)?;
-        let local = Local.timestamp(timestamps.as_secs() as i64, timestamps.subsec_nanos());
-        Ok(LocalDateTime(local))
+        Ok(LocalDateTime(system_time.0.into()))
     }
 }
 
-impl From<time::SystemTime> for SystemTime {
-    fn from(system_time: time::SystemTime) -> Self {
+impl From<std::time::SystemTime> for SystemTime {
+    fn from(system_time: std::time::SystemTime) -> Self {
         SystemTime(system_time)
     }
 }
 
-impl From<SystemTime> for time::SystemTime {
+impl From<SystemTime> for std::time::SystemTime {
     fn from(system_time: SystemTime) -> Self {
         system_time.0
     }
 }
 
-impl From<time::SystemTime> for SecondsSinceUnixEpoch {
-    fn from(system_time: time::SystemTime) -> Self {
+impl From<std::time::SystemTime> for SecondsSinceUnixEpoch {
+    fn from(system_time: std::time::SystemTime) -> Self {
         system_time
-            .duration_since(time::UNIX_EPOCH)
+            .duration_since(std::time::UNIX_EPOCH)
             // duration since UNIX EPOCH will never go beyond boundaries
             .map(|duration| duration.as_secs())
             .map(SecondsSinceUnixEpoch::from_secs)
@@ -298,14 +294,14 @@ impl SystemTime {
         // here we can safely unwrap as we are adding from UNIX_EPOCH (0)
         // and SecondsSinceUnixEpoch is always a positive integer
         // and seconds will always be within bounds
-        time::UNIX_EPOCH
-            .checked_add(time::Duration::from_secs(secs))
+        std::time::UNIX_EPOCH
+            .checked_add(std::time::Duration::from_secs(secs))
             .unwrap()
             .into()
     }
 
     pub fn duration_since_epoch(self) -> Duration {
-        Duration(self.0.duration_since(time::UNIX_EPOCH).unwrap())
+        Duration(self.0.duration_since(std::time::UNIX_EPOCH).unwrap())
     }
 }
 
@@ -319,13 +315,13 @@ impl SecondsSinceUnixEpoch {
     }
 }
 
-impl From<time::Duration> for Duration {
-    fn from(duration: time::Duration) -> Self {
+impl From<std::time::Duration> for Duration {
+    fn from(duration: std::time::Duration) -> Self {
         Duration(duration)
     }
 }
 
-impl From<Duration> for time::Duration {
+impl From<Duration> for std::time::Duration {
     fn from(Duration(duration): Duration) -> Self {
         duration
     }
@@ -417,7 +413,7 @@ impl<'de> Deserialize<'de> for SystemTime {
         if deserializer.is_human_readable() {
             deserializer.deserialize_str(SystemTimeVisitor)
         } else {
-            time::SystemTime::deserialize(deserializer).map(SystemTime)
+            std::time::SystemTime::deserialize(deserializer).map(SystemTime)
         }
     }
 }
@@ -459,7 +455,7 @@ impl<'de> Deserialize<'de> for Duration {
         if deserializer.is_human_readable() {
             deserializer.deserialize_str(DurationVisitor)
         } else {
-            time::Duration::deserialize(deserializer).map(Duration)
+            std::time::Duration::deserialize(deserializer).map(Duration)
         }
     }
 }
@@ -509,6 +505,7 @@ impl<'de> Deserialize<'de> for LocalDateTime {
 #[cfg(test)]
 mod test {
     use super::*;
+    use ::time::macros::datetime;
     use quickcheck::{Arbitrary, Gen};
     use std::time;
 
@@ -532,11 +529,9 @@ mod test {
 
     impl Arbitrary for LocalDateTime {
         fn arbitrary<G: Gen>(g: &mut G) -> Self {
-            // no nanoseconds for the local date time as this is not displayed
-            const NSECS: u32 = 0;
-
-            let secs = i64::arbitrary(g) % 0xFF_FFFF_FFFF;
-            LocalDateTime(Local.timestamp(secs, NSECS))
+            const MAX: i64 = ::time::Date::MAX.midnight().assume_utc().unix_timestamp();
+            let secs = i64::arbitrary(g) % MAX;
+            Self(OffsetDateTime::from_unix_timestamp(secs).expect("invalid timestamp"))
         }
     }
 
@@ -625,7 +620,7 @@ mod test {
     fn system_time_display_iso8601() {
         let epoch = SystemTime(time::UNIX_EPOCH);
 
-        assert_eq!(epoch.to_string(), "1970-01-01T00:00:00+00:00")
+        assert_eq!(epoch.to_string(), "1970-01-01T00:00:00Z")
     }
 
     #[test]
@@ -634,20 +629,20 @@ mod test {
 
         assert_eq!(
             serde_yaml::to_string(&epoch).unwrap(),
-            "---\n\"1970-01-01T00:00:00+00:00\"\n"
+            "---\n\"1970-01-01T00:00:00Z\"\n"
         )
     }
 
     #[test]
     fn local_date_time_display_rfc_2822() {
-        let local = LocalDateTime(Local.ymd(2017, 8, 17).and_hms(11, 59, 42));
+        let local = LocalDateTime(datetime!(2017-08-17 11:59:42 +0));
 
         assert!(local.to_string().starts_with("Thu, 17 Aug 2017 "));
     }
 
     #[test]
     fn local_date_time_serde_human_readable() {
-        let local = LocalDateTime(Local.ymd(2017, 8, 17).and_hms(11, 59, 42));
+        let local = LocalDateTime(datetime!(2017-08-17 11:59:42 +0));
 
         assert!(serde_yaml::to_string(&local)
             .unwrap()

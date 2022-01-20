@@ -11,13 +11,14 @@ use crate::{
 
 use chain_core::property::Fragment;
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::io;
 use std::path::{Path, PathBuf};
 use tokio::fs::{self, File};
 
-use chrono::{Duration, DurationRound, Utc};
 use futures::{future, TryFutureExt};
 use thiserror::Error;
+use time::{macros::format_description, Duration, OffsetDateTime, Time};
 use tokio_stream::StreamExt;
 use tracing::{debug_span, span, Level};
 use tracing_futures::Instrument;
@@ -59,11 +60,11 @@ impl Process {
     ) -> Result<(), Error> {
         async fn hourly_wakeup(enabled: bool) {
             if enabled {
-                let now = Utc::now();
-                let current_hour = now.duration_trunc(Duration::hours(1)).unwrap();
-                let next_hour = current_hour + Duration::hours(1);
-                let sleep_duration = (next_hour - now).to_std().unwrap();
-                tokio::time::sleep(sleep_duration).await
+                let now = OffsetDateTime::now_utc();
+                // truncate date to hour so that rotation always happens at the hour mark
+                let current_hour = now.replace_time(Time::from_hms(now.hour(), 0, 0).unwrap());
+                let next_hour = current_hour + Duration::HOUR;
+                tokio::time::sleep((next_hour - now).try_into().unwrap()).await
             } else {
                 future::pending().await
             }
@@ -74,7 +75,9 @@ impl Process {
             if !path.exists() {
                 std::fs::create_dir_all(dir).map_err(Error::PersistentLog)?;
             }
-            let log_file_name = Utc::now().format("%Y-%m-%d_%H.log").to_string();
+            let log_file_name = OffsetDateTime::now_utc()
+                .format(format_description!("[year]-[month]-[day]_[hour].log"))
+                .expect("invalid time format description");
             path.push(log_file_name);
             tracing::debug!("creating fragment log file `{:?}`", path);
             fs::OpenOptions::new()
