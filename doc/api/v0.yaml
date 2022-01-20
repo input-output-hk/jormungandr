@@ -631,9 +631,10 @@ paths:
                     type: string
                     format: date-time
                   blockContentSizeAvg:
-                    description: 'Moving average of the last 3 blocks size'
-                    type: integer
+                    description: 'Moving average of the last 3 blocks size as percentage of the block max size'
+                    type: number
                     minimum: 0
+                    maximum: 1
                   peerAvailableCnt:
                     description: Number of nodes that are available for p2p discovery and events propagation
                     type: integer
@@ -664,10 +665,11 @@ paths:
                     description: Number of transactions received by node
                     type: integer
                     minimum: 0
-                  txPending:
-                    description: Number of pending transactions in the mempool
-                    type: integer
+                  mempoolUsageRatio:
+                    description: Usage ratio of the mempool on a scale from 0 to 1
+                    type: number
                     minimum: 0
+                    maximum: 1
                   txPendingTotalSize:
                     description: Total size of pending transactions in the mempool
                     type: integer
