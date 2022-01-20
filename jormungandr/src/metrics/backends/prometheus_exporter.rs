@@ -11,7 +11,7 @@ use std::time::SystemTime;
 
 use arc_swap::ArcSwapOption;
 use prometheus::core::{AtomicU64, GenericGauge};
-use prometheus::{Encoder, IntCounter, Registry, TextEncoder};
+use prometheus::{Encoder, Gauge, IntCounter, Registry, TextEncoder};
 
 type UIntGauge = GenericGauge<AtomicU64>;
 
@@ -192,8 +192,8 @@ impl MetricsBackend for Prometheus {
     }
 
     fn set_mempool_usage_ratio(&self, ratio: f64) {
-        let count = count.try_into().unwrap();
-        self.mempool_usage_ratio.set(count);
+        let ratio = ratio.try_into().unwrap();
+        self.mempool_usage_ratio.set(ratio);
     }
 
     fn set_mempool_total_size(&self, size: usize) {
