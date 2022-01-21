@@ -3,9 +3,8 @@ pub mod compatibility;
 #[cfg(all(feature = "network"))]
 pub mod network;
 /*
- Explorer soak test. Run node for ~15 minutes and verify explorer is in sync with node rest
+ Explorer quick test. Run node for ~15 minutes and verify explorer is in sync with node rest
 */
-#[cfg(feature = "soak")]
 pub mod explorer;
 /*
  Sanity performance tests. Quick tests to check overall node performance.
