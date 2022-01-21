@@ -49,7 +49,7 @@ See Internal documentation for more details: doc/internal_design.md
 [`Branch`]: ./struct.Branch.html
 */
 #![allow(clippy::large_enum_variant)]
-use super::{branch::Branches, reference_cache::RefCache};
+use super::reference_cache::RefCache;
 use crate::{
     blockcfg::{
         Block, Block0Error, BlockDate, ChainLength, Epoch, EpochRewardsInfo, Header, HeaderDesc,
@@ -59,8 +59,8 @@ use crate::{
 };
 use chain_impl_mockchain::{leadership::Verification, ledger};
 use chain_time::TimeFrame;
+use futures::{StreamExt, TryStreamExt};
 use std::sync::Arc;
-use tokio_stream::StreamExt;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -167,8 +167,6 @@ pub fn pre_verify_link(
 ///
 #[derive(Clone)]
 pub struct Blockchain {
-    branches: Branches,
-
     ref_cache: RefCache,
 
     ledgers: Multiverse<Ledger>,
@@ -273,7 +271,6 @@ impl Blockchain {
         rewards_report_all: bool,
     ) -> Self {
         Blockchain {
-            branches: Branches::new(),
             ref_cache: RefCache::new(cache_capacity),
             ledgers: Multiverse::new(),
             storage,
@@ -290,12 +287,15 @@ impl Blockchain {
         &self.storage
     }
 
-    pub fn branches(&self) -> &Branches {
-        &self.branches
-    }
-
-    pub fn branches_mut(&mut self) -> &mut Branches {
-        &mut self.branches
+    pub async fn branches(&self) -> Result<Vec<Branch>> {
+        futures::stream::iter(self.storage().get_branches()?)
+            // FIXME: this should always return a valid ref, as the branches
+            // are directly fetched from the node storage, but account for
+            // misses in the ref cache which are not handled currently by the node
+            .filter_map(|branch| async move { self.get_ref(branch).await.transpose() })
+            .map(|try_ref| try_ref.map(Branch::new))
+            .try_collect()
+            .await
     }
 
     pub async fn gc(&self, tip: Arc<Ref>) -> Result<()> {
@@ -631,8 +631,6 @@ impl Blockchain {
         let block0_id = block0.header().hash();
         let block0_date = block0.header().block_date();
 
-        let mut branches = self.branches.clone();
-
         let time_frame = {
             use crate::blockcfg::Block0DataSource as _;
 
@@ -665,9 +663,7 @@ impl Blockchain {
                 None,
             )
             .await;
-        let b = Branch::new(b);
-        branches.add(b.clone()).await;
-        Ok(b)
+        Ok(Branch::new(b))
     }
 
     /// function to do the initial application of the block0 in the `Blockchain` and its
@@ -761,7 +757,7 @@ impl Blockchain {
             return Err(Error::NoTag(MAIN_BRANCH_TAG.to_owned()));
         };
 
-        let mut branch = self.apply_block0(&block0).await?;
+        let mut last_ref = self.apply_block0(&block0).await?.get_ref();
         let mut reporter = StreamReporter::new(|stream_info| {
             let elapsed = stream_info
                 .last_reported
@@ -782,18 +778,17 @@ impl Blockchain {
 
         while let Some(block) = block_stream.next().await.transpose()? {
             reporter.append_block(&block);
-            branch
-                .update_ref(
-                    self.handle_bootstrap_block(block, CheckHeaderProof::SkipFromStorage)
-                        .await?,
-                )
-                .await;
+            // this is a stream of consecutive blocks up to the last known main branch,
+            // no need for special rules for updating the tip
+            last_ref = self
+                .handle_bootstrap_block(block, CheckHeaderProof::SkipFromStorage)
+                .await?;
         }
-        Ok(Tip::new(branch))
+        Ok(Tip::new(Branch::new(last_ref)))
     }
 
-    pub async fn get_checkpoints(&self, branch: &Branch) -> Checkpoints {
-        Checkpoints::new_from(branch.get_ref().await)
+    pub fn get_checkpoints(&self, branch: &Branch) -> Checkpoints {
+        Checkpoints::new_from(branch.get_ref())
     }
 }
 
