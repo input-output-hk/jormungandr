@@ -43,6 +43,7 @@ const NODE_CONFIG_FILE: &str = "node_config.yaml";
 const NODE_SECRETS_FILE: &str = "node_secret.yaml";
 const NODE_TOPOLOGY_KEY_FILE: &str = "node_topology_key";
 
+#[derive(Clone)]
 pub struct Controller {
     settings: Settings,
     working_directory: TestingDirectory,
