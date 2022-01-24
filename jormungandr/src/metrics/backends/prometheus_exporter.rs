@@ -192,7 +192,6 @@ impl MetricsBackend for Prometheus {
     }
 
     fn set_mempool_usage_ratio(&self, ratio: f64) {
-        let ratio = ratio.try_into().unwrap();
         self.mempool_usage_ratio.set(ratio);
     }
 
