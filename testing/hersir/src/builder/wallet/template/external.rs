@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use chain_impl_mockchain::value::Value;
-use jormungandr_lib::interfaces::ValueDef;
+use jormungandr_lib::interfaces::{TokenIdentifier, ValueDef};
 use serde::Deserialize;
 use thor::WalletAlias;
 
@@ -11,15 +13,22 @@ pub struct ExternalWalletTemplate {
     address: String,
     #[serde(with = "ValueDef")]
     value: Value,
+    tokens: HashMap<TokenIdentifier, u64>,
 }
 
 impl ExternalWalletTemplate {
     #[inline]
-    pub fn new<S: Into<WalletAlias>>(alias: S, value: Value, address: String) -> Self {
+    pub fn new<S: Into<WalletAlias>>(
+        alias: S,
+        value: Value,
+        address: String,
+        tokens: HashMap<TokenIdentifier, u64>,
+    ) -> Self {
         Self {
             alias: alias.into(),
             value,
             address,
+            tokens,
         }
     }
 
@@ -29,6 +38,10 @@ impl ExternalWalletTemplate {
 
     pub fn address(&self) -> &str {
         &self.address
+    }
+
+    pub fn tokens(&self) -> &HashMap<TokenIdentifier, u64> {
+        &self.tokens
     }
 
     pub fn alias(&self) -> WalletAlias {
