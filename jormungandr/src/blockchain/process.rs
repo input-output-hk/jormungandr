@@ -29,7 +29,7 @@ use std::{sync::Arc, time::Duration};
 type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
 type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, NodeId, ()>;
 
-const TIP_UPDATE_QUEUE_SIZE: usize = 5;
+const TIP_UPDATE_QUEUE_SIZE: usize = 10;
 
 const DEFAULT_TIMEOUT_PROCESS_LEADERSHIP: u64 = 5;
 const DEFAULT_TIMEOUT_PROCESS_ANNOUNCEMENT: u64 = 5;
@@ -416,7 +416,7 @@ async fn process_block_announcement(
         PreCheckedHeader::MissingParent { header, .. } => {
             tracing::debug!("block is missing a locally stored parent");
             let to = header.hash();
-            let from = blockchain.get_checkpoints(blockchain_tip.branch()).await;
+            let from = blockchain.get_checkpoints(&blockchain_tip.branch().await);
             pull_headers_scheduler
                 .schedule(to, node_id, from)
                 .unwrap_or_else(move |err| {
