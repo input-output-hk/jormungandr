@@ -133,15 +133,27 @@ fn document(path: &Path, inner: &InnerController) -> Result<(), Error> {
 }
 
 impl MonitorController {
-    fn new(controller: InnerController, context: Context) -> Result<Self, Error> {
-        let progress_bar = Arc::new(MultiProgress::new());
-
-        Ok(Self {
+    pub fn new_with_progress_bar(
+        controller: InnerController,
+        context: Context,
+        progress_bar: Arc<MultiProgress>,
+    ) -> Self {
+        Self {
             inner: controller,
             context,
             progress_bar,
             progress_bar_thread: None,
-        })
+        }
+    }
+
+    pub fn new(controller: InnerController, context: Context) -> Result<Self, Error> {
+        let progress_bar = Arc::new(MultiProgress::new());
+
+        Ok(Self::new_with_progress_bar(
+            controller,
+            context,
+            progress_bar,
+        ))
     }
 
     pub fn stake_pool(&mut self, node_alias: &str) -> Result<StakePool, Error> {

@@ -46,7 +46,7 @@ pub struct NodeSetting {
     pub node_topology: NodeTemplate,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Settings {
     pub nodes: HashMap<NodeAlias, NodeSetting>,
 
