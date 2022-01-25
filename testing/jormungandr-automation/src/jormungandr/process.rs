@@ -34,7 +34,7 @@ use std::process::ExitStatus;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Status {
     Running,
     Starting,
@@ -43,9 +43,9 @@ pub enum Status {
 
 impl From<NodeState> for Status {
     fn from(node_state: NodeState) -> Self {
-        match &node_state {
-            NodeState::Running => Status::Running,
-            _ => Status::Starting,
+        match node_state {
+            NodeState::Running => Self::Running,
+            _ => Self::Starting,
         }
     }
 }

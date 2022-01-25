@@ -155,9 +155,9 @@ pub fn p2p_stats_test() {
 // It is a macro because the builder is returned by reference.
 macro_rules! build_network {
     () => {{
-        let mut blockchain = Blockchain::default();
-        blockchain.set_slot_duration(SlotDuration::new(5).unwrap());
-        NetworkBuilder::default().blockchain_config(blockchain)
+        NetworkBuilder::default().blockchain_config(
+            Blockchain::default().with_slot_duration(SlotDuration::new(5).unwrap()),
+        )
     }};
 }
 

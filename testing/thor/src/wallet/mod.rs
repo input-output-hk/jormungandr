@@ -8,11 +8,11 @@ use crate::FragmentBuilder;
 use crate::FragmentBuilderError;
 use chain_addr::AddressReadable;
 use chain_addr::Discrimination;
-use chain_crypto::{Ed25519, Ed25519Extended, SecretKey, Signature};
+use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Signature};
 pub use chain_impl_mockchain::{
     account::SpendingCounter,
     block::Block,
-    certificate::{PoolId, SignedCertificate},
+    certificate::{PoolId, SignedCertificate, UpdateProposal, UpdateVote},
     chaintypes::ConsensusVersion,
     fee::LinearFee,
     fragment::Fragment,
@@ -94,7 +94,7 @@ impl Wallet {
         let bech32_str = jortestkit::file::read_file(secret_key_file);
         Wallet::Account(account::Wallet::from_existing_account(
             &bech32_str,
-            spending_counter,
+            spending_counter.map(Into::into),
         ))
     }
 
@@ -114,8 +114,12 @@ impl Wallet {
     ) -> Wallet {
         Wallet::Account(account::Wallet::from_existing_account(
             signing_key_bech32,
-            spending_counter,
+            spending_counter.map(Into::into),
         ))
+    }
+
+    pub fn discrimination(&self) -> Discrimination {
+        self.address().1 .0
     }
 
     pub fn to_initial_fund(&self, value: u64) -> InitialUTxO {
@@ -204,6 +208,10 @@ impl Wallet {
             Wallet::UTxO(utxo) => utxo.address(),
             Wallet::Delegation(delegation) => delegation.address(),
         }
+    }
+
+    pub fn public_key(&self) -> PublicKey<Ed25519> {
+        self.address().1.public_key().unwrap().clone()
     }
 
     pub fn address_bech32(&self, discrimination: Discrimination) -> String {
@@ -375,5 +383,11 @@ impl From<Wallet> for WalletLib {
         };
         let address_data_value = AddressDataValue::new(address_data, ValueLib(0));
         WalletLib::from_address_data_value(address_data_value)
+    }
+}
+
+impl From<account::Wallet> for Wallet {
+    fn from(account: account::Wallet) -> Self {
+        Self::Account(account)
     }
 }

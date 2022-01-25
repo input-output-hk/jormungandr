@@ -8,15 +8,18 @@ pub use self::{
     setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
     verifier::{ExitStrategy as VerifyExitStrategy, FragmentVerifier, FragmentVerifierError},
 };
-pub use transaction_utils::TransactionHash;
-
+use crate::wallet::account::Wallet as AccountWallet;
 use crate::{stake_pool::StakePool, wallet::Wallet};
+use chain_crypto::Ed25519;
+use chain_crypto::SecretKey;
 use chain_impl_mockchain::fee::FeeAlgorithm;
 use chain_impl_mockchain::transaction::InputOutputBuilder;
 use chain_impl_mockchain::transaction::TxBuilder;
 use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload};
 use chain_impl_mockchain::{
-    certificate::{EncryptedVoteTally, PoolId, VoteCast, VotePlan, VoteTally},
+    certificate::{
+        EncryptedVoteTally, PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally,
+    },
     fee::LinearFee,
     fragment::Fragment,
     testing::{
@@ -30,6 +33,7 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Initial, Value},
 };
+pub use transaction_utils::TransactionHash;
 
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
@@ -323,5 +327,40 @@ impl FragmentBuilder {
         };
         self.fragment_factory
             .vote_tally(self.valid_until, &inner_wallet, vote_tally)
+    }
+
+    pub fn update_proposal(
+        &self,
+        wallet: &Wallet,
+        update_proposal: UpdateProposal,
+        bft_auth: &SecretKey<Ed25519>,
+    ) -> Fragment {
+        let inner_wallet = wallet.clone().into();
+        let signer_wallet: Wallet =
+            AccountWallet::from_secret(bft_auth.clone().into(), wallet.discrimination()).into();
+
+        self.fragment_factory.update_proposal(
+            self.valid_until,
+            &inner_wallet,
+            &signer_wallet.into(),
+            update_proposal,
+        )
+    }
+
+    pub fn update_vote(
+        &self,
+        wallet: &Wallet,
+        update_vote: UpdateVote,
+        bft_auth: &SecretKey<Ed25519>,
+    ) -> Fragment {
+        let inner_wallet = wallet.clone().into();
+        let signer_wallet: Wallet =
+            AccountWallet::from_secret(bft_auth.clone().into(), wallet.discrimination()).into();
+        self.fragment_factory.update_vote(
+            self.valid_until,
+            &inner_wallet,
+            &signer_wallet.into(),
+            update_vote,
+        )
     }
 }

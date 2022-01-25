@@ -1,4 +1,3 @@
-use crate::startup;
 use assert_fs::TempDir;
 use chain_impl_mockchain::{chaintypes::ConsensusType, testing::WitnessMode};
 use jormungandr_automation::jormungandr::ConfigurationBuilder;
@@ -9,8 +8,8 @@ use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
 #[test]
 fn parallel_transaction_using_different_lanes() {
     let temp_dir = TempDir::new().unwrap();
-    let receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
 
     let config = ConfigurationBuilder::new()
         .with_slots_per_epoch(20)
