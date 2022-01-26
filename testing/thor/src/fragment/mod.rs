@@ -27,7 +27,7 @@ use chain_impl_mockchain::{
         scenario::FragmentFactory,
         WitnessMode,
     },
-    vote::{Choice, Payload},
+    vote::{Choice, Payload, PayloadType},
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -239,6 +239,21 @@ impl FragmentBuilder {
         let inner_wallet = wallet.clone().into();
         self.fragment_factory
             .vote_plan(self.valid_until, &inner_wallet, vote_plan.clone())
+    }
+
+    pub fn vote_cast(
+        &self,
+        wallet: &Wallet,
+        vote_plan: &VotePlan,
+        proposal_index: u8,
+        choice: &Choice,
+    ) -> Fragment {
+        match vote_plan.payload_type() {
+            PayloadType::Public => self.public_vote_cast(wallet, vote_plan, proposal_index, choice),
+            PayloadType::Private => {
+                self.private_vote_cast(wallet, vote_plan, proposal_index, choice)
+            }
+        }
     }
 
     pub fn public_vote_cast(
