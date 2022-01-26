@@ -298,6 +298,7 @@ impl Controller {
         let mut starter = Starter::new();
         starter
             .config(params)
+            .jormungandr_app_option(spawn_params.get_jormungandr())
             .verbose(spawn_params.get_verbose())
             .alias(spawn_params.get_alias().clone())
             .from_genesis(spawn_params.get_leadership_mode().into())
