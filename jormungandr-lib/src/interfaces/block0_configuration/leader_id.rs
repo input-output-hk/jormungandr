@@ -40,6 +40,12 @@ impl From<ConsensusLeaderId> for BftLeaderId {
     }
 }
 
+#[allow(clippy::from_over_into)]
+impl Into<PublicKey<Ed25519>> for ConsensusLeaderId {
+    fn into(self) -> PublicKey<Ed25519> {
+        self.0.as_public_key().clone()
+    }
+}
 impl Serialize for ConsensusLeaderId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

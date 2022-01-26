@@ -100,7 +100,7 @@ pub async fn bootstrap_from_peer(
             break Ok(());
         }
 
-        let checkpoints = blockchain.get_checkpoints(tip.branch()).await;
+        let checkpoints = blockchain.get_checkpoints(&tip.branch().await);
         let checkpoints = net_data::block::try_ids_from_iter(checkpoints).unwrap();
 
         let remote_tip = BlockId::try_from(remote_tip.as_ref()).unwrap();
