@@ -9,7 +9,7 @@ pub fn spawn_network(config: Config, mut topology: Topology, args: Args) -> Resu
     println!("Building network...");
     let mut controller = NetworkBuilder::default()
         .topology(topology.clone())
-        .testing_directory(config.testing_directory())
+        .session_settings(config.session.clone())
         .blockchain_config(config.blockchain.clone())
         .build()?;
 

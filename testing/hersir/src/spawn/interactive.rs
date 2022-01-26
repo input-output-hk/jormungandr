@@ -8,7 +8,7 @@ use jortestkit::prelude::UserInteraction;
 pub fn spawn_network(config: Config, topology: Topology) -> Result<(), Error> {
     let controller = NetworkBuilder::default()
         .topology(topology)
-        .testing_directory(config.testing_directory())
+        .session_settings(config.session)
         .blockchain_config(config.blockchain)
         .build()?;
 

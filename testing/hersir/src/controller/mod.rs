@@ -1,4 +1,3 @@
-mod context;
 mod error;
 pub mod interactive;
 mod monitor;
@@ -16,7 +15,6 @@ use chain_impl_mockchain::ledger::governance::{
 use chain_impl_mockchain::testing::scenario::template::{
     ProposalDefBuilder, VotePlanDef, VotePlanDefBuilder,
 };
-pub use context::Context;
 pub use error::Error;
 pub use interactive::{
     do_for_all_alias, InteractiveCommandError, JormungandrInteractiveCommandExec,
