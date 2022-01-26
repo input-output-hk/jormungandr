@@ -102,7 +102,7 @@ Use the CA certificate with `jcli`.
     typical settings for a non mining node: `"normal"`. For a stakepool: `"high"`.
 - `max_connections`: the maximum number of P2P connections this node should
     maintain. If not specified, an internal limit is used by default `[default: 256]`
-- `max_inbound_connections`: the maximum number of client P2P connections this
+- `max_client_connections`: the maximum number of client P2P connections this
     node should keep open. `[default: 192]`
 - `policy`: (optional) set the setting for the policy module
   - `quarantine_duration` set the time to leave a node in quarantine before allowing
