@@ -1,4 +1,3 @@
-use crate::startup;
 use assert_fs::TempDir;
 use chain_impl_mockchain::testing::TestGen;
 use chain_impl_mockchain::tokens::identifier::TokenIdentifier;
@@ -11,7 +10,7 @@ use thor::{FragmentSender, FragmentVerifier};
 #[test]
 pub fn rest_shows_initial_token_state() {
     let temp_dir = TempDir::new().unwrap();
-    let alice = startup::create_new_account_address();
+    let alice = thor::Wallet::default();
 
     let initial_token_value = 1_000;
 
@@ -49,7 +48,7 @@ pub fn rest_shows_initial_token_state() {
 #[test]
 pub fn can_assign_token_to_non_existing_account() {
     let temp_dir = TempDir::new().unwrap();
-    let alice = startup::create_new_account_address();
+    let alice = thor::Wallet::default();
 
     let minting_policy = MintingPolicy::new();
     let token_id = TokenIdentifier {
@@ -70,7 +69,7 @@ pub fn can_assign_token_to_non_existing_account() {
 #[should_panic]
 pub fn setup_wrong_policy_hash() {
     let temp_dir = TempDir::new().unwrap();
-    let alice = startup::create_new_account_address();
+    let alice = thor::Wallet::default();
 
     ConfigurationBuilder::new()
         .with_fund(alice.to_initial_fund(1_000))
@@ -85,7 +84,7 @@ pub fn setup_wrong_policy_hash() {
 #[test]
 pub fn setup_0_token_assigned() {
     let temp_dir = TempDir::new().unwrap();
-    let alice = startup::create_new_account_address();
+    let alice = thor::Wallet::default();
 
     let minting_policy = MintingPolicy::new();
     let token_id = TokenIdentifier {
@@ -121,8 +120,8 @@ pub fn setup_0_token_assigned() {
 #[test]
 pub fn transaction_does_not_influence_token_count() {
     let temp_dir = TempDir::new().unwrap();
-    let mut alice = startup::create_new_account_address();
-    let bob = startup::create_new_account_address();
+    let mut alice = thor::Wallet::default();
+    let bob = thor::Wallet::default();
 
     let initial_token_value = 1_000;
 

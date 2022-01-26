@@ -107,13 +107,8 @@ impl NetworkBuilder {
         let seed = Seed::generate(rand::rngs::OsRng);
         let mut random = Random::new(seed);
 
-        for alias in nodes.keys() {
-            let leader: NodeAlias = alias.into();
-            self.blockchain.add_leader(leader);
-        }
-
         for wallet in &self.wallet_templates {
-            self.blockchain.add_wallet(wallet.clone());
+            self.blockchain = self.blockchain.with_wallet(wallet.clone());
         }
 
         self.notify_all(Event::new("building block0.."));
