@@ -314,18 +314,15 @@ pub fn point_to_point_disruption_overlap() {
     let mut leader1 = controller.spawn(SpawnParams::new(LEADER_1)).unwrap();
 
     println!("7. only Node 3 is up");
+    leader3 = controller.spawn(SpawnParams::new(LEADER_3)).unwrap();
     leader1.shutdown();
     leader2.shutdown();
 
-    leader3 = controller
-        .spawn(
-            SpawnParams::new(LEADER_3)
-                .leadership_mode(LeadershipMode::Leader)
-                .persistence_mode(PersistenceMode::Persistent)
-                .bootstrap_from_peers(false)
-                .skip_bootstrap(true),
-        )
-        .unwrap();
+    // Wait a bit so that leader 3 will fail communications with leader 1 and 2 and put them
+    // under quarantine.
+    // Given prolonged time without contacts, leader 3 will try to contact again known nodes (after quarantine has elapsed)
+    // even if it had not received any update in recent times, in this case leader 1 and 2.
+    utils::wait(20);
 
     println!("8. 1 and 3 is up");
     leader1 = controller
