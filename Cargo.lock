@@ -97,7 +97,7 @@ checksum = "93ae1ddd39efd67689deb1979d80bad3bf7f2b09c6e6117c8d1f2443b5e2f83e"
 dependencies = [
  "bstr",
  "doc-comment",
- "predicates 2.1.0",
+ "predicates 2.1.1",
  "predicates-core",
  "predicates-tree",
  "wait-timeout",
@@ -111,7 +111,7 @@ checksum = "633ff1df0788db09e2087fb93d05974e93acb886ac3aec4e67be1d6932e360e4"
 dependencies = [
  "doc-comment",
  "globwalk",
- "predicates 2.1.0",
+ "predicates 2.1.1",
  "predicates-core",
  "predicates-tree",
  "tempfile",
@@ -609,7 +609,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chain-core",
  "chain-crypto",
  "const_format",
@@ -1863,7 +1863,7 @@ dependencies = [
  "gtmpl",
  "hex",
  "jormungandr-lib",
- "predicates 2.1.0",
+ "predicates 2.1.1",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
  "rayon",
@@ -1975,7 +1975,7 @@ dependencies = [
  "os_info",
  "parity-multiaddr",
  "poldercast",
- "predicates 2.1.0",
+ "predicates 2.1.1",
  "prost",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
@@ -2033,7 +2033,7 @@ dependencies = [
  "mjolnir",
  "parity-multiaddr",
  "poldercast",
- "predicates 2.1.0",
+ "predicates 2.1.1",
  "prost",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
@@ -2757,9 +2757,9 @@ dependencies = [
 
 [[package]]
 name = "predicates"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95e5a7689e456ab905c22c2b48225bb921aba7c8dfa58440d68ba13f6222a715"
+checksum = "a5aab5be6e4732b473071984b3164dbbfb7a3674d30ea5ff44410b6bcd960c3c"
 dependencies = [
  "difflib",
  "float-cmp 0.9.0",

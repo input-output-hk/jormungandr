@@ -49,7 +49,7 @@ features = ["blocking", "rustls-tls", "json"]
 
 [dev-dependencies]
 assert_fs = "1.0"
-predicates = "2.0"
+predicates = "2.1"
 
 [build-dependencies]
 versionisator = "1.0.2"
