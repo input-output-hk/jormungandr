@@ -359,7 +359,7 @@ version = "0.1.0"
 dependencies = [
  "chain-impl-mockchain",
  "chain-time",
- "lru 0.7.2",
+ "lru",
  "thiserror",
 ]
 
@@ -621,7 +621,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#9f60ec124c8c7a5ac3228e5dbe74e12a89e196b3"
 dependencies = [
- "cfg-if 1.0.0",
+ "cfg-if 0.1.10",
  "chain-core",
  "chain-crypto",
  "const_format",
@@ -1973,7 +1973,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "linked-hash-map",
- "lru 0.7.2",
+ "lru",
  "nix",
  "parity-multiaddr",
  "poldercast",
@@ -2303,15 +2303,6 @@ dependencies = [
  "thor",
  "tokio",
  "warp",
-]
-
-[[package]]
-name = "lru"
-version = "0.6.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ea2d928b485416e8908cff2d97d621db22b27f7b3b6729e438bcf42c671ba91"
-dependencies = [
- "hashbrown",
 ]
 
 [[package]]
@@ -2857,13 +2848,13 @@ dependencies = [
 
 [[package]]
 name = "poldercast"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e779918f3699dbd6df29cbbdb0681c863f5c42d42c85a1d197d72246d7895397"
+checksum = "2326808f3c476da7495ff611ad36b6a2e4e9d1f20a5b5eb4bbd8fb5e47f899be"
 dependencies = [
  "hex",
  "keynesis",
- "lru 0.6.6",
+ "lru",
  "thiserror",
 ]
 
