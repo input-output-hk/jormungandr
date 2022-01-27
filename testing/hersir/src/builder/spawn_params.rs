@@ -97,6 +97,10 @@ impl SpawnParams {
         self.leadership_mode
     }
 
+    pub fn is_leader(&self) -> bool {
+        self.get_leadership_mode() == LeadershipMode::Leader
+    }
+
     pub fn get_persistence_mode(&self) -> PersistenceMode {
         self.persistence_mode
     }

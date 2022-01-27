@@ -11,7 +11,7 @@ use std::str::FromStr;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub blockchain: Blockchain,
+    blockchain: Blockchain,
     pub nodes: Vec<NodeConfig>,
     #[serde(default)]
     pub session: SessionSettings,
@@ -32,6 +32,16 @@ impl Config {
         }
 
         topology
+    }
+
+    pub fn build_blockchain(&self) -> Blockchain {
+        let mut blockchain = self.blockchain.clone();
+        for node_config in &self.nodes {
+            if node_config.spawn_params.is_leader() {
+                blockchain = blockchain.with_leader(node_config.spawn_params.get_alias());
+            }
+        }
+        blockchain
     }
 
     pub fn node_spawn_params(&self, alias: &str) -> Result<SpawnParams, Error> {
@@ -56,6 +66,7 @@ pub struct NodeConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SessionSettings {
+    #[serde(default = "default_jormungandr")]
     pub jormungandr: PathBuf,
     #[serde(default = "default_root")]
     pub root: TestingDirectory,
@@ -66,6 +77,10 @@ pub struct SessionSettings {
     pub log: LogLevel,
     #[serde(default = "default_title")]
     pub title: String,
+}
+
+fn default_jormungandr() -> PathBuf {
+    PathBuf::from_str("jormungandr").unwrap()
 }
 
 fn default_log_level() -> LogLevel {
@@ -83,7 +98,7 @@ fn default_title() -> String {
 impl Default for SessionSettings {
     fn default() -> Self {
         Self {
-            jormungandr: PathBuf::from_str("jormungandr").unwrap(),
+            jormungandr: default_jormungandr(),
             root: default_root(),
             mode: SessionMode::Standard,
             log: default_log_level(),

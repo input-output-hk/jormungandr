@@ -10,7 +10,7 @@ pub fn spawn_network(config: Config, mut topology: Topology, args: Args) -> Resu
     let mut controller = NetworkBuilder::default()
         .topology(topology.clone())
         .session_settings(config.session.clone())
-        .blockchain_config(config.blockchain.clone())
+        .blockchain_config(config.build_blockchain())
         .build()?;
 
     let mut processes: HashMap<NodeAlias, JormungandrProcess> = HashMap::new();
