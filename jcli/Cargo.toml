@@ -38,7 +38,7 @@ bytes = "1.1"
 rpassword = "5.0"
 
 [dependencies.clap]
-version = "2.33"
+version = "3.0"
 default-features = false
 features = [ "suggestions", "color", "wrap_help" ]
 
