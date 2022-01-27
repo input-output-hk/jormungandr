@@ -324,6 +324,8 @@ impl BlockchainConfiguration {
                 ConfigParam::TransactionMaxExpiryEpochs(value) => tx_max_expiry_epochs
                     .replace(value)
                     .map(|_| "tx_max_expiry_epochs"),
+                #[cfg(feature = "evm")]
+                ConfigParam::EvmParams(_params) => todo!(),
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;

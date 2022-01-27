@@ -176,6 +176,8 @@ impl TryFrom<ConfigParamLib> for ConfigParam {
             ConfigParamLib::TransactionMaxExpiryEpochs(val) => {
                 Self::TransactionMaxExpiryEpochs(val)
             }
+            #[cfg(feature = "evm")]
+            ConfigParamLib::EvmParams(_params) => todo!(),
         })
     }
 }
