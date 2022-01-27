@@ -1,6 +1,5 @@
 use super::{ALICE, BOB, CLARICE, DAVID};
 use super::{LEADER, PASSIVE};
-use function_name::named;
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
 use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
@@ -16,7 +15,6 @@ use std::path::PathBuf;
 use thor::{FragmentSender, StakePool};
 
 #[test]
-#[named]
 pub fn legacy_current_node_fragment_propagation() {
     let mut controller = NetworkBuilder::default()
         .topology(
@@ -63,7 +61,6 @@ pub fn legacy_current_node_fragment_propagation() {
 }
 
 #[test]
-#[named]
 pub fn current_node_legacy_fragment_propagation() {
     let mut controller = NetworkBuilder::default()
         .topology(
