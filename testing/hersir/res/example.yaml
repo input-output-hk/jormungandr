@@ -12,7 +12,7 @@ nodes:
 
 blockchain:
     discrimination: test
-    consensus: genesis_praos
+    consensus: bft
     linear_fee:
       constant: 1
       coefficient: 1
