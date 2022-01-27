@@ -674,13 +674,15 @@ pub(super) mod internal {
         use super::*;
         use chain_core::property::Fragment as _;
         use chain_impl_mockchain::transaction::TxBuilder;
+        use quickcheck::TestResult;
         use quickcheck_macros::quickcheck;
+        use std::collections::HashSet;
 
         #[quickcheck]
         fn overflowing_pool_should_reject_new_fragments(
             fragments1_in: (Fragment, Fragment, Fragment),
             fragments2_in: (Fragment, Fragment),
-        ) {
+        ) -> TestResult {
             let fragments1 = vec![
                 (fragments1_in.0.clone(), fragments1_in.0.id()),
                 (fragments1_in.1.clone(), fragments1_in.1.id()),
@@ -691,6 +693,18 @@ pub(super) mod internal {
                 (fragments2_in.0.clone(), fragments2_in.0.id()),
                 (fragments2_in.1.clone(), fragments2_in.1.id()),
             ];
+
+            if fragments1
+                .iter()
+                .chain(fragments2.iter())
+                .map(|(_, id)| id)
+                .collect::<HashSet<_>>()
+                .len()
+                != 5
+            {
+                return TestResult::discard();
+            }
+
             let fragments2_expected = vec![(fragments2_in.0.clone(), fragments2_in.0.id())];
             let final_expected = vec![
                 (fragments1_in.0.clone(), fragments1_in.0.id()),
@@ -707,11 +721,12 @@ pub(super) mod internal {
                     .map(|(f, _)| f.to_raw().size_bytes_plus_size())
                     .sum::<usize>()
             );
+
             assert_eq!(fragments2_expected, pool.insert_all(fragments2));
             for expected in final_expected.into_iter() {
                 assert_eq!(expected, pool.remove_oldest().unwrap());
             }
-            assert!(pool.remove_oldest().is_none());
+            TestResult::from_bool(pool.remove_oldest().is_none())
         }
 
         #[test]
