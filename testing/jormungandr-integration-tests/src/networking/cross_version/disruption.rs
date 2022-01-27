@@ -4,6 +4,7 @@ use crate::networking::utils;
 use assert_fs::fixture::PathChild;
 use function_name::named;
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
@@ -209,6 +210,9 @@ pub fn newest_node_enters_legacy_network() {
                 .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_1))
                 .with_node(Node::new(LEADER_3).with_trusted_peer(LEADER_1))
                 .with_node(Node::new(LEADER_4).with_trusted_peer(LEADER_1)),
+        )
+        .blockchain_config(
+            Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4]),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)

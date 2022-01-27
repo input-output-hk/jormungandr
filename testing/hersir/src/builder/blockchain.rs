@@ -171,6 +171,11 @@ impl Blockchain {
         self
     }
 
+    pub fn with_leaders<S: Into<NodeAlias>>(mut self, aliases: Vec<S>) -> Self {
+        self.leaders.extend(aliases.into_iter().map(Into::into));
+        self
+    }
+
     pub fn linear_fee(&self) -> LinearFee {
         self.linear_fee
     }
@@ -331,6 +336,11 @@ impl BlockchainBuilder {
 
     pub fn leader<S: Into<NodeAlias>>(mut self, alias: S) -> Self {
         self.blockchain = self.blockchain.with_leader(alias.into());
+        self
+    }
+
+    pub fn leaders<S: Into<NodeAlias>>(mut self, aliases: Vec<S>) -> Self {
+        self.blockchain = self.blockchain.with_leaders(aliases);
         self
     }
     pub fn linear_fee(mut self, linear_fee: LinearFee) -> Self {

@@ -1,6 +1,7 @@
 use super::{ALICE, BOB, CLARICE, DAVID};
 use super::{LEADER, PASSIVE};
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
@@ -22,6 +23,7 @@ pub fn legacy_current_node_fragment_propagation() {
                 .with_node(Node::new(LEADER))
                 .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
         )
+        .blockchain_config(Blockchain::default().with_leader(LEADER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_500_000_000)

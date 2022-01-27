@@ -41,6 +41,7 @@ pub fn p2p_stats_test() {
                         .with_trusted_peer(LEADER3),
                 ),
         )
+        .blockchain_config(Blockchain::default().with_leaders(vec![LEADER1, LEADER2, LEADER3]))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_000_000_000)
@@ -169,6 +170,7 @@ pub fn passive_node_last_block_info() {
                 .with_node(Node::new(LEADER))
                 .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
         )
+        .blockchain_config(Blockchain::default().with_leader(LEADER))
         .wallet_template(
             WalletTemplateBuilder::new("alice")
                 .with(1_000_000)
@@ -225,6 +227,7 @@ pub fn leader_node_last_block_info() {
                 .build(),
         )
         .wallet_template(WalletTemplateBuilder::new("bob").with(1_000_000).build())
+        .blockchain_config(Blockchain::default().with_leader(LEADER))
         .build()
         .unwrap();
 
