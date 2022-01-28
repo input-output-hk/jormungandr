@@ -439,7 +439,7 @@ source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#5e
 dependencies = [
  "cbor_event",
  "chain-ser",
- "cryptoxide",
+ "cryptoxide 0.3.6",
  "ed25519-bip32",
 ]
 
@@ -484,7 +484,7 @@ dependencies = [
  "bech32 0.8.1",
  "chain-core",
  "chain-crypto",
- "cryptoxide",
+ "cryptoxide 0.3.6",
  "proptest",
  "quickcheck",
  "test-strategy",
@@ -504,7 +504,7 @@ version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#5e91dccf26470ca307f7cbd302f6d3451f163aed"
 dependencies = [
  "bech32 0.8.1",
- "cryptoxide",
+ "cryptoxide 0.3.6",
  "curve25519-dalek-ng",
  "ed25519-bip32",
  "ed25519-dalek",
@@ -532,7 +532,7 @@ dependencies = [
  "chain-ser",
  "chain-time",
  "chain-vote",
- "cryptoxide",
+ "cryptoxide 0.3.6",
  "ed25519-bip32",
  "hex",
  "imhamt",
@@ -606,7 +606,7 @@ dependencies = [
  "chain-core",
  "chain-crypto",
  "const_format",
- "cryptoxide",
+ "cryptoxide 0.3.6",
  "rand 0.8.4",
  "rand_core 0.6.3",
  "rayon",
@@ -824,6 +824,12 @@ name = "cryptoxide"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42014d4c82e74bc17aaccc4bd75d3615d2b8236198de81c51bed5ddefaae6435"
+
+[[package]]
+name = "cryptoxide"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cf8a794418b9169ad32a485ee3ebb309e0dd8b5016b1c5e0a838219d05fca01"
 
 [[package]]
 name = "csv"
@@ -1058,11 +1064,11 @@ dependencies = [
 
 [[package]]
 name = "ed25519-bip32"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c091ed784fcf257830c75851d6c88fd5991f98d2f3fa9ed23c3f6bac4eec3cc"
+checksum = "cb588f93c0d91b2f668849fd6d030cddb0b2e31f105963be189da5acdf492a21"
 dependencies = [
- "cryptoxide",
+ "cryptoxide 0.4.1",
 ]
 
 [[package]]
@@ -2127,7 +2133,7 @@ version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5bf8dc22157c7a4d75f1df13a1b75ada82431141423e3d419ac89f2c1fbb298"
 dependencies = [
- "cryptoxide",
+ "cryptoxide 0.3.6",
  "hex",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
