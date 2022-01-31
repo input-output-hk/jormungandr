@@ -23,6 +23,7 @@ pub struct WalletTemplate {
     tokens: HashMap<TokenIdentifier, u64>,
 }
 
+#[allow(clippy::derive_hash_xor_eq)]
 impl Hash for WalletTemplate {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.alias.hash(state)

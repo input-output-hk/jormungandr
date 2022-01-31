@@ -141,6 +141,7 @@ impl Controller {
             .owner(&key.owner_alias)
             .payload_type(vote_plan.payload_type())
             .committee_keys(vote_plan.committee_public_keys().to_vec())
+            .voting_token(vote_plan.voting_token().clone())
             .vote_phases(
                 vote_plan.vote_start().epoch,
                 vote_plan.committee_start().epoch,
