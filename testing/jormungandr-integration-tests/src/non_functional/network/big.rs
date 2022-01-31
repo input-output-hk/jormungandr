@@ -15,6 +15,7 @@ use jormungandr_automation::testing::SyncNode;
 use jormungandr_automation::testing::SyncWaitParams;
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jormungandr_lib::interfaces::SlotDuration;
+use std::collections::HashMap;
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE: &str = "Relay";
@@ -95,6 +96,7 @@ fn prepare_real_scenario(
             initial_wallet_name.to_owned(),
             Value(100_000),
             blockchain.discrimination(),
+            HashMap::new(),
         );
         *wallet.delegate_mut() = Some(leader_name(i).to_owned());
         blockchain = blockchain.with_wallet(wallet);
@@ -106,6 +108,7 @@ fn prepare_real_scenario(
             initial_wallet_name.to_owned(),
             Value(100_000),
             blockchain.discrimination(),
+            HashMap::new(),
         );
         *wallet.delegate_mut() = Some(legacy_name(i).to_owned());
         blockchain = blockchain.with_wallet(wallet);

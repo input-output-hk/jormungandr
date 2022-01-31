@@ -21,6 +21,7 @@ use jormungandr_automation::{
 };
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::FragmentGenerator;
+use std::collections::HashMap;
 use std::fs::metadata;
 use std::path::Path;
 use std::thread::sleep;
@@ -511,12 +512,14 @@ fn pending_transaction_stats() {
             ALICE,
             Value(100_000),
             chain_addr::Discrimination::Test,
+            HashMap::new(),
         ))
         .blockchain_config(Blockchain::default().with_leader(LEADER))
         .wallet_template(WalletTemplate::new_account(
             BOB,
             Value(100_000),
             chain_addr::Discrimination::Test,
+            HashMap::new(),
         ))
         .build()
         .unwrap();

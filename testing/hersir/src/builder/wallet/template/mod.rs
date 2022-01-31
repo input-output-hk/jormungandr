@@ -6,11 +6,12 @@ use chain_addr::Discrimination;
 use chain_impl_mockchain::value::Value;
 pub use external::ExternalWalletTemplate;
 use jormungandr_automation::jormungandr::NodeAlias;
-use jormungandr_lib::interfaces::{DiscriminationDef, ValueDef};
+use jormungandr_lib::interfaces::{DiscriminationDef, TokenIdentifier, ValueDef};
 use serde::Deserialize;
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use thor::WalletAlias;
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct WalletTemplate {
     alias: WalletAlias,
     #[serde(with = "ValueDef")]
@@ -19,6 +20,13 @@ pub struct WalletTemplate {
     delegate: Option<NodeAlias>,
     #[serde(with = "DiscriminationDef")]
     discrimination: Discrimination,
+    tokens: HashMap<TokenIdentifier, u64>,
+}
+
+impl Hash for WalletTemplate {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.alias.hash(state)
+    }
 }
 
 impl WalletTemplate {
@@ -26,15 +34,17 @@ impl WalletTemplate {
         alias: S,
         value: Value,
         discrimination: Discrimination,
+        tokens: HashMap<TokenIdentifier, u64>,
     ) -> Self {
-        Self::new(alias, value, WalletType::Account, discrimination)
+        Self::new(alias, value, WalletType::Account, discrimination, tokens)
     }
     pub fn new_utxo<S: Into<WalletAlias>>(
         alias: S,
         value: Value,
         discrimination: Discrimination,
+        tokens: HashMap<TokenIdentifier, u64>,
     ) -> Self {
-        Self::new(alias, value, WalletType::UTxO, discrimination)
+        Self::new(alias, value, WalletType::UTxO, discrimination, tokens)
     }
 
     #[inline]
@@ -43,6 +53,7 @@ impl WalletTemplate {
         value: Value,
         wallet_type: WalletType,
         discrimination: Discrimination,
+        tokens: HashMap<TokenIdentifier, u64>,
     ) -> Self {
         Self {
             alias: alias.into(),
@@ -50,6 +61,7 @@ impl WalletTemplate {
             wallet_type,
             delegate: None,
             discrimination,
+            tokens,
         }
     }
 
@@ -75,5 +87,9 @@ impl WalletTemplate {
 
     pub fn delegate_mut(&mut self) -> &mut Option<NodeAlias> {
         &mut self.delegate
+    }
+
+    pub fn tokens(&self) -> &HashMap<TokenIdentifier, u64> {
+        &self.tokens
     }
 }
