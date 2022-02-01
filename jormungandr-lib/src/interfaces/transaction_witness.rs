@@ -171,7 +171,7 @@ mod test {
                     let cc = pk.chain_code();
                     let pk_ed = chain_crypto::PublicKey::from_binary(&pk.public_key()).unwrap();
 
-                    Witness::OldUtxo(pk_ed, cc, Arbitrary::arbitrary(g)).into()
+                    Witness::OldUtxo(pk_ed, *cc, Arbitrary::arbitrary(g)).into()
                 }
                 3 => unimplemented!(), // Multisig
                 _ => unreachable!(),

@@ -1,4 +1,4 @@
-use jormungandr_testing_utils::testing::{jcli::JCli, startup::create_new_key_pair};
+use jormungandr_automation::{jcli::JCli, testing::keys::create_new_key_pair};
 
 use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
 

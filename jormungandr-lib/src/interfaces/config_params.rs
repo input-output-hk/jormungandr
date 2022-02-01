@@ -60,7 +60,7 @@ pub enum ConfigParam {
     PerVoteCertificateFees(PerVoteCertificateFee),
     TransactionMaxExpiryEpochs(u8),
     #[cfg(feature = "evm")]
-    EvmParams(Box<super::evm_params::EvmConfigParams>),
+    EvmParams(super::evm_params::EvmConfig),
 }
 
 #[derive(Debug, Error)]
@@ -121,7 +121,7 @@ impl From<ConfigParam> for ConfigParamLib {
             ConfigParam::PerVoteCertificateFees(val) => Self::PerVoteCertificateFees(val),
             ConfigParam::TransactionMaxExpiryEpochs(val) => Self::TransactionMaxExpiryEpochs(val),
             #[cfg(feature = "evm")]
-            ConfigParam::EvmParams(val) => Self::EvmParams(Box::new((*val).into())),
+            ConfigParam::EvmParams(val) => Self::EvmParams(val.into()),
         }
     }
 }
@@ -181,7 +181,7 @@ impl TryFrom<ConfigParamLib> for ConfigParam {
                 Self::TransactionMaxExpiryEpochs(val)
             }
             #[cfg(feature = "evm")]
-            ConfigParamLib::EvmParams(val) => Self::EvmParams(Box::new((*val).into())),
+            ConfigParamLib::EvmParams(val) => Self::EvmParams(val.into()),
         })
     }
 }

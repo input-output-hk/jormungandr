@@ -6,9 +6,9 @@ use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
-use jormungandr_testing_utils::testing::jormungandr::FaketimeConfig;
-use jormungandr_testing_utils::testing::FragmentSender;
-use jormungandr_testing_utils::wallet::Wallet;
+use jormungandr_automation::jormungandr::FaketimeConfig;
+use thor::FragmentSender;
+use thor::Wallet;
 
 #[test]
 pub fn bft_forks() {
@@ -74,7 +74,7 @@ pub fn bft_forks() {
                 (transaction_amount + i).into(),
             )
             .unwrap();
-        let state = leader_1.rest().account_state(&alice).unwrap();
+        let state = leader_1.rest().account_state(&alice.account_id()).unwrap();
         // The fragment sender currently only uses the counter in lane 0
         let updated_counter = state.counters()[0];
         if let Wallet::Account(account) = &alice {
@@ -87,7 +87,12 @@ pub fn bft_forks() {
         std::thread::sleep(std::time::Duration::from_secs(5));
     }
 
-    let account_value: u64 = (*leader_1.rest().account_state(&alice).unwrap().value()).into();
+    let account_value: u64 = (*leader_1
+        .rest()
+        .account_state(&alice.account_id())
+        .unwrap()
+        .value())
+    .into();
     assert!(
         account_value < starting_funds - transaction_amount * n_transactions,
         "found {}",

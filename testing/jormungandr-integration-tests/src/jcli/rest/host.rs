@@ -1,4 +1,4 @@
-use jormungandr_testing_utils::testing::jcli::JCli;
+use jormungandr_automation::jcli::JCli;
 
 #[test]
 

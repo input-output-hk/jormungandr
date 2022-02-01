@@ -10,3 +10,5 @@ pub mod jormungandr;
 pub mod networking;
 #[cfg(all(test, feature = "non-functional"))]
 pub mod non_functional;
+
+pub mod startup;

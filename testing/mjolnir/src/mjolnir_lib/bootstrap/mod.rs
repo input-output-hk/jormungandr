@@ -4,7 +4,7 @@ mod scenario;
 use crate::mjolnir_lib::MjolnirError;
 use chain_impl_mockchain::key::Hash;
 use config::{ClientLoadConfig, PassiveBootstrapLoad, ScenarioType};
-use jormungandr_testing_utils::testing::node::grpc::client::JormungandrClient;
+use jormungandr_automation::jormungandr::grpc::JormungandrClient;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;

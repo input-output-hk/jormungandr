@@ -1,13 +1,11 @@
 use chain_impl_mockchain::fragment::FragmentId;
-use jormungandr_testing_utils::testing::AdversaryFragmentSender;
-use jormungandr_testing_utils::testing::FragmentSender;
-use jormungandr_testing_utils::testing::FragmentSenderSetup;
-use jormungandr_testing_utils::testing::RemoteJormungandr;
-use jormungandr_testing_utils::testing::SyncNode;
-use jormungandr_testing_utils::wallet::Wallet;
+use jormungandr_automation::jormungandr::RemoteJormungandr;
+use jormungandr_automation::testing::SyncNode;
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
+use loki::AdversaryFragmentSender;
 use rand_core::OsRng;
 use std::time::Instant;
+use thor::{FragmentSender, FragmentSenderSetup, Wallet};
 
 const DEFAULT_MAX_SPLITS: usize = 7; // equals to 128 splits, will likely not reach that value but it's there just to prevent a stack overflow
 

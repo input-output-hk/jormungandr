@@ -6,13 +6,13 @@ use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
+use jormungandr_automation::jormungandr::JormungandrProcess;
 use jormungandr_lib::interfaces::NodeStats;
 use jormungandr_lib::interfaces::Policy;
 use jormungandr_lib::interfaces::SlotDuration;
-use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
-use jormungandr_testing_utils::testing::FragmentSender;
 use std::fmt::Display;
 use std::time::Duration;
+use thor::FragmentSender;
 
 const LEADER1: &str = "LEADER1";
 const LEADER2: &str = "LEADER2";

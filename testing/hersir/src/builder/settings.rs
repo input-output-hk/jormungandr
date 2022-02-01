@@ -9,10 +9,14 @@ use assert_fs::fixture::PathChild;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::testing::create_initial_vote_plan;
+use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{
     certificate::VotePlan, chaintypes::ConsensusVersion, fee::LinearFee, vote::PayloadType,
 };
+use jormungandr_automation::jormungandr::NodeAlias;
 use jormungandr_lib::crypto::account::Identifier;
+use jormungandr_lib::interfaces::Destination;
+use jormungandr_lib::interfaces::InitialToken;
 use jormungandr_lib::interfaces::{try_initial_fragment_from_message, VotePlan as VotePLanLib};
 use jormungandr_lib::{
     crypto::key::SigningKey,
@@ -21,13 +25,10 @@ use jormungandr_lib::{
         GenesisPraos, Initial, InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
     },
 };
-use jormungandr_testing_utils::stake_pool::StakePool;
-use jormungandr_testing_utils::testing::node::NodeAlias;
-use jormungandr_testing_utils::testing::signed_stake_pool_cert;
-use jormungandr_testing_utils::wallet::PrivateVoteCommitteeDataManager;
-use jormungandr_testing_utils::wallet::{Wallet as WalletLib, WalletAlias};
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
+use thor::PrivateVoteCommitteeDataManager;
+use thor::{signed_stake_pool_cert, StakePool, Wallet as WalletLib, WalletAlias};
 
 /// contains all the data to start or interact with a node
 #[derive(Debug, Clone)]
@@ -48,7 +49,7 @@ pub struct NodeSetting {
     pub node_topology: NodeTemplate,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Settings {
     pub nodes: HashMap<NodeAlias, NodeSetting>,
 
@@ -102,11 +103,28 @@ impl Settings {
         external_wallets: Vec<ExternalWalletTemplate>,
     ) {
         for template in external_wallets {
+            let address: jormungandr_lib::interfaces::Address = template.address().parse().unwrap();
+
             let external_fragment = Initial::Fund(vec![InitialUTxO {
-                address: template.address().parse().unwrap(),
+                address: address.clone(),
                 value: (*template.value()).into(),
             }]);
+
             self.block0.initial.push(external_fragment);
+
+            for (token_identifier, value) in template.tokens() {
+                let tokens_fragment = Initial::Token(InitialToken {
+                    token_id: token_identifier.clone(),
+                    // TODO: there are no policies now, but this will need to be changed later
+                    policy: MintingPolicy::new().into(),
+                    to: vec![Destination {
+                        address: address.clone(),
+                        value: (*value).into(),
+                    }],
+                });
+
+                self.block0.initial.push(tokens_fragment);
+            }
         }
     }
 

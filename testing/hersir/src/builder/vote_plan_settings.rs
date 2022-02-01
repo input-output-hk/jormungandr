@@ -1,8 +1,8 @@
 use chain_impl_mockchain::certificate::VotePlanId;
 use jormungandr_lib::interfaces::VotePlan;
-use jormungandr_testing_utils::wallet::PrivateVoteCommitteeDataManager;
+use thor::PrivateVoteCommitteeDataManager;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum VotePlanSettings {
     Public(VotePlan),
     Private {

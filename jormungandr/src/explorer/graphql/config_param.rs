@@ -438,13 +438,13 @@ impl From<&u8> for TransactionMaxExpiryEpochs {
 
 #[cfg(feature = "evm")]
 #[derive(SimpleObject)]
-pub struct EvmConfigParams {
+pub struct EvmConfig {
     evm_params: String,
 }
 
 #[cfg(feature = "evm")]
-impl From<&Box<chain_impl_mockchain::config::EvmConfigParams>> for EvmConfigParams {
-    fn from(_: &Box<chain_impl_mockchain::config::EvmConfigParams>) -> Self {
+impl From<&chain_impl_mockchain::config::EvmConfig> for EvmConfig {
+    fn from(_: &chain_impl_mockchain::config::EvmConfig) -> Self {
         Self {
             evm_params: "EVM config parametrs".to_string(),
         }
@@ -480,7 +480,7 @@ pub enum ConfigParam {
     PerVoteCertificateFees(PerVoteCertificateFee),
     TransactionMaxExpiryEpochs(TransactionMaxExpiryEpochs),
     #[cfg(feature = "evm")]
-    EvmParams(EvmConfigParams),
+    EvmParams(EvmConfig),
 }
 
 #[derive(SimpleObject)]

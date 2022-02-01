@@ -1,13 +1,13 @@
+use crate::startup;
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
-use jormungandr_testing_utils::testing::{
-    jormungandr::ConfigurationBuilder, node::RestRequestGen, startup,
-};
 use jortestkit::load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor};
+use mjolnir::generators::RestRequestGen;
 use std::time::Duration;
 
 #[test]
 pub fn rest_load_quick() {
-    let faucet = startup::create_new_account_address();
+    let faucet = thor::Wallet::default();
 
     let (mut jormungandr, _) = startup::start_stake_pool(
         &[faucet],

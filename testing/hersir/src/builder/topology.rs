@@ -1,4 +1,4 @@
-use jormungandr_testing_utils::testing::node::NodeAlias;
+use jormungandr_automation::jormungandr::NodeAlias;
 use std::collections::{HashMap, HashSet};
 #[derive(Debug, Clone, Default)]
 pub struct Topology {

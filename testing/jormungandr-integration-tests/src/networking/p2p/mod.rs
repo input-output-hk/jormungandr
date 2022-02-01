@@ -5,7 +5,7 @@ pub mod stats;
 pub use connections::max_connections;
 pub use stats::p2p_stats_test;
 
-use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
+use jormungandr_automation::jormungandr::JormungandrProcess;
 
 use jormungandr_lib::interfaces::PeerRecord;
 

@@ -15,6 +15,7 @@
 - Add jcli option to specify a spending counter lane in a user-friendly way
 - Add CORS config params: allowed headers and allowed methods.
 - Update REST API `/api/v0/account/{account_id}`, add new field with the token's state info.
+- Vote tally now uses the token in the voteplan instead of the native currency.
 
 ## Release 0.13.0
 

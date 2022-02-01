@@ -1,6 +1,6 @@
 use assert_fs::prelude::*;
 use assert_fs::NamedTempFile;
-use jormungandr_testing_utils::testing::jcli::JCli;
+use jormungandr_automation::jcli::JCli;
 
 #[test]
 pub fn test_key_from_bytes_ed25519() {

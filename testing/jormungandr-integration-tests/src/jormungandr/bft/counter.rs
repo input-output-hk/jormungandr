@@ -1,10 +1,10 @@
+use crate::startup;
 use assert_fs::TempDir;
 use chain_impl_mockchain::{chaintypes::ConsensusType, testing::WitnessMode};
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
+use jormungandr_automation::jormungandr::Starter;
 use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_testing_utils::testing::jormungandr::Starter;
-use jormungandr_testing_utils::testing::{
-    jormungandr::ConfigurationBuilder, startup, FragmentSender, FragmentSenderSetup,
-};
+use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
 
 #[test]
 fn parallel_transaction_using_different_lanes() {
@@ -34,10 +34,8 @@ fn parallel_transaction_using_different_lanes() {
         .start()
         .unwrap();
 
-    let mut fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        jormungandr.default_block_date_generator(),
+    let mut fragment_sender = FragmentSender::from_with_setup(
+        jormungandr.block0_configuration(),
         FragmentSenderSetup::no_verify(),
     );
 
@@ -71,7 +69,7 @@ fn parallel_transaction_using_different_lanes() {
             .unwrap(),
     );
 
-    jormungandr_testing_utils::testing::FragmentVerifier::wait_and_verify_all_are_in_block(
+    FragmentVerifier::wait_and_verify_all_are_in_block(
         std::time::Duration::from_secs(10),
         checks,
         &jormungandr,

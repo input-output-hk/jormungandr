@@ -1,31 +1,29 @@
+use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
+use jormungandr_automation::testing::{benchmark_consumption, benchmark_endurance, ResourcesUsage};
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
-use jormungandr_testing_utils::testing::{
-    benchmark_consumption, benchmark_endurance, ResourcesUsage,
-};
-use jormungandr_testing_utils::testing::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
-};
 use jortestkit::process as process_utils;
 use std::time::Duration;
+use thor::TransactionHash;
 
 #[test]
 pub fn collect_reward_for_15_minutes() {
     let jcli: JCli = Default::default();
     let duration_48_hours = Duration::from_secs(900);
 
-    let mut sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let mut sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
 
     let stake_pool_owners = [
         sender.clone(),
         receiver.clone(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
-        startup::create_new_account_address(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
+        thor::Wallet::default(),
     ];
     let (jormungandr, _stake_pool_ids) = startup::start_stake_pool(
         &stake_pool_owners,
@@ -48,7 +46,7 @@ pub fn collect_reward_for_15_minutes() {
             .start();
 
     loop {
-        let new_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        let new_transaction = thor::FragmentBuilder::new(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
             BlockDate::first().next_epoch(),

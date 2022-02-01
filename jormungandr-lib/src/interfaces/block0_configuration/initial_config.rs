@@ -139,7 +139,7 @@ pub struct BlockchainConfiguration {
 
     #[cfg(feature = "evm")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub evm_params: Option<crate::interfaces::evm_params::EvmConfigParams>,
+    pub evm_params: Option<crate::interfaces::evm_params::EvmConfig>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -328,7 +328,7 @@ impl BlockchainConfiguration {
                     .map(|_| "tx_max_expiry_epochs"),
                 #[cfg(feature = "evm")]
                 ConfigParam::EvmParams(params) => {
-                    evm_params.replace((*params).into()).map(|_| "evm_params")
+                    evm_params.replace(params.into()).map(|_| "evm_params")
                 }
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
@@ -479,7 +479,7 @@ impl BlockchainConfiguration {
 
         #[cfg(feature = "evm")]
         if let Some(evm_params) = evm_params {
-            params.push(ConfigParam::EvmParams(Box::new(evm_params.into())));
+            params.push(ConfigParam::EvmParams(evm_params.into()));
         }
 
         let params = consensus_leader_ids

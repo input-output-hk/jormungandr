@@ -2,17 +2,13 @@ use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::testing::VoteTestGen;
 use chain_impl_mockchain::vote::PayloadType;
 use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
-use jormungandr_testing_utils::testing::BlockDateGenerator;
-use jormungandr_testing_utils::testing::FragmentBuilder;
-use jormungandr_testing_utils::testing::SyncNode;
-use jormungandr_testing_utils::{
-    testing::{FragmentSender, FragmentSenderError, MemPoolCheck, RemoteJormungandr},
-    wallet::Wallet,
-};
+use jormungandr_automation::jormungandr::{MemPoolCheck, RemoteJormungandr};
+use jormungandr_automation::testing::SyncNode;
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
 use std::time::Instant;
+use thor::{BlockDateGenerator, FragmentBuilder, FragmentSender, FragmentSenderError, Wallet};
 
 const DEFAULT_MAX_SPLITS: usize = 7; // equals to 128 splits, will likely not reach that value but it's there just to prevent a stack overflow
 

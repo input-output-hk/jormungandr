@@ -8,7 +8,7 @@ edition = "2018"
 tonic = "0.6"
 bech32 = "0.7"
 prost = "0.9"
-tokio = { version = "1.4", features = ["macros", "time"] }
+tokio = { version = "1.15", features = ["macros", "time"] }
 futures      = "0.3.18"
 base64 = "0.13"
 hex = "0.4.2"
@@ -21,8 +21,9 @@ chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 jormungandr-lib = { path = "../../jormungandr-lib" }
 hersir = { path = "../hersir" }
 loki = { path = "../loki" }
+thor = { path = "../thor" }
 mjolnir = { path = "../mjolnir" }
-jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
+jormungandr-automation = { path = "../jormungandr-automation" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
 rand = "0.8"
 rand_core = "0.6"
@@ -34,7 +35,7 @@ serde_yaml = "0.8"
 lazy_static = "1.4"
 assert_fs = "1.0"
 predicates = "2.0"
-assert_cmd = "1.0.7"
+assert_cmd = "2.0.4"
 regex = "1.4"
 poldercast = "1.2"
 thiserror = "1.0"

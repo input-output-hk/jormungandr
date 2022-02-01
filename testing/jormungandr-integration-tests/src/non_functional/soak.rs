@@ -1,19 +1,19 @@
+use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
+use jormungandr_automation::testing::{benchmark_consumption, benchmark_endurance};
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed, Mempool};
-use jormungandr_testing_utils::testing::{benchmark_consumption, benchmark_endurance};
-use jormungandr_testing_utils::testing::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
-};
 use jortestkit::process::Wait;
 use std::time::Duration;
+use thor::TransactionHash;
 
 #[test]
 pub fn test_blocks_are_being_created_for_7_hours() {
     let jcli: JCli = Default::default();
     let duration_48_hours = Duration::from_secs(25_200);
 
-    let mut receiver = startup::create_new_account_address();
-    let mut sender = startup::create_new_account_address();
+    let mut receiver = thor::Wallet::default();
+    let mut sender = thor::Wallet::default();
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[],
@@ -41,7 +41,7 @@ pub fn test_blocks_are_being_created_for_7_hours() {
             .start();
 
     loop {
-        let new_transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+        let new_transaction = thor::FragmentBuilder::new(
             &jormungandr.genesis_block_hash(),
             &jormungandr.fees(),
             BlockDate::first().next_epoch(),

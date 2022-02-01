@@ -1,24 +1,20 @@
+use crate::startup;
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
+use jormungandr_automation::testing::{
+    benchmark_efficiency, benchmark_endurance, benchmark_speed, time, EfficiencyBenchmarkDef,
+    EfficiencyBenchmarkFinish, Endurance, Thresholds,
+};
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockDate as JLibBlockDate, KesUpdateSpeed, Mempool,
 };
-use jormungandr_testing_utils::testing::BlockDateGenerator;
-use jormungandr_testing_utils::{
-    testing::{
-        benchmark_efficiency, benchmark_endurance, benchmark_speed,
-        node::time,
-        EfficiencyBenchmarkDef, EfficiencyBenchmarkFinish, Endurance, FragmentSender,
-        FragmentSenderSetup, Thresholds,
-        {jcli::JCli, jormungandr::ConfigurationBuilder, startup},
-    },
-    wallet::Wallet,
-};
 use std::{iter, time::Duration};
+use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
 
 #[test]
 pub fn test_100_transaction_is_processed_in_10_packs_to_many_accounts() {
-    let receivers: Vec<Wallet> = iter::from_fn(|| Some(startup::create_new_account_address()))
+    let receivers: Vec<Wallet> = iter::from_fn(|| Some(thor::Wallet::default()))
         .take(10)
         .collect();
     send_and_measure_100_transaction_in_10_packs_for_recievers(
@@ -29,7 +25,7 @@ pub fn test_100_transaction_is_processed_in_10_packs_to_many_accounts() {
 
 #[test]
 pub fn test_100_transaction_is_processed_in_10_packs_to_single_account() {
-    let single_reciever = startup::create_new_account_address();
+    let single_reciever = thor::Wallet::default();
     let receivers: Vec<Wallet> = iter::from_fn(|| Some(single_reciever.clone()))
         .take(10)
         .collect();
@@ -55,7 +51,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
     receivers: Vec<Wallet>,
     efficiency_benchmark_def: &mut EfficiencyBenchmarkDef,
 ) -> EfficiencyBenchmarkFinish {
-    let mut sender = startup::create_new_account_address();
+    let mut sender = thor::Wallet::default();
     let jcli: JCli = Default::default();
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -90,7 +86,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
                     .add_output(&receiver.address().to_string(), output_value.into())
                     .set_expiry_date(block_date_generator.block_date().into())
                     .finalize()
-                    .seal_with_witness_for_address(&sender)
+                    .seal_with_witness_data(sender.witness_data())
                     .to_message();
                 sender.confirm_transaction();
                 message
@@ -113,8 +109,8 @@ fn send_100_transaction_in_10_packs_for_recievers(
 #[test]
 pub fn test_100_transaction_is_processed_simple() {
     let transaction_max_count = 100;
-    let mut sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let mut sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
     let jcli: JCli = Default::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
@@ -150,7 +146,7 @@ pub fn test_100_transaction_is_processed_simple() {
             .add_output(&receiver.address().to_string(), output_value.into())
             .set_expiry_date(block_date_generator.block_date().into())
             .finalize()
-            .seal_with_witness_for_address(&sender)
+            .seal_with_witness_data(sender.witness_data())
             .to_message();
 
         sender.confirm_transaction();
@@ -177,8 +173,8 @@ pub fn test_100_transaction_is_processed_simple() {
 
 #[test]
 pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
-    let mut sender = startup::create_new_account_address();
-    let mut receiver = startup::create_new_account_address();
+    let mut sender = thor::Wallet::default();
+    let mut receiver = thor::Wallet::default();
     let jcli: JCli = Default::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
@@ -216,7 +212,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
             .add_output(&receiver.address().to_string(), output_value.into())
             .set_expiry_date(block_date_generator.block_date().into())
             .finalize()
-            .seal_with_witness_for_address(&sender)
+            .seal_with_witness_data(sender.witness_data())
             .to_message();
 
         sender.confirm_transaction();
@@ -246,8 +242,8 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
 pub fn test_expired_transactions_processing_speed() {
     const N_TRANSACTIONS: usize = 100_000;
 
-    let mut sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let mut sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -265,7 +261,7 @@ pub fn test_expired_transactions_processing_speed() {
     let output_value = 1;
     let transactions: Vec<Fragment> = (0..N_TRANSACTIONS)
         .map(|_| {
-            let tx = jormungandr_testing_utils::testing::FragmentBuilder::new(
+            let tx = thor::FragmentBuilder::new(
                 &jormungandr.genesis_block_hash(),
                 &jormungandr.fees(),
                 BlockDate {
@@ -305,8 +301,8 @@ pub fn test_expired_transactions_processing_speed() {
 pub fn test_transactions_with_long_ttl_processing_speed() {
     const N_TRANSACTIONS: usize = 1_000;
     const MAX_EXPIRY_EPOCHS: u32 = 20;
-    let mut sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let mut sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
@@ -341,7 +337,7 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
 
     let transactions: Vec<Fragment> = (0..N_TRANSACTIONS)
         .map(|_| {
-            let tx = jormungandr_testing_utils::testing::FragmentBuilder::new(
+            let tx = thor::FragmentBuilder::new(
                 &jormungandr.genesis_block_hash(),
                 &jormungandr.fees(),
                 block_date_generator.block_date(),

@@ -12,19 +12,15 @@ use chain_impl_mockchain::{
     ledger::governance::TreasuryGovernanceAction,
     value::Value,
 };
-use jormungandr_testing_utils::testing::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_testing_utils::testing::AdversaryFragmentSender;
-use jormungandr_testing_utils::testing::AdversaryFragmentSenderSetup;
-use jormungandr_testing_utils::testing::BlockDateGenerator;
-use jormungandr_testing_utils::testing::{benchmark_consumption, VotePlanBuilder};
-use jormungandr_testing_utils::{
-    testing::{node::time::wait_for_epoch, vote_plan_cert, FragmentSender, FragmentSenderSetup},
-    wallet::Wallet,
-};
+use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
+use jormungandr_automation::testing::time::wait_for_epoch;
+use jormungandr_automation::testing::{benchmark_consumption, VotePlanBuilder};
 use jortestkit::load::Configuration;
 use jortestkit::measurement::Status;
+use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::{AdversaryFragmentGenerator, FragmentStatusProvider, VoteCastsGenerator};
 use rand::rngs::OsRng;
+use thor::{vote_plan_cert, BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
 
 pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
     let temp_dir = TempDir::new().unwrap();
@@ -75,7 +71,7 @@ pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
                 .map(|x| x.to_initial_fund(quick_config.initial_fund_per_wallet()))
                 .collect(),
         )
-        .with_committees(&[&committee])
+        .with_committees(&[committee.to_committee_id()])
         .with_slots_per_epoch(quick_config.slots_in_epoch())
         .with_certs(vec![vote_plan_cert])
         .with_explorer()
@@ -221,7 +217,7 @@ pub fn adversary_public_vote_load_scenario(
                 .map(|x| x.to_initial_fund(quick_config.initial_fund_per_wallet()))
                 .collect(),
         )
-        .with_committees(&[&committee])
+        .with_committees(&[committee.to_committee_id()])
         .with_slots_per_epoch(quick_config.slots_in_epoch())
         .with_certs(vec![vote_plan_cert])
         .with_explorer()

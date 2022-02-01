@@ -11,11 +11,11 @@ use chain_impl_mockchain::{
     },
 };
 use chain_time::{Epoch, TimeEra};
+use jormungandr_automation::jormungandr::grpc::client::MockClientError;
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_testing_utils::testing::node::grpc::client::MockClientError;
-use jormungandr_testing_utils::testing::{
-    jcli::JCli, jormungandr::ConfigurationBuilder, startup, transaction_utils::TransactionHash,
-};
+
+use thor::TransactionHash;
 
 use rand::Rng;
 use std::time::Duration;
@@ -296,8 +296,8 @@ pub fn upload_block_nonexisting_stake_pool() {
 // L1020 Get fragments
 #[test]
 pub fn get_fragments() {
-    let sender = startup::create_new_account_address();
-    let receiver = startup::create_new_account_address();
+    let sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
     let config = ConfigurationBuilder::new()
         .with_slot_duration(4)
         .with_funds(vec![InitialUTxO {
@@ -309,7 +309,7 @@ pub fn get_fragments() {
     let setup = setup::client::bootstrap(config);
     let output_value = 1u64;
     let jcli: JCli = Default::default();
-    let transaction = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let transaction = thor::FragmentBuilder::new(
         &setup.server.genesis_block_hash(),
         &setup.server.fees(),
         BlockDate::first().next_epoch(),

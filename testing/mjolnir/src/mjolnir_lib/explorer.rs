@@ -1,5 +1,6 @@
+use crate::generators::ExplorerRequestGen;
 use crate::mjolnir_lib::MjolnirError;
-use jormungandr_testing_utils::testing::node::{explorer::load::ExplorerRequestGen, Explorer};
+use jormungandr_automation::jormungandr::Explorer;
 use jortestkit::{
     load::{ConfigurationBuilder, Monitor},
     prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},

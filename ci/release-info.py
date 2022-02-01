@@ -76,7 +76,7 @@ crates = {
     "jormungandr": [],
     "jormungandr-lib": [],
     "jcli": [],
-    "jormungandr-testing-utils": [],
+    "jormungandr-automation": [],
     "jormungandr-integration-tests": [],
 }
 
