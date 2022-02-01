@@ -103,7 +103,7 @@ pub struct BlockchainConfiguration {
     pub epoch_stability_depth: EpochStabilityDepth,
 
     /// set the maximum number of epochs a transaction can reside in the mempool
-    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tx_max_expiry_epochs: Option<u8>,
 
     /// Fees go to settings, the default being `rewards`.
@@ -134,6 +134,7 @@ pub struct BlockchainConfiguration {
     pub reward_constraints: RewardConstraints,
 
     /// the committee members for the voting management
+    #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub committees: Vec<CommitteeIdDef>,
 
