@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
-jormungandr-testing-utils = { path = "../jormungandr-testing-utils" }
+jormungandr-automation = { path = "../jormungandr-automation" }
 rand_core = "0.6"
 rand = "0.8"
 thiserror = "1.0"
@@ -23,7 +23,9 @@ chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = ["with-bench"] }
 chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-tokio = { version = "1.4", features = ["macros"] }
+tokio = { version = "1.15", features = ["macros"] }
+thor = { path = "../thor" }
+loki = { path = "../loki" }
 
 [build-dependencies]
 versionisator = "1.0.2"

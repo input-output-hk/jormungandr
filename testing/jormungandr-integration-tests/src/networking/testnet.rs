@@ -3,21 +3,18 @@ use crate::jormungandr::genesis::stake_pool::{
 };
 use assert_fs::fixture::PathChild;
 use assert_fs::TempDir;
-use jormungandr_lib::interfaces::{BlockDate, Log, LogEntry, LogOutput, TrustedPeer};
-use jormungandr_testing_utils::testing::{
-    configuration::JormungandrParams,
+use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter, StartupVerificationMode},
-};
-use jormungandr_testing_utils::{
-    testing::node::{
-        download_last_n_releases, get_jormungandr_bin, storage_loading_benchmark_from_log,
+    jormungandr::{
+        download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, JormungandrParams,
+        JormungandrProcess, Starter, StartupVerificationMode, Version,
     },
-    wallet::Wallet,
-    Version,
+    testing::benchmark::storage_loading_benchmark_from_log,
 };
+use jormungandr_lib::interfaces::{BlockDate, Log, LogEntry, LogOutput, TrustedPeer};
 use jortestkit::process::WaitBuilder;
 use std::{env, path::PathBuf, time::Duration};
+use thor::Wallet;
 
 #[derive(Clone, Debug)]
 pub struct TestnetConfig {

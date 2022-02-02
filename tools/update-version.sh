@@ -1,6 +1,6 @@
 #! /bin/sh
 
-PACKAGES='jormungandr jormungandr-lib jcli testing/jormungandr-integration-tests testing/jormungandr-testing-utils'
+PACKAGES='jormungandr jormungandr-lib jcli testing/jormungandr-integration-tests testing/jormungandr-automation'
 
 if [ "${EDITOR}x" = "x" ]; then
     echo "> no environment variable \`EDITOR', trying known editors'"

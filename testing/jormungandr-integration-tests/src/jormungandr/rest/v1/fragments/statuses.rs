@@ -1,14 +1,17 @@
+use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId};
-use jormungandr_testing_utils::testing::jormungandr::JormungandrProcess;
-use jormungandr_testing_utils::testing::{jormungandr::ConfigurationBuilder, startup};
-use jormungandr_testing_utils::testing::{FragmentSenderSetup, MemPoolCheck};
+use jormungandr_automation::jormungandr::ConfigurationBuilder;
+use jormungandr_automation::jormungandr::JormungandrProcess;
+use jormungandr_automation::jormungandr::MemPoolCheck;
 use rstest::*;
+use thor::FragmentSender;
+use thor::FragmentSenderSetup;
 
 #[fixture]
 fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
-    let alice = startup::create_new_account_address();
-    let bob = startup::create_new_account_address();
-    let mut clarice = startup::create_new_account_address();
+    let alice = thor::Wallet::default();
+    let bob = thor::Wallet::default();
+    let mut clarice = thor::Wallet::default();
 
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
@@ -17,9 +20,9 @@ fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
     )
     .unwrap();
 
-    let transaction_sender = jormungandr.fragment_sender(FragmentSenderSetup::resend_3_times());
+    let transaction_sender = FragmentSender::from(jormungandr.block0_configuration());
 
-    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let fragment_builder = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         BlockDate::first().next_epoch(),

@@ -34,7 +34,7 @@ jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.6.0"
 ed25519-bip32 = "0.4"
 thiserror = "1.0"
-bytes = "1.0"
+bytes = "1.1"
 rpassword = "5.0"
 
 [dependencies.clap]

@@ -1,5 +1,6 @@
+use crate::generators::RestRequestGen;
 use crate::mjolnir_lib::MjolnirError;
-use jormungandr_testing_utils::testing::node::{JormungandrRest, RestRequestGen};
+use jormungandr_automation::jormungandr::JormungandrRest;
 use jortestkit::{
     load::{ConfigurationBuilder, Monitor},
     prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},

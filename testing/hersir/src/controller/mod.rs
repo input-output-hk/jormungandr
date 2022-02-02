@@ -1,6 +1,6 @@
 mod context;
 mod error;
-mod interactive;
+pub mod interactive;
 mod monitor;
 
 use crate::builder::NodeSetting;
@@ -22,30 +22,28 @@ pub use interactive::{
     do_for_all_alias, InteractiveCommandError, JormungandrInteractiveCommandExec,
     UserInteractionController,
 };
+use jormungandr_automation::jormungandr::ConfiguredStarter;
+use jormungandr_automation::jormungandr::JormungandrParams;
+use jormungandr_automation::jormungandr::LegacyNodeConfig;
+use jormungandr_automation::jormungandr::LegacyNodeConfigConverter;
+use jormungandr_automation::jormungandr::NodeAlias;
+use jormungandr_automation::jormungandr::PersistenceMode;
+use jormungandr_automation::jormungandr::TestingDirectory;
+use jormungandr_automation::jormungandr::Version;
+use jormungandr_automation::jormungandr::{JormungandrProcess, LogLevel, Starter};
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
-use jormungandr_testing_utils::stake_pool::StakePool;
-use jormungandr_testing_utils::testing::jormungandr::ConfiguredStarter;
-use jormungandr_testing_utils::testing::jormungandr::PersistenceMode;
-use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
-use jormungandr_testing_utils::testing::node::configuration::legacy::NodeConfig as LegacyNodeConfig;
-use jormungandr_testing_utils::testing::node::NodeAlias;
-use jormungandr_testing_utils::testing::LegacyNodeConfigConverter;
-use jormungandr_testing_utils::testing::{
-    jormungandr::starter::Starter, jormungandr::JormungandrProcess, node::LogLevel,
-};
-use jormungandr_testing_utils::wallet::WalletAlias;
-use jormungandr_testing_utils::Version;
-use jormungandr_testing_utils::{testing::JormungandrParams, wallet::Wallet};
 pub use monitor::{
     LegacyNode as MonitorLegacyNode, MonitorController, MonitorControllerBuilder,
-    Node as MonitorNode, NodeError,
+    Node as MonitorNode, NodeError, ProgressBarController,
 };
 use std::path::PathBuf;
+use thor::{StakePool, Wallet, WalletAlias};
 
 const NODE_CONFIG_FILE: &str = "node_config.yaml";
 const NODE_SECRETS_FILE: &str = "node_secret.yaml";
 const NODE_TOPOLOGY_KEY_FILE: &str = "node_topology_key";
 
+#[derive(Clone)]
 pub struct Controller {
     settings: Settings,
     working_directory: TestingDirectory,

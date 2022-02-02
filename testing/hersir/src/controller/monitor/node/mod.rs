@@ -7,25 +7,21 @@ pub use legacy::LegacyNode;
 use crate::style;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use jormungandr_automation::jormungandr::Explorer;
+use jormungandr_automation::jormungandr::LogLevel;
+use jormungandr_automation::jormungandr::NodeAlias;
+pub use jormungandr_automation::jormungandr::{
+    grpc::{client::MockClientError, JormungandrClient},
+    uri_from_socket_addr, FragmentNode, FragmentNodeError, JormungandrLogger, JormungandrRest,
+    MemPoolCheck, RestError,
+};
+use jormungandr_automation::jormungandr::{
+    JormungandrProcess, ShutdownError, StartupError, StartupVerificationMode, Status,
+};
+use jormungandr_automation::testing::SyncNode;
 use jormungandr_lib::interfaces::NodeState;
 use jormungandr_lib::interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary};
 use jormungandr_lib::{crypto::hash::Hash, multiaddr};
-use jormungandr_testing_utils::testing::jormungandr::ShutdownError;
-use jormungandr_testing_utils::testing::jormungandr::{
-    JormungandrProcess, StartupError, StartupVerificationMode, Status,
-};
-use jormungandr_testing_utils::testing::node::Explorer;
-use jormungandr_testing_utils::testing::node::LogLevel;
-use jormungandr_testing_utils::testing::node::NodeAlias;
-use jormungandr_testing_utils::testing::SyncNode;
-pub use jormungandr_testing_utils::testing::{
-    node::{
-        grpc::{client::MockClientError, JormungandrClient},
-        uri_from_socket_addr, JormungandrLogger, JormungandrRest, RestError,
-    },
-    MemPoolCheck, NamedProcess,
-};
-use jormungandr_testing_utils::testing::{FragmentNode, FragmentNodeError};
 use std::collections::HashMap;
 
 use indicatif::ProgressBar;

@@ -1,9 +1,9 @@
 use assert_fs::TempDir;
-use jormungandr_lib::interfaces::Tls;
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::{
     jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode},
-    resources,
+    testing::resources,
 };
+use jormungandr_lib::interfaces::Tls;
 
 #[test]
 #[cfg(any(unix, windows))]

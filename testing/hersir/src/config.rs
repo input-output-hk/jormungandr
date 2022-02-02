@@ -1,4 +1,4 @@
-use jormungandr_testing_utils::testing::{jormungandr::TestingDirectory, node::LogLevel};
+use jormungandr_automation::jormungandr::{LogLevel, TestingDirectory};
 
 use crate::{
     builder::{Blockchain, Node, NodeAlias, SpawnParams, Topology},

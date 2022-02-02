@@ -9,14 +9,14 @@ use crate::style;
 use crate::utils::Dotifier;
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
+use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
 use indicatif::{MultiProgress, ProgressBar};
+use jormungandr_automation::jormungandr::LeadershipMode;
+use jormungandr_automation::jormungandr::PersistenceMode;
+use jormungandr_automation::jormungandr::TestingDirectory;
+use jormungandr_automation::jormungandr::Version;
+use jormungandr_automation::testing::observer::{Event, Observable, Observer};
 use jormungandr_lib::interfaces::Block0Configuration;
-use jormungandr_testing_utils::testing::jormungandr::LeadershipMode;
-use jormungandr_testing_utils::testing::jormungandr::PersistenceMode;
-use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
-use jormungandr_testing_utils::testing::utils::{Event, Observable, Observer};
-use jormungandr_testing_utils::wallet::WalletAlias;
-use jormungandr_testing_utils::{stake_pool::StakePool, wallet::Wallet, Version};
 pub use node::{Error as NodeError, LegacyNode, Node, ProgressBarController};
 use std::net::SocketAddr;
 use std::{
@@ -24,6 +24,7 @@ use std::{
     rc::Rc,
     sync::Arc,
 };
+use thor::{StakePool, Wallet, WalletAlias};
 
 pub struct MonitorControllerBuilder {
     title: String,
@@ -132,15 +133,27 @@ fn document(path: &Path, inner: &InnerController) -> Result<(), Error> {
 }
 
 impl MonitorController {
-    fn new(controller: InnerController, context: Context) -> Result<Self, Error> {
-        let progress_bar = Arc::new(MultiProgress::new());
-
-        Ok(Self {
+    pub fn new_with_progress_bar(
+        controller: InnerController,
+        context: Context,
+        progress_bar: Arc<MultiProgress>,
+    ) -> Self {
+        Self {
             inner: controller,
             context,
             progress_bar,
             progress_bar_thread: None,
-        })
+        }
+    }
+
+    pub fn new(controller: InnerController, context: Context) -> Result<Self, Error> {
+        let progress_bar = Arc::new(MultiProgress::new());
+
+        Ok(Self::new_with_progress_bar(
+            controller,
+            context,
+            progress_bar,
+        ))
     }
 
     pub fn stake_pool(&mut self, node_alias: &str) -> Result<StakePool, Error> {
@@ -174,6 +187,10 @@ impl MonitorController {
 
     pub fn settings(&self) -> &Settings {
         self.inner.settings()
+    }
+
+    pub fn defined_vote_plans(&self) -> Vec<VotePlanDef> {
+        self.inner.defined_vote_plans()
     }
 
     pub fn context(&self) -> &Context {

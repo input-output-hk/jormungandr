@@ -4,10 +4,10 @@ use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
-use jormungandr_testing_utils::testing::sync::MeasurementReportInterval;
-use jormungandr_testing_utils::testing::FragmentSender;
-use jormungandr_testing_utils::testing::FragmentSenderSetup;
-use jormungandr_testing_utils::testing::SyncWaitParams;
+use jormungandr_automation::testing::benchmark::MeasurementReportInterval;
+use jormungandr_automation::testing::SyncWaitParams;
+use thor::FragmentSender;
+use thor::FragmentSenderSetup;
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";

@@ -1,15 +1,12 @@
-use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use jormungandr_lib::interfaces::TrustedPeer;
-use jormungandr_testing_utils::testing::{
-    node::grpc::{client::JormungandrWatchClient, JormungandrClient},
-    SyncNode,
-};
-
 use assert_fs::TempDir;
-use jormungandr_testing_utils::testing::{
-    configuration::JormungandrParams,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
+use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use jormungandr_automation::jormungandr::{
+    get_available_port,
+    grpc::{client::JormungandrWatchClient, JormungandrClient},
+    ConfigurationBuilder, JormungandrParams, JormungandrProcess, Starter,
 };
+use jormungandr_automation::testing::SyncNode;
+use jormungandr_lib::interfaces::TrustedPeer;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::time::Duration;
 const DEFAULT_SLOT_DURATION: u8 = 2;
@@ -35,7 +32,7 @@ impl Config {
 }
 
 pub mod client {
-    use jormungandr_testing_utils::testing::node::grpc::client::JormungandrWatchClient;
+    use jormungandr_automation::jormungandr::grpc::client::JormungandrWatchClient;
 
     use super::*;
     pub struct ClientBootstrap {
@@ -76,7 +73,6 @@ pub mod client {
 
 pub mod server {
     use super::*;
-    use jormungandr_testing_utils::testing::configuration;
     const SERVER_RETRY_WAIT: Duration = Duration::from_secs(1);
     const TIMEOUT: Duration = Duration::from_secs(60);
 
@@ -88,7 +84,7 @@ pub mod server {
 
     pub fn default() -> ServerBootstrap {
         bootstrap(
-            configuration::get_available_port(),
+            get_available_port(),
             ConfigurationBuilder::new()
                 .with_slot_duration(DEFAULT_SLOT_DURATION)
                 .with_block0_consensus(ConsensusVersion::GenesisPraos)

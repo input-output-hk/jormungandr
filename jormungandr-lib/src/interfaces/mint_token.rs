@@ -52,7 +52,7 @@ impl<'de> Deserialize<'de> for TokenName {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct TokenIdentifier(identifier::TokenIdentifier);
 
 impl From<identifier::TokenIdentifier> for TokenIdentifier {

@@ -3,13 +3,11 @@ use chain_impl_mockchain::{
     fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee},
     vote::CommitteeId,
 };
-use jormungandr_lib::interfaces::{Block0Configuration, Initial, InitialUTxO, LegacyUTxO};
-use jormungandr_testing_utils::testing::{
-    configuration::{Block0ConfigurationBuilder, JormungandrParams},
+use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::ConfigurationBuilder,
-    startup,
+    jormungandr::{Block0ConfigurationBuilder, ConfigurationBuilder, JormungandrParams},
 };
+use jormungandr_lib::interfaces::{Block0Configuration, Initial, InitialUTxO, LegacyUTxO};
 
 use assert_fs::fixture::ChildPath;
 use assert_fs::prelude::*;
@@ -51,7 +49,8 @@ impl Fixture {
 
     fn write_config(&self, file_name: impl AsRef<Path>) -> ChildPath {
         let yaml_file = self.temp_dir.child(file_name);
-        startup::write_block0_config(self.config(), &yaml_file);
+        let content = serde_yaml::to_string(self.config()).unwrap();
+        yaml_file.write_str(&content).unwrap();
         yaml_file
     }
 
@@ -76,7 +75,15 @@ impl Fixture {
 pub fn test_genesis_block_is_built_from_correct_yaml() {
     let temp_dir = TempDir::new().unwrap();
     let config = Block0ConfigurationBuilder::new().build();
-    startup::build_genesis_block(&config, &temp_dir);
+    let config_file = temp_dir.child("genesis.yaml");
+    let content = serde_yaml::to_string(&config).unwrap();
+    config_file.write_str(&content).unwrap();
+    let output_block_file = temp_dir.child("block-0.bin");
+    let jcli: JCli = Default::default();
+    jcli.genesis()
+        .encode(config_file.path(), &output_block_file);
+
+    assert!(output_block_file.path().exists());
 }
 
 #[test]
@@ -136,8 +143,8 @@ pub fn test_genesis_without_initial_funds_is_built_successfully() {
 
 #[test]
 pub fn test_genesis_with_many_initial_funds_is_built_successfully() {
-    let address_1 = startup::create_new_account_address();
-    let address_2 = startup::create_new_account_address();
+    let address_1 = thor::Wallet::default();
+    let address_2 = thor::Wallet::default();
     let initial_funds = Initial::Fund(vec![
         InitialUTxO {
             value: 100.into(),

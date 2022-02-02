@@ -1,8 +1,5 @@
-use jormungandr_testing_utils::testing::{
-    block0::GetBlock0Error,
-    jormungandr::{JormungandrError, StartupError},
-    node::RestError,
-};
+use jormungandr_automation::jormungandr::{JormungandrError, RestError, StartupError};
+use jormungandr_automation::testing::block0::GetBlock0Error;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

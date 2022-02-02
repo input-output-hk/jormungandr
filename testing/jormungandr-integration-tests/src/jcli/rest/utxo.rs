@@ -1,11 +1,10 @@
-use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_testing_utils::testing::{
-    jcli::JCli,
-    jormungandr::{starter::Starter, ConfigurationBuilder},
-    startup,
-};
-
+use crate::startup;
 use assert_fs::TempDir;
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+};
+use jormungandr_lib::interfaces::InitialUTxO;
 
 #[test]
 pub fn test_correct_utxos_are_read_from_node() {
@@ -37,13 +36,13 @@ pub fn test_correct_utxos_are_read_from_node() {
         .unwrap();
     let rest_addr = jormungandr.rest_uri();
 
-    let sender_block0_utxo = config.block0_utxo_for_address(&sender_utxo_address);
+    let sender_block0_utxo = config.block0_utxo_for_address(&sender_utxo_address.address());
     jcli.rest()
         .v0()
         .utxo()
         .assert_contains(&sender_block0_utxo, &rest_addr);
 
-    let receiver_block0_utxo = config.block0_utxo_for_address(&receiver_utxo_address);
+    let receiver_block0_utxo = config.block0_utxo_for_address(&receiver_utxo_address.address());
     jcli.rest()
         .v0()
         .utxo()

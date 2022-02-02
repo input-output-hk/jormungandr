@@ -5,9 +5,10 @@ members = [
   "jcli",
   "modules/settings",
   "modules/blockchain",
-  "testing/jormungandr-testing-utils",
+  "testing/jormungandr-automation",
   "testing/jormungandr-integration-tests",
   "testing/loki",
   "testing/mjolnir",
   "testing/hersir",
+  "testing/thor",
 ]

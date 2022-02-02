@@ -1,8 +1,6 @@
 use crate::{
     crypto::hash::Hash,
-    interfaces::{
-        blockdate::BlockDate, mint_token::TokenIdentifier, stake::Stake, value::ValueDef,
-    },
+    interfaces::{blockdate::BlockDate, mint_token::TokenIdentifier, value::ValueDef},
 };
 use chain_impl_mockchain::{
     certificate::{self, ExternalProposalId, Proposal, Proposals, VoteAction},
@@ -557,7 +555,7 @@ impl From<EncryptedTally> for chain_vote::EncryptedTally {
 pub enum PrivateTallyState {
     Encrypted {
         encrypted_tally: EncryptedTally,
-        total_stake: Stake,
+        total_stake: crate::interfaces::Value,
     },
     Decrypted {
         result: TallyResult,

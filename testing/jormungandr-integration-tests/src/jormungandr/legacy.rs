@@ -1,23 +1,15 @@
+use assert_fs::TempDir;
 use chain_impl_mockchain::{
     accounting::account::{DelegationRatio, DelegationType},
     block::BlockDate,
     transaction::AccountIdentifier,
 };
-use jormungandr_testing_utils::testing::transaction_utils::TransactionHash;
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::testing::time;
+use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Starter},
-    startup,
+    jormungandr::{download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter},
 };
-use jormungandr_testing_utils::{
-    stake_pool::StakePool,
-    testing::{
-        node::{download_last_n_releases, get_jormungandr_bin, time},
-        FragmentSender,
-    },
-};
-
-use assert_fs::TempDir;
+use thor::{FragmentSender, StakePool, TransactionHash};
 
 #[test]
 // Re-enable when rate of breaking changes subsides and we can maintain
@@ -30,10 +22,10 @@ pub fn test_legacy_node_all_fragments() {
     let legacy_release = download_last_n_releases(1).iter().cloned().next().unwrap();
     let jormungandr = get_jormungandr_bin(&legacy_release, &temp_dir);
 
-    let mut first_stake_pool_owner = startup::create_new_account_address();
-    let mut second_stake_pool_owner = startup::create_new_account_address();
-    let mut full_delegator = startup::create_new_account_address();
-    let mut split_delegator = startup::create_new_account_address();
+    let mut first_stake_pool_owner = thor::Wallet::default();
+    let mut second_stake_pool_owner = thor::Wallet::default();
+    let mut full_delegator = thor::Wallet::default();
+    let mut split_delegator = thor::Wallet::default();
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
@@ -59,7 +51,7 @@ pub fn test_legacy_node_all_fragments() {
         Default::default(),
     );
 
-    let fragment_builder = jormungandr_testing_utils::testing::FragmentBuilder::new(
+    let fragment_builder = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
         BlockDate::first().next_epoch(),

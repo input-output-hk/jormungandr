@@ -1,7 +1,7 @@
 use crate::builder::Topology;
 use crate::controller::{MonitorControllerBuilder, MonitorNode};
 use crate::{args::Args, config::Config, error::Error};
-use jormungandr_testing_utils::testing::node::NodeAlias;
+use jormungandr_automation::jormungandr::NodeAlias;
 use std::collections::HashMap;
 use std::sync::mpsc::channel;
 

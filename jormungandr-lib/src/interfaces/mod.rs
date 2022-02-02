@@ -59,6 +59,7 @@ pub use self::fragments_processing_summary::{
 };
 pub use self::leadership_log::{LeadershipLog, LeadershipLogId, LeadershipLogStatus};
 pub use self::linear_fee::{LinearFeeDef, PerCertificateFeeDef, PerVoteCertificateFeeDef};
+pub use self::mint_token::TokenIdentifier;
 pub use self::old_address::OldAddress;
 pub use self::peer_stats::{PeerRecord, PeerStats, Subscription};
 pub use self::ratio::{ParseRatioError, Ratio};

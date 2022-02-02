@@ -1,29 +1,24 @@
+use crate::startup;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
 use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
 use chain_impl_mockchain::block::BlockDate;
+use jormungandr_automation::testing::time;
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::{jcli::JCli, jormungandr::ConfigurationBuilder, startup};
-use jormungandr_testing_utils::wallet::Wallet;
-use jormungandr_testing_utils::{
-    stake_pool::StakePool,
-    testing::{
-        AdversaryFragmentSender, AdversaryFragmentSenderSetup, BlockDateGenerator, FragmentSender,
-        FragmentSenderSetup,
-    },
-};
+use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use std::time::Duration;
+use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, StakePool, Wallet};
 
 #[test]
 pub fn test_all_fragments() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
 
-    let mut faucet = startup::create_new_account_address();
-    let mut stake_pool_owner = startup::create_new_account_address();
-    let mut full_delegator = startup::create_new_account_address();
-    let mut split_delegator = startup::create_new_account_address();
+    let mut faucet = thor::Wallet::default();
+    let mut stake_pool_owner = thor::Wallet::default();
+    let mut full_delegator = thor::Wallet::default();
+    let mut split_delegator = thor::Wallet::default();
 
     let stake_pool_owner_stake = 1_000;
 
@@ -156,10 +151,10 @@ pub fn test_all_fragments() {
 pub fn test_all_adversary_fragments() {
     let temp_dir = TempDir::new().unwrap();
 
-    let mut faucet = startup::create_new_account_address();
-    let stake_pool_owner = startup::create_new_account_address();
-    let mut full_delegator = startup::create_new_account_address();
-    let split_delegator = startup::create_new_account_address();
+    let mut faucet = thor::Wallet::default();
+    let stake_pool_owner = thor::Wallet::default();
+    let mut full_delegator = thor::Wallet::default();
+    let split_delegator = thor::Wallet::default();
 
     let stake_pool_owner_stake = 1_000;
 
@@ -187,7 +182,7 @@ pub fn test_all_adversary_fragments() {
     );
     let verifier = jormungandr
         .correct_state_verifier()
-        .record_wallets_state(vec![&faucet, &stake_pool_owner]);
+        .record_address_state(vec![&faucet.address(), &stake_pool_owner.address()]);
     adversary_sender
         .send_faulty_transactions_with_iteration_delay(
             10,
@@ -215,16 +210,20 @@ pub fn test_all_adversary_fragments() {
         .unwrap();
 
     verifier
-        .value_moved_between_wallets(&faucet, &stake_pool_owner, stake_pool_owner_stake.into())
+        .value_moved_between_addresses(
+            &faucet.address(),
+            &stake_pool_owner.address(),
+            stake_pool_owner_stake.into(),
+        )
         .unwrap();
 }
 
 #[test]
 pub fn test_increased_block_content_max_size() {
-    let receivers: Vec<Wallet> = std::iter::from_fn(|| Some(startup::create_new_account_address()))
+    let receivers: Vec<Wallet> = std::iter::from_fn(|| Some(thor::Wallet::default()))
         .take(98)
         .collect();
-    let mut stake_pool_owner = startup::create_new_account_address();
+    let mut stake_pool_owner = thor::Wallet::default();
 
     let stake_pool_owner_stake = 1;
 
@@ -265,10 +264,10 @@ pub fn test_increased_block_content_max_size() {
 
 #[test]
 pub fn test_block_content_max_size_below_transaction_size() {
-    let receivers: Vec<Wallet> = std::iter::from_fn(|| Some(startup::create_new_account_address()))
+    let receivers: Vec<Wallet> = std::iter::from_fn(|| Some(thor::Wallet::default()))
         .take(98)
         .collect();
-    let mut stake_pool_owner = startup::create_new_account_address();
+    let mut stake_pool_owner = thor::Wallet::default();
 
     let stake_pool_owner_stake = 1;
 
@@ -281,10 +280,11 @@ pub fn test_block_content_max_size_below_transaction_size() {
     )
     .unwrap();
 
-    let transaction_sender =
-        jormungandr.fragment_sender(FragmentSenderSetup::should_stop_at_error());
-
-    assert!(transaction_sender
+    let fragment_sender = FragmentSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        FragmentSenderSetup::should_stop_at_error(),
+    );
+    assert!(fragment_sender
         .send_transaction_to_many(
             &mut stake_pool_owner,
             &receivers,

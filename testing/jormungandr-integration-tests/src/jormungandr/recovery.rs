@@ -1,12 +1,11 @@
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
-    node::LogLevel,
-    startup,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess, LogLevel, Starter},
 };
 
+use jormungandr_automation::jormungandr::LeadershipMode;
 use jormungandr_lib::interfaces::{AccountState, BlockDate, InitialUTxO, SettingsDto, UTxOInfo};
-use jormungandr_testing_utils::{testing::jormungandr::LeadershipMode, wallet::Wallet};
+use thor::Wallet;
 
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
@@ -65,7 +64,7 @@ pub fn do_simple_transaction(
         .add_output(&utxo_receiver.address().to_string(), TX_VALUE.into())
         .set_expiry_date(BlockDate::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(sender)
+        .seal_with_witness_data(sender.witness_data())
         .to_message();
     let tx_id = tx.fragment_id();
 
@@ -81,9 +80,9 @@ pub fn test_node_recovers_from_node_restart() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let sender = startup::create_new_utxo_address();
-    let account_receiver = startup::create_new_account_address();
-    let utxo_receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let account_receiver = thor::Wallet::default();
+    let utxo_receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
@@ -95,7 +94,7 @@ pub fn test_node_recovers_from_node_restart() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo_sender = config.block0_utxo_for_address(&sender);
+    let utxo_sender = config.block0_utxo_for_address(&sender.address());
 
     let new_utxo = do_simple_transaction(
         &sender,
@@ -120,7 +119,7 @@ pub fn test_node_recovers_from_node_restart() {
         .rest()
         .raw()
         .send_until_ok(
-            |raw| raw.account_state(&account_receiver),
+            |raw| raw.account_state(&account_receiver.account_id()),
             Default::default(),
         )
         .expect("timeout occured when pooling address endpoint");
@@ -138,9 +137,9 @@ pub fn test_node_recovers_from_node_restart() {
 pub fn test_node_recovers_kill_signal() {
     let temp_dir = TempDir::new().unwrap();
 
-    let sender = startup::create_new_utxo_address();
-    let account_receiver = startup::create_new_account_address();
-    let utxo_receiver = startup::create_new_utxo_address();
+    let sender = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
+    let account_receiver = thor::Wallet::default();
+    let utxo_receiver = thor::Wallet::new_utxo(&mut rand::rngs::OsRng);
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![InitialUTxO {
@@ -151,7 +150,7 @@ pub fn test_node_recovers_kill_signal() {
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config.clone()).start().unwrap();
-    let utxo_sender = config.block0_utxo_for_address(&sender);
+    let utxo_sender = config.block0_utxo_for_address(&sender.address());
 
     let new_utxo = do_simple_transaction(
         &sender,
@@ -178,7 +177,7 @@ pub fn test_node_recovers_kill_signal() {
         .rest()
         .raw()
         .send_until_ok(
-            |raw| raw.account_state(&account_receiver),
+            |raw| raw.account_state(&account_receiver.account_id()),
             Default::default(),
         )
         .unwrap_or_else(|_| {

@@ -7,21 +7,20 @@ use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::header::BlockDate;
+use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{
     certificate::VoteAction, chaintypes::ConsensusType,
     ledger::governance::TreasuryGovernanceAction, value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
-use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, KesUpdateSpeed};
-use jormungandr_testing_utils::testing::node::time;
-use jormungandr_testing_utils::testing::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Starter},
-};
-use jormungandr_testing_utils::testing::{VotePlanBuilder, VotePlanExtension};
-use jormungandr_testing_utils::wallet::Wallet;
+use jormungandr_automation::jcli::JCli;
+use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
+use jormungandr_automation::testing::time;
+use jormungandr_automation::testing::{VotePlanBuilder, VotePlanExtension};
+use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed};
 use jortestkit::prelude::read_file;
 use rand::rngs::OsRng;
+use thor::Wallet;
 
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
@@ -83,6 +82,9 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let vote_plan_cert = jcli.certificate().new_vote_plan(vote_plan_json.path());
 
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
     let config = ConfigurationBuilder::new()
         .with_explorer()
         .with_funds(vec![
@@ -90,11 +92,20 @@ pub fn jcli_e2e_flow_private_vote() {
             bob.to_initial_fund(wallet_initial_funds),
             clarice.to_initial_fund(wallet_initial_funds),
         ])
+        .with_token(InitialToken {
+            token_id: token_id.clone().into(),
+            policy: minting_policy.into(),
+            to: vec![
+                alice.to_initial_token(wallet_initial_funds),
+                bob.to_initial_token(wallet_initial_funds),
+                clarice.to_initial_token(wallet_initial_funds),
+            ],
+        })
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
         .with_treasury(1000.into())
         .with_discrimination(Discrimination::Production)
-        .with_committees(&[&alice])
+        .with_committees(&[alice.to_committee_id()])
         .with_slot_duration(4)
         .with_slots_per_epoch(10)
         .build(&temp_dir);
@@ -111,7 +122,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&vote_plan_cert)
         .set_expiry_date(BlockDateDto::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 
@@ -149,7 +160,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&yes_vote_cast)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -165,7 +176,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&yes_vote_cast)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&bob)
+        .seal_with_witness_data(bob.witness_data())
         .to_message();
 
     jcli.fragment_sender(&jormungandr)
@@ -179,7 +190,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&no_vote_cast)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&clarice)
+        .seal_with_witness_data(clarice.witness_data())
         .to_message();
     jcli.fragment_sender(&jormungandr)
         .send(&tx)
@@ -201,7 +212,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&encrypted_vote_tally_cert)
         .set_expiry_date(BlockDateDto::new(3, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 
@@ -256,7 +267,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .add_certificate(&vote_tally_cert)
         .set_expiry_date(BlockDateDto::new(3, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 
@@ -338,14 +349,22 @@ pub fn jcli_private_vote_invalid_proof() {
 
     let vote_plan_cert = jcli.certificate().new_vote_plan(vote_plan_json.path());
 
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
     let config = ConfigurationBuilder::new()
         .with_explorer()
         .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
+        .with_token(InitialToken {
+            token_id: token_id.clone().into(),
+            policy: minting_policy.into(),
+            to: vec![alice.to_initial_token(wallet_initial_funds)],
+        })
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
         .with_treasury(1000.into())
         .with_discrimination(Discrimination::Production)
-        .with_committees(&[&alice])
+        .with_committees(&[alice.to_committee_id()])
         .with_slot_duration(4)
         .with_slots_per_epoch(10)
         .build(&temp_dir);
@@ -362,7 +381,7 @@ pub fn jcli_private_vote_invalid_proof() {
         .add_certificate(&vote_plan_cert)
         .set_expiry_date(BlockDateDto::new(1, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 
@@ -392,7 +411,7 @@ pub fn jcli_private_vote_invalid_proof() {
         .add_certificate(&encrypted_vote_tally_cert)
         .set_expiry_date(BlockDateDto::new(2, 0))
         .finalize()
-        .seal_with_witness_for_address(&alice)
+        .seal_with_witness_data(alice.witness_data())
         .add_auth(alice_sk.path())
         .to_message();
 

@@ -1,25 +1,26 @@
 use super::NodeStuckError;
+use crate::startup;
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, JormungandrProcess},
+    testing::{
+        benchmark_consumption, benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
+    },
+};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, BlockDate, KesUpdateSpeed},
 };
-use jormungandr_testing_utils::{
-    testing::{
-        benchmark_consumption, benchmark_endurance,
-        jcli::JCli,
-        jormungandr::{ConfigurationBuilder, JormungandrProcess},
-        node::explorer::load::ExplorerRequestGen,
-        startup, BlockDateGenerator, Endurance, EnduranceBenchmarkRun, Thresholds,
-    },
-    wallet::Wallet,
-};
+use mjolnir::generators::ExplorerRequestGen;
+
 use jortestkit::load::{ConfigurationBuilder as LoadConfigurationBuilder, Monitor};
 use std::{str::FromStr, time::Duration};
+use thor::{BlockDateGenerator, Wallet};
 
 #[test]
 pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
-    let mut sender = startup::create_new_account_address();
-    let mut receiver = startup::create_new_account_address();
+    let mut sender = thor::Wallet::default();
+    let mut receiver = thor::Wallet::default();
     let jcli: JCli = Default::default();
 
     let (jormungandr, _) = startup::start_stake_pool(
@@ -57,7 +58,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
             .add_output(&receiver.address().to_string(), output_value.into())
             .set_expiry_date(expiry_block_date_generator.block_date().into())
             .finalize()
-            .seal_with_witness_for_address(&sender)
+            .seal_with_witness_data(sender.witness_data())
             .to_message();
 
         sender.confirm_transaction();
@@ -121,11 +122,10 @@ fn check_explorer_and_rest_are_in_sync(
 
 #[test]
 pub fn explorer_load_test() {
-    let stake_pool_owners: Vec<Wallet> =
-        std::iter::from_fn(|| Some(startup::create_new_account_address()))
-            .take(100)
-            .collect();
-    let addresses: Vec<Wallet> = std::iter::from_fn(|| Some(startup::create_new_account_address()))
+    let stake_pool_owners: Vec<Wallet> = std::iter::from_fn(|| Some(thor::Wallet::default()))
+        .take(100)
+        .collect();
+    let addresses: Vec<Wallet> = std::iter::from_fn(|| Some(thor::Wallet::default()))
         .take(100)
         .collect();
 

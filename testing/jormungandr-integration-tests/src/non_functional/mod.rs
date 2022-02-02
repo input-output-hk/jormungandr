@@ -3,9 +3,8 @@ pub mod compatibility;
 #[cfg(all(feature = "network"))]
 pub mod network;
 /*
- Explorer soak test. Run node for ~15 minutes and verify explorer is in sync with node rest
+ Explorer quick test. Run node for ~15 minutes and verify explorer is in sync with node rest
 */
-#[cfg(feature = "soak")]
 pub mod explorer;
 /*
  Sanity performance tests. Quick tests to check overall node performance.
@@ -32,13 +31,13 @@ pub mod persistent_log;
 pub mod rewards;
 pub mod voting;
 
-use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
-use jormungandr_testing_utils::testing::{
+use jormungandr_automation::{
     jcli::{self, JCli},
-    jormungandr::{JormungandrError, JormungandrProcess},
+    jormungandr::{ExplorerError, JormungandrError, JormungandrProcess},
 };
-use jormungandr_testing_utils::{testing::node::ExplorerError, wallet::Wallet};
+use jormungandr_lib::{crypto::hash::Hash, interfaces::Value};
 use thiserror::Error;
+use thor::Wallet;
 
 #[derive(Error, Debug)]
 pub enum NodeStuckError {

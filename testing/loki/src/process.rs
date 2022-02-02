@@ -4,23 +4,24 @@ use chain_impl_mockchain::{
     fee::LinearFee,
     header::Header,
 };
-use jormungandr_lib::{
-    crypto::hash::Hash,
-    interfaces::{Block0Configuration, TrustedPeer},
-};
-use jormungandr_testing_utils::testing::jormungandr::TestingDirectory;
-use jormungandr_testing_utils::testing::node::grpc::{
+use jormungandr_automation::jormungandr::grpc::{
     client::MockClientError,
     server::{
         start_thread, MockBuilder, MockController, MockServerData as NodeData, ProtocolVersion,
     },
     JormungandrClient,
 };
-use jormungandr_testing_utils::testing::node::NodeAlias;
-use jormungandr_testing_utils::testing::{utils, FragmentSender, FragmentSenderSetup, SyncNode};
+use jormungandr_automation::jormungandr::NodeAlias;
+use jormungandr_automation::jormungandr::TestingDirectory;
+use jormungandr_automation::testing::{panic, SyncNode};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{Block0Configuration, TrustedPeer},
+};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::{Arc, RwLock};
+use thor::{FragmentSender, FragmentSenderSetup};
 
 /// An adversary-controlled node, which can deviate in every way
 /// from the blockchain protocol.
@@ -147,7 +148,7 @@ impl Drop for AdversaryNode {
             controller.stop();
         }
 
-        utils::persist_dir_on_panic(self.temp_dir.take(), Vec::new())
+        panic::persist_dir_on_panic(self.temp_dir.take(), Vec::new())
     }
 }
 

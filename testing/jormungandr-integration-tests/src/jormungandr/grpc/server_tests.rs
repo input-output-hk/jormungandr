@@ -1,5 +1,5 @@
 use super::setup;
-use jormungandr_testing_utils::testing::node::{
+use jormungandr_automation::jormungandr::{
     grpc::server::{MethodType, MockBuilder, MockExitCode, ProtocolVersion},
     LogLevel,
 };

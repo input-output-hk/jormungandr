@@ -8,13 +8,13 @@ use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::{Blockchain, Topology, WalletTemplate};
 use hersir::controller::Controller;
+use jormungandr_automation::jormungandr::{download_last_n_releases, get_jormungandr_bin};
+use jormungandr_automation::jormungandr::{JormungandrProcess, PersistenceMode};
+use jormungandr_automation::testing::benchmark::MeasurementReportInterval;
+use jormungandr_automation::testing::SyncNode;
+use jormungandr_automation::testing::SyncWaitParams;
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jormungandr_lib::interfaces::SlotDuration;
-use jormungandr_testing_utils::testing::jormungandr::{JormungandrProcess, PersistenceMode};
-use jormungandr_testing_utils::testing::node::{download_last_n_releases, get_jormungandr_bin};
-use jormungandr_testing_utils::testing::sync::MeasurementReportInterval;
-use jormungandr_testing_utils::testing::SyncNode;
-use jormungandr_testing_utils::testing::SyncWaitParams;
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE: &str = "Relay";

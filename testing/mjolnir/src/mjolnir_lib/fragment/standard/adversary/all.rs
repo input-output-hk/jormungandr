@@ -2,21 +2,17 @@ use crate::generators::AdversaryFragmentGenerator;
 use crate::generators::FragmentStatusProvider;
 use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
 use chain_impl_mockchain::block::BlockDate;
+use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
 use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_testing_utils::{
-    testing::{
-        fragments::BlockDateGenerator, AdversaryFragmentSender, AdversaryFragmentSenderSetup,
-        FragmentSender, FragmentSenderSetup, RemoteJormungandrBuilder,
-    },
-    wallet::Wallet,
-};
 use jortestkit::{
     load::ConfigurationBuilder,
     prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
 };
+use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use std::time::Duration;
 use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
+use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
 #[derive(StructOpt, Debug)]
 pub struct AllAdversary {
     /// Number of threads
