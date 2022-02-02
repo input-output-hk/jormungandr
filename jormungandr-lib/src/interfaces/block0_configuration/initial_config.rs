@@ -103,34 +103,29 @@ pub struct BlockchainConfiguration {
     pub epoch_stability_depth: EpochStabilityDepth,
 
     /// set the maximum number of epochs a transaction can reside in the mempool
-    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tx_max_expiry_epochs: Option<u8>,
 
     /// Fees go to settings, the default being `rewards`.
     ///
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub fees_go_to: Option<FeesGoTo>,
 
     /// Set the default value in the treasury. if omitted then the treasury starts with the value of 0
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub treasury: Option<Value>,
 
     /// set the treasure parameters, i.e. the first value the treasury will take from the
     /// rewards pot and fees.
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub treasury_parameters: Option<TaxType>,
 
     /// Set the value of the reward pot. if omitted then the reward pot is empty
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub total_reward_supply: Option<Value>,
 
     /// The reward settings for the reward policy. No reward settings means no reward
     /// distributed at all.
-    #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reward_parameters: Option<RewardParams>,
 
@@ -142,6 +137,10 @@ pub struct BlockchainConfiguration {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub committees: Vec<CommitteeIdDef>,
+
+    #[cfg(feature = "evm")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evm_params: Option<crate::interfaces::evm_params::EvmConfig>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -208,6 +207,8 @@ impl BlockchainConfiguration {
             reward_parameters: None,
             reward_constraints: RewardConstraints::default(),
             committees: Vec::new(),
+            #[cfg(feature = "evm")]
+            evm_params: None,
         }
     }
 
@@ -238,6 +239,8 @@ impl BlockchainConfiguration {
         let mut reward_constraints = RewardConstraints::default();
         let mut committees = Vec::new();
         let mut tx_max_expiry_epochs = None;
+        #[cfg(feature = "evm")]
+        let mut evm_params = None;
 
         for param in params.iter().cloned() {
             match param {
@@ -324,6 +327,10 @@ impl BlockchainConfiguration {
                 ConfigParam::TransactionMaxExpiryEpochs(value) => tx_max_expiry_epochs
                     .replace(value)
                     .map(|_| "tx_max_expiry_epochs"),
+                #[cfg(feature = "evm")]
+                ConfigParam::EvmParams(params) => {
+                    evm_params.replace(params.into()).map(|_| "evm_params")
+                }
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
@@ -367,6 +374,8 @@ impl BlockchainConfiguration {
             reward_constraints,
             committees,
             tx_max_expiry_epochs,
+            #[cfg(feature = "evm")]
+            evm_params,
         })
     }
 
@@ -392,6 +401,8 @@ impl BlockchainConfiguration {
             reward_constraints,
             committees,
             tx_max_expiry_epochs,
+            #[cfg(feature = "evm")]
+            evm_params,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -465,6 +476,11 @@ impl BlockchainConfiguration {
             params.push(ConfigParam::TransactionMaxExpiryEpochs(
                 tx_max_expiry_epochs,
             ));
+        }
+
+        #[cfg(feature = "evm")]
+        if let Some(evm_params) = evm_params {
+            params.push(ConfigParam::EvmParams(evm_params.into()));
         }
 
         let params = consensus_leader_ids
@@ -557,6 +573,8 @@ mod test {
                     .take(counter_committee)
                     .collect(),
                 tx_max_expiry_epochs: Arbitrary::arbitrary(g),
+                #[cfg(feature = "evm")]
+                evm_params: Arbitrary::arbitrary(g),
             }
         }
     }

@@ -7,6 +7,8 @@ mod certificate;
 mod committee;
 mod config;
 mod config_params;
+#[cfg(feature = "evm")]
+mod evm_params;
 mod fragment;
 mod fragment_log;
 mod fragment_log_persistent;
