@@ -43,6 +43,7 @@ pub struct Staging {
     witnesses: Vec<interfaces::TransactionWitness>,
     extra: Option<interfaces::Certificate>,
     extra_authed: Option<interfaces::SignedCertificate>,
+    evm_transaction: Option<interfaces::EvmTransaction>,
 }
 
 impl std::fmt::Display for StagingKind {
@@ -72,6 +73,7 @@ impl Staging {
             witnesses: Vec::new(),
             extra: None,
             extra_authed: None,
+            evm_transaction: None,
         }
     }
 
@@ -293,10 +295,25 @@ impl Staging {
         Ok(())
     }
 
-    pub fn set_extra(&mut self, extra: chain::certificate::Certificate) -> Result<(), Error> {
+    pub fn set_extra(&mut self, extra: interfaces::Certificate) -> Result<(), Error> {
         match self.kind {
             StagingKind::Balancing => {
-                self.extra = Some(extra.into());
+                self.evm_transaction = None;
+                self.extra = Some(extra);
+                Ok(())
+            }
+            kind => Err(Error::TxKindToAddExtraInvalid { kind }),
+        }
+    }
+
+    pub fn set_evm_transaction(
+        &mut self,
+        evm_transaction: interfaces::EvmTransaction,
+    ) -> Result<(), Error> {
+        match self.kind {
+            StagingKind::Balancing => {
+                self.evm_transaction = Some(evm_transaction);
+                self.extra = None;
                 Ok(())
             }
             kind => Err(Error::TxKindToAddExtraInvalid { kind }),
@@ -358,10 +375,23 @@ impl Staging {
         }
 
         match &self.extra {
-            None => {
-                self.finalize_payload(&chain::transaction::NoExtra, fee_algorithm, output_policy)
-            }
-            Some(ref c) => match c.clone().into() {
+            None => match &self.evm_transaction {
+                None => self.finalize_payload(
+                    &chain::transaction::NoExtra,
+                    fee_algorithm,
+                    output_policy,
+                ),
+                Some(_tx) => {
+                    #[cfg(feature = "evm")]
+                    {
+                        let _tx: chain::evm::EvmTransaction = _tx.clone().into();
+                        self.finalize_payload(&_tx, fee_algorithm, output_policy)
+                    }
+                    #[cfg(not(feature = "evm"))]
+                    unreachable!()
+                }
+            },
+            Some(c) => match c.clone().into() {
                 Certificate::PoolRegistration(c) => {
                     self.finalize_payload(&c, fee_algorithm, output_policy)
                 }
@@ -492,9 +522,14 @@ impl Staging {
                     return Err(Error::TxNeedPayloadAuth);
                 }
                 match &self.extra {
-                    None => {
-                        self.make_fragment(&chain::transaction::NoExtra, &(), Fragment::Transaction)
-                    }
+                    None => match &self.evm_transaction {
+                        None => self.make_fragment(
+                            &chain::transaction::NoExtra,
+                            &(),
+                            Fragment::Transaction,
+                        ),
+                        Some(tx) => self.make_fragment(&tx.clone().into(), &(), Fragment::Evm),
+                    },
                     Some(cert) => match cert.clone().into() {
                         Certificate::OwnerStakeDelegation(osd) => {
                             self.make_fragment(&osd, &(), Fragment::OwnerStakeDelegation)
@@ -573,8 +608,19 @@ impl Staging {
         }
 
         let res = match &self.extra {
-            None => self.transaction_sign_data_hash_on(TxBuilder::new().set_nopayload()),
-            Some(ref c) => match c.clone().into() {
+            None => match &self.evm_transaction {
+                None => self.transaction_sign_data_hash_on(TxBuilder::new().set_nopayload()),
+                Some(_tx) => {
+                    #[cfg(feature = "evm")]
+                    {
+                        let _tx: chain::evm::EvmTransaction = _tx.clone().into();
+                        self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&_tx))
+                    }
+                    #[cfg(not(feature = "evm"))]
+                    unreachable!()
+                }
+            },
+            Some(c) => match c.clone().into() {
                 Certificate::PoolRegistration(c) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&c))
                 }
