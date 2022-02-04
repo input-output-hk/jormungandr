@@ -16,6 +16,10 @@
 - Add CORS config params: allowed headers and allowed methods.
 - Update REST API `/api/v0/account/{account_id}`, add new field with the token's state info.
 - Vote tally now uses the token in the voteplan instead of the native currency.
+- Remove `txPendingCnt` metric and related field in `node/stats`
+- Rename `txPendingTotalSize` to `mempoolTotalSize`
+- Add `mempoolUsageRatio` metric and related field in `node/stats` to track load on the mempool.
+- Change `blockContentSizeAvg` to represent information as a percentage of the block max size.
 
 ## Release 0.13.0
 

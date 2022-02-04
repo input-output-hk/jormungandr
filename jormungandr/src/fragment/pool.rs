@@ -310,9 +310,15 @@ impl Pool {
     }
 
     fn update_metrics(&self) {
-        self.metrics.set_tx_pending_cnt(self.pool.len());
+        let mempool_usage_ratio = match self.pool.max_entries() {
+            // a little arbitrary, but you could say the mempool is indeed full and it
+            // does not required any special logic somewhere else
+            0 => 1.0,
+            n => self.pool.len() as f64 / n as f64,
+        };
+        self.metrics.set_mempool_usage_ratio(mempool_usage_ratio);
         self.metrics
-            .set_tx_pending_total_size(self.pool.total_size_bytes());
+            .set_mempool_total_size(self.pool.total_size_bytes());
     }
 }
 
@@ -666,6 +672,10 @@ pub(super) mod internal {
 
         pub fn total_size_bytes(&self) -> usize {
             self.total_size_bytes
+        }
+
+        pub fn max_entries(&self) -> usize {
+            self.max_entries
         }
     }
 
