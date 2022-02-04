@@ -516,7 +516,8 @@ fn pending_transaction_stats() {
                 log_max_entries: mempool_max_entries.into(),
                 persistent_log: None,
             })
-            .with_log_level("debug".into()),
+            .with_log_level("debug".into())
+            .with_slot_duration(30),
     )
     .unwrap();
 
