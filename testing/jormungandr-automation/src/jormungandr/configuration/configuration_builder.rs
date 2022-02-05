@@ -11,6 +11,7 @@ use jormungandr_lib::crypto::key::KeyPair;
 use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_lib::interfaces::BlockContentMaxSize;
 use jormungandr_lib::interfaces::InitialToken;
+use jormungandr_lib::interfaces::ProposalExpiration;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo,
     Initial, InitialUTxO, KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
@@ -45,6 +46,7 @@ pub struct ConfigurationBuilder {
     leader_key_pair: KeyPair<Ed25519>,
     discrimination: Discrimination,
     block_content_max_size: BlockContentMaxSize,
+    proposal_expiry_epochs: ProposalExpiration,
     tx_max_expiry_epochs: Option<u8>,
     log_level: String,
 }
@@ -76,6 +78,7 @@ impl ConfigurationBuilder {
             configure_default_log: true,
             committee_ids: vec![],
             leader_key_pair: KeyPair::generate(&mut rand::thread_rng()),
+            proposal_expiry_epochs: Default::default(),
             fees_go_to: None,
             treasury: None,
             total_reward_supply: None,
@@ -108,6 +111,11 @@ impl ConfigurationBuilder {
 
     pub fn with_kes_update_speed(&mut self, kes_update_speed: KesUpdateSpeed) -> &mut Self {
         self.kes_update_speed = kes_update_speed;
+        self
+    }
+
+    pub fn with_proposal_expiry_epochs(&mut self, proposal_expiry_epochs: u32) -> &mut Self {
+        self.proposal_expiry_epochs = ProposalExpiration::from(proposal_expiry_epochs);
         self
     }
 
@@ -335,6 +343,7 @@ impl ConfigurationBuilder {
             .with_epoch_stability_depth(self.epoch_stability_depth)
             .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff)
             .with_linear_fees(self.linear_fees)
+            .with_proposal_expiration(self.proposal_expiry_epochs)
             .with_block_content_max_size(self.block_content_max_size)
             .with_committee_ids(self.committee_ids.clone())
             .with_total_rewards_supply(self.total_reward_supply)

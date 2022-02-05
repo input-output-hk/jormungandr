@@ -1,5 +1,6 @@
 use crate::networking::utils;
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
@@ -42,6 +43,9 @@ pub fn bft_cascade() {
                         .with_trusted_peer(LEADER_4)
                         .with_trusted_peer(LEADER_3),
                 ),
+        )
+        .blockchain_config(
+            Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4]),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
@@ -119,6 +123,7 @@ pub fn bft_passive_propagation() {
                         .with_trusted_peer(LEADER_3),
                 ),
         )
+        .blockchain_config(Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3]))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_000_000_000)

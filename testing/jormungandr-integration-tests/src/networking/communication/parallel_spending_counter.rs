@@ -1,4 +1,5 @@
 use chain_impl_mockchain::testing::WitnessMode;
+use hersir::builder::Blockchain;
 use hersir::builder::{
     wallet::template::builder::WalletTemplateBuilder, NetworkBuilder, Node, SpawnParams, Topology,
 };
@@ -27,6 +28,7 @@ pub fn account_send_4_parallel_transaction_through_4_proxies() {
                 .with_node(Node::new(PASSIVE_3).with_trusted_peer(LEADER))
                 .with_node(Node::new(PASSIVE_4).with_trusted_peer(LEADER)),
         )
+        .blockchain_config(Blockchain::default().with_leader(LEADER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_500_000_000)

@@ -8,8 +8,8 @@ use jortestkit::prelude::UserInteraction;
 pub fn spawn_network(config: Config, topology: Topology) -> Result<(), Error> {
     let controller = NetworkBuilder::default()
         .topology(topology)
-        .testing_directory(config.testing_directory())
-        .blockchain_config(config.blockchain)
+        .blockchain_config(config.build_blockchain())
+        .session_settings(config.session)
         .build()?;
 
     let user_integration = jormungandr_user_interaction();

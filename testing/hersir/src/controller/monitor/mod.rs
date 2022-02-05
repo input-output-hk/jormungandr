@@ -3,12 +3,10 @@ mod node;
 use crate::builder::NetworkBuilder;
 use crate::builder::Settings;
 use crate::builder::{Blockchain, SpawnParams, Topology, Wallet as WalletSetting};
+use crate::config::SessionSettings;
 use crate::controller::Controller as InnerController;
-use crate::controller::{Context, Error};
+use crate::controller::Error;
 use crate::style;
-use crate::utils::Dotifier;
-use assert_fs::fixture::ChildPath;
-use assert_fs::prelude::*;
 use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
 use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_automation::jormungandr::LeadershipMode;
@@ -19,23 +17,12 @@ use jormungandr_automation::testing::observer::{Event, Observable, Observer};
 use jormungandr_lib::interfaces::Block0Configuration;
 pub use node::{Error as NodeError, LegacyNode, Node, ProgressBarController};
 use std::net::SocketAddr;
-use std::{
-    path::{Path, PathBuf},
-    rc::Rc,
-    sync::Arc,
-};
+use std::{path::PathBuf, rc::Rc, sync::Arc};
 use thor::{StakePool, Wallet, WalletAlias};
 
 pub struct MonitorControllerBuilder {
     title: String,
     network_builder: NetworkBuilder,
-}
-
-pub struct MonitorController {
-    inner: InnerController,
-    context: Context,
-    progress_bar: Arc<MultiProgress>,
-    progress_bar_thread: Option<std::thread::JoinHandle<()>>,
 }
 
 impl MonitorControllerBuilder {
@@ -56,22 +43,15 @@ impl MonitorControllerBuilder {
         self
     }
 
-    pub fn build(self, context: Context) -> Result<MonitorController, Error> {
-        let testing_directory = context.child_directory(&self.title);
-        testing_directory.create_dir_all()?;
-        let generate_documentation_path = testing_directory.path().to_path_buf();
+    pub fn build(self, session_settings: SessionSettings) -> Result<MonitorController, Error> {
         let observer: Rc<dyn Observer> = Rc::new(NetworkBuilderObserver::new(&self.title));
         let inner_controller = self
             .network_builder
-            .testing_directory(testing_directory.path().to_path_buf().into())
+            .session_settings(session_settings.clone())
             .register(&observer)
             .build()?;
-        if context.generate_documentation() {
-            document(&generate_documentation_path, &inner_controller)?;
-        }
 
-        summary(&self.title);
-        MonitorController::new(inner_controller, context)
+        MonitorController::new(inner_controller, session_settings)
     }
 }
 
@@ -107,51 +87,36 @@ impl Observer for NetworkBuilderObserver {
     }
 }
 
-fn summary(title: &str) {
-    println!(
-        r###"
-# Running {title}
-    "###,
-        title = style::scenario_title.apply_to(title)
-    )
-}
-
-fn document(path: &Path, inner: &InnerController) -> Result<(), Error> {
-    let file = std::fs::File::create(&path.join("initial_setup.dot"))?;
-
-    let dotifier = Dotifier;
-    dotifier.dottify(inner.settings(), file)?;
-
-    for wallet in inner.settings().wallets.values() {
-        wallet.save_to(path)?;
-    }
-
-    let file = std::fs::File::create(&path.join("genesis.yaml"))?;
-    serde_yaml::to_writer(file, &inner.settings().block0).unwrap();
-
-    Ok(())
+pub struct MonitorController {
+    inner: InnerController,
+    progress_bar: Arc<MultiProgress>,
+    session_settings: SessionSettings,
+    progress_bar_thread: Option<std::thread::JoinHandle<()>>,
 }
 
 impl MonitorController {
     pub fn new_with_progress_bar(
         controller: InnerController,
-        context: Context,
+        session_settings: SessionSettings,
         progress_bar: Arc<MultiProgress>,
     ) -> Self {
         Self {
             inner: controller,
-            context,
+            session_settings,
             progress_bar,
             progress_bar_thread: None,
         }
     }
 
-    pub fn new(controller: InnerController, context: Context) -> Result<Self, Error> {
+    pub fn new(
+        controller: InnerController,
+        session_settings: SessionSettings,
+    ) -> Result<Self, Error> {
         let progress_bar = Arc::new(MultiProgress::new());
 
         Ok(Self::new_with_progress_bar(
             controller,
-            context,
+            session_settings,
             progress_bar,
         ))
     }
@@ -193,8 +158,8 @@ impl MonitorController {
         self.inner.defined_vote_plans()
     }
 
-    pub fn context(&self) -> &Context {
-        &self.context
+    pub fn session_settings(&self) -> &SessionSettings {
+        &self.session_settings
     }
 
     pub fn add_to_progress_bar(&mut self, pb: ProgressBar) -> ProgressBar {
@@ -214,11 +179,11 @@ impl MonitorController {
     }
 
     pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {
-        SpawnParams::new(node_alias).node_key_file(self.node_dir(node_alias).path().into())
+        SpawnParams::new(node_alias).node_key_file(self.node_dir(node_alias))
     }
 
-    fn node_dir(&self, alias: &str) -> ChildPath {
-        self.context.testing_directory().child(alias)
+    fn node_dir(&self, alias: &str) -> PathBuf {
+        self.session_settings.root.path().join(alias)
     }
 
     fn build_progress_bar(&mut self, alias: &str, listen: SocketAddr) -> ProgressBarController {
@@ -237,7 +202,7 @@ impl MonitorController {
             self.new_spawn_params(node_alias)
                 .leadership_mode(leadership_mode)
                 .persistence_mode(persistence_mode)
-                .jormungandr(self.context.jormungandr().to_path_buf()),
+                .jormungandr(self.session_settings.jormungandr.to_path_buf()),
         )
     }
 

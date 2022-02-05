@@ -1,4 +1,3 @@
-mod context;
 mod error;
 pub mod interactive;
 mod monitor;
@@ -16,7 +15,6 @@ use chain_impl_mockchain::ledger::governance::{
 use chain_impl_mockchain::testing::scenario::template::{
     ProposalDefBuilder, VotePlanDef, VotePlanDefBuilder,
 };
-pub use context::Context;
 pub use error::Error;
 pub use interactive::{
     do_for_all_alias, InteractiveCommandError, JormungandrInteractiveCommandExec,
@@ -143,6 +141,7 @@ impl Controller {
             .owner(&key.owner_alias)
             .payload_type(vote_plan.payload_type())
             .committee_keys(vote_plan.committee_public_keys().to_vec())
+            .voting_token(vote_plan.voting_token().clone())
             .vote_phases(
                 vote_plan.vote_start().epoch,
                 vote_plan.committee_start().epoch,
@@ -298,6 +297,7 @@ impl Controller {
         let mut starter = Starter::new();
         starter
             .config(params)
+            .jormungandr_app_option(spawn_params.get_jormungandr())
             .verbose(spawn_params.get_verbose())
             .alias(spawn_params.get_alias().clone())
             .from_genesis(spawn_params.get_leadership_mode().into())

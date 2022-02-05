@@ -1,13 +1,15 @@
 use super::{ALICE, BOB, LEADER_1, LEADER_2, LEADER_3, LEADER_4};
 
 use crate::networking::utils;
+use assert_fs::fixture::PathChild;
 use function_name::named;
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
-use hersir::controller::Context;
+use hersir::config::SessionSettings;
 use jormungandr_automation::{
     jormungandr::{download_last_n_releases, get_jormungandr_bin, Version},
     testing::{benchmark::MeasurementReportInterval, SyncNode, SyncWaitParams},
@@ -25,10 +27,10 @@ use thor::FragmentSenderSetup;
 #[case(4)]
 #[case(5)]
 pub fn last_nth_release(#[case] n: u32) {
-    let context = Context::default();
+    let session_settings = SessionSettings::default();
     let releases = download_last_n_releases(n);
     let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release, &context.child_directory("jormungandr"));
+    let legacy_app = get_jormungandr_bin(last_release, &session_settings.root.child("jormungandr"));
     test_legacy_release(legacy_app, last_release.version())
 }
 
@@ -108,10 +110,10 @@ fn test_legacy_release(legacy_app: PathBuf, version: Version) {
 #[case(4)]
 #[case(5)]
 pub fn disruption_last_nth_release(#[case] n: u32) {
-    let context = Context::default();
+    let session_settings = SessionSettings::default();
     let releases = download_last_n_releases(n);
     let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release, &context.child_directory("jormungandr"));
+    let legacy_app = get_jormungandr_bin(last_release, &session_settings.root.child("jormungandr"));
     test_legacy_disruption_release(legacy_app, last_release.version())
 }
 
@@ -198,8 +200,8 @@ pub fn newest_node_enters_legacy_network() {
     let title = function_name!();
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();
-    let context = Context::default();
-    let legacy_app = get_jormungandr_bin(last_release, &context.child_directory("jormungandr"));
+    let session_settings = SessionSettings::default();
+    let legacy_app = get_jormungandr_bin(last_release, &session_settings.root.child("jormungandr"));
 
     let mut controller = NetworkBuilder::default()
         .topology(
@@ -208,6 +210,9 @@ pub fn newest_node_enters_legacy_network() {
                 .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_1))
                 .with_node(Node::new(LEADER_3).with_trusted_peer(LEADER_1))
                 .with_node(Node::new(LEADER_4).with_trusted_peer(LEADER_1)),
+        )
+        .blockchain_config(
+            Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4]),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)

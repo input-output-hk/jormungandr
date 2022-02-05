@@ -6,9 +6,11 @@ use crate::FragmentVerifier;
 use crate::StakePool;
 use crate::Wallet;
 use chain_core::property::Fragment as _;
+use chain_crypto::Ed25519;
+use chain_crypto::SecretKey;
 use chain_impl_mockchain::{
     block::BlockDate,
-    certificate::{DecryptedPrivateTally, VotePlan, VoteTallyPayload},
+    certificate::{DecryptedPrivateTally, UpdateProposal, UpdateVote, VotePlan, VoteTallyPayload},
     fee::LinearFee,
     fragment::Fragment,
     testing::WitnessMode,
@@ -370,6 +372,42 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         self.send_vote_tally(from, vote_plan, via, VoteTallyPayload::Public)
+    }
+
+    pub fn send_update_proposal<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        from: &mut Wallet,
+        bft_secret: &SecretKey<Ed25519>,
+        update_proposal: UpdateProposal,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = FragmentBuilder::new(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+        )
+        .witness_mode(self.witness_mode)
+        .update_proposal(from, update_proposal, bft_secret);
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
+    }
+
+    pub fn send_update_vote<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        from: &mut Wallet,
+        bft_secret: &SecretKey<Ed25519>,
+        update_vote: UpdateVote,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        let fragment = FragmentBuilder::new(
+            &self.block0_hash,
+            &self.fees,
+            self.expiry_generator.block_date(),
+        )
+        .witness_mode(self.witness_mode)
+        .update_vote(from, update_vote, bft_secret);
+        self.dump_fragment_if_enabled(from, &fragment, via)?;
+        self.send_fragment(from, fragment, via)
     }
 
     pub fn send_encrypted_tally<A: FragmentNode + SyncNode + Sized + Send>(

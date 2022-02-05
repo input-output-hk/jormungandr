@@ -1,12 +1,22 @@
 use assert_fs::fixture::FixtureError;
 use assert_fs::fixture::{ChildPath, PathChild};
 use assert_fs::TempDir;
+use std::fmt;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 pub enum TestingDirectory {
     Temp(TempDir),
     User(PathBuf),
+}
+
+impl fmt::Debug for TestingDirectory {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Temp(temp_dir) => write!(f, "{}", temp_dir.path().to_string_lossy()),
+            Self::User(path) => write!(f, "{}", path.to_string_lossy()),
+        }
+    }
 }
 
 impl TestingDirectory {
@@ -74,6 +84,27 @@ impl Clone for TestingDirectory {
 impl Default for TestingDirectory {
     fn default() -> Self {
         Self::new_temp().unwrap()
+    }
+}
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+impl Serialize for TestingDirectory {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.path().serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for TestingDirectory {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let path: PathBuf = PathBuf::deserialize(deserializer).unwrap();
+        Ok(path.into())
     }
 }
 
