@@ -21,7 +21,6 @@ use jormungandr_automation::{
 };
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::FragmentGenerator;
-use std::collections::HashMap;
 use std::fs::metadata;
 use std::path::Path;
 use std::thread::sleep;
@@ -505,24 +504,6 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
 fn pending_transaction_stats() {
     let bob = thor::Wallet::default();
     let alice = thor::Wallet::default();
-
-    let mut controller = NetworkBuilder::default()
-        .topology(Topology::default().with_node(Node::new(LEADER)))
-        .wallet_template(WalletTemplate::new_account(
-            ALICE,
-            Value(100_000),
-            chain_addr::Discrimination::Test,
-            HashMap::new(),
-        ))
-        .blockchain_config(Blockchain::default().with_leader(LEADER))
-        .wallet_template(WalletTemplate::new_account(
-            BOB,
-            Value(100_000),
-            chain_addr::Discrimination::Test,
-            HashMap::new(),
-        ))
-        .build()
-        .unwrap();
     let mempool_max_entries = 1000;
 
     let leader = startup::start_bft(
