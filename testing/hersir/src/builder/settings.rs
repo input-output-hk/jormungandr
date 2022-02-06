@@ -208,9 +208,23 @@ impl Settings {
 
             // TODO add support for sharing fragment with multiple utxos
             let initial_fragment = Initial::Fund(vec![InitialUTxO {
-                address: initial_address,
+                address: initial_address.clone(),
                 value: (*wallet_template.value()).into(),
             }]);
+
+            for (token_identifier, value) in wallet_template.tokens() {
+                let tokens_fragment = Initial::Token(InitialToken {
+                    token_id: token_identifier.clone(),
+                    // TODO: there are no policies now, but this will need to be changed later
+                    policy: MintingPolicy::new().into(),
+                    to: vec![Destination {
+                        address: initial_address.clone(),
+                        value: (*value).into(),
+                    }],
+                });
+
+                self.block0.initial.push(tokens_fragment);
+            }
 
             self.wallets
                 .insert(wallet_template.alias().clone(), wallet.clone());
