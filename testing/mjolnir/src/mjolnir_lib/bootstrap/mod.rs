@@ -10,6 +10,7 @@ use structopt::StructOpt;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum ClientLoadCommandError {
     #[error("No scenario defined for run. Available: [duration,iteration]")]
     NoScenarioDefined,
