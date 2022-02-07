@@ -52,13 +52,9 @@ pub struct NodeSetting {
 #[derive(Debug, Clone)]
 pub struct Settings {
     pub nodes: HashMap<NodeAlias, NodeSetting>,
-
     pub wallets: HashMap<WalletAlias, Wallet>,
-
     pub block0: Block0Configuration,
-
     pub stake_pools: HashMap<NodeAlias, StakePool>,
-
     pub vote_plans: HashMap<VotePlanKey, VotePlanSettings>,
 }
 
@@ -212,6 +208,10 @@ impl Settings {
                 value: (*wallet_template.value()).into(),
             }]);
 
+            self.wallets
+                .insert(wallet_template.alias().clone(), wallet.clone());
+            self.block0.initial.push(initial_fragment);
+
             for (token_identifier, value) in wallet_template.tokens() {
                 let tokens_fragment = Initial::Token(InitialToken {
                     token_id: token_identifier.clone(),
@@ -222,13 +222,8 @@ impl Settings {
                         value: (*value).into(),
                     }],
                 });
-
                 self.block0.initial.push(tokens_fragment);
             }
-
-            self.wallets
-                .insert(wallet_template.alias().clone(), wallet.clone());
-            self.block0.initial.push(initial_fragment);
 
             if let Some(delegation) = wallet_template.delegate() {
                 use chain_impl_mockchain::certificate::PoolId as StakePoolId;
