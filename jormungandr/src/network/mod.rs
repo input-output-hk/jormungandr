@@ -214,8 +214,8 @@ impl GlobalState {
     // established
     fn num_clients_to_bump(&self) -> usize {
         let count = self.client_count().saturating_add(1);
-        if count > self.config.max_inbound_connections {
-            count - self.config.max_inbound_connections
+        if count > self.config.max_client_connections {
+            count - self.config.max_client_connections
         } else {
             0
         }

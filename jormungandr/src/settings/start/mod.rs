@@ -347,9 +347,9 @@ fn generate_network(
         max_connections: p2p
             .max_connections
             .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),
-        max_inbound_connections: p2p
-            .max_inbound_connections
-            .unwrap_or(network::DEFAULT_MAX_INBOUND_CONNECTIONS),
+        max_client_connections: p2p
+            .max_client_connections
+            .unwrap_or(network::DEFAULT_MAX_CLIENT_CONNECTIONS),
         timeout: std::time::Duration::from_secs(15),
         allow_private_addresses: p2p.allow_private_addresses,
         gossip_interval: p2p
@@ -366,13 +366,13 @@ fn generate_network(
         skip_bootstrap,
     };
 
-    if network.max_inbound_connections > network.max_connections {
+    if network.max_client_connections > network.max_connections {
         tracing::warn!(
-            "p2p.max_inbound_connections is larger than p2p.max_connections, decreasing from {} to {}",
-            network.max_inbound_connections,
+            "p2p.max_client_connections is larger than p2p.max_connections, decreasing from {} to {}",
+            network.max_client_connections,
             network.max_connections
         );
-        network.max_inbound_connections = network.max_connections;
+        network.max_client_connections = network.max_connections;
     }
 
     Ok(network)
