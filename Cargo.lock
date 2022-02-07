@@ -410,7 +410,7 @@ version = "0.1.0"
 dependencies = [
  "chain-impl-mockchain",
  "chain-time",
- "lru 0.6.6",
+ "lru",
  "thiserror",
 ]
 
@@ -2200,7 +2200,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "linked-hash-map",
- "lru 0.6.6",
+ "lru",
  "nix",
  "parity-multiaddr",
  "poldercast",
@@ -2591,15 +2591,6 @@ dependencies = [
  "thor",
  "tokio",
  "warp",
-]
-
-[[package]]
-name = "lru"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "274353858935c992b13c0ca408752e2121da852d07dec7ce5f108c77dfa14d1f"
-dependencies = [
- "hashbrown",
 ]
 
 [[package]]
@@ -3205,7 +3196,7 @@ checksum = "2326808f3c476da7495ff611ad36b6a2e4e9d1f20a5b5eb4bbd8fb5e47f899be"
 dependencies = [
  "hex",
  "keynesis",
- "lru 0.7.2",
+ "lru",
  "thiserror",
 ]
 
