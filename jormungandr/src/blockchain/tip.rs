@@ -230,7 +230,7 @@ impl TipUpdater {
         let storage = blockchain.storage();
 
         let best_branch = branches.into_iter().map(Branch::into_ref).max_by(|a, b| {
-            match chain_selection::compare_against(storage, &a, &b) {
+            match chain_selection::compare_against(storage, a, b) {
                 ComparisonResult::PreferCurrent => Ordering::Greater,
                 ComparisonResult::PreferCandidate => Ordering::Less,
             }

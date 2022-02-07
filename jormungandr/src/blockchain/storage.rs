@@ -108,12 +108,11 @@ impl Storage {
     }
 
     pub fn get_branches(&self) -> Result<Vec<HeaderHash>, Error> {
-        Ok(self
-            .storage
+        self.storage
             .get_tips_ids()?
             .into_iter()
             .map(|branch| HeaderHash::deserialize(branch.as_ref()).map_err(Error::Deserialize))
-            .collect::<Result<Vec<_>, Error>>()?)
+            .collect::<Result<Vec<_>, Error>>()
     }
 
     pub fn get_blocks_by_chain_length(&self, chain_length: u32) -> Result<Vec<Block>, Error> {
