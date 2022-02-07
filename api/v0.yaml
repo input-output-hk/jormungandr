@@ -74,6 +74,17 @@ paths:
                     description: Number of transactions performed with this account
                     type: integer
                     minimum: 0
+                  tokens:
+                    description: Current state of the token balances of this account
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        token_id:
+                          type: string
+                        value:
+                          type: integer
+                          minimum: 0
                   last_rewards:
                     description: the last rewards
                     type: object
@@ -104,6 +115,7 @@ paths:
                               ],
                             ],
                         },
+                      'tokens': {'00000000000000000000000000000000000000000000000000000000.6c1e8abc' : 15, "00000000000000000000000000000000000000000000000000000000.7e5d6abc": 22},
                       'last_rewards': { 'epoch': 42, 'reward': 2028 },
                       'value': 990,
                     }
@@ -577,32 +589,13 @@ paths:
               schema:
                 type: object
                 required:
-                  - blockRecvCnt
-                  - lastReceivedBlockTime
-                  - lastBlockContentSize
-                  - lastBlockFees
-                  - lastBlockSum
-                  - lastBlockTx
                   - state
-                  - txRecvCnt
-                  - txRejectedCnt
-                  - txPending
-                  - votesCast
-                  - uptime
                   - version
-                  - peerAvailableCnt
-                  - peerQuarantinedCnt
-                  - peerTotalCnt
-                  - nodeId
                 properties:
                   blockRecvCnt:
                     description: Number of blocks received by node
                     type: integer
                     minimum: 0
-                  lastReceivedBlockTime:
-                    description: 'The time at which we received the last block, not necessarily the current tip block'
-                    type: string
-                    format: date-time
                   lastBlockContentSize:
                     description: Size in bytes of all transactions in last block
                     type: integer
@@ -633,11 +626,21 @@ paths:
                     description: Number of transactions in last block
                     type: integer
                     minimum: 0
-                  nodeId:
-                    description: 24 bytes encoded in hexadecimal Node ID
+                  lastReceivedBlockTime:
+                    description: 'The time at which we received the last block, not necessarily the current tip block'
                     type: string
+                    format: date-time
+                  blockContentSizeAvg:
+                    description: 'Moving average of the last 3 blocks size as percentage of the block max size'
+                    type: number
+                    minimum: 0
+                    maximum: 1
                   peerAvailableCnt:
                     description: Number of nodes that are available for p2p discovery and events propagation
+                    type: integer
+                    minimum: 0
+                  peerConnectedCnt:
+                    description: Number of nodes we have established a connection with
                     type: integer
                     minimum: 0
                   peerQuarantinedCnt:
@@ -662,12 +665,17 @@ paths:
                     description: Number of transactions received by node
                     type: integer
                     minimum: 0
-                  txRejectedCnt:
-                    description: Number of transactions rejected by the ledger
+                  mempoolUsageRatio:
+                    description: Usage ratio of the mempool on a scale from 0 to 1
+                    type: number
+                    minimum: 0
+                    maximum: 1
+                  txPendingTotalSize:
+                    description: Total size of pending transactions in the mempool
                     type: integer
                     minimum: 0
-                  txPending:
-                    description: Number of pending transactions in the mempool
+                  txRejectedCnt:
+                    description: Number of transactions rejected by the ledger
                     type: integer
                     minimum: 0
                   votesCast:
@@ -1158,6 +1166,25 @@ paths:
                           },
                       },
                     ]
+
+  '/api/v0/rewards/remaining':
+    get:
+      description: 'returns the remaining funds to be distributed as rewards'
+      operationId: RewardsRemaining
+      tags:
+        - rewards
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: integer
+                minimum: 0
+              examples:
+                remaining rewards:
+                  value:
+                    1000000
 
   '/api/v0/stake_pool/{pool_id}':
     get:
@@ -2099,7 +2126,7 @@ paths:
                       type: string
                       description: the node public id
 
-  '/api/v0/network/p2p/view/{topic}':
+  /api/v0/network/p2p/view/{topic}:
     get:
       description: list all the nodes that are selected for the given topic
       operationId: NetworkViewForTopic
@@ -2154,9 +2181,7 @@ paths:
                 items:
                   description: Hex-encoded committee member ID
                   type: string
-                  pattern: '[0-9a-f]+'
-                  minLength: 64
-                  maxLength: 64
+                  pattern: '[0-9a-f]{64}'
               examples:
                 committee:
                   value:
@@ -2183,7 +2208,23 @@ paths:
                 items:
                   description: Vote Plan
                   type: object
+                  required:
+                    - id
+                    - payload_type
+                    - vote_start
+                    - vote_end
+                    - committee_end
+                    - committee_member_keys
+                    - proposals
                   properties:
+                    id:
+                      type: string
+                      description: Hex-encoded vote plan ID
+                      pattern: '[0-9a-f]{64}'
+                    payload_type:
+                      type: string
+                      description: the type of payload to expect
+                      enum: ['Public', 'Private']
                     vote_start:
                       type: string
                       description: Epoch and slot ID of vote start time
@@ -2196,68 +2237,125 @@ paths:
                       type: string
                       description: Epoch and slot ID of committee end time
                       pattern: "[0-9]+\\.[0-9]+"
-                    payload_type:
-                      type: string
-                      description: the type of payload to expect
-                      enum: ['Public']
+                    committee_member_keys:
+                      type: array
+                      description: Committee member keys
+                      items:
+                        type: string
+                        description: Bech32-encoded member public key
                     proposals:
                       type: array
                       description: Active proposals
                       items:
                         type: object
-                        description: Proposal
+                        description: Proposal status
                         properties:
-                          external_id:
+                          id:
+                            type: integer
+                            description: Index of the proposal status
+                            minimum: 0
+                            maximum: 255
+                          proposal_id:
                             type: string
-                            description: Hash of external id
-                            pattern: '[0-9a-f]+'
-                            minLength: 64
-                            maxLength: 64
+                            description: Hex-encoded proposal id
+                            pattern: '[0-9a-f]{64}'
                           options:
+                            $ref: '#/components/schemas/TallyOptions'
+                          tally:
                             type: object
+                            description: Tally result
+                            nullable: true
                             properties:
-                              range:
+                              Public:
                                 type: object
+                                description: Public tally result
                                 properties:
-                                  start:
-                                    type: integer
-                                    description: starting value of the vote option, starting from 0
-                                    minimum: 0
-                                    maximum: 15
-                                  end:
-                                    type: integer
-                                    description: upper bound of the available options, maximum being 16 (not included)
-                                    minimum: 1
-                                    maximum: 16
-                        required:
-                          - external_id
-                          - options
-                  required:
-                    - vote_start
-                    - vote_end
-                    - committee_end
-                    - payload_type
-                    - proposals
+                                  result:
+                                    type: object
+                                    properties:
+                                      results:
+                                        type: array
+                                        items:
+                                          type: integer
+                                      options:
+                                        $ref: '#/components/schemas/TallyOptions'
+                              Private:
+                                type: object
+                                description: Private tally result
+                                properties:
+                                  state:
+                                    type: object
+                                    properties:
+                                      Encrypted:
+                                        type: object
+                                        properties:
+                                          encrypted_tally:
+                                            type: string
+                                            description: Base64-encoded encrypted tally bytes
+                                          total_stake:
+                                            type: integer
+                                      Decrypted:
+                                        type: object
+                                        properties:
+                                          result:
+                                            type: object
+                                            properties:
+                                              results:
+                                                type: array
+                                                items:
+                                                  type: integer
+                                              options:
+                                                $ref: '#/components/schemas/TallyOptions'
+                          votes_cast:
+                            type: integer
+                            description: votes cast
+                            minimum: 0
+                    voting_token:
+                      type: string
+                      description: voting token identifier
               examples:
                 voteplan:
                   value:
                     [
                       {
-                        'committee_end': { 'epoch': 10, 'slot_id': 0 },
+                        'id': 'adb92757155d09e7f92c9f100866a92dddd35abd2a789a44ae19ab9a1dbc3280',
                         'payload_type': 'Public',
+                        'vote_start': '5.12',
+                        'vote_end': '13.6',
+                        'committee_end': '10.12',
+                        'committee_member_keys': ['ristretto255_memberpk1wen0g55xqfvysgaqq3dw7k5j75w66xqghdkqswewfzwkex9raadqkp798t', 'ristretto255_memberpk1ntsvm9j0tp8r7hf6ptyyrlgk8x6w80qpykzrct6lzr2h5g3fjf6szhzsa2'],
+                        'voting_token': "00000000000000000000000000000000000000000000000000000000.6c1e8abc",
                         'proposals':
                           [
                             {
-                              'external_id': 'adb92757155d09e7f92c9f100866a92dddd35abd2a789a44ae19ab9a1dbc3280',
-                              'options': { 'range': { 'start': 0, 'end': 3 } },
+                              'id': 3,
+                              'proposal_id': 'adb92757155d09e7f92c9f100866a92dddd35abd2a789a44ae19ab9a1dbc3280',
+                              'options': { 'range': { 'start': 0, 'end': 3 }, },
+                              'votes_cast': 22,
+                              'tally': {
+                                  'Public': {
+                                    'result': {
+                                      'results': [0, 1, 2],
+                                      'options': { 'range': { 'start': 0, 'end': 3 }, },
+                                  },
+                                },
+                              },
                             },
                             {
-                              'external_id': '6778d37161c3962fe62c9fa8a31a55bccf6ec2d1ea254a467d8cd994709fc404',
-                              'options': { 'range': { 'start': 0, 'end': 3 } },
+                              'id': 4,
+                              'proposal_id': '6778d37161c3962fe62c9fa8a31a55bccf6ec2d1ea254a467d8cd994709fc404',
+                              'options': { 'range': { 'start': 0, 'end': 3 }, },
+                              'votes_cast': 23,
+                              'tally': {
+                                  'Public': {
+                                    'result': {
+                                      'results': [0, 1, 2],
+                                      'options': { 'range': { 'start': 0, 'end': 3 }, },
+                                  },
+                                },
+                              },
                             },
                           ],
-                        'vote_end': { 'epoch': 5, 'slot_id': 0 },
-                        'vote_start': { 'epoch': 0, 'slot_id': 0 },
                       },
                     ]
 
@@ -2301,3 +2399,19 @@ components:
                   - FragmentInvalid
                   - PreviousFragmentInvalid
                   - PoolOverflow
+    TallyOptions:
+      type: object
+      properties:
+        range:
+          type: object
+          properties:
+            start:
+              type: integer
+              description: starting value of the vote option, starting from 0
+              minimum: 0
+              maximum: 15
+            end:
+              type: integer
+              description: upper bound of the available options, maximum being 16 (not included)
+              minimum: 1
+              maximum: 15

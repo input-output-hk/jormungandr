@@ -251,10 +251,10 @@ guarantees that the node does not spend too much time policing its database.
 And it also makes sure that only the nodes of interest are up to date. However
 it is possible for the node to choose, at a convenient time, to policy the whole
 p2p database. This is not enforced by the protocol.</p>
-<table><thead><tr><th align="left">Disposition</th><th align="left">Description</th></tr></thead><tbody>
-<tr><td align="left">available</td><td align="left">Node is available for the p2p topology for view selection and gossips.</td></tr>
-<tr><td align="left">quarantined</td><td align="left">Node is not available for the p2p topology for view selection or gossips. After a certain amount of time, if the node is still being gossiped about, it will be moved to available.</td></tr>
-<tr><td align="left">forgotten</td><td align="left">A node forgotten is simply removed from the whole p2p database. However, if the node is still being gossiped about it will be added back as available and the process will start again.</td></tr>
+<table><thead><tr><th style="text-align: left">Disposition</th><th style="text-align: left">Description</th></tr></thead><tbody>
+<tr><td style="text-align: left">available</td><td style="text-align: left">Node is available for the p2p topology for view selection and gossips.</td></tr>
+<tr><td style="text-align: left">quarantined</td><td style="text-align: left">Node is not available for the p2p topology for view selection or gossips. After a certain amount of time, if the node is still being gossiped about, it will be moved to available.</td></tr>
+<tr><td style="text-align: left">forgotten</td><td style="text-align: left">A node forgotten is simply removed from the whole p2p database. However, if the node is still being gossiped about it will be added back as available and the process will start again.</td></tr>
 </tbody></table>
 
                     </main>

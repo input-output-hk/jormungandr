@@ -354,8 +354,25 @@ initial:
   # Initial deposits present in the blockchain
   - fund:
       # UTxO addresses or account
-      - address: {initial_funds_address}
+      - address: {initial_funds_address_1}
         value: 10000
+      - address: {initial_funds_address_2}
+        value: 10000
+  # Initial token distribution
+  - token:
+      token_id: 00000000000000000000000000000000000000000000000000000000.7e5d6abc
+      to:
+        - address: {initial_funds_address_1}
+          value: 150
+        - address: {initial_funds_address_2}
+          value: 255
+  - token:
+      token_id: 00000000000000000000000000000000000000000000000000000000.6c1e8abc
+      to:
+        - address: {initial_funds_address_1}
+          value: 22
+        - address: {initial_funds_address_2}
+          value: 66
 
   # Initial certificates
   #- cert: ..
@@ -374,27 +391,27 @@ via the update protocol;</li>
 <li><code>initial</code>: list of steps to create initial state of ledger</li>
 </ul>
 <h2 id="blockchain_configuration-options"><a class="header" href="#blockchain_configuration-options"><code>blockchain_configuration</code> options</a></h2>
-<table><thead><tr><th align="left">option</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
-<tr><td align="left"><code>block0_date</code></td><td align="left">number</td><td align="left">the official start time of the blockchain, in seconds since UNIX EPOCH</td></tr>
-<tr><td align="left"><code>discrimination</code></td><td align="left">string</td><td align="left"><code>production</code> or <code>test</code></td></tr>
-<tr><td align="left"><code>block0_consensus</code></td><td align="left">string</td><td align="left"><code>bft</code></td></tr>
-<tr><td align="left"><code>slot_duration</code></td><td align="left">number</td><td align="left">the number of seconds between the creation of 2 blocks</td></tr>
-<tr><td align="left"><code>epoch_stability_depth</code></td><td align="left">number</td><td align="left">allowed size of a fork (in number of block)</td></tr>
-<tr><td align="left"><code>consensus_leader_ids</code></td><td align="left">array</td><td align="left">the list of the BFT leader at the beginning of the blockchain</td></tr>
-<tr><td align="left"><code>block_content_max_size</code></td><td align="left">number</td><td align="left">the maximum size of the block content (excluding the block header), in bytes.</td></tr>
-<tr><td align="left"><code>linear_fees</code></td><td align="left">object</td><td align="left">linear fee settings, set the fee for transaction and certificate publishing</td></tr>
-<tr><td align="left"><code>consensus_genesis_praos_active_slot_coeff</code></td><td align="left">number</td><td align="left">genesis praos active slot coefficient.  Determines minimum stake required to try becoming slot leader, must be in range (0,1]</td></tr>
-<tr><td align="left"><code>kes_update_speed</code></td><td align="left">number</td><td align="left">the speed to update the KES Key in seconds</td></tr>
-<tr><td align="left"><code>slots_per_epoch</code></td><td align="left">number</td><td align="left">number of slots in each epoch</td></tr>
+<table><thead><tr><th style="text-align: left">option</th><th style="text-align: left">format</th><th style="text-align: left">description</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>block0_date</code></td><td style="text-align: left">number</td><td style="text-align: left">the official start time of the blockchain, in seconds since UNIX EPOCH</td></tr>
+<tr><td style="text-align: left"><code>discrimination</code></td><td style="text-align: left">string</td><td style="text-align: left"><code>production</code> or <code>test</code></td></tr>
+<tr><td style="text-align: left"><code>block0_consensus</code></td><td style="text-align: left">string</td><td style="text-align: left"><code>bft</code></td></tr>
+<tr><td style="text-align: left"><code>slot_duration</code></td><td style="text-align: left">number</td><td style="text-align: left">the number of seconds between the creation of 2 blocks</td></tr>
+<tr><td style="text-align: left"><code>epoch_stability_depth</code></td><td style="text-align: left">number</td><td style="text-align: left">allowed size of a fork (in number of block)</td></tr>
+<tr><td style="text-align: left"><code>consensus_leader_ids</code></td><td style="text-align: left">array</td><td style="text-align: left">the list of the BFT leader at the beginning of the blockchain</td></tr>
+<tr><td style="text-align: left"><code>block_content_max_size</code></td><td style="text-align: left">number</td><td style="text-align: left">the maximum size of the block content (excluding the block header), in bytes.</td></tr>
+<tr><td style="text-align: left"><code>linear_fees</code></td><td style="text-align: left">object</td><td style="text-align: left">linear fee settings, set the fee for transaction and certificate publishing</td></tr>
+<tr><td style="text-align: left"><code>consensus_genesis_praos_active_slot_coeff</code></td><td style="text-align: left">number</td><td style="text-align: left">genesis praos active slot coefficient.  Determines minimum stake required to try becoming slot leader, must be in range (0,1]</td></tr>
+<tr><td style="text-align: left"><code>kes_update_speed</code></td><td style="text-align: left">number</td><td style="text-align: left">the speed to update the KES Key in seconds</td></tr>
+<tr><td style="text-align: left"><code>slots_per_epoch</code></td><td style="text-align: left">number</td><td style="text-align: left">number of slots in each epoch</td></tr>
 </tbody></table>
 <p><em>for more information about the BFT leaders in the genesis file, see
 <a href="./02_starting_bft_blockchain.html">Starting a BFT Blockchain</a></em></p>
 <h2 id="initial-options"><a class="header" href="#initial-options"><code>initial</code> options</a></h2>
 <p>Each entry can be one of 3 variants:</p>
-<table><thead><tr><th align="left">variant</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
-<tr><td align="left"><code>fund</code></td><td align="left">sequence</td><td align="left">initial deposits present in the blockchain (up to 255 outputs per entry)</td></tr>
-<tr><td align="left"><code>cert</code></td><td align="left">string</td><td align="left">initial certificate</td></tr>
-<tr><td align="left"><code>legacy_fund</code></td><td align="left">sequence</td><td align="left">same as <code>fund</code>, but with legacy Cardano address format</td></tr>
+<table><thead><tr><th style="text-align: left">variant</th><th style="text-align: left">format</th><th style="text-align: left">description</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>fund</code></td><td style="text-align: left">sequence</td><td style="text-align: left">initial deposits present in the blockchain (up to 255 outputs per entry)</td></tr>
+<tr><td style="text-align: left"><code>cert</code></td><td style="text-align: left">string</td><td style="text-align: left">initial certificate</td></tr>
+<tr><td style="text-align: left"><code>legacy_fund</code></td><td style="text-align: left">sequence</td><td style="text-align: left">same as <code>fund</code>, but with legacy Cardano address format</td></tr>
 </tbody></table>
 <p>Example:</p>
 <pre><code class="language-yaml">initial:
@@ -414,9 +431,9 @@ via the update protocol;</li>
         value: 1001
 </code></pre>
 <h3 id="fund-and-legacy_fund-format"><a class="header" href="#fund-and-legacy_fund-format"><code>fund</code> and <code>legacy_fund</code> format</a></h3>
-<table><thead><tr><th align="left">variant</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
-<tr><td align="left"><code>address</code></td><td align="left">string</td><td align="left">can be a <a href="../jcli/address.html#address-for-utxo">single address</a> or an <a href="../jcli/address.html#address-for-account">account address</a></td></tr>
-<tr><td align="left"><code>value</code></td><td align="left">number</td><td align="left">assigned value</td></tr>
+<table><thead><tr><th style="text-align: left">variant</th><th style="text-align: left">format</th><th style="text-align: left">description</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>address</code></td><td style="text-align: left">string</td><td style="text-align: left">can be a <a href="../jcli/address.html#address-for-utxo">single address</a> or an <a href="../jcli/address.html#address-for-account">account address</a></td></tr>
+<tr><td style="text-align: left"><code>value</code></td><td style="text-align: left">number</td><td style="text-align: left">assigned value</td></tr>
 </tbody></table>
 <p><code>legacy_fund</code> differs only in address format, which is legacy Cardano</p>
 

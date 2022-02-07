@@ -453,10 +453,10 @@ guarantees that the node does not spend too much time policing its database.
 And it also makes sure that only the nodes of interest are up to date. However
 it is possible for the node to choose, at a convenient time, to policy the whole
 p2p database. This is not enforced by the protocol.</p>
-<table><thead><tr><th align="left">Disposition</th><th align="left">Description</th></tr></thead><tbody>
-<tr><td align="left">available</td><td align="left">Node is available for the p2p topology for view selection and gossips.</td></tr>
-<tr><td align="left">quarantined</td><td align="left">Node is not available for the p2p topology for view selection or gossips. After a certain amount of time, if the node is still being gossiped about, it will be moved to available.</td></tr>
-<tr><td align="left">forgotten</td><td align="left">A node forgotten is simply removed from the whole p2p database. However, if the node is still being gossiped about it will be added back as available and the process will start again.</td></tr>
+<table><thead><tr><th style="text-align: left">Disposition</th><th style="text-align: left">Description</th></tr></thead><tbody>
+<tr><td style="text-align: left">available</td><td style="text-align: left">Node is available for the p2p topology for view selection and gossips.</td></tr>
+<tr><td style="text-align: left">quarantined</td><td style="text-align: left">Node is not available for the p2p topology for view selection or gossips. After a certain amount of time, if the node is still being gossiped about, it will be moved to available.</td></tr>
+<tr><td style="text-align: left">forgotten</td><td style="text-align: left">A node forgotten is simply removed from the whole p2p database. However, if the node is still being gossiped about it will be added back as available and the process will start again.</td></tr>
 </tbody></table>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="quickstart"><a class="header" href="#quickstart">Quickstart</a></h1>
 <p>The rust node comes with tools and help in order to quickly start
@@ -975,7 +975,7 @@ typical settings for a non mining node: <code>&quot;normal&quot;</code>. For a s
 </li>
 <li><code>max_connections</code>: the maximum number of P2P connections this node should
 maintain. If not specified, an internal limit is used by default <code>[default: 256]</code></li>
-<li><code>max_inbound_connections</code>: the maximum number of client P2P connections this
+<li><code>max_client_connections</code>: the maximum number of client P2P connections this
 node should keep open. <code>[default: 192]</code></li>
 <li><code>policy</code>: (optional) set the setting for the policy module
 <ul>
@@ -1107,12 +1107,12 @@ stake pool operators. It allows offline operations:</p>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="cryptographic-keys"><a class="header" href="#cryptographic-keys">cryptographic keys</a></h1>
 <p>There are multiple type of key for multiple use cases.</p>
-<table><thead><tr><th align="center">type</th><th align="left">usage</th></tr></thead><tbody>
-<tr><td align="center"><code>Ed25519</code></td><td align="left">Signing algorithm for Ed25519 algorithm</td></tr>
-<tr><td align="center"><code>Ed25519Bip32</code></td><td align="left">Related to the HDWallet, Ed25519 Extended with chain code for derivation</td></tr>
-<tr><td align="center"><code>Ed25519Extended</code></td><td align="left">Related to <code>Ed25519Bip32</code> without the chain code</td></tr>
-<tr><td align="center"><code>SumEd25519_12</code></td><td align="left">For stake pool, necessary for the KES</td></tr>
-<tr><td align="center"><code>RistrettoGroup2HashDh</code></td><td align="left">For stake pool, necessary for the VRF</td></tr>
+<table><thead><tr><th style="text-align: center">type</th><th style="text-align: left">usage</th></tr></thead><tbody>
+<tr><td style="text-align: center"><code>Ed25519</code></td><td style="text-align: left">Signing algorithm for Ed25519 algorithm</td></tr>
+<tr><td style="text-align: center"><code>Ed25519Bip32</code></td><td style="text-align: left">Related to the HDWallet, Ed25519 Extended with chain code for derivation</td></tr>
+<tr><td style="text-align: center"><code>Ed25519Extended</code></td><td style="text-align: left">Related to <code>Ed25519Bip32</code> without the chain code</td></tr>
+<tr><td style="text-align: center"><code>SumEd25519_12</code></td><td style="text-align: left">For stake pool, necessary for the KES</td></tr>
+<tr><td style="text-align: center"><code>RistrettoGroup2HashDh</code></td><td style="text-align: left">For stake pool, necessary for the VRF</td></tr>
 </tbody></table>
 <p>There is a command line parameter to generate this keys:</p>
 <pre><code class="language-sh">$ jcli key generate --type=Ed25519
@@ -1323,11 +1323,11 @@ Also, the simplified <code>make-transaction</code> command in  <code>jcli</code>
 </code></pre>
 <p>Let's use the following utxo as input and transfer 50 lovelaces to the destination address</p>
 <h2 id="input-utxo"><a class="header" href="#input-utxo">Input utxo</a></h2>
-<table><thead><tr><th>Field</th><th align="center">Value</th></tr></thead><tbody>
-<tr><td>UTXO's transaction ID</td><td align="center">55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c</td></tr>
-<tr><td>UTXO's output index</td><td align="center">0</td></tr>
-<tr><td>associated address</td><td align="center">ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu</td></tr>
-<tr><td>associated value</td><td align="center">100</td></tr>
+<table><thead><tr><th>Field</th><th style="text-align: center">Value</th></tr></thead><tbody>
+<tr><td>UTXO's transaction ID</td><td style="text-align: center">55762218e5737603e6d27d36c8aacf8fcd16406e820361a8ac65c7dc663f6d1c</td></tr>
+<tr><td>UTXO's output index</td><td style="text-align: center">0</td></tr>
+<tr><td>associated address</td><td style="text-align: center">ca1q09u0nxmnfg7af8ycuygx57p5xgzmnmgtaeer9xun7hly6mlgt3pjyknplu</td></tr>
+<tr><td>associated value</td><td style="text-align: center">100</td></tr>
 </tbody></table>
 <h2 id="destination-address"><a class="header" href="#destination-address">Destination address</a></h2>
 <p><strong>address</strong>: ca1qvnr5pvt9e5p009strshxndrsx5etcentslp2rwj6csm8sfk24a2wlqtdj6</p>
@@ -2565,11 +2565,11 @@ Note that if the <code>--reward-account</code> is set, the rewards for <code>SP<
 to that account and nothing to <code>O1</code> and <code>O2</code>.</li>
 </ol>
 <p>For example:</p>
-<table><thead><tr><th></th><th align="center">total</th><th align="center">fixed</th><th align="center">ratio</th><th align="center">limit</th><th align="center"><code>SP</code></th><th align="center"><code>O1</code></th><th align="center"><code>O2</code></th><th align="center">for delegators</th></tr></thead><tbody>
-<tr><td>takes 100%</td><td align="center">10000</td><td align="center">0</td><td align="center">1/1</td><td align="center">0</td><td align="center">10000</td><td align="center">5000</td><td align="center">5000</td><td align="center">0</td></tr>
-<tr><td>fixed of 1000</td><td align="center">10000</td><td align="center">1000</td><td align="center">0/1</td><td align="center">0</td><td align="center">1000</td><td align="center">500</td><td align="center">500</td><td align="center">9000</td></tr>
-<tr><td>fixed + 10%</td><td align="center">2000</td><td align="center">1000</td><td align="center">1/10</td><td align="center">0</td><td align="center">1100</td><td align="center">550</td><td align="center">550</td><td align="center">900</td></tr>
-<tr><td>fixed + 20% up to 150</td><td align="center">2000</td><td align="center">1000</td><td align="center">1/5</td><td align="center">150</td><td align="center">1150</td><td align="center">575</td><td align="center">575</td><td align="center">850</td></tr>
+<table><thead><tr><th></th><th style="text-align: center">total</th><th style="text-align: center">fixed</th><th style="text-align: center">ratio</th><th style="text-align: center">limit</th><th style="text-align: center"><code>SP</code></th><th style="text-align: center"><code>O1</code></th><th style="text-align: center"><code>O2</code></th><th style="text-align: center">for delegators</th></tr></thead><tbody>
+<tr><td>takes 100%</td><td style="text-align: center">10000</td><td style="text-align: center">0</td><td style="text-align: center">1/1</td><td style="text-align: center">0</td><td style="text-align: center">10000</td><td style="text-align: center">5000</td><td style="text-align: center">5000</td><td style="text-align: center">0</td></tr>
+<tr><td>fixed of 1000</td><td style="text-align: center">10000</td><td style="text-align: center">1000</td><td style="text-align: center">0/1</td><td style="text-align: center">0</td><td style="text-align: center">1000</td><td style="text-align: center">500</td><td style="text-align: center">500</td><td style="text-align: center">9000</td></tr>
+<tr><td>fixed + 10%</td><td style="text-align: center">2000</td><td style="text-align: center">1000</td><td style="text-align: center">1/10</td><td style="text-align: center">0</td><td style="text-align: center">1100</td><td style="text-align: center">550</td><td style="text-align: center">550</td><td style="text-align: center">900</td></tr>
+<tr><td>fixed + 20% up to 150</td><td style="text-align: center">2000</td><td style="text-align: center">1000</td><td style="text-align: center">1/5</td><td style="text-align: center">150</td><td style="text-align: center">1150</td><td style="text-align: center">575</td><td style="text-align: center">575</td><td style="text-align: center">850</td></tr>
 </tbody></table>
 <h3 id="the-options-to-set"><a class="header" href="#the-options-to-set">The options to set</a></h3>
 <pre><code>--tax-limit &lt;TAX_LIMIT&gt;
@@ -2887,8 +2887,25 @@ initial:
   # Initial deposits present in the blockchain
   - fund:
       # UTxO addresses or account
-      - address: {initial_funds_address}
+      - address: {initial_funds_address_1}
         value: 10000
+      - address: {initial_funds_address_2}
+        value: 10000
+  # Initial token distribution
+  - token:
+      token_id: 00000000000000000000000000000000000000000000000000000000.7e5d6abc
+      to:
+        - address: {initial_funds_address_1}
+          value: 150
+        - address: {initial_funds_address_2}
+          value: 255
+  - token:
+      token_id: 00000000000000000000000000000000000000000000000000000000.6c1e8abc
+      to:
+        - address: {initial_funds_address_1}
+          value: 22
+        - address: {initial_funds_address_2}
+          value: 66
 
   # Initial certificates
   #- cert: ..
@@ -2907,27 +2924,27 @@ via the update protocol;</li>
 <li><code>initial</code>: list of steps to create initial state of ledger</li>
 </ul>
 <h2 id="blockchain_configuration-options"><a class="header" href="#blockchain_configuration-options"><code>blockchain_configuration</code> options</a></h2>
-<table><thead><tr><th align="left">option</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
-<tr><td align="left"><code>block0_date</code></td><td align="left">number</td><td align="left">the official start time of the blockchain, in seconds since UNIX EPOCH</td></tr>
-<tr><td align="left"><code>discrimination</code></td><td align="left">string</td><td align="left"><code>production</code> or <code>test</code></td></tr>
-<tr><td align="left"><code>block0_consensus</code></td><td align="left">string</td><td align="left"><code>bft</code></td></tr>
-<tr><td align="left"><code>slot_duration</code></td><td align="left">number</td><td align="left">the number of seconds between the creation of 2 blocks</td></tr>
-<tr><td align="left"><code>epoch_stability_depth</code></td><td align="left">number</td><td align="left">allowed size of a fork (in number of block)</td></tr>
-<tr><td align="left"><code>consensus_leader_ids</code></td><td align="left">array</td><td align="left">the list of the BFT leader at the beginning of the blockchain</td></tr>
-<tr><td align="left"><code>block_content_max_size</code></td><td align="left">number</td><td align="left">the maximum size of the block content (excluding the block header), in bytes.</td></tr>
-<tr><td align="left"><code>linear_fees</code></td><td align="left">object</td><td align="left">linear fee settings, set the fee for transaction and certificate publishing</td></tr>
-<tr><td align="left"><code>consensus_genesis_praos_active_slot_coeff</code></td><td align="left">number</td><td align="left">genesis praos active slot coefficient.  Determines minimum stake required to try becoming slot leader, must be in range (0,1]</td></tr>
-<tr><td align="left"><code>kes_update_speed</code></td><td align="left">number</td><td align="left">the speed to update the KES Key in seconds</td></tr>
-<tr><td align="left"><code>slots_per_epoch</code></td><td align="left">number</td><td align="left">number of slots in each epoch</td></tr>
+<table><thead><tr><th style="text-align: left">option</th><th style="text-align: left">format</th><th style="text-align: left">description</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>block0_date</code></td><td style="text-align: left">number</td><td style="text-align: left">the official start time of the blockchain, in seconds since UNIX EPOCH</td></tr>
+<tr><td style="text-align: left"><code>discrimination</code></td><td style="text-align: left">string</td><td style="text-align: left"><code>production</code> or <code>test</code></td></tr>
+<tr><td style="text-align: left"><code>block0_consensus</code></td><td style="text-align: left">string</td><td style="text-align: left"><code>bft</code></td></tr>
+<tr><td style="text-align: left"><code>slot_duration</code></td><td style="text-align: left">number</td><td style="text-align: left">the number of seconds between the creation of 2 blocks</td></tr>
+<tr><td style="text-align: left"><code>epoch_stability_depth</code></td><td style="text-align: left">number</td><td style="text-align: left">allowed size of a fork (in number of block)</td></tr>
+<tr><td style="text-align: left"><code>consensus_leader_ids</code></td><td style="text-align: left">array</td><td style="text-align: left">the list of the BFT leader at the beginning of the blockchain</td></tr>
+<tr><td style="text-align: left"><code>block_content_max_size</code></td><td style="text-align: left">number</td><td style="text-align: left">the maximum size of the block content (excluding the block header), in bytes.</td></tr>
+<tr><td style="text-align: left"><code>linear_fees</code></td><td style="text-align: left">object</td><td style="text-align: left">linear fee settings, set the fee for transaction and certificate publishing</td></tr>
+<tr><td style="text-align: left"><code>consensus_genesis_praos_active_slot_coeff</code></td><td style="text-align: left">number</td><td style="text-align: left">genesis praos active slot coefficient.  Determines minimum stake required to try becoming slot leader, must be in range (0,1]</td></tr>
+<tr><td style="text-align: left"><code>kes_update_speed</code></td><td style="text-align: left">number</td><td style="text-align: left">the speed to update the KES Key in seconds</td></tr>
+<tr><td style="text-align: left"><code>slots_per_epoch</code></td><td style="text-align: left">number</td><td style="text-align: left">number of slots in each epoch</td></tr>
 </tbody></table>
 <p><em>for more information about the BFT leaders in the genesis file, see
 <a href="advanced/./02_starting_bft_blockchain.html">Starting a BFT Blockchain</a></em></p>
 <h2 id="initial-options"><a class="header" href="#initial-options"><code>initial</code> options</a></h2>
 <p>Each entry can be one of 3 variants:</p>
-<table><thead><tr><th align="left">variant</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
-<tr><td align="left"><code>fund</code></td><td align="left">sequence</td><td align="left">initial deposits present in the blockchain (up to 255 outputs per entry)</td></tr>
-<tr><td align="left"><code>cert</code></td><td align="left">string</td><td align="left">initial certificate</td></tr>
-<tr><td align="left"><code>legacy_fund</code></td><td align="left">sequence</td><td align="left">same as <code>fund</code>, but with legacy Cardano address format</td></tr>
+<table><thead><tr><th style="text-align: left">variant</th><th style="text-align: left">format</th><th style="text-align: left">description</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>fund</code></td><td style="text-align: left">sequence</td><td style="text-align: left">initial deposits present in the blockchain (up to 255 outputs per entry)</td></tr>
+<tr><td style="text-align: left"><code>cert</code></td><td style="text-align: left">string</td><td style="text-align: left">initial certificate</td></tr>
+<tr><td style="text-align: left"><code>legacy_fund</code></td><td style="text-align: left">sequence</td><td style="text-align: left">same as <code>fund</code>, but with legacy Cardano address format</td></tr>
 </tbody></table>
 <p>Example:</p>
 <pre><code class="language-yaml">initial:
@@ -2947,9 +2964,9 @@ via the update protocol;</li>
         value: 1001
 </code></pre>
 <h3 id="fund-and-legacy_fund-format"><a class="header" href="#fund-and-legacy_fund-format"><code>fund</code> and <code>legacy_fund</code> format</a></h3>
-<table><thead><tr><th align="left">variant</th><th align="left">format</th><th align="left">description</th></tr></thead><tbody>
-<tr><td align="left"><code>address</code></td><td align="left">string</td><td align="left">can be a <a href="advanced/../jcli/address.html#address-for-utxo">single address</a> or an <a href="advanced/../jcli/address.html#address-for-account">account address</a></td></tr>
-<tr><td align="left"><code>value</code></td><td align="left">number</td><td align="left">assigned value</td></tr>
+<table><thead><tr><th style="text-align: left">variant</th><th style="text-align: left">format</th><th style="text-align: left">description</th></tr></thead><tbody>
+<tr><td style="text-align: left"><code>address</code></td><td style="text-align: left">string</td><td style="text-align: left">can be a <a href="advanced/../jcli/address.html#address-for-utxo">single address</a> or an <a href="advanced/../jcli/address.html#address-for-account">account address</a></td></tr>
+<tr><td style="text-align: left"><code>value</code></td><td style="text-align: left">number</td><td style="text-align: left">assigned value</td></tr>
 </tbody></table>
 <p><code>legacy_fund</code> differs only in address format, which is legacy Cardano</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="starting-a-bft-node"><a class="header" href="#starting-a-bft-node">starting a bft node</a></h1>
@@ -3128,8 +3145,8 @@ that can be used to bootstrap a test node with a pre-set faucet and stake pool a
 example.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="jormungandr-specifications"><a class="header" href="#jormungandr-specifications">Jormungandr Specifications</a></h1>
 <p>This directory contains Jormungandr's specifications.</p>
-<table><thead><tr><th align="center">file</th><th align="left">content</th></tr></thead><tbody>
-<tr><td align="center"><a href="specs/network.html">network</a></td><td align="left">the node to node communication and the peer to peer topology</td></tr>
+<table><thead><tr><th style="text-align: center">file</th><th style="text-align: left">content</th></tr></thead><tbody>
+<tr><td style="text-align: center"><a href="specs/network.html">network</a></td><td style="text-align: left">the node to node communication and the peer to peer topology</td></tr>
 </tbody></table>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="network-1"><a class="header" href="#network-1">Network</a></h1>
 <blockquote>
