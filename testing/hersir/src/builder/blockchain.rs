@@ -244,10 +244,7 @@ impl Default for Blockchain {
             block_content_max_size: BlockContentMaxSize::default(),
             committees: Vec::new(),
             consensus: ConsensusVersion::GenesisPraos,
-            consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::new(
-                Milli::from_millis(999),
-            )
-            .unwrap(),
+            consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
             discrimination: Discrimination::Test,
             external_committees: Vec::new(),
             external_consensus_leader_ids: Vec::new(),

@@ -180,7 +180,7 @@ impl Settings {
         blockchain_configuration.block_content_max_size = *blockchain.block_content_max_size();
         blockchain_configuration.kes_update_speed = *blockchain.kes_update_speed();
         blockchain_configuration.consensus_genesis_praos_active_slot_coeff =
-            ActiveSlotCoefficient::MAXIMUM;
+            *blockchain.consensus_genesis_praos_active_slot_coeff();
     }
 
     fn populate_block0_blockchain_initials<'a, RNG, I>(
