@@ -2111,7 +2111,7 @@ dependencies = [
  "gtmpl",
  "hex",
  "jormungandr-lib",
- "predicates 2.1.1",
+ "predicates",
  "quickcheck",
  "rand 0.7.3",
  "rand 0.8.4",
@@ -2237,7 +2237,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "strum",
- "sysinfo 0.23.0",
+ "sysinfo 0.23.1",
  "tar",
  "tempfile",
  "thiserror",
@@ -4260,9 +4260,9 @@ dependencies = [
 
 [[package]]
 name = "sysinfo"
-version = "0.23.0"
+version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e757000a4bed2b1be9be65a3f418b9696adf30bb419214c73997422de73a591"
+checksum = "6bb29fc86b56b6d432ecdbbff2e5726aeaa69bf1bb48ddd994432b60d8bccd01"
 dependencies = [
  "cfg-if 1.0.0",
  "core-foundation-sys",
