@@ -729,7 +729,7 @@ pub(super) mod internal {
                 pool.total_size_bytes,
                 fragments1
                     .iter()
-                    .map(|(f, _)| f.to_raw().size_bytes_plus_size())
+                    .map(|(f, _)| f.serialized_size())
                     .sum::<usize>()
             );
 
