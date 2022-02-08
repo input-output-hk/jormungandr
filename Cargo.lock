@@ -94,7 +94,7 @@ checksum = "93ae1ddd39efd67689deb1979d80bad3bf7f2b09c6e6117c8d1f2443b5e2f83e"
 dependencies = [
  "bstr",
  "doc-comment",
- "predicates 2.1.1",
+ "predicates",
  "predicates-core",
  "predicates-tree",
  "wait-timeout",
@@ -108,7 +108,7 @@ checksum = "cf09bb72e00da477c2596865e8873227e2196d263cca35414048875dbbeea1be"
 dependencies = [
  "doc-comment",
  "globwalk",
- "predicates 2.1.1",
+ "predicates",
  "predicates-core",
  "predicates-tree",
  "tempfile",
@@ -711,20 +711,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "chrono"
-version = "0.4.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
-dependencies = [
- "libc",
- "num-integer",
- "num-traits",
- "serde",
- "time 0.1.44",
- "winapi",
-]
-
-[[package]]
 name = "clap"
 version = "2.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -751,21 +737,6 @@ dependencies = [
  "either",
  "memchr",
  "unreachable",
-]
-
-[[package]]
-name = "console"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3993e6445baa160675931ec041a5e03ca84b9c6e32a056150d3aa2bdda0a1f45"
-dependencies = [
- "encode_unicode",
- "lazy_static",
- "libc",
- "regex",
- "terminal_size",
- "unicode-width",
- "winapi",
 ]
 
 [[package]]
@@ -1124,17 +1095,11 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61579ada4ec0c6031cfac3f86fdba0d195a7ebeb5e36693bd53cb5999a25beeb"
 dependencies = [
- "console 0.15.0",
+ "console",
  "lazy_static",
  "tempfile",
  "zeroize",
 ]
-
-[[package]]
-name = "difference"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 
 [[package]]
 name = "difflib"
@@ -1440,15 +1405,6 @@ dependencies = [
  "crc32fast",
  "libc",
  "miniz_oxide",
-]
-
-[[package]]
-name = "float-cmp"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1267f4ac4f343772758f7b1bdcbe767c218bbab93bb432acbf5162bbf85a6c4"
-dependencies = [
- "num-traits",
 ]
 
 [[package]]
@@ -2093,7 +2049,7 @@ version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7baab56125e25686df467fe470785512329883aab42696d661247aca2a2896e4"
 dependencies = [
- "console 0.15.0",
+ "console",
  "lazy_static",
  "number_prefix",
  "regex",
@@ -2155,7 +2111,7 @@ dependencies = [
  "gtmpl",
  "hex",
  "jormungandr-lib",
- "predicates 2.1.1",
+ "predicates",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
  "rayon",
@@ -2190,7 +2146,6 @@ dependencies = [
  "chain-storage",
  "chain-time",
  "chain-vote",
- "chrono",
  "futures",
  "hex",
  "http-zipkin",
@@ -2217,6 +2172,7 @@ dependencies = [
  "serde_yaml",
  "structopt",
  "thiserror",
+ "time 0.3.7",
  "tokio",
  "tokio-stream",
  "tokio-util",
@@ -2249,7 +2205,6 @@ dependencies = [
  "chain-storage",
  "chain-time",
  "chain-vote",
- "chrono",
  "custom_debug",
  "flate2",
  "fs_extra",
@@ -2267,7 +2222,7 @@ dependencies = [
  "os_info",
  "parity-multiaddr",
  "poldercast",
- "predicates 2.1.1",
+ "predicates",
  "prost",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
@@ -2325,7 +2280,7 @@ dependencies = [
  "mjolnir",
  "parity-multiaddr",
  "poldercast",
- "predicates 2.1.1",
+ "predicates",
  "prost",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
@@ -2361,7 +2316,6 @@ dependencies = [
  "chain-impl-mockchain",
  "chain-time",
  "chain-vote",
- "chrono",
  "ed25519-bip32",
  "hex",
  "http",
@@ -2378,20 +2332,20 @@ dependencies = [
  "serde_with",
  "serde_yaml",
  "thiserror",
+ "time 0.3.7",
  "typed-bytes",
 ]
 
 [[package]]
 name = "jortestkit"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#fc57b9117aa530eaeb26937437dfa0a05fe55470"
+source = "git+https://github.com/input-output-hk/jortestkit.git?branch=master#51f92676429a2e8cd72ee1907195c565824b52d4"
 dependencies = [
  "assert_fs",
  "base64",
  "bech32 0.8.1",
  "bytesize",
- "chrono",
- "console 0.14.1",
+ "console",
  "csv",
  "custom_debug",
  "dialoguer",
@@ -2402,7 +2356,7 @@ dependencies = [
  "indicatif",
  "lazy_static",
  "os_info",
- "predicates 1.0.8",
+ "predicates",
  "rand 0.8.4",
  "rand_chacha 0.3.1",
  "rand_core 0.5.1",
@@ -2418,6 +2372,7 @@ dependencies = [
  "sysinfo 0.14.15",
  "tar",
  "thiserror",
+ "time 0.3.7",
  "tokio",
  "warp",
  "zip",
@@ -3208,25 +3163,12 @@ checksum = "eb9f9e6e233e5c4a35559a617bf40a4ec447db2e84c20b55a6f83167b7e57872"
 
 [[package]]
 name = "predicates"
-version = "1.0.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f49cfaf7fdaa3bfacc6fa3e7054e65148878354a5cfddcf661df4c851f8021df"
-dependencies = [
- "difference",
- "float-cmp 0.8.0",
- "normalize-line-endings",
- "predicates-core",
- "regex",
-]
-
-[[package]]
-name = "predicates"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a5aab5be6e4732b473071984b3164dbbfb7a3674d30ea5ff44410b6bcd960c3c"
 dependencies = [
  "difflib",
- "float-cmp 0.9.0",
+ "float-cmp",
  "itertools",
  "normalize-line-endings",
  "predicates-core",
@@ -4440,7 +4382,6 @@ dependencies = [
  "chain-crypto",
  "chain-impl-mockchain",
  "chain-vote",
- "chrono",
  "custom_debug",
  "hex",
  "jormungandr-automation",
@@ -4450,6 +4391,7 @@ dependencies = [
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "thiserror",
+ "time 0.3.7",
 ]
 
 [[package]]
@@ -4481,7 +4423,15 @@ dependencies = [
  "itoa 1.0.1",
  "libc",
  "num_threads",
+ "serde",
+ "time-macros",
 ]
+
+[[package]]
+name = "time-macros"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25eb0ca3468fc0acc11828786797f6ef9aa1555e4a211a60d64cc8e4d1be47d6"
 
 [[package]]
 name = "tiny-keccak"
