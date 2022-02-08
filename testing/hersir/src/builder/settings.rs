@@ -21,8 +21,8 @@ use jormungandr_lib::interfaces::{try_initial_fragment_from_message, VotePlan as
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
-        ActiveSlotCoefficient, Bft, Block0Configuration, BlockchainConfiguration, CommitteeIdDef,
-        GenesisPraos, Initial, InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
+        Bft, Block0Configuration, BlockchainConfiguration, CommitteeIdDef, GenesisPraos, Initial,
+        InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
     },
 };
 use rand_core::{CryptoRng, RngCore};
