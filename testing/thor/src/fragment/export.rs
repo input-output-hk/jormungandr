@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
 use crate::wallet::Wallet;
-use chain_core::property::Deserialize;
+use chain_core::packer::Codec;
+use chain_core::property::DeserializeFromSlice;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chrono::{DateTime, Utc};
 use jormungandr_automation::jormungandr::FragmentNode;
@@ -37,7 +38,9 @@ impl FragmentExporter {
     pub fn read(&self) -> Result<Vec<Fragment>, FragmentExporterError> {
         self.read_as_bytes()?
             .iter()
-            .map(|bytes| Ok(Fragment::deserialize(bytes.as_ref()).unwrap()))
+            .map(|bytes| {
+                Ok(Fragment::deserialize_from_slice(&mut Codec::new(bytes.as_ref())).unwrap())
+            })
             .collect()
     }
 

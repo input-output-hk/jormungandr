@@ -3,7 +3,8 @@
 use crate::jcli::{JCli, Witness, WitnessData, WitnessType};
 use assert_fs::fixture::ChildPath;
 use assert_fs::{prelude::*, TempDir};
-use chain_core::property::Deserialize;
+use chain_core::packer::Codec;
+use chain_core::property::DeserializeFromSlice;
 use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::interfaces::Address;
 use jormungandr_lib::{
@@ -280,7 +281,7 @@ impl TransactionBuilder {
     pub fn fragment_id(&self) -> Hash {
         let fragment_hex = self.to_message();
         let fragment_bytes = hex::decode(&fragment_hex).expect("Failed to parse message hex");
-        Fragment::deserialize(fragment_bytes.as_slice())
+        Fragment::deserialize_from_slice(&mut Codec::new(fragment_bytes.as_slice()))
             .expect("Failed to parse message")
             .hash()
             .into()

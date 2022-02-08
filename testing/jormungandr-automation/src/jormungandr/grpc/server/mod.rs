@@ -12,8 +12,8 @@ use crate::jormungandr::{
     Block0ConfigurationBuilder,
 };
 use chain_core::{
-    mempack::{ReadBuf, Readable},
-    property::{Header as BlockHeader, Serialize},
+    packer::Codec,
+    property::{DeserializeFromSlice, Header as BlockHeader, Serialize},
 };
 use chain_impl_mockchain::{block::BlockVersion, chaintypes::ConsensusVersion, key::Hash};
 use std::fmt;
@@ -178,7 +178,8 @@ impl Node for JormungandrServerImpl {
         let mut blocks = vec![];
 
         for block_id in block_ids.ids.iter() {
-            let block_hash = Hash::read(&mut ReadBuf::from(block_id.as_ref())).unwrap();
+            let block_hash =
+                Hash::deserialize_from_slice(&mut Codec::new(block_id.as_slice())).unwrap();
 
             let mut block = self
                 .data
@@ -203,9 +204,11 @@ impl Node for JormungandrServerImpl {
 
         for block in blocks {
             tx.send(block.map(|b| {
-                let mut bytes = vec![];
-                b.serialize(&mut bytes).unwrap();
-                Block { content: bytes }
+                let mut codec = Codec::new(vec![]);
+                b.serialize(&mut codec).unwrap();
+                Block {
+                    content: codec.into_inner(),
+                }
             }))
             .await
             .unwrap();

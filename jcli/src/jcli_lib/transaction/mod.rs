@@ -20,7 +20,7 @@ use crate::jcli_lib::{
     utils::{key_parser, output_format},
 };
 use crate::{block, rest, utils};
-use chain_core::property::Serialize as _;
+use chain_core::property::{ReadError, Serialize as _, WriteError};
 use chain_impl_mockchain as chain;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -130,11 +130,11 @@ pub enum Error {
     #[error("could not parse data in witness file '{path}'")]
     WitnessFileDeserializationFailed {
         #[source]
-        source: chain_core::mempack::ReadError,
+        source: ReadError,
         path: PathBuf,
     },
     #[error("could not serialize witness data")]
-    WitnessFileSerializationFailed(#[source] std::io::Error),
+    WitnessFileSerializationFailed(#[source] WriteError),
     #[error("could not write info file '{path}'")]
     InfoFileWriteFailed {
         #[source]
@@ -176,7 +176,7 @@ pub enum Error {
     #[error("transaction finalization failed")]
     TxFinalizationFailed(#[from] chain::transaction::Error),
     #[error("serialization of message to bytes failed")]
-    MessageSerializationFailed(#[source] std::io::Error),
+    MessageSerializationFailed(#[source] WriteError),
     #[error("calculation of info failed")]
     InfoCalculationFailed(#[from] chain::value::ValueError),
     #[error("expected a single account, multisig is not supported yet")]

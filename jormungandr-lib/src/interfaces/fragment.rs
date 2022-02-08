@@ -1,3 +1,4 @@
+use chain_core::packer::Codec;
 use chain_impl_mockchain::fragment::Fragment;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -46,7 +47,10 @@ impl<'de> Deserialize<'de> for FragmentDef {
             Vec::<u8>::deserialize(deserializer)?
         };
 
-        let fragment = <Fragment as chain_core::property::Deserialize>::deserialize(bytes.as_ref())
+        let fragment =
+            <Fragment as chain_core::property::DeserializeFromSlice>::deserialize_from_slice(
+                &mut Codec::new(bytes.as_ref()),
+            )
             .map_err(serde::de::Error::custom)?;
 
         Ok(FragmentDef(fragment))

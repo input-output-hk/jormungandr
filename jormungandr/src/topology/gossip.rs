@@ -1,11 +1,9 @@
 use super::{limits, NodeId};
 use crate::network::p2p::Address;
 
-use chain_core::property;
+use chain_core::{packer::Codec, property};
 use std::net::{IpAddr, Ipv4Addr};
 use thiserror::Error;
-
-use bincode::Options;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Gossip(poldercast::Gossip);
@@ -131,7 +129,7 @@ impl From<Vec<Gossip>> for Gossips {
 #[derive(Debug, Error)]
 pub enum GossipError {
     #[error(transparent)]
-    Io(#[from] std::io::Error),
+    ReadError(#[from] property::ReadError),
     #[error(transparent)]
     Bincode(#[from] bincode::Error),
     #[error(transparent)]
@@ -139,31 +137,39 @@ pub enum GossipError {
 }
 
 impl property::Serialize for Gossip {
-    type Error = GossipError;
-
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        let config = bincode::options();
-        config.with_limit(limits::MAX_GOSSIP_SIZE);
-
-        Ok(config.serialize_into(writer, &self.0.as_ref())?)
+    fn serialize<W: std::io::Write>(
+        &self,
+        codec: &mut Codec<W>,
+    ) -> Result<(), property::WriteError> {
+        let bytes = self.0.as_ref();
+        if bytes.len() > limits::MAX_GOSSIP_SIZE as usize {
+            return Err(property::WriteError::IoError(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Gossip size more than expected",
+            )));
+        }
+        codec.put_be_u16(bytes.len() as u16)?;
+        codec.put_bytes(bytes)
     }
 }
 
 impl property::Deserialize for Gossip {
-    type Error = GossipError;
+    fn deserialize<R: std::io::Read>(codec: &mut Codec<R>) -> Result<Self, property::ReadError> {
+        let bytes_size = codec.get_be_u16()? as usize;
+        if bytes_size > limits::MAX_GOSSIP_SIZE as usize {
+            return Err(property::ReadError::SizeTooBig(
+                limits::MAX_GOSSIP_SIZE as usize,
+                bytes_size,
+            ));
+        }
 
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        let config = bincode::options();
-        config.with_limit(limits::MAX_GOSSIP_SIZE);
+        let bytes = codec.get_bytes(bytes_size as usize)?;
 
-        config
-            .deserialize_from::<R, Vec<u8>>(reader)
-            .map_err(GossipError::from)
-            .and_then(|slice| {
-                Ok(Gossip(
-                    poldercast::GossipSlice::try_from_slice(&slice)?.to_owned(),
-                ))
-            })
+        Ok(Gossip(
+            poldercast::GossipSlice::try_from_slice(bytes.as_slice())
+                .map_err(|e| property::ReadError::InvalidData(e.to_string()))?
+                .to_owned(),
+        ))
     }
 }
 

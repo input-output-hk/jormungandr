@@ -5,6 +5,7 @@ use crate::{
     explorer, network, secure,
     settings::{self, logging},
 };
+use chain_core::property::ReadError;
 use std::io;
 use thiserror::Error;
 
@@ -31,7 +32,7 @@ pub enum Error {
     #[error("Parsing error on {reason}")]
     ParseError {
         #[source]
-        source: io::Error,
+        source: ReadError,
         reason: ErrorKind,
     },
     #[error("Block 0 mismatch. expecting hash: {expected} but got : {got}")]

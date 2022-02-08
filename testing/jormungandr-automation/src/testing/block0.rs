@@ -1,6 +1,6 @@
-use chain_core::mempack::ReadBuf;
-use chain_core::mempack::Readable;
+use chain_core::packer::Codec;
 use chain_core::property::Deserialize;
+use chain_core::property::DeserializeFromSlice;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::certificate::VotePlan;
 use jormungandr_lib::interfaces::Block0Configuration;
@@ -22,11 +22,11 @@ pub fn get_block<S: Into<String>>(block0: S) -> Result<Block0Configuration, GetB
                 .append(false)
                 .open(&block0)?;
             let reader = BufReader::new(reader);
-            Block::deserialize(reader)?
+            Block::deserialize(&mut Codec::new(reader))?
         } else if Url::parse(&block0).is_ok() {
             let response = reqwest::blocking::get(&block0)?;
             let block0_bytes = response.bytes()?.to_vec();
-            Block::read(&mut ReadBuf::from(&block0_bytes))?
+            Block::deserialize_from_slice(&mut Codec::new(block0_bytes.as_slice()))?
         } else {
             panic!(" block0 should be either path to filesystem or url ");
         }
@@ -63,7 +63,7 @@ pub enum GetBlock0Error {
     #[error("io error")]
     IoError(#[from] std::io::Error),
     #[error("read error")]
-    ReadError(#[from] chain_core::mempack::ReadError),
+    ReadError(#[from] chain_core::property::ReadError),
     #[error("bech32 error")]
     Bech32Error(#[from] bech32::Error),
 }

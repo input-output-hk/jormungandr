@@ -9,6 +9,7 @@ use crate::builder::SpawnParams;
 use crate::builder::VotePlanKey;
 use crate::builder::Wallet as WalletSettings;
 use assert_fs::prelude::*;
+use chain_core::packer::Codec;
 use chain_impl_mockchain::certificate::{VoteAction, VotePlan};
 use chain_impl_mockchain::ledger::governance::{
     ParametersGovernanceAction, TreasuryGovernanceAction,
@@ -56,7 +57,10 @@ impl Controller {
 
         let block0_file = working_directory.child("block0.bin").path().into();
         let file = std::fs::File::create(&block0_file)?;
-        settings.block0.to_block().serialize(file)?;
+        settings
+            .block0
+            .to_block()
+            .serialize(&mut Codec::new(file))?;
 
         Ok(Controller {
             settings,

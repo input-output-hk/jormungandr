@@ -10,6 +10,7 @@ use super::watch::{
     TipSubscriptionRequest,
 };
 
+use chain_core::packer::Codec;
 use chain_core::property::FromStr;
 use chain_core::property::Serialize;
 use chain_impl_mockchain::{
@@ -268,9 +269,12 @@ impl JormungandrClient {
     pub fn upload_blocks(&self, lib_block: LibBlock) -> Result<(), MockClientError> {
         let mut client = self.client();
 
-        let mut bytes = Vec::with_capacity(4096);
-        lib_block.serialize(&mut bytes).unwrap();
-        let block = Block { content: bytes };
+        let bytes = Vec::with_capacity(4096);
+        let mut codec = Codec::new(bytes);
+        lib_block.serialize(&mut codec).unwrap();
+        let block = Block {
+            content: codec.into_inner(),
+        };
 
         let request = tonic::Request::new(stream::iter(vec![block]));
         self.rt
