@@ -47,4 +47,8 @@ impl ExternalWalletTemplate {
     pub fn alias(&self) -> WalletAlias {
         self.alias.clone()
     }
+
+    pub fn insert_token(&mut self, id: TokenIdentifier, amount: u64) {
+        self.tokens.insert(id, amount);
+    }
 }

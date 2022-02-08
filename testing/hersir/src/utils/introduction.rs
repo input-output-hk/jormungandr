@@ -1,7 +1,7 @@
-use crate::controller::Context;
+use crate::config::SessionSettings;
 pub use jortestkit::console::style;
 
-pub fn print_intro(context: &Context, name: &str) {
+pub fn print_intro(session_settings: &SessionSettings, name: &str) {
     println!(
         r###"
         ---_ ......._-_--.
@@ -27,6 +27,6 @@ pub fn print_intro(context: &Context, name: &str) {
     "###,
         style::binary.apply_to(name),
         *style::icons::jormungandr,
-        style::binary.apply_to(context.jormungandr().to_string_lossy()),
+        style::binary.apply_to(session_settings.jormungandr.to_string_lossy()),
     )
 }

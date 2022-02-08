@@ -2,16 +2,13 @@ use assert_fs::{
     fixture::{PathChild, PathCreateDir},
     TempDir,
 };
-use chain_impl_mockchain::{
-    block::BlockDate, chaintypes::ConsensusVersion, fee::LinearFee, value::Value,
-};
+use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion, fee::LinearFee};
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
 use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
-use hersir::builder::WalletTemplate;
 use jormungandr_automation::jormungandr::FragmentNode;
 use jormungandr_lib::interfaces::{
     BlockDate as BlockDateDto, InitialUTxO, Mempool, PersistentLog, SlotDuration,
@@ -503,36 +500,30 @@ fn expired_fragment_should_be_rejected_by_passive_bft_node() {
 }
 
 #[test]
-/// Verifies `tx_pending` and `tx_pending_total_size` metrics reported by the node
+/// Verifies `tx_pending` and `mempool_total_size` metrics reported by the node
 fn pending_transaction_stats() {
-    const ALICE: &str = "Alice";
-    const BOB: &str = "Bob";
-    const LEADER: &str = "leader";
+    let bob = thor::Wallet::default();
+    let alice = thor::Wallet::default();
+    let mempool_max_entries = 1000;
 
-    let mut controller = NetworkBuilder::default()
-        .topology(Topology::default().with_node(Node::new(LEADER)))
-        .wallet_template(WalletTemplate::new_account(
-            ALICE,
-            Value(100_000),
-            chain_addr::Discrimination::Test,
-        ))
-        .wallet_template(WalletTemplate::new_account(
-            BOB,
-            Value(100_000),
-            chain_addr::Discrimination::Test,
-        ))
-        .build()
-        .unwrap();
-
-    let alice = controller.wallet(ALICE).unwrap();
-    let bob = controller.wallet(BOB).unwrap();
-
-    let leader = controller.spawn(SpawnParams::new(LEADER).leader()).unwrap();
+    let leader = startup::start_bft(
+        vec![&alice, &bob],
+        ConfigurationBuilder::new()
+            .with_block_content_max_size(256.into()) // This should only fit 1 transaction
+            .with_mempool(Mempool {
+                pool_max_entries: mempool_max_entries.into(),
+                log_max_entries: mempool_max_entries.into(),
+                persistent_log: None,
+            })
+            .with_log_level("debug".into())
+            .with_slot_duration(30),
+    )
+    .unwrap();
 
     let stats = leader.rest().stats().unwrap().stats.unwrap();
 
-    assert_eq!(stats.tx_pending, 0);
-    assert_eq!(stats.tx_pending_total_size, 0);
+    assert_eq!(stats.mempool_usage_ratio, 0.0);
+    assert_eq!(stats.mempool_total_size, 0);
 
     let fragment_builder = FragmentBuilder::new(
         &leader.genesis_block_hash(),
@@ -561,8 +552,11 @@ fn pending_transaction_stats() {
         let stats = leader.rest().stats().unwrap().stats.unwrap();
 
         assert!(status.is_pending());
-        assert_eq!(pending_cnt, stats.tx_pending);
-        assert_eq!(pending_size, stats.tx_pending_total_size as usize);
+        assert_eq!(
+            pending_cnt as f64 / mempool_max_entries as f64,
+            stats.mempool_usage_ratio
+        );
+        assert_eq!(pending_size, stats.mempool_total_size as usize);
     }
 }
 
@@ -577,10 +571,11 @@ fn avg_block_size_stats() {
     const STABILITY_SLOTS: usize = 3; // Number of slots we expect `block_content_size_avg` to stay the same for
     let linear_fee = LinearFee::new(0, 0, 0);
 
-    let mut blockchain = Blockchain::default();
-    blockchain.set_slot_duration(SlotDuration::new(SLOT_DURATION_SECS).unwrap());
-    blockchain.set_linear_fee(linear_fee);
-    blockchain.set_block_content_max_size(200.into()); // This should only fit one transaction
+    let blockchain = Blockchain::default()
+        .with_slot_duration(SlotDuration::new(SLOT_DURATION_SECS).unwrap())
+        .with_linear_fee(linear_fee)
+        .with_leader(LEADER)
+        .with_block_content_max_size(200.into()); // This should only fit one transaction
 
     let mut controller = NetworkBuilder::default()
         .blockchain_config(blockchain)

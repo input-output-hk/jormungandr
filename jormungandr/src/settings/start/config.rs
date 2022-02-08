@@ -89,8 +89,7 @@ pub struct P2pConfig {
 
     /// Limit on the number of simultaneous client connections.
     /// If not specified, an internal default limit is used.
-    #[serde(alias = "max_client_connections")]
-    pub max_inbound_connections: Option<usize>,
+    pub max_client_connections: Option<usize>,
 
     /// This setting is not used and is left for backward compatibility.
     pub max_connections_threshold: Option<usize>,

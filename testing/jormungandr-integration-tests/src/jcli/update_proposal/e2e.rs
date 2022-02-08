@@ -2,7 +2,6 @@ use assert_fs::{
     fixture::{FileWriteStr, PathChild},
     TempDir,
 };
-use chain_addr::Discrimination;
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::value::Value;
 use jormungandr_automation::testing::time::{get_current_date, wait_for_epoch};
@@ -14,30 +13,22 @@ use jormungandr_lib::interfaces::{
     BlockContentMaxSize, BlockDate, ConfigParam, ConfigParams, ConsensusLeaderId,
 };
 use jortestkit::process::Wait;
-use rand_core::OsRng;
 use std::time::Duration;
-use thor::Wallet;
 
 #[test]
 fn basic_change_config_test() {
     let temp_dir = TempDir::new().unwrap();
+
     let jcli: JCli = Default::default();
-    let mut rng = OsRng;
     let wallet_initial_funds = 1_000_000;
 
-    let mut alice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Test);
-    let alice_address = alice.address();
-    let alice_pk = alice_address.1.public_key().unwrap();
+    let mut alice = thor::Wallet::default();
     let alice_sk = temp_dir.child("alice_sk");
     alice.save_to_path(alice_sk.path()).unwrap();
 
-    let mut bob = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Test);
-    let bob_address = bob.address();
-    let bob_pk = bob_address.1.public_key().unwrap();
+    let mut bob = thor::Wallet::default();
     let bob_sk = temp_dir.child("bob_sk");
     bob.save_to_path(bob_sk.path()).unwrap();
-
-    assert_ne!(alice_address, bob_address);
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
@@ -45,8 +36,8 @@ fn basic_change_config_test() {
             bob.to_initial_fund(wallet_initial_funds),
         ])
         .with_consensus_leaders_ids(vec![
-            ConsensusLeaderId::from(bob_pk.clone()),
-            ConsensusLeaderId::from(alice_pk.clone()),
+            ConsensusLeaderId::from(bob.public_key()),
+            ConsensusLeaderId::from(alice.public_key()),
         ])
         .build(&temp_dir);
 
@@ -74,11 +65,11 @@ fn basic_change_config_test() {
 
     let update_proposal_cert = jcli
         .certificate()
-        .new_update_proposal(&alice_pk.to_bech32_str(), change_param_path);
+        .new_update_proposal(&alice.public_key().to_bech32_str(), change_param_path);
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
-        .add_account(&alice_address.to_string(), &Value::zero().into())
+        .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&update_proposal_cert)
         .set_expiry_date(BlockDate::new(3, 0))
         .finalize()
@@ -90,13 +81,14 @@ fn basic_change_config_test() {
     check.assert_in_block_with_wait(&wait);
     let proposal_id = check.fragment_id();
 
-    let update_vote_cert = jcli
-        .certificate()
-        .new_update_vote(&proposal_id.to_string(), &alice_pk.to_bech32_str());
+    let update_vote_cert = jcli.certificate().new_update_vote(
+        &proposal_id.to_string(),
+        &alice.public_key().to_bech32_str(),
+    );
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
-        .add_account(&alice_address.to_string(), &Value::zero().into())
+        .add_account(&alice.address().to_string(), &Value::zero().into())
         .add_certificate(&update_vote_cert)
         .set_expiry_date(BlockDate::new(3, 0))
         .finalize()
@@ -110,11 +102,11 @@ fn basic_change_config_test() {
 
     let update_vote_cert = jcli
         .certificate()
-        .new_update_vote(&proposal_id.to_string(), &bob_pk.to_bech32_str());
+        .new_update_vote(&proposal_id.to_string(), &bob.public_key().to_bech32_str());
     let tx = jcli
         .transaction_builder(jormungandr.genesis_block_hash())
         .new_transaction()
-        .add_account(&bob_address.to_string(), &Value::zero().into())
+        .add_account(&bob.address().to_string(), &Value::zero().into())
         .add_certificate(&update_vote_cert)
         .set_expiry_date(BlockDate::new(3, 0))
         .finalize()

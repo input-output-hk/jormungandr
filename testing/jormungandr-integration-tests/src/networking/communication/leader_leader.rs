@@ -1,4 +1,5 @@
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
@@ -23,6 +24,7 @@ pub fn two_transaction_to_two_leaders() {
                 .with_node(Node::new(LEADER_2))
                 .with_node(Node::new(LEADER_1).with_trusted_peer(LEADER_2)),
         )
+        .blockchain_config(Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2]))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_500_000_000)

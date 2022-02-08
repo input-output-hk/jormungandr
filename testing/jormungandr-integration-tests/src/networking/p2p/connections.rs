@@ -1,5 +1,6 @@
 use crate::networking::utils;
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
@@ -10,6 +11,7 @@ use jormungandr_lib::interfaces::TrustedPeer;
 use jormungandr_lib::time::Duration;
 use thor::DummySyncNode;
 use thor::FragmentSender;
+
 const LEADER1: &str = "LEADER1";
 const LEADER2: &str = "LEADER2";
 const LEADER3: &str = "LEADER3";
@@ -32,6 +34,9 @@ pub fn max_connections() {
                 .with_node(Node::new(LEADER2).with_trusted_peer(LEADER1))
                 .with_node(Node::new(LEADER3).with_trusted_peer(LEADER1))
                 .with_node(Node::new(LEADER4).with_trusted_peer(LEADER1)),
+        )
+        .blockchain_config(
+            Blockchain::default().with_leaders(vec![LEADER1, LEADER2, LEADER3, LEADER4]),
         )
         .build()
         .unwrap();
@@ -68,6 +73,7 @@ pub fn node_trust_itself() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
+        .blockchain_config(Blockchain::default().with_leader(SERVER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -112,6 +118,7 @@ fn gossip_interval() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
+        .blockchain_config(Blockchain::default().with_leader(SERVER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -173,6 +180,7 @@ fn network_stuck_check() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
+        .blockchain_config(Blockchain::default().with_leader(SERVER))
         .build()
         .unwrap();
 
@@ -225,6 +233,7 @@ pub fn topics_of_interest_influences_node_sync_ability() {
                 .with_node(Node::new(FAST_CLIENT).with_trusted_peer(SERVER))
                 .with_node(Node::new(SLOW_CLIENT).with_trusted_peer(SERVER)),
         )
+        .blockchain_config(Blockchain::default().with_leader(SERVER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -309,6 +318,7 @@ fn max_bootstrap_attempts() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
+        .blockchain_config(Blockchain::default().with_leader(SERVER))
         .build()
         .unwrap();
 

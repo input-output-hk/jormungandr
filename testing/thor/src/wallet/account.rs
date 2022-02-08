@@ -25,9 +25,6 @@ pub struct Wallet {
     /// the spending key
     signing_key: SigningKey,
 
-    /// the identifier of the account
-    identifier: Identifier,
-
     /// the counter as we know of this value needs to be in sync
     /// with what is in the blockchain
     internal_counters: SpendingCounterIncreasing,
@@ -41,26 +38,29 @@ impl Wallet {
         RNG: CryptoRng + RngCore,
     {
         let signing_key = SigningKey::generate_extended(rng);
-        let identifier = signing_key.identifier();
         Wallet {
             signing_key,
-            identifier,
             internal_counters: SpendingCounterIncreasing::default(),
             discrimination,
         }
     }
 
-    pub fn from_existing_account(
-        bech32_str: &str,
-        spending_counter: Option<SpendingCounter>,
-    ) -> Self {
-        let signing_key = SigningKey::from_bech32_str(bech32_str).expect("bad bech32");
-        let identifier = signing_key.identifier();
+    pub fn from_secret(signing_key: SigningKey, discrimination: Discrimination) -> Self {
         Wallet {
             signing_key,
-            identifier,
+            internal_counters: SpendingCounterIncreasing::default(),
+            discrimination,
+        }
+    }
+
+    pub fn from_existing_account(bech32_str: &str, spending_counter: Option<u32>) -> Self {
+        let signing_key = SigningKey::from_bech32_str(bech32_str).expect("bad bech32");
+        Wallet {
+            signing_key,
             internal_counters: SpendingCounterIncreasing::new_from_counter(
-                spending_counter.unwrap_or_else(SpendingCounter::zero),
+                spending_counter
+                    .map(Into::into)
+                    .unwrap_or_else(SpendingCounter::zero),
             ),
             discrimination: Discrimination::Test,
         }
@@ -106,11 +106,11 @@ impl Wallet {
     }
 
     pub fn stake_key(&self) -> UnspecifiedAccountIdentifier {
-        UnspecifiedAccountIdentifier::from_single_account(self.identifier().clone().to_inner())
+        UnspecifiedAccountIdentifier::from_single_account(self.identifier().to_inner())
     }
 
-    pub fn identifier(&self) -> &Identifier {
-        &self.identifier
+    pub fn identifier(&self) -> Identifier {
+        self.signing_key.identifier()
     }
 
     pub fn signing_key(&self) -> &SigningKey {

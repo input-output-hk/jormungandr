@@ -1,8 +1,9 @@
 use jormungandr_automation::jormungandr::{JormungandrError, RestError, StartupError};
-use jormungandr_automation::testing::block0::GetBlock0Error;
+use jormungandr_automation::testing::block0::Block0Error;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum MjolnirError {
     #[error("cannot query rest")]
     RestError(#[from] RestError),
@@ -15,5 +16,5 @@ pub enum MjolnirError {
     #[error("pace is too low ({0})")]
     PaceTooLow(u64),
     #[error("get block0 error")]
-    GetBlock0Error(#[from] GetBlock0Error),
+    Block0Error(#[from] Block0Error),
 }

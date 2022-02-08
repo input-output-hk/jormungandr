@@ -1,5 +1,6 @@
 pub mod add_account;
 mod add_certificate;
+mod add_evm_transaction;
 mod add_input;
 pub mod add_output;
 mod add_witness;
@@ -45,9 +46,15 @@ pub enum Transaction {
     /// set a transaction expiration date
     SetExpiryDate(set_expiry_date::SetExpiryDate),
     /// set a certificate to the Transaction. If there is already
-    /// an extra certificate in the transaction it will be replaced
-    /// with the new one.
+    /// an evm transaction in the transaction it will be reset.
+    /// If there is already an extra certificate in the transaction
+    /// it will be replaced with the new one.
     AddCertificate(add_certificate::AddCertificate),
+    /// set a evm transaction to the Transaction. If there is already
+    /// an extra certificate in the transaction it will be reset.
+    /// If there is already an evm transaction in the transaction
+    /// it will be replaced with the new one.
+    AddEvmTransaction(add_evm_transaction::AddEvmTransaction),
     /// Lock a transaction and start adding witnesses
     Finalize(finalize::Finalize),
     /// Finalize the transaction
@@ -243,6 +250,7 @@ impl Transaction {
             Transaction::AddOutput(add_output) => add_output.exec(),
             Transaction::AddWitness(add_witness) => add_witness.exec(),
             Transaction::AddCertificate(add_certificate) => add_certificate.exec(),
+            Transaction::AddEvmTransaction(add_evm_transaction) => add_evm_transaction.exec(),
             Transaction::Finalize(finalize) => finalize.exec(),
             Transaction::Seal(seal) => seal.exec(),
             Transaction::FragmentId(common) => display_fragment_id(common),

@@ -4,12 +4,12 @@ use crate::wallet::Wallet;
 use chain_core::packer::Codec;
 use chain_core::property::DeserializeFromSlice;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use chrono::{DateTime, Utc};
 use jormungandr_automation::jormungandr::FragmentNode;
 use jormungandr_lib::interfaces::Address;
 use std::io::Write;
 use std::{fs, path::PathBuf};
 use thiserror::Error;
+use time::OffsetDateTime;
 
 #[derive(Debug, Error)]
 pub enum FragmentExporterError {
@@ -110,7 +110,7 @@ impl FragmentExporter {
         fragment: &Fragment,
         via: &dyn FragmentNode,
     ) -> String {
-        let now: DateTime<Utc> = Utc::now();
+        let now = OffsetDateTime::now_utc();
         let alias = {
             if via.alias().is_empty() {
                 "jormungandr".to_string()
@@ -121,7 +121,10 @@ impl FragmentExporter {
 
         format!(
             "{}_{}_to_{}.fragment",
-            now.format("%F_%H_%M_%S_%f"),
+            now.format(time::macros::format_description!(
+                "[year]-[month]-[day]_[hour]_[minute]_[second]_[subsecond]"
+            ))
+            .unwrap(),
             self.format_id(fragment.hash()),
             alias
         )
@@ -133,7 +136,7 @@ impl FragmentExporter {
         sender: &Wallet,
         via: &dyn FragmentNode,
     ) -> String {
-        let now: DateTime<Utc> = Utc::now();
+        let now = OffsetDateTime::now_utc();
         let alias = {
             if via.alias().is_empty() {
                 "jormungandr".to_string()
@@ -144,7 +147,10 @@ impl FragmentExporter {
 
         format!(
             "{}_{}_from_{}_to_{}.fragment",
-            now.format("%F_%H_%M_%S_%f"),
+            now.format(time::macros::format_description!(
+                "[year]-[month]-[day]_[hour]_[minute]_[second]_[subsecond]"
+            ))
+            .unwrap(),
             self.format_id(fragment.hash()),
             self.format_address(sender.address()),
             alias

@@ -159,7 +159,11 @@ impl Starter {
     }
 
     pub fn jormungandr_app(&mut self, path: PathBuf) -> &mut Self {
-        self.jormungandr_app_path = Some(path);
+        self.jormungandr_app_option(&Some(path))
+    }
+
+    pub fn jormungandr_app_option(&mut self, path: &Option<PathBuf>) -> &mut Self {
+        self.jormungandr_app_path = path.clone();
         self
     }
 

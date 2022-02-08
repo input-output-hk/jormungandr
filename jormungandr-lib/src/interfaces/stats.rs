@@ -1,7 +1,7 @@
 use crate::time::SystemTime;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NodeStatsDto {
     pub version: String,
@@ -10,7 +10,7 @@ pub struct NodeStatsDto {
     pub stats: Option<NodeStats>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct NodeStats {
     pub block_recv_cnt: u64,
@@ -23,14 +23,14 @@ pub struct NodeStats {
     pub last_block_time: Option<SystemTime>,
     pub last_block_tx: u64,
     pub last_received_block_time: Option<SystemTime>,
-    pub block_content_size_avg: u32,
+    pub block_content_size_avg: f64,
     pub peer_available_cnt: usize,
     pub peer_connected_cnt: usize,
     pub peer_quarantined_cnt: usize,
     pub peer_total_cnt: usize,
     pub tx_recv_cnt: u64,
-    pub tx_pending: u64,
-    pub tx_pending_total_size: u64,
+    pub mempool_usage_ratio: f64,
+    pub mempool_total_size: u64,
     pub tx_rejected_cnt: u64,
     pub votes_cast: u64,
     pub uptime: Option<u64>,

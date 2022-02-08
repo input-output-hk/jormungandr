@@ -7,12 +7,14 @@ pub mod vote;
 mod vote_plan_settings;
 pub mod wallet;
 
+use crate::config::SessionSettings;
 use crate::controller::Controller;
+use crate::controller::Error;
 pub use crate::controller::Error as ControllerError;
+use crate::utils::Dotifier;
 pub use blockchain::Blockchain;
 pub use jormungandr_automation::jormungandr::NodeAlias;
 use jormungandr_automation::jormungandr::NodeConfigBuilder;
-use jormungandr_automation::jormungandr::TestingDirectory;
 use jormungandr_automation::testing::observer::{Event, Observable, Observer};
 use jormungandr_lib::crypto::key::SigningKey;
 use jormungandr_lib::interfaces::NodeSecret;
@@ -20,6 +22,7 @@ pub use rng::{Random, Seed};
 pub use settings::{NodeSetting, Settings};
 pub use spawn_params::SpawnParams;
 use std::collections::HashMap;
+use std::path::Path;
 use std::rc::Rc;
 use std::rc::Weak;
 pub use topology::{Node, Topology};
@@ -31,8 +34,8 @@ pub use wallet::{ExternalWalletTemplate, Wallet, WalletTemplate, WalletType};
 pub struct NetworkBuilder {
     topology: Topology,
     blockchain: Blockchain,
+    session_settings: SessionSettings,
     wallet_templates: Vec<WalletTemplate>,
-    testing_directory: TestingDirectory,
     observers: Vec<Weak<dyn Observer>>,
 }
 
@@ -75,8 +78,8 @@ impl NetworkBuilder {
         self
     }
 
-    pub fn testing_directory(mut self, testing_directory: TestingDirectory) -> Self {
-        self.testing_directory = testing_directory;
+    pub fn session_settings(mut self, session_settings: SessionSettings) -> Self {
+        self.session_settings = session_settings;
         self
     }
 
@@ -107,19 +110,36 @@ impl NetworkBuilder {
         let seed = Seed::generate(rand::rngs::OsRng);
         let mut random = Random::new(seed);
 
-        for alias in nodes.keys() {
-            let leader: NodeAlias = alias.into();
-            self.blockchain.add_leader(leader);
-        }
-
         for wallet in &self.wallet_templates {
-            self.blockchain.add_wallet(wallet.clone());
+            self.blockchain = self.blockchain.with_wallet(wallet.clone());
         }
 
         self.notify_all(Event::new("building block0.."));
         let settings = Settings::new(nodes, self.blockchain.clone(), &mut random);
 
+        self.notify_all(Event::new("dumping wallet secret keys.."));
+
+        if self.session_settings.generate_documentation {
+            document(self.session_settings.root.path(), &settings)?;
+        }
+
         self.finish_all();
-        Controller::new(settings, self.testing_directory)
+        Controller::new(settings, self.session_settings.root)
     }
+}
+
+fn document(path: &Path, settings: &Settings) -> Result<(), Error> {
+    let file = std::fs::File::create(&path.join("initial_setup.dot"))?;
+
+    let dotifier = Dotifier;
+    dotifier.dottify(settings, file)?;
+
+    for wallet in settings.wallets.values() {
+        wallet.save_to(path)?;
+    }
+
+    let file = std::fs::File::create(&path.join("genesis.yaml"))?;
+    serde_yaml::to_writer(file, &settings.block0).unwrap();
+
+    Ok(())
 }

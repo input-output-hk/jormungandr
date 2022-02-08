@@ -10,8 +10,8 @@ pub fn spawn_network(config: Config, mut topology: Topology, args: Args) -> Resu
 
     let mut monitor_controller = MonitorControllerBuilder::new(&config.session.title)
         .topology(topology.clone())
-        .blockchain(config.blockchain.clone())
-        .build(config.session.clone().into())?;
+        .blockchain(config.build_blockchain())
+        .build(config.session.clone())?;
 
     let mut processes: HashMap<NodeAlias, MonitorNode> = HashMap::new();
 

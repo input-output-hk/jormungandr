@@ -52,13 +52,9 @@ pub struct NodeSetting {
 #[derive(Debug, Clone)]
 pub struct Settings {
     pub nodes: HashMap<NodeAlias, NodeSetting>,
-
     pub wallets: HashMap<WalletAlias, Wallet>,
-
     pub block0: Block0Configuration,
-
     pub stake_pools: HashMap<NodeAlias, StakePool>,
-
     pub vote_plans: HashMap<VotePlanKey, VotePlanSettings>,
 }
 
@@ -208,13 +204,26 @@ impl Settings {
 
             // TODO add support for sharing fragment with multiple utxos
             let initial_fragment = Initial::Fund(vec![InitialUTxO {
-                address: initial_address,
+                address: initial_address.clone(),
                 value: (*wallet_template.value()).into(),
             }]);
 
             self.wallets
                 .insert(wallet_template.alias().clone(), wallet.clone());
             self.block0.initial.push(initial_fragment);
+
+            for (token_identifier, value) in wallet_template.tokens() {
+                let tokens_fragment = Initial::Token(InitialToken {
+                    token_id: token_identifier.clone(),
+                    // TODO: there are no policies now, but this will need to be changed later
+                    policy: MintingPolicy::new().into(),
+                    to: vec![Destination {
+                        address: initial_address.clone(),
+                        value: (*value).into(),
+                    }],
+                });
+                self.block0.initial.push(tokens_fragment);
+            }
 
             if let Some(delegation) = wallet_template.delegate() {
                 use chain_impl_mockchain::certificate::PoolId as StakePoolId;

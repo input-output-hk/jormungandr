@@ -36,6 +36,7 @@ pub fn passive_node_explorer() {
             BlockchainBuilder::default()
                 .slots_per_epoch(60)
                 .slot_duration(2)
+                .leaders(vec![LEADER_1, LEADER_2, LEADER_3])
                 .build(),
         )
         .wallet_template(

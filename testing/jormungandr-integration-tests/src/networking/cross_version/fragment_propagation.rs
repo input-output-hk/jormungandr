@@ -1,12 +1,12 @@
 use super::{ALICE, BOB, CLARICE, DAVID};
 use super::{LEADER, PASSIVE};
-use function_name::named;
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
-use hersir::controller::Context;
+use hersir::config::SessionSettings;
 use hersir::controller::Controller;
 use jormungandr_automation::jormungandr::{
     download_last_n_releases, get_jormungandr_bin, version_0_8_19, FragmentNode, Version,
@@ -16,7 +16,6 @@ use std::path::PathBuf;
 use thor::{FragmentSender, StakePool};
 
 #[test]
-#[named]
 pub fn legacy_current_node_fragment_propagation() {
     let mut controller = NetworkBuilder::default()
         .topology(
@@ -24,6 +23,7 @@ pub fn legacy_current_node_fragment_propagation() {
                 .with_node(Node::new(LEADER))
                 .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
         )
+        .blockchain_config(Blockchain::default().with_leader(LEADER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_500_000_000)
@@ -43,8 +43,8 @@ pub fn legacy_current_node_fragment_propagation() {
         )
         .build()
         .unwrap();
-    let mut context = Context::default();
-    let (legacy_app, version) = get_legacy_data(function_name!(), &mut context);
+    let session_settings = SessionSettings::default();
+    let (legacy_app, version) = get_legacy_data(&session_settings);
 
     let _leader = controller
         .spawn(SpawnParams::new(LEADER).in_memory())
@@ -63,7 +63,6 @@ pub fn legacy_current_node_fragment_propagation() {
 }
 
 #[test]
-#[named]
 pub fn current_node_legacy_fragment_propagation() {
     let mut controller = NetworkBuilder::default()
         .topology(
@@ -90,8 +89,8 @@ pub fn current_node_legacy_fragment_propagation() {
         )
         .build()
         .unwrap();
-    let mut context = Context::default();
-    let (legacy_app, version) = get_legacy_data(function_name!(), &mut context);
+    let session_settings = SessionSettings::default();
+    let (legacy_app, version) = get_legacy_data(&session_settings);
 
     let _leader = controller
         .spawn_legacy(
@@ -146,10 +145,10 @@ pub fn current_node_fragment_propagation() {
     send_all_fragment_types(&mut controller, &passive, None);
 }
 
-fn get_legacy_data(title: &str, context: &mut Context) -> (PathBuf, Version) {
+fn get_legacy_data(session_settings: &SessionSettings) -> (PathBuf, Version) {
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();
-    let legacy_app = get_jormungandr_bin(last_release, &context.child_directory(title));
+    let legacy_app = get_jormungandr_bin(last_release, &session_settings.root);
     (legacy_app, last_release.version())
 }
 

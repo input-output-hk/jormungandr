@@ -1,5 +1,6 @@
 use crate::networking::utils;
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
+use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
 use hersir::builder::Node;
 use hersir::builder::SpawnParams;
@@ -38,6 +39,7 @@ pub fn fully_connected() {
                         .with_trusted_peer(LEADER_3),
                 ),
         )
+        .blockchain_config(Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3]))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_000_000_000)
@@ -108,6 +110,10 @@ pub fn star() {
                 .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_5))
                 .with_node(Node::new(LEADER_3).with_trusted_peer(LEADER_5))
                 .with_node(Node::new(LEADER_4).with_trusted_peer(LEADER_5)),
+        )
+        .blockchain_config(
+            Blockchain::default()
+                .with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4, LEADER_5]),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
@@ -189,6 +195,9 @@ pub fn mesh() {
                         .with_trusted_peer(LEADER_2),
                 ),
         )
+        .blockchain_config(
+            Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4]),
+        )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_000_000_000)
@@ -257,6 +266,9 @@ pub fn point_to_point() {
                 .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_3))
                 .with_node(Node::new(LEADER_1).with_trusted_peer(LEADER_2)),
         )
+        .blockchain_config(
+            Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4]),
+        )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_000_000_000)
@@ -322,6 +334,9 @@ pub fn point_to_point_on_file_storage() {
                 .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_3))
                 .with_node(Node::new(LEADER_1).with_trusted_peer(LEADER_2)),
         )
+        .blockchain_config(
+            Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4]),
+        )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_000_000_000)
@@ -382,6 +397,9 @@ pub fn tree() {
                 .with_node(Node::new(LEADER_6).with_trusted_peer(LEADER_3))
                 .with_node(Node::new(LEADER_7).with_trusted_peer(LEADER_3)),
         )
+        .blockchain_config(Blockchain::default().with_leaders(vec![
+            LEADER_1, LEADER_2, LEADER_3, LEADER_4, LEADER_5, LEADER_6, LEADER_7,
+        ]))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_000_000_000)
@@ -464,6 +482,18 @@ pub fn relay() {
                 .with_node(Node::new(LEADER_6).with_trusted_peer(RELAY_NODE_2))
                 .with_node(Node::new(LEADER_7).with_trusted_peer(RELAY_NODE_2)),
         )
+        .blockchain_config(Blockchain::default().with_leaders(vec![
+            CORE_NODE,
+            RELAY_NODE_1,
+            RELAY_NODE_2,
+            LEADER_1,
+            LEADER_2,
+            LEADER_3,
+            LEADER_4,
+            LEADER_5,
+            LEADER_6,
+            LEADER_7,
+        ]))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_000_000_000)

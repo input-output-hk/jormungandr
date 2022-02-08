@@ -8,4 +8,4 @@ edition = "2018"
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait" }
 chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait"}
 thiserror = "1.0.30"
-lru       = "0.6.6"
+lru       = "0.7"

@@ -7,10 +7,11 @@ use crate::{
 use serde::Deserialize;
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub blockchain: Blockchain,
+    blockchain: Blockchain,
     pub nodes: Vec<NodeConfig>,
     #[serde(default)]
     pub session: SessionSettings,
@@ -33,26 +34,26 @@ impl Config {
         topology
     }
 
+    pub fn build_blockchain(&self) -> Blockchain {
+        let mut blockchain = self.blockchain.clone();
+        for node_config in &self.nodes {
+            if node_config.spawn_params.is_leader() {
+                blockchain = blockchain.with_leader(node_config.spawn_params.get_alias());
+            }
+        }
+        blockchain
+    }
+
     pub fn node_spawn_params(&self, alias: &str) -> Result<SpawnParams, Error> {
-        let mut spawn_params = self
+        Ok(self
             .nodes
             .iter()
             .find(|c| c.spawn_params.get_alias() == alias)
             .map(|c| &c.spawn_params)
             .ok_or_else(|| Error::Internal(format!("Node '{}' has no spawn parameters", alias)))?
-            .clone();
-
-        if let Some(jormungandr) = &self.session.jormungandr {
-            spawn_params = spawn_params.jormungandr(jormungandr.to_path_buf());
-        }
-        Ok(spawn_params.log_level(self.session.log.clone()))
-    }
-
-    pub fn testing_directory(&self) -> TestingDirectory {
-        match &self.session.root {
-            Some(path) => path.to_path_buf().into(),
-            None => TestingDirectory::new_temp().unwrap(),
-        }
+            .clone()
+            .jormungandr(self.session.jormungandr.to_path_buf())
+            .log_level(self.session.log.clone()))
     }
 }
 
@@ -65,8 +66,10 @@ pub struct NodeConfig {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SessionSettings {
-    pub jormungandr: Option<PathBuf>,
-    pub root: Option<PathBuf>,
+    #[serde(default = "default_jormungandr")]
+    pub jormungandr: PathBuf,
+    #[serde(default = "default_root")]
+    pub root: TestingDirectory,
     #[serde(default)]
     pub generate_documentation: bool,
     pub mode: SessionMode,
@@ -76,8 +79,16 @@ pub struct SessionSettings {
     pub title: String,
 }
 
+fn default_jormungandr() -> PathBuf {
+    PathBuf::from_str("jormungandr").unwrap()
+}
+
 fn default_log_level() -> LogLevel {
     LogLevel::INFO
+}
+
+fn default_root() -> TestingDirectory {
+    TestingDirectory::new_temp().unwrap()
 }
 
 fn default_title() -> String {
@@ -87,8 +98,8 @@ fn default_title() -> String {
 impl Default for SessionSettings {
     fn default() -> Self {
         Self {
-            jormungandr: None,
-            root: None,
+            jormungandr: default_jormungandr(),
+            root: default_root(),
             mode: SessionMode::Standard,
             log: default_log_level(),
             generate_documentation: false,
