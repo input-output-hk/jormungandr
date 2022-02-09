@@ -152,9 +152,9 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<PeersRequest>,
     ) -> Result<tonic::Response<PeersResponse>, tonic::Status> {
         info!(method = %MethodType::GetPeers, "Get peers request received");
-        use chain_core::packer::Codec;
         let data = self.data.read().unwrap();
-        let mut codec = Codec::new(Vec::new());
+        // Gossip struct serde, jormungandr/src/topology/gossip.rs
+        let mut codec = chain_core::packer::Codec::new(Vec::new());
         let bytes = data.profile().gossip().as_ref();
         if bytes.len() > 512 {
             panic!("gossip size overflow");

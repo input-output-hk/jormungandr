@@ -136,6 +136,7 @@ pub enum GossipError {
     InvalidGossip(#[from] poldercast::GossipError),
 }
 
+// After updating Gossip serde format also need to update it in peers() function in 'testing/jormungandr-automation/src/jormungandr/grpc/server/mod.rs'
 impl property::Serialize for Gossip {
     fn serialize<W: std::io::Write>(
         &self,
