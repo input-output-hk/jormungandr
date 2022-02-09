@@ -1,6 +1,6 @@
 use chain_core::{
     packer::Codec,
-    property::{Deserialize, DeserializeFromSlice, Serialize, WriteError},
+    property::{Deserialize, DeserializeFromSlice, Serialize, WriteError, ReadError},
 };
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::certificate::VotePlan;
@@ -130,8 +130,8 @@ pub enum Block0Error {
     IoError(#[from] std::io::Error),
     #[error(transparent)]
     Write(#[from] WriteError),
-    #[error("read error")]
-    ReadError(#[from] chain_core::property::ReadError),
+    #[error(transparent)]
+    Read(#[from] ReadError),
     #[error("bech32 error")]
     Bech32Error(#[from] bech32::Error),
     #[error(transparent)]
