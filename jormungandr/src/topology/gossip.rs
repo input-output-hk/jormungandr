@@ -142,7 +142,7 @@ impl property::Serialize for Gossip {
         codec: &mut Codec<W>,
     ) -> Result<(), property::WriteError> {
         let bytes = self.0.as_ref();
-        if bytes.len() > limits::MAX_GOSSIP_SIZE as usize {
+        if bytes.len() > limits::MAX_GOSSIP_SIZE {
             return Err(property::WriteError::IoError(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 "Gossip size more than expected",
@@ -156,15 +156,13 @@ impl property::Serialize for Gossip {
 impl property::Deserialize for Gossip {
     fn deserialize<R: std::io::Read>(codec: &mut Codec<R>) -> Result<Self, property::ReadError> {
         let bytes_size = codec.get_be_u16()? as usize;
-        if bytes_size > limits::MAX_GOSSIP_SIZE as usize {
+        if bytes_size > limits::MAX_GOSSIP_SIZE {
             return Err(property::ReadError::SizeTooBig(
                 limits::MAX_GOSSIP_SIZE as usize,
                 bytes_size,
             ));
         }
-
         let bytes = codec.get_bytes(bytes_size as usize)?;
-
         Ok(Gossip(
             poldercast::GossipSlice::try_from_slice(bytes.as_slice())
                 .map_err(|e| property::ReadError::InvalidData(e.to_string()))?
@@ -176,8 +174,24 @@ impl property::Deserialize for Gossip {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chain_impl_mockchain::testing::serialization::serialization_bijection;
+    use quickcheck::quickcheck;
+    use quickcheck::{Arbitrary, TestResult};
     use rand::SeedableRng;
     use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+
+    impl Arbitrary for Gossip {
+        fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+            let ip = Ipv4Addr::new(
+                u8::arbitrary(g),
+                u8::arbitrary(g),
+                u8::arbitrary(g),
+                u8::arbitrary(g),
+            );
+            let addr = SocketAddr::V4(SocketAddrV4::new(ip, u16::arbitrary(g)));
+            build_gossip(addr)
+        }
+    }
 
     // Build a gossip with a random key, just for testing addresses
     fn build_gossip(addr: SocketAddr) -> Gossip {
@@ -186,6 +200,12 @@ mod tests {
             &keynesis::key::ed25519::SecretKey::new(rand_chacha::ChaChaRng::from_seed([0u8; 32])),
             poldercast::Subscriptions::new().as_slice(),
         ))
+    }
+
+    quickcheck! {
+        fn gossip_serialization_bijection(b: Gossip) -> TestResult {
+            serialization_bijection(b)
+        }
     }
 
     #[test]

@@ -23,8 +23,8 @@ pub enum Error {
     PullRequestFailed(#[source] NetworkError),
     #[error("could not get the blockchain tip from a peer")]
     TipFailed(#[source] NetworkError),
-    #[error("decoding of a peer failed")]
-    PeerDecodingFailed(#[source] NetworkError),
+    #[error(transparent)]
+    PeerDecodingFailed(NetworkError),
     #[error("decoding of a block failed")]
     BlockDecodingFailed(#[source] ReadError),
     #[error(transparent)]

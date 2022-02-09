@@ -2,7 +2,7 @@ use crate::blockcfg::{Block, Fragment, Header, HeaderId};
 use crate::intercom;
 use crate::topology::{Gossip, Gossips, NodeId};
 use chain_core::packer::Codec;
-use chain_core::property::{Deserialize, DeserializeFromSlice, Serialize};
+use chain_core::property::{DeserializeFromSlice, Serialize};
 use chain_network::data as net_data;
 use chain_network::error::{Code, Error};
 
@@ -91,7 +91,7 @@ impl Decode for net_data::Fragment {
 impl Decode for net_data::gossip::Node {
     type Object = Gossip;
     fn decode(self) -> Result<Self::Object, Error> {
-        Gossip::deserialize(&mut Codec::new(self.as_bytes()))
+        Gossip::deserialize_from_slice(&mut Codec::new(self.as_bytes()))
             .map_err(|e| Error::new(Code::InvalidArgument, e))
     }
 }

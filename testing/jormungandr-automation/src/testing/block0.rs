@@ -1,6 +1,6 @@
 use chain_core::{
     packer::Codec,
-    property::{Deserialize, DeserializeFromSlice, Serialize, WriteError, ReadError},
+    property::{Deserialize, DeserializeFromSlice, ReadError, Serialize, WriteError},
 };
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::certificate::VotePlan;

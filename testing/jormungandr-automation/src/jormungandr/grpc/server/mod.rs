@@ -152,16 +152,17 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<PeersRequest>,
     ) -> Result<tonic::Response<PeersResponse>, tonic::Status> {
         info!(method = %MethodType::GetPeers, "Get peers request received");
-        use bincode::Options;
+        use chain_core::packer::Codec;
         let data = self.data.read().unwrap();
-        let mut self_gossip = Vec::new();
-        let config = bincode::options();
-        config.with_limit(512);
-        config
-            .serialize_into(&mut self_gossip, data.profile().gossip().as_ref())
-            .unwrap();
+        let mut codec = Codec::new(Vec::new());
+        let bytes = data.profile().gossip().as_ref();
+        if bytes.len() > 512 {
+            panic!("gossip size overflow");
+        }
+        codec.put_be_u16(bytes.len() as u16).unwrap();
+        codec.put_bytes(bytes).unwrap();
         Ok(Response::new(PeersResponse {
-            peers: vec![self_gossip],
+            peers: vec![codec.into_inner()],
         }))
     }
     async fn get_blocks(
