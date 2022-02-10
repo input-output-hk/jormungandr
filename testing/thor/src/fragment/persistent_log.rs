@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use bincode::Options;
+use chain_core::packer::Codec;
 use chain_core::property::Serialize;
 use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::interfaces::{
@@ -44,11 +44,11 @@ pub fn write_into_persistent_log<P: AsRef<Path>>(
     let mut output = BufWriter::with_capacity(128 * 1024, File::create(persistent_log.as_ref())?);
 
     for entry in entries {
-        let codec = bincode::DefaultOptions::new().with_fixint_encoding();
-        let serialized = codec
-            .serialize(&entry)
+        let mut codec = Codec::new(Vec::new());
+        entry
+            .serialize(&mut codec)
             .map_err(|_| Error::CannotSerializeEntry)?;
-        output.write_all(&serialized)?;
+        output.write_all(codec.into_inner().as_slice())?;
     }
     Ok(())
 }

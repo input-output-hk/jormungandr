@@ -7,7 +7,6 @@ edition = "2018"
 description = "Data structures and formats used by Jormungandr node API and configuration files"
 
 [dependencies]
-bincode = "1.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_with = { version = "1.11", features = ["macros"] }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait" }
@@ -31,6 +30,7 @@ base64 = "0.13.0"
 http = "0.2.2"
 
 [dev-dependencies]
+bincode = "1.3.3"
 quickcheck = "0.9"
 quickcheck_macros = "0.9"
 # FIXME required to work with quickcheck 0.9. Remove after migrating another crate or newer quickcheck

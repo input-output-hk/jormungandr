@@ -2139,7 +2139,6 @@ dependencies = [
  "async-trait",
  "base64",
  "bech32 0.8.1",
- "bincode",
  "cardano-legacy-address",
  "chain-addr",
  "chain-core",
@@ -2198,7 +2197,6 @@ dependencies = [
  "assert_fs",
  "base64",
  "bech32 0.8.1",
- "bincode",
  "bytesize",
  "cardano-legacy-address",
  "chain-addr",
@@ -4379,7 +4377,6 @@ version = "0.1.0"
 dependencies = [
  "assert_fs",
  "bech32 0.8.1",
- "bincode",
  "chain-addr",
  "chain-core",
  "chain-crypto",

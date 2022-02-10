@@ -131,8 +131,6 @@ pub enum GossipError {
     #[error(transparent)]
     ReadError(#[from] property::ReadError),
     #[error(transparent)]
-    Bincode(#[from] bincode::Error),
-    #[error(transparent)]
     InvalidGossip(#[from] poldercast::GossipError),
 }
 
