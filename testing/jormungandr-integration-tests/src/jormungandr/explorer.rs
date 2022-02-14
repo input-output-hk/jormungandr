@@ -10,6 +10,7 @@ use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
 use std::str::FromStr;
 use std::time::Duration;
+use thor::{StakePool, TransactionHash};
 
 /// test checks if there is upto date schema
 /// prereq:

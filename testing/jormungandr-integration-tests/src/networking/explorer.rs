@@ -6,7 +6,6 @@ use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
 use jormungandr_automation::testing::time;
 use jormungandr_lib::interfaces::BlockDate;
-use jormungandr_lib::interfaces::Explorer;
 use thor::FragmentSender;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";

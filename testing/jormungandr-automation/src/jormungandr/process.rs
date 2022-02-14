@@ -331,8 +331,8 @@ impl JormungandrProcess {
         .unwrap();
 
         TimeEra::new(
-            (block_date.slot_id as u64).into(),
-            chain_time::Epoch(block_date.epoch),
+            (block_date.slot() as u64).into(),
+            chain_time::Epoch(block_date.epoch()),
             self.block0_configuration
                 .blockchain_configuration
                 .slots_per_epoch

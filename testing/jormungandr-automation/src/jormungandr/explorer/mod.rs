@@ -1,4 +1,4 @@
-use crate::testing::configuration::{get_available_port, get_explorer_app};
+use crate::testing::configuration::get_explorer_app;
 
 use self::{
     client::GraphQlClient,
@@ -33,6 +33,8 @@ use serde::Serialize;
 use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
+
+use super::get_available_port;
 
 #[derive(Error, Debug)]
 pub enum ExplorerError {

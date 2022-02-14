@@ -15,8 +15,6 @@ pub fn send_all_fragments() {
     let receiver = thor::Wallet::default();
     let sender = thor::Wallet::default();
 
-    dbg!("starting stake pool");
-
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[receiver.clone()],
@@ -48,17 +46,10 @@ pub fn send_all_fragments() {
 
     let fragment_sender = FragmentSender::from_with_setup(
         jormungandr.block0_configuration(),
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        jormungandr.default_block_date_generator(),
         FragmentSenderSetup::no_verify(),
     );
 
-    dbg!("fragment sender built");
-
     let time_era = jormungandr.time_era();
-
-    dbg!("time era");
 
     let mut fragment_generator = FragmentGenerator::new(
         sender,
@@ -71,17 +62,12 @@ pub fn send_all_fragments() {
         fragment_sender,
     );
 
-    dbg!("generating fragments");
-
     fragment_generator.prepare(BlockDate::new(1, 0));
-
-    dbg!("waiting for epoch");
 
     time::wait_for_epoch(2, jormungandr.rest());
 
     let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
 
-    dbg!("wait and verify");
     FragmentVerifier::wait_and_verify_all_are_in_block(
         Duration::from_secs(2),
         mem_checks,

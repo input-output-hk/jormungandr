@@ -1314,11 +1314,7 @@ impl VotePlanStatus {
             return Ok(Self::vote_plan_from_data(vote_plan));
         }
 
-        Err(ApiError::NotFound(format!(
-            "Vote plan with id {} not found",
-            vote_plan_id.to_string()
-        ))
-        .into())
+        Err(ApiError::NotFound(format!("Vote plan with id {} not found", vote_plan_id)).into())
     }
 
     pub fn vote_plan_from_data(vote_plan: Arc<ExplorerVotePlan>) -> Self {
