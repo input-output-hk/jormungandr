@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+jcli = { path = "../../jcli" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jormungandr-automation = { path = "../jormungandr-automation" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
@@ -15,6 +16,11 @@ chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 assert_fs = "1.0"
 chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+serde = { version = "1.0", features = ["derive"] }
+cocoon = "0.2.4"
+dirs = "4.0.0"
+serde_yaml = "0.8"
+structopt = "0.3"
 rand = "0.8"
 rand_core = "0.6"
 rand_chacha = "0.3"

@@ -185,13 +185,23 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         via: &A,
         value: Value,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
+        self.send_transaction_to_address(from,to.address(),via,value)
+    }
+
+    pub fn send_transaction_to_address<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        from: &mut Wallet,
+        to: Address,
+        via: &A,
+        value: Value,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
         let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
         )
         .witness_mode(self.witness_mode)
-        .transaction(from, to.address(), value)?;
+        .transaction(from, to, value)?;
 
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
@@ -645,6 +655,24 @@ impl<'a> From<&Block0Configuration> for FragmentSender<'a, DummySyncNode> {
             block0.blockchain_configuration.linear_fees,
             BlockDateGenerator::rolling_from_blockchain_config(
                 &block0.blockchain_configuration,
+                BlockDate {
+                    epoch: 1,
+                    slot_id: 0,
+                },
+                false,
+            ),
+            Default::default(),
+        )
+    }
+}
+
+impl<'a> From<&SettingsDto> for FragmentSender<'a, DummySyncNode> {
+    fn from(settings: &SettingsDto) -> Self {
+        Self::new(
+            settings.block0_hash.parse().unwrap(),
+            settings.fees,
+            BlockDateGenerator::rolling(
+                settings,
                 BlockDate {
                     epoch: 1,
                     slot_id: 0,

@@ -352,7 +352,7 @@ impl FragmentBuilder {
     ) -> Fragment {
         let inner_wallet = wallet.clone().into();
         let signer_wallet: Wallet =
-            AccountWallet::from_secret(bft_auth.clone().into(), wallet.discrimination()).into();
+            AccountWallet::from_secret_key(bft_auth.clone().into(),Default::default(), wallet.discrimination()).into();
 
         self.fragment_factory.update_proposal(
             self.valid_until,
@@ -370,7 +370,7 @@ impl FragmentBuilder {
     ) -> Fragment {
         let inner_wallet = wallet.clone().into();
         let signer_wallet: Wallet =
-            AccountWallet::from_secret(bft_auth.clone().into(), wallet.discrimination()).into();
+            AccountWallet::from_secret_key(bft_auth.clone().into(), Default::default(), wallet.discrimination()).into();
         self.fragment_factory.update_vote(
             self.valid_until,
             &inner_wallet,

@@ -9,6 +9,8 @@ use crate::FragmentBuilderError;
 use chain_addr::AddressReadable;
 use chain_addr::Discrimination;
 use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Signature};
+use chain_impl_mockchain::accounting::account::SpendingCounterIncreasing;
+use crate::wallet::discrimination::DiscriminationExtension;
 pub use chain_impl_mockchain::{
     account::SpendingCounter,
     block::Block,
@@ -33,7 +35,6 @@ use chain_impl_mockchain::{
     vote::CommitteeId,
 };
 pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
-use discrimination::DiscriminationExtension;
 use jormungandr_automation::jcli::WitnessData;
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
@@ -70,7 +71,7 @@ const DEFAULT_LANE: usize = 0;
 pub enum Wallet {
     Account(account::Wallet),
     UTxO(utxo::Wallet),
-    Delegation(delegation::Wallet),
+    Delegation(delegation::Wallet)
 }
 
 impl Default for Wallet {
@@ -317,9 +318,9 @@ impl Wallet {
         }
     }
 
-    pub fn spending_counter(&self) -> SpendingCounter {
+    pub fn spending_counter(&self) -> Option<SpendingCounterIncreasing> {
         match self {
-            Wallet::Account(account) => account.internal_counter(),
+            Wallet::Account(account) => SpendingCounterIncreasing::new_from_counters(account.internal_counters()),
             _ => unimplemented!(),
         }
     }
