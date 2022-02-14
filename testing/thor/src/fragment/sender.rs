@@ -185,7 +185,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         via: &A,
         value: Value,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        self.send_transaction_to_address(from,to.address(),via,value)
+        self.send_transaction_to_address(from, to.address(), via, value)
     }
 
     pub fn send_transaction_to_address<A: FragmentNode + SyncNode + Sized + Send>(

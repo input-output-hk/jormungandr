@@ -318,8 +318,8 @@ impl JormungandrProcess {
 
     pub fn to_remote(&self) -> RemoteJormungandr {
         RemoteJormungandrBuilder::new(self.alias.clone())
-        .with_rest(self.rest_socket_addr)
-        .build()
+            .with_rest(self.rest_socket_addr)
+            .build()
     }
 
     pub fn steal_temp_dir(&mut self) -> Option<TestingDirectory> {

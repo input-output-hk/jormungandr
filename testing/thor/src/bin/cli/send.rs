@@ -1,11 +1,10 @@
-use chain_addr::AddressReadable;
-use thor::cli::CliController;
 use crate::cli::command::Error;
+use chain_addr::AddressReadable;
 use structopt::StructOpt;
+use thor::cli::CliController;
 
 #[derive(StructOpt, Debug)]
 pub struct SendCommand {
-
     // pin
     #[structopt(long, short)]
     pub wait: bool,
@@ -17,16 +16,15 @@ pub struct SendCommand {
 impl SendCommand {
     pub fn exec(self, contoller: CliController) -> Result<(), Error> {
         match self.cmd {
-            SendSubCommand::Tx(send_tx) => send_tx.exec(contoller,self.wait),
+            SendSubCommand::Tx(send_tx) => send_tx.exec(contoller, self.wait),
         }
     }
 }
 
 #[derive(StructOpt, Debug)]
 pub enum SendSubCommand {
-   Tx(Tx)
+    Tx(Tx),
 }
-
 
 #[derive(StructOpt, Debug)]
 pub struct Tx {
@@ -37,7 +35,7 @@ pub struct Tx {
     /// ada to send
     #[structopt(long)]
     pub ada: u64,
-    
+
     // pin
     #[structopt(long, short)]
     pub pin: String,

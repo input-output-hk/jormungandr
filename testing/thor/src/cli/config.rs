@@ -1,11 +1,11 @@
+use crate::wallet::discrimination::DiscriminationExtension;
 use chain_addr::{Address, AddressReadable, Discrimination, Kind};
 use chain_crypto::bech32::Bech32;
 use chain_crypto::Ed25519;
 use chain_crypto::PublicKey;
 use chain_impl_mockchain::account::Identifier;
-use jormungandr_automation::jormungandr::RestSettings;
-use crate::wallet::discrimination::DiscriminationExtension;
 use jormungandr_automation::jormungandr::JormungandrRest;
+use jormungandr_automation::jormungandr::RestSettings;
 use jormungandr_lib::crypto::hash::Hash;
 use serde::{Deserialize, Serialize};
 use serde_yaml;
@@ -25,16 +25,13 @@ pub struct Config {
 pub struct Connection {
     pub address: String,
     pub https: bool,
-    pub debug: bool
+    pub debug: bool,
 }
 
 #[allow(clippy::from_over_into)]
 impl Into<JormungandrRest> for Connection {
     fn into(self) -> JormungandrRest {
-        JormungandrRest::new_with_custom_settings(
-            self.address.clone(),
-            self.into(),
-        )
+        JormungandrRest::new_with_custom_settings(self.address.clone(), self.into())
     }
 }
 
@@ -75,7 +72,7 @@ impl std::str::FromStr for SecretKey {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize,Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 pub struct Wallets {
     pub(crate) default: Option<Alias>,
     pub wallets: HashMap<Alias, WalletState>,
@@ -97,7 +94,6 @@ impl WalletState {
         let kind = Kind::Account(self.pk()?);
         Ok(Address(self.discrimination(), kind))
     }
-
 
     pub fn discrimination(&self) -> Discrimination {
         if self.testing {
@@ -130,14 +126,13 @@ impl WalletState {
 }
 
 pub struct ConfigManager {
-    app_name: String
+    app_name: String,
 }
 
 impl ConfigManager {
-
     pub fn new(app_name: impl Into<String>) -> Self {
         Self {
-            app_name: app_name.into()
+            app_name: app_name.into(),
         }
     }
 

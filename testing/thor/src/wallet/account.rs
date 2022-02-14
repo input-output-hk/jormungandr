@@ -48,7 +48,7 @@ impl Wallet {
     pub fn from_secret_key(
         signing_key: SigningKey,
         internal_counters: SpendingCounterIncreasing,
-        discrimination: Discrimination
+        discrimination: Discrimination,
     ) -> Self {
         Wallet {
             signing_key,

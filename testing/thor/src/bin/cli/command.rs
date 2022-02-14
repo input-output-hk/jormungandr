@@ -1,8 +1,8 @@
 use super::wallet::Wallets;
-use thor::cli::{Connection,CliController};
 use crate::cli::send::SendCommand;
 use structopt::StructOpt;
 use thiserror::Error;
+use thor::cli::{CliController, Connection};
 
 #[derive(StructOpt, Debug)]
 pub enum IapyxCommand {
@@ -55,7 +55,9 @@ impl IapyxCommand {
             }
             IapyxCommand::PendingTransactions => {
                 print_delim();
-                for (idx, fragment_ids) in controller.wallets().wallet()?.pending_tx.iter().enumerate() {
+                for (idx, fragment_ids) in
+                    controller.wallets().wallet()?.pending_tx.iter().enumerate()
+                {
                     println!("{}. {}", (idx + 1), fragment_ids);
                 }
                 print_delim();
@@ -90,7 +92,6 @@ impl IapyxCommand {
     }
 }
 
-
 #[derive(StructOpt, Debug)]
 pub struct Connect {
     #[structopt(name = "ADDRESS")]
@@ -118,7 +119,6 @@ impl Connect {
     }
 }
 
-
 #[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
 pub enum Error {
@@ -127,6 +127,5 @@ pub enum Error {
     #[error(transparent)]
     Config(#[from] thor::cli::ConfigError),
     #[error(transparent)]
-    Key(#[from] jcli_lib::key::Error)
-    
+    Key(#[from] jcli_lib::key::Error),
 }

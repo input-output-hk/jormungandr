@@ -1,32 +1,31 @@
-use super::Error;
-use super::config::{WalletState,Alias};
-use std::fs::File;
-use jcli_lib::key::gen_pub_key;
-use chain_crypto::Ed25519Extended;
-use super::ConfigManager;
 use super::config::Connection;
-use std::collections::HashMap;
-use chain_impl_mockchain::fragment::FragmentId;
-use jormungandr_lib::interfaces::FragmentStatus;
+use super::config::{Alias, WalletState};
 use super::Config;
+use super::ConfigManager;
+use super::Error;
+use chain_crypto::Ed25519Extended;
+use chain_impl_mockchain::fragment::FragmentId;
 use cocoon::Cocoon;
+use jcli_lib::key::gen_pub_key;
+use jormungandr_lib::interfaces::FragmentStatus;
+use std::collections::HashMap;
+use std::fs::File;
 
 pub struct WalletController {
     config: Config,
-    config_manager: ConfigManager
+    config_manager: ConfigManager,
 }
 
 impl WalletController {
-
-    pub fn new(app_name: &str) -> Result<Self,Error> {
+    pub fn new(app_name: &str) -> Result<Self, Error> {
         Self::new_from_manager(ConfigManager::new(app_name))
     }
 
-    pub fn new_from_manager(config_manager: ConfigManager) -> Result<Self,Error> {
+    pub fn new_from_manager(config_manager: ConfigManager) -> Result<Self, Error> {
         Ok(Self {
             config: config_manager.read_config()?,
-            config_manager
-        })   
+            config_manager,
+        })
     }
 
     pub fn iter(&self) -> std::collections::hash_map::Iter<'_, Alias, WalletState> {
@@ -95,8 +94,10 @@ impl WalletController {
         }
     }
 
-    
-    pub fn confirm_txs(&mut self, statuses: HashMap<FragmentId,FragmentStatus>) -> Result<(), Error> {
+    pub fn confirm_txs(
+        &mut self,
+        statuses: HashMap<FragmentId, FragmentStatus>,
+    ) -> Result<(), Error> {
         let wallet = self.wallet_mut()?;
 
         wallet.pending_tx.retain(|x| {
@@ -147,9 +148,9 @@ impl WalletController {
         Ok(())
     }
 
-    
     pub fn save_config(&self) -> Result<(), Error> {
-        self.config_manager.save_config(&self.config).map_err(Into::into)
+        self.config_manager
+            .save_config(&self.config)
+            .map_err(Into::into)
     }
-
 }

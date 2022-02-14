@@ -1,9 +1,8 @@
-
-use thor::cli::{Alias,CliController};
 use crate::cli::command::Error;
 use jcli_lib::key::read_bech32;
 use std::path::PathBuf;
 use structopt::StructOpt;
+use thor::cli::{Alias, CliController};
 
 #[derive(StructOpt, Debug)]
 pub enum Wallets {
@@ -29,25 +28,22 @@ pub enum Wallets {
 
 #[derive(StructOpt, Debug)]
 pub struct WalletAddSubcommand {
+    #[structopt(name = "SECRET")]
+    secret: PathBuf,
 
-        #[structopt(name = "SECRET")]
-        secret: PathBuf,
+    #[structopt(short, long)]
+    password: String,
 
-        #[structopt(short, long)]
-        password: String,
-
-        #[structopt(short, long)]
-        testing: bool,
+    #[structopt(short, long)]
+    testing: bool,
 }
 
 impl WalletAddSubcommand {
-    pub fn add_wallet(
-        self,
-        mut controller: CliController,
-        alias: Alias,
-    ) -> Result<(), Error> {
+    pub fn add_wallet(self, mut controller: CliController, alias: Alias) -> Result<(), Error> {
         let (_, data, _) = read_bech32(Some(&self.secret))?;
-        controller.wallets_mut().add_wallet(alias, self.testing, data, &self.password)?;
+        controller
+            .wallets_mut()
+            .add_wallet(alias, self.testing, data, &self.password)?;
         controller.save_config().map_err(Into::into)
     }
 }

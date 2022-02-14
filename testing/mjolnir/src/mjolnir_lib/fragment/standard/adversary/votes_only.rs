@@ -72,14 +72,6 @@ impl VotesOnly {
         let block0 = get_block(&self.block0_path)?;
         let vote_plans = block0.vote_plans();
 
-        let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_owned()).with_rest(self.endpoint.parse().unwrap()).build();
-
-        let settings = remote_jormungandr.rest().settings().unwrap();
-
-        let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
-        let fees = settings.fees;
-
-        let expiry_generator = self
         let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_owned())
             .with_rest(self.endpoint.parse().unwrap())
             .build();

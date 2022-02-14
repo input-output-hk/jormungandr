@@ -1,9 +1,9 @@
-mod controller;
 mod config;
-mod wallet_controller;
+mod controller;
 mod error;
+mod wallet_controller;
 
+pub use config::{Alias, Config, ConfigManager, Connection, Error as ConfigError};
 pub use controller::CliController;
-pub use config::{Config,ConfigManager,Alias,Connection,Error as ConfigError};
-pub use wallet_controller::WalletController;
 pub use error::Error;
+pub use wallet_controller::WalletController;
