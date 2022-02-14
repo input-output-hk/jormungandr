@@ -1,6 +1,7 @@
 mod fragment;
 mod stake_pool;
 mod wallet;
+pub mod cli;
 
 pub use fragment::{
     signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert, write_into_persistent_log,
