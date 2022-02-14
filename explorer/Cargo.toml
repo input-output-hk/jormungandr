@@ -52,3 +52,7 @@ chain-vote = {git = "https://github.com/input-output-hk/chain-libs.git", branch 
 chain-ser = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
 chain-network = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
 imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+
+[features]
+default = []
+evm = ["chain-impl-mockchain/evm", "jormungandr-lib/evm"]
