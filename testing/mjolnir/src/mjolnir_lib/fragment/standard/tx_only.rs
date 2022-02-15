@@ -64,9 +64,9 @@ impl TxOnly {
             self.faucet_key_file.clone(),
             Some(self.faucet_spending_counter.into()),
         );
-        let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
-        builder.with_rest(self.endpoint.parse().unwrap());
-        let remote_jormungandr = builder.build();
+        let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_owned())
+            .with_rest(self.endpoint.parse().unwrap())
+            .build();
 
         let settings = remote_jormungandr.rest().settings().unwrap();
 

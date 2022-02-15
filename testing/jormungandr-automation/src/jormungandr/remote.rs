@@ -175,35 +175,32 @@ impl RemoteJormungandrBuilder {
         }
     }
 
-    pub fn from_config(&mut self, node_config_path: PathBuf) -> &mut Self {
-        self.with_node_config(node_config_path);
+    pub fn from_config(mut self, node_config_path: PathBuf) -> Self {
+        self = self.with_node_config(node_config_path);
         let node_config = self.node_config.clone().unwrap();
 
         let rest_address = node_config.rest.listen;
-        self.with_rest(rest_address);
-
         let grpc_address = node_config.p2p.get_listen_addr().unwrap();
-        self.with_grpc(grpc_address.to_string());
-
-        self
+        self.with_rest(rest_address)
+            .with_grpc(grpc_address.to_string())
     }
 
-    pub fn with_rest(&mut self, address: SocketAddr) -> &mut Self {
+    pub fn with_rest(mut self, address: SocketAddr) -> Self {
         self.rest = Some(JormungandrRest::new(uri_from_socket_addr(address)));
         self
     }
 
-    pub fn with_grpc<S: Into<String>>(&mut self, address: S) -> &mut Self {
+    pub fn with_grpc<S: Into<String>>(mut self, address: S) -> Self {
         self.grpc = Some(JormungandrClient::from_address(&address.into()).unwrap());
         self
     }
 
-    pub fn with_logger(&mut self, mut process: Child) -> &mut Self {
+    pub fn with_logger(mut self, mut process: Child) -> Self {
         self.logger = Some(JormungandrLogger::new(process.stdout.take().unwrap()));
         self
     }
 
-    pub fn with_node_config(&mut self, node_config: PathBuf) -> &mut Self {
+    pub fn with_node_config(mut self, node_config: PathBuf) -> Self {
         self.node_config =
             Some(serde_yaml::from_str(&jortestkit::file::read_file(node_config)).unwrap());
         self

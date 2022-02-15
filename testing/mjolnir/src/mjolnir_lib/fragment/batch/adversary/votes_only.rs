@@ -74,9 +74,9 @@ impl VotesOnly {
         let block0 = get_block(&self.block0_path)?;
         let vote_plans = block0.vote_plans();
 
-        let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
-        builder.with_rest(self.endpoint.parse().unwrap());
-        let remote_jormungandr = builder.build();
+        let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_owned())
+            .with_rest(self.endpoint.parse().unwrap())
+            .build();
 
         let settings = remote_jormungandr.rest().settings().unwrap();
 

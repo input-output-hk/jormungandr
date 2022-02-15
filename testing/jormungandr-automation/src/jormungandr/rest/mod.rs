@@ -66,6 +66,10 @@ impl JormungandrRest {
         }
     }
 
+    pub fn address(&self) -> String {
+        self.raw().uri()
+    }
+
     pub fn disable_logger(&mut self) {
         self.inner.disable_logger();
     }

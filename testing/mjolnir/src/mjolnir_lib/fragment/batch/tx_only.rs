@@ -62,9 +62,9 @@ impl TxOnly {
             &self.faucet_key_file,
             Some(self.faucet_spending_counter.into()),
         );
-        let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
-        builder.with_rest(self.endpoint.parse().unwrap());
-        let remote_jormungandr = builder.build();
+        let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_owned())
+            .with_rest(self.endpoint.parse().unwrap())
+            .build();
 
         let settings = remote_jormungandr.rest().settings().unwrap();
 
@@ -93,9 +93,9 @@ impl TxOnly {
             .shutdown_grace_period(Duration::from_secs(30))
             .build();
 
-        let mut builder = RemoteJormungandrBuilder::new("node".to_owned());
-        builder.with_rest(self.endpoint.parse().unwrap());
-        let remote_jormungandr = builder.build();
+        let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_owned())
+            .with_rest(self.endpoint.parse().unwrap())
+            .build();
         let status_provider = FragmentStatusProvider::new(remote_jormungandr);
 
         let stats =
