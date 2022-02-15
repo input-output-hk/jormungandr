@@ -1,11 +1,15 @@
 use super::Error;
 use super::WalletController;
 use crate::cli::config::ConfigManager;
-use crate::cli::config::SecretKey;
 use crate::cli::config::WalletState;
+use crate::cli::Connection;
 use crate::FragmentSender;
 use crate::FragmentVerifier;
 use crate::Wallet;
+use bech32::u5;
+use bech32::FromBase32;
+use chain_crypto::Ed25519Extended;
+use chain_crypto::SecretKey;
 use chain_impl_mockchain::accounting::account::spending::SpendingCounterIncreasing;
 use chain_impl_mockchain::fragment::FragmentId;
 use cocoon::Cocoon;
@@ -57,6 +61,11 @@ impl CliController {
         })
     }
 
+    pub fn update_connection(&mut self, connection: Connection) {
+        self.client = connection.clone().into();
+        self.wallets_mut().config_mut().connection = connection;
+    }
+
     pub fn check_connection(&self) -> Result<(), Error> {
         self.client
             .settings()
@@ -88,11 +97,7 @@ impl CliController {
 
         Ok(Wallet::Account(
             crate::wallet::account::Wallet::from_secret_key(
-                SigningKey::from_bech32_str(
-                    &self
-                        .secret_key_for_wallet_state(password, &template)?
-                        .secret,
-                )?,
+                self.secret_key_for_wallet_state(password, &template)?,
                 SpendingCounterIncreasing::new_from_counters(
                     template
                         .spending_counters
@@ -107,7 +112,7 @@ impl CliController {
         ))
     }
 
-    pub fn secret_key(&self, password: &str) -> Result<SecretKey, Error> {
+    pub fn secret_key(&self, password: &str) -> Result<SigningKey, Error> {
         let template = self.wallets.wallet()?;
         self.secret_key_for_wallet_state(password, &template)
     }
@@ -116,12 +121,17 @@ impl CliController {
         &self,
         password: &str,
         wallet_state: &WalletState,
-    ) -> Result<SecretKey, Error> {
+    ) -> Result<SigningKey, Error> {
         let contents = std::fs::read(&wallet_state.secret_file)?;
         let cocoon = Cocoon::new(password.as_bytes());
-
         let unwrapped: Vec<u8> = cocoon.unwrap(&contents)?;
-        bincode::deserialize(&unwrapped[..]).map_err(Into::into)
+        let data_u5: Vec<u5> = unwrapped
+            .iter()
+            .map(|x| bech32::u5::try_from_u8(*x).unwrap())
+            .collect();
+        let secret: SecretKey<Ed25519Extended> =
+            SecretKey::from_binary(&Vec::<u8>::from_base32(&data_u5)?)?;
+        Ok(secret.into())
     }
 
     pub fn transaction(
@@ -134,7 +144,7 @@ impl CliController {
         let mut thor_wallet = self.thor_wallet(password)?;
         let settings = self.client.settings()?;
         let node = RemoteJormungandrBuilder::new("dummy".to_string())
-            .with_rest(self.client.address().parse().unwrap())
+            .with_rest_client(self.client.clone())
             .build();
         let check = FragmentSender::from(&settings).send_transaction_to_address(
             &mut thor_wallet,

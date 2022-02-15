@@ -13,39 +13,23 @@ pub enum Wallets {
     },
     /// recover wallet funds from qr code
     Import {
+        #[structopt(name = "SECRET")]
+        secret: PathBuf,
+
+        #[structopt(short, long)]
+        password: String,
+
+        #[structopt(short, long)]
+        testing: bool,
+
         #[structopt(short, long)]
         alias: Alias,
-
-        #[structopt(subcommand)] // Note that we mark a field as a subcommand
-        cmd: WalletAddSubcommand,
     },
     Delete {
         #[structopt(name = "ALIAS")]
         alias: Alias,
     },
     List,
-}
-
-#[derive(StructOpt, Debug)]
-pub struct WalletAddSubcommand {
-    #[structopt(name = "SECRET")]
-    secret: PathBuf,
-
-    #[structopt(short, long)]
-    password: String,
-
-    #[structopt(short, long)]
-    testing: bool,
-}
-
-impl WalletAddSubcommand {
-    pub fn add_wallet(self, mut controller: CliController, alias: Alias) -> Result<(), Error> {
-        let (_, data, _) = read_bech32(Some(&self.secret))?;
-        controller
-            .wallets_mut()
-            .add_wallet(alias, self.testing, data, &self.password)?;
-        controller.save_config().map_err(Into::into)
-    }
 }
 
 impl Wallets {
@@ -55,7 +39,18 @@ impl Wallets {
                 model.wallets_mut().set_default_alias(alias)?;
                 model.save_config().map_err(Into::into)
             }
-            Self::Import { alias, cmd } => cmd.add_wallet(model, alias),
+            Self::Import {
+                secret,
+                alias,
+                testing,
+                password,
+            } => {
+                let (_, data, _) = read_bech32(Some(&secret))?;
+                model
+                    .wallets_mut()
+                    .add_wallet(alias, testing, data, &password)?;
+                model.save_config().map_err(Into::into)
+            }
             Self::Delete { alias } => {
                 model.wallets_mut().remove_wallet(alias)?;
                 model.save_config().map_err(Into::into)

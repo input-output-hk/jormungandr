@@ -5,7 +5,7 @@ use thiserror::Error;
 use thor::cli::{CliController, Connection};
 
 #[derive(StructOpt, Debug)]
-pub enum IapyxCommand {
+pub enum Command {
     /// connect to backend
     Connect(Connect),
     /// get Address
@@ -31,18 +31,18 @@ fn print_delim() {
     println!("{}", DELIMITER);
 }
 
-impl IapyxCommand {
+impl Command {
     pub fn exec(self, mut controller: CliController) -> Result<(), Error> {
         match self {
-            IapyxCommand::Wallets(wallets) => wallets.exec(controller),
-            IapyxCommand::Connect(connect) => connect.exec(controller),
-            IapyxCommand::Address => {
+            Command::Wallets(wallets) => wallets.exec(controller),
+            Command::Connect(connect) => connect.exec(controller),
+            Command::Address => {
                 let wallet = controller.wallets().wallet()?;
                 println!("Address: {}", wallet.address_readable()?);
                 println!("Account id: {}", wallet.id()?);
                 Ok(())
             }
-            IapyxCommand::Status => {
+            Command::Status => {
                 let account_state = controller.account_state()?;
                 print_delim();
                 println!("- Delegation: {:?}", account_state.delegation());
@@ -53,7 +53,7 @@ impl IapyxCommand {
                 print_delim();
                 Ok(())
             }
-            IapyxCommand::PendingTransactions => {
+            Command::PendingTransactions => {
                 print_delim();
                 for (idx, fragment_ids) in
                     controller.wallets().wallet()?.pending_tx.iter().enumerate()
@@ -63,23 +63,23 @@ impl IapyxCommand {
                 print_delim();
                 Ok(())
             }
-            IapyxCommand::ConfirmTx => {
+            Command::ConfirmTx => {
                 controller.confirm_tx()?;
                 controller.save_config().map_err(Into::into)
             }
-            IapyxCommand::ClearTx => {
+            Command::ClearTx => {
                 controller.clear_txs()?;
                 controller.save_config().map_err(Into::into)
             }
-            IapyxCommand::Refresh => {
+            Command::Refresh => {
                 controller.refresh_state()?;
                 controller.save_config().map_err(Into::into)
             }
-            IapyxCommand::Logs => {
+            Command::Logs => {
                 println!("{:#?}", controller.fragment_logs()?);
                 Ok(())
             }
-            IapyxCommand::Statuses => {
+            Command::Statuses => {
                 print_delim();
                 for (idx, (id, status)) in controller.statuses()?.iter().enumerate() {
                     println!("{}. {} -> {:#?}", idx, id, status);
@@ -87,7 +87,7 @@ impl IapyxCommand {
                 print_delim();
                 Ok(())
             }
-            IapyxCommand::Send(send) => send.exec(controller),
+            Command::Send(send) => send.exec(controller),
         }
     }
 }
@@ -108,12 +108,11 @@ pub struct Connect {
 
 impl Connect {
     pub fn exec(&self, mut controller: CliController) -> Result<(), Error> {
-        controller.wallets_mut().config_mut().connection = Connection {
+        controller.update_connection(Connection {
             address: self.address.clone(),
             https: self.use_https,
             debug: self.enable_debug,
-        };
-
+        });
         controller.check_connection()?;
         controller.save_config().map_err(Into::into)
     }

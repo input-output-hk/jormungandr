@@ -1,6 +1,7 @@
 use super::config::Alias;
 use crate::FragmentSenderError;
 use crate::FragmentVerifierError;
+use chain_crypto::SecretKeyError;
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_automation::jormungandr::RestError;
 use jormungandr_lib::crypto::account::SigningKeyParseError;
@@ -12,7 +13,10 @@ pub enum Error {
     FragmentVerifier(#[from] FragmentVerifierError),
     #[error(transparent)]
     FragmentSender(#[from] FragmentSenderError),
-
+    #[error(transparent)]
+    Bech32(#[from] bech32::Error),
+    #[error(transparent)]
+    SecretKey(#[from] SecretKeyError),
     #[error("cannot connect to backend under address: {0}, due to: {1:?}")]
     Connection(String, RestError),
     #[error(transparent)]

@@ -186,8 +186,12 @@ impl RemoteJormungandrBuilder {
             .with_grpc(grpc_address.to_string())
     }
 
-    pub fn with_rest(mut self, address: SocketAddr) -> Self {
-        self.rest = Some(JormungandrRest::new(uri_from_socket_addr(address)));
+    pub fn with_rest(self, address: SocketAddr) -> Self {
+        self.with_rest_client(JormungandrRest::new(uri_from_socket_addr(address)))
+    }
+
+    pub fn with_rest_client(mut self, client: JormungandrRest) -> Self {
+        self.rest = Some(client);
         self
     }
 

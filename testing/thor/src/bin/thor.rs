@@ -1,10 +1,10 @@
 mod cli;
 
-use cli::command::IapyxCommand;
+use cli::command::Command;
 use structopt::StructOpt;
 use thor::cli::CliController;
 
 pub fn main() {
     let controller = CliController::new().unwrap();
-    IapyxCommand::from_args().exec(controller).unwrap();
+    Command::from_args().exec(controller).unwrap();
 }

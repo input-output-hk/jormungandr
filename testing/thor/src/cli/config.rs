@@ -39,8 +39,8 @@ impl Into<JormungandrRest> for Connection {
 impl Into<RestSettings> for Connection {
     fn into(self) -> RestSettings {
         RestSettings {
-            enable_debug: self.https,
-            use_https: self.debug,
+            enable_debug: self.debug,
+            use_https: self.https,
             certificate: None,
             cors: None,
         }
