@@ -2,7 +2,7 @@ use super::{ExternalWalletTemplate, NodeAlias, WalletTemplate};
 use crate::builder::VotePlanKey;
 use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::{fee::LinearFee, milli::Milli};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
     ConsensusVersionDef, DiscriminationDef, KesUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch,
@@ -243,7 +243,10 @@ impl Default for Blockchain {
             block_content_max_size: BlockContentMaxSize::default(),
             committees: Vec::new(),
             consensus: ConsensusVersion::GenesisPraos,
-            consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::default(),
+            consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient::new(
+                Milli::from_millis(500),
+            )
+            .unwrap(),
             discrimination: Discrimination::Test,
             external_committees: Vec::new(),
             external_consensus_leader_ids: Vec::new(),
