@@ -32,7 +32,7 @@ pub struct CommonFees {
     pub certificate_vote_cast: Option<u64>,
 }
 
-#[derive(StructOpt)]
+#[derive(StructOpt, Debug)]
 #[structopt(rename_all = "kebab-case")]
 pub struct CommonTransaction {
     /// place where the transaction is going to be save during its staging phase

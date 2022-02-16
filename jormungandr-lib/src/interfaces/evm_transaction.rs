@@ -9,7 +9,7 @@ use thiserror::Error;
 use typed_bytes::ByteBuilder;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EvmTransaction(evm::EvmTransaction);
+pub struct EvmTransaction(pub evm::EvmTransaction);
 
 #[derive(Debug, Error)]
 pub enum EvmTransactionFromStrError {

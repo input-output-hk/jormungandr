@@ -75,9 +75,9 @@ impl AllFragments {
             Some(self.faucet_spending_counter.into()),
         );
         let receiver = thor::Wallet::default();
-        let mut builder = RemoteJormungandrBuilder::new("node".to_string());
-        builder.with_rest(self.endpoint.parse().unwrap());
-        let remote_jormungandr = builder.build();
+        let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_string())
+            .with_rest(self.endpoint.parse().unwrap())
+            .build();
 
         let rest = remote_jormungandr.rest().clone();
         let settings = rest.settings().unwrap();
@@ -133,9 +133,9 @@ impl AllFragments {
             .monitor(build_monitor(&self.progress_bar_mode))
             .shutdown_grace_period(Duration::from_secs(30))
             .build();
-        let mut builder = RemoteJormungandrBuilder::new("node".to_string());
-        builder.with_rest(self.endpoint.parse().unwrap());
-        let remote_jormungandr = builder.build();
+        let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_string())
+            .with_rest(self.endpoint.parse().unwrap())
+            .build();
         let fragment_status_provider = FragmentStatusProvider::new(remote_jormungandr);
 
         let stats =

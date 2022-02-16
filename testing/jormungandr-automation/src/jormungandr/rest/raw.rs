@@ -68,6 +68,10 @@ impl RawRest {
         }
     }
 
+    pub fn uri(&self) -> String {
+        self.uri.clone()
+    }
+
     pub fn rest_settings(&self) -> &RestSettings {
         &self.settings
     }

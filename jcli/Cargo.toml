@@ -37,6 +37,9 @@ thiserror = "1.0"
 bytes = "1.1"
 rpassword = "5.0"
 
+[features]
+evm = ["jormungandr-lib/evm"]
+
 [dependencies.clap]
 version = "2.33"
 default-features = false
@@ -50,6 +53,10 @@ features = ["blocking", "rustls-tls", "json"]
 [dev-dependencies]
 assert_fs = "1.0"
 predicates = "2.0"
+quickcheck = "0.9"
+# FIXME required to work with quickcheck 0.9. Remove after migrating another crate or newer quickcheck
+rand07 = { package = "rand", version = "0.7" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait", features = [ "property-test-api" ] }
 
 [build-dependencies]
 versionisator = "1.0.2"

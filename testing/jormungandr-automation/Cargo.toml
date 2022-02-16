@@ -11,7 +11,7 @@ tonic = "0.6"
 prost = "0.9"
 tokio = { version = "1.15", features = ["macros","rt","rt-multi-thread"] }
 tokio-stream = "0.1"
-futures = "0.3.18"
+futures = "0.3.21"
 base64 = "0.13"
 bech32 = "0.8"
 bytesize = "1.1.0"
@@ -35,7 +35,7 @@ humantime = "2.0"
 custom_debug = "0.5"
 thiserror = "1.0"
 poldercast = "1.2"
-sysinfo = { version = "0.23.0" }
+sysinfo = { version = "0.23.1" }
 os_info = { version = "3.1.0", default-features = false }
 zip = "0.5.6"
 flate2 = "1.0.21"

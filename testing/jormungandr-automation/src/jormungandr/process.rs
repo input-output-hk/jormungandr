@@ -317,9 +317,9 @@ impl JormungandrProcess {
     }
 
     pub fn to_remote(&self) -> RemoteJormungandr {
-        let mut builder = RemoteJormungandrBuilder::new(self.alias.clone());
-        builder.with_rest(self.rest_socket_addr);
-        builder.build()
+        RemoteJormungandrBuilder::new(self.alias.clone())
+            .with_rest(self.rest_socket_addr)
+            .build()
     }
 
     pub fn steal_temp_dir(&mut self) -> Option<TestingDirectory> {
