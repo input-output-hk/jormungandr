@@ -1,6 +1,6 @@
 use std::convert::{TryFrom, TryInto};
 
-use chain_impl_mockchain::config;
+use chain_impl_mockchain::{config, evm};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -12,18 +12,18 @@ pub enum EvmConfig {
     London,
 }
 
-impl From<config::EvmConfig> for EvmConfig {
-    fn from(val: config::EvmConfig) -> Self {
+impl From<evm::Config> for EvmConfig {
+    fn from(val: evm::Config) -> Self {
         match val {
-            config::EvmConfig::Frontier => Self::Frontier,
-            config::EvmConfig::Istanbul => Self::Istanbul,
-            config::EvmConfig::Berlin => Self::Berlin,
-            config::EvmConfig::London => Self::London,
+            evm::Config::Frontier => Self::Frontier,
+            evm::Config::Istanbul => Self::Istanbul,
+            evm::Config::Berlin => Self::Berlin,
+            evm::Config::London => Self::London,
         }
     }
 }
 
-impl From<EvmConfig> for config::EvmConfig {
+impl From<EvmConfig> for evm::Config {
     fn from(val: EvmConfig) -> Self {
         match val {
             EvmConfig::Frontier => Self::Frontier,
@@ -78,7 +78,7 @@ mod test {
 
     impl Arbitrary for EvmConfig {
         fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-            config::EvmConfig::arbitrary(g).into()
+            evm::Config::arbitrary(g).into()
         }
     }
 
