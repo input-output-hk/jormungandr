@@ -121,7 +121,7 @@ impl From<ConfigParam> for ConfigParamLib {
             ConfigParam::PerVoteCertificateFees(val) => Self::PerVoteCertificateFees(val),
             ConfigParam::TransactionMaxExpiryEpochs(val) => Self::TransactionMaxExpiryEpochs(val),
             #[cfg(feature = "evm")]
-            ConfigParam::EvmParams(val) => Self::EvmParams(val.into()),
+            ConfigParam::EvmParams(val) => Self::EvmConfiguration(val.into()),
         }
     }
 }
@@ -181,7 +181,9 @@ impl TryFrom<ConfigParamLib> for ConfigParam {
                 Self::TransactionMaxExpiryEpochs(val)
             }
             #[cfg(feature = "evm")]
-            ConfigParamLib::EvmParams(val) => Self::EvmParams(val.into()),
+            ConfigParamLib::EvmConfiguration(val) => Self::EvmParams(val.into()),
+            #[cfg(feature = "evm")]
+            ConfigParamLib::EvmEnvironment(_) => unimplemented!(),
         })
     }
 }

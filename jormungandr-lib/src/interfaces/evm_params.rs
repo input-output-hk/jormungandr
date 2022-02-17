@@ -12,6 +12,7 @@ impl From<config::EvmConfig> for EvmConfig {
         match val {
             config::EvmConfig::Istanbul => Self::Istanbul,
             config::EvmConfig::Berlin => Self::Berlin,
+            _ => unimplemented!(),
         }
     }
 }

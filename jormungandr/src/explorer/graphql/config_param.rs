@@ -528,7 +528,9 @@ impl From<&ConfigParamLib> for ConfigParam {
                 Self::TransactionMaxExpiryEpochs(v.into())
             }
             #[cfg(feature = "evm")]
-            ConfigParamLib::EvmParams(v) => Self::EvmParams(v.into()),
+            ConfigParamLib::EvmConfiguration(v) => Self::EvmParams(v.into()),
+            #[cfg(feature = "evm")]
+            ConfigParamLib::EvmEnvironment(_) => unimplemented!(),
         }
     }
 }

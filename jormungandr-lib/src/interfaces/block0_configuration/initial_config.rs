@@ -328,9 +328,11 @@ impl BlockchainConfiguration {
                     .replace(value)
                     .map(|_| "tx_max_expiry_epochs"),
                 #[cfg(feature = "evm")]
-                ConfigParam::EvmParams(params) => {
+                ConfigParam::EvmConfiguration(params) => {
                     evm_params.replace(params.into()).map(|_| "evm_params")
                 }
+                #[cfg(feature = "evm")]
+                ConfigParam::EvmEnvironment(_) => unimplemented!(),
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
@@ -480,7 +482,7 @@ impl BlockchainConfiguration {
 
         #[cfg(feature = "evm")]
         if let Some(evm_params) = evm_params {
-            params.push(ConfigParam::EvmParams(evm_params.into()));
+            params.push(ConfigParam::EvmConfiguration(evm_params.into()));
         }
 
         let params = consensus_leader_ids
