@@ -50,9 +50,6 @@ impl SignedCertificate {
             certificate::SignedCertificate::VoteTally(c, _) => {
                 Certificate(certificate::Certificate::VoteTally(c))
             }
-            certificate::SignedCertificate::EncryptedVoteTally(c, _) => {
-                Certificate(certificate::Certificate::EncryptedVoteTally(c))
-            }
             certificate::SignedCertificate::UpdateProposal(c, _) => {
                 Certificate(certificate::Certificate::UpdateProposal(c))
             }
@@ -99,20 +96,16 @@ impl property::Serialize for Certificate {
                 writer.write_all(&[8])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
-            certificate::Certificate::EncryptedVoteTally(c) => {
+            certificate::Certificate::UpdateProposal(c) => {
                 writer.write_all(&[9])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
-            certificate::Certificate::UpdateProposal(c) => {
+            certificate::Certificate::UpdateVote(c) => {
                 writer.write_all(&[10])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
-            certificate::Certificate::UpdateVote(c) => {
-                writer.write_all(&[11])?;
-                writer.write_all(c.serialize().as_slice())?;
-            }
             certificate::Certificate::MintToken(c) => {
-                writer.write_all(&[12])?;
+                writer.write_all(&[11])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
         };
@@ -160,18 +153,16 @@ impl Readable for Certificate {
                 Ok(Certificate(certificate::Certificate::VoteTally(cert)))
             }
             9 => {
-                let cert = certificate::EncryptedVoteTally::read(buf)?;
-                Ok(Certificate(certificate::Certificate::EncryptedVoteTally(
-                    cert,
-                )))
-            }
-            10 => {
                 let cert = certificate::UpdateProposal::read(buf)?;
                 Ok(Certificate(certificate::Certificate::UpdateProposal(cert)))
             }
-            11 => {
+            10 => {
                 let cert = certificate::UpdateVote::read(buf)?;
                 Ok(Certificate(certificate::Certificate::UpdateVote(cert)))
+            }
+            11 => {
+                let cert = certificate::MintToken::read(buf)?;
+                Ok(Certificate(certificate::Certificate::MintToken(cert)))
             }
             t => Err(ReadError::UnknownTag(t as u32)),
         }
@@ -213,11 +204,6 @@ impl property::Serialize for SignedCertificate {
             }
             certificate::SignedCertificate::VoteTally(c, a) => {
                 writer.write_all(&[8])?;
-                writer.write_all(c.serialize().as_slice())?;
-                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
-            }
-            certificate::SignedCertificate::EncryptedVoteTally(c, a) => {
-                writer.write_all(&[9])?;
                 writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
@@ -288,20 +274,13 @@ impl Readable for SignedCertificate {
                 ))
             }
             9 => {
-                let cert = certificate::EncryptedVoteTally::read(buf)?;
-                let auth = Readable::read(buf)?;
-                Ok(SignedCertificate(
-                    certificate::SignedCertificate::EncryptedVoteTally(cert, auth),
-                ))
-            }
-            10 => {
                 let cert = certificate::UpdateProposal::read(buf)?;
                 let auth = Readable::read(buf)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::UpdateProposal(cert, auth),
                 ))
             }
-            11 => {
+            10 => {
                 let cert = certificate::UpdateVote::read(buf)?;
                 let auth = Readable::read(buf)?;
                 Ok(SignedCertificate(

@@ -20,7 +20,6 @@ pub enum Certificate {
     VotePlan(VotePlan),
     VoteCast(VoteCast),
     VoteTally(VoteTally),
-    EncryptedVoteTally(EncryptedVoteTally),
     UpdateProposal(UpdateProposal),
     UpdateVote(UpdateVote),
     MintToken(MintToken),
@@ -42,8 +41,6 @@ pub struct VotePlan(certificate::VotePlan);
 pub struct VoteCast(certificate::VoteCast);
 
 pub struct VoteTally(certificate::VoteTally);
-
-pub struct EncryptedVoteTally(certificate::EncryptedVoteTally);
 
 pub struct UpdateProposal(certificate::UpdateProposal);
 
@@ -253,13 +250,6 @@ impl VoteTally {
 }
 
 #[Object]
-impl EncryptedVoteTally {
-    pub async fn vote_plan(&self) -> VotePlanId {
-        self.0.id().clone().into()
-    }
-}
-
-#[Object]
 impl UpdateProposal {
     pub async fn changes(&self) -> ConfigParams {
         self.0.changes().into()
@@ -326,9 +316,6 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             certificate::Certificate::VotePlan(c) => Ok(Certificate::VotePlan(VotePlan(c))),
             certificate::Certificate::VoteCast(c) => Ok(Certificate::VoteCast(VoteCast(c))),
             certificate::Certificate::VoteTally(c) => Ok(Certificate::VoteTally(VoteTally(c))),
-            certificate::Certificate::EncryptedVoteTally(c) => {
-                Ok(Certificate::EncryptedVoteTally(EncryptedVoteTally(c)))
-            }
             certificate::Certificate::UpdateProposal(c) => {
                 Ok(Certificate::UpdateProposal(UpdateProposal(c)))
             }

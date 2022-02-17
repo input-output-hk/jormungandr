@@ -6,42 +6,22 @@ use jormungandr_lib::interfaces::{Tally, VotePlanStatus};
 use std::str::FromStr;
 
 pub trait VotePlanStatusAssert {
-    fn assert_all_proposals_are_tallied(&self);
-    fn assert_all_proposals_in_voteplan_are_tallied(&self, vote_plan_status: &VotePlanStatus);
     fn assert_proposal_tally(&self, vote_plan_id: String, index: u8, expected: Vec<u64>);
 }
 
 impl VotePlanStatusAssert for Vec<VotePlanStatus> {
-    fn assert_all_proposals_are_tallied(&self) {
-        for vote_plan_status in self.iter() {
-            self.assert_all_proposals_in_voteplan_are_tallied(vote_plan_status);
-        }
-    }
-
-    fn assert_all_proposals_in_voteplan_are_tallied(&self, vote_plan_status: &VotePlanStatus) {
-        for proposal in vote_plan_status.proposals.iter() {
-            assert!(
-                proposal.tally.is_some(),
-                "Proposal is not tallied {:?}",
-                proposal
-            );
-        }
-    }
-
     fn assert_proposal_tally(&self, vote_plan_id: String, index: u8, expected: Vec<u64>) {
         let vote_plan_status = self
             .iter()
             .find(|c_vote_plan| c_vote_plan.id == Hash::from_str(&vote_plan_id).unwrap().into())
             .unwrap();
 
-        let tally = vote_plan_status
+        let tally = &vote_plan_status
             .proposals
             .iter()
             .find(|x| x.index == index)
             .unwrap()
-            .tally
-            .as_ref()
-            .unwrap();
+            .tally;
 
         match tally {
             Tally::Public { result } => assert_eq!(expected, result.results()),

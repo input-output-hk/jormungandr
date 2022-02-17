@@ -52,12 +52,12 @@ impl TallyGenerateVotePlanDecryptionShares {
             .proposals
             .into_iter()
             .filter_map(|prop| match prop.tally {
-                Some(Tally::Private {
+                Tally::Private {
                     state:
                         PrivateTallyState::Encrypted {
                             encrypted_tally, ..
                         },
-                }) => {
+                } => {
                     let encrypted_tally =
                         EncryptedTally::from_bytes(&encrypted_tally.into_bytes())?;
                     Some(encrypted_tally.partial_decrypt(&mut rand::thread_rng(), &decryption_key))

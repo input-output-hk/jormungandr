@@ -420,23 +420,6 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         self.send_fragment(from, fragment, via)
     }
 
-    pub fn send_encrypted_tally<A: FragmentNode + SyncNode + Sized + Send>(
-        &self,
-        from: &mut Wallet,
-        vote_plan: &VotePlan,
-        via: &A,
-    ) -> Result<MemPoolCheck, FragmentSenderError> {
-        let fragment = FragmentBuilder::new(
-            &self.block0_hash,
-            &self.fees,
-            self.expiry_generator.block_date(),
-        )
-        .witness_mode(self.witness_mode)
-        .encrypted_tally(from, vote_plan);
-        self.dump_fragment_if_enabled(from, &fragment, via)?;
-        self.send_fragment(from, fragment, via)
-    }
-
     pub fn send_private_vote_tally<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,

@@ -18,7 +18,6 @@ use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_automation::testing::time;
 use jormungandr_automation::testing::{VotePlanBuilder, VotePlanExtension};
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed};
-use jortestkit::prelude::read_file;
 use rand::rngs::OsRng;
 use thor::Wallet;
 
@@ -197,24 +196,6 @@ pub fn jcli_e2e_flow_private_vote() {
         .assert_in_block();
 
     time::wait_for_epoch(2, jormungandr.rest());
-
-    let encrypted_vote_tally = temp_dir.child("encrypted-vote-tally.certificate");
-
-    jcli.certificate()
-        .new_encrypted_vote_tally(vote_plan_id.clone(), encrypted_vote_tally.path());
-
-    let encrypted_vote_tally_cert = read_file(encrypted_vote_tally.path());
-
-    let tx = jcli
-        .transaction_builder(jormungandr.genesis_block_hash())
-        .new_transaction()
-        .add_account(&alice.address().to_string(), &Value::zero().into())
-        .add_certificate(&encrypted_vote_tally_cert)
-        .set_expiry_date(BlockDateDto::new(3, 0))
-        .finalize()
-        .seal_with_witness_data(alice.witness_data())
-        .add_auth(alice_sk.path())
-        .to_message();
 
     jcli.fragment_sender(&jormungandr)
         .send(&tx)
@@ -396,24 +377,7 @@ pub fn jcli_private_vote_invalid_proof() {
         jormungandr.rest(),
     );
 
-    let encrypted_vote_tally = temp_dir.child("encrypted-vote-tally.certificate");
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
-
-    jcli.certificate()
-        .new_encrypted_vote_tally(vote_plan_id.clone(), encrypted_vote_tally.path());
-
-    let encrypted_vote_tally_cert = read_file(encrypted_vote_tally.path());
-
-    let tx = jcli
-        .transaction_builder(jormungandr.genesis_block_hash())
-        .new_transaction()
-        .add_account(&alice.address().to_string(), &Value::zero().into())
-        .add_certificate(&encrypted_vote_tally_cert)
-        .set_expiry_date(BlockDateDto::new(2, 0))
-        .finalize()
-        .seal_with_witness_data(alice.witness_data())
-        .add_auth(alice_sk.path())
-        .to_message();
 
     jcli.fragment_sender(&jormungandr)
         .send(&tx)

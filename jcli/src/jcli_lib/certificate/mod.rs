@@ -1,4 +1,3 @@
-mod new_encrypted_vote_tally;
 mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
@@ -13,8 +12,8 @@ mod sign;
 mod weighted_pool_ids;
 
 pub(crate) use self::sign::{
-    committee_encrypted_vote_tally_sign, committee_vote_plan_sign, committee_vote_tally_sign,
-    pool_owner_sign, stake_delegation_account_binding_sign, update_proposal_sign, update_vote_sign,
+    committee_vote_plan_sign, committee_vote_tally_sign, pool_owner_sign,
+    stake_delegation_account_binding_sign, update_proposal_sign, update_vote_sign,
 };
 
 use crate::jcli_lib::utils::{
@@ -169,8 +168,6 @@ pub enum NewArgs {
     VotePlan(new_vote_plan::VotePlanRegistration),
     /// create a new vote tally certificate
     VoteTally(new_vote_tally::VoteTallyRegistration),
-    /// create a new encrypted vote tally certificate
-    EncryptedVoteTally(new_encrypted_vote_tally::EncryptedVoteTally),
     /// create a new update vote certificate
     UpdateVote(new_update_vote::UpdateVote),
     /// create a new update proposal certificate
@@ -207,7 +204,6 @@ impl NewArgs {
             NewArgs::VotePlan(args) => args.exec()?,
             NewArgs::VoteTally(args) => args.exec()?,
             NewArgs::VoteCast(args) => args.exec()?,
-            NewArgs::EncryptedVoteTally(args) => args.exec()?,
             NewArgs::UpdateVote(args) => args.exec()?,
             NewArgs::UpdateProposal(args) => args.exec()?,
         }
@@ -256,7 +252,6 @@ fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certific
                 SignedCertificate::PoolUpdate(pu, _) => Certificate::PoolUpdate(pu),
                 SignedCertificate::VotePlan(vp, _) => Certificate::VotePlan(vp),
                 SignedCertificate::VoteTally(vt, _) => Certificate::VoteTally(vt),
-                SignedCertificate::EncryptedVoteTally(vt, _) => Certificate::EncryptedVoteTally(vt),
                 SignedCertificate::UpdateProposal(vt, _) => Certificate::UpdateProposal(vt),
                 SignedCertificate::UpdateVote(vt, _) => Certificate::UpdateVote(vt),
             };

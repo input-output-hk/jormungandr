@@ -580,7 +580,7 @@ pub struct VoteProposalStatus {
     pub index: u8,
     pub proposal_id: Hash,
     pub options: Range<u8>,
-    pub tally: Option<Tally>,
+    pub tally: Tally,
     pub votes_cast: usize,
 }
 
@@ -696,7 +696,7 @@ impl From<vote::VoteProposalStatus> for VoteProposalStatus {
             index: this.index,
             proposal_id: this.proposal_id.into(),
             options: this.options.choice_range().clone(),
-            tally: this.tally.map(|t| t.into()),
+            tally: this.tally.into(),
             votes_cast: this.votes.size(),
         }
     }
@@ -711,7 +711,7 @@ impl From<VoteProposalStatus> for vote::VoteProposalStatus {
                 vote_proposal_status.options.end - vote_proposal_status.options.start,
             )
             .unwrap(),
-            tally: vote_proposal_status.tally.map(|t| t.into()),
+            tally: vote_proposal_status.tally.into(),
             votes: Default::default(),
         }
     }

@@ -191,7 +191,7 @@ impl PrivateVoteCommitteeDataManager {
             .proposals
             .iter()
             .map(|proposal| {
-                let tally_state = proposal.tally.as_ref().unwrap();
+                let tally_state = &proposal.tally;
                 let encrypted_tally = tally_state.private_encrypted().unwrap().0.clone();
                 let decrypt_shares = self
                     .members()
