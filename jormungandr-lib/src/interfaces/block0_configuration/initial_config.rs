@@ -265,10 +265,10 @@ impl BlockchainConfiguration {
                     discrimination.replace(param).map(|_| "discrimination")
                 }
                 cp @ ConfigParam::SlotsPerEpoch(_) => slots_per_epoch
-                    .replace(NumberOfSlotsPerEpoch::try_from(cp)?)
+                    .replace(cp.try_into()?)
                     .map(|_| "slots_per_epoch"),
                 cp @ ConfigParam::SlotDuration(_) => slot_duration
-                    .replace(SlotDuration::try_from(cp)?)
+                    .replace(cp.try_into()?)
                     .map(|_| "slot_duration"),
                 ConfigParam::AddBftLeader(val) => {
                     consensus_leader_ids.push(val.into());
@@ -276,16 +276,16 @@ impl BlockchainConfiguration {
                 }
                 cp @ ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(_) => {
                     consensus_genesis_praos_active_slot_coeff
-                        .replace(ActiveSlotCoefficient::try_from(cp)?)
+                        .replace(cp.try_into()?)
                         .map(|_| "consensus_genesis_praos_active_slot_coeff")
                 }
                 ConfigParam::LinearFee(param) => linear_fees.replace(param).map(|_| "linear_fees"),
                 cp @ ConfigParam::KesUpdateSpeed(_) => kes_update_speed
-                    .replace(KesUpdateSpeed::try_from(cp)?)
+                    .replace(cp.try_into()?)
                     .map(|_| "kes_update_speed"),
-                cp @ ConfigParam::FeesInTreasury(_) => fees_go_to
-                    .replace(FeesGoTo::try_from(cp)?)
-                    .map(|_| "fees_go_to"),
+                cp @ ConfigParam::FeesInTreasury(_) => {
+                    fees_go_to.replace(cp.try_into()?).map(|_| "fees_go_to")
+                }
 
                 ConfigParam::RemoveBftLeader(_) => {
                     panic!("block 0 attempts to remove a BFT leader")
