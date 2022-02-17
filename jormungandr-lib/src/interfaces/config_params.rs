@@ -14,7 +14,7 @@ use chain_impl_mockchain::{
     fragment::ConfigParams as ConfigParamsLib,
 };
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -60,7 +60,9 @@ pub enum ConfigParam {
     PerVoteCertificateFees(PerVoteCertificateFee),
     TransactionMaxExpiryEpochs(u8),
     #[cfg(feature = "evm")]
-    EvmParams(super::evm_params::EvmConfig),
+    EvmConfiguration(super::evm_params::EvmConfig),
+    #[cfg(feature = "evm")]
+    EvmEnvironment(super::evm_params::EvmEnvSettings),
 }
 
 #[derive(Debug, Error)]
@@ -75,6 +77,9 @@ pub enum FromConfigParamError {
     ActiveSlotCoefficient(#[from] super::block0_configuration::TryFromActiveSlotCoefficientError),
     #[error("Invalid KES Update speed value")]
     KesUpdateSpeed(#[from] super::block0_configuration::TryFromKesUpdateSpeedError),
+    #[cfg(feature = "evm")]
+    #[error("Invalid EvmEnvSettings value")]
+    EvmEnvSettings(#[from] super::evm_params::TryFromEvmEnvSettingsError),
 }
 
 impl From<ConfigParams> for ConfigParamsLib {
@@ -121,7 +126,9 @@ impl From<ConfigParam> for ConfigParamLib {
             ConfigParam::PerVoteCertificateFees(val) => Self::PerVoteCertificateFees(val),
             ConfigParam::TransactionMaxExpiryEpochs(val) => Self::TransactionMaxExpiryEpochs(val),
             #[cfg(feature = "evm")]
-            ConfigParam::EvmParams(val) => Self::EvmParams(val.into()),
+            ConfigParam::EvmConfiguration(val) => Self::EvmConfiguration(val.into()),
+            #[cfg(feature = "evm")]
+            ConfigParam::EvmEnvironment(val) => Self::EvmEnvironment(val.into()),
         }
     }
 }
@@ -181,7 +188,9 @@ impl TryFrom<ConfigParamLib> for ConfigParam {
                 Self::TransactionMaxExpiryEpochs(val)
             }
             #[cfg(feature = "evm")]
-            ConfigParamLib::EvmParams(val) => Self::EvmParams(val.into()),
+            ConfigParamLib::EvmConfiguration(val) => Self::EvmConfiguration(val.into()),
+            #[cfg(feature = "evm")]
+            ConfigParamLib::EvmEnvironment(val) => Self::EvmEnvironment(val.try_into()?),
         })
     }
 }
