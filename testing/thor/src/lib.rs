@@ -1,3 +1,4 @@
+pub mod cli;
 mod fragment;
 mod stake_pool;
 mod wallet;

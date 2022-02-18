@@ -181,12 +181,17 @@ impl RemoteJormungandrBuilder {
 
         let rest_address = node_config.rest.listen;
         let grpc_address = node_config.p2p.get_listen_addr().unwrap();
+
         self.with_rest(rest_address)
             .with_grpc(grpc_address.to_string())
     }
 
-    pub fn with_rest(mut self, address: SocketAddr) -> Self {
-        self.rest = Some(JormungandrRest::new(uri_from_socket_addr(address)));
+    pub fn with_rest(self, address: SocketAddr) -> Self {
+        self.with_rest_client(JormungandrRest::new(uri_from_socket_addr(address)))
+    }
+
+    pub fn with_rest_client(mut self, client: JormungandrRest) -> Self {
+        self.rest = Some(client);
         self
     }
 

@@ -406,7 +406,7 @@ fn read_hex<P: AsRef<Path>>(path: &Option<P>) -> Result<Vec<u8>, Error> {
     hex::decode(io::read_line(path)?).map_err(Into::into)
 }
 
-fn read_bech32<'a>(
+pub fn read_bech32<'a>(
     path: impl Into<Option<&'a PathBuf>>,
 ) -> Result<(String, Vec<bech32::u5>, bech32::Variant), Error> {
     let line = io::read_line(&path.into())?;
@@ -427,7 +427,7 @@ where
     Ok(secret.to_bech32_str())
 }
 
-fn gen_pub_key<K>(priv_key_bech32: &[u5]) -> Result<String, Error>
+pub fn gen_pub_key<K>(priv_key_bech32: &[u5]) -> Result<String, Error>
 where
     K: AsymmetricKey,
     PublicKey<K::PubAlg>: Bech32,
