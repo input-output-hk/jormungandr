@@ -203,17 +203,17 @@ impl property::Serialize for SignedCertificate {
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::VoteTally(c, a) => {
-                writer.write_all(&[8])?;
+                writer.write_all(&[7])?;
                 writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::UpdateProposal(c, a) => {
-                writer.write_all(&[10])?;
+                writer.write_all(&[8])?;
                 writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::UpdateVote(c, a) => {
-                writer.write_all(&[11])?;
+                writer.write_all(&[9])?;
                 writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
@@ -266,21 +266,21 @@ impl Readable for SignedCertificate {
                     cert, auth,
                 )))
             }
-            8 => {
+            7 => {
                 let cert = certificate::VoteTally::read(buf)?;
                 let auth = Readable::read(buf)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::VoteTally(cert, auth),
                 ))
             }
-            9 => {
+            8 => {
                 let cert = certificate::UpdateProposal::read(buf)?;
                 let auth = Readable::read(buf)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::UpdateProposal(cert, auth),
                 ))
             }
-            10 => {
+            9 => {
                 let cert = certificate::UpdateVote::read(buf)?;
                 let auth = Readable::read(buf)?;
                 Ok(SignedCertificate(
