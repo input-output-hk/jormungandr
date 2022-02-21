@@ -1,4 +1,4 @@
-use chain_impl_mockchain::config;
+use chain_impl_mockchain::evm;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -7,17 +7,17 @@ pub enum EvmConfig {
     Berlin,
 }
 
-impl From<config::EvmConfig> for EvmConfig {
-    fn from(val: config::EvmConfig) -> Self {
+impl From<evm::Config> for EvmConfig {
+    fn from(val: evm::Config) -> Self {
         match val {
-            config::EvmConfig::Istanbul => Self::Istanbul,
-            config::EvmConfig::Berlin => Self::Berlin,
+            evm::Config::Istanbul => Self::Istanbul,
+            evm::Config::Berlin => Self::Berlin,
             _ => unimplemented!(),
         }
     }
 }
 
-impl From<EvmConfig> for config::EvmConfig {
+impl From<EvmConfig> for evm::Config {
     fn from(val: EvmConfig) -> Self {
         match val {
             EvmConfig::Istanbul => Self::Istanbul,
@@ -33,7 +33,7 @@ mod test {
 
     impl Arbitrary for EvmConfig {
         fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-            config::EvmConfig::arbitrary(g).into()
+            evm::Config::arbitrary(g).into()
         }
     }
 

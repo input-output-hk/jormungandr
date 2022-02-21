@@ -443,8 +443,8 @@ pub struct EvmConfig {
 }
 
 #[cfg(feature = "evm")]
-impl From<&chain_impl_mockchain::config::EvmConfig> for EvmConfig {
-    fn from(_: &chain_impl_mockchain::config::EvmConfig) -> Self {
+impl From<&chain_impl_mockchain::evm::Config> for EvmConfig {
+    fn from(_: &chain_impl_mockchain::evm::Config) -> Self {
         Self {
             evm_params: "EVM config parametrs".to_string(),
         }
