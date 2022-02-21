@@ -145,20 +145,6 @@ pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
 
     wait_for_epoch(quick_config.voting_timing()[2], jormungandr.rest());
 
-    let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
-    let vote_plan_status = active_vote_plans
-        .iter()
-        .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
-        .unwrap();
-
-    for proposal in vote_plan_status.proposals.iter() {
-        assert!(
-            proposal.tally.is_some(),
-            "Proposal is not tallied {:?}",
-            proposal
-        );
-    }
-
     benchmark_consumption_monitor.stop();
 
     jormungandr.assert_no_errors_in_log();
@@ -317,21 +303,8 @@ pub fn adversary_public_vote_load_scenario(
         )
         .unwrap();
 
+    // TODO: not sure if this is necessary now
     wait_for_epoch(quick_config.voting_timing()[2], jormungandr.rest());
-
-    let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
-    let vote_plan_status = active_vote_plans
-        .iter()
-        .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
-        .unwrap();
-
-    for proposal in vote_plan_status.proposals.iter() {
-        assert!(
-            proposal.tally.is_some(),
-            "Proposal is not tallied {:?}",
-            proposal
-        );
-    }
 
     benchmark_consumption_monitor.stop();
 
