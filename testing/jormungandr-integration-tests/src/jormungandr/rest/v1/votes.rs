@@ -2,16 +2,17 @@ use crate::startup;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate;
 use chain_impl_mockchain::certificate::VoteTallyPayload;
+use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{certificate::VoteAction, fee::LinearFee, vote::Choice};
 use jormungandr_automation::jormungandr::ConfigurationBuilder;
 use jormungandr_automation::testing::time;
 use jormungandr_automation::testing::VotePlanBuilder;
-use jormungandr_lib::interfaces::AccountVotes;
+use jormungandr_lib::interfaces::{AccountVotes, InitialToken};
 use std::time::Duration;
 use thor::FragmentSenderSetup;
 
 #[test]
-pub fn list_casted_votes_for_active_vote_plan() {
+pub fn list_cast_votes_for_active_vote_plan() {
     let mut alice = thor::Wallet::default();
     let bob = thor::Wallet::default();
     let wait_time = Duration::from_secs(2);
@@ -101,20 +102,10 @@ pub fn list_casted_votes_for_active_vote_plan() {
 }
 
 #[test]
-pub fn list_casted_votes_for_already_finished_vote_plan() {
+pub fn list_cast_votes_for_already_finished_vote_plan() {
     let mut alice = thor::Wallet::default();
     let wait_time = Duration::from_secs(2);
     let discrimination = Discrimination::Test;
-
-    let jormungandr = startup::start_bft(
-        vec![&alice],
-        ConfigurationBuilder::new()
-            .with_discrimination(discrimination)
-            .with_slots_per_epoch(20)
-            .with_slot_duration(3)
-            .with_linear_fees(LinearFee::new(0, 0, 0)),
-    )
-    .unwrap();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
@@ -124,6 +115,21 @@ pub fn list_casted_votes_for_already_finished_vote_plan() {
         .tally_end(BlockDate::from_epoch_slot_id(2, 1))
         .public()
         .build();
+
+    let jormungandr = startup::start_bft(
+        vec![&alice],
+        ConfigurationBuilder::new()
+            .with_discrimination(discrimination)
+            .with_slots_per_epoch(20)
+            .with_slot_duration(3)
+            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_token(InitialToken {
+                token_id: vote_plan.voting_token().clone().into(),
+                policy: MintingPolicy::new().into(),
+                to: vec![alice.to_initial_token(1_000_000)],
+            }),
+    )
+    .unwrap();
 
     let proposals_ids = vec![0u8, 1u8, 2u8];
 
