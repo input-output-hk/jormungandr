@@ -201,8 +201,6 @@ pub fn jcli_e2e_flow_private_vote() {
         .send(&tx)
         .assert_in_block();
 
-    alice.confirm_transaction();
-
     let active_plans = jormungandr.rest().vote_plan_statuses().unwrap();
     let active_plans_file = temp_dir.child("active_plans.json");
     active_plans_file
