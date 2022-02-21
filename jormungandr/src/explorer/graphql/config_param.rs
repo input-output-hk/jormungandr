@@ -443,10 +443,25 @@ pub struct EvmConfig {
 }
 
 #[cfg(feature = "evm")]
-impl From<&chain_impl_mockchain::config::EvmConfig> for EvmConfig {
-    fn from(_: &chain_impl_mockchain::config::EvmConfig) -> Self {
+impl From<&chain_impl_mockchain::evm::Config> for EvmConfig {
+    fn from(_: &chain_impl_mockchain::evm::Config) -> Self {
         Self {
             evm_params: "EVM config parametrs".to_string(),
+        }
+    }
+}
+
+#[cfg(feature = "evm")]
+#[derive(SimpleObject)]
+pub struct EvmEnvSettings {
+    evm_env_settings: String,
+}
+
+#[cfg(feature = "evm")]
+impl From<&chain_impl_mockchain::config::EvmEnvSettings> for EvmEnvSettings {
+    fn from(_: &chain_impl_mockchain::config::EvmEnvSettings) -> Self {
+        Self {
+            evm_env_settings: "EVM config parametrs".to_string(),
         }
     }
 }
@@ -480,7 +495,9 @@ pub enum ConfigParam {
     PerVoteCertificateFees(PerVoteCertificateFee),
     TransactionMaxExpiryEpochs(TransactionMaxExpiryEpochs),
     #[cfg(feature = "evm")]
-    EvmParams(EvmConfig),
+    EvmConfiguration(EvmConfig),
+    #[cfg(feature = "evm")]
+    EvmEnvironment(EvmEnvSettings),
 }
 
 #[derive(SimpleObject)]
@@ -528,7 +545,9 @@ impl From<&ConfigParamLib> for ConfigParam {
                 Self::TransactionMaxExpiryEpochs(v.into())
             }
             #[cfg(feature = "evm")]
-            ConfigParamLib::EvmParams(v) => Self::EvmParams(v.into()),
+            ConfigParamLib::EvmConfiguration(v) => Self::EvmConfiguration(v.into()),
+            #[cfg(feature = "evm")]
+            ConfigParamLib::EvmEnvironment(v) => Self::EvmEnvironment(v.into()),
         }
     }
 }

@@ -16,7 +16,7 @@ use chain_impl_mockchain::{
     vote::CommitteeId,
 };
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 
 /// Initial blockchain configuration for block0
@@ -140,7 +140,11 @@ pub struct BlockchainConfiguration {
 
     #[cfg(feature = "evm")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub evm_params: Option<crate::interfaces::evm_params::EvmConfig>,
+    pub evm_configs: Option<crate::interfaces::evm_params::EvmConfig>,
+
+    #[cfg(feature = "evm")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evm_env_settings: Option<crate::interfaces::evm_params::EvmEnvSettings>,
 }
 
 impl From<BlockchainConfiguration> for ConfigParams {
@@ -171,6 +175,9 @@ pub enum FromConfigParamsError {
     KesUpdateSpeed(#[from] super::kes_update_speed::TryFromKesUpdateSpeedError),
     #[error("Invalid FeesGoTo setting")]
     FeesGoTo(#[from] super::fees_go_to::TryFromFeesGoToError),
+    #[cfg(feature = "evm")]
+    #[error("Invalid EvmEnvSettings setting")]
+    EvmEnvSettings(#[from] crate::interfaces::evm_params::TryFromEvmEnvSettingsError),
 }
 
 impl TryFrom<ConfigParams> for BlockchainConfiguration {
@@ -208,7 +215,9 @@ impl BlockchainConfiguration {
             reward_constraints: RewardConstraints::default(),
             committees: Vec::new(),
             #[cfg(feature = "evm")]
-            evm_params: None,
+            evm_configs: None,
+            #[cfg(feature = "evm")]
+            evm_env_settings: None,
         }
     }
 
@@ -240,7 +249,9 @@ impl BlockchainConfiguration {
         let mut committees = Vec::new();
         let mut tx_max_expiry_epochs = None;
         #[cfg(feature = "evm")]
-        let mut evm_params = None;
+        let mut evm_configs = None;
+        #[cfg(feature = "evm")]
+        let mut evm_env_settings = None;
 
         for param in params.iter().cloned() {
             match param {
@@ -254,10 +265,10 @@ impl BlockchainConfiguration {
                     discrimination.replace(param).map(|_| "discrimination")
                 }
                 cp @ ConfigParam::SlotsPerEpoch(_) => slots_per_epoch
-                    .replace(NumberOfSlotsPerEpoch::try_from(cp)?)
+                    .replace(cp.try_into()?)
                     .map(|_| "slots_per_epoch"),
                 cp @ ConfigParam::SlotDuration(_) => slot_duration
-                    .replace(SlotDuration::try_from(cp)?)
+                    .replace(cp.try_into()?)
                     .map(|_| "slot_duration"),
                 ConfigParam::AddBftLeader(val) => {
                     consensus_leader_ids.push(val.into());
@@ -265,16 +276,16 @@ impl BlockchainConfiguration {
                 }
                 cp @ ConfigParam::ConsensusGenesisPraosActiveSlotsCoeff(_) => {
                     consensus_genesis_praos_active_slot_coeff
-                        .replace(ActiveSlotCoefficient::try_from(cp)?)
+                        .replace(cp.try_into()?)
                         .map(|_| "consensus_genesis_praos_active_slot_coeff")
                 }
                 ConfigParam::LinearFee(param) => linear_fees.replace(param).map(|_| "linear_fees"),
                 cp @ ConfigParam::KesUpdateSpeed(_) => kes_update_speed
-                    .replace(KesUpdateSpeed::try_from(cp)?)
+                    .replace(cp.try_into()?)
                     .map(|_| "kes_update_speed"),
-                cp @ ConfigParam::FeesInTreasury(_) => fees_go_to
-                    .replace(FeesGoTo::try_from(cp)?)
-                    .map(|_| "fees_go_to"),
+                cp @ ConfigParam::FeesInTreasury(_) => {
+                    fees_go_to.replace(cp.try_into()?).map(|_| "fees_go_to")
+                }
 
                 ConfigParam::RemoveBftLeader(_) => {
                     panic!("block 0 attempts to remove a BFT leader")
@@ -328,9 +339,13 @@ impl BlockchainConfiguration {
                     .replace(value)
                     .map(|_| "tx_max_expiry_epochs"),
                 #[cfg(feature = "evm")]
-                ConfigParam::EvmParams(params) => {
-                    evm_params.replace(params.into()).map(|_| "evm_params")
+                ConfigParam::EvmConfiguration(params) => {
+                    evm_configs.replace(params.into()).map(|_| "evm_params")
                 }
+                #[cfg(feature = "evm")]
+                ConfigParam::EvmEnvironment(params) => evm_env_settings
+                    .replace(params.try_into()?)
+                    .map(|_| "evm_evn_settings"),
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))
             .unwrap_or(Ok(()))?;
@@ -375,7 +390,9 @@ impl BlockchainConfiguration {
             committees,
             tx_max_expiry_epochs,
             #[cfg(feature = "evm")]
-            evm_params,
+            evm_configs,
+            #[cfg(feature = "evm")]
+            evm_env_settings,
         })
     }
 
@@ -402,7 +419,9 @@ impl BlockchainConfiguration {
             committees,
             tx_max_expiry_epochs,
             #[cfg(feature = "evm")]
-            evm_params,
+            evm_configs,
+            #[cfg(feature = "evm")]
+            evm_env_settings,
         } = self;
 
         let mut params = ConfigParams::new();
@@ -479,8 +498,13 @@ impl BlockchainConfiguration {
         }
 
         #[cfg(feature = "evm")]
-        if let Some(evm_params) = evm_params {
-            params.push(ConfigParam::EvmParams(evm_params.into()));
+        if let Some(evm_configs) = evm_configs {
+            params.push(ConfigParam::EvmConfiguration(evm_configs.into()));
+        }
+
+        #[cfg(feature = "evm")]
+        if let Some(evm_env_settings) = evm_env_settings {
+            params.push(ConfigParam::EvmEnvironment(evm_env_settings.into()));
         }
 
         let params = consensus_leader_ids
@@ -574,7 +598,9 @@ mod test {
                     .collect(),
                 tx_max_expiry_epochs: Arbitrary::arbitrary(g),
                 #[cfg(feature = "evm")]
-                evm_params: Arbitrary::arbitrary(g),
+                evm_configs: Arbitrary::arbitrary(g),
+                #[cfg(feature = "evm")]
+                evm_env_settings: Arbitrary::arbitrary(g),
             }
         }
     }
