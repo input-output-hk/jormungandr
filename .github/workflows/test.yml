@@ -308,52 +308,7 @@ jobs:
         uses: actions-rs/tarpaulin@v0.1
         with:
           args: '--ignore-tests --out Lcov'
-          timeout: 600
-
-      - name: upload to Coveralls
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: './lcov.info'
-
-  test_coverage:
-    name: Test Coverage
-    needs: update_deps
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: true
-
-      - name: Download Cargo.lock
-        uses: actions/download-artifact@v2
-        with:
-          name: lockfile
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - name: Restore cargo registry index
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/registry/index
-          key: cargo-index-v2-${{ needs.update_deps.outputs.crates-io-index-head }}
-
-      - name: Restore dependency crates
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/registry/cache
-          key: cargo-deps-v2-${{ hashFiles('Cargo.lock') }}
-
-      - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          args: '--ignore-tests --out Lcov'
-          timeout: 600
+          timeout: 3600
 
       - name: upload to Coveralls
         uses: coverallsapp/github-action@master
