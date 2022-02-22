@@ -1,13 +1,16 @@
 use super::Error;
-use crate::jcli_lib::utils::vote::{self, SharesError};
-use crate::jcli_lib::utils::OutputFormat;
+use crate::jcli_lib::utils::{
+    vote::{self, SharesError},
+    OutputFormat,
+};
 use chain_vote::EncryptedTally;
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{PrivateTallyState, Tally},
+};
 use rayon::prelude::*;
 use serde::Serialize;
-use std::convert::TryInto;
-use std::path::PathBuf;
+use std::{convert::TryInto, num::NonZeroU64, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -76,7 +79,9 @@ impl TallyVotePlanWithAllShares {
                 }
             }
         }
-        let table = chain_vote::TallyOptimizationTable::generate(max_stake);
+        let table = chain_vote::TallyOptimizationTable::generate(
+            NonZeroU64::new(max_stake).ok_or(Error::ZeroStakeWhileDecryptingTally)?,
+        );
         let committee_member_keys = vote_plan.committee_member_keys.clone();
 
         vote_plan.proposals = vote_plan
@@ -90,7 +95,7 @@ impl TallyVotePlanWithAllShares {
                 let decrypted = encrypted_tally
                     .validate_partial_decryptions(&committee_member_keys, &shares)
                     .map_err(SharesError::ValidationFailed)?
-                    .decrypt_tally(max_stake, &table)?;
+                    .decrypt_tally(&table)?;
                 proposal.tally = Some(Tally::Private {
                     state: PrivateTallyState::Decrypted {
                         result: decrypted.into(),

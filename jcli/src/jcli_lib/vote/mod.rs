@@ -57,6 +57,8 @@ pub enum Error {
     VotePlanError(#[from] VotePlanError),
     #[error(transparent)]
     SharesError(#[from] SharesError),
+    #[error("0 stake while decrypting tally")]
+    ZeroStakeWhileDecryptingTally,
     #[error("could not process secret file '{0}'")]
     SecretKeyReadFailed(#[from] key_parser::Error),
     #[error(transparent)]

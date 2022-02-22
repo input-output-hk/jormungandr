@@ -20,6 +20,8 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
 use std::io::Write;
+use std::num::NonZeroU64;
+use thiserror::Error;
 
 #[derive(Clone)]
 pub struct PrivateVoteCommitteeData {
@@ -186,7 +188,7 @@ impl PrivateVoteCommitteeDataManager {
     pub fn decrypt_tally(
         &self,
         vote_plan_status: &VotePlanStatus,
-    ) -> Result<DecryptedPrivateTally, DecryptedPrivateTallyError> {
+    ) -> Result<DecryptedPrivateTally, Error> {
         let encrypted_tally = vote_plan_status
             .proposals
             .iter()
@@ -203,11 +205,13 @@ impl PrivateVoteCommitteeDataManager {
             .map(|(_encrypted_tally, max_votes)| *max_votes)
             .max()
             .unwrap();
-        let table = chain_vote::TallyOptimizationTable::generate(absolute_max_votes);
+        let table = chain_vote::TallyOptimizationTable::generate(
+            NonZeroU64::new(absolute_max_votes).ok_or(Error::ZeroStakeWhileDecryptingTally)?,
+        );
 
         let proposals = encrypted_tally
             .into_iter()
-            .map(|(encrypted_tally, max_votes)| {
+            .map(|(encrypted_tally, _max_votes)| {
                 let decrypt_shares = self
                     .members()
                     .iter()
@@ -222,7 +226,7 @@ impl PrivateVoteCommitteeDataManager {
                         &decrypt_shares,
                     )
                     .unwrap()
-                    .decrypt_tally(max_votes, &table)
+                    .decrypt_tally(&table)
                     .unwrap();
                 DecryptedPrivateTallyProposal {
                     decrypt_shares: decrypt_shares.into_boxed_slice(),
@@ -231,6 +235,14 @@ impl PrivateVoteCommitteeDataManager {
             })
             .collect::<Vec<_>>();
 
-        DecryptedPrivateTally::new(proposals)
+        DecryptedPrivateTally::new(proposals).map_err(Into::into)
     }
+}
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("zero stake while decrypting tally")]
+    ZeroStakeWhileDecryptingTally,
+    #[error(transparent)]
+    Tally(#[from] DecryptedPrivateTallyError),
 }
