@@ -277,13 +277,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          submodules: true
-
-      - name: Download Cargo.lock
-        uses: actions/download-artifact@v2
-        with:
-          name: lockfile
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
