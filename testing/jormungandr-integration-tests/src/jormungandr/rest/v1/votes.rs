@@ -18,16 +18,6 @@ pub fn list_cast_votes_for_active_vote_plan() {
     let wait_time = Duration::from_secs(2);
     let discrimination = Discrimination::Test;
 
-    let jormungandr = startup::start_bft(
-        vec![&alice, &bob],
-        ConfigurationBuilder::new()
-            .with_discrimination(discrimination)
-            .with_slots_per_epoch(20)
-            .with_slot_duration(3)
-            .with_linear_fees(LinearFee::new(0, 0, 0)),
-    )
-    .unwrap();
-
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
         .action_type(VoteAction::OffChain)
@@ -36,6 +26,21 @@ pub fn list_cast_votes_for_active_vote_plan() {
         .tally_end(BlockDate::from_epoch_slot_id(30, 0))
         .public()
         .build();
+
+    let jormungandr = startup::start_bft(
+        vec![&alice, &bob],
+        ConfigurationBuilder::new()
+            .with_discrimination(discrimination)
+            .with_slots_per_epoch(20)
+            .with_slot_duration(3)
+            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_token(InitialToken {
+                token_id: vote_plan.voting_token().clone().into(),
+                policy: MintingPolicy::new().into(),
+                to: vec![alice.to_initial_token(1_000)],
+            }),
+    )
+    .unwrap();
 
     assert!(jormungandr
         .rest()
