@@ -297,10 +297,31 @@ jobs:
           path: ~/.cargo/registry/cache
           key: cargo-deps-v2-${{ hashFiles('Cargo.lock') }}
 
+      - name: Build jormungandr
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 30
+        with:
+          command: build
+          args: -p jormungandr
+
+      - name: Build jcli
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 30
+        with:
+          command: build
+          args: -p jcli
+
+      - name: Build tests
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 30
+        with:
+          command: build
+          args: --tests --all-features
+
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '--ignore-tests --out Lcov'
+          args: '--ignore-tests --out Lcov --features network --release'
           timeout: 3600
 
       - name: upload to Coveralls
