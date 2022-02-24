@@ -12,7 +12,7 @@ use chain_vote::{
         ElectionPublicKey, MemberCommunicationKey, MemberCommunicationPublicKey, MemberPublicKey,
         MemberState,
     },
-    tally::{Crs, OpeningVoteKey},
+    tally::{batch_decrypt, Crs, OpeningVoteKey},
 };
 use jormungandr_lib::crypto::account::Identifier;
 use rand_core::{CryptoRng, RngCore};
@@ -20,8 +20,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::fs::File;
 use std::io::Write;
-use std::num::NonZeroU64;
-use thiserror::Error;
 
 #[derive(Clone)]
 pub struct PrivateVoteCommitteeData {
@@ -188,30 +186,13 @@ impl PrivateVoteCommitteeDataManager {
     pub fn decrypt_tally(
         &self,
         vote_plan_status: &VotePlanStatus,
-    ) -> Result<DecryptedPrivateTally, Error> {
-        let encrypted_tally = vote_plan_status
+    ) -> Result<DecryptedPrivateTally, DecryptedPrivateTallyError> {
+        let (shares, tallies): (Vec<_>, Vec<_>) = vote_plan_status
             .proposals
             .iter()
             .map(|proposal| {
                 let tally_state = proposal.tally.as_ref().unwrap();
                 let encrypted_tally = tally_state.private_encrypted().unwrap().0.clone();
-                let max_votes = tally_state.private_total_power().unwrap();
-                (encrypted_tally, max_votes)
-            })
-            .collect::<Vec<_>>();
-
-        let absolute_max_votes = encrypted_tally
-            .iter()
-            .map(|(_encrypted_tally, max_votes)| *max_votes)
-            .max()
-            .unwrap();
-        let table = chain_vote::TallyOptimizationTable::generate(
-            NonZeroU64::new(absolute_max_votes).ok_or(Error::ZeroStakeWhileDecryptingTally)?,
-        );
-
-        let proposals = encrypted_tally
-            .into_iter()
-            .map(|(encrypted_tally, _max_votes)| {
                 let decrypt_shares = self
                     .members()
                     .iter()
@@ -225,24 +206,24 @@ impl PrivateVoteCommitteeDataManager {
                         &vote_plan_status.committee_public_keys,
                         &decrypt_shares,
                     )
-                    .unwrap()
-                    .decrypt_tally(&table)
                     .unwrap();
-                DecryptedPrivateTallyProposal {
-                    decrypt_shares: decrypt_shares.into_boxed_slice(),
-                    tally_result: tally.votes.into_boxed_slice(),
-                }
+                (decrypt_shares, tally)
             })
-            .collect::<Vec<_>>();
+            .unzip();
+        let tallies = batch_decrypt(&tallies).unwrap();
 
-        DecryptedPrivateTally::new(proposals).map_err(Into::into)
+        DecryptedPrivateTally::new(
+            tallies
+                .into_iter()
+                .zip(shares)
+                .map(
+                    |(tally_result, decrypt_shares)| DecryptedPrivateTallyProposal {
+                        tally_result: tally_result.votes.into_boxed_slice(),
+                        decrypt_shares: decrypt_shares.into_boxed_slice(),
+                    },
+                )
+                .collect(),
+        )
+        .map_err(Into::into)
     }
-}
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("zero stake while decrypting tally")]
-    ZeroStakeWhileDecryptingTally,
-    #[error(transparent)]
-    Tally(#[from] DecryptedPrivateTallyError),
 }
