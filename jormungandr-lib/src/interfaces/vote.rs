@@ -479,6 +479,12 @@ impl EncryptedTally {
     }
 }
 
+impl AsRef<[u8]> for EncryptedTally {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
 pub mod serde_base64_bytes {
     use serde::de::{Error, Visitor};
     use serde::{Deserializer, Serializer};
