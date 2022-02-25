@@ -302,21 +302,7 @@ jobs:
         timeout-minutes: 30
         with:
           command: build
-          args: -p jormungandr
-
-      - name: Build jcli
-        uses: actions-rs/cargo@v1
-        timeout-minutes: 30
-        with:
-          command: build
-          args: -p jcli
-
-      - name: Build tests
-        uses: actions-rs/cargo@v1
-        timeout-minutes: 30
-        with:
-          command: build
-          args: --tests --all-features
+          args: --release --all
 
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
