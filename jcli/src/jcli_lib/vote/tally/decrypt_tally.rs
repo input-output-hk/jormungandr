@@ -1,13 +1,16 @@
 use super::Error;
-use crate::jcli_lib::utils::vote::{self, SharesError};
-use crate::jcli_lib::utils::OutputFormat;
-use chain_vote::EncryptedTally;
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
+use crate::jcli_lib::utils::{
+    vote::{self, SharesError},
+    OutputFormat,
+};
+use chain_vote::tally::{batch_decrypt, EncryptedTally};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{PrivateTallyState, Tally},
+};
 use rayon::prelude::*;
 use serde::Serialize;
-use std::convert::TryInto;
-use std::path::PathBuf;
+use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -76,29 +79,35 @@ impl TallyVotePlanWithAllShares {
                 }
             }
         }
-        let table = chain_vote::TallyOptimizationTable::generate(max_stake);
+
         let committee_member_keys = vote_plan.committee_member_keys.clone();
 
-        vote_plan.proposals = vote_plan
-            .proposals
+        let validated_tallies = encrypted_tallies
             .into_par_iter()
-            .zip(encrypted_tallies.into_par_iter())
             .zip(shares.into_par_iter())
-            .map(|((mut proposal, encrypted_tally), shares)| {
+            .map(|(encrypted_tally, shares)| {
                 let encrypted_tally = EncryptedTally::from_bytes(&encrypted_tally)
                     .ok_or(Error::EncryptedTallyRead)?;
-                let decrypted = encrypted_tally
+                encrypted_tally
                     .validate_partial_decryptions(&committee_member_keys, &shares)
-                    .map_err(SharesError::ValidationFailed)?
-                    .decrypt_tally(max_stake, &table)?;
-                proposal.tally = Some(Tally::Private {
-                    state: PrivateTallyState::Decrypted {
-                        result: decrypted.into(),
-                    },
-                });
-                Ok(proposal)
+                    .map_err(SharesError::ValidationFailed)
+                    .map_err(Error::SharesError)
             })
-            .collect::<Result<Vec<_>, Error>>()?;
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let decrypted_tallies = batch_decrypt(validated_tallies)?;
+
+        for (proposal, decrypted_tally) in vote_plan
+            .proposals
+            .iter_mut()
+            .zip(decrypted_tallies.into_iter())
+        {
+            proposal.tally = Some(Tally::Private {
+                state: PrivateTallyState::Decrypted {
+                    result: decrypted_tally.into(),
+                },
+            })
+        }
 
         let output = self
             .output_format
