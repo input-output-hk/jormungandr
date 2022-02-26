@@ -2,7 +2,13 @@ use assert_fs::{
     fixture::{PathChild, PathCreateDir},
     TempDir,
 };
-use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion, fee::LinearFee};
+use chain_core::property::FromStr;
+use chain_impl_mockchain::{
+    block::BlockDate,
+    chaintypes::ConsensusVersion,
+    fee::LinearFee,
+    tokens::{identifier::TokenIdentifier, minting_policy::MintingPolicy},
+};
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
 use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
@@ -11,7 +17,7 @@ use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
 use jormungandr_automation::jormungandr::FragmentNode;
 use jormungandr_lib::interfaces::{
-    BlockDate as BlockDateDto, InitialUTxO, Mempool, PersistentLog, SlotDuration,
+    BlockDate as BlockDateDto, InitialToken, InitialUTxO, Mempool, PersistentLog, SlotDuration,
 };
 
 use crate::startup;
@@ -50,6 +56,15 @@ pub fn dump_send_correct_fragments() {
                 persistent_log: Some(PersistentLog {
                     dir: persistent_log_path.path().to_path_buf(),
                 }),
+            })
+            .with_token(InitialToken {
+                token_id: TokenIdentifier::from_str(
+                    "00000000000000000000000000000000000000000000000000000000.00000000",
+                )
+                .unwrap()
+                .into(),
+                policy: MintingPolicy::new().into(),
+                to: vec![sender.to_initial_token(1_000_000)],
             }),
     )
     .unwrap();

@@ -54,26 +54,18 @@ impl TallyVotePlanWithAllShares {
             )?
             .try_into()?;
         let mut max_stake = 0;
-        let mut encrypted_tallies = Vec::new();
-        // We need a first iteration to get the max stake used, and since we're there
-        // we unwrap and check tallies as well
+        // We need a first iteration to get the max stake used
         for proposal in &mut vote_plan.proposals {
-            match proposal.tally.take() {
-                Some(Tally::Private {
-                    state:
-                        PrivateTallyState::Encrypted {
-                            encrypted_tally,
-                            total_stake,
-                        },
-                }) => {
-                    max_stake = std::cmp::max(total_stake.into(), max_stake);
-                    encrypted_tallies.push(encrypted_tally.into_bytes());
+            match &proposal.tally {
+                Tally::Private {
+                    state: PrivateTallyState::Encrypted { total_stake, .. },
+                } => {
+                    max_stake = std::cmp::max(u64::from(*total_stake), max_stake);
                 }
                 other => {
                     let found = match other {
-                        Some(Tally::Public { .. }) => "public tally",
-                        Some(Tally::Private { .. }) => "private decrypted tally",
-                        None => "none",
+                        Tally::Public { .. } => "public tally",
+                        Tally::Private { .. } => "private decrypted tally",
                     };
                     return Err(Error::PrivateTallyExpected { found });
                 }
@@ -82,12 +74,23 @@ impl TallyVotePlanWithAllShares {
 
         let committee_member_keys = vote_plan.committee_member_keys.clone();
 
-        let validated_tallies = encrypted_tallies
+        let validated_tallies = (&vote_plan.proposals)
             .into_par_iter()
             .zip(shares.into_par_iter())
-            .map(|(encrypted_tally, shares)| {
-                let encrypted_tally = EncryptedTally::from_bytes(&encrypted_tally)
+            .map(|(proposal, shares)| {
+                let encrypted_tally = match &proposal.tally {
+                    Tally::Private {
+                        state:
+                            PrivateTallyState::Encrypted {
+                                encrypted_tally, ..
+                            },
+                    } => encrypted_tally,
+                    _ => unreachable!("expected encrypted private tally"),
+                };
+
+                let encrypted_tally = EncryptedTally::from_bytes(encrypted_tally.as_ref())
                     .ok_or(Error::EncryptedTallyRead)?;
+
                 encrypted_tally
                     .validate_partial_decryptions(&committee_member_keys, &shares)
                     .map_err(SharesError::ValidationFailed)
@@ -102,11 +105,11 @@ impl TallyVotePlanWithAllShares {
             .iter_mut()
             .zip(decrypted_tallies.into_iter())
         {
-            proposal.tally = Some(Tally::Private {
+            proposal.tally = Tally::Private {
                 state: PrivateTallyState::Decrypted {
                     result: decrypted_tally.into(),
                 },
-            })
+            }
         }
 
         let output = self

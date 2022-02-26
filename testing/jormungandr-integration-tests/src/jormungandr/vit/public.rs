@@ -300,8 +300,7 @@ fn assert_first_proposal_has_votes(stake: u64, vote_plan_statuses: Vec<VotePlanS
         .proposals
         .first()
         .unwrap();
-    assert!(proposal.tally.is_some());
-    match proposal.tally.as_ref().unwrap() {
+    match &proposal.tally {
         Tally::Public { result } => {
             let results = result.results();
             assert_eq!(*results.get(0).unwrap(), 0);
@@ -647,18 +646,6 @@ pub fn jcli_e2e_flow() {
 
     time::wait_for_epoch(3, jormungandr.rest());
 
-    assert!(jormungandr
-        .rest()
-        .vote_plan_statuses()
-        .unwrap()
-        .first()
-        .unwrap()
-        .proposals
-        .first()
-        .unwrap()
-        .tally
-        .is_some());
-
     assert_eq!(
         jormungandr
             .rest()
@@ -743,7 +730,6 @@ pub fn duplicated_vote() {
     .unwrap();
 
     let vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
-    vote_plans.assert_all_proposals_are_tallied();
     vote_plans.assert_proposal_tally(
         vote_plan.to_id().to_string(),
         0,
@@ -813,7 +799,6 @@ pub fn non_duplicated_vote() {
         .unwrap();
 
     let vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
-    vote_plans.assert_all_proposals_are_tallied();
     vote_plans.assert_proposal_tally(
         vote_plan.to_id().to_string(),
         0,

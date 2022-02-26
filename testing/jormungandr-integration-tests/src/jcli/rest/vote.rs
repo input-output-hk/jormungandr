@@ -1,11 +1,12 @@
 use assert_fs::TempDir;
 use chain_core::property::BlockDate;
-use chain_impl_mockchain::vote::Choice;
+use chain_impl_mockchain::{tokens::minting_policy::MintingPolicy, vote::Choice};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     testing::VotePlanBuilder,
 };
+use jormungandr_lib::interfaces::InitialToken;
 use thor::{vote_plan_cert, FragmentSender, FragmentSenderSetup, Wallet};
 
 #[test]
@@ -33,6 +34,11 @@ pub fn test_correct_proposal_number_is_returned() {
     let wallets = [&alice];
     let config = ConfigurationBuilder::new()
         .with_funds(wallets.iter().map(|x| x.to_initial_fund(1000)).collect())
+        .with_token(InitialToken {
+            token_id: vote_plan.voting_token().clone().into(),
+            policy: MintingPolicy::new().into(),
+            to: vec![alice.to_initial_token(1000)],
+        })
         .with_committees(&[alice.to_committee_id()])
         .with_slots_per_epoch(60)
         .with_certs(vec![vote_plan_cert])

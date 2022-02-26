@@ -5,9 +5,9 @@ use crate::jcli_lib::{
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::{
     certificate::{
-        BftLeaderBindingSignature, Certificate, EncryptedVoteTally, EncryptedVoteTallyProof,
-        PoolOwnersSigned, PoolRegistration, PoolSignature, SignedCertificate, StakeDelegation,
-        TallyProof, UpdateProposal, UpdateVote, VotePlan, VotePlanProof, VoteTally,
+        BftLeaderBindingSignature, Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature,
+        SignedCertificate, StakeDelegation, TallyProof, UpdateProposal, UpdateVote, VotePlan,
+        VotePlanProof, VoteTally,
     },
     key::EitherEd25519SecretKey,
     transaction::{
@@ -90,16 +90,6 @@ impl Sign {
                         got: keys_str.len(),
                     })??
             }
-            Certificate::EncryptedVoteTally(vt) => {
-                let txbuilder = Transaction::block0_payload_builder(&vt);
-                keys_str
-                    .len()
-                    .eq(&1)
-                    .then(|| committee_encrypted_vote_tally_sign(vt, &keys_str[0], txbuilder))
-                    .ok_or(Error::ExpectingOnlyOneSigningKey {
-                        got: keys_str.len(),
-                    })??
-            }
             Certificate::OwnerStakeDelegation(_) => {
                 return Err(Error::OwnerStakeDelegationDoesntNeedSignature)
             }
@@ -159,22 +149,6 @@ pub(crate) fn committee_vote_tally_sign(
         PayloadType::Private => TallyProof::Private { id, signature },
     };
     Ok(SignedCertificate::VoteTally(vote_tally, proof))
-}
-
-pub(crate) fn committee_encrypted_vote_tally_sign(
-    vote_tally: EncryptedVoteTally,
-    key_str: &str,
-    builder: TxBuilderState<SetAuthData<EncryptedVoteTally>>,
-) -> Result<SignedCertificate, Error> {
-    let private_key = parse_ed25519_secret_key(key_str.trim())?;
-    let id = private_key.to_public().as_ref().try_into().unwrap();
-
-    let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
-        private_key.sign_slice(d.0)
-    });
-
-    let proof = EncryptedVoteTallyProof { id, signature };
-    Ok(SignedCertificate::EncryptedVoteTally(vote_tally, proof))
 }
 
 pub(crate) fn committee_vote_plan_sign(

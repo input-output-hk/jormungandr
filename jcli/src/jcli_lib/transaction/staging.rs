@@ -1,8 +1,7 @@
 use crate::jcli_lib::{
     certificate::{
-        self, committee_encrypted_vote_tally_sign, committee_vote_plan_sign,
-        committee_vote_tally_sign, pool_owner_sign, stake_delegation_account_binding_sign,
-        update_proposal_sign, update_vote_sign,
+        self, committee_vote_plan_sign, committee_vote_tally_sign, pool_owner_sign,
+        stake_delegation_account_binding_sign, update_proposal_sign, update_vote_sign,
     },
     transaction::Error,
     utils::io,
@@ -249,19 +248,6 @@ impl Staging {
                         .map_err(|error| Error::CertificateError { error })??;
                     self.extra_authed = Some(sc.into())
                 }
-                Certificate::EncryptedVoteTally(vt) => {
-                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&vt))?;
-                    let sc = keys
-                        .len()
-                        .eq(&1)
-                        .then(|| {
-                            committee_encrypted_vote_tally_sign(vt, &keys[0], builder)
-                                .map_err(|e| Error::CertificateError { error: e })
-                        })
-                        .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
-                        .map_err(|error| Error::CertificateError { error })??;
-                    self.extra_authed = Some(sc.into())
-                }
                 Certificate::UpdateProposal(up) => {
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&up))?;
                     let sc = keys
@@ -411,9 +397,6 @@ impl Staging {
                     self.finalize_payload(&vp, fee_algorithm, output_policy)
                 }
                 Certificate::VoteTally(vt) => {
-                    self.finalize_payload(&vt, fee_algorithm, output_policy)
-                }
-                Certificate::EncryptedVoteTally(vt) => {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
                 Certificate::UpdateProposal(vt) => {
@@ -570,9 +553,6 @@ impl Staging {
                     SignedCertificate::VoteTally(vt, a) => {
                         self.make_fragment(&vt, &a, Fragment::VoteTally)
                     }
-                    SignedCertificate::EncryptedVoteTally(vt, a) => {
-                        self.make_fragment(&vt, &a, Fragment::EncryptedVoteTally)
-                    }
                     SignedCertificate::UpdateProposal(vt, a) => {
                         self.make_fragment(&vt, &a, Fragment::UpdateProposal)
                     }
@@ -643,9 +623,6 @@ impl Staging {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&cp))
                 }
                 Certificate::VoteTally(vt) => {
-                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
-                }
-                Certificate::EncryptedVoteTally(vt) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
                 Certificate::UpdateProposal(vt) => {

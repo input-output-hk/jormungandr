@@ -825,7 +825,6 @@ fn apply_block_to_vote_plans(
                                             results: proposals_from_state[index]
                                                 .tally
                                                 .clone()
-                                                .unwrap()
                                                 .result()
                                                 .unwrap()
                                                 .results()
@@ -836,7 +835,6 @@ fn apply_block_to_vote_plans(
                                             results: proposals_from_state[index]
                                                 .tally
                                                 .clone()
-                                                .unwrap()
                                                 .result()
                                                 .map(|tally_results| {
                                                     tally_results.results().to_vec()
