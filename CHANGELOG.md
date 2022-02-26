@@ -21,6 +21,8 @@
 - Add `mempoolUsageRatio` metric and related field in `node/stats` to track load on the mempool.
 - Change `blockContentSizeAvg` to represent information as a percentage of the block max size.
 - Bump ed25519-bip32 from 0.4.0 to 0.4.1
+- Now the tally is incremental and is always available in the rest API. The
+  EncryptedVoteTally certificate serves no purpose anymore and is thus removed.
 
 ## Release 0.13.0
 
