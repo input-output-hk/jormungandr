@@ -19,7 +19,7 @@ pub fn copy_initial_storage_if_used(
     temp_dir: &TempDir,
 ) {
     if let Some(storage) = config.initial_storage() {
-        let client_storage: PathBuf = temp_dir.child(storage_folder.to_string()).path().into();
+        let client_storage: PathBuf = temp_dir.child(storage_folder).path().into();
         if client_storage.exists() {
             fs::remove_dir_all(&client_storage).expect("cannot remove existing client storage");
         }
@@ -38,7 +38,7 @@ pub fn start_node(
     let config = ConfigurationBuilder::new()
         .with_trusted_peers(vec![client_config.trusted_peer()])
         .with_block_hash(client_config.block0_hash().to_string())
-        .with_storage(&temp_dir.child(storage_folder_name.to_string()))
+        .with_storage(&temp_dir.child(storage_folder_name))
         .build(temp_dir);
 
     Starter::new().config(config).passive().start_async()

@@ -68,8 +68,7 @@ impl FragmentSenderError {
         };
         maybe_logs
             .into_iter()
-            .map(|logs| logs.iter())
-            .flatten()
+            .flat_map(|logs| logs.iter())
             .map(String::as_str)
     }
 }

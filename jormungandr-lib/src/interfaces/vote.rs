@@ -628,7 +628,7 @@ impl From<vote::TallyResult> for TallyResult {
 impl From<chain_vote::Tally> for TallyResult {
     fn from(this: chain_vote::Tally) -> Self {
         Self {
-            results: this.votes.iter().copied().collect(),
+            results: this.votes.to_vec(),
             options: 0..this.votes.len() as u8,
         }
     }

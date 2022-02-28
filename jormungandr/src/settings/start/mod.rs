@@ -180,7 +180,7 @@ impl RawSettings {
         let secret = command_arguments
             .secret
             .clone()
-            .or_else(|| config.as_ref().map(|cfg| cfg.secret_file.clone()).flatten());
+            .or_else(|| config.as_ref().and_then(|cfg| cfg.secret_file.clone()));
         if secret.is_none() {
             tracing::warn!(
                 "Node started without path to the stored secret keys (not a stake pool or a BFT leader)"

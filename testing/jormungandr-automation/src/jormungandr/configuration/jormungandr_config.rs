@@ -151,7 +151,7 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
                 Fragment::Transaction(transaction) => Some((transaction, fragment.hash())),
                 _ => None,
             })
-            .map(|(transaction, fragment_id)| {
+            .flat_map(|(transaction, fragment_id)| {
                 transaction
                     .as_slice()
                     .outputs()
@@ -166,7 +166,6 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
                         )
                     })
             })
-            .flatten()
             .collect()
     }
 
