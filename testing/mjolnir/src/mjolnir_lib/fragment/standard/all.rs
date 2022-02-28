@@ -1,6 +1,8 @@
 use crate::generators::FragmentGenerator;
 use crate::generators::FragmentStatusProvider;
+use crate::mjolnir_lib::DiscriminationExtensions;
 use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
+use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::{jormungandr::RemoteJormungandrBuilder, testing::time};
 use jormungandr_lib::crypto::hash::Hash;
@@ -65,6 +67,10 @@ pub struct AllFragments {
     /// Transaction time to live (can be negative e.g. ~4.2)
     #[structopt(short = "t", long= "ttl", default_value = "1.0", parse(try_from_str = parse_shift))]
     ttl: (BlockDate, bool),
+
+    /// Set the discrimination type to testing (default is production).
+    #[structopt(long = "testing")]
+    testing: bool,
 }
 
 impl AllFragments {
@@ -73,6 +79,7 @@ impl AllFragments {
         let faucet = Wallet::import_account(
             &self.faucet_key_file,
             Some(self.faucet_spending_counter.into()),
+            Discrimination::from_bool(self.testing),
         );
         let receiver = thor::Wallet::default();
         let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_string())

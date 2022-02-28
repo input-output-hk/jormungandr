@@ -31,20 +31,16 @@ use jormungandr_lib::{
     },
 };
 use rand::rngs::OsRng;
-use rand_core::{CryptoRng, RngCore};
 use std::time::Duration;
 use thor::{vote_plan_cert, FragmentSender, FragmentSenderSetup, Wallet};
 
 const TEST_COMMITTEE_SIZE: usize = 3;
 
-fn generate_wallets_and_committee<RNG>(rng: &mut RNG) -> (Vec<Wallet>, Vec<CommitteeIdDef>)
-where
-    RNG: CryptoRng + RngCore,
-{
+fn generate_wallets_and_committee() -> (Vec<Wallet>, Vec<CommitteeIdDef>) {
     let mut ids = Vec::new();
     let mut wallets = Vec::new();
     for _i in 0..TEST_COMMITTEE_SIZE {
-        let wallet = Wallet::new_account(rng);
+        let wallet = Wallet::default();
         ids.push(wallet.to_committee_id());
         wallets.push(wallet);
     }
@@ -57,7 +53,7 @@ pub fn test_get_committee_id() {
     let jcli: JCli = Default::default();
 
     let mut rng = OsRng;
-    let (_, mut expected_committee_ids) = generate_wallets_and_committee(&mut rng);
+    let (_, mut expected_committee_ids) = generate_wallets_and_committee();
 
     let leader_key_pair = KeyPair::generate(&mut rng);
 
@@ -92,8 +88,7 @@ pub fn test_get_committee_id() {
 pub fn test_get_initial_vote_plan() {
     let temp_dir = TempDir::new().unwrap();
 
-    let mut rng = OsRng;
-    let (wallets, expected_committee_ids) = generate_wallets_and_committee(&mut rng);
+    let (wallets, expected_committee_ids) = generate_wallets_and_committee();
 
     let expected_vote_plan = VoteTestGen::vote_plan();
 
@@ -138,10 +133,9 @@ pub fn test_vote_flow_bft() {
     let initial_fund_per_wallet = 1_000_000;
     let temp_dir = TempDir::new().unwrap();
 
-    let mut rng = OsRng;
-    let mut alice = Wallet::new_account(&mut rng);
-    let mut bob = Wallet::new_account(&mut rng);
-    let mut clarice = Wallet::new_account(&mut rng);
+    let mut alice = Wallet::default();
+    let mut bob = Wallet::default();
+    let mut clarice = Wallet::default();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
@@ -317,10 +311,9 @@ pub fn test_vote_flow_praos() {
     let no_choice = Choice::new(2);
     let rewards_increase = 10;
 
-    let mut rng = OsRng;
-    let mut alice = Wallet::new_account(&mut rng);
-    let mut bob = Wallet::new_account(&mut rng);
-    let mut clarice = Wallet::new_account(&mut rng);
+    let mut alice = Wallet::default();
+    let mut bob = Wallet::default();
+    let mut clarice = Wallet::default();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)

@@ -1,6 +1,8 @@
 use crate::generators::AdversaryVoteCastsGenerator;
 use crate::generators::FragmentStatusProvider;
+use crate::mjolnir_lib::DiscriminationExtensions;
 use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
+use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
 use jormungandr_automation::testing::block0::{get_block, Block0ConfigurationExtension};
@@ -60,6 +62,10 @@ pub struct VotesOnly {
     /// Transaction time to live (can be negative e.g. ~4.2)
     #[structopt(short = "t", long= "ttl", default_value = "1.0", parse(try_from_str = parse_shift))]
     ttl: (BlockDate, bool),
+
+    /// Set the discrimination type to testing (default is production).
+    #[structopt(long = "testing")]
+    testing: bool,
 }
 
 impl VotesOnly {
@@ -68,6 +74,7 @@ impl VotesOnly {
         let faucet = Wallet::import_account(
             self.faucet_key_file.clone(),
             Some(self.faucet_spending_counter.into()),
+            Discrimination::from_bool(self.testing),
         );
         let block0 = get_block(&self.block0_path)?;
         let vote_plans = block0.vote_plans();
