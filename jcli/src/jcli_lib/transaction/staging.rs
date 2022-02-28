@@ -686,7 +686,7 @@ impl Staging {
         let cert_extra = self.extra_authed.clone().map(|cert| cert.strip_auth());
         let cert_payload = cert_extra
             .as_ref()
-            .or_else(|| self.extra.as_ref())
+            .or(self.extra.as_ref())
             .map(|cert| CertificatePayload::from(&cert.0));
         let cert_slice = cert_payload.as_ref().map(CertificatePayload::as_slice);
         let inputs_count = self.inputs().len() as u8;
