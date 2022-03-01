@@ -21,8 +21,8 @@ use jormungandr_lib::interfaces::{try_initial_fragment_from_message, VotePlan as
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
-        ActiveSlotCoefficient, Bft, Block0Configuration, BlockchainConfiguration, CommitteeIdDef,
-        GenesisPraos, Initial, InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
+        Bft, Block0Configuration, BlockchainConfiguration, CommitteeIdDef, GenesisPraos, Initial,
+        InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
     },
 };
 use rand_core::{CryptoRng, RngCore};
@@ -180,7 +180,7 @@ impl Settings {
         blockchain_configuration.block_content_max_size = *blockchain.block_content_max_size();
         blockchain_configuration.kes_update_speed = *blockchain.kes_update_speed();
         blockchain_configuration.consensus_genesis_praos_active_slot_coeff =
-            ActiveSlotCoefficient::MAXIMUM;
+            *blockchain.consensus_genesis_praos_active_slot_coeff();
     }
 
     fn populate_block0_blockchain_initials<'a, RNG, I>(

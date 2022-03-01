@@ -109,34 +109,29 @@ pub fn measure_and_log_sync_time<A: SyncNode + ?Sized>(
     let interval: u32 = report_node_stats_interval.into();
 
     while !benchmark.timeout_exceeded() {
-        let block_heights: Vec<u32> = nodes
+        let tips = nodes
             .iter()
             .map(|node| {
                 if report_node_stats_counter >= interval {
                     node.log_stats();
                 }
-                node.last_block_height()
+                node.tip()
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         if report_node_stats_counter >= interval {
-            println!(
-                "Measuring sync time... current block heights: {:?}",
-                block_heights
-            );
+            println!("Measuring sync time... current block tips: {:?}", tips);
             report_node_stats_counter = 0;
         } else {
             report_node_stats_counter += 1;
         }
 
-        let max_block_height = block_heights.iter().cloned().max().unwrap();
-        if block_heights
-            .iter()
-            .cloned()
-            .filter(|x| *x != max_block_height)
-            .count()
-            == 0
-        {
+        let first = tips.first().cloned();
+        let stop = first
+            .map(|tip| tips.into_iter().all(|t| t == tip))
+            .unwrap_or(true);
+
+        if stop {
             benchmark.stop().print();
             return Ok(());
         }
