@@ -454,7 +454,7 @@ impl SyncNode for Node {
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
         self.logger()
-            .get_lines_with_level(LogLevel::ERROR)
+            .get_log_lines_with_level(LogLevel::ERROR)
             .map(|x| x.to_string())
             .collect()
     }

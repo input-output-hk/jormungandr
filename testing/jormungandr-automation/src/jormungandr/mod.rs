@@ -40,6 +40,8 @@ pub type NodeAlias = String;
 pub enum JormungandrError {
     #[error("error in logs. Error lines: {error_lines}, full content:{logs}")]
     ErrorInLogs { logs: String, error_lines: String },
+    #[error("error in stderr: {stderr}")]
+    StdErr { stderr: String },
     #[error("error(s) in log detected: port already in use")]
     PortAlreadyInUse,
 }

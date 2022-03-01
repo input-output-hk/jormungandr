@@ -148,7 +148,7 @@ impl Drop for AdversaryNode {
             controller.stop();
         }
 
-        panic::persist_dir_on_panic(self.temp_dir.take(), Vec::new())
+        panic::persist_dir_on_panic::<String, String>(self.temp_dir.take(), Vec::new())
     }
 }
 

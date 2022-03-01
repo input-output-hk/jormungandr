@@ -218,7 +218,7 @@ fn show_logs_for(
     let logs: Vec<String> = {
         if only_errors {
             logger
-                .get_lines_with_level(LogLevel::ERROR)
+                .get_log_lines_with_level(LogLevel::ERROR)
                 .map(|x| x.to_string())
                 .collect()
         } else if let Some(contains) = &contains {

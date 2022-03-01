@@ -1,4 +1,4 @@
-use crate::testing::Timestamp;
+use crate::testing::{collector::OutputCollector, Timestamp};
 use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
@@ -8,17 +8,17 @@ use std::cell::{Ref, RefCell};
 use std::collections::HashMap;
 use std::convert::AsRef;
 use std::fmt;
-use std::io::{BufRead, Read};
+use std::io::Read;
 use std::ops::Index;
-use std::sync::mpsc::{self, Receiver};
-use std::time::Instant;
 use strum::AsRefStr;
 
 // TODO: we use a RefCell because it would be very labor intensive to change
 // the rest of the testing framework to take a mutable reference to the logger
 pub struct JormungandrLogger {
-    collected: RefCell<Vec<LogEntry>>,
-    rx: Receiver<(Instant, String)>,
+    collected_logs: RefCell<Vec<LogEntry>>,
+    logs_collector: RefCell<OutputCollector>,
+    panics_collector: RefCell<OutputCollector>,
+    collected_panics: RefCell<Vec<String>>,
 }
 
 // The name is used to serialize/deserialize
@@ -200,37 +200,32 @@ impl From<LogEntry> for Timestamp {
 }
 
 impl JormungandrLogger {
-    pub fn new<R: Read + Send + 'static>(source: R) -> Self {
-        let (tx, rx) = mpsc::channel();
-        std::thread::spawn(move || {
-            let lines = std::io::BufReader::new(source).lines();
-            for line in lines {
-                tx.send((Instant::now(), line.unwrap())).unwrap();
-            }
-        });
+    pub fn new<R1, R2>(logs_source: R1, panics_source: R2) -> Self
+    where
+        R1: Read + Send + 'static,
+        R2: Read + Send + 'static,
+    {
         JormungandrLogger {
-            rx,
-            collected: RefCell::new(Vec::new()),
+            logs_collector: RefCell::new(OutputCollector::new(logs_source)),
+            panics_collector: RefCell::new(OutputCollector::new(panics_source)),
+            collected_logs: RefCell::new(Vec::new()),
+            collected_panics: RefCell::new(Vec::new()),
         }
     }
 
     fn collect_available_input(&self) {
-        let collected = &mut self.collected.borrow_mut();
-        let now = Instant::now();
-        while let Ok((time, line)) = self.rx.try_recv() {
-            // we are reading from logs produced by the node, if they are not valid there is something wrong
+        let collected = &mut self.collected_logs.borrow_mut();
+        for line in self.logs_collector.borrow_mut().take_available_input() {
             let entry = Self::try_parse_line_as_entry(&line).unwrap();
             // Filter out logs produced by other libraries
             if entry.target.starts_with("jormungandr") {
                 collected.push(entry);
             }
-            // Stop reading if the are more recent messages available, otherwise
-            // we risk that a very active process could result in endless collection
-            // of its output
-            if time > now {
-                break;
-            }
         }
+
+        self.collected_panics
+            .borrow_mut()
+            .extend(self.panics_collector.borrow_mut().take_available_input());
     }
 
     pub fn get_error_indicators() -> Vec<&'static str> {
@@ -239,7 +234,12 @@ impl JormungandrLogger {
 
     fn entries(&self) -> Ref<Vec<LogEntry>> {
         self.collect_available_input();
-        self.collected.borrow()
+        self.collected_logs.borrow()
+    }
+
+    fn panic_entries(&self) -> Ref<Vec<String>> {
+        self.collect_available_input();
+        self.collected_panics.borrow()
     }
 
     pub fn get_log_content(&self) -> String {
@@ -250,6 +250,10 @@ impl JormungandrLogger {
             .join("\n")
     }
 
+    pub fn get_panic_content(&self) -> String {
+        self.panic_entries().join("\n")
+    }
+
     pub fn get_lines_as_string(&self) -> Vec<String> {
         self.entries().iter().map(|x| x.to_string()).collect()
     }
@@ -258,7 +262,11 @@ impl JormungandrLogger {
         self.entries().clone()
     }
 
-    pub fn get_lines_with_level(&self, level: Level) -> impl Iterator<Item = LogEntry> {
+    pub fn get_panic_lines(&self) -> Vec<String> {
+        self.panic_entries().clone()
+    }
+
+    pub fn get_log_lines_with_level(&self, level: Level) -> impl Iterator<Item = LogEntry> {
         self.entries()
             .clone()
             .into_iter()
@@ -271,7 +279,7 @@ impl JormungandrLogger {
                 || Self::get_error_indicators()
                     .iter()
                     .any(|indicator| entry.message().contains(indicator))
-        })
+        }) || !self.panic_entries().is_empty()
     }
 
     pub fn last_validated_block_date(&self) -> Option<BlockDate> {
@@ -314,7 +322,19 @@ impl JormungandrLogger {
     }
 
     pub fn assert_no_errors(&self, message: &str) {
-        let error_lines = self.get_lines_with_level(Level::ERROR).collect::<Vec<_>>();
+        let error_lines = self
+            .get_log_lines_with_level(Level::ERROR)
+            .collect::<Vec<_>>();
+
+        let panics = self.panic_entries();
+
+        assert_eq!(
+            panics.len(),
+            0,
+            "{} there are some panics: {:?}",
+            message,
+            panics,
+        );
 
         assert_eq!(
             error_lines.len(),

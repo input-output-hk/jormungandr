@@ -50,6 +50,8 @@ impl From<NodeState> for Status {
     }
 }
 
+// FIX: we use a RefCell because it would be very labor intensive to change
+// the rest of the testing framework to take a mutable reference to the logger
 pub struct JormungandrProcess {
     pub child: Child,
     pub logger: JormungandrLogger,
@@ -71,13 +73,14 @@ impl JormungandrProcess {
         alias: String,
     ) -> Result<Self, StartupError> {
         let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
 
         Ok(JormungandrProcess {
             child,
             temp_dir,
             alias,
             grpc_client: JormungandrClient::new(node_config.p2p_listen_address()),
-            logger: JormungandrLogger::new(stdout),
+            logger: JormungandrLogger::new(stdout, stderr),
             p2p_public_address: node_config.p2p_public_address(),
             p2p_listen_address: node_config.p2p_listen_address(),
             rest_socket_addr: node_config.rest_socket_addr(),
@@ -248,7 +251,7 @@ impl JormungandrProcess {
     pub fn check_no_errors_in_log(&self) -> Result<(), JormungandrError> {
         let error_lines = self
             .logger
-            .get_lines_with_level(LogLevel::ERROR)
+            .get_log_lines_with_level(LogLevel::ERROR)
             .collect::<Vec<_>>();
 
         if !error_lines.is_empty() {
@@ -256,6 +259,11 @@ impl JormungandrProcess {
                 logs: self.logger.get_log_content(),
                 error_lines: format!("{:?}", error_lines),
             });
+        }
+
+        let stderr = self.logger.get_panic_content();
+        if !stderr.is_empty() {
+            return Err(JormungandrError::StdErr { stderr });
         }
         Ok(())
     }
@@ -343,10 +351,13 @@ impl Drop for JormungandrProcess {
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
 
-        crate::testing::panic::persist_dir_on_panic(
-            self.temp_dir.take(),
-            vec![("node.log", &self.logger.get_log_content())],
-        );
+        let mut to_persist = vec![("node.log", SyncNode::log_content(self))];
+        let stderr = self.logger.get_panic_content();
+        if !stderr.is_empty() {
+            to_persist.push(("stderr", stderr));
+        }
+
+        crate::testing::panic::persist_dir_on_panic(self.temp_dir.take(), to_persist);
     }
 }
 
@@ -379,8 +390,9 @@ impl SyncNode for JormungandrProcess {
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
         self.logger
-            .get_lines_with_level(LogLevel::ERROR)
+            .get_log_lines_with_level(LogLevel::ERROR)
             .map(|x| x.to_string())
+            .chain(self.logger.get_panic_lines().into_iter())
             .collect()
     }
 
