@@ -19,10 +19,11 @@ use super::indexing::{
     BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, StakePoolData,
 };
 use super::persistent_sequence::PersistentSequence;
+use super::typed_query;
 use crate::blockcfg::{self, FragmentId, HeaderHash};
 use crate::explorer::indexing::ExplorerVote;
 use crate::explorer::{ExplorerDb, Settings as ChainSettings};
-use async_graphql::connection::{query, Connection, Edge, EmptyFields};
+use async_graphql::connection::{Connection, Edge, EmptyFields};
 use async_graphql::{
     Context, EmptyMutation, FieldError, FieldResult, Object, SimpleObject, Subscription, Union,
 };
@@ -80,56 +81,49 @@ impl Branch {
         let block0 = 0u32;
         let chain_length = self.state.state().blocks.size();
 
-        query(
-            after,
-            before,
-            first,
-            last,
-            |after, before, first, last| async move {
-                let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
-                    lower_bound: block0,
-                    // this try_from cannot fail, as there can't be more than 2^32
-                    // blocks (because ChainLength is u32)
-                    upper_bound: u32::try_from(chain_length).unwrap(),
-                });
+        typed_query(after, before, first, last, |after, before, first, last| async move {
+            let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
+                lower_bound: block0,
+                // this try_from cannot fail, as there can't be more than 2^32
+                // blocks (because ChainLength is u32)
+                upper_bound: u32::try_from(chain_length).unwrap(),
+            });
 
-                let pagination_arguments = ValidatedPaginationArguments {
-                    first,
-                    last,
-                    before: before.map(u32::try_from).transpose()?,
-                    after: after.map(u32::try_from).transpose()?,
-                };
+            let pagination_arguments = ValidatedPaginationArguments {
+                first,
+                last,
+                before: before.map(u32::try_from).transpose()?,
+                after: after.map(u32::try_from).transpose()?,
+            };
 
-                let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+            let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
 
-                let mut connection = Connection::with_additional_fields(
-                    page_meta.has_previous_page,
-                    page_meta.has_next_page,
-                    ConnectionFields {
-                        total_count: page_meta.total_count,
-                    },
-                );
+            let mut connection = Connection::with_additional_fields(
+                page_meta.has_previous_page,
+                page_meta.has_next_page,
+                ConnectionFields {
+                    total_count: page_meta.total_count,
+                },
+            );
 
-                let edges = match range {
-                    PaginationInterval::Empty => Default::default(),
-                    PaginationInterval::Inclusive(range) => {
-                        let a = range.lower_bound.into();
-                        let b = range.upper_bound.checked_add(1).unwrap().into();
-                        self.state.state().get_block_hash_range(a, b)
-                    }
-                };
+            let edges = match range {
+                PaginationInterval::Empty => Default::default(),
+                PaginationInterval::Inclusive(range) => {
+                    let a = range.lower_bound.into();
+                    let b = range.upper_bound.checked_add(1).unwrap().into();
+                    self.state.state().get_block_hash_range(a, b)
+                }
+            };
 
-                connection.append(edges.iter().map(|(h, chain_length)| {
-                    Edge::new(
-                        IndexCursor::from(u32::from(*chain_length)),
-                        Block::from_valid_hash(*h),
-                    )
-                }));
+            connection.append(edges.iter().map(|(h, chain_length)| {
+                Edge::new(
+                    IndexCursor::from(u32::from(*chain_length)),
+                    Block::from_valid_hash(*h),
+                )
+            }));
 
-                Ok(connection)
-            },
-        )
-        .await
+            Ok(connection)
+        }).await
     }
 
     async fn transactions_by_address(
@@ -155,7 +149,7 @@ impl Branch {
 
         let len = transactions.len();
 
-        query(
+        typed_query(
             after,
             before,
             first,
@@ -217,7 +211,7 @@ impl Branch {
 
         vote_plans.sort_unstable_by_key(|(id, _data)| id.clone());
 
-        query(
+        typed_query(
             after,
             before,
             first,
@@ -300,7 +294,7 @@ impl Branch {
         // - Find some way to rely in the Hamt iterator order (but I think this is probably not a good idea)
         stake_pools.sort_unstable_by_key(|(id, _data)| id.clone());
 
-        query(
+        typed_query(
             after.map(Into::into),
             before.map(Into::into),
             first,
@@ -388,7 +382,7 @@ impl Branch {
         };
 
         Some(
-            query(
+            typed_query(
                 after,
                 before,
                 first,
@@ -563,7 +557,7 @@ impl Block {
             .as_mut_slice()
             .sort_unstable_by_key(|tx| tx.offset_in_block);
 
-        query(
+        typed_query(
             after,
             before,
             first,
@@ -1089,7 +1083,7 @@ impl Pool {
                 })?,
         };
 
-        query(
+        typed_query(
             after,
             before,
             first,
@@ -1454,7 +1448,7 @@ impl VoteProposalStatus {
         before: Option<String>,
         after: Option<String>,
     ) -> FieldResult<Connection<IndexCursor, VoteStatus, ConnectionFields<u64>, EmptyFields>> {
-        query(
+        typed_query(
             after,
             before,
             first,

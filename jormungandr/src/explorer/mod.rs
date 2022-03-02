@@ -12,6 +12,7 @@ use self::indexing::{
     StakePoolData, Transactions, VotePlans,
 };
 use self::persistent_sequence::PersistentSequence;
+use async_graphql::connection::{query, Connection, CursorType};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
 
@@ -31,6 +32,7 @@ use chain_impl_mockchain::fee::LinearFee;
 use futures::prelude::*;
 use multiverse::Multiverse;
 use std::convert::Infallible;
+use std::fmt::Display;
 use std::sync::{
     atomic::{AtomicU32, Ordering},
     Arc,
@@ -950,4 +952,27 @@ impl State {
             })
             .collect()
     }
+}
+
+/// Equivalent to [`query`] except that it expects a concrete error type, instead of an `impl
+/// Into<async_graphql::Error>` to help type inference
+pub(crate) async fn typed_query<Cursor, Node, ConnectionFields, EdgeFields, F, R>(
+    after: Option<String>,
+    before: Option<String>,
+    first: Option<i32>,
+    last: Option<i32>,
+    f: F,
+) -> std::result::Result<Connection<Cursor, Node, ConnectionFields, EdgeFields>, async_graphql::Error>
+where
+    Cursor: CursorType + Send + Sync,
+    <Cursor as CursorType>::Error: Display + Send + Sync + 'static,
+    F: FnOnce(Option<Cursor>, Option<Cursor>, Option<usize>, Option<usize>) -> R,
+    R: Future<
+        Output = std::result::Result<
+            Connection<Cursor, Node, ConnectionFields, EdgeFields>,
+            async_graphql::Error,
+        >,
+    >,
+{
+    Ok(query(after, before, first, last, f).await?)
 }
