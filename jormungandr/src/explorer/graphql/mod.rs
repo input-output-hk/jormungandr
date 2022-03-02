@@ -81,49 +81,56 @@ impl Branch {
         let block0 = 0u32;
         let chain_length = self.state.state().blocks.size();
 
-        typed_query(after, before, first, last, |after, before, first, last| async move {
-            let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
-                lower_bound: block0,
-                // this try_from cannot fail, as there can't be more than 2^32
-                // blocks (because ChainLength is u32)
-                upper_bound: u32::try_from(chain_length).unwrap(),
-            });
+        typed_query(
+            after,
+            before,
+            first,
+            last,
+            |after, before, first, last| async move {
+                let boundaries = PaginationInterval::Inclusive(InclusivePaginationInterval {
+                    lower_bound: block0,
+                    // this try_from cannot fail, as there can't be more than 2^32
+                    // blocks (because ChainLength is u32)
+                    upper_bound: u32::try_from(chain_length).unwrap(),
+                });
 
-            let pagination_arguments = ValidatedPaginationArguments {
-                first,
-                last,
-                before: before.map(u32::try_from).transpose()?,
-                after: after.map(u32::try_from).transpose()?,
-            };
+                let pagination_arguments = ValidatedPaginationArguments {
+                    first,
+                    last,
+                    before: before.map(u32::try_from).transpose()?,
+                    after: after.map(u32::try_from).transpose()?,
+                };
 
-            let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
+                let (range, page_meta) = compute_interval(boundaries, pagination_arguments)?;
 
-            let mut connection = Connection::with_additional_fields(
-                page_meta.has_previous_page,
-                page_meta.has_next_page,
-                ConnectionFields {
-                    total_count: page_meta.total_count,
-                },
-            );
+                let mut connection = Connection::with_additional_fields(
+                    page_meta.has_previous_page,
+                    page_meta.has_next_page,
+                    ConnectionFields {
+                        total_count: page_meta.total_count,
+                    },
+                );
 
-            let edges = match range {
-                PaginationInterval::Empty => Default::default(),
-                PaginationInterval::Inclusive(range) => {
-                    let a = range.lower_bound.into();
-                    let b = range.upper_bound.checked_add(1).unwrap().into();
-                    self.state.state().get_block_hash_range(a, b)
-                }
-            };
+                let edges = match range {
+                    PaginationInterval::Empty => Default::default(),
+                    PaginationInterval::Inclusive(range) => {
+                        let a = range.lower_bound.into();
+                        let b = range.upper_bound.checked_add(1).unwrap().into();
+                        self.state.state().get_block_hash_range(a, b)
+                    }
+                };
 
-            connection.append(edges.iter().map(|(h, chain_length)| {
-                Edge::new(
-                    IndexCursor::from(u32::from(*chain_length)),
-                    Block::from_valid_hash(*h),
-                )
-            }));
+                connection.append(edges.iter().map(|(h, chain_length)| {
+                    Edge::new(
+                        IndexCursor::from(u32::from(*chain_length)),
+                        Block::from_valid_hash(*h),
+                    )
+                }));
 
-            Ok(connection)
-        }).await
+                Ok(connection)
+            },
+        )
+        .await
     }
 
     async fn transactions_by_address(
