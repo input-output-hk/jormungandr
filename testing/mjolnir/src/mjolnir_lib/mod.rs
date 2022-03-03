@@ -81,11 +81,11 @@ pub fn build_monitor(progress_bar_mode: &ProgressBarMode) -> Monitor {
 }
 
 pub trait DiscriminationExtensions {
-    fn from_bool(testing: bool) -> Self;
+    fn from_testing_bool(testing: bool) -> Self;
 }
 
 impl DiscriminationExtensions for Discrimination {
-    fn from_bool(testing: bool) -> Discrimination {
+    fn from_testing_bool(testing: bool) -> Discrimination {
         if testing {
             Discrimination::Test
         } else {

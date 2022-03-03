@@ -69,7 +69,7 @@ impl TxOnly {
         let mut faucet = Wallet::import_account(
             self.faucet_key_file.clone(),
             Some(self.faucet_spending_counter.into()),
-            Discrimination::from_bool(self.testing),
+            Discrimination::from_testing_bool(self.testing),
         );
         let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_owned())
             .with_rest(self.endpoint.parse().unwrap())

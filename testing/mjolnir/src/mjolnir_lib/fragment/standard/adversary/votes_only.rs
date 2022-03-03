@@ -74,7 +74,7 @@ impl VotesOnly {
         let faucet = Wallet::import_account(
             self.faucet_key_file.clone(),
             Some(self.faucet_spending_counter.into()),
-            Discrimination::from_bool(self.testing),
+            Discrimination::from_testing_bool(self.testing),
         );
         let block0 = get_block(&self.block0_path)?;
         let vote_plans = block0.vote_plans();

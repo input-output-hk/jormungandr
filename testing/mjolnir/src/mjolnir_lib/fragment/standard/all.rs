@@ -79,7 +79,7 @@ impl AllFragments {
         let faucet = Wallet::import_account(
             &self.faucet_key_file,
             Some(self.faucet_spending_counter.into()),
-            Discrimination::from_bool(self.testing),
+            Discrimination::from_testing_bool(self.testing),
         );
         let receiver = thor::Wallet::default();
         let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_string())
