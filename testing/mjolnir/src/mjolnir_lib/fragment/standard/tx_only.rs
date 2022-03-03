@@ -1,5 +1,7 @@
 use crate::generators::TransactionGenerator;
+use crate::mjolnir_lib::DiscriminationExtensions;
 use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
+use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
 use jormungandr_lib::crypto::hash::Hash;
@@ -55,6 +57,10 @@ pub struct TxOnly {
     /// Transaction time to live (can be negative e.g. ~4.2)
     #[structopt(short = "t", long= "ttl", default_value = "1.0", parse(try_from_str = parse_shift))]
     ttl: (BlockDate, bool),
+
+    /// Set the discrimination type to testing (default is production).
+    #[structopt(long = "testing")]
+    testing: bool,
 }
 
 impl TxOnly {
@@ -63,6 +69,7 @@ impl TxOnly {
         let mut faucet = Wallet::import_account(
             self.faucet_key_file.clone(),
             Some(self.faucet_spending_counter.into()),
+            Discrimination::from_testing_bool(self.testing),
         );
         let remote_jormungandr = RemoteJormungandrBuilder::new("node".to_owned())
             .with_rest(self.endpoint.parse().unwrap())

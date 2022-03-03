@@ -45,12 +45,11 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         .map(|committee_member| committee_member.public_key())
         .collect::<Vec<_>>();
 
-    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::new_account(&mut rng)))
+    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::default()))
         .take(quick_config.wallets_count())
         .collect();
 
-    let mut rng = OsRng;
-    let mut committee = Wallet::new_account(&mut rng);
+    let mut committee = Wallet::default();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(quick_config.proposals_count())
@@ -207,14 +206,13 @@ pub fn adversary_private_vote_load_scenario(
         .map(|committee_member| committee_member.public_key())
         .collect::<Vec<_>>();
 
-    let mut noise_wallet_from = Wallet::new_account(&mut rng);
+    let mut noise_wallet_from = Wallet::default();
 
-    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::new_account(&mut rng)))
+    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::default()))
         .take(quick_config.wallets_count())
         .collect();
 
-    let mut rng = OsRng;
-    let mut committee = Wallet::new_account(&mut rng);
+    let mut committee = Wallet::default();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(quick_config.proposals_count())

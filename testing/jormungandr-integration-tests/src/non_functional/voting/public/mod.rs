@@ -19,15 +19,13 @@ use jortestkit::load::Configuration;
 use jortestkit::measurement::Status;
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::{AdversaryFragmentGenerator, FragmentStatusProvider, VoteCastsGenerator};
-use rand::rngs::OsRng;
 use thor::{vote_plan_cert, BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
 
 pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
     let temp_dir = TempDir::new().unwrap();
-    let mut rng = OsRng;
-    let mut committee = Wallet::new_account(&mut rng);
+    let mut committee = Wallet::default();
 
-    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::new_account(&mut rng)))
+    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::default()))
         .take(quick_config.wallets_count())
         .collect();
 
@@ -155,12 +153,11 @@ pub fn adversary_public_vote_load_scenario(
     adversary_noise_config: Configuration,
 ) {
     let temp_dir = TempDir::new().unwrap();
-    let mut rng = OsRng;
-    let mut committee = Wallet::new_account(&mut rng);
+    let mut committee = Wallet::default();
 
-    let mut noise_wallet_from = Wallet::new_account(&mut rng);
+    let mut noise_wallet_from = Wallet::default();
 
-    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::new_account(&mut rng)))
+    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::default()))
         .take(quick_config.wallets_count())
         .collect();
 

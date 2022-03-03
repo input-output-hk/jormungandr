@@ -39,8 +39,10 @@ impl<'a, S: SyncNode + Send> TransactionGenerator<'a, S> {
     }
 
     pub fn fill_from_faucet(&mut self, faucet: &mut Wallet) {
+        let discrimination = self.jormungandr.rest().settings().unwrap().discrimination;
+
         let mut wallets: Vec<Wallet> =
-            std::iter::from_fn(|| Some(Wallet::new_account(&mut self.rand)))
+            std::iter::from_fn(|| Some(Wallet::new_account(&mut self.rand, discrimination)))
                 .take(90)
                 .collect();
 
@@ -55,7 +57,7 @@ impl<'a, S: SyncNode + Send> TransactionGenerator<'a, S> {
 
         for wallet in wallets.iter_mut().take(10) {
             let mut pack_of_wallets: Vec<Wallet> =
-                std::iter::from_fn(|| Some(Wallet::new_account(&mut self.rand)))
+                std::iter::from_fn(|| Some(Wallet::new_account(&mut self.rand, discrimination)))
                     .take(90)
                     .collect();
             fragment_sender

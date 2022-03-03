@@ -15,11 +15,11 @@ pub fn create_new_utxo_address() -> Wallet {
 }
 
 pub fn create_new_account_address() -> Wallet {
-    Wallet::new_account(&mut rand::rngs::OsRng)
+    Default::default()
 }
 
 pub fn create_new_delegation_address() -> Wallet {
-    let account = Wallet::new_account(&mut rand::rngs::OsRng);
+    let account = Wallet::default();
     create_new_delegation_address_for(&account.identifier())
 }
 

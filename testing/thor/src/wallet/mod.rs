@@ -76,26 +76,28 @@ pub enum Wallet {
 
 impl Default for Wallet {
     fn default() -> Self {
-        Self::new_account(&mut rand::rngs::OsRng)
+        Self::new_account(&mut rand::rngs::OsRng, Discrimination::Test)
     }
 }
 
 impl Wallet {
-    pub fn new_account<RNG>(rng: &mut RNG) -> Wallet
+    pub fn new_account<RNG>(rng: &mut RNG, discrimination: Discrimination) -> Wallet
     where
         RNG: CryptoRng + RngCore,
     {
-        Self::new_account_with_discrimination(rng, Discrimination::Test)
+        Self::new_account_with_discrimination(rng, discrimination)
     }
 
     pub fn import_account<P: AsRef<Path>>(
         secret_key_file: P,
         spending_counter: Option<SpendingCounter>,
+        discrimination: Discrimination,
     ) -> Wallet {
         let bech32_str = jortestkit::file::read_file(secret_key_file);
         Wallet::Account(account::Wallet::from_existing_account(
             &bech32_str,
             spending_counter.map(Into::into),
+            discrimination,
         ))
     }
 
@@ -112,10 +114,12 @@ impl Wallet {
     pub fn from_existing_account(
         signing_key_bech32: &str,
         spending_counter: Option<SpendingCounter>,
+        discrimination: Discrimination,
     ) -> Wallet {
         Wallet::Account(account::Wallet::from_existing_account(
             signing_key_bech32,
             spending_counter.map(Into::into),
+            discrimination,
         ))
     }
 

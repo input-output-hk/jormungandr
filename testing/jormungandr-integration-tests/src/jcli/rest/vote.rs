@@ -12,7 +12,7 @@ use thor::{vote_plan_cert, FragmentSender, FragmentSenderSetup, Wallet};
 #[test]
 pub fn test_correct_proposal_number_is_returned() {
     let temp_dir = TempDir::new().unwrap();
-    let mut alice = Wallet::new_account(&mut rand::thread_rng());
+    let mut alice = Wallet::default();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)

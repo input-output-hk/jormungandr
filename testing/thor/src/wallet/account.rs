@@ -60,6 +60,7 @@ impl Wallet {
     pub fn from_existing_account(
         bech32_str: &str,
         spending_counter: Option<SpendingCounter>,
+        discrimination: Discrimination,
     ) -> Self {
         let signing_key = SigningKey::from_bech32_str(bech32_str).expect("bad bech32");
         Wallet {
@@ -69,7 +70,7 @@ impl Wallet {
                     .map(Into::into)
                     .unwrap_or_else(SpendingCounter::zero),
             ),
-            discrimination: Discrimination::Test,
+            discrimination,
         }
     }
 
