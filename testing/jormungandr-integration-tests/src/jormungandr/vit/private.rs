@@ -258,7 +258,7 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
 
-    // We want to make sure that our small rewards increase is reflexed in current rewards amount
+    // We want to make sure that our small rewards increase is reflected in current rewards amount
     assert!(
         rewards_after == rewards_before + rewards_increase,
         "Vote was unsuccessful"
