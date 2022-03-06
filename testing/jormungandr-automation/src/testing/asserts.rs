@@ -2,7 +2,7 @@ use chain_addr::AddressReadable;
 use chain_impl_mockchain::key::Hash;
 use jormungandr_lib::interfaces::Initial;
 use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_lib::interfaces::{Tally, VotePlanStatus};
+use jormungandr_lib::interfaces::{PrivateTallyState, Tally, VotePlanStatus};
 use std::str::FromStr;
 
 pub trait VotePlanStatusAssert {
@@ -25,7 +25,14 @@ impl VotePlanStatusAssert for Vec<VotePlanStatus> {
 
         match tally {
             Tally::Public { result } => assert_eq!(expected, result.results()),
-            Tally::Private { state: _ } => unimplemented!(),
+            Tally::Private { state } => match state {
+                PrivateTallyState::Encrypted { .. } => {
+                    panic!("expected decrypted private tally state")
+                }
+                PrivateTallyState::Decrypted { result, .. } => {
+                    assert_eq!(expected, result.results())
+                }
+            },
         }
     }
 }
