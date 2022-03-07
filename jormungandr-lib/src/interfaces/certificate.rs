@@ -56,6 +56,9 @@ impl SignedCertificate {
             certificate::SignedCertificate::UpdateVote(c, _) => {
                 Certificate(certificate::Certificate::UpdateVote(c))
             }
+            certificate::SignedCertificate::EvmMapping(c, _) => {
+                Certificate(certificate::Certificate::EvmMapping(c))
+            }
         }
     }
 }
@@ -106,6 +109,10 @@ impl property::Serialize for Certificate {
             }
             certificate::Certificate::MintToken(c) => {
                 writer.write_all(&[11])?;
+                writer.write_all(c.serialize().as_slice())?;
+            }
+            certificate::Certificate::EvmMapping(c) => {
+                writer.write_all(&[12])?;
                 writer.write_all(c.serialize().as_slice())?;
             }
         };
@@ -164,6 +171,10 @@ impl Readable for Certificate {
                 let cert = certificate::MintToken::read(buf)?;
                 Ok(Certificate(certificate::Certificate::MintToken(cert)))
             }
+            12 => {
+                let cert = certificate::EvmMapping::read(buf)?;
+                Ok(Certificate(certificate::Certificate::EvmMapping(cert)))
+            }
             t => Err(ReadError::UnknownTag(t as u32)),
         }
     }
@@ -214,6 +225,11 @@ impl property::Serialize for SignedCertificate {
             }
             certificate::SignedCertificate::UpdateVote(c, a) => {
                 writer.write_all(&[9])?;
+                writer.write_all(c.serialize().as_slice())?;
+                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+            }
+            certificate::SignedCertificate::EvmMapping(c, a) => {
+                writer.write_all(&[10])?;
                 writer.write_all(c.serialize().as_slice())?;
                 writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
@@ -285,6 +301,13 @@ impl Readable for SignedCertificate {
                 let auth = Readable::read(buf)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::UpdateVote(cert, auth),
+                ))
+            }
+            10 => {
+                let cert = certificate::EvmMapping::read(buf)?;
+                let auth = Readable::read(buf)?;
+                Ok(SignedCertificate(
+                    certificate::SignedCertificate::EvmMapping(cert, auth),
                 ))
             }
             t => Err(ReadError::UnknownTag(t as u32)),

@@ -275,6 +275,7 @@ impl Staging {
                     self.extra_authed = Some(sc.into())
                 }
                 Certificate::MintToken(_) => unreachable!(),
+                Certificate::EvmMapping(_) => unreachable!(),
             },
         };
         self.kind = StagingKind::Authed;
@@ -408,7 +409,9 @@ impl Staging {
                 Certificate::MintToken(vt) => {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
-
+                Certificate::EvmMapping(vt) => {
+                    self.finalize_payload(&vt, fee_algorithm, output_policy)
+                }
                 Certificate::OwnerStakeDelegation(c) => {
                     let balance = self.finalize_payload(&c, fee_algorithm, output_policy)?;
                     match self.inputs() {
@@ -559,6 +562,9 @@ impl Staging {
                     SignedCertificate::UpdateVote(vt, a) => {
                         self.make_fragment(&vt, &a, Fragment::UpdateVote)
                     }
+                    SignedCertificate::EvmMapping(vt, a) => {
+                        self.make_fragment(&vt, &a, Fragment::EvmMapping)
+                    }
                 }
             }
         }
@@ -632,6 +638,9 @@ impl Staging {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
                 Certificate::MintToken(vt) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
+                }
+                Certificate::EvmMapping(vt) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
             },

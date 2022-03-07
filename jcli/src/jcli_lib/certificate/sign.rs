@@ -125,6 +125,7 @@ impl Sign {
                     })??
             }
             Certificate::MintToken(_) => return Err(Error::MintTokenDoesntNeedSignature),
+            Certificate::EvmMapping(_) => unimplemented!(),
         };
         write_signed_cert(self.output.as_deref(), signedcert.into())
     }

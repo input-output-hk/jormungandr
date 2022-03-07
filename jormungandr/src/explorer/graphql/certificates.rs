@@ -321,6 +321,7 @@ impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
             }
             certificate::Certificate::UpdateVote(c) => Ok(Certificate::UpdateVote(UpdateVote(c))),
             certificate::Certificate::MintToken(c) => Ok(Certificate::MintToken(MintToken(c))),
+            certificate::Certificate::EvmMapping(_) => unimplemented!(),
         }
     }
 }

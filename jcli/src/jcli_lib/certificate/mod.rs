@@ -254,6 +254,7 @@ fn read_cert_or_signed_cert(input: Option<&Path>) -> Result<interfaces::Certific
                 SignedCertificate::VoteTally(vt, _) => Certificate::VoteTally(vt),
                 SignedCertificate::UpdateProposal(vt, _) => Certificate::UpdateProposal(vt),
                 SignedCertificate::UpdateVote(vt, _) => Certificate::UpdateVote(vt),
+                SignedCertificate::EvmMapping(vt, _) => Certificate::EvmMapping(vt),
             };
 
             Ok(interfaces::Certificate(cert))
