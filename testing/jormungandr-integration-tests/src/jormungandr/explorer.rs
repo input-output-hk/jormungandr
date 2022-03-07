@@ -75,7 +75,7 @@ pub fn explorer_sanity_test() {
     .unwrap()
     .encode();
 
-    let wait = Wait::new(Duration::from_secs(3), 20000);
+    let wait = Wait::new(Duration::from_secs(3), 20);
     let fragment_id = jcli
         .fragment_sender(&jormungandr)
         .send(&transaction)
