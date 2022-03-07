@@ -6,6 +6,7 @@ use std::io;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
+use tracing_subscriber::util::SubscriberInitExt;
 
 use tracing::level_filters::LevelFilter;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -102,8 +103,6 @@ impl FromStr for LogOutput {
 
 impl LogSettings {
     pub fn init_log(self) -> Result<(Vec<WorkerGuard>, LogInfoMsg), Error> {
-        use tracing_subscriber::prelude::*;
-
         // Worker guards that need to be held on to.
         let mut guards = Vec::new();
 
@@ -113,54 +112,14 @@ impl LogSettings {
             LogOutput::Stdout => {
                 let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stdout());
                 guards.push(guard);
-                match self.config.format {
-                    LogFormat::Default | LogFormat::Plain => {
-                        let layer = tracing_subscriber::fmt::Layer::new()
-                            .with_level(true)
-                            .with_writer(non_blocking);
-                        tracing_subscriber::registry()
-                            .with(self.config.level)
-                            .with(layer)
-                            .init();
-                    }
-                    LogFormat::Json => {
-                        let layer = tracing_subscriber::fmt::Layer::new()
-                            .json()
-                            .with_level(true)
-                            .with_writer(non_blocking);
-                        tracing_subscriber::registry()
-                            .with(self.config.level)
-                            .with(layer)
-                            .init();
-                    }
-                }
+                self.init_subscriber(non_blocking);
             }
             LogOutput::Stderr => {
                 let (non_blocking, guard) = tracing_appender::non_blocking(std::io::stderr());
                 guards.push(guard);
-                match self.config.format {
-                    LogFormat::Default | LogFormat::Plain => {
-                        let layer = tracing_subscriber::fmt::Layer::new()
-                            .with_level(true)
-                            .with_writer(non_blocking);
-                        tracing_subscriber::registry()
-                            .with(self.config.level)
-                            .with(layer)
-                            .init();
-                    }
-                    LogFormat::Json => {
-                        let layer = tracing_subscriber::fmt::Layer::new()
-                            .json()
-                            .with_level(true)
-                            .with_writer(non_blocking);
-                        tracing_subscriber::registry()
-                            .with(self.config.level)
-                            .with(layer)
-                            .init();
-                    }
-                }
+                self.init_subscriber(non_blocking);
             }
-            LogOutput::File(path) => {
+            LogOutput::File(ref path) => {
                 let file = fs::OpenOptions::new()
                     .create(true)
                     .write(true)
@@ -173,27 +132,7 @@ impl LogSettings {
                 let (non_blocking, guard) = tracing_appender::non_blocking(file);
                 guards.push(guard);
 
-                match self.config.format {
-                    LogFormat::Default | LogFormat::Plain => {
-                        let layer = tracing_subscriber::fmt::Layer::new()
-                            .with_level(true)
-                            .with_writer(non_blocking);
-                        tracing_subscriber::registry()
-                            .with(self.config.level)
-                            .with(layer)
-                            .init();
-                    }
-                    LogFormat::Json => {
-                        let layer = tracing_subscriber::fmt::Layer::new()
-                            .json()
-                            .with_level(true)
-                            .with_writer(non_blocking);
-                        tracing_subscriber::registry()
-                            .with(self.config.level)
-                            .with(layer)
-                            .init();
-                    }
-                }
+                self.init_subscriber(non_blocking);
             }
             #[cfg(feature = "systemd")]
             LogOutput::Journald => {
@@ -218,6 +157,30 @@ impl LogSettings {
         }
 
         Ok((guards, self.msgs))
+    }
+
+    fn init_subscriber(&self, non_blocking: tracing_appender::non_blocking::NonBlocking) {
+        match self.config.format {
+            LogFormat::Default | LogFormat::Plain => {
+                let layer = tracing_subscriber::fmt::Layer::new()
+                    .with_level(true)
+                    .with_writer(non_blocking);
+                tracing_subscriber::registry()
+                    .with(self.config.level)
+                    .with(layer)
+                    .init();
+            }
+            LogFormat::Json => {
+                let layer = tracing_subscriber::fmt::Layer::new()
+                    .json()
+                    .with_level(true)
+                    .with_writer(non_blocking);
+                tracing_subscriber::registry()
+                    .with(self.config.level)
+                    .with(layer)
+                    .init();
+            }
+        }
     }
 }
 
