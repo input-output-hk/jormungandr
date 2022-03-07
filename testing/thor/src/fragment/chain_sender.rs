@@ -117,6 +117,20 @@ impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
         Ok(self)
     }
 
+    pub fn and_verify_is_rejected_with_message(
+        self,
+        duration: std::time::Duration,
+        message: impl Into<String>,
+    ) -> Result<Self, FragmentChainSenderError> {
+        FragmentVerifier::wait_and_verify_is_rejected_with_message(
+            duration,
+            self.get_last_mempool_check()?,
+            message,
+            &self.node,
+        )?;
+        Ok(self)
+    }
+
     pub fn update_wallet(self, wallet: &mut Wallet, f: &dyn Fn(&mut Wallet)) -> Self {
         f(wallet);
         self

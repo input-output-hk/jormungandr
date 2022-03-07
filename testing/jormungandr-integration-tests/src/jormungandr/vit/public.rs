@@ -803,3 +803,51 @@ pub fn non_duplicated_vote() {
         vec![0, (*alice_account_state.value()).into(), 0],
     );
 }
+
+#[test]
+pub fn vote_outside_of_choices_is_rejected_in_tally() {
+    let mut alice = thor::Wallet::default();
+    let options_size = 2;
+
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(1)
+        .options_size(options_size)
+        .action_type(VoteAction::OffChain)
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .public()
+        .build();
+
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
+    let jormungandr = startup::start_bft(
+        vec![&alice],
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(10)
+            .with_slot_duration(2)
+            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_token(InitialToken {
+                token_id: token_id.clone().into(),
+                policy: minting_policy.into(),
+                to: vec![alice.to_initial_token(1_000_000_000)],
+            }),
+    )
+    .unwrap();
+
+    thor::FragmentChainSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        jormungandr.to_remote(),
+        FragmentSenderSetup::no_verify(),
+    )
+    .send_vote_plan(&mut alice, &vote_plan)
+    .unwrap()
+    .and_verify_is_in_block(Duration::from_secs(2))
+    .unwrap()
+    .then_wait_for_epoch(1)
+    .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(options_size))
+    .unwrap()
+    .and_verify_is_rejected_with_message(Duration::from_secs(2), "Invalid option choice")
+    .unwrap();
+}

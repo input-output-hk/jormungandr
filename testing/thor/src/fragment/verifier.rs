@@ -15,6 +15,11 @@ pub enum FragmentVerifierError {
         #[debug(skip)]
         logs: Vec<String>,
     },
+    #[error("cannot match rejection reason '{message}' does not contains '{expected_part}'")]
+    UnexpectedRejectionReason {
+        message: String,
+        expected_part: String,
+    },
     #[error("fragment sent to node: {alias} is not rejected :({status:?})")]
     FragmentNotRejected {
         alias: String,
@@ -73,6 +78,7 @@ impl FragmentVerifierError {
             AtLeastOneRejectedFragment { logs, .. } => Some(logs),
             TimeoutReachedWhileWaitingForAllFragmentsInBlock { logs } => Some(logs),
             FragmentNode(_) => None,
+            UnexpectedRejectionReason { .. } => None,
         };
         maybe_logs
             .into_iter()
@@ -146,6 +152,16 @@ impl FragmentVerifier {
         Self::is_rejected(status, node)
     }
 
+    pub fn wait_and_verify_is_rejected_with_message<A: FragmentNode + ?Sized, S: Into<String>>(
+        duration: Duration,
+        check: MemPoolCheck,
+        message: S,
+        node: &A,
+    ) -> Result<(), FragmentVerifierError> {
+        let status = Self::wait_fragment(duration, check, Default::default(), node)?;
+        Self::is_rejected_with_message(status, message, node)
+    }
+
     pub fn is_in_block<A: FragmentNode + ?Sized>(
         status: FragmentStatus,
         node: &A,
@@ -172,6 +188,28 @@ impl FragmentVerifier {
             });
         }
         Ok(())
+    }
+
+    pub fn is_rejected_with_message<A: FragmentNode + ?Sized, S: Into<String>>(
+        status: FragmentStatus,
+        expected_part: S,
+        node: &A,
+    ) -> Result<(), FragmentVerifierError> {
+        if let FragmentStatus::Rejected { reason } = status {
+            let expected_part = expected_part.into();
+            reason.contains(&expected_part).then(|| ()).ok_or(
+                FragmentVerifierError::UnexpectedRejectionReason {
+                    message: reason,
+                    expected_part,
+                },
+            )
+        } else {
+            Err(FragmentVerifierError::FragmentNotRejected {
+                alias: node.alias(),
+                status,
+                logs: node.log_content(),
+            })
+        }
     }
 
     pub fn fragment_status<A: FragmentNode + ?Sized>(
