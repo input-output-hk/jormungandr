@@ -75,10 +75,7 @@ impl Drop for ExplorerProcess {
                 );
 
                 std::fs::write(logs_dir.join("explorer.log"), output.stdout)
-                    .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
-
-                std::fs::write(logs_dir.join("explorer.err"), output.stderr)
-                    .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
+                    .unwrap_or_else(|e| eprint!("Could not write explorer logs to disk: {}", e));
             }
         }
     }
@@ -100,6 +97,8 @@ impl Explorer {
                         node_address.as_ref(),
                         "--binding-address",
                         explorer_listen_address.as_ref(),
+                        "--log-output",
+                        "stdout",
                     ])
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
