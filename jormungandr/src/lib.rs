@@ -738,7 +738,8 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     })
 }
 
-fn main() {
+/// Main entrypoint for the `jormungandr` binary
+pub fn main() {
     use std::error::Error;
 
     if let Err(error) = start() {
