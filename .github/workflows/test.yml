@@ -307,7 +307,7 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '--ignore-tests --out Lcov --features network --release --skip-clean'
+          args: '--ignore-tests --out Lcov --features network --release --skip-clean -p jormungandr,jcli'
           timeout: 3600
 
       - name: upload to Coveralls
