@@ -270,3 +270,48 @@ jobs:
         with:
           command: clippy
           args: --all-features --all-targets -- -D warnings
+
+  test_coverage:
+    name: Test Coverage
+    needs: update_deps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Restore cargo registry index
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/registry/index
+          key: cargo-index-v2-${{ needs.update_deps.outputs.crates-io-index-head }}
+
+      - name: Restore dependency crates
+        uses: actions/cache@v2
+        with:
+          path: ~/.cargo/registry/cache
+          key: cargo-deps-v2-${{ hashFiles('Cargo.lock') }}
+
+      - name: Build jormungandr
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 30
+        with:
+          command: build
+          args: --release --all
+
+      - name: Run cargo-tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
+        with:
+          args: '--ignore-tests --out Lcov --features network --release --skip-clean --exclude-files testing'
+          timeout: 3600
+
+      - name: upload to Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: './lcov.info'
