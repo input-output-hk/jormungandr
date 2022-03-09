@@ -32,6 +32,10 @@ impl<T> PersistentSequence<T> {
     pub fn len(&self) -> u64 {
         self.len
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 impl<T> Default for PersistentSequence<T> {

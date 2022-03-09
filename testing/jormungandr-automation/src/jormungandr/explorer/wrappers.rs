@@ -12,21 +12,6 @@ impl LastBlockResponse {
         Self { data }
     }
 
-    pub fn rewards(&self) -> u64 {
-        self.data
-            .data
-            .as_ref()
-            .unwrap()
-            .tip
-            .block
-            .treasury
-            .as_ref()
-            .unwrap()
-            .rewards
-            .parse::<u64>()
-            .unwrap()
-    }
-
     pub fn block(&self) -> &last_block::LastBlockTipBlock {
         &self.data.data.as_ref().unwrap().tip.block
     }

@@ -48,7 +48,7 @@ pub struct ExplorerLoadCommand {
 
 impl ExplorerLoadCommand {
     pub fn exec(&self) -> Result<(), ExplorerLoadCommandError> {
-        let mut explorer = Explorer::new(self.endpoint.clone());
+        let mut explorer = Explorer::new(self.endpoint.clone(), None);
         explorer.disable_logs();
         let mut request_gen = ExplorerRequestGen::new(explorer);
         request_gen.do_setup(Vec::new()).unwrap();

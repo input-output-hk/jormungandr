@@ -31,6 +31,7 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
 use std::process::ExitStatus;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
@@ -209,6 +210,10 @@ impl JormungandrProcess {
         self.alias.to_string()
     }
 
+    pub fn temp_dir(&self) -> Option<std::path::PathBuf> {
+        self.temp_dir.as_ref().map(|dir| dir.path().into())
+    }
+
     pub fn rest(&self) -> JormungandrRest {
         JormungandrRest::new(self.rest_uri())
     }
@@ -291,7 +296,18 @@ impl JormungandrProcess {
     }
 
     pub fn explorer(&self) -> Explorer {
-        Explorer::new(self.rest_socket_addr.to_string())
+        let mut p2p_public_address = self.p2p_public_address.clone();
+        let port = match p2p_public_address.pop().unwrap() {
+            multiaddr::Protocol::Tcp(port) => port,
+            _ => todo!("explorer can only be attached through grpc(http)"),
+        };
+
+        let address = match p2p_public_address.pop().unwrap() {
+            multiaddr::Protocol::Ip4(address) => address,
+            _ => todo!("only ipv4 supported for now"),
+        };
+
+        Explorer::new(format!("http://{}:{}/", address, port), self.temp_dir())
     }
 
     pub fn to_trusted_peer(&self) -> TrustedPeer {
@@ -302,7 +318,17 @@ impl JormungandrProcess {
     }
 
     pub fn time_era(&self) -> TimeEra {
-        let block_date = self.explorer().current_time();
+        let block_date = BlockDate::from_str(
+            self.rest()
+                .stats()
+                .unwrap()
+                .stats
+                .unwrap()
+                .last_block_date
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
 
         TimeEra::new(
             (block_date.slot() as u64).into(),

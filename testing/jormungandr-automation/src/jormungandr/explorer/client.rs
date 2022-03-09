@@ -17,7 +17,7 @@ pub enum GraphQlClientError {
 
 impl GraphQlClient {
     pub fn new<S: Into<String>>(base_address: S) -> GraphQlClient {
-        let base_url = format!("http://{}/explorer/graphql", base_address.into());
+        let base_url = format!("http://{}/graphql", base_address.into());
         GraphQlClient {
             base_url,
             print_out: true,

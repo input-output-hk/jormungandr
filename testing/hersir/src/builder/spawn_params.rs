@@ -4,7 +4,7 @@ use jormungandr_automation::jormungandr::LeadershipMode;
 use jormungandr_automation::jormungandr::PersistenceMode;
 use jormungandr_automation::jormungandr::{LogLevel, Version};
 use jormungandr_lib::interfaces::{
-    Explorer, LayersConfig, Mempool, NodeConfig, PersistentLog, Policy, PreferredListConfig,
+    LayersConfig, Mempool, NodeConfig, PersistentLog, Policy, PreferredListConfig,
     TopicsOfInterest, TrustedPeer,
 };
 use jormungandr_lib::time::Duration;
@@ -18,7 +18,6 @@ use std::path::PathBuf;
 pub struct SpawnParams {
     alias: NodeAlias,
     bootstrap_from_peers: Option<bool>,
-    explorer: Option<Explorer>,
     faketime: Option<FaketimeConfig>,
     gossip_interval: Option<Duration>,
     jormungandr: Option<PathBuf>,
@@ -49,9 +48,9 @@ impl SpawnParams {
         Self {
             alias: alias.to_owned(),
             bootstrap_from_peers: None,
-            explorer: None,
             faketime: None,
             gossip_interval: None,
+            topics_of_interest: None,
             jormungandr: None,
             leadership_mode: LeadershipMode::Leader,
             listen_address: None,
@@ -68,7 +67,6 @@ impl SpawnParams {
             preferred_layer: None,
             public_address: None,
             skip_bootstrap: None,
-            topics_of_interest: None,
             trusted_peers: None,
             version: None,
             verbose: true,
@@ -140,11 +138,6 @@ impl SpawnParams {
 
     pub fn max_inbound_connections(mut self, max_inbound_connections: u32) -> Self {
         self.max_inbound_connections = Some(max_inbound_connections);
-        self
-    }
-
-    pub fn explorer(mut self, explorer: Explorer) -> Self {
-        self.explorer = Some(explorer);
         self
     }
 
@@ -260,10 +253,6 @@ impl SpawnParams {
                     topics_of_interest: Some(topics_of_interest.clone()),
                 });
             }
-        }
-
-        if let Some(explorer) = &self.explorer {
-            node_config.explorer = explorer.clone();
         }
 
         if let Some(mempool) = &self.mempool {

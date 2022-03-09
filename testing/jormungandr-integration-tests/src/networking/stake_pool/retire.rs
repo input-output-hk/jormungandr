@@ -6,7 +6,6 @@ use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
 use jormungandr_automation::testing::time;
 use jormungandr_lib::interfaces::BlockDate;
-use jormungandr_lib::interfaces::Explorer;
 use thor::FragmentSender;
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
@@ -66,11 +65,7 @@ pub fn retire_stake_pool_explorer() {
         .unwrap();
 
     let leader_1 = controller
-        .spawn(
-            SpawnParams::new(LEADER_1)
-                .in_memory()
-                .explorer(Explorer { enabled: true }),
-        )
+        .spawn(SpawnParams::new(LEADER_1).in_memory())
         .unwrap();
     let _leader_2 = controller
         .spawn(SpawnParams::new(LEADER_2).in_memory())

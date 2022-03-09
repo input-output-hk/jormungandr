@@ -187,7 +187,7 @@ pub fn test_vote_flow_bft() {
         ])
         .with_slots_per_epoch(60)
         .with_certs(vec![vote_plan_cert])
-        .with_explorer()
+        .with_slot_duration(1)
         .with_treasury(1_000.into())
         .build(&temp_dir);
 
@@ -507,7 +507,6 @@ pub fn jcli_e2e_flow() {
     let token_id = vote_plan.voting_token();
 
     let config = ConfigurationBuilder::new()
-        .with_explorer()
         .with_funds(vec![
             alice.to_initial_fund(1_000_000),
             bob.to_initial_fund(1_000_000),

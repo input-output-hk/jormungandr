@@ -16,18 +16,6 @@ query AllBlocks($last: Int!) {
           chainLength
           totalInput
           totalOutput
-          treasury {
-            rewards
-            treasury
-            treasuryTax {
-              fixed
-              ratio {
-                numerator
-                denominator
-              }
-              maxLimit
-            }
-          }
         }
       }
       totalCount
