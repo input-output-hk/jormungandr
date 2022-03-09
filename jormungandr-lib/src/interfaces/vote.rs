@@ -559,13 +559,8 @@ impl From<EncryptedTally> for chain_vote::EncryptedTally {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PrivateTallyState {
-    Encrypted {
-        encrypted_tally: EncryptedTally,
-        total_stake: crate::interfaces::Value,
-    },
-    Decrypted {
-        result: TallyResult,
-    },
+    Encrypted { encrypted_tally: EncryptedTally },
+    Decrypted { result: TallyResult },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -656,13 +651,11 @@ impl From<vote::Tally> for Tally {
             },
             vote::Tally::Private { state } => Tally::Private {
                 state: match state {
-                    vote::PrivateTallyState::Encrypted {
-                        encrypted_tally,
-                        total_stake,
-                    } => PrivateTallyState::Encrypted {
-                        encrypted_tally: EncryptedTally(encrypted_tally.to_bytes()),
-                        total_stake: total_stake.into(),
-                    },
+                    vote::PrivateTallyState::Encrypted { encrypted_tally } => {
+                        PrivateTallyState::Encrypted {
+                            encrypted_tally: EncryptedTally(encrypted_tally.to_bytes()),
+                        }
+                    }
                     vote::PrivateTallyState::Decrypted { result } => PrivateTallyState::Decrypted {
                         result: result.into(),
                     },
@@ -681,11 +674,9 @@ impl From<Tally> for vote::Tally {
             Tally::Private { state } => vote::Tally::Private {
                 state: match state {
                     PrivateTallyState::Encrypted {
-                        encrypted_tally,
-                        total_stake,
+                        encrypted_tally, ..
                     } => vote::PrivateTallyState::Encrypted {
                         encrypted_tally: encrypted_tally.into(),
-                        total_stake: total_stake.into(),
                     },
                     PrivateTallyState::Decrypted { result } => vote::PrivateTallyState::Decrypted {
                         result: result.into(),
