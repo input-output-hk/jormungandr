@@ -85,7 +85,7 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
                     self.split_marker = 1;
                 }
                 0
-            },
+            }
             i => i,
         }
     }
