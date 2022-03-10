@@ -7,6 +7,7 @@ mod rest;
 mod status_provider;
 mod transaction_generator;
 mod vote_casts_generator;
+mod wallet_lane_iter;
 
 pub use adversary_generator::AdversaryFragmentGenerator;
 pub use adversary_vote_casts_generator::AdversaryVoteCastsGenerator;
