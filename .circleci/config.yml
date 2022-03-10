@@ -94,10 +94,6 @@ commands:
           command: |
             cargo build -p jcli --bin jcli << parameters.mode >> << parameters.cargo_behavior >>
       - run:
-          name: Build explorer
-          command: |
-            cargo build -p explorer --bin explorer << parameters.mode >> << parameters.cargo_behavior >>
-      - run:
           name: Build tests
           command: |
             cargo build --workspace --tests --all-features << parameters.mode >> << parameters.cargo_behavior >>
