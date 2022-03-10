@@ -2,7 +2,7 @@ mod api;
 pub mod db;
 mod indexer;
 mod logging;
-mod settings;
+pub mod settings;
 
 use crate::indexer::Indexer;
 use anyhow::Context;
@@ -14,7 +14,7 @@ use chain_network::grpc::watch::client::{
 use db::ExplorerDb;
 use futures::stream::StreamExt;
 use futures_util::{future, pin_mut, FutureExt, TryFutureExt};
-use settings::Settings;
+pub use settings::Settings;
 use thiserror::Error;
 use tokio::{
     select,
@@ -54,27 +54,7 @@ enum GlobalState {
     ShuttingDown,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
-    let (_guards, settings) = {
-        let mut settings = Settings::load()?;
-        let (guards, log_init_messages) = settings.log_settings.take().unwrap().init_log()?;
-
-        let init_span = span!(Level::TRACE, "task", kind = "init");
-        let _enter = init_span.enter();
-        tracing::info!("Starting explorer");
-
-        if let Some(msgs) = log_init_messages {
-            // if log settings were overriden, we will have an info
-            // message which we can unpack at this point.
-            for msg in &msgs {
-                tracing::info!("{}", msg);
-            }
-        }
-
-        (guards, settings)
-    };
-
+pub async fn main(settings: Settings) -> Result<(), Error> {
     let mut settings = Some(settings);
 
     let (state_tx, state_rx) = broadcast::channel(3);
@@ -204,18 +184,9 @@ async fn main() -> Result<(), Error> {
         .map_err(|e| Error::UnrecoverableError(e.into()))
         .and_then(std::convert::identity);
 
-    if let Err(error) = exit_status.as_ref() {
-        tracing::error!("process finished with error: {:?}", error);
+    let _ = future::join_all(remaining_services).await;
 
-        let _ = future::join_all(remaining_services).await;
-
-        tracing::error!("finished joining on the rest");
-
-        // TODO: map to custom error code
-        std::process::exit(1);
-    }
-
-    Ok(())
+    exit_status
 }
 
 async fn bootstrap(mut sync_stream: SyncMultiverseStream) -> Result<ExplorerDb, Error> {
