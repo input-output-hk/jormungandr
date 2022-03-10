@@ -296,6 +296,15 @@ impl JormungandrProcess {
         self.child.id()
     }
 
+    /// Start an explorer instance as a tokio service, and wait for it (blocking) to finish
+    /// bootstrapping before returning.
+    ///
+    /// Calling this function twice is unadvised because:
+    ///
+    /// - It's not precisely cheap.
+    /// - Both instances will try to use the same file for the logs
+    ///
+    /// Instead, prefer to either clone the `Explorer` handle or just re-use with a reference.
     pub fn explorer(&self) -> ExplorerProcess {
         let mut p2p_public_address = self.p2p_public_address.clone();
         let port = match p2p_public_address.pop().unwrap() {

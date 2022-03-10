@@ -1,5 +1,3 @@
-use crate::testing::configuration::get_explorer_app;
-
 use self::{
     client::GraphQlClient,
     data::{
@@ -12,11 +10,9 @@ use graphql_client::GraphQLQuery;
 use graphql_client::*;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::BlockDate;
-use std::{
-    process::{Command, Stdio},
-    str::FromStr,
-    time::Duration,
-};
+use std::{fs, str::FromStr, time::Duration};
+use tokio::{runtime::Runtime, task::JoinHandle};
+use tracing_appender::non_blocking::WorkerGuard;
 mod client;
 // Macro here expand to something containing PUBLIC/PRIVATE fields that
 // do not respect the naming convention
@@ -26,14 +22,13 @@ mod wrappers;
 
 pub use wrappers::LastBlockResponse;
 
+use super::get_available_port;
 use data::PoolId;
 use jortestkit::{file, process::Wait};
 use serde::Serialize;
 use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
-
-use super::get_available_port;
 
 #[derive(Error, Debug)]
 pub enum ExplorerError {
@@ -52,35 +47,66 @@ pub struct Explorer {
 }
 
 pub struct ExplorerProcess {
-    handler: Option<std::process::Child>,
-    logs_dir: Option<std::path::PathBuf>,
+    _process: JoinHandle<Result<(), explorer::Error>>,
+    _runtime: Option<Runtime>,
+    _log_guard: Option<WorkerGuard>,
     client: Explorer,
 }
 
+impl Drop for ExplorerProcess {
+    fn drop(&mut self) {
+        // TODO: not sure how does this work actually
+        // maybe I could just set an outside mechanism
+        self._process.abort();
+    }
+}
+
 impl ExplorerProcess {
-    pub fn new(node_address: String, logs_dir: Option<std::path::PathBuf>) -> Self {
-        let path = get_explorer_app();
+    pub fn new(node_address: String, logs_dir: Option<std::path::PathBuf>) -> ExplorerProcess {
+        use tracing::instrument::WithSubscriber;
+
         let explorer_port = get_available_port();
         let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
 
-        let process = ExplorerProcess {
-            handler: Some(
-                Command::new(path)
-                    .args(&[
-                        "--node",
-                        node_address.as_ref(),
-                        "--binding-address",
-                        explorer_listen_address.as_ref(),
-                        "--log-output",
-                        "stdout",
-                    ])
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .spawn()
-                    .expect("failed to execute explorer process"),
-            ),
-            logs_dir,
-            client: Explorer::new(explorer_listen_address.clone()),
+        let (handle, runtime) = if let Ok(handle) = tokio::runtime::Handle::try_current() {
+            (handle, None)
+        } else {
+            let runtime = tokio::runtime::Runtime::new().unwrap();
+            (runtime.handle().clone(), Some(runtime))
+        };
+
+        let explorer_task = explorer::main(explorer::Settings {
+            node: node_address.parse().unwrap(),
+            binding_address: explorer_listen_address.parse().unwrap(),
+            address_bech32_prefix: "addr".to_string(),
+            tls: None,
+            cors: None,
+            // setting this would actually have no effect, it could probably be refactored somehow
+            log_settings: None,
+        });
+
+        let (process, guard) = if let Some(mut logs_dir) = logs_dir {
+            logs_dir.push("explorer.log");
+
+            let file = fs::OpenOptions::new()
+                .create(true)
+                .write(true)
+                .append(true)
+                .open(&logs_dir)
+                .unwrap();
+
+            let (non_blocking, guard) = tracing_appender::non_blocking(file);
+
+            let subscriber = tracing_subscriber::fmt()
+                .with_writer(non_blocking)
+                .with_max_level(tracing::Level::TRACE);
+
+            (
+                handle.spawn(explorer_task.with_subscriber(subscriber)),
+                Some(guard),
+            )
+        } else {
+            (handle.spawn(explorer_task), None)
         };
 
         let mut wait_bootstrap = Wait::new(Duration::from_secs(1), 10);
@@ -96,7 +122,12 @@ impl ExplorerProcess {
             wait_bootstrap.advance();
         }
 
-        process
+        ExplorerProcess {
+            _process: process,
+            _runtime: runtime,
+            _log_guard: guard,
+            client: Explorer::new(explorer_listen_address),
+        }
     }
 
     /// get an explorer client configured to use this instance.
@@ -109,29 +140,6 @@ impl ExplorerProcess {
 
     pub fn client_mut(&mut self) -> &mut Explorer {
         &mut self.client
-    }
-}
-
-impl Drop for ExplorerProcess {
-    fn drop(&mut self) {
-        let output = if let Some(mut handler) = self.handler.take() {
-            let _ = handler.kill();
-            handler.wait_with_output().unwrap()
-        } else {
-            return;
-        };
-
-        if std::thread::panicking() {
-            if let Some(logs_dir) = &self.logs_dir {
-                println!(
-                    "persisting explorer logs after panic: {}",
-                    logs_dir.display()
-                );
-
-                std::fs::write(logs_dir.join("explorer.log"), output.stdout)
-                    .unwrap_or_else(|e| eprint!("Could not write explorer logs to disk: {}", e));
-            }
-        }
     }
 }
 
