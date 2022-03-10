@@ -36,7 +36,6 @@ pub struct FragmentGenerator<'a, S: SyncNode + Send> {
     vote_plans_for_casting_count: usize,
 }
 
-
 impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
     #[allow(clippy::too_many_arguments)]
     pub fn new(

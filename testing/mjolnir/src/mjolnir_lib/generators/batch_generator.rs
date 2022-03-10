@@ -1,5 +1,5 @@
-use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_automation::jormungandr::RemoteJormungandr;
 use jormungandr_automation::testing::SyncNode;
 use jormungandr_lib::crypto::hash::Hash;
