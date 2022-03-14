@@ -32,6 +32,7 @@
               name version;
             src = ./.;
             cargoSha256 = "sha256-80AmXP6zBuWweQXtHt9c8K9WrhrigF+CRv0reAuMvbM=";
+            buildFeatures = lib.optional (member == "jormungandr") "prometheus-metrics";
             nativeBuildInputs = with final; [ pkg-config protobuf rustfmt ];
             buildInputs = with final; [ openssl ];
             PROTOC = "${final.protobuf}/bin/protoc";
