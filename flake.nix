@@ -31,7 +31,7 @@
               (builtins.readFile (./. + "/${member}/Cargo.toml"))).package)
               name version;
             src = ./.;
-            cargoSha256 = "sha256-80AmXP6zBuWweQXtHt9c8K9WrhrigF+CRv0reAuMvbM=";
+            cargoSha256 = "0hzzsgbyj1wjw8aiywzdbccmzlcbxcq361xln21q118xk16xzlzp";
             buildFeatures = lib.optional (member == "jormungandr") "prometheus-metrics";
             nativeBuildInputs = with final; [ pkg-config protobuf rustfmt ];
             buildInputs = with final; [ openssl ];
