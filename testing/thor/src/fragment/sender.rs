@@ -194,12 +194,23 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         via: &A,
         value: Value,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
+        self.send_transaction_with_witness_mode(from, to, via, value, self.witness_mode)
+    }
+
+    pub fn send_transaction_with_witness_mode<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        from: &mut Wallet,
+        to: Address,
+        via: &A,
+        value: Value,
+        witness_mode: WitnessMode,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
         let fragment = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
         )
-        .witness_mode(self.witness_mode)
+        .witness_mode(witness_mode)
         .transaction(from, to, value)?;
 
         self.dump_fragment_if_enabled(from, &fragment, via)?;
@@ -347,20 +358,21 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         self.send_fragment(from, fragment, via)
     }
 
-    pub fn send_vote_cast<A: FragmentNode + SyncNode + Sized + Send>(
+    pub fn send_vote_cast_with_witness_mode<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,
         vote_plan: &VotePlan,
         proposal_index: u8,
         choice: &Choice,
         via: &A,
+        witness_mode: WitnessMode,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
         let builder = FragmentBuilder::new(
             &self.block0_hash,
             &self.fees,
             self.expiry_generator.block_date(),
         )
-        .witness_mode(self.witness_mode);
+        .witness_mode(witness_mode);
 
         let fragment = match vote_plan.payload_type() {
             chain_impl_mockchain::vote::PayloadType::Public => {
@@ -372,6 +384,23 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
         };
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
+    }
+    pub fn send_vote_cast<A: FragmentNode + SyncNode + Sized + Send>(
+        &self,
+        from: &mut Wallet,
+        vote_plan: &VotePlan,
+        proposal_index: u8,
+        choice: &Choice,
+        via: &A,
+    ) -> Result<MemPoolCheck, FragmentSenderError> {
+        self.send_vote_cast_with_witness_mode(
+            from,
+            vote_plan,
+            proposal_index,
+            choice,
+            via,
+            self.witness_mode,
+        )
     }
 
     pub fn send_public_vote_tally<A: FragmentNode + SyncNode + Sized + Send>(
