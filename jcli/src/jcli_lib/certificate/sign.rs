@@ -5,9 +5,9 @@ use crate::jcli_lib::{
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::{
     certificate::{
-        BftLeaderBindingSignature, Certificate, PoolOwnersSigned, PoolRegistration, PoolSignature,
-        SignedCertificate, StakeDelegation, TallyProof, UpdateProposal, UpdateVote, VotePlan,
-        VotePlanProof, VoteTally,
+        BftLeaderBindingSignature, Certificate, EvmMapping, PoolOwnersSigned, PoolRegistration,
+        PoolSignature, SignedCertificate, StakeDelegation, TallyProof, UpdateProposal, UpdateVote,
+        VotePlan, VotePlanProof, VoteTally,
     },
     key::EitherEd25519SecretKey,
     transaction::{
@@ -125,6 +125,16 @@ impl Sign {
                     })??
             }
             Certificate::MintToken(_) => return Err(Error::MintTokenDoesntNeedSignature),
+            Certificate::EvmMapping(uv) => {
+                let txbuilder = Transaction::block0_payload_builder(&uv);
+                keys_str
+                    .len()
+                    .eq(&1)
+                    .then(|| evm_mapping_sign(uv, &keys_str[0], txbuilder))
+                    .ok_or(Error::ExpectingOnlyOneSigningKey {
+                        got: keys_str.len(),
+                    })??
+            }
         };
         write_signed_cert(self.output.as_deref(), signedcert.into())
     }
@@ -268,4 +278,17 @@ pub(crate) fn update_vote_sign<P: Payload>(
         BftLeaderBindingSignature::new(&builder.get_auth_data(), |d| private_key.sign_slice(d.0));
 
     Ok(SignedCertificate::UpdateVote(update_vote, signature))
+}
+
+pub(crate) fn evm_mapping_sign<P: Payload>(
+    evm_mapping: EvmMapping,
+    key_str: &str,
+    builder: TxBuilderState<SetAuthData<P>>,
+) -> Result<SignedCertificate, Error> {
+    let private_key = parse_ed25519_secret_key(key_str.trim())?;
+
+    let signature =
+        BftLeaderBindingSignature::new(&builder.get_auth_data(), |d| private_key.sign_slice(d.0));
+
+    Ok(SignedCertificate::EvmMapping(evm_mapping, signature))
 }
