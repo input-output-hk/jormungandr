@@ -183,6 +183,12 @@ impl RawRest {
         self.get(&request)
     }
 
+    pub fn account_votes_count(&self) -> Result<Response, reqwest::Error> {
+        self.client
+            .get(&self.path(ApiVersion::V1, "votes/plan/accounts-votes-count"))
+            .send()
+    }
+
     pub fn stats(&self) -> Result<Response, reqwest::Error> {
         self.get("node/stats")
     }
