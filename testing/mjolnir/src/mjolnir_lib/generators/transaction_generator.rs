@@ -8,12 +8,14 @@ use rand_core::OsRng;
 use std::time::Instant;
 use thor::{BlockDateGenerator, FragmentSenderSetup};
 use thor::{FragmentSender, Wallet};
+
+use super::wallet_lane_iter::SplitLaneIter;
 pub struct TransactionGenerator<'a, S: SyncNode + Send> {
     wallets: Vec<Wallet>,
     jormungandr: RemoteJormungandr,
     fragment_sender: FragmentSender<'a, S>,
     rand: OsRng,
-    split_marker: usize,
+    split_lane: SplitLaneIter,
 }
 
 impl<'a, S: SyncNode + Send> TransactionGenerator<'a, S> {
@@ -34,7 +36,7 @@ impl<'a, S: SyncNode + Send> TransactionGenerator<'a, S> {
             ),
             rand: OsRng,
             jormungandr,
-            split_marker: 0,
+            split_lane: SplitLaneIter::new(),
         }
     }
 
@@ -69,21 +71,20 @@ impl<'a, S: SyncNode + Send> TransactionGenerator<'a, S> {
         self.wallets.append(&mut wallets);
     }
 
-    pub fn increment_split_marker(&mut self) {
-        self.split_marker += 1;
-        if self.split_marker >= self.wallets.len() - 1 {
-            self.split_marker = 1;
-        }
-    }
-
     pub fn send_transaction(&mut self) -> Result<FragmentId, RequestFailure> {
-        self.increment_split_marker();
-        let (senders, recievers) = self.wallets.split_at_mut(self.split_marker);
+        let (split_marker, witness_mode) = self.split_lane.next(self.wallets.len());
+        let (senders, recievers) = self.wallets.split_at_mut(split_marker);
         let sender = senders.get_mut(senders.len() - 1).unwrap();
         let reciever = recievers.get(0).unwrap();
 
         self.fragment_sender
-            .send_transaction(sender, reciever, &self.jormungandr, 1.into())
+            .send_transaction_with_witness_mode(
+                sender,
+                reciever.address(),
+                &self.jormungandr,
+                1.into(),
+                witness_mode,
+            )
             .map(|x| *x.fragment_id())
             .map_err(|e| RequestFailure::General(format!("{:?}", e)))
     }
@@ -110,7 +111,7 @@ impl<S: SyncNode + Send + Sync + Clone> RequestGenerator for TransactionGenerato
             jormungandr: self.jormungandr.clone_with_rest(),
             fragment_sender: self.fragment_sender.clone(),
             rand: OsRng,
-            split_marker: 1,
+            split_lane: SplitLaneIter::new(),
         };
         (self, Some(other))
     }

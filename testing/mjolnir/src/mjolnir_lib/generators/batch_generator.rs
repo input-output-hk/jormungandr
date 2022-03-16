@@ -8,12 +8,14 @@ use rand_core::OsRng;
 use std::time::Instant;
 use thor::{BlockDateGenerator, FragmentBuilder, FragmentSender, FragmentSenderSetup, Wallet};
 
+use super::wallet_lane_iter::SplitLaneIter;
+
 pub struct BatchFragmentGenerator<'a, S: SyncNode + Send> {
     wallets: Vec<Wallet>,
     jormungandr: RemoteJormungandr,
     fragment_sender: FragmentSender<'a, S>,
     rand: OsRng,
-    split_marker: usize,
+    split_lane: SplitLaneIter,
     batch_size: u8,
 }
 
@@ -36,7 +38,7 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
             ),
             rand: OsRng,
             jormungandr,
-            split_marker: 0,
+            split_lane: SplitLaneIter::new(),
             batch_size,
         }
     }
@@ -72,16 +74,9 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
         self.wallets.append(&mut wallets);
     }
 
-    pub fn increment_split_marker(&mut self) {
-        self.split_marker += 1;
-        if self.split_marker >= self.wallets.len() - 1 {
-            self.split_marker = 1;
-        }
-    }
-
     pub fn generate_transaction(&mut self) -> Result<Fragment, RequestFailure> {
-        self.increment_split_marker();
-        let (senders, recievers) = self.wallets.split_at_mut(self.split_marker);
+        let (split_marker, witness_mode) = self.split_lane.next(self.wallets.len());
+        let (senders, recievers) = self.wallets.split_at_mut(split_marker);
         let sender = senders.get_mut(senders.len() - 1).unwrap();
         let reciever = recievers.get(0).unwrap();
 
@@ -90,6 +85,7 @@ impl<'a, S: SyncNode + Send> BatchFragmentGenerator<'a, S> {
             &self.fragment_sender.fees(),
             self.fragment_sender.date(),
         )
+        .witness_mode(witness_mode)
         .transaction(sender, reciever.address(), 1.into())
         .map_err(|e| RequestFailure::General(format!("{:?}", e)));
         sender.confirm_transaction();
@@ -143,7 +139,7 @@ impl<S: SyncNode + Send + Sync + Clone> RequestGenerator for BatchFragmentGenera
             jormungandr: self.jormungandr.clone_with_rest(),
             fragment_sender: self.fragment_sender.clone(),
             rand: OsRng,
-            split_marker: 1,
+            split_lane: SplitLaneIter::new(),
             batch_size: self.batch_size(),
         };
         (self, Some(other))
