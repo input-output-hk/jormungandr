@@ -280,15 +280,16 @@ pub(crate) fn update_vote_sign<P: Payload>(
     Ok(SignedCertificate::UpdateVote(update_vote, signature))
 }
 
-pub(crate) fn evm_mapping_sign<P: Payload>(
+pub(crate) fn evm_mapping_sign(
     evm_mapping: EvmMapping,
     key_str: &str,
-    builder: TxBuilderState<SetAuthData<P>>,
+    builder: TxBuilderState<SetAuthData<EvmMapping>>,
 ) -> Result<SignedCertificate, Error> {
     let private_key = parse_ed25519_secret_key(key_str.trim())?;
 
-    let signature =
-        BftLeaderBindingSignature::new(&builder.get_auth_data(), |d| private_key.sign_slice(d.0));
+    let signature = SingleAccountBindingSignature::new(&builder.get_auth_data(), |d| {
+        private_key.sign_slice(d.0)
+    });
 
     Ok(SignedCertificate::EvmMapping(evm_mapping, signature))
 }

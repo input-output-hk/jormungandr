@@ -53,25 +53,6 @@ impl TallyVotePlanWithAllShares {
                 Some(self.threshold),
             )?
             .try_into()?;
-        // FIXME: max stake math is performed inside the tally type
-        // // let mut max_stake = 0;
-        // We need a first iteration to get the max stake used
-        for proposal in &mut vote_plan.proposals {
-            match &proposal.tally {
-                Tally::Private {
-                    state: PrivateTallyState::Encrypted { .. },
-                } => {
-                    //max_stake = std::cmp::max(u64::from(*total_stake), max_stake);
-                }
-                other => {
-                    let found = match other {
-                        Tally::Public { .. } => "public tally",
-                        Tally::Private { .. } => "private decrypted tally",
-                    };
-                    return Err(Error::PrivateTallyExpected { found });
-                }
-            }
-        }
 
         let committee_member_keys = vote_plan.committee_member_keys.clone();
 
