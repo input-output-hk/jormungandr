@@ -53,7 +53,6 @@ impl TallyVotePlanWithAllShares {
                 Some(self.threshold),
             )?
             .try_into()?;
-
         let committee_member_keys = vote_plan.committee_member_keys.clone();
 
         let validated_tallies = (&vote_plan.proposals)
