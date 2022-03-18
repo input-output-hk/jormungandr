@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Change default value for `epoch_stability_depth` from 102400 to 2160
 - fix incorrect keys bech32 HRP by always using the ones provided by the library
 - update REST API: add new endpoint AccountVotes (`/api/v1/votes/plan/account-votes/{account_id}`)
 - Support parallel lanes in spending counters on account outputs. This allows
