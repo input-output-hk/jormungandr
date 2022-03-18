@@ -133,6 +133,11 @@ impl JormungandrRest {
             .map_err(RestError::CannotDeserialize)
     }
 
+    pub fn account_votes_count(&self) -> Result<HashMap<String, u64>, RestError> {
+        serde_json::from_str(&self.inner.account_votes_count()?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
     pub fn account_votes_with_plan_id(
         &self,
         vote_plan_id: VotePlanId,
