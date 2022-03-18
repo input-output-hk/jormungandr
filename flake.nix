@@ -1,6 +1,8 @@
 {
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.gitignore.url = "github:hercules-ci/gitignore.nix";
+  inputs.gitignore.inputs.nixpkgs.follows = "nixpkgs";
   inputs.rust-overlay.url = "github:oxalica/rust-overlay";
   inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
   #inputs.naersk.url = "github:nix-community/naersk";
@@ -21,6 +23,7 @@
   outputs = { self
             , nixpkgs
             , flake-utils
+            , gitignore
             , rust-overlay
             , naersk
             }:
@@ -56,8 +59,7 @@
             let pkgCargo = readTOML ./${name}/Cargo.toml;
             in
               naersk-lib.buildPackage {
-                #src = self + "/${name}";
-                root = ./.;
+                root = gitignore.lib.gitignoreSource self;
 
                 cargoBuildOptions = x: x ++ [ "-p" name ];
                 cargoTestOptions = x: x ++ [ "-p" name ];
