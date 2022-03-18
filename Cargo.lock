@@ -1506,7 +1506,7 @@ dependencies = [
  "tracing-appender 0.1.2",
  "tracing-futures",
  "tracing-gelf 0.5.2",
- "tracing-journald 0.1.0",
+ "tracing-journald",
  "tracing-subscriber 0.2.25",
  "url",
  "warp",
@@ -2395,7 +2395,7 @@ dependencies = [
  "tracing-appender 0.2.0",
  "tracing-futures",
  "tracing-gelf 0.6.0",
- "tracing-journald 0.2.0",
+ "tracing-journald",
  "tracing-subscriber 0.3.7",
  "versionisator",
  "warp",
@@ -5107,20 +5107,11 @@ dependencies = [
 
 [[package]]
 name = "tracing-journald"
-version = "0.1.0"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fe1f0ed2b7a5fcb6da2bc9e783587d9a0c8b9535e50224afe04e543eae8a2d6"
+checksum = "1ba49f4829f4e95702943ec6b2fad8936b369d20fa27036caf01329fb230e460"
 dependencies = [
- "tracing-core",
- "tracing-subscriber 0.2.25",
-]
-
-[[package]]
-name = "tracing-journald"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c35f4a6b4b2d00511aa9e17d4efc74d4c3ddc5a5416f58a5de25c30bfeb0307"
-dependencies = [
+ "libc",
  "tracing-core",
  "tracing-subscriber 0.3.7",
 ]
