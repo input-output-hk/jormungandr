@@ -237,6 +237,9 @@ fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Vec<Fragme
         certificate::SignedCertificate::UpdateVote(c, a) => {
             Fragment::UpdateVote(empty_auth_tx(c, a))
         }
+        certificate::SignedCertificate::EvmMapping(c, a) => {
+            Fragment::EvmMapping(empty_auth_tx(c, a))
+        }
     }]
 }
 
