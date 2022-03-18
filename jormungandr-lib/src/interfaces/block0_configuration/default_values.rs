@@ -23,7 +23,7 @@ pub const MINIMUM_NUMBER_OF_SLOTS_PER_EPOCH: u32 = 1;
 pub const MAXIMUM_NUMBER_OF_SLOTS_PER_EPOCH: u32 = 1_000_000;
 
 /// the default value for epoch stability depth
-pub const DEFAULT_EPOCH_STABILITY_DEPTH: u32 = 102_400;
+pub const DEFAULT_EPOCH_STABILITY_DEPTH: u32 = 2160;
 
 /// the default value for block content max size
 pub const DEFAULT_BLOCK_CONTENT_MAX_SIZE: u32 = 102_400;
