@@ -17,7 +17,7 @@ chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 assert_fs = "1.0"
 chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 serde = { version = "1.0", features = ["derive"] }
-cocoon = "0.2.4"
+cocoon =  { git = "https://github.com/dkijania/cocoon.git" }
 dirs = "4.0.0"
 serde_yaml = "0.8"
 structopt = "0.3"
