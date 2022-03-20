@@ -8,6 +8,7 @@ use jormungandr_automation::jormungandr::ConfigurationBuilder;
 use jormungandr_automation::testing::time;
 use jormungandr_automation::testing::VotePlanBuilder;
 use jormungandr_lib::interfaces::{AccountVotes, InitialToken};
+use std::collections::HashMap;
 use std::time::Duration;
 use thor::FragmentSenderSetup;
 
@@ -214,5 +215,88 @@ pub fn list_casted_votes_for_non_voted() {
     assert_eq!(
         Some(vec![]),
         jormungandr.rest().account_votes(alice.address()).unwrap()
+    );
+}
+
+#[test]
+pub fn list_cast_votes_count() {
+    let mut alice = thor::Wallet::default();
+    let mut bob = thor::Wallet::default();
+    let wait_time = Duration::from_secs(2);
+    let discrimination = Discrimination::Test;
+
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::OffChain)
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(2, 1))
+        .public()
+        .build();
+
+    let jormungandr = startup::start_bft(
+        vec![&alice, &bob],
+        ConfigurationBuilder::new()
+            .with_discrimination(discrimination)
+            .with_slots_per_epoch(20)
+            .with_slot_duration(3)
+            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_token(InitialToken {
+                token_id: vote_plan.voting_token().clone().into(),
+                policy: MintingPolicy::new().into(),
+                to: vec![
+                    alice.to_initial_token(1_000_000),
+                    bob.to_initial_token(1_000_000),
+                ],
+            }),
+    )
+    .unwrap();
+
+    thor::FragmentChainSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        jormungandr.to_remote(),
+        FragmentSenderSetup::no_verify(),
+    )
+    .send_vote_plan(&mut alice, &vote_plan)
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .then_wait_for_epoch(1)
+    .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .cast_vote(&mut alice, &vote_plan, 1, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .cast_vote(&mut alice, &vote_plan, 2, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .cast_vote(&mut bob, &vote_plan, 0, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .cast_vote(&mut bob, &vote_plan, 1, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .cast_vote(&mut bob, &vote_plan, 2, &Choice::new(1))
+    .unwrap()
+    .and_verify_is_in_block(wait_time)
+    .unwrap()
+    .then_wait_for_epoch(2)
+    .tally_vote(&mut alice, &vote_plan, VoteTallyPayload::Public)
+    .unwrap()
+    .then_wait_for_epoch(3);
+
+    let mut expected_votes_count = HashMap::new();
+    expected_votes_count.insert(alice.public_key_bech32(), 3);
+    expected_votes_count.insert(bob.public_key_bech32(), 3);
+
+    assert_eq!(
+        jormungandr.rest().account_votes_count().unwrap(),
+        expected_votes_count
     );
 }

@@ -219,6 +219,10 @@ impl Wallet {
         self.address().1.public_key().unwrap().clone()
     }
 
+    pub fn public_key_bech32(&self) -> String {
+        hex::encode(Identifier::from(self.public_key()).as_ref())
+    }
+
     pub fn address_bech32(&self, discrimination: Discrimination) -> String {
         AddressReadable::from_address(&discrimination.into_prefix(), &self.address().into())
             .to_string()
