@@ -10,12 +10,12 @@ jcli = { path = "../../jcli" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 jormungandr-automation = { path = "../jormungandr-automation" }
 jortestkit = { git = "https://github.com/input-output-hk/jortestkit.git", branch = "master" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund8", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund8", features = [ "property-test-api" ] }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund8", features = [ "property-test-api" ] }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund8" }
 assert_fs = "1.0"
-chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund8" }
 serde = { version = "1.0", features = ["derive"] }
 cocoon =  { git = "https://github.com/dkijania/cocoon.git" }
 dirs = "4.0.0"
