@@ -115,7 +115,7 @@
 
         jormungandr-entrypoint = let
           script =
-            pkgs.writeShellScriptBin "jormungandr-entrypoint"
+            pkgs.writeShellScriptBin "entrypoint"
             ''
               set -exuo pipefail
 
