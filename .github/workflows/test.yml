@@ -71,7 +71,7 @@ jobs:
           default: true
 
       - name: Cache cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
@@ -79,7 +79,7 @@ jobs:
 
       - id: cargo-deps
         name: Cache cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/cache
@@ -154,7 +154,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Restore cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
@@ -163,7 +163,7 @@ jobs:
           restore-keys: cargo-index-
 
       - name: Restore cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/cache
@@ -259,13 +259,13 @@ jobs:
           args: -- --check
 
       - name: Restore cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
 
       - name: Restore cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/cache
@@ -293,13 +293,13 @@ jobs:
           override: true
 
       - name: Restore cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-v2-${{ needs.update_deps.outputs.crates-io-index-head }}
 
       - name: Restore dependency crates
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/cache
           key: cargo-deps-v2-${{ hashFiles('Cargo.lock') }}

@@ -110,7 +110,7 @@ jobs:
           git config --system core.longpaths true
 
       - name: Cache cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
@@ -118,7 +118,7 @@ jobs:
 
       - id: cargo-deps
         name: Cache cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/cache
@@ -212,13 +212,13 @@ jobs:
           submodules: true
 
       - name: Restore cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
 
       - name: Restore cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/cache
