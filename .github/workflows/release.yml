@@ -55,7 +55,7 @@ jobs:
           hub release create ${{ steps.release_info.outputs.release_flags }} --draft \
             -m "Release ${{ steps.release_info.outputs.version }} (in progress)" \
             -t $GITHUB_SHA $release_tag
-          upload_url=$(hub release show -f '%uA' $release_tag)
+          upload_url=$(timeout 1m bash -c "until hub release show -f '%uA' $release_tag; do sleep 1; done")
           echo "::set-output name=upload_url::$upload_url"
 
   cache_info:
