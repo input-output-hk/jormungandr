@@ -42,16 +42,16 @@ http-zipkin = "0.3.0"
 
 jormungandr-lib = {path = "../jormungandr-lib"}
 
-cardano-legacy-address = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "expose-evm-address"}
-chain-addr = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "expose-evm-address"}
-chain-core = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "expose-evm-address"}
-chain-crypto = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "expose-evm-address"}
-chain-impl-mockchain = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "expose-evm-address"}
-chain-time = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "expose-evm-address"}
-chain-vote = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "expose-evm-address"}
-chain-ser = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "expose-evm-address"}
-chain-network = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "expose-evm-address"}
-imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "expose-evm-address"}
+cardano-legacy-address = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-addr = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-core = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-crypto = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-impl-mockchain = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-time = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-vote = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-ser = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-network = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
 
 [features]
 default = []
