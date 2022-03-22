@@ -81,12 +81,21 @@
 
         mkPackage = name: let
           pkgCargo = readTOML ./${name}/Cargo.toml;
+          cargoOptions =
+            [
+              "--package"
+              name
+            ]
+            ++ (pkgs.lib.optionals (name == "jormungandr") [
+              "--features"
+              "prometheus-metrics"
+            ]);
         in
           naersk-lib.buildPackage {
             root = gitignore.lib.gitignoreSource self;
 
-            cargoBuildOptions = x: x ++ ["-p" name];
-            cargoTestOptions = x: x ++ ["-p" name];
+            cargoBuildOptions = x: x ++ cargoOptions;
+            cargoTestOptions = x: x ++ cargoOptions;
 
             PROTOC = "${pkgs.protobuf}/bin/protoc";
             PROTOC_INCLUDE = "${pkgs.protobuf}/include";
