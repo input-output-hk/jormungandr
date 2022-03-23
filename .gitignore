@@ -1,5 +1,8 @@
 book
 /target
 /vendor
-.idea/
-.vscode/
+/result
+/.idea/
+/.vscode/
+/.direnv/
+/.pre-commit-config.yaml
