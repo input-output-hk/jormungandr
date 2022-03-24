@@ -16,13 +16,13 @@ thiserror = "1.0"
 structopt = "^0.3"
 assert_fs = "1.0"
 indicatif = "0.15"
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait", features = [ "property-test-api" ] }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait", features = [ "property-test-api" ] }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait" }
-chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait", features = ["with-bench"] }
-chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "remove-deserialize-trait" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = ["with-bench"] }
+chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 tokio = { version = "1.15", features = ["macros"] }
 thor = { path = "../thor" }
 loki = { path = "../loki" }
