@@ -299,8 +299,8 @@ pub fn compare_schema<P: AsRef<Path>>(actual_schema_path: P) {
         PathBuf::from_str("./jormungandr-automation/resources/explorer/graphql/schema.graphql")
             .unwrap();
 
-    if !file::have_the_same_content(actual_schema_path.as_ref(), &expected_schema_path) {
-        file::copy_file(actual_schema_path.as_ref(), &expected_schema_path, true);
+    if !file::have_the_same_content(actual_schema_path.as_ref(), &expected_schema_path).unwrap() {
+        file::copy_file(actual_schema_path.as_ref(), &expected_schema_path, true).unwrap();
         println!("discrepancies detected, already replaced file with new content. Please commit to update schema");
     }
 }

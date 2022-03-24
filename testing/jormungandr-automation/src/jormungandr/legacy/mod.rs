@@ -52,5 +52,7 @@ pub fn get_jormungandr_bin(release: &Release, temp_dir: &impl PathChild) -> Path
     let release_dir = temp_dir.child(format!("release-{}", release.version()));
     release_dir.create_dir_all().unwrap();
     decompress(output.path(), release_dir.path()).unwrap();
-    file::find_file(release_dir.path(), "jormungandr").unwrap()
+    file::find_file(release_dir.path(), "jormungandr")
+        .unwrap()
+        .unwrap()
 }

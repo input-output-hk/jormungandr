@@ -24,7 +24,7 @@ pub fn copy_initial_storage_if_used(
             fs::remove_dir_all(&client_storage).expect("cannot remove existing client storage");
         }
         fs::create_dir(&client_storage).expect("cannot create client storage");
-        file::copy_folder(storage, &client_storage, true);
+        file::copy_folder(storage, &client_storage, true).unwrap()
     }
 }
 
