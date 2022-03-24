@@ -24,7 +24,7 @@ impl CommunicationKey {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_public(self, input: String) -> String {
+    pub fn to_public(self, input: String) -> Result<String, std::io::Error> {
         let input_file = NamedTempFile::new("input.tmp").unwrap();
         input_file.write_str(&input).unwrap();
         let output_file = NamedTempFile::new("output.tmp").unwrap();

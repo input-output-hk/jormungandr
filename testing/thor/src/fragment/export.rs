@@ -57,7 +57,7 @@ impl FragmentExporter {
                     .ends_with(".fragment")
             })
             .map(|path| {
-                let content = jortestkit::prelude::read_file(path);
+                let content = jortestkit::prelude::read_file(path).unwrap();
                 let bytes = hex::decode(content.trim()).unwrap();
                 Ok(bytes)
             })

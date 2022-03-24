@@ -569,7 +569,7 @@ pub fn jcli_e2e_flow() {
 
     time::wait_for_epoch(1, jormungandr.rest());
 
-    let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
+    let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert).unwrap();
     let vote_cast = jcli
         .certificate()
         .new_public_vote_cast(vote_plan_id.clone(), 0, yes_choice);

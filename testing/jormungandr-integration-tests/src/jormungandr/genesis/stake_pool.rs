@@ -118,7 +118,8 @@ pub fn create_new_stake_pool(
 
     let stake_pool_id = jcli
         .certificate()
-        .stake_pool_id(stake_pool_certificate_file.path());
+        .stake_pool_id(stake_pool_certificate_file.path())
+        .unwrap();
 
     assert!(
         jcli.rest()
