@@ -45,12 +45,11 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         .map(|committee_member| committee_member.public_key())
         .collect::<Vec<_>>();
 
-    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::new_account(&mut rng)))
+    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::default()))
         .take(quick_config.wallets_count())
         .collect();
 
-    let mut rng = OsRng;
-    let mut committee = Wallet::new_account(&mut rng);
+    let mut committee = Wallet::default();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(quick_config.proposals_count())
@@ -156,10 +155,6 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
 
     wait_for_epoch(quick_config.voting_timing()[1], jormungandr.rest());
 
-    transaction_sender
-        .send_encrypted_tally(&mut committee, &vote_plan, &jormungandr)
-        .unwrap();
-
     wait_for_date(
         BlockDateLib::new(
             quick_config.voting_timing()[1],
@@ -186,20 +181,6 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         .unwrap();
 
     wait_for_epoch(quick_config.voting_timing()[2], jormungandr.rest());
-    let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
-
-    let vote_plan_status = active_vote_plans
-        .iter()
-        .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
-        .unwrap();
-
-    for proposal in vote_plan_status.proposals.iter() {
-        assert!(
-            proposal.tally.is_some(),
-            "Proposal is not tallied {:?}",
-            proposal
-        );
-    }
 
     benchmark_consumption_monitor.stop();
 
@@ -225,14 +206,13 @@ pub fn adversary_private_vote_load_scenario(
         .map(|committee_member| committee_member.public_key())
         .collect::<Vec<_>>();
 
-    let mut noise_wallet_from = Wallet::new_account(&mut rng);
+    let mut noise_wallet_from = Wallet::default();
 
-    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::new_account(&mut rng)))
+    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::default()))
         .take(quick_config.wallets_count())
         .collect();
 
-    let mut rng = OsRng;
-    let mut committee = Wallet::new_account(&mut rng);
+    let mut committee = Wallet::default();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(quick_config.proposals_count())
@@ -367,10 +347,6 @@ pub fn adversary_private_vote_load_scenario(
 
     wait_for_epoch(quick_config.voting_timing()[1], jormungandr.rest());
 
-    transaction_sender
-        .send_encrypted_tally(&mut committee, &vote_plan, &jormungandr)
-        .unwrap();
-
     wait_for_date(
         BlockDateLib::new(
             quick_config.voting_timing()[1],
@@ -397,20 +373,6 @@ pub fn adversary_private_vote_load_scenario(
         .unwrap();
 
     wait_for_epoch(quick_config.voting_timing()[2], jormungandr.rest());
-    let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
-
-    let vote_plan_status = active_vote_plans
-        .iter()
-        .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
-        .unwrap();
-
-    for proposal in vote_plan_status.proposals.iter() {
-        assert!(
-            proposal.tally.is_some(),
-            "Proposal is not tallied {:?}",
-            proposal
-        );
-    }
 
     benchmark_consumption_monitor.stop();
 

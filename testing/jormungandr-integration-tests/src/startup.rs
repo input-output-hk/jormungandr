@@ -15,11 +15,11 @@ pub fn create_new_utxo_address() -> Wallet {
 }
 
 pub fn create_new_account_address() -> Wallet {
-    Wallet::new_account(&mut rand::rngs::OsRng)
+    Default::default()
 }
 
 pub fn create_new_delegation_address() -> Wallet {
-    let account = Wallet::new_account(&mut rand::rngs::OsRng);
+    let account = Wallet::default();
     create_new_delegation_address_for(&account.identifier())
 }
 
@@ -103,7 +103,6 @@ pub fn start_stake_pool(
         .with_block0_consensus(ConsensusVersion::GenesisPraos)
         .with_consensus_leaders_ids(leaders)
         .with_funds(funds)
-        .with_explorer()
         .with_initial_certs(initial_certs)
         .with_secret(secret)
         .build(&temp_dir);
@@ -132,7 +131,6 @@ pub fn start_bft(
                 .collect(),
         )
         .with_block0_consensus(ConsensusVersion::Bft)
-        .with_explorer()
         .build(&temp_dir);
 
     Starter::new().temp_dir(temp_dir).config(config).start()

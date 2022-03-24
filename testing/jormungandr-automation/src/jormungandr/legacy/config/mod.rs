@@ -5,7 +5,7 @@ pub use configuration_builder::{
     LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
 };
 use jormungandr_lib::interfaces::{
-    Explorer, LayersConfig, LogEntry, LogOutput, Mempool, Policy, Rest, TopicsOfInterest,
+    LayersConfig, LogEntry, LogOutput, Mempool, Policy, Rest, TopicsOfInterest,
 };
 use multiaddr::Multiaddr;
 use serde::{Deserialize, Serialize};
@@ -78,7 +78,6 @@ pub struct NodeConfig {
     pub log: Option<Log>,
     #[serde(rename = "log", skip_serializing_if = "Option::is_none")]
     pub single_log: Option<jormungandr_lib::interfaces::Log>,
-    pub explorer: Explorer,
     pub mempool: Option<Mempool>,
     pub bootstrap_from_trusted_peers: Option<bool>,
     pub skip_bootstrap: Option<bool>,

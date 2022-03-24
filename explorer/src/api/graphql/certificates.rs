@@ -1,13 +1,11 @@
-use super::config_param::ConfigParams;
-use super::error::ApiError;
+use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
+use super::{
+    config_param::ConfigParams, Address, BftLeader, BlockDate, ExplorerAddress, Pool, Proposal,
+    TaxType,
+};
+use super::{error::ApiError, extract_context};
 use async_graphql::{Context, FieldResult, Object, Union};
 use chain_impl_mockchain::certificate;
-use chain_impl_mockchain::tokens::identifier;
-use std::convert::TryFrom;
-
-use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
-use super::{Address, BftLeader, BlockDate, ExplorerAddress, Pool, Proposal, TaxType};
-use crate::rest::explorer::EContext as RestContext;
 
 // interface for grouping certificates as a graphl union
 #[derive(Union)]
@@ -20,10 +18,10 @@ pub enum Certificate {
     VotePlan(VotePlan),
     VoteCast(VoteCast),
     VoteTally(VoteTally),
-    EncryptedVoteTally(EncryptedVoteTally),
     UpdateProposal(UpdateProposal),
     UpdateVote(UpdateVote),
     MintToken(MintToken),
+    EvmMapping(EvmMapping),
 }
 
 pub struct StakeDelegation(certificate::StakeDelegation);
@@ -43,26 +41,19 @@ pub struct VoteCast(certificate::VoteCast);
 
 pub struct VoteTally(certificate::VoteTally);
 
-pub struct EncryptedVoteTally(certificate::EncryptedVoteTally);
-
 pub struct UpdateProposal(certificate::UpdateProposal);
 
 pub struct UpdateVote(certificate::UpdateVote);
 
 pub struct MintToken(certificate::MintToken);
 
+pub struct EvmMapping(certificate::EvmMapping);
+
 #[Object]
 impl StakeDelegation {
     // FIXME: Maybe a new Account type would be better?
     pub async fn account(&self, context: &Context<'_>) -> FieldResult<Address> {
-        let discrimination = context
-            .data_unchecked::<RestContext>()
-            .get()
-            .await
-            .unwrap()
-            .db
-            .blockchain_config
-            .discrimination;
+        let discrimination = extract_context(context).db.blockchain_config.discrimination;
         self.0
             .account_id
             .to_single_account()
@@ -125,14 +116,7 @@ impl PoolRegistration {
     /// Reward account
     pub async fn reward_account(&self, context: &Context<'_>) -> Option<Address> {
         use chain_impl_mockchain::transaction::AccountIdentifier;
-        let discrimination = context
-            .data_unchecked::<RestContext>()
-            .get()
-            .await
-            .unwrap()
-            .db
-            .blockchain_config
-            .discrimination;
+        let discrimination = extract_context(context).db.blockchain_config.discrimination;
 
         // FIXME: Move this transformation to a point earlier
 
@@ -253,13 +237,6 @@ impl VoteTally {
 }
 
 #[Object]
-impl EncryptedVoteTally {
-    pub async fn vote_plan(&self) -> VotePlanId {
-        self.0.id().clone().into()
-    }
-}
-
-#[Object]
 impl UpdateProposal {
     pub async fn changes(&self) -> ConfigParams {
         self.0.changes().into()
@@ -283,20 +260,15 @@ impl UpdateVote {
 
 #[Object]
 impl MintToken {
-    pub async fn identifier(&self) -> String {
-        identifier::TokenIdentifier {
-            token_name: self.0.name.clone(),
-            policy_hash: self.0.policy.hash(),
-        }
-        .to_string()
+    pub async fn name(&self) -> String {
+        format!("{:?}", self.0.name)
     }
+}
 
-    pub async fn to(&self) -> String {
-        self.0.to.to_string()
-    }
-
-    pub async fn value(&self) -> String {
-        self.0.value.to_string()
+#[Object]
+impl EvmMapping {
+    pub async fn address(&self) -> String {
+        format!("{:?}", self.0)
     }
 }
 
@@ -304,36 +276,31 @@ impl MintToken {
 /*------- Conversions ---------*/
 /*----------------------------*/
 
-impl TryFrom<chain_impl_mockchain::certificate::Certificate> for Certificate {
-    type Error = super::error::ApiError;
-    fn try_from(
-        original: chain_impl_mockchain::certificate::Certificate,
-    ) -> Result<Certificate, Self::Error> {
+impl From<chain_impl_mockchain::certificate::Certificate> for Certificate {
+    fn from(original: chain_impl_mockchain::certificate::Certificate) -> Certificate {
         match original {
             certificate::Certificate::StakeDelegation(c) => {
-                Ok(Certificate::StakeDelegation(StakeDelegation(c)))
+                Certificate::StakeDelegation(StakeDelegation(c))
             }
             certificate::Certificate::OwnerStakeDelegation(c) => {
-                Ok(Certificate::OwnerStakeDelegation(OwnerStakeDelegation(c)))
+                Certificate::OwnerStakeDelegation(OwnerStakeDelegation(c))
             }
             certificate::Certificate::PoolRegistration(c) => {
-                Ok(Certificate::PoolRegistration(PoolRegistration(c)))
+                Certificate::PoolRegistration(PoolRegistration(c))
             }
             certificate::Certificate::PoolRetirement(c) => {
-                Ok(Certificate::PoolRetirement(PoolRetirement(c)))
+                Certificate::PoolRetirement(PoolRetirement(c))
             }
-            certificate::Certificate::PoolUpdate(c) => Ok(Certificate::PoolUpdate(PoolUpdate(c))),
-            certificate::Certificate::VotePlan(c) => Ok(Certificate::VotePlan(VotePlan(c))),
-            certificate::Certificate::VoteCast(c) => Ok(Certificate::VoteCast(VoteCast(c))),
-            certificate::Certificate::VoteTally(c) => Ok(Certificate::VoteTally(VoteTally(c))),
-            certificate::Certificate::EncryptedVoteTally(c) => {
-                Ok(Certificate::EncryptedVoteTally(EncryptedVoteTally(c)))
-            }
+            certificate::Certificate::PoolUpdate(c) => Certificate::PoolUpdate(PoolUpdate(c)),
+            certificate::Certificate::VotePlan(c) => Certificate::VotePlan(VotePlan(c)),
+            certificate::Certificate::VoteCast(c) => Certificate::VoteCast(VoteCast(c)),
+            certificate::Certificate::VoteTally(c) => Certificate::VoteTally(VoteTally(c)),
             certificate::Certificate::UpdateProposal(c) => {
-                Ok(Certificate::UpdateProposal(UpdateProposal(c)))
+                Certificate::UpdateProposal(UpdateProposal(c))
             }
-            certificate::Certificate::UpdateVote(c) => Ok(Certificate::UpdateVote(UpdateVote(c))),
-            certificate::Certificate::MintToken(c) => Ok(Certificate::MintToken(MintToken(c))),
+            certificate::Certificate::UpdateVote(c) => Certificate::UpdateVote(UpdateVote(c)),
+            certificate::Certificate::MintToken(c) => Certificate::MintToken(MintToken(c)),
+            certificate::Certificate::EvmMapping(c) => Certificate::EvmMapping(EvmMapping(c)),
         }
     }
 }
@@ -389,5 +356,11 @@ impl From<certificate::UpdateProposal> for UpdateProposal {
 impl From<certificate::UpdateVote> for UpdateVote {
     fn from(update_vote: certificate::UpdateVote) -> Self {
         UpdateVote(update_vote)
+    }
+}
+
+impl From<certificate::EvmMapping> for EvmMapping {
+    fn from(evm_mapping: certificate::EvmMapping) -> Self {
+        EvmMapping(evm_mapping)
     }
 }

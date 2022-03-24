@@ -1,6 +1,7 @@
 pub mod asserts;
 pub mod benchmark;
 pub mod block0;
+pub mod collector;
 pub mod configuration;
 pub mod keys;
 pub mod observer;

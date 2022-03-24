@@ -9,10 +9,6 @@ query LastBlock {
         }
         slot
       }
-      treasury {
-        rewards
-        treasury
-      }
     }
   }
 }

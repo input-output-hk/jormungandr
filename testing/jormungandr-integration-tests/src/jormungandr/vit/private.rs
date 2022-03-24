@@ -18,7 +18,6 @@ use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_automation::testing::time;
 use jormungandr_automation::testing::{VotePlanBuilder, VotePlanExtension};
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed};
-use jortestkit::prelude::read_file;
 use rand::rngs::OsRng;
 use thor::Wallet;
 
@@ -86,7 +85,6 @@ pub fn jcli_e2e_flow_private_vote() {
     let token_id = vote_plan.voting_token();
 
     let config = ConfigurationBuilder::new()
-        .with_explorer()
         .with_funds(vec![
             alice.to_initial_fund(wallet_initial_funds),
             bob.to_initial_fund(wallet_initial_funds),
@@ -198,29 +196,9 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(2, jormungandr.rest());
 
-    let encrypted_vote_tally = temp_dir.child("encrypted-vote-tally.certificate");
-
-    jcli.certificate()
-        .new_encrypted_vote_tally(vote_plan_id.clone(), encrypted_vote_tally.path());
-
-    let encrypted_vote_tally_cert = read_file(encrypted_vote_tally.path());
-
-    let tx = jcli
-        .transaction_builder(jormungandr.genesis_block_hash())
-        .new_transaction()
-        .add_account(&alice.address().to_string(), &Value::zero().into())
-        .add_certificate(&encrypted_vote_tally_cert)
-        .set_expiry_date(BlockDateDto::new(3, 0))
-        .finalize()
-        .seal_with_witness_data(alice.witness_data())
-        .add_auth(alice_sk.path())
-        .to_message();
-
     jcli.fragment_sender(&jormungandr)
         .send(&tx)
         .assert_in_block();
-
-    alice.confirm_transaction();
 
     let active_plans = jormungandr.rest().vote_plan_statuses().unwrap();
     let active_plans_file = temp_dir.child("active_plans.json");
@@ -279,7 +257,7 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
 
-    // We want to make sure that our small rewards increase is reflexed in current rewards amount
+    // We want to make sure that our small rewards increase is reflected in current rewards amount
     assert!(
         rewards_after == rewards_before + rewards_increase,
         "Vote was unsuccessful"
@@ -353,7 +331,6 @@ pub fn jcli_private_vote_invalid_proof() {
     let token_id = vote_plan.voting_token();
 
     let config = ConfigurationBuilder::new()
-        .with_explorer()
         .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
         .with_token(InitialToken {
             token_id: token_id.clone().into(),
@@ -396,24 +373,7 @@ pub fn jcli_private_vote_invalid_proof() {
         jormungandr.rest(),
     );
 
-    let encrypted_vote_tally = temp_dir.child("encrypted-vote-tally.certificate");
     let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
-
-    jcli.certificate()
-        .new_encrypted_vote_tally(vote_plan_id.clone(), encrypted_vote_tally.path());
-
-    let encrypted_vote_tally_cert = read_file(encrypted_vote_tally.path());
-
-    let tx = jcli
-        .transaction_builder(jormungandr.genesis_block_hash())
-        .new_transaction()
-        .add_account(&alice.address().to_string(), &Value::zero().into())
-        .add_certificate(&encrypted_vote_tally_cert)
-        .set_expiry_date(BlockDateDto::new(2, 0))
-        .finalize()
-        .seal_with_witness_data(alice.witness_data())
-        .add_auth(alice_sk.path())
-        .to_message();
 
     jcli.fragment_sender(&jormungandr)
         .send(&tx)

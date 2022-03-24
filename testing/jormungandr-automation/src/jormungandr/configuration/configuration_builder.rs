@@ -149,11 +149,6 @@ impl ConfigurationBuilder {
         self
     }
 
-    pub fn with_explorer(&mut self) -> &mut Self {
-        self.node_config_builder.with_explorer();
-        self
-    }
-
     pub fn with_fees_go_to(&mut self, fees_go_to: FeesGoTo) -> &mut Self {
         self.fees_go_to = Some(fees_go_to);
         self

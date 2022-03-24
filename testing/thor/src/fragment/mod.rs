@@ -17,9 +17,7 @@ use chain_impl_mockchain::transaction::InputOutputBuilder;
 use chain_impl_mockchain::transaction::TxBuilder;
 use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload};
 use chain_impl_mockchain::{
-    certificate::{
-        EncryptedVoteTally, PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally,
-    },
+    certificate::{PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally},
     fee::LinearFee,
     fragment::Fragment,
     testing::{
@@ -319,15 +317,6 @@ impl FragmentBuilder {
             .vote_cast(self.valid_until, &inner_wallet, vote_cast)
     }
 
-    pub fn encrypted_tally(&self, owner: &Wallet, vote_plan: &VotePlan) -> Fragment {
-        let encrypted_tally = EncryptedVoteTally::new(vote_plan.to_id());
-        self.fragment_factory.vote_encrypted_tally(
-            self.valid_until,
-            &owner.clone().into(),
-            encrypted_tally,
-        )
-    }
-
     pub fn vote_tally(
         &self,
         wallet: &Wallet,
@@ -351,8 +340,12 @@ impl FragmentBuilder {
         bft_auth: &SecretKey<Ed25519>,
     ) -> Fragment {
         let inner_wallet = wallet.clone().into();
-        let signer_wallet: Wallet =
-            AccountWallet::from_secret(bft_auth.clone().into(), wallet.discrimination()).into();
+        let signer_wallet: Wallet = AccountWallet::from_secret_key(
+            bft_auth.clone().into(),
+            Default::default(),
+            wallet.discrimination(),
+        )
+        .into();
 
         self.fragment_factory.update_proposal(
             self.valid_until,
@@ -369,8 +362,12 @@ impl FragmentBuilder {
         bft_auth: &SecretKey<Ed25519>,
     ) -> Fragment {
         let inner_wallet = wallet.clone().into();
-        let signer_wallet: Wallet =
-            AccountWallet::from_secret(bft_auth.clone().into(), wallet.discrimination()).into();
+        let signer_wallet: Wallet = AccountWallet::from_secret_key(
+            bft_auth.clone().into(),
+            Default::default(),
+            wallet.discrimination(),
+        )
+        .into();
         self.fragment_factory.update_vote(
             self.valid_until,
             &inner_wallet,

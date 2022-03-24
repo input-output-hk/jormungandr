@@ -4,11 +4,13 @@ pub mod delegation;
 pub mod discrimination;
 pub mod utxo;
 
+use crate::wallet::discrimination::DiscriminationExtension;
 use crate::FragmentBuilder;
 use crate::FragmentBuilderError;
 use chain_addr::AddressReadable;
 use chain_addr::Discrimination;
 use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Signature};
+use chain_impl_mockchain::accounting::account::SpendingCounterIncreasing;
 pub use chain_impl_mockchain::{
     account::SpendingCounter,
     block::Block,
@@ -33,7 +35,6 @@ use chain_impl_mockchain::{
     vote::CommitteeId,
 };
 pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
-use discrimination::DiscriminationExtension;
 use jormungandr_automation::jcli::WitnessData;
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
@@ -75,26 +76,28 @@ pub enum Wallet {
 
 impl Default for Wallet {
     fn default() -> Self {
-        Self::new_account(&mut rand::rngs::OsRng)
+        Self::new_account(&mut rand::rngs::OsRng, Discrimination::Test)
     }
 }
 
 impl Wallet {
-    pub fn new_account<RNG>(rng: &mut RNG) -> Wallet
+    pub fn new_account<RNG>(rng: &mut RNG, discrimination: Discrimination) -> Wallet
     where
         RNG: CryptoRng + RngCore,
     {
-        Self::new_account_with_discrimination(rng, Discrimination::Test)
+        Self::new_account_with_discrimination(rng, discrimination)
     }
 
     pub fn import_account<P: AsRef<Path>>(
         secret_key_file: P,
         spending_counter: Option<SpendingCounter>,
+        discrimination: Discrimination,
     ) -> Wallet {
         let bech32_str = jortestkit::file::read_file(secret_key_file);
         Wallet::Account(account::Wallet::from_existing_account(
             &bech32_str,
             spending_counter.map(Into::into),
+            discrimination,
         ))
     }
 
@@ -111,10 +114,12 @@ impl Wallet {
     pub fn from_existing_account(
         signing_key_bech32: &str,
         spending_counter: Option<SpendingCounter>,
+        discrimination: Discrimination,
     ) -> Wallet {
         Wallet::Account(account::Wallet::from_existing_account(
             signing_key_bech32,
             spending_counter.map(Into::into),
+            discrimination,
         ))
     }
 
@@ -212,6 +217,10 @@ impl Wallet {
 
     pub fn public_key(&self) -> PublicKey<Ed25519> {
         self.address().1.public_key().unwrap().clone()
+    }
+
+    pub fn public_key_bech32(&self) -> String {
+        hex::encode(Identifier::from(self.public_key()).as_ref())
     }
 
     pub fn address_bech32(&self, discrimination: Discrimination) -> String {
@@ -317,9 +326,11 @@ impl Wallet {
         }
     }
 
-    pub fn spending_counter(&self) -> SpendingCounter {
+    pub fn spending_counter(&self) -> Option<SpendingCounterIncreasing> {
         match self {
-            Wallet::Account(account) => account.internal_counter(),
+            Wallet::Account(account) => {
+                SpendingCounterIncreasing::new_from_counters(account.internal_counters())
+            }
             _ => unimplemented!(),
         }
     }

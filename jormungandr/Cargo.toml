@@ -25,8 +25,6 @@ imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "
 
 arc-swap = "^1.5.0"
 async-trait = "0.1.51"
-async-graphql = "2.5.1"
-async-graphql-warp = "2.9.5"
 base64 = "0.13.0"
 bech32 = "0.8"
 futures = "0.3.21"
@@ -75,6 +73,12 @@ quickcheck_macros = "0.9"
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+criterion = { version = "0.3", features = ["html_reports", "async_tokio"] }
+
+[[bench]]
+name = "rest_v0"
+harness = false
+
 
 [build-dependencies]
 versionisator = "1.0.2"

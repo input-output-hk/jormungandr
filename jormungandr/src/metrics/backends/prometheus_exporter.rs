@@ -74,7 +74,7 @@ impl Prometheus {
 
 impl Default for Prometheus {
     fn default() -> Self {
-        let registry = Registry::new_custom(Some("jormungandr_".to_string()), None)
+        let registry = Registry::new_custom(Some("jormungandr".to_string()), None)
             .expect("failed to create the Prometheus registry");
 
         let tx_recv_cnt = IntCounter::new("txRecvCnt", "txRecvCnt").unwrap();
@@ -265,11 +265,11 @@ impl MetricsBackend for Prometheus {
                         totals(tx)
                     }
                     Fragment::VoteTally(tx) => totals(tx),
-                    Fragment::EncryptedVoteTally(tx) => totals(tx),
                     Fragment::MintToken(tx) => totals(tx),
                     Fragment::UpdateProposal(tx) => totals(tx),
                     Fragment::UpdateVote(tx) => totals(tx),
                     Fragment::Evm(tx) => totals(tx),
+                    Fragment::EvmMapping(tx) => totals(tx),
                     Fragment::Initial(_) | Fragment::OldUtxoDeclaration(_) => return Ok(()),
                 }?;
                 block_tx_count += 1;

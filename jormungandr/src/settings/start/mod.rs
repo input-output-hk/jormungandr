@@ -52,7 +52,6 @@ pub struct Settings {
     pub mempool: Mempool,
     pub rewards_report_all: bool,
     pub leadership: Leadership,
-    pub explorer: bool,
     #[cfg(feature = "prometheus-metrics")]
     pub prometheus: bool,
     pub no_blockchain_updates_warning_interval: std::time::Duration,
@@ -180,7 +179,7 @@ impl RawSettings {
         let secret = command_arguments
             .secret
             .clone()
-            .or_else(|| config.as_ref().map(|cfg| cfg.secret_file.clone()).flatten());
+            .or_else(|| config.as_ref().and_then(|cfg| cfg.secret_file.clone()));
         if secret.is_none() {
             tracing::warn!(
                 "Node started without path to the stored secret keys (not a stake pool or a BFT leader)"
@@ -196,13 +195,6 @@ impl RawSettings {
             (Some(path), None) => Block0Info::Path(path.clone(), None),
             (None, Some(hash)) => Block0Info::Hash(*hash),
         };
-
-        let explorer = command_arguments.explorer_enabled
-            || config.as_ref().map_or(false, |cfg| {
-                cfg.explorer
-                    .as_ref()
-                    .map_or(false, |settings| settings.enabled)
-            });
 
         #[cfg(feature = "prometheus-metrics")]
         let prometheus = command_arguments.prometheus_enabled
@@ -225,7 +217,6 @@ impl RawSettings {
             leadership: config
                 .as_ref()
                 .map_or(Leadership::default(), |cfg| cfg.leadership.clone()),
-            explorer,
             #[cfg(feature = "prometheus-metrics")]
             prometheus,
             no_blockchain_updates_warning_interval: config

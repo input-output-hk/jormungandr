@@ -59,8 +59,11 @@ pub fn handshake_sanity() {
 // L1006 Tip request
 #[test]
 pub fn tip_request() {
-    let setup =
-        setup::client::bootstrap(ConfigurationBuilder::new().with_slot_duration(9).to_owned());
+    let setup = setup::client::bootstrap(
+        ConfigurationBuilder::new()
+            .with_slot_duration(15)
+            .to_owned(),
+    );
 
     setup
         .client
@@ -69,8 +72,10 @@ pub fn tip_request() {
     let tip_header = setup.client.tip();
     let block_hashes = setup.server.logger.get_created_blocks_hashes();
 
-    // TODO: this could fail if the server produces another block
-    assert_eq!(*block_hashes.last().unwrap(), tip_header.hash());
+    if *block_hashes.last().unwrap() != tip_header.hash() {
+        //if the server produces another block compare with second last
+        assert_eq!(block_hashes[block_hashes.len() - 2], tip_header.hash());
+    }
 }
 
 // L1009 GetHeaders correct hash
@@ -434,7 +439,11 @@ pub fn test_watch_block_subscription_blocks_are_in_logs() {
 
 #[test]
 pub fn test_watch_tip_subscription_is_current_tip() {
-    let setup = setup::client::default();
+    let setup = setup::client::bootstrap(
+        ConfigurationBuilder::new()
+            .with_slot_duration(3u8)
+            .to_owned(),
+    );
     let rest = setup.server.rest();
     let watch_client = setup.watch_client;
 
@@ -442,10 +451,11 @@ pub fn test_watch_tip_subscription_is_current_tip() {
 
     let (watch_tip, cond) = &*notif;
 
-    let mut iters_remaining: usize = 20;
+    let mut iters_remaining: usize = 10;
     let mut guard = watch_tip.lock().unwrap();
 
     loop {
+        println!("iter remaining: {}", iters_remaining);
         let header = &*guard;
 
         let rest_tip = rest.tip().unwrap();

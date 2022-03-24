@@ -56,9 +56,8 @@ pub mod client {
         let server = Starter::new()
             .temp_dir(dir)
             .config(config.clone())
-            .start_async()
+            .start()
             .unwrap();
-        std::thread::sleep(Duration::from_secs(4));
         let attached_config = Config::attach_to_local_node(config.get_p2p_listen_port());
         let client = attached_config.client();
         let watch_client = attached_config.watch_client();

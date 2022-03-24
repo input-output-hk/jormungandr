@@ -1,8 +1,8 @@
 use crate::jcli_lib::{
     certificate::{
-        self, committee_encrypted_vote_tally_sign, committee_vote_plan_sign,
-        committee_vote_tally_sign, pool_owner_sign, stake_delegation_account_binding_sign,
-        update_proposal_sign, update_vote_sign,
+        self, committee_vote_plan_sign, committee_vote_tally_sign, evm_mapping_sign,
+        pool_owner_sign, stake_delegation_account_binding_sign, update_proposal_sign,
+        update_vote_sign,
     },
     transaction::Error,
     utils::io,
@@ -249,19 +249,6 @@ impl Staging {
                         .map_err(|error| Error::CertificateError { error })??;
                     self.extra_authed = Some(sc.into())
                 }
-                Certificate::EncryptedVoteTally(vt) => {
-                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&vt))?;
-                    let sc = keys
-                        .len()
-                        .eq(&1)
-                        .then(|| {
-                            committee_encrypted_vote_tally_sign(vt, &keys[0], builder)
-                                .map_err(|e| Error::CertificateError { error: e })
-                        })
-                        .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
-                        .map_err(|error| Error::CertificateError { error })??;
-                    self.extra_authed = Some(sc.into())
-                }
                 Certificate::UpdateProposal(up) => {
                     let builder = self.builder_after_witness(TxBuilder::new().set_payload(&up))?;
                     let sc = keys
@@ -282,6 +269,19 @@ impl Staging {
                         .eq(&1)
                         .then(|| {
                             update_vote_sign(uv, &keys[0], builder)
+                                .map_err(|e| Error::CertificateError { error: e })
+                        })
+                        .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
+                        .map_err(|error| Error::CertificateError { error })??;
+                    self.extra_authed = Some(sc.into())
+                }
+                Certificate::EvmMapping(uv) => {
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&uv))?;
+                    let sc = keys
+                        .len()
+                        .eq(&1)
+                        .then(|| {
+                            evm_mapping_sign(uv, &keys[0], builder)
                                 .map_err(|e| Error::CertificateError { error: e })
                         })
                         .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
@@ -413,9 +413,6 @@ impl Staging {
                 Certificate::VoteTally(vt) => {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
-                Certificate::EncryptedVoteTally(vt) => {
-                    self.finalize_payload(&vt, fee_algorithm, output_policy)
-                }
                 Certificate::UpdateProposal(vt) => {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
@@ -423,6 +420,9 @@ impl Staging {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
                 Certificate::MintToken(vt) => {
+                    self.finalize_payload(&vt, fee_algorithm, output_policy)
+                }
+                Certificate::EvmMapping(vt) => {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
 
@@ -570,14 +570,14 @@ impl Staging {
                     SignedCertificate::VoteTally(vt, a) => {
                         self.make_fragment(&vt, &a, Fragment::VoteTally)
                     }
-                    SignedCertificate::EncryptedVoteTally(vt, a) => {
-                        self.make_fragment(&vt, &a, Fragment::EncryptedVoteTally)
-                    }
                     SignedCertificate::UpdateProposal(vt, a) => {
                         self.make_fragment(&vt, &a, Fragment::UpdateProposal)
                     }
                     SignedCertificate::UpdateVote(vt, a) => {
                         self.make_fragment(&vt, &a, Fragment::UpdateVote)
+                    }
+                    SignedCertificate::EvmMapping(vt, a) => {
+                        self.make_fragment(&vt, &a, Fragment::EvmMapping)
                     }
                 }
             }
@@ -645,9 +645,6 @@ impl Staging {
                 Certificate::VoteTally(vt) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
-                Certificate::EncryptedVoteTally(vt) => {
-                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
-                }
                 Certificate::UpdateProposal(vt) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
@@ -655,6 +652,9 @@ impl Staging {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
                 Certificate::MintToken(vt) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
+                }
+                Certificate::EvmMapping(vt) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
             },
@@ -709,7 +709,7 @@ impl Staging {
         let cert_extra = self.extra_authed.clone().map(|cert| cert.strip_auth());
         let cert_payload = cert_extra
             .as_ref()
-            .or_else(|| self.extra.as_ref())
+            .or(self.extra.as_ref())
             .map(|cert| CertificatePayload::from(&cert.0));
         let cert_slice = cert_payload.as_ref().map(CertificatePayload::as_slice);
         let inputs_count = self.inputs().len() as u8;

@@ -46,7 +46,7 @@ impl TransactionCommand {
     ) -> Self {
         self.command
             .arg("add-account")
-            .arg(account_addr.to_string())
+            .arg(account_addr)
             .arg(amount)
             .arg("--staging")
             .arg(staging_file.as_ref());

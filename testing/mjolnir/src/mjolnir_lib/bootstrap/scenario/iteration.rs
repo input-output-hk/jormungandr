@@ -51,7 +51,7 @@ impl IterationBasedClientLoad {
             node.check_no_errors_in_log()?;
             progress_bar.set_error_lines(
                 node.logger
-                    .get_lines_with_level(LogLevel::ERROR)
+                    .get_log_lines_with_level(LogLevel::ERROR)
                     .map(|x| x.to_string())
                     .collect(),
             );

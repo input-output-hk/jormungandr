@@ -49,14 +49,14 @@ impl SignedCertificate {
             certificate::SignedCertificate::VoteTally(c, _) => {
                 Certificate(certificate::Certificate::VoteTally(c))
             }
-            certificate::SignedCertificate::EncryptedVoteTally(c, _) => {
-                Certificate(certificate::Certificate::EncryptedVoteTally(c))
-            }
             certificate::SignedCertificate::UpdateProposal(c, _) => {
                 Certificate(certificate::Certificate::UpdateProposal(c))
             }
             certificate::SignedCertificate::UpdateVote(c, _) => {
                 Certificate(certificate::Certificate::UpdateVote(c))
+            }
+            certificate::SignedCertificate::EvmMapping(c, _) => {
+                Certificate(certificate::Certificate::EvmMapping(c))
             }
         }
     }
@@ -100,19 +100,19 @@ impl property::Serialize for Certificate {
                 codec.put_bytes(&[8])?;
                 codec.put_bytes(c.serialize().as_slice())?;
             }
-            certificate::Certificate::EncryptedVoteTally(c) => {
+            certificate::Certificate::UpdateProposal(c) => {
                 codec.put_bytes(&[9])?;
                 codec.put_bytes(c.serialize().as_slice())?;
             }
-            certificate::Certificate::UpdateProposal(c) => {
+            certificate::Certificate::UpdateVote(c) => {
                 codec.put_bytes(&[10])?;
                 codec.put_bytes(c.serialize().as_slice())?;
             }
-            certificate::Certificate::UpdateVote(c) => {
+            certificate::Certificate::MintToken(c) => {
                 codec.put_bytes(&[11])?;
                 codec.put_bytes(c.serialize().as_slice())?;
             }
-            certificate::Certificate::MintToken(c) => {
+            certificate::Certificate::EvmMapping(c) => {
                 codec.put_bytes(&[12])?;
                 codec.put_bytes(c.serialize().as_slice())?;
             }
@@ -163,18 +163,20 @@ impl property::DeserializeFromSlice for Certificate {
                 Ok(Certificate(certificate::Certificate::VoteTally(cert)))
             }
             9 => {
-                let cert = certificate::EncryptedVoteTally::deserialize_from_slice(codec)?;
-                Ok(Certificate(certificate::Certificate::EncryptedVoteTally(
-                    cert,
-                )))
-            }
-            10 => {
                 let cert = certificate::UpdateProposal::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::UpdateProposal(cert)))
             }
-            11 => {
+            10 => {
                 let cert = certificate::UpdateVote::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::UpdateVote(cert)))
+            }
+            11 => {
+                let cert = certificate::MintToken::deserialize_from_slice(codec)?;
+                Ok(Certificate(certificate::Certificate::MintToken(cert)))
+            }
+            12 => {
+                let cert = certificate::EvmMapping::deserialize_from_slice(codec)?;
+                Ok(Certificate(certificate::Certificate::EvmMapping(cert)))
             }
             t => Err(property::ReadError::UnknownTag(t as u32)),
         }
@@ -217,22 +219,22 @@ impl property::Serialize for SignedCertificate {
                 codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::VoteTally(c, a) => {
-                codec.put_bytes(&[8])?;
-                codec.put_bytes(c.serialize().as_slice())?;
-                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
-            }
-            certificate::SignedCertificate::EncryptedVoteTally(c, a) => {
-                codec.put_bytes(&[9])?;
+                codec.put_bytes(&[7])?;
                 codec.put_bytes(c.serialize().as_slice())?;
                 codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::UpdateProposal(c, a) => {
-                codec.put_bytes(&[10])?;
+                codec.put_bytes(&[8])?;
                 codec.put_bytes(c.serialize().as_slice())?;
                 codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::UpdateVote(c, a) => {
-                codec.put_bytes(&[11])?;
+                codec.put_bytes(&[9])?;
+                codec.put_bytes(c.serialize().as_slice())?;
+                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+            }
+            certificate::SignedCertificate::EvmMapping(c, a) => {
+                codec.put_bytes(&[10])?;
                 codec.put_bytes(c.serialize().as_slice())?;
                 codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
@@ -287,32 +289,32 @@ impl property::DeserializeFromSlice for SignedCertificate {
                     cert, auth,
                 )))
             }
-            8 => {
+            7 => {
                 let cert = certificate::VoteTally::deserialize_from_slice(codec)?;
                 let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::VoteTally(cert, auth),
                 ))
             }
-            9 => {
-                let cert = certificate::EncryptedVoteTally::deserialize_from_slice(codec)?;
-                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
-                Ok(SignedCertificate(
-                    certificate::SignedCertificate::EncryptedVoteTally(cert, auth),
-                ))
-            }
-            10 => {
+            8 => {
                 let cert = certificate::UpdateProposal::deserialize_from_slice(codec)?;
                 let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::UpdateProposal(cert, auth),
                 ))
             }
-            11 => {
+            9 => {
                 let cert = certificate::UpdateVote::deserialize_from_slice(codec)?;
                 let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::UpdateVote(cert, auth),
+                ))
+            }
+            10 => {
+                let cert = certificate::EvmMapping::deserialize_from_slice(codec)?;
+                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
+                Ok(SignedCertificate(
+                    certificate::SignedCertificate::EvmMapping(cert, auth),
                 ))
             }
             t => Err(property::ReadError::UnknownTag(t as u32)),

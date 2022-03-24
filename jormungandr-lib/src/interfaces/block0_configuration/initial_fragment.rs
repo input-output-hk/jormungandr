@@ -231,14 +231,14 @@ fn pack_certificate_in_empty_tx_fragment(cert: &SignedCertificate) -> Vec<Fragme
         }
         certificate::SignedCertificate::VotePlan(c, a) => Fragment::VotePlan(empty_auth_tx(c, a)),
         certificate::SignedCertificate::VoteTally(c, a) => Fragment::VoteTally(empty_auth_tx(c, a)),
-        certificate::SignedCertificate::EncryptedVoteTally(c, a) => {
-            Fragment::EncryptedVoteTally(empty_auth_tx(c, a))
-        }
         certificate::SignedCertificate::UpdateProposal(c, a) => {
             Fragment::UpdateProposal(empty_auth_tx(c, a))
         }
         certificate::SignedCertificate::UpdateVote(c, a) => {
             Fragment::UpdateVote(empty_auth_tx(c, a))
+        }
+        certificate::SignedCertificate::EvmMapping(c, a) => {
+            Fragment::EvmMapping(empty_auth_tx(c, a))
         }
     }]
 }

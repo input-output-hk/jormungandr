@@ -48,7 +48,8 @@ impl Read for ChannelReader {
 
 impl MockLogger {
     pub fn new(rx: Receiver<Vec<u8>>) -> Self {
-        Self(JormungandrLogger::new(ChannelReader(rx)))
+        let panic_channel = ChannelReader(std::sync::mpsc::channel().1);
+        Self(JormungandrLogger::new(ChannelReader(rx), panic_channel))
     }
 
     pub fn get_log_content(&self) -> String {

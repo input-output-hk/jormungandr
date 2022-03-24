@@ -45,10 +45,6 @@ pub struct StartArguments {
     #[structopt(long = "genesis-block-hash", parse(try_from_str))]
     pub block_0_hash: Option<HeaderHash>,
 
-    /// Start the explorer task and enable associated query endpoints.
-    #[structopt(long = "enable-explorer")]
-    pub explorer_enabled: bool,
-
     /// Enable the Prometheus metrics exporter.
     #[cfg(feature = "prometheus-metrics")]
     #[structopt(long = "enable-prometheus")]

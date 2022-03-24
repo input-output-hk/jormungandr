@@ -6,6 +6,7 @@ use crate::builder::{
 };
 use assert_fs::fixture::ChildPath;
 use assert_fs::fixture::PathChild;
+use chain_addr::Discrimination;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::testing::create_initial_vote_plan;
@@ -21,8 +22,8 @@ use jormungandr_lib::interfaces::{try_initial_fragment_from_message, VotePlan as
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
-        ActiveSlotCoefficient, Bft, Block0Configuration, BlockchainConfiguration, CommitteeIdDef,
-        GenesisPraos, Initial, InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
+        Bft, Block0Configuration, BlockchainConfiguration, CommitteeIdDef, GenesisPraos, Initial,
+        InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
     },
 };
 use rand_core::{CryptoRng, RngCore};
@@ -83,7 +84,11 @@ impl Settings {
         };
 
         settings.populate_trusted_peers();
-        settings.populate_block0_blockchain_initials(blockchain.wallets(), rng);
+        settings.populate_block0_blockchain_initials(
+            blockchain.wallets(),
+            rng,
+            blockchain.discrimination(),
+        );
         settings.populate_block0_blockchain_configuration(&blockchain, rng);
         settings.populate_block0_blockchain_external(blockchain.external_wallets());
         settings.populate_block0_blockchain_vote_plans(
@@ -180,13 +185,14 @@ impl Settings {
         blockchain_configuration.block_content_max_size = *blockchain.block_content_max_size();
         blockchain_configuration.kes_update_speed = *blockchain.kes_update_speed();
         blockchain_configuration.consensus_genesis_praos_active_slot_coeff =
-            ActiveSlotCoefficient::MAXIMUM;
+            *blockchain.consensus_genesis_praos_active_slot_coeff();
     }
 
     fn populate_block0_blockchain_initials<'a, RNG, I>(
         &'a mut self,
         wallet_templates: I,
         rng: &mut Random<RNG>,
+        discrimination: Discrimination,
     ) where
         RNG: RngCore + CryptoRng,
         I: Iterator<Item = &'a WalletTemplate>,
@@ -236,7 +242,7 @@ impl Settings {
                         genesis.node_id.into_digest_of()
                     } else {
                         // create and register the stake pool
-                        let owner = WalletLib::new_account(&mut rand::rngs::OsRng);
+                        let owner = WalletLib::new_account(&mut rand::rngs::OsRng, discrimination);
                         let stake_pool = StakePool::new(&owner);
                         let node_id = stake_pool.id();
                         node.secret.genesis = Some(GenesisPraos {

@@ -2,7 +2,13 @@ use assert_fs::{
     fixture::{PathChild, PathCreateDir},
     TempDir,
 };
-use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusVersion, fee::LinearFee};
+use chain_core::property::FromStr;
+use chain_impl_mockchain::{
+    block::BlockDate,
+    chaintypes::ConsensusVersion,
+    fee::LinearFee,
+    tokens::{identifier::TokenIdentifier, minting_policy::MintingPolicy},
+};
 use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
 use hersir::builder::Blockchain;
 use hersir::builder::NetworkBuilder;
@@ -11,7 +17,7 @@ use hersir::builder::SpawnParams;
 use hersir::builder::Topology;
 use jormungandr_automation::jormungandr::FragmentNode;
 use jormungandr_lib::interfaces::{
-    BlockDate as BlockDateDto, InitialUTxO, Mempool, PersistentLog, SlotDuration,
+    BlockDate as BlockDateDto, InitialToken, InitialUTxO, Mempool, PersistentLog, SlotDuration,
 };
 
 use crate::startup;
@@ -43,13 +49,22 @@ pub fn dump_send_correct_fragments() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_block_content_max_size(100000.into())
-            .with_explorer()
+            .with_slot_duration(1)
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
                 persistent_log: Some(PersistentLog {
                     dir: persistent_log_path.path().to_path_buf(),
                 }),
+            })
+            .with_token(InitialToken {
+                token_id: TokenIdentifier::from_str(
+                    "00000000000000000000000000000000000000000000000000000000.00000000",
+                )
+                .unwrap()
+                .into(),
+                policy: MintingPolicy::new().into(),
+                to: vec![sender.to_initial_token(1_000_000)],
             }),
     )
     .unwrap();
@@ -99,7 +114,6 @@ pub fn dump_send_invalid_fragments() {
         vec![&sender, &receiver],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
@@ -147,7 +161,7 @@ pub fn non_existing_folder() {
         vec![&sender, &receiver],
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
-            .with_explorer()
+            .with_slot_duration(1)
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
@@ -201,7 +215,6 @@ pub fn fragment_which_reached_mempool_should_be_persisted() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_slot_duration(3)
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1usize.into(),
                 log_max_entries: 1000usize.into(),
@@ -241,7 +254,6 @@ pub fn fragment_which_is_not_in_fragment_log_should_be_persisted() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(60)
             .with_slot_duration(3)
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1000usize.into(),
                 log_max_entries: 1usize.into(),
@@ -281,7 +293,6 @@ pub fn pending_fragment_should_be_persisted() {
         ConfigurationBuilder::new()
             .with_slots_per_epoch(5)
             .with_slot_duration(60)
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 10usize.into(),
                 log_max_entries: 10usize.into(),
@@ -326,7 +337,6 @@ pub fn node_should_pickup_log_after_restart() {
     let config = ConfigurationBuilder::new()
         .with_slots_per_epoch(60)
         .with_slot_duration(3)
-        .with_explorer()
         .with_mempool(Mempool {
             pool_max_entries: 1usize.into(),
             log_max_entries: 1000usize.into(),

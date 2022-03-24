@@ -55,7 +55,7 @@ jobs:
           hub release create ${{ steps.release_info.outputs.release_flags }} --draft \
             -m "Release ${{ steps.release_info.outputs.version }} (in progress)" \
             -t $GITHUB_SHA $release_tag
-          upload_url=$(hub release show -f '%uA' $release_tag)
+          upload_url=$(timeout 1m bash -c "until hub release show -f '%uA' $release_tag; do sleep 1; done")
           echo "::set-output name=upload_url::$upload_url"
 
   cache_info:
@@ -102,6 +102,13 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
+      - name: Allow long paths on Windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: powershell
+        run: |
+          reg add HKLM\SYSTEM\CurrentControlSet\Control\FileSystem /v LongPathsEnabled /t REG_DWORD /d 1 /f
+          git config --system core.longpaths true
+
       - name: Cache cargo registry index
         uses: actions/cache@v2
         with:
@@ -185,6 +192,13 @@ jobs:
           #   toolchain: stable
           #   cross: true
     steps:
+      - name: Allow long paths on Windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        shell: powershell
+        run: |
+          reg add HKLM\SYSTEM\CurrentControlSet\Control\FileSystem /v LongPathsEnabled /t REG_DWORD /d 1 /f
+          git config --system core.longpaths true
+
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ matrix.toolchain }}

@@ -1,97 +1,196 @@
 {
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    utils.url = "github:kreisys/flake-utils";
-  };
-  outputs = { self, nixpkgs, utils }:
-    let
-      workspaceCargo = builtins.fromTOML (builtins.readFile ./Cargo.toml);
-      inherit (workspaceCargo.workspace) members;
-    in utils.lib.simpleFlake {
-      inherit nixpkgs;
-      systems = [ "x86_64-linux" "aarch64-linux" ];
-      preOverlays = [ ];
-      overlay = final: prev:
-        let inherit (prev) lib;
-        in (lib.listToAttrs (lib.forEach members (member:
-          lib.nameValuePair member (prev.rustPlatform.buildRustPackage {
-            inherit ((builtins.fromTOML
-              (builtins.readFile (./. + "/${member}/Cargo.toml"))).package)
-              name version;
-            src = ./.;
-            cargoSha256 = "sha256-O9kg3ZhN/Qm9u14IzxrJMP300CJ6HyNXKb7ZbTUlnxs=";
-            nativeBuildInputs = with final; [ pkg-config protobuf rustfmt ];
-            buildInputs = with final; [ openssl ];
-            PROTOC = "${final.protobuf}/bin/protoc";
-            PROTOC_INCLUDE = "${final.protobuf}/include";
-          })))) // {
-            jormungandr-entrypoint = let
-              script = final.writeShellScriptBin "entrypoint" ''
-                set -exuo pipefail
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.gitignore.url = "github:hercules-ci/gitignore.nix";
+  inputs.gitignore.inputs.nixpkgs.follows = "nixpkgs";
+  inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
+  inputs.pre-commit-hooks.inputs.nixpkgs.follows = "nixpkgs";
+  inputs.pre-commit-hooks.inputs.flake-utils.follows = "flake-utils";
+  inputs.rust-overlay.url = "github:oxalica/rust-overlay";
+  inputs.rust-overlay.inputs.flake-utils.follows = "flake-utils";
+  inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
+  # XXX: https://github.com/nix-community/naersk/pull/167
+  #inputs.naersk.url = "github:nix-community/naersk";
+  inputs.naersk.url = "github:yusdacra/naersk/feat/cargolock-git-deps";
+  inputs.naersk.inputs.nixpkgs.follows = "nixpkgs";
 
-                ulimit -n 1024
+  nixConfig.extra-substituters = [
+    "https://hydra.iohk.io"
+    "https://vit-ops.cachix.org"
+  ];
+  nixConfig.extra-trusted-public-keys = [
+    "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
+    "vit-ops.cachix.org-1:LY84nIKdW7g1cvhJ6LsupHmGtGcKAlUXo+l1KByoDho="
+  ];
 
-                nodeConfig="$NOMAD_TASK_DIR/node-config.json"
-                runConfig="$NOMAD_TASK_DIR/running.json"
-                runYaml="$NOMAD_TASK_DIR/running.yaml"
-                name="jormungandr"
+  outputs = {
+    self,
+    nixpkgs,
+    flake-utils,
+    gitignore,
+    pre-commit-hooks,
+    rust-overlay,
+    naersk,
+  }:
+    flake-utils.lib.eachSystem
+    [
+      flake-utils.lib.system.x86_64-linux
+      flake-utils.lib.system.aarch64-linux
+    ]
+    (
+      system: let
+        readTOML = file: builtins.fromTOML (builtins.readFile file);
+        workspaceCargo = readTOML ./Cargo.toml;
 
+        pkgs = import nixpkgs {
+          inherit system;
+          overlays = [(import rust-overlay)];
+        };
+
+        rust = let
+          _rust = pkgs.rust-bin.stable.latest.default.override {
+            extensions = [
+              "rust-src"
+              "rust-analysis"
+              "rls-preview"
+              "rustfmt-preview"
+              "clippy-preview"
+            ];
+          };
+        in
+          pkgs.buildEnv {
+            name = _rust.name;
+            inherit (_rust) meta;
+            buildInputs = [pkgs.makeWrapper];
+            paths = [_rust];
+            pathsToLink = ["/" "/bin"];
+            # XXX: This is needed because cargo and clippy commands need to
+            # also be aware of other binaries in order to work properly.
+            # https://github.com/cachix/pre-commit-hooks.nix/issues/126
+            postBuild = ''
+              for i in $out/bin/*; do
+                wrapProgram "$i" --prefix PATH : "$out/bin"
+              done
+            '';
+          };
+
+        naersk-lib = naersk.lib."${system}".override {
+          cargo = rust;
+          rustc = rust;
+        };
+
+        mkPackage = name: let
+          pkgCargo = readTOML ./${name}/Cargo.toml;
+          cargoOptions =
+            [
+              "--package"
+              name
+            ]
+            ++ (pkgs.lib.optionals (name == "jormungandr") [
+              "--features"
+              "prometheus-metrics"
+            ]);
+        in
+          naersk-lib.buildPackage {
+            root = gitignore.lib.gitignoreSource self;
+
+            cargoBuildOptions = x: x ++ cargoOptions;
+            cargoTestOptions = x: x ++ cargoOptions;
+
+            PROTOC = "${pkgs.protobuf}/bin/protoc";
+            PROTOC_INCLUDE = "${pkgs.protobuf}/include";
+
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+              protobuf
+              rustfmt
+            ];
+
+            buildInputs = with pkgs; [
+              openssl
+            ];
+          };
+
+        workspace =
+          builtins.listToAttrs
+          (
+            builtins.map
+            (name: {
+              inherit name;
+              value = mkPackage name;
+            })
+            workspaceCargo.workspace.members
+          );
+
+        jormungandr-entrypoint = let
+          script =
+            pkgs.writeShellScriptBin "entrypoint"
+            ''
+              set -exuo pipefail
+
+              ulimit -n 1024
+
+              nodeConfig="$NOMAD_TASK_DIR/node-config.json"
+              runConfig="$NOMAD_TASK_DIR/running.json"
+              runYaml="$NOMAD_TASK_DIR/running.yaml"
+              name="jormungandr"
+
+              chmod u+rwx -R "$NOMAD_TASK_DIR" || true
+
+              function convert () {
                 chmod u+rwx -R "$NOMAD_TASK_DIR" || true
+                cp "$nodeConfig" "$runConfig"
+                remarshal --if json --of yaml "$runConfig" > "$runYaml"
+              }
 
-                function convert () {
-                  chmod u+rwx -R "$NOMAD_TASK_DIR" || true
-                  cp "$nodeConfig" "$runConfig"
-                  remarshal --if json --of yaml "$runConfig" > "$runYaml"
-                }
+              if [ "$RESET" = "true" ]; then
+                echo "RESET is given, will start from scratch..."
+                rm -rf "$STORAGE_DIR"
+              elif [ -d "$STORAGE_DIR" ]; then
+                echo "$STORAGE_DIR found, not restoring from backup..."
+              else
+                echo "$STORAGE_DIR not found, restoring backup..."
 
-                if [ "$RESET" = "true" ]; then
-                  echo "RESET is given, will start from scratch..."
-                  rm -rf "$STORAGE_DIR"
-                elif [ -d "$STORAGE_DIR" ]; then
-                  echo "$STORAGE_DIR found, not restoring from backup..."
-                else
-                  echo "$STORAGE_DIR not found, restoring backup..."
+                restic restore latest \
+                  --verbose=5 \
+                  --no-lock \
+                  --tag "$NAMESPACE" \
+                  --target / \
+                || echo "couldn't restore backup, continue startup procedure..."
+              fi
 
-                  restic restore latest \
-                    --verbose=5 \
-                    --no-lock \
-                    --tag "$NAMESPACE" \
-                    --target / \
-                  || echo "couldn't restore backup, continue startup procedure..."
-                fi
+              set +x
+              echo "waiting for $REQUIRED_PEER_COUNT peers"
+              until [ "$(jq -e -r '.p2p.trusted_peers | length' < "$nodeConfig" || echo 0)" -ge $REQUIRED_PEER_COUNT ]; do
+                sleep 1
+              done
+              set -x
 
-                set +x
-                echo "waiting for $REQUIRED_PEER_COUNT peers"
-                until [ "$(jq -e -r '.p2p.trusted_peers | length' < "$nodeConfig" || echo 0)" -ge $REQUIRED_PEER_COUNT ]; do
-                  sleep 1
-                done
-                set -x
+              convert
 
-                convert
-
-                if [ -n "$PRIVATE" ]; then
-                  echo "Running with node with secrets..."
-                  exec jormungandr \
-                    --storage "$STORAGE_DIR" \
-                    --config "$NOMAD_TASK_DIR/running.yaml" \
-                    --genesis-block $NOMAD_TASK_DIR/block0.bin/block0.bin \
-                    --secret $NOMAD_SECRETS_DIR/bft-secret.yaml \
-                    "$@" || true
-                else
-                  echo "Running with follower node..."
-                  exec jormungandr \
-                    --storage "$STORAGE_DIR" \
-                    --config "$NOMAD_TASK_DIR/running.yaml" \
-                    --genesis-block $NOMAD_TASK_DIR/block0.bin/block0.bin \
-                    "$@" || true
-                fi
-              '';
-            in final.symlinkJoin {
-              name = "entrypoint";
-              paths = with final; [
-                jormungandr
-                script
-
+              if [ -n "$PRIVATE" ]; then
+                echo "Running with node with secrets..."
+                exec jormungandr \
+                  --storage "$STORAGE_DIR" \
+                  --config "$NOMAD_TASK_DIR/running.yaml" \
+                  --genesis-block $NOMAD_TASK_DIR/block0.bin/block0.bin \
+                  --secret $NOMAD_SECRETS_DIR/bft-secret.yaml \
+                  "$@" || true
+              else
+                echo "Running with follower node..."
+                exec jormungandr \
+                  --storage "$STORAGE_DIR" \
+                  --config "$NOMAD_TASK_DIR/running.yaml" \
+                  --genesis-block $NOMAD_TASK_DIR/block0.bin/block0.bin \
+                  "$@" || true
+              fi
+            '';
+        in
+          pkgs.symlinkJoin {
+            name = "entrypoint";
+            paths =
+              [script workspace.jormungandr]
+              ++ (with pkgs; [
                 bashInteractive
                 coreutils
                 curl
@@ -101,7 +200,6 @@
                 gnugrep
                 gnused
                 htop
-                jormungandr
                 jq
                 lsof
                 netcat
@@ -116,20 +214,54 @@
                 utillinux
                 vim
                 yq
-              ];
-            };
+              ]);
           };
 
-      packages = { jormungandr, jcli, jormungandr-entrypoint }@pkgs: pkgs;
-
-      devShell =
-        { mkShell, rustc, cargo, pkg-config, openssl, protobuf, rustfmt }:
-        mkShell {
-          PROTOC = "${protobuf}/bin/protoc";
-          PROTOC_INCLUDE = "${protobuf}/include";
-          buildInputs = [ rustc cargo pkg-config openssl protobuf rustfmt ];
+        pre-commit = pre-commit-hooks.lib.${system}.run {
+          src = self;
+          hooks = {
+            alejandra = {
+              enable = true;
+            };
+            rustfmt = {
+              enable = true;
+              entry = pkgs.lib.mkForce "${rust}/bin/cargo-fmt fmt -- --check --color always";
+            };
+          };
         };
 
-      hydraJobs = { jormungandr, jcli, jormungandr-entrypoint }@pkgs: pkgs;
-    };
+        warnToUpdateNix = pkgs.lib.warn "Consider updating to Nix > 2.7 to remove this warning!";
+      in rec {
+        packages = {
+          inherit (workspace) jormungandr jcli;
+          inherit jormungandr-entrypoint;
+          default = workspace.jormungandr;
+        };
+
+        devShells.default = pkgs.mkShell {
+          PROTOC = "${pkgs.protobuf}/bin/protoc";
+          PROTOC_INCLUDE = "${pkgs.protobuf}/include";
+          buildInputs =
+            [rust]
+            ++ (with pkgs; [
+              pkg-config
+              openssl
+              protobuf
+            ]);
+          shellHook =
+            pre-commit.shellHook
+            + ''
+              echo "=== Jormungandr development shell ==="
+              echo "Info: Git hooks can be installed using \`pre-commit install\`"
+            '';
+        };
+
+        checks.pre-commit = pre-commit;
+
+        hydraJobs = packages;
+
+        defaultPackage = warnToUpdateNix packages.default;
+        devShell = warnToUpdateNix devShells.default;
+      }
+    );
 }

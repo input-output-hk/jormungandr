@@ -19,15 +19,13 @@ use jortestkit::load::Configuration;
 use jortestkit::measurement::Status;
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::{AdversaryFragmentGenerator, FragmentStatusProvider, VoteCastsGenerator};
-use rand::rngs::OsRng;
 use thor::{vote_plan_cert, BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
 
 pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
     let temp_dir = TempDir::new().unwrap();
-    let mut rng = OsRng;
-    let mut committee = Wallet::new_account(&mut rng);
+    let mut committee = Wallet::default();
 
-    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::new_account(&mut rng)))
+    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::default()))
         .take(quick_config.wallets_count())
         .collect();
 
@@ -74,7 +72,6 @@ pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
         .with_committees(&[committee.to_committee_id()])
         .with_slots_per_epoch(quick_config.slots_in_epoch())
         .with_certs(vec![vote_plan_cert])
-        .with_explorer()
         .with_slot_duration(quick_config.slot_duration())
         .with_treasury(1_000.into())
         .build(&temp_dir);
@@ -145,20 +142,6 @@ pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
 
     wait_for_epoch(quick_config.voting_timing()[2], jormungandr.rest());
 
-    let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
-    let vote_plan_status = active_vote_plans
-        .iter()
-        .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
-        .unwrap();
-
-    for proposal in vote_plan_status.proposals.iter() {
-        assert!(
-            proposal.tally.is_some(),
-            "Proposal is not tallied {:?}",
-            proposal
-        );
-    }
-
     benchmark_consumption_monitor.stop();
 
     jormungandr.assert_no_errors_in_log();
@@ -169,12 +152,11 @@ pub fn adversary_public_vote_load_scenario(
     adversary_noise_config: Configuration,
 ) {
     let temp_dir = TempDir::new().unwrap();
-    let mut rng = OsRng;
-    let mut committee = Wallet::new_account(&mut rng);
+    let mut committee = Wallet::default();
 
-    let mut noise_wallet_from = Wallet::new_account(&mut rng);
+    let mut noise_wallet_from = Wallet::default();
 
-    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::new_account(&mut rng)))
+    let voters: Vec<Wallet> = std::iter::from_fn(|| Some(Wallet::default()))
         .take(quick_config.wallets_count())
         .collect();
 
@@ -220,7 +202,6 @@ pub fn adversary_public_vote_load_scenario(
         .with_committees(&[committee.to_committee_id()])
         .with_slots_per_epoch(quick_config.slots_in_epoch())
         .with_certs(vec![vote_plan_cert])
-        .with_explorer()
         .with_slot_duration(quick_config.slot_duration())
         .with_block_content_max_size(quick_config.block_content_max_size().into())
         .with_treasury(1_000.into())
@@ -317,21 +298,8 @@ pub fn adversary_public_vote_load_scenario(
         )
         .unwrap();
 
+    // TODO: not sure if this is necessary now
     wait_for_epoch(quick_config.voting_timing()[2], jormungandr.rest());
-
-    let active_vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
-    let vote_plan_status = active_vote_plans
-        .iter()
-        .find(|c_vote_plan| c_vote_plan.id == vote_plan.to_id().into())
-        .unwrap();
-
-    for proposal in vote_plan_status.proposals.iter() {
-        assert!(
-            proposal.tally.is_some(),
-            "Proposal is not tallied {:?}",
-            proposal
-        );
-    }
 
     benchmark_consumption_monitor.stop();
 

@@ -88,17 +88,16 @@ impl PrivateTally {
             .into_iter()
             .zip(shares)
             .map(|(prop, shares)| match prop.tally {
-                Some(Tally::Private {
+                Tally::Private {
                     state: PrivateTallyState::Decrypted { result, .. },
-                }) => Ok(DecryptedPrivateTallyProposal {
+                } => Ok(DecryptedPrivateTallyProposal {
                     decrypt_shares: shares.into_boxed_slice(),
                     tally_result: result.results().into_boxed_slice(),
                 }),
                 other => {
                     let found = match other {
-                        Some(Tally::Public { .. }) => "public tally",
-                        Some(Tally::Private { .. }) => "private encrypted tally",
-                        None => "none",
+                        Tally::Public { .. } => "public tally",
+                        Tally::Private { .. } => "private encrypted tally",
                     };
                     Err(Error::PrivateTallyExpected { found })
                 }

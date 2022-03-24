@@ -24,9 +24,9 @@ pub fn explorer_schema_diff_test() {
     use jormungandr_automation::jormungandr::Starter;
 
     let temp_dir = TempDir::new().unwrap();
-    let config = ConfigurationBuilder::new().with_explorer().build(&temp_dir);
+    let config = ConfigurationBuilder::new().build(&temp_dir);
 
-    let jormungandr = Starter::new()
+    let _jormungandr = Starter::new()
         .temp_dir(temp_dir)
         .config(config)
         .start()
@@ -38,15 +38,12 @@ pub fn explorer_schema_diff_test() {
     std::process::Command::new(
         "../jormungandr-automation/resources/explorer/graphql/generate_schema.sh",
     )
-    .args(&[
-        jormungandr.explorer().uri(),
-        actual_schema_path
-            .path()
-            .as_os_str()
-            .to_str()
-            .unwrap()
-            .to_string(),
-    ])
+    .args(&[actual_schema_path
+        .path()
+        .as_os_str()
+        .to_str()
+        .unwrap()
+        .to_string()])
     .spawn()
     .unwrap()
     .wait()
@@ -62,12 +59,12 @@ pub fn explorer_sanity_test() {
     let receiver = thor::Wallet::default();
 
     let mut config = ConfigurationBuilder::new();
-    config
-        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-        .with_explorer();
+    config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
 
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
+
+    let explorer = jormungandr.explorer();
 
     let transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
@@ -84,12 +81,10 @@ pub fn explorer_sanity_test() {
         .send(&transaction)
         .assert_in_block_with_wait(&wait);
 
-    let explorer = jormungandr.explorer();
-
     transaction_by_id(&explorer, fragment_id);
     blocks(&explorer, jormungandr.logger.get_created_blocks_hashes());
-    stake_pools(&explorer, &initial_stake_pools);
-    stake_pool(&explorer, &initial_stake_pools);
+    stake_pools(&explorer, initial_stake_pools.as_ref());
+    stake_pool(&explorer, initial_stake_pools.as_ref());
     block_at_chain_length(&explorer, jormungandr.logger.get_created_blocks_hashes());
     epoch(&explorer);
 }
@@ -179,4 +174,35 @@ fn epoch(explorer: &Explorer) {
     let epoch = explorer.epoch(1, 100).unwrap();
 
     assert_eq!(epoch.data.unwrap().epoch.id, "1", "can't find epoch");
+}
+
+struct ExplorerProcess {
+    handler: Option<std::process::Child>,
+    logs_dir: Option<std::path::PathBuf>,
+}
+
+impl Drop for ExplorerProcess {
+    fn drop(&mut self) {
+        let output = if let Some(mut handler) = self.handler.take() {
+            let _ = handler.kill();
+            handler.wait_with_output().unwrap()
+        } else {
+            return;
+        };
+
+        if std::thread::panicking() {
+            if let Some(logs_dir) = &self.logs_dir {
+                println!(
+                    "persisting explorer logs after panic: {}",
+                    logs_dir.display()
+                );
+
+                std::fs::write(logs_dir.join("explorer.log"), output.stdout)
+                    .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
+
+                std::fs::write(logs_dir.join("explorer.err"), output.stderr)
+                    .unwrap_or_else(|e| eprint!("Could not write node logs to disk: {}", e));
+            }
+        }
+    }
 }

@@ -1,23 +1,28 @@
 use super::persistent_sequence::PersistentSequence;
-use std::collections::hash_map::DefaultHasher;
-use std::collections::HashMap;
-
-use crate::blockcfg::{Block, BlockDate, ChainLength, Epoch, Fragment, FragmentId, HeaderHash};
 use cardano_legacy_address::Addr as OldAddress;
 use chain_addr::{Address, Discrimination};
-use chain_core::property::Block as _;
-use chain_core::property::Fragment as _;
-use chain_impl_mockchain::block::Proof;
-use chain_impl_mockchain::certificate::{
-    Certificate, ExternalProposalId, PoolId, PoolRegistration, PoolRetirement, VotePlanId,
+use chain_core::property::{Block as _, Fragment as _};
+use chain_impl_mockchain::{
+    account::Identifier,
+    block::{Block, Proof},
+    certificate::{
+        Certificate, ExternalProposalId, PoolId, PoolRegistration, PoolRetirement, VotePlanId,
+    },
+    fragment::{Fragment, FragmentId},
+    header::BlockDate,
+    header::ChainLength,
+    header::Epoch,
+    header::HeaderId as HeaderHash,
+    key::BftLeaderId,
+    transaction::{InputEnum, TransactionSlice, Witness},
+    value::Value,
+    vote::{Choice, EncryptedVote, Options, PayloadType, ProofOfCorrectVote, Weight},
 };
-use chain_impl_mockchain::key::BftLeaderId;
-use chain_impl_mockchain::transaction::{InputEnum, TransactionSlice, Witness};
-use chain_impl_mockchain::value::Value;
-use chain_impl_mockchain::vote::{
-    Choice, EncryptedVote, Options, PayloadType, ProofOfCorrectVote, Weight,
+use std::{
+    collections::{hash_map::DefaultHasher, HashMap},
+    convert::TryInto,
+    sync::Arc,
 };
-use std::{convert::TryInto, sync::Arc};
 
 pub type Hamt<K, V> = imhamt::Hamt<DefaultHasher, K, Arc<V>>;
 
@@ -127,7 +132,7 @@ pub struct ExplorerVoteProposal {
 #[derive(Clone)]
 pub enum ExplorerVoteTally {
     Public {
-        results: Vec<Weight>,
+        results: Box<[Weight]>,
         options: Options,
     },
     Private {
@@ -440,5 +445,17 @@ impl ExplorerTransaction {
 
     pub fn outputs(&self) -> &Vec<ExplorerOutput> {
         &self.outputs
+    }
+}
+
+impl ExplorerAddress {
+    pub fn to_single_account(&self) -> Option<Identifier> {
+        match self {
+            ExplorerAddress::New(address) => match address.kind() {
+                chain_addr::Kind::Single(key) => Some(key.clone().into()),
+                _ => None,
+            },
+            ExplorerAddress::Old(_) => None,
+        }
     }
 }

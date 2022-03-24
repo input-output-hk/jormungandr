@@ -1,6 +1,6 @@
 pub mod template;
 
-use chain_impl_mockchain::accounting::account::SpendingCounter;
+use chain_impl_mockchain::accounting::account::SpendingCounterIncreasing;
 use chain_impl_mockchain::{
     block::BlockDate, certificate::PoolId, transaction::UnspecifiedAccountIdentifier,
     vote::CommitteeId,
@@ -79,7 +79,7 @@ impl Wallet {
         self.inner.confirm_transaction()
     }
 
-    pub fn spending_counter(&self) -> SpendingCounter {
+    pub fn spending_counter(&self) -> Option<SpendingCounterIncreasing> {
         self.inner.spending_counter()
     }
 

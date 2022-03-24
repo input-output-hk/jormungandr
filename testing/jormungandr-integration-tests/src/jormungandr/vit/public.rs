@@ -31,20 +31,16 @@ use jormungandr_lib::{
     },
 };
 use rand::rngs::OsRng;
-use rand_core::{CryptoRng, RngCore};
 use std::time::Duration;
 use thor::{vote_plan_cert, FragmentSender, FragmentSenderSetup, Wallet};
 
 const TEST_COMMITTEE_SIZE: usize = 3;
 
-fn generate_wallets_and_committee<RNG>(rng: &mut RNG) -> (Vec<Wallet>, Vec<CommitteeIdDef>)
-where
-    RNG: CryptoRng + RngCore,
-{
+fn generate_wallets_and_committee() -> (Vec<Wallet>, Vec<CommitteeIdDef>) {
     let mut ids = Vec::new();
     let mut wallets = Vec::new();
     for _i in 0..TEST_COMMITTEE_SIZE {
-        let wallet = Wallet::new_account(rng);
+        let wallet = Wallet::default();
         ids.push(wallet.to_committee_id());
         wallets.push(wallet);
     }
@@ -57,7 +53,7 @@ pub fn test_get_committee_id() {
     let jcli: JCli = Default::default();
 
     let mut rng = OsRng;
-    let (_, mut expected_committee_ids) = generate_wallets_and_committee(&mut rng);
+    let (_, mut expected_committee_ids) = generate_wallets_and_committee();
 
     let leader_key_pair = KeyPair::generate(&mut rng);
 
@@ -92,8 +88,7 @@ pub fn test_get_committee_id() {
 pub fn test_get_initial_vote_plan() {
     let temp_dir = TempDir::new().unwrap();
 
-    let mut rng = OsRng;
-    let (wallets, expected_committee_ids) = generate_wallets_and_committee(&mut rng);
+    let (wallets, expected_committee_ids) = generate_wallets_and_committee();
 
     let expected_vote_plan = VoteTestGen::vote_plan();
 
@@ -138,10 +133,9 @@ pub fn test_vote_flow_bft() {
     let initial_fund_per_wallet = 1_000_000;
     let temp_dir = TempDir::new().unwrap();
 
-    let mut rng = OsRng;
-    let mut alice = Wallet::new_account(&mut rng);
-    let mut bob = Wallet::new_account(&mut rng);
-    let mut clarice = Wallet::new_account(&mut rng);
+    let mut alice = Wallet::default();
+    let mut bob = Wallet::default();
+    let mut clarice = Wallet::default();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
@@ -193,7 +187,7 @@ pub fn test_vote_flow_bft() {
         ])
         .with_slots_per_epoch(60)
         .with_certs(vec![vote_plan_cert])
-        .with_explorer()
+        .with_slot_duration(1)
         .with_treasury(1_000.into())
         .build(&temp_dir);
 
@@ -300,8 +294,7 @@ fn assert_first_proposal_has_votes(stake: u64, vote_plan_statuses: Vec<VotePlanS
         .proposals
         .first()
         .unwrap();
-    assert!(proposal.tally.is_some());
-    match proposal.tally.as_ref().unwrap() {
+    match &proposal.tally {
         Tally::Public { result } => {
             let results = result.results();
             assert_eq!(*results.get(0).unwrap(), 0);
@@ -318,10 +311,9 @@ pub fn test_vote_flow_praos() {
     let no_choice = Choice::new(2);
     let rewards_increase = 10;
 
-    let mut rng = OsRng;
-    let mut alice = Wallet::new_account(&mut rng);
-    let mut bob = Wallet::new_account(&mut rng);
-    let mut clarice = Wallet::new_account(&mut rng);
+    let mut alice = Wallet::default();
+    let mut bob = Wallet::default();
+    let mut clarice = Wallet::default();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
@@ -515,7 +507,6 @@ pub fn jcli_e2e_flow() {
     let token_id = vote_plan.voting_token();
 
     let config = ConfigurationBuilder::new()
-        .with_explorer()
         .with_funds(vec![
             alice.to_initial_fund(1_000_000),
             bob.to_initial_fund(1_000_000),
@@ -647,18 +638,6 @@ pub fn jcli_e2e_flow() {
 
     time::wait_for_epoch(3, jormungandr.rest());
 
-    assert!(jormungandr
-        .rest()
-        .vote_plan_statuses()
-        .unwrap()
-        .first()
-        .unwrap()
-        .proposals
-        .first()
-        .unwrap()
-        .tally
-        .is_some());
-
     assert_eq!(
         jormungandr
             .rest()
@@ -743,7 +722,6 @@ pub fn duplicated_vote() {
     .unwrap();
 
     let vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
-    vote_plans.assert_all_proposals_are_tallied();
     vote_plans.assert_proposal_tally(
         vote_plan.to_id().to_string(),
         0,
@@ -813,7 +791,6 @@ pub fn non_duplicated_vote() {
         .unwrap();
 
     let vote_plans = jormungandr.rest().vote_plan_statuses().unwrap();
-    vote_plans.assert_all_proposals_are_tallied();
     vote_plans.assert_proposal_tally(
         vote_plan.to_id().to_string(),
         0,
@@ -824,4 +801,52 @@ pub fn non_duplicated_vote() {
         1,
         vec![0, (*alice_account_state.value()).into(), 0],
     );
+}
+
+#[test]
+pub fn vote_outside_of_choices_is_rejected_in_tally() {
+    let mut alice = thor::Wallet::default();
+    let options_size = 2;
+
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(1)
+        .options_size(options_size)
+        .action_type(VoteAction::OffChain)
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .public()
+        .build();
+
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
+    let jormungandr = startup::start_bft(
+        vec![&alice],
+        ConfigurationBuilder::new()
+            .with_slots_per_epoch(10)
+            .with_slot_duration(2)
+            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_token(InitialToken {
+                token_id: token_id.clone().into(),
+                policy: minting_policy.into(),
+                to: vec![alice.to_initial_token(1_000_000_000)],
+            }),
+    )
+    .unwrap();
+
+    thor::FragmentChainSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        jormungandr.to_remote(),
+        FragmentSenderSetup::no_verify(),
+    )
+    .send_vote_plan(&mut alice, &vote_plan)
+    .unwrap()
+    .and_verify_is_in_block(Duration::from_secs(2))
+    .unwrap()
+    .then_wait_for_epoch(1)
+    .cast_vote(&mut alice, &vote_plan, 0, &Choice::new(options_size))
+    .unwrap()
+    .and_verify_is_rejected_with_message(Duration::from_secs(2), "Invalid option choice")
+    .unwrap();
 }

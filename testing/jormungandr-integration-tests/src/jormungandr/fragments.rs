@@ -1,8 +1,11 @@
 use crate::startup;
+use chain_core::property::FromStr;
+use chain_impl_mockchain::tokens::identifier::TokenIdentifier;
+use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{chaintypes::ConsensusType, fee::LinearFee};
 use jormungandr_automation::jormungandr::{ConfigurationBuilder, MemPoolCheck};
 use jormungandr_automation::testing::time;
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, BlockDate, Mempool};
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, BlockDate, InitialToken, Mempool};
 use mjolnir::generators::FragmentGenerator;
 use std::time::Duration;
 use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
@@ -22,11 +25,21 @@ pub fn send_all_fragments() {
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(3)
             .with_linear_fees(LinearFee::new(1, 1, 1))
-            .with_explorer()
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
                 persistent_log: None,
+            })
+            .with_token(InitialToken {
+                // FIXME: this works because I know it's the VotePlanBuilder's default, but
+                // probably should me more explicit.
+                token_id: TokenIdentifier::from_str(
+                    "00000000000000000000000000000000000000000000000000000000.00000000",
+                )
+                .unwrap()
+                .into(),
+                policy: MintingPolicy::new().into(),
+                to: vec![sender.to_initial_token(1_000_000)],
             }),
     )
     .unwrap();
@@ -50,6 +63,7 @@ pub fn send_all_fragments() {
     );
 
     fragment_generator.prepare(BlockDate::new(1, 0));
+
     time::wait_for_epoch(2, jormungandr.rest());
 
     let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();

@@ -126,8 +126,7 @@ impl Error {
         };
         maybe_logs
             .into_iter()
-            .map(|logs| logs.iter())
-            .flatten()
+            .flat_map(|logs| logs.iter())
             .map(String::as_str)
     }
 }
@@ -457,7 +456,7 @@ impl SyncNode for Node {
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
         self.logger()
-            .get_lines_with_level(LogLevel::ERROR)
+            .get_log_lines_with_level(LogLevel::ERROR)
             .map(|x| x.to_string())
             .collect()
     }

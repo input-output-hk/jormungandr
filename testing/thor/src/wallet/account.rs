@@ -45,15 +45,23 @@ impl Wallet {
         }
     }
 
-    pub fn from_secret(signing_key: SigningKey, discrimination: Discrimination) -> Self {
+    pub fn from_secret_key(
+        signing_key: SigningKey,
+        internal_counters: SpendingCounterIncreasing,
+        discrimination: Discrimination,
+    ) -> Self {
         Wallet {
             signing_key,
-            internal_counters: SpendingCounterIncreasing::default(),
+            internal_counters,
             discrimination,
         }
     }
 
-    pub fn from_existing_account(bech32_str: &str, spending_counter: Option<u32>) -> Self {
+    pub fn from_existing_account(
+        bech32_str: &str,
+        spending_counter: Option<SpendingCounter>,
+        discrimination: Discrimination,
+    ) -> Self {
         let signing_key = SigningKey::from_bech32_str(bech32_str).expect("bad bech32");
         Wallet {
             signing_key,
@@ -62,7 +70,7 @@ impl Wallet {
                     .map(Into::into)
                     .unwrap_or_else(SpendingCounter::zero),
             ),
-            discrimination: Discrimination::Test,
+            discrimination,
         }
     }
 

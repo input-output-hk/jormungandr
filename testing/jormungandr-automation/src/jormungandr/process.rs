@@ -31,6 +31,7 @@ use std::net::SocketAddr;
 use std::path::Path;
 use std::process::Child;
 use std::process::ExitStatus;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
 use thiserror::Error;
 
@@ -50,6 +51,8 @@ impl From<NodeState> for Status {
     }
 }
 
+// FIX: we use a RefCell because it would be very labor intensive to change
+// the rest of the testing framework to take a mutable reference to the logger
 pub struct JormungandrProcess {
     pub child: Child,
     pub logger: JormungandrLogger,
@@ -71,13 +74,14 @@ impl JormungandrProcess {
         alias: String,
     ) -> Result<Self, StartupError> {
         let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
 
         Ok(JormungandrProcess {
             child,
             temp_dir,
             alias,
             grpc_client: JormungandrClient::new(node_config.p2p_listen_address()),
-            logger: JormungandrLogger::new(stdout),
+            logger: JormungandrLogger::new(stdout, stderr),
             p2p_public_address: node_config.p2p_public_address(),
             p2p_listen_address: node_config.p2p_listen_address(),
             rest_socket_addr: node_config.rest_socket_addr(),
@@ -206,6 +210,10 @@ impl JormungandrProcess {
         self.alias.to_string()
     }
 
+    pub fn temp_dir(&self) -> Option<std::path::PathBuf> {
+        self.temp_dir.as_ref().map(|dir| dir.path().into())
+    }
+
     pub fn rest(&self) -> JormungandrRest {
         JormungandrRest::new(self.rest_uri())
     }
@@ -248,7 +256,7 @@ impl JormungandrProcess {
     pub fn check_no_errors_in_log(&self) -> Result<(), JormungandrError> {
         let error_lines = self
             .logger
-            .get_lines_with_level(LogLevel::ERROR)
+            .get_log_lines_with_level(LogLevel::ERROR)
             .collect::<Vec<_>>();
 
         if !error_lines.is_empty() {
@@ -256,6 +264,11 @@ impl JormungandrProcess {
                 logs: self.logger.get_log_content(),
                 error_lines: format!("{:?}", error_lines),
             });
+        }
+
+        let stderr = self.logger.get_panic_content();
+        if !stderr.is_empty() {
+            return Err(JormungandrError::StdErr { stderr });
         }
         Ok(())
     }
@@ -283,7 +296,18 @@ impl JormungandrProcess {
     }
 
     pub fn explorer(&self) -> Explorer {
-        Explorer::new(self.rest_socket_addr.to_string())
+        let mut p2p_public_address = self.p2p_public_address.clone();
+        let port = match p2p_public_address.pop().unwrap() {
+            multiaddr::Protocol::Tcp(port) => port,
+            _ => todo!("explorer can only be attached through grpc(http)"),
+        };
+
+        let address = match p2p_public_address.pop().unwrap() {
+            multiaddr::Protocol::Ip4(address) => address,
+            _ => todo!("only ipv4 supported for now"),
+        };
+
+        Explorer::new(format!("http://{}:{}/", address, port), self.temp_dir())
     }
 
     pub fn to_trusted_peer(&self) -> TrustedPeer {
@@ -294,7 +318,17 @@ impl JormungandrProcess {
     }
 
     pub fn time_era(&self) -> TimeEra {
-        let block_date = self.explorer().current_time();
+        let block_date = BlockDate::from_str(
+            self.rest()
+                .stats()
+                .unwrap()
+                .stats
+                .unwrap()
+                .last_block_date
+                .unwrap()
+                .as_ref(),
+        )
+        .unwrap();
 
         TimeEra::new(
             (block_date.slot() as u64).into(),
@@ -343,10 +377,13 @@ impl Drop for JormungandrProcess {
         // FIXME: These should be better done in a test harness
         self.child.wait().unwrap();
 
-        crate::testing::panic::persist_dir_on_panic(
-            self.temp_dir.take(),
-            vec![("node.log", &self.logger.get_log_content())],
-        );
+        let mut to_persist = vec![("node.log", SyncNode::log_content(self))];
+        let stderr = self.logger.get_panic_content();
+        if !stderr.is_empty() {
+            to_persist.push(("stderr", stderr));
+        }
+
+        crate::testing::panic::persist_dir_on_panic(self.temp_dir.take(), to_persist);
     }
 }
 
@@ -379,8 +416,9 @@ impl SyncNode for JormungandrProcess {
 
     fn get_lines_with_error_and_invalid(&self) -> Vec<String> {
         self.logger
-            .get_lines_with_level(LogLevel::ERROR)
+            .get_log_lines_with_level(LogLevel::ERROR)
             .map(|x| x.to_string())
+            .chain(self.logger.get_panic_lines().into_iter())
             .collect()
     }
 

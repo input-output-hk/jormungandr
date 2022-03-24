@@ -166,7 +166,6 @@ type Block {
   previousBlock: Block!
   totalInput: Value!
   totalOutput: Value!
-  treasury: Treasury
   isConfirmed: Boolean!
   branches: [Branch!]!
 }
@@ -447,12 +446,6 @@ type TransactionInput {
 type TransactionOutput {
   amount: Value!
   address: Address!
-}
-
-type Treasury {
-  rewards: Value!
-  treasury: Value!
-  treasuryTax: TaxType!
 }
 
 scalar Value
