@@ -4,7 +4,10 @@ use crate::network::{
     grpc, p2p::comm::PeerComms, security_params::NONCE_LEN, Channels, ConnectionState,
 };
 use crate::topology::NodeId;
-use chain_core::mempack::{self, ReadBuf, Readable};
+use chain_core::{
+    packer::Codec,
+    property::{DeserializeFromSlice, ReadError},
+};
 use chain_network::data::AuthenticatedNodeId;
 use chain_network::error::{self as net_error, HandshakeError};
 
@@ -46,8 +49,9 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
             .handshake(&nonce[..])
             .await
             .map_err(ConnectError::Handshake)?;
-        let mut buf = ReadBuf::from(hr.block0_id.as_bytes());
-        let block0_hash = HeaderHash::read(&mut buf).map_err(ConnectError::DecodeBlock0)?;
+        let block0_hash =
+            HeaderHash::deserialize_from_slice(&mut Codec::new(hr.block0_id.as_bytes()))
+                .map_err(ConnectError::DecodeBlock0)?;
         let expected = state.global.block0_hash;
         match_block0(expected, block0_hash)?;
 
@@ -157,7 +161,7 @@ pub enum ConnectError {
     #[error("protocol handshake failed: {0}")]
     Handshake(#[source] HandshakeError),
     #[error("failed to decode genesis block in response")]
-    DecodeBlock0(#[source] mempack::ReadError),
+    DecodeBlock0(#[source] ReadError),
     #[error(
         "genesis block hash {peer_responded} reported by the peer is not the expected {expected}"
     )]

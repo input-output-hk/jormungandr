@@ -1,4 +1,4 @@
-use chain_core::property::Deserialize;
+use chain_core::{packer::Codec, property::Deserialize};
 use chain_impl_mockchain::block::Block;
 use jormungandr_lib::interfaces::NodeSecret;
 use loki::{args::Args, error::Error, process::AdversaryNodeBuilder, rest::AdversaryRest};
@@ -15,7 +15,7 @@ fn main() {
 }
 
 fn launch(args: &Args) -> Result<(), Error> {
-    let block0 = Block::deserialize(BufReader::new(File::open(&args.genesis_block)?))?;
+    let block0 = Block::deserialize(&mut Codec::new(File::open(&args.genesis_block)?))?;
 
     let mut rest = AdversaryRest::new(AdversaryNodeBuilder::new(block0).build());
 

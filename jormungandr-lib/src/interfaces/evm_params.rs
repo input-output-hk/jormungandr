@@ -1,7 +1,6 @@
-use std::convert::{TryFrom, TryInto};
-
 use chain_impl_mockchain::{config, evm};
 use serde::{Deserialize, Serialize};
+use std::convert::{TryFrom, TryInto};
 use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]

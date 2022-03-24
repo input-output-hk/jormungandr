@@ -12,8 +12,8 @@ use crate::jormungandr::{
     Block0ConfigurationBuilder,
 };
 use chain_core::{
-    mempack::{ReadBuf, Readable},
-    property::{Header as BlockHeader, Serialize},
+    packer::Codec,
+    property::{DeserializeFromSlice, Header as BlockHeader, Serialize},
 };
 use chain_impl_mockchain::{block::BlockVersion, chaintypes::ConsensusVersion, key::Hash};
 use std::fmt;
@@ -152,16 +152,17 @@ impl Node for JormungandrServerImpl {
         _request: tonic::Request<PeersRequest>,
     ) -> Result<tonic::Response<PeersResponse>, tonic::Status> {
         info!(method = %MethodType::GetPeers, "Get peers request received");
-        use bincode::Options;
         let data = self.data.read().unwrap();
-        let mut self_gossip = Vec::new();
-        let config = bincode::options();
-        config.with_limit(512);
-        config
-            .serialize_into(&mut self_gossip, data.profile().gossip().as_ref())
-            .unwrap();
+        // Gossip struct serde, jormungandr/src/topology/gossip.rs
+        let mut codec = chain_core::packer::Codec::new(Vec::new());
+        let bytes = data.profile().gossip().as_ref();
+        if bytes.len() > 512 {
+            panic!("gossip size overflow");
+        }
+        codec.put_be_u16(bytes.len() as u16).unwrap();
+        codec.put_bytes(bytes).unwrap();
         Ok(Response::new(PeersResponse {
-            peers: vec![self_gossip],
+            peers: vec![codec.into_inner()],
         }))
     }
     async fn get_blocks(
@@ -178,7 +179,8 @@ impl Node for JormungandrServerImpl {
         let mut blocks = vec![];
 
         for block_id in block_ids.ids.iter() {
-            let block_hash = Hash::read(&mut ReadBuf::from(block_id.as_ref())).unwrap();
+            let block_hash =
+                Hash::deserialize_from_slice(&mut Codec::new(block_id.as_slice())).unwrap();
 
             let mut block = self
                 .data
@@ -203,9 +205,11 @@ impl Node for JormungandrServerImpl {
 
         for block in blocks {
             tx.send(block.map(|b| {
-                let mut bytes = vec![];
-                b.serialize(&mut bytes).unwrap();
-                Block { content: bytes }
+                let mut codec = Codec::new(vec![]);
+                b.serialize(&mut codec).unwrap();
+                Block {
+                    content: codec.into_inner(),
+                }
             }))
             .await
             .unwrap();

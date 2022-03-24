@@ -1,3 +1,4 @@
+use chain_core::property::ReadError;
 use jormungandr_lib::interfaces::Block0ConfigurationError;
 use thiserror::Error;
 
@@ -5,6 +6,8 @@ use thiserror::Error;
 pub enum Error {
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
+    #[error("Read error: {0}")]
+    Read(#[from] ReadError),
     #[error("Could not parse YAML file: {0}")]
     Yaml(#[from] serde_yaml::Error),
     #[error("Block0 error: {0}")]

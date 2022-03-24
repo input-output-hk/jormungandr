@@ -1,11 +1,9 @@
 use super::{limits, NodeId};
 use crate::network::p2p::Address;
 
-use chain_core::property;
+use chain_core::{packer::Codec, property};
 use std::net::{IpAddr, Ipv4Addr};
 use thiserror::Error;
-
-use bincode::Options;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Gossip(poldercast::Gossip);
@@ -131,47 +129,68 @@ impl From<Vec<Gossip>> for Gossips {
 #[derive(Debug, Error)]
 pub enum GossipError {
     #[error(transparent)]
-    Io(#[from] std::io::Error),
-    #[error(transparent)]
-    Bincode(#[from] bincode::Error),
+    ReadError(#[from] property::ReadError),
     #[error(transparent)]
     InvalidGossip(#[from] poldercast::GossipError),
 }
 
+// After updating Gossip serde format also need to update it in peers() function in 'testing/jormungandr-automation/src/jormungandr/grpc/server/mod.rs'
 impl property::Serialize for Gossip {
-    type Error = GossipError;
-
-    fn serialize<W: std::io::Write>(&self, writer: W) -> Result<(), Self::Error> {
-        let config = bincode::options();
-        config.with_limit(limits::MAX_GOSSIP_SIZE);
-
-        Ok(config.serialize_into(writer, &self.0.as_ref())?)
+    fn serialize<W: std::io::Write>(
+        &self,
+        codec: &mut Codec<W>,
+    ) -> Result<(), property::WriteError> {
+        let bytes = self.0.as_ref();
+        if bytes.len() > limits::MAX_GOSSIP_SIZE {
+            return Err(property::WriteError::IoError(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Gossip size more than expected",
+            )));
+        }
+        codec.put_be_u16(bytes.len() as u16)?;
+        codec.put_bytes(bytes)
     }
 }
 
 impl property::Deserialize for Gossip {
-    type Error = GossipError;
-
-    fn deserialize<R: std::io::BufRead>(reader: R) -> Result<Self, Self::Error> {
-        let config = bincode::options();
-        config.with_limit(limits::MAX_GOSSIP_SIZE);
-
-        config
-            .deserialize_from::<R, Vec<u8>>(reader)
-            .map_err(GossipError::from)
-            .and_then(|slice| {
-                Ok(Gossip(
-                    poldercast::GossipSlice::try_from_slice(&slice)?.to_owned(),
-                ))
-            })
+    fn deserialize<R: std::io::Read>(codec: &mut Codec<R>) -> Result<Self, property::ReadError> {
+        let bytes_size = codec.get_be_u16()? as usize;
+        if bytes_size > limits::MAX_GOSSIP_SIZE {
+            return Err(property::ReadError::SizeTooBig(
+                limits::MAX_GOSSIP_SIZE as usize,
+                bytes_size,
+            ));
+        }
+        let bytes = codec.get_bytes(bytes_size as usize)?;
+        Ok(Gossip(
+            poldercast::GossipSlice::try_from_slice(bytes.as_slice())
+                .map_err(|e| property::ReadError::InvalidData(e.to_string()))?
+                .to_owned(),
+        ))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chain_impl_mockchain::testing::serialization::serialization_bijection;
+    use quickcheck::quickcheck;
+    use quickcheck::{Arbitrary, TestResult};
     use rand::SeedableRng;
     use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+
+    impl Arbitrary for Gossip {
+        fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+            let ip = Ipv4Addr::new(
+                u8::arbitrary(g),
+                u8::arbitrary(g),
+                u8::arbitrary(g),
+                u8::arbitrary(g),
+            );
+            let addr = SocketAddr::V4(SocketAddrV4::new(ip, u16::arbitrary(g)));
+            build_gossip(addr)
+        }
+    }
 
     // Build a gossip with a random key, just for testing addresses
     fn build_gossip(addr: SocketAddr) -> Gossip {
@@ -180,6 +199,12 @@ mod tests {
             &keynesis::key::ed25519::SecretKey::new(rand_chacha::ChaChaRng::from_seed([0u8; 32])),
             poldercast::Subscriptions::new().as_slice(),
         ))
+    }
+
+    quickcheck! {
+        fn gossip_serialization_bijection(b: Gossip) -> TestResult {
+            serialization_bijection(b)
+        }
     }
 
     #[test]

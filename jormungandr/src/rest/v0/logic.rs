@@ -15,7 +15,10 @@ use crate::{
     topology::PeerInfo,
     utils::async_msg::MessageBox,
 };
-use chain_core::property::{Block as _, Deserialize, FromStr, Serialize};
+use chain_core::{
+    packer::Codec,
+    property::{Block as _, DeserializeFromSlice, FromStr, ReadError, Serialize, WriteError},
+};
 use chain_crypto::{
     bech32::Bech32, digest::Error as DigestError, hash::Error as HashError, Blake2b256, PublicKey,
     PublicKeyFromStrError,
@@ -53,9 +56,9 @@ pub enum Error {
     #[error(transparent)]
     IntercomError(#[from] intercom::Error),
     #[error(transparent)]
-    Serialize(std::io::Error),
+    Serialize(WriteError),
     #[error(transparent)]
-    Deserialize(std::io::Error),
+    Deserialize(ReadError),
     #[error(transparent)]
     TxMsgSendError(#[from] TrySendError<TransactionMsg>),
     #[error(transparent)]
@@ -133,7 +136,8 @@ pub async fn post_message(
     context: &Context,
     message: &[u8],
 ) -> Result<FragmentsProcessingSummary, Error> {
-    let fragment = Fragment::deserialize(message).map_err(Error::Deserialize)?;
+    let fragment =
+        Fragment::deserialize_from_slice(&mut Codec::new(message)).map_err(Error::Deserialize)?;
     let (reply_handle, reply_future) = intercom::unary_reply();
     let msg = TransactionMsg::SendTransactions {
         origin: FragmentOrigin::Rest,

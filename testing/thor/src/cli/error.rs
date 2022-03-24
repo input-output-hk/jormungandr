@@ -28,7 +28,7 @@ pub enum Error {
     #[error(transparent)]
     Config(#[from] crate::cli::config::Error),
     #[error("cannot serialize secret key")]
-    CannotrSerializeSecretKey(#[from] bincode::ErrorKind),
+    CannotrSerializeSecretKey,
     #[error("cannot create spending counter")]
     SpendingCounter,
 
@@ -40,8 +40,8 @@ pub enum Error {
     NoDefaultAliasDefined,
     #[error("cannot read/write secret key")]
     Cocoon,
-    #[error(transparent)]
-    Bincode(#[from] Box<bincode::ErrorKind>),
+    #[error("Bincode error")]
+    Bincode,
     #[error(transparent)]
     Key(#[from] jcli_lib::key::Error),
 

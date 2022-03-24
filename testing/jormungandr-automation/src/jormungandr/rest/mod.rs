@@ -40,7 +40,7 @@ pub enum RestError {
         checks: Vec<MemPoolCheck>,
     },
     #[error(transparent)]
-    ReadBytes(#[from] chain_core::mempack::ReadError),
+    ReadBytes(#[from] chain_core::property::ReadError),
 }
 
 pub fn uri_from_socket_addr(addr: SocketAddr) -> String {
@@ -238,9 +238,11 @@ impl JormungandrRest {
     }
 
     pub fn block(&self, header_hash: &HeaderId) -> Result<Block, RestError> {
-        use chain_core::mempack::{ReadBuf, Readable as _};
         let bytes = self.block_as_bytes(header_hash)?;
-        Block::read(&mut ReadBuf::from(&bytes)).map_err(Into::into)
+        <Block as chain_core::property::DeserializeFromSlice>::deserialize_from_slice(
+            &mut chain_core::packer::Codec::new(bytes.as_slice()),
+        )
+        .map_err(Into::into)
     }
 
     pub fn fragments_statuses(

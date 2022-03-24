@@ -1,4 +1,7 @@
-use chain_core::mempack::{ReadBuf, ReadError, Readable};
+use chain_core::{
+    packer::Codec,
+    property::{DeserializeFromSlice, ReadError},
+};
 use chain_impl_mockchain::evm;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
@@ -42,7 +45,9 @@ impl FromStr for EvmTransaction {
     type Err = EvmTransactionFromStrError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let data = hex::decode(&s)?;
-        Ok(Self(evm::EvmTransaction::read(&mut ReadBuf::from(&data))?))
+        Ok(Self(evm::EvmTransaction::deserialize_from_slice(
+            &mut Codec::new(data.as_slice()),
+        )?))
     }
 }
 
@@ -69,14 +74,14 @@ impl<'de> Deserialize<'de> for EvmTransaction {
             let s = String::deserialize(deserializer)?;
             let data = hex::decode(&s).map_err(<D::Error as serde::de::Error>::custom)?;
             Ok(Self(
-                evm::EvmTransaction::read(&mut ReadBuf::from(&data))
+                evm::EvmTransaction::deserialize_from_slice(&mut Codec::new(data.as_slice()))
                     .map_err(<D::Error as serde::de::Error>::custom)?,
             ))
         } else {
             let data = <Vec<u8>>::deserialize(deserializer)
                 .map_err(<D::Error as serde::de::Error>::custom)?;
             Ok(Self(
-                evm::EvmTransaction::read(&mut ReadBuf::from(&data))
+                evm::EvmTransaction::deserialize_from_slice(&mut Codec::new(data.as_slice()))
                     .map_err(<D::Error as serde::de::Error>::custom)?,
             ))
         }
