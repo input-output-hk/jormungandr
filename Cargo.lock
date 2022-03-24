@@ -2366,7 +2366,7 @@ dependencies = [
  "http-zipkin",
  "imhamt",
  "jormungandr-lib",
- "keynesis",
+ "keynesis 2.1.1",
  "lazy_static",
  "libc",
  "linked-hash-map",
@@ -2429,7 +2429,7 @@ dependencies = [
  "jormungandr-lib",
  "jortestkit",
  "json",
- "keynesis",
+ "keynesis 2.1.1",
  "lazy_static",
  "log",
  "netstat2",
@@ -2621,6 +2621,29 @@ checksum = "c5bf8dc22157c7a4d75f1df13a1b75ada82431141423e3d419ac89f2c1fbb298"
 dependencies = [
  "cryptoxide 0.3.6",
  "hex",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.3",
+ "thiserror",
+]
+
+[[package]]
+name = "keynesis"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7c3e687e7a34195496cfc17054e3f6ca56e911dcdd98c379509cda4fb8c94c0"
+dependencies = [
+ "keynesis-core",
+]
+
+[[package]]
+name = "keynesis-core"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c95e5c58b083ab1a91a738538d53a1eb22120321a4cc266b293a6b83973ceacb"
+dependencies = [
+ "cryptoxide 0.4.2",
+ "hex",
+ "packtool",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "thiserror",
@@ -3167,6 +3190,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "packtool"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e0d9e8a75570b505fbc1029cc6972221a1a7587bbc6e1c612e1d8ef9ed9b532"
+dependencies = [
+ "hex",
+ "packtool-macro",
+ "thiserror",
+]
+
+[[package]]
+name = "packtool-macro"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3b0cbadedc184bec9e2f09192bc5bd3c4c0d90600daac5e28d1eeb6965baaa0"
+dependencies = [
+ "proc-macro2 1.0.36",
+ "quote 1.0.15",
+ "syn 1.0.86",
+]
+
+[[package]]
 name = "parity-multiaddr"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3384,7 +3429,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2326808f3c476da7495ff611ad36b6a2e4e9d1f20a5b5eb4bbd8fb5e47f899be"
 dependencies = [
  "hex",
- "keynesis",
+ "keynesis 1.4.0",
  "lru",
  "thiserror",
 ]

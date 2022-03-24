@@ -30,7 +30,7 @@ bech32 = "0.8"
 futures = "0.3.21"
 hex = "0.4"
 jormungandr-lib = { path = "../jormungandr-lib" }
-keynesis = "1.1"
+keynesis = "2.1"
 lazy_static = "1.4"
 linked-hash-map = "0.5"
 poldercast = "1.2"
