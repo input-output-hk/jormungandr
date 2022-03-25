@@ -31,7 +31,7 @@ impl ExplorerTip {
             .ok_or_else(|| {
                 InteractiveCommandError::UserError(format!("Node '{}' not found", self.alias))
             })?;
-        println!("{:#?}", node.explorer().last_block()?);
+        println!("{:#?}", node.explorer().client().last_block()?);
         Ok(())
     }
 }

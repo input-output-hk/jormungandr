@@ -64,7 +64,8 @@ pub fn explorer_sanity_test() {
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
-    let explorer = jormungandr.explorer();
+    let explorer_process = jormungandr.explorer();
+    let explorer = explorer_process.client();
 
     let transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
