@@ -41,7 +41,8 @@ pub fn jcli_e2e_flow_private_vote() {
         .votes()
         .committee()
         .communication_key()
-        .to_public(communication_sk);
+        .to_public(communication_sk)
+        .unwrap();
     let crs = "Committee member crs";
     let member_sk =
         jcli.votes()
@@ -52,8 +53,9 @@ pub fn jcli_e2e_flow_private_vote() {
         .votes()
         .committee()
         .member_key()
-        .to_public(member_sk.clone());
-    let election_public_key = jcli.votes().election_public_key(member_pk.clone());
+        .to_public(member_sk.clone())
+        .unwrap();
+    let election_public_key = jcli.votes().election_public_key(member_pk.clone()).unwrap();
 
     let member_sk_file = NamedTempFile::new("member.sk").unwrap();
     member_sk_file.write_str(&member_sk).unwrap();
@@ -134,7 +136,7 @@ pub fn jcli_e2e_flow_private_vote() {
 
     time::wait_for_epoch(1, jormungandr.rest());
 
-    let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
+    let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert).unwrap();
     let yes_vote_cast = jcli.certificate().new_private_vote_cast(
         vote_plan_id.clone(),
         0,
@@ -278,7 +280,8 @@ pub fn jcli_private_vote_invalid_proof() {
         .votes()
         .committee()
         .communication_key()
-        .to_public(communication_sk);
+        .to_public(communication_sk)
+        .unwrap();
     let crs = "Committee member crs";
 
     let invald_crs = "Invalid Committee member crs";
@@ -292,7 +295,8 @@ pub fn jcli_private_vote_invalid_proof() {
         .votes()
         .committee()
         .member_key()
-        .to_public(member_sk.clone());
+        .to_public(member_sk.clone())
+        .unwrap();
 
     let member_sk_file = NamedTempFile::new("member.sk").unwrap();
     member_sk_file.write_str(&member_sk).unwrap();
@@ -373,7 +377,7 @@ pub fn jcli_private_vote_invalid_proof() {
         jormungandr.rest(),
     );
 
-    let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert);
+    let vote_plan_id = jcli.certificate().vote_plan_id(&vote_plan_cert).unwrap();
 
     jcli.fragment_sender(&jormungandr)
         .send(&tx)
