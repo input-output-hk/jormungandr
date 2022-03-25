@@ -82,12 +82,12 @@ pub fn explorer_sanity_test() {
         .send(&transaction)
         .assert_in_block_with_wait(&wait);
 
-    transaction_by_id(&explorer, fragment_id);
-    blocks(&explorer, jormungandr.logger.get_created_blocks_hashes());
-    stake_pools(&explorer, initial_stake_pools.as_ref());
-    stake_pool(&explorer, initial_stake_pools.as_ref());
-    block_at_chain_length(&explorer, jormungandr.logger.get_created_blocks_hashes());
-    epoch(&explorer);
+    transaction_by_id(explorer, fragment_id);
+    blocks(explorer, jormungandr.logger.get_created_blocks_hashes());
+    stake_pools(explorer, initial_stake_pools.as_ref());
+    stake_pool(explorer, initial_stake_pools.as_ref());
+    block_at_chain_length(explorer, jormungandr.logger.get_created_blocks_hashes());
+    epoch(explorer);
 }
 
 fn transaction_by_id(explorer: &Explorer, fragment_id: FragmentId) {
