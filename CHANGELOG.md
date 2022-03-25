@@ -2,7 +2,10 @@
 
 ## Unreleased
 
-- fix incorrect keys bech32 HRP by always using the ones provided by the library
+## Release 0.14
+
+**New features:**
+
 - update REST API: add new endpoint AccountVotes (`/api/v1/votes/plan/account-votes/{account_id}`)
 - Support parallel lanes in spending counters on account outputs. This allows
   submitting transactions that can spend from the same account without
@@ -14,15 +17,20 @@
 - update REST API: add new endpoint account based votes count (`/api/v1/votes/plan/accounts-votes-count`)
 - Add jcli option to specify a spending counter lane in a user-friendly way
 - Add CORS config params: allowed headers and allowed methods.
+- Add `mempoolUsageRatio` metric and related field in `node/stats` to track load on the mempool.
+
+**Changes:**
 - Update REST API `/api/v0/account/{account_id}`, add new field with the token's state info.
 - Vote tally now uses the token in the voteplan instead of the native currency.
 - Remove `txPendingCnt` metric and related field in `node/stats`
 - Rename `txPendingTotalSize` to `mempoolTotalSize`
-- Add `mempoolUsageRatio` metric and related field in `node/stats` to track load on the mempool.
 - Change `blockContentSizeAvg` to represent information as a percentage of the block max size.
 - Bump ed25519-bip32 from 0.4.0 to 0.4.1
-- Now the tally is incremental and is always available in the rest API. The
+- Now the tally is incremental and is always available in the rest API.
 - Add standalone explorer crate.
+
+**Bug fixes:**
+- fix incorrect keys bech32 HRP by always using the ones provided by the library
 
 ## Release 0.13.0
 
