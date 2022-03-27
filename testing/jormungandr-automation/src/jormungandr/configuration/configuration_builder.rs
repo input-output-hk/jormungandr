@@ -4,6 +4,7 @@ use crate::jormungandr::{
 };
 use assert_fs::fixture::{ChildPath, PathChild};
 use chain_addr::Discrimination;
+use chain_core::packer::Codec;
 use chain_core::property::Serialize;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
@@ -377,7 +378,10 @@ impl ConfigurationBuilder {
 
         let path_to_output_block = temp_dir.child("block0.bin");
         let file = std::fs::File::create(path_to_output_block.path()).unwrap();
-        block0_config.to_block().serialize(file).unwrap();
+        block0_config
+            .to_block()
+            .serialize(&mut Codec::new(file))
+            .unwrap();
 
         fn write_secret(secret: &NodeSecret, output_file: ChildPath) -> PathBuf {
             configuration::write_secret(secret, &output_file);

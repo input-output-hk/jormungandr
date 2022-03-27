@@ -93,7 +93,7 @@ impl Wallet {
         spending_counter: Option<SpendingCounter>,
         discrimination: Discrimination,
     ) -> Wallet {
-        let bech32_str = jortestkit::file::read_file(secret_key_file);
+        let bech32_str = jortestkit::file::read_file(secret_key_file).unwrap();
         Wallet::Account(account::Wallet::from_existing_account(
             &bech32_str,
             spending_counter.map(Into::into),

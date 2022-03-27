@@ -8,7 +8,6 @@ use crate::time::SecondsSinceUnixEpoch;
 
 use chain_impl_mockchain::fragment::Fragment;
 
-use bincode::Options;
 use serde::{Deserialize, Serialize};
 
 #[derive(thiserror::Error, Debug)]
@@ -16,7 +15,7 @@ use serde::{Deserialize, Serialize};
 pub struct DeserializeError {
     file: String,
     entry: usize,
-    cause: bincode::Error,
+    cause: chain_core::property::ReadError,
 }
 
 /// Represents a persistent fragments log entry.
@@ -38,6 +37,27 @@ pub struct FileFragmentsIterator {
     reader: BufReader<fs::File>,
     file_path: PathBuf,
     counter: usize,
+}
+
+impl chain_core::property::Deserialize for PersistentFragmentLog {
+    fn deserialize<R: std::io::Read>(
+        codec: &mut chain_core::packer::Codec<R>,
+    ) -> Result<Self, chain_core::property::ReadError> {
+        let time = SecondsSinceUnixEpoch::from_secs(codec.get_be_u64()?);
+        let fragment = Fragment::deserialize(codec)?;
+
+        Ok(Self { time, fragment })
+    }
+}
+
+impl chain_core::property::Serialize for PersistentFragmentLog {
+    fn serialize<W: std::io::Write>(
+        &self,
+        codec: &mut chain_core::packer::Codec<W>,
+    ) -> Result<(), chain_core::property::WriteError> {
+        codec.put_be_u64(self.time.to_secs())?;
+        self.fragment.serialize(codec)
+    }
 }
 
 impl FileFragments {
@@ -77,17 +97,16 @@ impl Iterator for FileFragmentsIterator {
         if self.reader.buffer().is_empty() && self.counter != 0 {
             return None;
         }
-        let codec = bincode::DefaultOptions::new()
-            .with_fixint_encoding()
-            .allow_trailing_bytes();
 
-        let result = codec
-            .deserialize_from(&mut self.reader)
-            .map_err(|cause| DeserializeError {
-                file: self.file_path.to_string_lossy().to_string(),
-                entry: self.counter,
-                cause,
-            });
+        let mut codec = chain_core::packer::Codec::new(&mut self.reader);
+        let result =
+            <PersistentFragmentLog as chain_core::property::Deserialize>::deserialize(&mut codec)
+                .map_err(|cause| DeserializeError {
+                    file: self.file_path.to_string_lossy().to_string(),
+                    entry: self.counter,
+                    cause,
+                });
+
         self.counter += 1;
         Some(result)
     }

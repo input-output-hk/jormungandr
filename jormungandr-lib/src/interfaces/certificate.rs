@@ -1,6 +1,5 @@
 use bech32::{self, FromBase32 as _, ToBase32 as _};
-use chain_core::mempack::{ReadBuf, ReadError, Readable};
-use chain_core::property;
+use chain_core::{packer::Codec, property};
 use chain_impl_mockchain::certificate;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
@@ -64,249 +63,261 @@ impl SignedCertificate {
 }
 
 impl property::Serialize for Certificate {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+    fn serialize<W: std::io::Write>(
+        &self,
+        codec: &mut Codec<W>,
+    ) -> Result<(), property::WriteError> {
         match &self.0 {
             certificate::Certificate::StakeDelegation(c) => {
-                writer.write_all(&[1])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[1])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::OwnerStakeDelegation(c) => {
-                writer.write_all(&[2])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[2])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::PoolRegistration(c) => {
-                writer.write_all(&[3])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[3])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::PoolRetirement(c) => {
-                writer.write_all(&[4])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[4])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::PoolUpdate(c) => {
-                writer.write_all(&[5])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[5])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::VotePlan(c) => {
-                writer.write_all(&[6])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[6])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::VoteCast(c) => {
-                writer.write_all(&[7])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[7])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::VoteTally(c) => {
-                writer.write_all(&[8])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[8])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::UpdateProposal(c) => {
-                writer.write_all(&[9])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[9])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::UpdateVote(c) => {
-                writer.write_all(&[10])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[10])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::MintToken(c) => {
-                writer.write_all(&[11])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[11])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::Certificate::EvmMapping(c) => {
-                writer.write_all(&[15])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[12])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
         };
         Ok(())
     }
 }
 
-impl Readable for Certificate {
-    fn read<'a>(buf: &mut ReadBuf<'_>) -> Result<Self, ReadError> {
-        match buf.get_u8()? {
+impl property::DeserializeFromSlice for Certificate {
+    fn deserialize_from_slice(
+        codec: &mut chain_core::packer::Codec<&[u8]>,
+    ) -> Result<Self, property::ReadError> {
+        match codec.get_u8()? {
             1 => {
-                let cert = certificate::StakeDelegation::read(buf)?;
+                let cert = certificate::StakeDelegation::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::StakeDelegation(cert)))
             }
             2 => {
-                let cert = certificate::OwnerStakeDelegation::read(buf)?;
+                let cert = certificate::OwnerStakeDelegation::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::OwnerStakeDelegation(
                     cert,
                 )))
             }
             3 => {
-                let cert = certificate::PoolRegistration::read(buf)?;
+                let cert = certificate::PoolRegistration::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::PoolRegistration(
                     cert,
                 )))
             }
             4 => {
-                let cert = certificate::PoolRetirement::read(buf)?;
+                let cert = certificate::PoolRetirement::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::PoolRetirement(cert)))
             }
             5 => {
-                let cert = certificate::PoolUpdate::read(buf)?;
+                let cert = certificate::PoolUpdate::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::PoolUpdate(cert)))
             }
             6 => {
-                let cert = certificate::VotePlan::read(buf)?;
+                let cert = certificate::VotePlan::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::VotePlan(cert)))
             }
             7 => {
-                let cert = certificate::VoteCast::read(buf)?;
+                let cert = certificate::VoteCast::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::VoteCast(cert)))
             }
             8 => {
-                let cert = certificate::VoteTally::read(buf)?;
+                let cert = certificate::VoteTally::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::VoteTally(cert)))
             }
             9 => {
-                let cert = certificate::UpdateProposal::read(buf)?;
+                let cert = certificate::UpdateProposal::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::UpdateProposal(cert)))
             }
             10 => {
-                let cert = certificate::UpdateVote::read(buf)?;
+                let cert = certificate::UpdateVote::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::UpdateVote(cert)))
             }
             11 => {
-                let cert = certificate::MintToken::read(buf)?;
+                let cert = certificate::MintToken::deserialize_from_slice(codec)?;
                 Ok(Certificate(certificate::Certificate::MintToken(cert)))
             }
-            t => Err(ReadError::UnknownTag(t as u32)),
+            12 => {
+                let cert = certificate::EvmMapping::deserialize_from_slice(codec)?;
+                Ok(Certificate(certificate::Certificate::EvmMapping(cert)))
+            }
+            t => Err(property::ReadError::UnknownTag(t as u32)),
         }
     }
 }
 
 impl property::Serialize for SignedCertificate {
-    type Error = std::io::Error;
-    fn serialize<W: std::io::Write>(&self, mut writer: W) -> Result<(), Self::Error> {
+    fn serialize<W: std::io::Write>(
+        &self,
+        codec: &mut chain_core::packer::Codec<W>,
+    ) -> Result<(), property::WriteError> {
         match &self.0 {
             certificate::SignedCertificate::StakeDelegation(c, a) => {
-                writer.write_all(&[1])?;
-                writer.write_all(c.serialize().as_slice())?;
-                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+                codec.put_bytes(&[1])?;
+                codec.put_bytes(c.serialize().as_slice())?;
+                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::OwnerStakeDelegation(c, ()) => {
-                writer.write_all(&[2])?;
-                writer.write_all(c.serialize().as_slice())?;
+                codec.put_bytes(&[2])?;
+                codec.put_bytes(c.serialize().as_slice())?;
             }
             certificate::SignedCertificate::PoolRegistration(c, a) => {
-                writer.write_all(&[3])?;
-                writer.write_all(c.serialize().as_slice())?;
-                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+                codec.put_bytes(&[3])?;
+                codec.put_bytes(c.serialize().as_slice())?;
+                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::PoolRetirement(c, a) => {
-                writer.write_all(&[4])?;
-                writer.write_all(c.serialize().as_slice())?;
-                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+                codec.put_bytes(&[4])?;
+                codec.put_bytes(c.serialize().as_slice())?;
+                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::PoolUpdate(c, a) => {
-                writer.write_all(&[5])?;
-                writer.write_all(c.serialize().as_slice())?;
-                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+                codec.put_bytes(&[5])?;
+                codec.put_bytes(c.serialize().as_slice())?;
+                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::VotePlan(c, a) => {
-                writer.write_all(&[6])?;
-                writer.write_all(c.serialize().as_slice())?;
-                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+                codec.put_bytes(&[6])?;
+                codec.put_bytes(c.serialize().as_slice())?;
+                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::VoteTally(c, a) => {
-                writer.write_all(&[7])?;
-                writer.write_all(c.serialize().as_slice())?;
-                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+                codec.put_bytes(&[7])?;
+                codec.put_bytes(c.serialize().as_slice())?;
+                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::UpdateProposal(c, a) => {
-                writer.write_all(&[8])?;
-                writer.write_all(c.serialize().as_slice())?;
-                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+                codec.put_bytes(&[8])?;
+                codec.put_bytes(c.serialize().as_slice())?;
+                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::UpdateVote(c, a) => {
-                writer.write_all(&[9])?;
-                writer.write_all(c.serialize().as_slice())?;
-                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+                codec.put_bytes(&[9])?;
+                codec.put_bytes(c.serialize().as_slice())?;
+                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
             certificate::SignedCertificate::EvmMapping(c, a) => {
-                writer.write_all(&[10])?;
-                writer.write_all(c.serialize().as_slice())?;
-                writer.write_all(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
+                codec.put_bytes(&[10])?;
+                codec.put_bytes(c.serialize().as_slice())?;
+                codec.put_bytes(a.serialize_in(ByteBuilder::new()).finalize().as_slice())?;
             }
         };
         Ok(())
     }
 }
 
-impl Readable for SignedCertificate {
-    fn read<'a>(buf: &mut ReadBuf<'_>) -> Result<Self, ReadError> {
-        match buf.get_u8()? {
+impl property::DeserializeFromSlice for SignedCertificate {
+    fn deserialize_from_slice(
+        codec: &mut chain_core::packer::Codec<&[u8]>,
+    ) -> Result<Self, property::ReadError> {
+        match codec.get_u8()? {
             1 => {
-                let cert = certificate::StakeDelegation::read(buf)?;
-                let auth = Readable::read(buf)?;
+                let cert = certificate::StakeDelegation::deserialize_from_slice(codec)?;
+                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::StakeDelegation(cert, auth),
                 ))
             }
             2 => {
-                let cert = certificate::OwnerStakeDelegation::read(buf)?;
+                let cert = certificate::OwnerStakeDelegation::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::OwnerStakeDelegation(cert, ()),
                 ))
             }
             3 => {
-                let cert = certificate::PoolRegistration::read(buf)?;
-                let auth = Readable::read(buf)?;
+                let cert = certificate::PoolRegistration::deserialize_from_slice(codec)?;
+                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::PoolRegistration(cert, auth),
                 ))
             }
             4 => {
-                let cert = certificate::PoolRetirement::read(buf)?;
-                let auth = Readable::read(buf)?;
+                let cert = certificate::PoolRetirement::deserialize_from_slice(codec)?;
+                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::PoolRetirement(cert, auth),
                 ))
             }
             5 => {
-                let cert = certificate::PoolUpdate::read(buf)?;
-                let auth = Readable::read(buf)?;
+                let cert = certificate::PoolUpdate::deserialize_from_slice(codec)?;
+                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::PoolUpdate(cert, auth),
                 ))
             }
             6 => {
-                let cert = certificate::VotePlan::read(buf)?;
-                let auth = Readable::read(buf)?;
+                let cert = certificate::VotePlan::deserialize_from_slice(codec)?;
+                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(certificate::SignedCertificate::VotePlan(
                     cert, auth,
                 )))
             }
             7 => {
-                let cert = certificate::VoteTally::read(buf)?;
-                let auth = Readable::read(buf)?;
+                let cert = certificate::VoteTally::deserialize_from_slice(codec)?;
+                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::VoteTally(cert, auth),
                 ))
             }
             8 => {
-                let cert = certificate::UpdateProposal::read(buf)?;
-                let auth = Readable::read(buf)?;
+                let cert = certificate::UpdateProposal::deserialize_from_slice(codec)?;
+                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::UpdateProposal(cert, auth),
                 ))
             }
             9 => {
-                let cert = certificate::UpdateVote::read(buf)?;
-                let auth = Readable::read(buf)?;
+                let cert = certificate::UpdateVote::deserialize_from_slice(codec)?;
+                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::UpdateVote(cert, auth),
                 ))
             }
             10 => {
-                let cert = certificate::EvmMapping::read(buf)?;
-                let auth = Readable::read(buf)?;
+                let cert = certificate::EvmMapping::deserialize_from_slice(codec)?;
+                let auth = property::DeserializeFromSlice::deserialize_from_slice(codec)?;
                 Ok(SignedCertificate(
                     certificate::SignedCertificate::EvmMapping(cert, auth),
                 ))
             }
-            t => Err(ReadError::UnknownTag(t as u32)),
+            t => Err(property::ReadError::UnknownTag(t as u32)),
         }
     }
 }
@@ -314,7 +325,7 @@ impl Readable for SignedCertificate {
 #[derive(Debug, Error)]
 pub enum CertificateToBech32Error {
     #[error("Cannot serialize the Certificate")]
-    Io(#[from] std::io::Error),
+    Io(#[from] property::WriteError),
     #[error("Cannot create new Bech32")]
     Bech32(#[from] bech32::Error),
 }
@@ -326,7 +337,7 @@ pub enum CertificateFromBech32Error {
     #[error("invalid base32")]
     InvalidBase32(#[from] bech32::Error),
     #[error("Invalid certificate")]
-    InvalidCertificate(#[from] chain_core::mempack::ReadError),
+    InvalidCertificate(#[from] chain_core::property::ReadError),
 }
 
 #[derive(Debug, Error)]
@@ -341,8 +352,7 @@ pub enum CertificateFromStrError {
 /// but allow to read original bech32 formatted certificates for backward compatibility
 impl Certificate {
     pub fn to_bech32m(&self) -> Result<String, CertificateToBech32Error> {
-        use chain_core::property::Serialize as _;
-        let bytes = self.serialize_as_vec()?;
+        let bytes = property::Serialize::serialize_as_vec(&self)?;
         // jormungandr_lib::Certificate is only used in jcli so we don't
         Ok(bech32::encode(
             CERTIFICATE_HRP,
@@ -360,15 +370,16 @@ impl Certificate {
             });
         }
         let bytes: Vec<u8> = Vec::from_base32(&data)?;
-        let mut buf = ReadBuf::from(&bytes);
-        Certificate::read(&mut buf).map_err(CertificateFromBech32Error::from)
+        <Certificate as property::DeserializeFromSlice>::deserialize_from_slice(&mut Codec::new(
+            bytes.as_slice(),
+        ))
+        .map_err(CertificateFromBech32Error::from)
     }
 }
 
 impl SignedCertificate {
     pub fn to_bech32m(&self) -> Result<String, CertificateToBech32Error> {
-        use chain_core::property::Serialize as _;
-        let bytes = self.serialize_as_vec()?;
+        let bytes = property::Serialize::serialize_as_vec(&self)?;
         Ok(bech32::encode(
             SIGNED_CERTIFICATE_HRP,
             &bytes.to_base32(),
@@ -385,8 +396,10 @@ impl SignedCertificate {
             });
         }
         let bytes: Vec<u8> = Vec::from_base32(&data)?;
-        let mut buf = ReadBuf::from(&bytes);
-        SignedCertificate::read(&mut buf).map_err(CertificateFromBech32Error::from)
+        <SignedCertificate as property::DeserializeFromSlice>::deserialize_from_slice(
+            &mut Codec::new(bytes.as_slice()),
+        )
+        .map_err(CertificateFromBech32Error::from)
     }
 }
 

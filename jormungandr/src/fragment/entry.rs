@@ -30,9 +30,8 @@ pub struct PoolEntry {
 
 impl PoolEntry {
     pub fn new(fragment: &Fragment) -> Self {
-        let raw = fragment.to_raw();
-        let fragment_size = raw.size_bytes_plus_size();
-        let fragment_ref = raw.id();
+        let fragment_size = fragment.serialized_size();
+        let fragment_ref = fragment.hash();
         // TODO: the fragment fee is not yet computed. Yet we should
         // have an explicit fee in the message. So we need to be able
         // to extract this information without the need to compute the

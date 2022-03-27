@@ -164,6 +164,7 @@ pub fn block0_configuration_documented_example() -> String {
 mod test {
     use super::*;
     use crate::interfaces::ARBITRARY_MAX_NUMBER_INITIAL_FRAGMENTS;
+    use chain_core::packer::Codec;
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     impl Arbitrary for Block0Configuration {
@@ -209,7 +210,7 @@ mod test {
 
             let bytes = block.serialize_as_vec().unwrap();
             let reader = std::io::Cursor::new(&bytes);
-            let decoded = Block::deserialize(reader).unwrap();
+            let decoded = Block::deserialize(&mut Codec::new(reader)).unwrap();
 
             let block0_configuration_dec = Block0Configuration::from_block(&decoded).unwrap();
 

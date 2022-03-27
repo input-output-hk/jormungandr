@@ -9,8 +9,8 @@ use crate::{
     intercom::ReplyStreamHandle,
     utils::{async_msg::MessageBox, task::TokioServiceInfo},
 };
-use chain_core::property::Deserialize;
 use chain_core::property::{Block as _, Serialize};
+use chain_core::{packer::Codec, property::Deserialize};
 use chain_impl_mockchain::header;
 use chain_network::grpc::watch::server::WatchService;
 use chain_network::{core::watch::server::Watch, grpc::watch::server};
@@ -251,7 +251,7 @@ async fn handle_sync_multiverse(
         let mut min_index = None;
 
         for id_raw in checkpoints.iter() {
-            let id = HeaderHash::deserialize(id_raw.as_bytes())
+            let id = HeaderHash::deserialize(&mut Codec::new(id_raw.as_bytes()))
                 .map_err(intercom::Error::invalid_argument)?;
 
             // the checkpoint could be unknown to the node because it was part of a branch that

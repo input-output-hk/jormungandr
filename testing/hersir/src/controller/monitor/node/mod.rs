@@ -39,7 +39,7 @@ pub enum Error {
     #[error(transparent)]
     Reqwest(#[from] reqwest::Error),
     #[error(transparent)]
-    BlockFormatError(#[from] chain_core::mempack::ReadError),
+    BlockFormatError(#[from] chain_core::property::ReadError),
     #[error(transparent)]
     RestError(#[from] RestError),
     #[error(transparent)]
@@ -66,7 +66,9 @@ pub enum Error {
     #[error("invalid header id")]
     InvalidHeaderId(#[source] chain_crypto::hash::Error),
     #[error("invalid block")]
-    InvalidBlock(#[source] chain_core::mempack::ReadError),
+    InvalidBlock(#[source] chain_core::property::ReadError),
+    #[error("can not serialize block")]
+    CannotSerializeBlock(#[source] chain_core::property::WriteError),
     #[error("fragment logs in an invalid format")]
     InvalidFragmentLogs(#[source] serde_json::Error),
     #[error("rest error")]

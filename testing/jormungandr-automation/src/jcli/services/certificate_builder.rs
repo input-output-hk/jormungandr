@@ -24,7 +24,7 @@ impl CertificateBuilder {
         stake_pool_id: &str,
         stake_key_pub: &str,
         stake_key_file: &Path,
-    ) -> String {
+    ) -> Result<String, std::io::Error> {
         let temp_dir = TempDir::new().unwrap();
 
         let stake_delegation_cert = self

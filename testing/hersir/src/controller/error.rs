@@ -26,7 +26,10 @@ pub enum Error {
     Explorer(#[from] ExplorerError),
 
     #[error(transparent)]
-    BlockFormatError(#[from] chain_core::mempack::ReadError),
+    BlockFormatError(#[from] chain_core::property::ReadError),
+
+    #[error(transparent)]
+    BlockWriteError(#[from] chain_core::property::WriteError),
 
     #[error("No node with alias {0}")]
     NodeNotFound(String),

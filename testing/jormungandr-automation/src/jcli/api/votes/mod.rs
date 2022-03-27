@@ -29,7 +29,10 @@ impl Votes {
         Crs::new(self.votes_command.crs())
     }
 
-    pub fn election_public_key<S: Into<String>>(self, member_key: S) -> String {
+    pub fn election_public_key<S: Into<String>>(
+        self,
+        member_key: S,
+    ) -> Result<String, std::io::Error> {
         let output_file = NamedTempFile::new("election_public_key.tmp").unwrap();
         self.votes_command
             .election_public_key(member_key, output_file.path())

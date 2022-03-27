@@ -1,5 +1,8 @@
 use crate::jcli_lib::utils::io;
-use chain_core::property::{Block as _, Deserialize, Serialize};
+use chain_core::{
+    packer::Codec,
+    property::{Block as _, Deserialize, ReadError, Serialize, WriteError},
+};
 use chain_impl_mockchain::{
     block::Block,
     ledger::{self, Ledger},
@@ -30,13 +33,13 @@ pub enum Error {
         path: PathBuf,
     },
     #[error("block file corrupted")]
-    BlockFileCorrupted(#[source] std::io::Error),
+    BlockFileCorrupted(#[source] ReadError),
     #[error("genesis file corrupted")]
     GenesisFileCorrupted(#[source] serde_yaml::Error),
     #[error("generated block is not a valid genesis block")]
     GeneratedBlock0Invalid(#[from] ledger::Error),
     #[error("failed to serialize block")]
-    BlockSerializationFailed(#[source] std::io::Error),
+    BlockSerializationFailed(#[source] WriteError),
     #[error("failed to serialize genesis")]
     GenesisSerializationFailed(#[source] serde_yaml::Error),
     #[error("failed to build genesis from block 0")]
@@ -68,7 +71,7 @@ fn encode_block_0(common: Common) -> Result<(), Error> {
     let block = genesis.to_block();
     Ledger::new(block.id(), block.fragments())?;
     block
-        .serialize(common.open_output()?)
+        .serialize(&mut Codec::new(common.open_output()?))
         .map_err(Error::BlockSerializationFailed)
 }
 
@@ -133,7 +136,7 @@ pub fn open_block_file(input_file: &Option<PathBuf>) -> Result<impl BufRead, Err
 }
 
 pub fn load_block(block_reader: impl BufRead) -> Result<Block, Error> {
-    Block::deserialize(block_reader).map_err(Error::BlockFileCorrupted)
+    Block::deserialize(&mut Codec::new(block_reader)).map_err(Error::BlockFileCorrupted)
 }
 
 #[derive(StructOpt)]

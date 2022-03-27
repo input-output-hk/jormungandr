@@ -40,7 +40,7 @@ pub mod limits {
     ///
     /// a gossip only contains the Id, the address and an array of subscriptions
     /// which should not go beyond 2 2-tuples of 64bits.
-    pub const MAX_GOSSIP_SIZE: u64 = 512;
+    pub const MAX_GOSSIP_SIZE: usize = 512;
 
     /// limit the ID size to 32 bytes. Right now the Node ID are 24 bytes but
     /// for backward compatibility keep the value to 32bytes.

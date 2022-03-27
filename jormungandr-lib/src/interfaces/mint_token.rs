@@ -1,6 +1,6 @@
 use super::Value;
 use crate::crypto::account::Identifier;
-use chain_core::mempack::{ReadBuf, Readable};
+use chain_core::packer::Codec;
 use chain_impl_mockchain::{
     certificate,
     tokens::{identifier, minting_policy, name},
@@ -85,6 +85,7 @@ impl<'de> Deserialize<'de> for TokenIdentifier {
     where
         D: serde::Deserializer<'de>,
     {
+        use chain_core::property::DeserializeFromSlice as _;
         if deserializer.is_human_readable() {
             let s = String::deserialize(deserializer)?;
             Ok(Self(
@@ -92,10 +93,11 @@ impl<'de> Deserialize<'de> for TokenIdentifier {
             ))
         } else {
             let bytes = <Vec<u8>>::deserialize(deserializer)?;
-            let mut buf = ReadBuf::from(bytes.as_slice());
             Ok(Self(
-                identifier::TokenIdentifier::read(&mut buf)
-                    .map_err(<D::Error as serde::de::Error>::custom)?,
+                identifier::TokenIdentifier::deserialize_from_slice(&mut Codec::new(
+                    bytes.as_slice(),
+                ))
+                .map_err(<D::Error as serde::de::Error>::custom)?,
             ))
         }
     }
