@@ -15,4 +15,4 @@ runs:
     - uses: cachix/cachix-action@v10
       with:
         name: vit-ops
-        signingKey: '${{ inputs.CACHIX_SIGNING_KEY }}'
+        authToken: '${{ inputs.CACHIX_SIGNING_KEY }}'
