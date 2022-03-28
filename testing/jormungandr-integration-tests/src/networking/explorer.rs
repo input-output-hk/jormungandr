@@ -83,6 +83,7 @@ pub fn passive_node_explorer() {
 
     let transaction_id = passive
         .explorer()
+        .client()
         .transaction((*mem_pool_check.fragment_id()).into())
         .unwrap()
         .data

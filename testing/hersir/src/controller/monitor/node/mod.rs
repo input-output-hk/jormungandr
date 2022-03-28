@@ -2,12 +2,12 @@
 
 mod legacy;
 
+use jormungandr_automation::jormungandr::ExplorerProcess;
 pub use legacy::LegacyNode;
 
 use crate::style;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_automation::jormungandr::Explorer;
 use jormungandr_automation::jormungandr::LogLevel;
 use jormungandr_automation::jormungandr::NodeAlias;
 pub use jormungandr_automation::jormungandr::{
@@ -169,7 +169,7 @@ impl Node {
         multiaddr::to_tcp_socket_addr(&self.process.p2p_public_address()).unwrap()
     }
 
-    pub fn explorer(&self) -> Explorer {
+    pub fn explorer(&self) -> ExplorerProcess {
         self.process.explorer()
     }
 
