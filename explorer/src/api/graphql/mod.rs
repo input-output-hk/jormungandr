@@ -129,7 +129,7 @@ impl Branch {
                     )
                 }));
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -201,7 +201,7 @@ impl Branch {
                     Edge::new(IndexCursor::from(*i), Transaction::from_valid_id(*h))
                 }));
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -281,7 +281,7 @@ impl Branch {
                         .map(|(vps, cursor)| Edge::new(IndexCursor::from(*cursor), vps.clone())),
                 );
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -367,7 +367,7 @@ impl Branch {
                         .map(|(pool, cursor)| Edge::new(IndexCursor::from(*cursor), pool.clone())),
                 );
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -456,7 +456,7 @@ impl Branch {
                         Edge::new(IndexCursor::from(*cursor), Block::from_valid_hash(*id))
                     }));
 
-                    Ok(connection)
+                    Ok::<_, async_graphql::Error>(connection)
                 },
             )
             .await,
@@ -625,7 +625,7 @@ impl Block {
                         .map(|(tx, cursor)| Edge::new(IndexCursor::from(*cursor), tx.clone())),
                 );
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -1105,7 +1105,7 @@ impl Pool {
                         .map(|(h, i)| Edge::new(IndexCursor::from(*i), Block::from_valid_hash(*h))),
                 );
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -1470,7 +1470,7 @@ impl VoteProposalStatus {
                         .map(|(vs, cursor)| Edge::new(IndexCursor::from(*cursor), vs.clone())),
                 );
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
