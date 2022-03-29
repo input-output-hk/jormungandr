@@ -1,10 +1,10 @@
 {
   nixConfig.extra-substituters = [
-    "https://vit-ops.cachix.org"
+    "https://vit.cachix.org"
     "https://hydra.iohk.io"
   ];
   nixConfig.extra-trusted-public-keys = [
-    "vit-ops.cachix.org-1:LY84nIKdW7g1cvhJ6LsupHmGtGcKAlUXo+l1KByoDho="
+    "vit.cachix.org-1:tuLYwbnzbxLzQHHN0fvZI2EMpVm/+R7AKUGqukc6eh8="
     "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
   ];
 
