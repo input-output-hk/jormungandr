@@ -1,4 +1,4 @@
-# DEVOPS 
+# DEVOPS
 
 /.github/action/nix-common-setup*  @input-output-hk/jormugandr-devops
 /.github/workflows/nix.yml         @input-output-hk/jormugandr-devops
