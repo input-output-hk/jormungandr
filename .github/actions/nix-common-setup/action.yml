@@ -1,8 +1,8 @@
 name: Setup Nix Environment
 inputs:
-  CACHIX_SIGNING_KEY: # determines what node version to install
+  CACHIX_AUTH_TOKEN:
     required: true
-    description: 'Cachix Signing Key'
+    description: 'Cachix Auth Token'
 runs:
   using: "composite"
   steps:
@@ -14,5 +14,5 @@ runs:
 
     - uses: cachix/cachix-action@v10
       with:
-        name: vit-ops
-        authToken: '${{ inputs.CACHIX_SIGNING_KEY }}'
+        name: vit
+        authToken: '${{ inputs.CACHIX_AUTH_TOKEN }}'
