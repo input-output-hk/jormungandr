@@ -9,6 +9,8 @@
   ];
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.flake-compat.url = "github:edolstra/flake-compat";
+  inputs.flake-compat.flake = false;
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.gitignore.url = "github:hercules-ci/gitignore.nix";
   inputs.gitignore.inputs.nixpkgs.follows = "nixpkgs";
@@ -26,6 +28,7 @@
   outputs = {
     self,
     nixpkgs,
+    flake-compat,
     flake-utils,
     gitignore,
     pre-commit-hooks,
