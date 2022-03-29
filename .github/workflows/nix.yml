@@ -15,7 +15,7 @@ jobs:
     - name: Setup
       uses: ./.github/actions/nix-common-setup
       with:
-        CACHIX_SIGNING_KEY: ${{ secrets.CACHIX_SIGNING_KEY }}
+        CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
     - name: Flake check
       run: nix flake check
     - name: Build
