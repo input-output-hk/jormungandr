@@ -1,3 +1,4 @@
+use super::explorer::ExplorerProcess;
 use super::{starter::StartupError, JormungandrError};
 use crate::jcli::JCli;
 use crate::jormungandr::grpc::JormungandrClient;
@@ -5,8 +6,8 @@ use crate::jormungandr::NodeAlias;
 use crate::jormungandr::StartupVerificationMode;
 use crate::jormungandr::TestingDirectory;
 use crate::jormungandr::{
-    rest::uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
-    JormungandrStateVerifier, TestConfig,
+    rest::uri_from_socket_addr, JormungandrLogger, JormungandrRest, JormungandrStateVerifier,
+    TestConfig,
 };
 use crate::jormungandr::{
     FragmentNode, FragmentNodeError, LogLevel, MemPoolCheck, RemoteJormungandr,
@@ -295,7 +296,7 @@ impl JormungandrProcess {
         self.child.id()
     }
 
-    pub fn explorer(&self) -> Explorer {
+    pub fn explorer(&self) -> ExplorerProcess {
         let mut p2p_public_address = self.p2p_public_address.clone();
         let port = match p2p_public_address.pop().unwrap() {
             multiaddr::Protocol::Tcp(port) => port,
@@ -307,7 +308,7 @@ impl JormungandrProcess {
             _ => todo!("only ipv4 supported for now"),
         };
 
-        Explorer::new(format!("http://{}:{}/", address, port), self.temp_dir())
+        ExplorerProcess::new(format!("http://{}:{}/", address, port), self.temp_dir())
     }
 
     pub fn to_trusted_peer(&self) -> TrustedPeer {

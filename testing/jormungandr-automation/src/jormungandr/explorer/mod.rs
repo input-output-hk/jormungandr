@@ -15,7 +15,6 @@ use jormungandr_lib::interfaces::BlockDate;
 use std::{
     process::{Command, Stdio},
     str::FromStr,
-    sync::Arc,
     time::Duration,
 };
 mod client;
@@ -50,12 +49,67 @@ pub enum ExplorerError {
 pub struct Explorer {
     client: GraphQlClient,
     print_log: bool,
-    _process: Arc<ExplorerProcess>,
 }
 
-struct ExplorerProcess {
+pub struct ExplorerProcess {
     handler: Option<std::process::Child>,
     logs_dir: Option<std::path::PathBuf>,
+    client: Explorer,
+}
+
+impl ExplorerProcess {
+    pub fn new(node_address: String, logs_dir: Option<std::path::PathBuf>) -> Self {
+        let path = get_explorer_app();
+        let explorer_port = get_available_port();
+        let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
+
+        let process = ExplorerProcess {
+            handler: Some(
+                Command::new(path)
+                    .args(&[
+                        "--node",
+                        node_address.as_ref(),
+                        "--binding-address",
+                        explorer_listen_address.as_ref(),
+                        "--log-output",
+                        "stdout",
+                    ])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .spawn()
+                    .expect("failed to execute explorer process"),
+            ),
+            logs_dir,
+            client: Explorer::new(explorer_listen_address.clone()),
+        };
+
+        let mut wait_bootstrap = Wait::new(Duration::from_secs(1), 10);
+        while !wait_bootstrap.timeout_reached() {
+            if reqwest::blocking::Client::new()
+                .head(format!("http://{}/", &explorer_listen_address))
+                .send()
+                .is_ok()
+            {
+                break;
+            };
+
+            wait_bootstrap.advance();
+        }
+
+        process
+    }
+
+    /// get an explorer client configured to use this instance.
+    ///
+    /// take into account that while the Explorer client itself is Clone, if the ExplorerProcess
+    /// gets dropped then the client will become useless.
+    pub fn client(&self) -> &Explorer {
+        &self.client
+    }
+
+    pub fn client_mut(&mut self) -> &mut Explorer {
+        &mut self.client
+    }
 }
 
 impl Drop for ExplorerProcess {
@@ -82,49 +136,10 @@ impl Drop for ExplorerProcess {
 }
 
 impl Explorer {
-    pub fn new(node_address: String, logs_dir: Option<std::path::PathBuf>) -> Explorer {
-        let print_log = true;
-
-        let path = get_explorer_app();
-        let explorer_port = get_available_port();
-        let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
-
-        let _process = Arc::new(ExplorerProcess {
-            handler: Some(
-                Command::new(path)
-                    .args(&[
-                        "--node",
-                        node_address.as_ref(),
-                        "--binding-address",
-                        explorer_listen_address.as_ref(),
-                        "--log-output",
-                        "stdout",
-                    ])
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped())
-                    .spawn()
-                    .expect("failed to execute explorer process"),
-            ),
-            logs_dir,
-        });
-
-        let mut wait_bootstrap = Wait::new(Duration::from_secs(1), 10);
-        while !wait_bootstrap.timeout_reached() {
-            if reqwest::blocking::Client::new()
-                .head(format!("http://{}/", &explorer_listen_address))
-                .send()
-                .is_ok()
-            {
-                break;
-            };
-
-            wait_bootstrap.advance();
-        }
-
+    pub fn new(explorer_listen_address: String) -> Explorer {
         Explorer {
             client: GraphQlClient::new(explorer_listen_address),
-            print_log,
-            _process,
+            print_log: true,
         }
     }
 

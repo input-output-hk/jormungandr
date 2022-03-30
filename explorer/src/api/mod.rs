@@ -130,7 +130,7 @@ pub async fn handler(
     schema: graphql::Schema,
     request: async_graphql::Request,
 ) -> Result<impl Reply, std::convert::Infallible> {
-    Ok::<_, std::convert::Infallible>(async_graphql_warp::Response::from(
+    Ok::<_, std::convert::Infallible>(async_graphql_warp::GraphQLResponse::from(
         schema.execute(request).await,
     ))
 }
