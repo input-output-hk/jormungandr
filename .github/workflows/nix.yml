@@ -26,8 +26,10 @@ jobs:
     name: Build ${{ matrix.package }}
     needs: build-jormungandr
     strategy:
+      fail-fast: false
       matrix:
         package:
+        - "jormungandr-entrypoint"
         - "jormungandr-lib"
         - "jcli"
         - "explorer"

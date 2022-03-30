@@ -87,7 +87,7 @@
           cargoOptions =
             [
               "--package"
-              name
+              "file://$PWD/\"${name}\""
             ]
             ++ (pkgs.lib.optionals (name == "jormungandr") [
               "--features"
@@ -95,6 +95,8 @@
             ]);
         in
           naersk-lib.buildPackage {
+            inherit (pkgCargo.package) name version;
+
             root = gitignore.lib.gitignoreSource self;
 
             cargoBuildOptions = x: x ++ cargoOptions;
