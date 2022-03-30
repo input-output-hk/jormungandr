@@ -8,6 +8,7 @@ on:
 
 jobs:
   build-jormungandr:
+    name: Build jormungandr
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -21,49 +22,30 @@ jobs:
     - name: Build
       run: nix build .#jormungandr
 
-  #  built-jormungandr-entrypoint:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
-  #
-  #  built-jormungandr-lib:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
-  #
-  #  build-jcli:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
-  #
-  #  build-explorer:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
-  #
-  #  build-modules/settings:
-  #    needs: build-jormungandr
-  #
-  #  build-modules/blockchain:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
-  #
-  #  build-testing/jormungandr-automation:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
-  #
-  #  build-testing/jormungandr-integration-tests:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
-  #
-  #  build-testing/loki:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
-  #
-  #  build-testing/mjolnir:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
-  #
-  #  build-testing/hersir:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
-  #
-  #  build-testing/thor:
-  #    needs: build-jormungandr
-  #    runs-on: ubuntu-latest
+  build:
+    name: Build ${{ matrix.package }}
+    needs: build-jormungandr
+    strategy:
+      matrix:
+        package:
+        - "jormungandr-lib"
+        - "jcli"
+        - "explorer"
+        - "modules/settings"
+        - "modules/blockchain"
+        - "testing/jormungandr-automation"
+        - "testing/jormungandr-integration-tests"
+        - "testing/loki"
+        - "testing/mjolnir"
+        - "testing/hersir"
+        - "testing/thor"
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+    - name: Setup
+      uses: ./.github/actions/nix-common-setup
+      with:
+        CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+    - name: Build
+      run: nix build .#${{ matrix.package }}
