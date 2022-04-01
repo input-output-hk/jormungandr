@@ -1,7 +1,7 @@
 book
 /target
 /vendor
-/result
+/result*
 /.idea/
 /.vscode/
 /.direnv/

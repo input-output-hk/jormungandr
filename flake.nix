@@ -1,5 +1,16 @@
 {
+  nixConfig.extra-substituters = [
+    "https://vit.cachix.org"
+    "https://hydra.iohk.io"
+  ];
+  nixConfig.extra-trusted-public-keys = [
+    "vit.cachix.org-1:tuLYwbnzbxLzQHHN0fvZI2EMpVm/+R7AKUGqukc6eh8="
+    "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
+  ];
+
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.flake-compat.url = "github:edolstra/flake-compat";
+  inputs.flake-compat.flake = false;
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.gitignore.url = "github:hercules-ci/gitignore.nix";
   inputs.gitignore.inputs.nixpkgs.follows = "nixpkgs";
@@ -14,18 +25,10 @@
   inputs.naersk.url = "github:yusdacra/naersk/feat/cargolock-git-deps";
   inputs.naersk.inputs.nixpkgs.follows = "nixpkgs";
 
-  nixConfig.extra-substituters = [
-    "https://hydra.iohk.io"
-    "https://vit-ops.cachix.org"
-  ];
-  nixConfig.extra-trusted-public-keys = [
-    "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
-    "vit-ops.cachix.org-1:LY84nIKdW7g1cvhJ6LsupHmGtGcKAlUXo+l1KByoDho="
-  ];
-
   outputs = {
     self,
     nixpkgs,
+    flake-compat,
     flake-utils,
     gitignore,
     pre-commit-hooks,
@@ -84,7 +87,7 @@
           cargoOptions =
             [
               "--package"
-              name
+              "file://$PWD/\"${name}\""
             ]
             ++ (pkgs.lib.optionals (name == "jormungandr") [
               "--features"
@@ -92,6 +95,8 @@
             ]);
         in
           naersk-lib.buildPackage {
+            inherit (pkgCargo.package) name version;
+
             root = gitignore.lib.gitignoreSource self;
 
             cargoBuildOptions = x: x ++ cargoOptions;
@@ -232,11 +237,12 @@
 
         warnToUpdateNix = pkgs.lib.warn "Consider updating to Nix > 2.7 to remove this warning!";
       in rec {
-        packages = {
-          inherit (workspace) jormungandr jcli;
-          inherit jormungandr-entrypoint;
-          default = workspace.jormungandr;
-        };
+        packages =
+          workspace
+          // {
+            inherit jormungandr-entrypoint;
+            default = workspace.jormungandr;
+          };
 
         devShells.default = pkgs.mkShell {
           PROTOC = "${pkgs.protobuf}/bin/protoc";
