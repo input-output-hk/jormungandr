@@ -20,9 +20,7 @@
   inputs.rust-overlay.url = "github:oxalica/rust-overlay";
   inputs.rust-overlay.inputs.flake-utils.follows = "flake-utils";
   inputs.rust-overlay.inputs.nixpkgs.follows = "nixpkgs";
-  # XXX: https://github.com/nix-community/naersk/pull/167
-  #inputs.naersk.url = "github:nix-community/naersk";
-  inputs.naersk.url = "github:yusdacra/naersk/feat/cargolock-git-deps";
+  inputs.naersk.url = "github:nix-community/naersk";
   inputs.naersk.inputs.nixpkgs.follows = "nixpkgs";
 
   outputs = {
