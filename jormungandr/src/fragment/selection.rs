@@ -4,6 +4,7 @@ use crate::{
     blockcfg::{ApplyBlockLedger, Contents, ContentsBuilder, LedgerParameters},
     fragment::{Fragment, FragmentId},
 };
+use chain_core::property::Serialize;
 use jormungandr_lib::interfaces::{BlockDate, FragmentStatus};
 
 use async_trait::async_trait;

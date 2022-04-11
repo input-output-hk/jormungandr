@@ -2,6 +2,7 @@ use crate::{
     blockcfg::{Value, ValueError},
     fragment::{Fragment, FragmentId},
 };
+use chain_core::property::Serialize;
 use std::time::SystemTime;
 
 pub struct PoolEntry {
