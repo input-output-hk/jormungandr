@@ -141,8 +141,8 @@ impl Node for JormungandrServerImpl {
                 .unwrap()
                 .tip()
                 .map_err(|e| tonic::Status::internal(format!("invalid tip {}", e)))?
-                .to_raw()
-                .to_vec(),
+                .serialize_as_vec()
+                .map_err(|e| tonic::Status::internal(format!("cannot serizlie header {}", e)))?,
         };
         Ok(Response::new(tip_response))
     }
