@@ -84,7 +84,7 @@ harness = false
 versionisator = "1.0.2"
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2.117"
+libc = "0.2.123"
 nix = "0.23.0"
 
 [features]
