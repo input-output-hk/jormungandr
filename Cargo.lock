@@ -1325,6 +1325,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68b91989ae21441195d7d9b9993a2f9295c7e1a8c96255d8b729accddc124797"
 
 [[package]]
+name = "erased-serde"
+version = "0.3.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad132dd8d0d0b546348d7d86cb3191aad14b34e5f979781fc005c80d4ac67ffd"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "ethabi"
 version = "16.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2382,6 +2391,7 @@ dependencies = [
  "tracing-subscriber 0.3.7",
  "versionisator",
  "warp",
+ "warp-json-rpc",
 ]
 
 [[package]]
@@ -5423,6 +5433,24 @@ dependencies = [
  "tokio-util",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "warp-json-rpc"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7267422020cd1544b9eb9d1a5e54128ccfd2e203a12b7f5eeec992d656c72fd8"
+dependencies = [
+ "anyhow",
+ "erased-serde",
+ "futures",
+ "http",
+ "hyper",
+ "lazycell",
+ "log",
+ "serde",
+ "serde_json",
+ "warp",
 ]
 
 [[package]]

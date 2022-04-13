@@ -71,6 +71,14 @@ pub struct RestArguments {
 }
 
 #[derive(StructOpt, Debug)]
+pub struct RpcArguments {
+    /// RPC API listening address.
+    /// If not configured anywhere, defaults to RPC API being disabled
+    #[structopt(long = "rpc-listen")]
+    pub listen: Option<SocketAddr>,
+}
+
+#[derive(StructOpt, Debug)]
 #[structopt(
     name = "jormungandr",
     setting = structopt::clap::AppSettings::ColoredHelp
@@ -105,6 +113,9 @@ pub struct CommandLine {
 
     #[structopt(flatten)]
     pub rest_arguments: RestArguments,
+
+    #[structopt(flatten)]
+    pub rpc_arguments: RestArguments,
 
     #[structopt(flatten)]
     pub start_arguments: StartArguments,

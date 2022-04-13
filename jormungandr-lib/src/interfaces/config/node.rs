@@ -21,6 +21,11 @@ pub struct Rest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Rpc {
+    pub listen: SocketAddr,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Tls {
     /// Path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item

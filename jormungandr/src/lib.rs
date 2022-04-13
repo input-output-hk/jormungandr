@@ -39,6 +39,7 @@ pub mod log;
 pub mod metrics;
 pub mod network;
 pub mod rest;
+pub mod rpc;
 pub mod secure;
 pub mod settings;
 pub mod start_up;
@@ -636,7 +637,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             };
 
             let server_handler = rest::start_rest_server(rest, context.clone());
-            services.spawn_future("rest", move |info| async move {
+            services.spawn_future("rest", |info| async move {
                 service_context.write().await.set_span(info.span().clone());
                 server_handler.await
             });
@@ -644,6 +645,15 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         }
         None => None,
     };
+
+    match settings.rpc.clone() {
+        Some(rpc) => {
+            let rpc = rpc::Config { listen: rpc.listen };
+            let server_handler = rpc::start_rpc_server(rpc);
+            services.spawn_future("rpc", |_| async move { server_handler.await });
+        }
+        None => {}
+    }
 
     // TODO: load network module here too (if needed)
 
