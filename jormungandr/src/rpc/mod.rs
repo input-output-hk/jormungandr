@@ -1,4 +1,5 @@
-use std::net::SocketAddr;
+use futures::future;
+use std::{convert::Infallible, net::SocketAddr};
 use warp::Filter as _;
 use warp_json_rpc::Builder;
 
@@ -13,5 +14,12 @@ pub async fn start_rpc_server(config: Config) {
         .and(warp_json_rpc::filters::params::<(isize, isize)>())
         .map(|res: Builder, (lhs, rhs)| res.success(lhs + rhs).unwrap());
 
-    warp::serve(method).bind(config.listen).await;
+    let service = warp_json_rpc::service(method);
+    let serivce_fn =
+        hyper::service::make_service_fn(move |_| future::ok::<_, Infallible>(service.clone()));
+
+    hyper::Server::bind(&config.listen)
+        .serve(serivce_fn)
+        .await
+        .unwrap();
 }
