@@ -155,11 +155,10 @@ impl RawSettings {
     }
 
     fn rpc_config(&self) -> Option<Rpc> {
-        let cmd_listen_opt = self.command_line.rpc_arguments.listen;
-        match cmd_listen_opt {
-            Some(cmd_listen) => Some(Rpc { listen: cmd_listen }),
-            None => None,
-        }
+        self.command_line
+            .rpc_arguments
+            .listen
+            .map(|listen| Rpc { listen })
     }
 
     /// Load the settings

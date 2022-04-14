@@ -646,13 +646,10 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         None => None,
     };
 
-    match settings.rpc.clone() {
-        Some(rpc) => {
-            let rpc = rpc::Config { listen: rpc.listen };
-            let server_handler = rpc::start_rpc_server(rpc);
-            services.spawn_future("rpc", |_| async move { server_handler.await });
-        }
-        None => {}
+    if let Some(rpc) = settings.rpc.clone() {
+        let rpc = rpc::Config { listen: rpc.listen };
+        let server_handler = rpc::start_rpc_server(rpc);
+        services.spawn_future("rpc", |_| async move { server_handler.await });
     }
 
     // TODO: load network module here too (if needed)
