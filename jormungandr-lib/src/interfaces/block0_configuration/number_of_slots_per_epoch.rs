@@ -34,7 +34,7 @@ impl NumberOfSlotsPerEpoch {
     /// returns `None` if the value is not within the boundaries of
     /// `NumberOfSlotsPerEpoch::MINIMUM` and `NumberOfSlotsPerEpoch::MAXIMUM`.
     pub fn new(v: u32) -> Option<Self> {
-        if v < MINIMUM_NUMBER_OF_SLOTS_PER_EPOCH || MAXIMUM_NUMBER_OF_SLOTS_PER_EPOCH < v {
+        if !(MINIMUM_NUMBER_OF_SLOTS_PER_EPOCH..=MAXIMUM_NUMBER_OF_SLOTS_PER_EPOCH).contains(&v) {
             None
         } else {
             Some(Self(v))
