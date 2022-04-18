@@ -35,7 +35,8 @@ impl KesUpdateSpeed {
     /// returns `None` if the value is not within the boundaries of
     /// `KesUpdateSpeed::MINIMUM` and `KesUpdateSpeed::MAXIMUM`.
     pub fn new(v: u32) -> Option<Self> {
-        if v < MINIMUM_KES_SPEED_UPDATE_IN_SECONDS || MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS < v {
+        if !(MINIMUM_KES_SPEED_UPDATE_IN_SECONDS..=MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS).contains(&v)
+        {
             None
         } else {
             Some(KesUpdateSpeed(v))
