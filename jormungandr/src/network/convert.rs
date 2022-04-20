@@ -134,7 +134,7 @@ impl Encode for Header {
     type NetworkData = net_data::Header;
 
     fn encode(&self) -> Self::NetworkData {
-        net_data::Header::from_bytes(self.to_raw())
+        net_data::Header::from_bytes(self.serialize_as_vec().unwrap())
     }
 }
 
