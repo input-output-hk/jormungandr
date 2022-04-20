@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Discard incoming gossips with either the same address or id as the current node
 - fix incorrect keys bech32 HRP by always using the ones provided by the library
 - update REST API: add new endpoint AccountVotes (`/api/v1/votes/plan/account-votes/{account_id}`)
 - Support parallel lanes in spending counters on account outputs. This allows
