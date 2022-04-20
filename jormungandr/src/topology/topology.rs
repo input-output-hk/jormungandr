@@ -153,6 +153,20 @@ impl P2pTopology {
             let peer = Profile::from_gossip(gossip);
             let peer_id = NodeId(peer.id());
             tracing::trace!(addr = %peer.address(), %peer_id, "received peer from incoming gossip");
+
+            // We do not support hosting multiple nodes at the same address at the moment.
+            // One problem with it is that routing new connections is a non-trivial task,
+            // plus we can rely on this to easily remove self_profile from incoming gossips.
+            // Such occurrences are usually the result of a restart of a node.
+            if peer.address() == self.topology.self_profile().address()
+                || peer.id() == self.topology.self_profile().id()
+            {
+                tracing::warn!(
+                    "gossip peer is using the address or id of the current node, ignoring..."
+                );
+                continue;
+            }
+
             if self.topology.add_peer(peer) {
                 self.quarantine.record_new_gossip(&peer_id);
                 self.stats_counter
