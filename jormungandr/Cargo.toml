@@ -57,11 +57,10 @@ tokio-util = { version = "0.6.0", features = ["time"] }
 tonic = "0.6"
 lru = "0.7"
 warp = { version = "0.3.2", features = ["tls"] }
-warp-json-rpc = { version = "0.3.0" }
-hyper = { version = "0.14.18" }
 serde_with = { version = "1.12", features = ["macros"] }
 http-zipkin = "0.3.0"
 prometheus = { version = "0.13", optional = true }
+jsonrpc-http-server = "18.0"
 
 [dependencies.reqwest]
 version = "0.11"

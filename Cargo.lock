@@ -1325,15 +1325,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68b91989ae21441195d7d9b9993a2f9295c7e1a8c96255d8b729accddc124797"
 
 [[package]]
-name = "erased-serde"
-version = "0.3.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad132dd8d0d0b546348d7d86cb3191aad14b34e5f979781fc005c80d4ac67ffd"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "ethabi"
 version = "16.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2355,9 +2346,9 @@ dependencies = [
  "futures",
  "hex",
  "http-zipkin",
- "hyper",
  "imhamt",
  "jormungandr-lib",
+ "jsonrpc-http-server",
  "keynesis",
  "lazy_static",
  "libc",
@@ -2392,7 +2383,6 @@ dependencies = [
  "tracing-subscriber 0.3.7",
  "versionisator",
  "warp",
- "warp-json-rpc",
 ]
 
 [[package]]
@@ -2599,6 +2589,55 @@ name = "json"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "078e285eafdfb6c4b434e0d31e8cfcb5115b651496faca5749b88fafd4f23bfd"
+
+[[package]]
+name = "jsonrpc-core"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14f7f76aef2d054868398427f6c54943cf3d1caa9a7ec7d0c38d69df97a965eb"
+dependencies = [
+ "futures",
+ "futures-executor",
+ "futures-util",
+ "log",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
+name = "jsonrpc-http-server"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1dea6e07251d9ce6a552abfb5d7ad6bc290a4596c8dcc3d795fae2bbdc1f3ff"
+dependencies = [
+ "futures",
+ "hyper",
+ "jsonrpc-core",
+ "jsonrpc-server-utils",
+ "log",
+ "net2",
+ "parking_lot",
+ "unicase",
+]
+
+[[package]]
+name = "jsonrpc-server-utils"
+version = "18.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa4fdea130485b572c39a460d50888beb00afb3e35de23ccd7fad8ff19f0e0d4"
+dependencies = [
+ "bytes",
+ "futures",
+ "globset",
+ "jsonrpc-core",
+ "lazy_static",
+ "log",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "unicase",
+]
 
 [[package]]
 name = "keccak"
@@ -2960,6 +2999,17 @@ dependencies = [
  "safemem",
  "tempfile",
  "twoway",
+]
+
+[[package]]
+name = "net2"
+version = "0.2.37"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "391630d12b68002ae1e25e8f974306474966550ad82dac6886fb8910c19568ae"
+dependencies = [
+ "cfg-if 0.1.10",
+ "libc",
+ "winapi",
 ]
 
 [[package]]
@@ -5434,24 +5484,6 @@ dependencies = [
  "tokio-util",
  "tower-service",
  "tracing",
-]
-
-[[package]]
-name = "warp-json-rpc"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7267422020cd1544b9eb9d1a5e54128ccfd2e203a12b7f5eeec992d656c72fd8"
-dependencies = [
- "anyhow",
- "erased-serde",
- "futures",
- "http",
- "hyper",
- "lazycell",
- "log",
- "serde",
- "serde_json",
- "warp",
 ]
 
 [[package]]

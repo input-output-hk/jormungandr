@@ -76,6 +76,9 @@ pub struct RpcArguments {
     /// If not configured anywhere, defaults to RPC API being disabled
     #[structopt(long = "rpc-listen")]
     pub listen: Option<SocketAddr>,
+    /// RPC threads number of the server.
+    /// If not configured anywhere, default value will be established (DEFAULT_RPC_THREADS_AMOUNT = 1)
+    pub threads_num: Option<usize>,
 }
 
 #[derive(StructOpt, Debug)]
@@ -115,7 +118,7 @@ pub struct CommandLine {
     pub rest_arguments: RestArguments,
 
     #[structopt(flatten)]
-    pub rpc_arguments: RestArguments,
+    pub rpc_arguments: RpcArguments,
 
     #[structopt(flatten)]
     pub start_arguments: StartArguments,

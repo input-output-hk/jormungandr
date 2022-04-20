@@ -25,6 +25,7 @@ const DEFAULT_LOG_SETTINGS_ENTRY: LogSettingsEntry = LogSettingsEntry {
     format: DEFAULT_LOG_FORMAT,
     output: DEFAULT_LOG_OUTPUT,
 };
+const DEFAULT_RPC_THREADS_AMOUNT: usize = 1;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -155,10 +156,14 @@ impl RawSettings {
     }
 
     fn rpc_config(&self) -> Option<Rpc> {
-        self.command_line
-            .rpc_arguments
-            .listen
-            .map(|listen| Rpc { listen })
+        self.command_line.rpc_arguments.listen.map(|listen| {
+            let threads = self
+                .command_line
+                .rpc_arguments
+                .threads_num
+                .unwrap_or(DEFAULT_RPC_THREADS_AMOUNT);
+            Rpc { listen, threads }
+        })
     }
 
     /// Load the settings
