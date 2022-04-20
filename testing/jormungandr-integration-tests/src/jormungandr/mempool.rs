@@ -2,7 +2,7 @@ use assert_fs::{
     fixture::{PathChild, PathCreateDir},
     TempDir,
 };
-use chain_core::property::FromStr;
+use chain_core::property::{FromStr, Serialize};
 use chain_impl_mockchain::{
     block::BlockDate,
     chaintypes::ConsensusVersion,

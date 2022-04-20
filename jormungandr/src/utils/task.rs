@@ -292,7 +292,7 @@ impl TokioServiceInfo {
         self.handle.spawn(
             async move {
                 if tokio::time::timeout(timeout, future).await.is_err() {
-                    tracing::error!("task {} timed out", name);
+                    tracing::error!("task {} timed out", name)
                 }
             }
             .instrument(span!(parent: &self.span, Level::TRACE, "task", kind = name)),
