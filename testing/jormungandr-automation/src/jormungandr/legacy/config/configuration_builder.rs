@@ -104,6 +104,7 @@ impl LegacyNodeConfigConverter {
                 cors: None,
                 tls: None,
             },
+            rpc: source.rpc.clone(),
             p2p: P2p {
                 trusted_peers,
                 public_address: source.p2p.public_address.clone(),
@@ -142,6 +143,7 @@ impl LegacyNodeConfigConverter {
                 cors: None,
                 tls: None,
             },
+            rpc: source.rpc.clone(),
             p2p: P2p {
                 trusted_peers,
                 public_address: source.p2p.public_address.clone(),
@@ -197,6 +199,7 @@ impl LegacyNodeConfigConverter {
                 cors: None,
                 tls: None,
             },
+            rpc: source.rpc.clone(),
             p2p: P2p {
                 trusted_peers,
                 public_address: source.p2p.public_address.clone(),

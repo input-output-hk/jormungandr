@@ -295,6 +295,7 @@ pub struct NodeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<PathBuf>,
     pub rest: Rest,
+    pub rpc: Rpc,
     pub p2p: P2p,
     pub log: Option<Log>,
     pub mempool: Option<Mempool>,
