@@ -66,7 +66,7 @@ pub struct StartArguments {
 pub struct RestArguments {
     /// REST API listening address.
     /// If not configured anywhere, defaults to REST API being disabled
-    #[structopt(long = "rest-listen")]
+    #[structopt(name = "rest-listen")]
     pub listen: Option<SocketAddr>,
 }
 
@@ -74,10 +74,11 @@ pub struct RestArguments {
 pub struct RpcArguments {
     /// RPC API listening address.
     /// If not configured anywhere, defaults to RPC API being disabled
-    #[structopt(long = "rpc-listen")]
+    #[structopt(name = "rpc-listen")]
     pub listen: Option<SocketAddr>,
     /// RPC threads number of the server.
     /// If not configured anywhere, default value will be established (DEFAULT_RPC_THREADS_AMOUNT = 1)
+    #[structopt(name = "rpc-threads-num")]
     pub threads_num: Option<usize>,
 }
 
