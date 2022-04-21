@@ -777,7 +777,7 @@ name = "chain-vote"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#7e6d61ec12f64e816b1b630362e086142468429d"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chain-core",
  "chain-crypto",
  "const_format",
@@ -786,19 +786,6 @@ dependencies = [
  "rand_core 0.6.3",
  "rayon",
  "thiserror",
-]
-
-[[package]]
-name = "chrono"
-version = "0.4.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "670ad68c9088c2a963aaa298cb369688cf3f9465ce5e2d4ca10e6e0098a1ce73"
-dependencies = [
- "libc",
- "num-integer",
- "num-traits",
- "time 0.1.44",
- "winapi",
 ]
 
 [[package]]
@@ -1487,11 +1474,11 @@ dependencies = [
  "tokio-util",
  "tonic 0.4.3",
  "tracing",
- "tracing-appender 0.1.2",
+ "tracing-appender",
  "tracing-futures",
- "tracing-gelf 0.5.2",
- "tracing-journald 0.1.0",
- "tracing-subscriber 0.2.25",
+ "tracing-gelf",
+ "tracing-journald",
+ "tracing-subscriber",
  "url",
  "warp",
 ]
@@ -2411,11 +2398,11 @@ dependencies = [
  "tokio-util",
  "tonic 0.6.2",
  "tracing",
- "tracing-appender 0.2.0",
+ "tracing-appender",
  "tracing-futures",
- "tracing-gelf 0.6.0",
- "tracing-journald 0.2.0",
- "tracing-subscriber 0.3.7",
+ "tracing-gelf",
+ "tracing-journald",
+ "tracing-subscriber",
  "versionisator",
  "warp",
 ]
@@ -2476,7 +2463,7 @@ dependencies = [
  "tonic 0.6.2",
  "tonic-build",
  "tracing",
- "tracing-subscriber 0.3.7",
+ "tracing-subscriber",
  "typed-bytes",
  "url",
  "warp",
@@ -2800,15 +2787,6 @@ name = "match_cfg"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ffbee8634e0d45d258acb448e7eaab3fce7a0a467395d4d9f228e3c1f01fb2e4"
-
-[[package]]
-name = "matchers"
-version = "0.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f099785f7595cc4b4553a174ce30dd7589ef93391ff414dbb67f62392b9e0ce1"
-dependencies = [
- "regex-automata",
-]
 
 [[package]]
 name = "matches"
@@ -3920,9 +3898,6 @@ name = "regex-automata"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
-dependencies = [
- "regex-syntax",
-]
 
 [[package]]
 name = "regex-syntax"
@@ -5035,24 +5010,13 @@ dependencies = [
 
 [[package]]
 name = "tracing-appender"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9965507e507f12c8901432a33e31131222abac31edd90cabbcf85cf544b7127a"
-dependencies = [
- "chrono",
- "crossbeam-channel",
- "tracing-subscriber 0.2.25",
-]
-
-[[package]]
-name = "tracing-appender"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94571df2eae3ed4353815ea5a90974a594a1792d8782ff2cbcc9392d1101f366"
 dependencies = [
  "crossbeam-channel",
  "time 0.3.7",
- "tracing-subscriber 0.3.7",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -5088,25 +5052,6 @@ dependencies = [
 
 [[package]]
 name = "tracing-gelf"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f4fe4038f6bf2143be16607b2e1b04b65017ebed9632d638972898a6ba31a35"
-dependencies = [
- "bytes",
- "futures-channel",
- "futures-util",
- "hostname",
- "serde_json",
- "thiserror",
- "tokio",
- "tokio-util",
- "tracing-core",
- "tracing-futures",
- "tracing-subscriber 0.2.25",
-]
-
-[[package]]
-name = "tracing-gelf"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bef407d785989f789a53a00c9a6196735ef6e407ae2bb20e0282b3b9dc271f66"
@@ -5121,17 +5066,7 @@ dependencies = [
  "tokio-util",
  "tracing-core",
  "tracing-futures",
- "tracing-subscriber 0.3.7",
-]
-
-[[package]]
-name = "tracing-journald"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fe1f0ed2b7a5fcb6da2bc9e783587d9a0c8b9535e50224afe04e543eae8a2d6"
-dependencies = [
- "tracing-core",
- "tracing-subscriber 0.2.25",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -5141,7 +5076,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c35f4a6b4b2d00511aa9e17d4efc74d4c3ddc5a5416f58a5de25c30bfeb0307"
 dependencies = [
  "tracing-core",
- "tracing-subscriber 0.3.7",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -5163,28 +5098,6 @@ checksum = "fb65ea441fbb84f9f6748fd496cf7f63ec9af5bca94dd86456978d055e8eb28b"
 dependencies = [
  "serde",
  "tracing-core",
-]
-
-[[package]]
-name = "tracing-subscriber"
-version = "0.2.25"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e0d2eaa99c3c2e41547cfa109e910a68ea03823cccad4a0525dcbc9b01e8c71"
-dependencies = [
- "ansi_term",
- "chrono",
- "lazy_static",
- "matchers",
- "regex",
- "serde",
- "serde_json",
- "sharded-slab",
- "smallvec",
- "thread_local",
- "tracing",
- "tracing-core",
- "tracing-log",
- "tracing-serde",
 ]
 
 [[package]]
