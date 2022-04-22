@@ -139,13 +139,13 @@ impl RawSettings {
 
     fn rest_config(&self) -> Option<Rest> {
         let cmd_listen_opt = self.command_line.rest_arguments.listen;
-        let config_rest_opt = self.config.as_ref().and_then(|cfg| cfg.rest.as_ref());
+        let config_rest_opt = self.config.as_ref().and_then(|cfg| cfg.rest.clone());
         match (config_rest_opt, cmd_listen_opt) {
             (Some(config_rest), Some(cmd_listen)) => Some(Rest {
                 listen: cmd_listen,
-                ..config_rest.clone()
+                ..config_rest
             }),
-            (Some(config_rest), None) => Some(config_rest.clone()),
+            (Some(config_rest), None) => Some(config_rest),
             (None, Some(cmd_listen)) => Some(Rest {
                 listen: cmd_listen,
                 tls: None,
@@ -156,14 +156,20 @@ impl RawSettings {
     }
 
     fn rpc_config(&self) -> Option<Rpc> {
-        self.command_line.rpc_arguments.listen.map(|listen| {
-            let threads = self
-                .command_line
-                .rpc_arguments
-                .threads_num
-                .unwrap_or(DEFAULT_RPC_THREADS_AMOUNT);
-            Rpc { listen, threads }
-        })
+        let cmd_listen_opt = self.command_line.rpc_arguments.listen;
+        let config_rpc_opt = self.config.as_ref().and_then(|cfg| cfg.rpc.clone());
+        match (config_rpc_opt, cmd_listen_opt) {
+            (Some(config_rpc), Some(cmd_listen)) => Some(Rpc {
+                listen: cmd_listen,
+                ..config_rpc
+            }),
+            (Some(config_rpc), None) => Some(config_rpc),
+            (None, Some(cmd_listen)) => Some(Rpc {
+                listen: cmd_listen,
+                threads: DEFAULT_RPC_THREADS_AMOUNT,
+            }),
+            (None, None) => None,
+        }
     }
 
     /// Load the settings
