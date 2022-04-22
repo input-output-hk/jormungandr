@@ -645,6 +645,8 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         None => None,
     };
 
+    services.spawn_future("test_service", |_| async {});
+
     // TODO: load network module here too (if needed)
 
     if let Some(context) = rest_context.as_ref() {
