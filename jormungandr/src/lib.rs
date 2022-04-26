@@ -39,6 +39,7 @@ pub mod log;
 pub mod metrics;
 pub mod network;
 pub mod rest;
+pub mod rpc;
 pub mod secure;
 pub mod settings;
 pub mod start_up;
@@ -617,7 +618,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     init_os_signal_watchers(&mut services, cancellation_token.clone());
 
     let rest_context = match settings.rest.clone() {
-        Some(rest) => {
+        Some(rest_config) => {
             use tokio::sync::RwLock;
 
             let mut context = rest::Context::new();
@@ -627,16 +628,16 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
             let service_context = context.clone();
 
-            let rest = rest::Config {
-                listen: rest.listen,
-                tls: rest.tls,
-                cors: rest.cors,
+            let rest_config = rest::Config {
+                listen: rest_config.listen,
+                tls: rest_config.tls,
+                cors: rest_config.cors,
                 #[cfg(feature = "prometheus-metrics")]
                 enable_prometheus: settings.prometheus,
             };
 
-            let server_handler = rest::start_rest_server(rest, context.clone());
-            services.spawn_future("rest", move |info| async move {
+            let server_handler = rest::start_rest_server(rest_config, context.clone());
+            services.spawn_future("rest", |info| async move {
                 service_context.write().await.set_span(info.span().clone());
                 server_handler.await
             });
@@ -644,6 +645,14 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         }
         None => None,
     };
+
+    if let Some(rpc_config) = settings.rpc.clone() {
+        let rpc_config = rpc::Config {
+            listen: rpc_config.listen,
+        };
+        let server_handler = rpc::start_rpc_server(rpc_config);
+        services.spawn_future("rpc", |_| async move { server_handler.await });
+    }
 
     // TODO: load network module here too (if needed)
 
