@@ -50,7 +50,7 @@ use tracing_futures::Instrument;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    ContextError(#[from] crate::rest::context::Error),
+    ContextError(#[from] crate::context::Error),
     #[error(transparent)]
     PublicKey(#[from] PublicKeyFromStrError),
     #[error(transparent)]
@@ -317,7 +317,7 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
 
 pub async fn shutdown(context: &mut Context) -> Result<(), Error> {
     context.stop_bootstrap();
-    context.server_stopper()?.stop();
+    context.rest_server_stopper()?.stop();
     Ok(())
 }
 

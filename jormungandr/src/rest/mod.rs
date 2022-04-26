@@ -6,11 +6,9 @@ mod prometheus;
 pub mod v0;
 mod v1;
 
-pub use self::context::{Context, ContextLock, FullContext};
-
-use jormungandr_lib::interfaces::{Cors, Tls};
-
+use crate::context::{Context, ContextLock, ServerStopper};
 use futures::{channel::mpsc, prelude::*};
+use jormungandr_lib::interfaces::{Cors, Tls};
 use std::{error::Error, net::SocketAddr, time::Duration};
 use warp::Filter;
 
@@ -22,22 +20,13 @@ pub struct Config {
     pub enable_prometheus: bool,
 }
 
-#[derive(Clone)]
-pub struct ServerStopper(mpsc::Sender<()>);
-
-impl ServerStopper {
-    pub fn stop(&self) {
-        self.0.clone().try_send(()).unwrap();
-    }
-}
-
 pub async fn start_rest_server(config: Config, context: ContextLock) {
     let (stopper_tx, stopper_rx) = mpsc::channel::<()>(0);
     let stopper_rx = stopper_rx.into_future().map(|_| ());
     context
         .write()
         .await
-        .set_server_stopper(ServerStopper(stopper_tx));
+        .set_rest_server_stopper(ServerStopper::new(stopper_tx));
 
     let api = warp::path!("api" / ..)
         .and(v0::filter(context.clone()).or(v1::filter(context.clone())))
