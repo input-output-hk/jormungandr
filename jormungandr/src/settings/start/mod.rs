@@ -158,10 +158,7 @@ impl RawSettings {
         let cmd_listen_opt = self.command_line.rpc_arguments.listen;
         let config_rpc_opt = self.config.as_ref().and_then(|cfg| cfg.rpc.clone());
         match (config_rpc_opt, cmd_listen_opt) {
-            (Some(config_rpc), Some(cmd_listen)) => Some(Rpc {
-                listen: cmd_listen,
-                ..config_rpc
-            }),
+            (Some(_), Some(cmd_listen)) => Some(Rpc { listen: cmd_listen }),
             (Some(config_rpc), None) => Some(config_rpc),
             (None, Some(cmd_listen)) => Some(Rpc { listen: cmd_listen }),
             (None, None) => None,
