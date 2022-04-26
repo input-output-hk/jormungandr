@@ -649,7 +649,6 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     if let Some(rpc_config) = settings.rpc.clone() {
         let rpc_config = rpc::Config {
             listen: rpc_config.listen,
-            threads: rpc_config.threads,
         };
         let server_handler = rpc::start_rpc_server(rpc_config);
         services.spawn_future("rpc", |_| async move { server_handler.await });

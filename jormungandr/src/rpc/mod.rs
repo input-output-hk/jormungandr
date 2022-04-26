@@ -1,22 +1,22 @@
 use std::net::SocketAddr;
 
-use jsonrpc_http_server::jsonrpc_core::{IoHandler, Value};
-use jsonrpc_http_server::ServerBuilder;
+// use jsonrpsee::jsonrpc_core::{IoHandler, Value};
+// use jsonrpsee::ServerBuilder;
+use jsonrpsee_http_server::{HttpServerBuilder, RpcModule};
 
 pub struct Config {
     pub listen: SocketAddr,
-    pub threads: usize,
 }
 
 pub async fn start_rpc_server(config: Config) {
     // it is initial dummy impl just for initialization rpc instance
-    let mut io = IoHandler::default();
-    io.add_method("dummy", |_| async { Ok(Value::Null) });
-
-    let server = ServerBuilder::new(io)
-        .threads(config.threads)
-        .start_http(&config.listen)
+    let server = HttpServerBuilder::default()
+        .build(config.listen)
+        .await
         .unwrap();
 
-    server.wait();
+    let mut module = RpcModule::new(());
+    module.register_method("dummy", |_, _| Ok(())).unwrap();
+
+    server.start(module).unwrap().await
 }

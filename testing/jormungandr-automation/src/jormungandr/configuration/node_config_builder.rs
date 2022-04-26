@@ -49,7 +49,6 @@ impl NodeConfigBuilder {
             },
             rpc: Rpc {
                 listen: format!("{}:{}", DEFAULT_HOST, rpc_port).parse().unwrap(),
-                threads: 1,
             },
             p2p: P2p {
                 node_key_file: None,

@@ -25,7 +25,6 @@ const DEFAULT_LOG_SETTINGS_ENTRY: LogSettingsEntry = LogSettingsEntry {
     format: DEFAULT_LOG_FORMAT,
     output: DEFAULT_LOG_OUTPUT,
 };
-const DEFAULT_RPC_THREADS_AMOUNT: usize = 1;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -164,10 +163,7 @@ impl RawSettings {
                 ..config_rpc
             }),
             (Some(config_rpc), None) => Some(config_rpc),
-            (None, Some(cmd_listen)) => Some(Rpc {
-                listen: cmd_listen,
-                threads: DEFAULT_RPC_THREADS_AMOUNT,
-            }),
+            (None, Some(cmd_listen)) => Some(Rpc { listen: cmd_listen }),
             (None, None) => None,
         }
     }

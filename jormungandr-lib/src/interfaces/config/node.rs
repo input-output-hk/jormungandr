@@ -23,7 +23,6 @@ pub struct Rest {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Rpc {
     pub listen: SocketAddr,
-    pub threads: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
