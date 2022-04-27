@@ -629,7 +629,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let context = match settings.rest.clone() {
         Some(rest_config) => {
-            let context = init_context(diagnostic);
+            let context = init_context(diagnostic.clone());
 
             let rest_config = rest::Config {
                 listen: rest_config.listen,
@@ -650,13 +650,24 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         None => None,
     };
 
-    if let Some(rpc_config) = settings.rpc.clone() {
-        let rpc_config = rpc::Config {
-            listen: rpc_config.listen,
-        };
-        let server_handler = rpc::start_rpc_server(rpc_config);
-        services.spawn_future("rpc", |_| async move { server_handler.await });
-    }
+    let context = match settings.rpc.clone() {
+        Some(rpc_config) => {
+            let context = context.unwrap_or_else(|| init_context(diagnostic));
+
+            let rpc_config = rpc::Config {
+                listen: rpc_config.listen,
+            };
+            let server_handler = rpc::start_rpc_server(rpc_config, context.clone());
+            let service_context = context.clone();
+            services.spawn_future("rpc", |info| async move {
+                service_context.write().await.set_span(info.span().clone());
+                server_handler.await
+            });
+
+            Some(context)
+        }
+        None => context,
+    };
 
     // TODO: load network module here too (if needed)
 
