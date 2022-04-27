@@ -102,5 +102,32 @@ pub fn test_default_settings () {
     assert_eq!(rest_settings,block0_settings);
 }
 
+#[rstest]
+pub fn test_custom_settings () {
+    let alice = thor::Wallet::default();
+   
+    let mut linear_fees = LinearFee::new(1, 2, 1);
+    linear_fees.per_certificate_fees(PerCertificateFee::new(NonZeroU64::new(2), NonZeroU64::new(3), NonZeroU64::new(1)));
+    linear_fees.per_vote_certificate_fees(PerVoteCertificateFee::new(NonZeroU64::new(3), NonZeroU64::new(3)));
+    
+    let jormungandr = startup::start_bft(
+        vec![&alice],
+        &mut ConfigurationBuilder::new()
+        .with_linear_fees(linear_fees)
+        .with_block_content_max_size(2000.into())
+        .with_epoch_stability_depth(2000)
+        .with_slot_duration(1)
+        .with_slots_per_epoch(6)
+        .with_total_rewards_supply(666.into())
+        .with_tx_max_expiry_epochs(50),
+    ).expect("Startup stake pool error");
 
+    let rest_settings = jormungandr.rest().settings().expect("Rest settings error");
+    let block0_settings = get_settings_from_block0_configuration(jormungandr.block0_configuration());
+    println!("REST {:#?}",rest_settings);
+    println!("===================");
+    println!("BLOCK0 {:#?}",block0_settings);
+    assert_eq!(rest_settings,block0_settings);
+
+}
 
