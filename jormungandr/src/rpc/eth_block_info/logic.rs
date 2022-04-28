@@ -23,11 +23,7 @@ pub fn get_block_by_number(
 pub fn get_transaction_count_by_hash(hash: H256, context: &Context) -> Result<Option<U256>, Error> {
     let block = context.blockchain()?.storage().get(hash.0.into())?;
 
-    let count = block.map_or(0, |block| {
-        let mut count = 0;
-        block.fragments().for_each(|_| count += 1);
-        count
-    });
+    let count = block.map_or(0, |block| block.contents().len());
 
     Ok(Some(count.into()))
 }
