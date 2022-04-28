@@ -198,7 +198,7 @@ mod test {
         );
 
         let block = Block {
-            header: header,
+            header,
             total_difficulty: u256,
             uncles: vec![h256],
             transactions: BlockTransactions::Hashes(vec![h256]),
