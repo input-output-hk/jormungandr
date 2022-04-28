@@ -13,6 +13,8 @@ use jormungandr_lib::interfaces::Block0Configuration;
 use jormungandr_lib::interfaces::BlockContentMaxSize;
 use jormungandr_lib::interfaces::InitialToken;
 use jormungandr_lib::interfaces::ProposalExpiration;
+use jormungandr_lib::interfaces::RewardParams;
+use jormungandr_lib::interfaces::TaxType;
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo,
     Initial, InitialUTxO, KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
@@ -39,7 +41,9 @@ pub struct ConfigurationBuilder {
     secret: Option<NodeSecret>,
     fees_go_to: Option<FeesGoTo>,
     total_reward_supply: Option<Value>,
+    reward_parameters : Option<RewardParams>,
     treasury: Option<Value>,
+    treasury_parameters: Option<TaxType>,
     node_config_builder: NodeConfigBuilder,
     rewards_history: bool,
     configure_default_log: bool,
@@ -82,11 +86,13 @@ impl ConfigurationBuilder {
             proposal_expiry_epochs: Default::default(),
             fees_go_to: None,
             treasury: None,
+            treasury_parameters: None,
             total_reward_supply: None,
+            reward_parameters: None,
             discrimination: Discrimination::Test,
             block_content_max_size: 4092.into(),
             tx_max_expiry_epochs: None,
-            log_level: "trace".into(),
+            log_level: "trace".into(),        
         }
     }
 
@@ -294,6 +300,16 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_treasury_parameters(&mut self, treasury_parameters: TaxType) -> &mut Self {
+        self.treasury_parameters = Some(treasury_parameters);
+        self
+    }
+
+    pub fn with_reward_parameters(&mut self, reward_parameters: RewardParams) -> &mut Self {
+        self.reward_parameters = Some(reward_parameters);
+        self
+    }
+
     pub fn with_total_rewards_supply(&mut self, total_reward_supply: Value) -> &mut Self {
         self.total_reward_supply = Some(total_reward_supply);
         self
@@ -323,6 +339,18 @@ impl ConfigurationBuilder {
         if let Some(tx_max_expiry_epochs) = self.tx_max_expiry_epochs {
             block0_config_builder = block0_config_builder
                 .with_tx_max_expiry_epochs(tx_max_expiry_epochs)
+                .to_owned();
+        }
+
+        if let Some(treasury_parameters) = self.treasury_parameters {
+            block0_config_builder = block0_config_builder
+                .with_treasury_parameters(Some(treasury_parameters))
+                .to_owned();
+        }
+
+        if let Some(reward_parameters) = self.reward_parameters {
+            block0_config_builder = block0_config_builder
+                .with_reward_parameters(Some(reward_parameters))
                 .to_owned();
         }
 

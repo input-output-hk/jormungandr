@@ -16,7 +16,7 @@ use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serde_derive::{Deserialize, Serialize};
 
-use std::num::NonZeroU32;
+use std::num::{NonZeroU32,NonZeroU64};
 use std::vec::Vec;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -56,7 +56,7 @@ impl Block0ConfigurationBuilder {
                 treasury_parameters: Some(TaxType {
                     fixed: 10.into(),
                     ratio: Ratio::new_checked(1, 1_000).unwrap(),
-                    max_limit: None,
+                    max_limit: NonZeroU64::new(123),
                 }),
                 total_reward_supply: Some(1_000_000_000.into()),
                 reward_parameters: Some(RewardParams::Linear {
@@ -136,6 +136,11 @@ impl Block0ConfigurationBuilder {
         self
     }
 
+    pub fn with_reward_parameters(&mut self, reward_parameters: Option<RewardParams>) -> &mut Self {
+        self.blockchain_configuration.reward_parameters = reward_parameters;
+        self
+    }
+
     pub fn with_total_rewards_supply(&mut self, total_reward_supply: Option<Value>) -> &mut Self {
         self.blockchain_configuration.total_reward_supply = total_reward_supply;
         self
@@ -171,6 +176,11 @@ impl Block0ConfigurationBuilder {
 
     pub fn with_fees_go_to(&mut self, fees_go_to: Option<FeesGoTo>) -> &mut Self {
         self.blockchain_configuration.fees_go_to = fees_go_to;
+        self
+    }
+
+    pub fn with_treasury_parameters(&mut self, treasury_parameters: Option<TaxType>) -> &mut Self {
+        self.blockchain_configuration.treasury_parameters = treasury_parameters;
         self
     }
 
