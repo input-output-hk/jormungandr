@@ -53,7 +53,7 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "json", "time"] }
 tracing-appender = "0.2"
 tokio = { version = "^1.15", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
 tokio-stream = { version = "0.1.4", features = ["sync"] }
-tokio-util = { version = "0.6.0", features = ["time"] }
+tokio-util = { version = "0.7.1", features = ["time"] }
 tonic = "0.6"
 lru = "0.7"
 warp = { version = "0.3.2", features = ["tls"] }
