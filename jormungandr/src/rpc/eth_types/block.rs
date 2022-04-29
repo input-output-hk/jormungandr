@@ -1,5 +1,7 @@
+use super::transaction::Transaction;
 use chain_core::property::Serialize as _;
 use chain_evm::ethereum_types::{Bloom, H160, H256, U256};
+use chain_impl_mockchain::fragment::Fragment;
 use serde::{Serialize, Serializer};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -33,9 +35,8 @@ impl Serialize for Bytes {
 pub enum BlockTransactions {
     /// Only hashes
     Hashes(Vec<H256>),
-    // TODO implement
-    // /// Full transactions
-    // Full(Vec<Transaction>),
+    /// Full transactions
+    Full(Vec<Transaction>),
 }
 
 impl Serialize for BlockTransactions {
@@ -45,7 +46,7 @@ impl Serialize for BlockTransactions {
     {
         match *self {
             BlockTransactions::Hashes(ref hashes) => hashes.serialize(serializer),
-            // BlockTransactions::Full(ref ts) => ts.serialize(serializer),
+            BlockTransactions::Full(ref ts) => ts.serialize(serializer),
         }
     }
 }
@@ -133,6 +134,7 @@ pub struct Block {
 
 impl Block {
     pub fn build(block: chain_impl_mockchain::block::Block, full: bool) -> Self {
+        let header = Header::build(block.header().clone());
         let transactions = match full {
             true => BlockTransactions::Hashes(
                 block
@@ -140,11 +142,21 @@ impl Block {
                     .map(|tx| H256::from_slice(tx.hash().as_bytes()))
                     .collect(),
             ),
-            false => BlockTransactions::Hashes(vec![]),
+            false => {
+                let mut txs = Vec::new();
+                for tx in block.fragments() {
+                    let hash = H256::from_slice(tx.hash().as_bytes());
+                    if let Fragment::Evm(tx) = tx {
+                        let tx = tx.as_slice().payload().into_payload();
+                        txs.push(Transaction::build(header.hash, header.number, hash, tx))
+                    }
+                }
+                BlockTransactions::Full(txs)
+            }
         };
 
         Self {
-            header: Header::build(block.header().clone()),
+            header,
             total_difficulty: U256::zero(),
             uncles: Default::default(),
             transactions,
