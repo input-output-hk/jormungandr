@@ -18,6 +18,7 @@ pub async fn start_rpc_server(config: Config, _context: ContextLock) {
         .await
         .unwrap();
 
+    #[allow(unused_mut)]
     let mut modules = RpcModule::new(());
 
     #[cfg(feature = "evm")]
