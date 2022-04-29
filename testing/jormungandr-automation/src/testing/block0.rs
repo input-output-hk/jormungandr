@@ -1,3 +1,4 @@
+use super::blockchain_config::BlockchainConfigurationExtension;
 use chain_core::{
     packer::Codec,
     property::{Deserialize, DeserializeFromSlice, ReadError, Serialize, WriteError},
@@ -5,9 +6,9 @@ use chain_core::{
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::certificate::VotePlan;
 use chain_impl_mockchain::ledger::Ledger;
-use jormungandr_lib::interfaces::Block0Configuration;
-use jormungandr_lib::interfaces::Block0ConfigurationError;
 use jormungandr_lib::interfaces::Initial;
+use jormungandr_lib::interfaces::{Block0Configuration, SettingsDto};
+use jormungandr_lib::{interfaces::Block0ConfigurationError, time::SystemTime};
 use std::io::BufReader;
 use std::path::Path;
 use thiserror::Error;
@@ -38,6 +39,7 @@ pub fn get_block<S: Into<String>>(block0: S) -> Result<Block0Configuration, Bloc
 
 pub trait Block0ConfigurationExtension {
     fn vote_plans(&self) -> Vec<VotePlan>;
+    fn settings(&self) -> SettingsDto;
 }
 
 impl Block0ConfigurationExtension for Block0Configuration {
@@ -53,6 +55,25 @@ impl Block0ConfigurationExtension for Block0Configuration {
             }
         }
         vote_plans
+    }
+
+    fn settings(&self) -> SettingsDto {
+        let blockchain_configuration = &self.blockchain_configuration;
+        SettingsDto {
+            block0_hash: self.to_block().header().id().to_string(),
+            block0_time: blockchain_configuration.block0_date.into(),
+            curr_slot_start_time: Some(SystemTime::from(blockchain_configuration.block0_date)),
+            consensus_version: blockchain_configuration.block0_consensus.to_string(),
+            fees: blockchain_configuration.linear_fees,
+            block_content_max_size: blockchain_configuration.block_content_max_size.into(),
+            epoch_stability_depth: blockchain_configuration.epoch_stability_depth.into(),
+            slot_duration: u8::from(blockchain_configuration.slot_duration).into(),
+            slots_per_epoch: blockchain_configuration.slots_per_epoch.into(),
+            treasury_tax: blockchain_configuration.treasury_parameters.unwrap().into(),
+            reward_params: blockchain_configuration.reward_parameters().unwrap(),
+            discrimination: blockchain_configuration.discrimination,
+            tx_max_expiry_epochs: blockchain_configuration.tx_max_expiry_epochs.unwrap(),
+        }
     }
 }
 
