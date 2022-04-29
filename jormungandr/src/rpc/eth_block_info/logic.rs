@@ -3,12 +3,12 @@ use crate::{context::Context, rpc::eth_types::block::Block};
 use chain_evm::ethereum_types::{H256, U256};
 
 pub fn get_block_by_hash(
-    hash: H256,
+    _hash: H256,
     full: bool,
-    context: &Context,
+    _context: &Context,
 ) -> Result<Option<Block>, Error> {
-    let block = context.blockchain()?.storage().get(hash.0.into())?;
-    Ok(block.map(|block| Block::build(block, full)))
+    // TODO implement
+    Ok(Some(Block::build(full)))
 }
 
 pub fn get_block_by_number(
@@ -17,15 +17,15 @@ pub fn get_block_by_number(
     _context: &Context,
 ) -> Result<Option<Block>, Error> {
     // TODO implement
-    Ok(None)
+    Ok(Some(Block::default()))
 }
 
-pub fn get_transaction_count_by_hash(hash: H256, context: &Context) -> Result<Option<U256>, Error> {
-    let block = context.blockchain()?.storage().get(hash.0.into())?;
-
-    let count = block.map_or(0, |block| block.contents().len());
-
-    Ok(Some(count.into()))
+pub fn get_transaction_count_by_hash(
+    _hash: H256,
+    _context: &Context,
+) -> Result<Option<U256>, Error> {
+    // TODO implement
+    Ok(Some(0.into()))
 }
 
 pub fn get_transaction_count_by_number(
@@ -33,14 +33,16 @@ pub fn get_transaction_count_by_number(
     _context: &Context,
 ) -> Result<Option<U256>, Error> {
     // TODO implement
-    Ok(None)
+    Ok(Some(0.into()))
 }
 
 pub fn get_uncle_count_by_hash(_: H256, _: &Context) -> Result<Option<U256>, Error> {
+    // jormungandr block does not have any ethereum "uncles" so we allways return 0
     Ok(Some(0.into()))
 }
 
 pub fn get_uncle_count_by_number(_: u64, _: &Context) -> Result<Option<U256>, Error> {
+    // jormungandr block does not have any ethereum "uncles" so we allways return 0
     Ok(Some(0.into()))
 }
 
