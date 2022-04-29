@@ -56,3 +56,5 @@ imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "m
 [features]
 default = []
 evm = ["chain-impl-mockchain/evm", "jormungandr-lib/evm"]
+systemd = ["tracing-journald"]
+gelf = ["tracing-gelf"]

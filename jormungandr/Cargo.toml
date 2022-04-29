@@ -46,9 +46,7 @@ time = { version = "0.3", features = ["macros"] }
 thiserror = "1.0.30"
 tracing = "0.1"
 tracing-futures = "0.2"
-tracing-gelf = { version = "0.6", optional = true }
 # TODO unpin this when cross for ARM targets is fixed: https://github.com/cross-rs/cross/pull/591
-tracing-journald = { version = "=0.2.0", optional = true }
 tracing-subscriber = { version = "0.3", features = ["fmt", "json", "time"] }
 tracing-appender = "0.2"
 tokio = { version = "^1.15", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
@@ -94,7 +92,5 @@ with-bench = []
 codegen-rustfmt = ["chain-network/codegen-rustfmt"]
 integration-test = []
 soak-test = []
-systemd = ["tracing-journald"]
-gelf = ["tracing-gelf"]
 prometheus-metrics = ["prometheus"]
 evm = [ "chain-impl-mockchain/evm", "jormungandr-lib/evm" ]
