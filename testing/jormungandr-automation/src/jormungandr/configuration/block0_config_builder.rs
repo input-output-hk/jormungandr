@@ -126,7 +126,7 @@ impl Block0ConfigurationBuilder {
         self.blockchain_configuration.epoch_stability_depth = epoch_stability_depth;
         self
     }
-    
+
     pub fn with_active_slot_coeff(
         &mut self,
         consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,

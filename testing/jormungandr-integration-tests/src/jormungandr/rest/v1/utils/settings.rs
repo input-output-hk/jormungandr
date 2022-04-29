@@ -8,21 +8,21 @@ use jormungandr_lib::interfaces::{SettingsDto, RewardParams, BlockchainConfigura
 use jormungandr_lib::time::SystemTime;
 use rstest::*;
 
-fn get_parameters_from_blockchain_config(blockchain_configuration: &BlockchainConfiguration) -> Option<Parameters> {   
-    let reward_param = 
+fn get_parameters_from_blockchain_config(blockchain_configuration: &BlockchainConfiguration) -> Option<Parameters> {
+    let reward_param =
         match blockchain_configuration.reward_parameters{
             None => return None,
             Some(r) => r
         };
-    
-    let reward_drawing = 
+
+    let reward_drawing =
          match blockchain_configuration.reward_constraints.reward_drawing_limit_max{
             None => Limit::None,
             Some(r) => Limit::ByStakeAbsolute(r.into())
         };
     //TODO use map?
     let pool_participation =
-        match blockchain_configuration.reward_constraints.pool_participation_capping 
+        match blockchain_configuration.reward_constraints.pool_participation_capping
          {
             None => None,
             Some(p) => Some((p.min, p.max))
@@ -55,7 +55,7 @@ fn get_parameters_from_blockchain_config(blockchain_configuration: &BlockchainCo
             epoch_rate,
             epoch_start,
             reward_drawing_limit_max: reward_drawing,
-            pool_participation_capping: pool_participation,    
+            pool_participation_capping: pool_participation,
         }),
     }
 }
@@ -85,26 +85,26 @@ fn get_settings_from_block0_configuration(block0_configuration: &Block0Configura
 #[rstest]
 pub fn test_default_settings () {
     let alice = thor::Wallet::default();
-    let bob = thor::Wallet::default();   
+    let bob = thor::Wallet::default();
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
         &[bob.clone()],
         &mut ConfigurationBuilder::new(),
-    ).expect("Startup stake pool error");
+    ).unwrap();
 
     let rest_settings = jormungandr.rest().settings().expect("Rest settings error");
     let block0_settings = get_settings_from_block0_configuration(jormungandr.block0_configuration());
-    assert_eq!(rest_settings,block0_settings);   
+    assert_eq!(rest_settings,block0_settings);
 }
 
 #[rstest]
 pub fn test_custom_settings () {
     let alice = thor::Wallet::default();
-   
+
     let mut linear_fees = LinearFee::new(1, 2, 1);
     linear_fees.per_certificate_fees(PerCertificateFee::new(NonZeroU64::new(2), NonZeroU64::new(3), NonZeroU64::new(1)));
     linear_fees.per_vote_certificate_fees(PerVoteCertificateFee::new(NonZeroU64::new(3), NonZeroU64::new(3)));
-    
+
     let treasury_parameters = TaxType {
         fixed: 200.into(),
         ratio: Ratio::new_checked(10, 500).unwrap(),
@@ -129,10 +129,9 @@ pub fn test_custom_settings () {
         .with_treasury_parameters(treasury_parameters)
         .with_reward_parameters(reward_parameters)
         .with_tx_max_expiry_epochs(50),
-    ).expect("Startup stake pool error");
+    ).unwrap();
 
     let rest_settings = jormungandr.rest().settings().expect("Rest settings error");
     let block0_settings = get_settings_from_block0_configuration(jormungandr.block0_configuration());
     assert_eq!(rest_settings,block0_settings);
 }
-
