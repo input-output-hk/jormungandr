@@ -68,7 +68,6 @@ pub async fn bootstrap_from_peer(
     cancellation_token: CancellationToken,
 ) -> Result<(), Error> {
     use chain_network::data::BlockId;
-    use std::convert::TryFrom;
 
     async fn with_cancellation_token<T>(
         future: impl Future<Output = T> + Unpin,

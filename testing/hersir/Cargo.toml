@@ -2,7 +2,7 @@
 name = "hersir"
 description = "Hersir is a simple command line tool that lets you deploy a network of Jormungandr nodes"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

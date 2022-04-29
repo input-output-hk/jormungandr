@@ -2,7 +2,7 @@
 authors = ["dev@iohk.io"]
 description = "explorer service for jormungandr"
 documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/input-output-hk/jormungandr#README.md"
 license = "MIT OR Apache-2.0"
 name = "explorer"
