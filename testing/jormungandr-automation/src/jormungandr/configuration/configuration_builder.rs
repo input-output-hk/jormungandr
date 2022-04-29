@@ -41,7 +41,7 @@ pub struct ConfigurationBuilder {
     secret: Option<NodeSecret>,
     fees_go_to: Option<FeesGoTo>,
     total_reward_supply: Option<Value>,
-    reward_parameters : Option<RewardParams>,
+    reward_parameters: Option<RewardParams>,
     treasury: Option<Value>,
     treasury_parameters: Option<TaxType>,
     node_config_builder: NodeConfigBuilder,
