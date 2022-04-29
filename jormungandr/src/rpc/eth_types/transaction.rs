@@ -122,7 +122,7 @@ mod test {
             value: u256,
             gas_price: Some(u256),
             gas: u256,
-            input: bytes.clone(),
+            input: bytes,
             chain_id: Some(u64),
             v: u256,
             r: u256,
