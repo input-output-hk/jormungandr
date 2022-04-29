@@ -54,7 +54,7 @@ tracing-appender = "0.2"
 tokio = { version = "^1.15", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
 tokio-stream = { version = "0.1.4", features = ["sync"] }
 tokio-util = { version = "0.6.0", features = ["time"] }
-tonic = "0.6"
+tonic = "0.7"
 lru = "0.7"
 warp = { version = "0.3.2", features = ["tls"] }
 serde_with = { version = "1.12", features = ["macros"] }
