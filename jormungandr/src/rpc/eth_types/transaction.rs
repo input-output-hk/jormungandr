@@ -1,4 +1,4 @@
-use chain_evm::ethereum_types::{H160, H256, H512, U256, U64};
+use chain_evm::ethereum_types::{H160, U256, U64};
 use chain_impl_mockchain::evm::EvmTransaction;
 use serde::Serialize;
 
@@ -7,61 +7,35 @@ use super::block::Bytes;
 #[derive(Debug, Default, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
-    /// Hash
-    pub hash: H256,
     /// Nonce
     pub nonce: U256,
-    /// Block hash
-    pub block_hash: H256,
-    /// Block number
-    pub block_number: U256,
-    /// Transaction Index
-    pub transaction_index: Option<U256>,
     /// Sender
     pub from: H160,
     /// Recipient
     pub to: Option<H160>,
     /// Transfered value
     pub value: U256,
-    /// Gas Price
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gas_price: Option<U256>,
-    /// Max BaseFeePerGas the user is willing to pay.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_fee_per_gas: Option<U256>,
-    /// The miner's tip.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_priority_fee_per_gas: Option<U256>,
     /// Gas
     pub gas: U256,
     /// Data
     pub input: Bytes,
-    /// Creates contract
-    pub creates: Option<H160>,
-    /// Raw transaction data
-    pub raw: Bytes,
-    /// Public key of the signer.
-    pub public_key: Option<H512>,
+    #[serde(rename = "gasPrice", skip_serializing_if = "Option::is_none")]
+    pub gas_price: Option<U256>,
     /// The network id of the transaction, if any.
     pub chain_id: Option<U64>,
-    /// The standardised V field of the signature (0 or 1).
-    pub standard_v: U256,
     /// The standardised V field of the signature.
     pub v: U256,
     /// The R field of the signature.
     pub r: U256,
     /// The S field of the signature.
     pub s: U256,
-    // /// Pre-pay to warm storage access.
-    // #[serde(skip_serializing_if = "Option::is_none")]
-    // pub access_list: Option<Vec<AccessListItem>>,
     /// EIP-2718 type
-    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    pub transaction_type: Option<U256>,
+    #[serde(rename = "type")]
+    pub transaction_type: U256,
 }
 
 impl Transaction {
-    pub fn build(block_hash: H256, block_number: U256, hash: H256, tx: EvmTransaction) -> Self {
+    pub fn build(tx: EvmTransaction) -> Self {
         match tx {
             EvmTransaction::Call {
                 caller,
@@ -71,28 +45,18 @@ impl Transaction {
                 gas_limit,
                 ..
             } => Transaction {
-                hash,
-                nonce: Default::default(),
-                block_hash,
-                block_number,
-                transaction_index: Some(Default::default()),
+                nonce: U256::zero(),
                 from: caller,
                 to: Some(address),
                 value,
                 gas_price: None,
-                max_fee_per_gas: None,
-                max_priority_fee_per_gas: None,
                 gas: gas_limit.into(),
                 input: data.into(),
-                creates: None,
-                raw: Default::default(),
-                public_key: None,
                 chain_id: None,
-                standard_v: Default::default(),
                 v: Default::default(),
                 r: Default::default(),
                 s: Default::default(),
-                transaction_type: None,
+                transaction_type: U256::zero(),
             },
             EvmTransaction::Create {
                 caller,
@@ -101,28 +65,18 @@ impl Transaction {
                 gas_limit,
                 ..
             } => Transaction {
-                hash,
-                nonce: Default::default(),
-                block_hash,
-                block_number,
-                transaction_index: Some(Default::default()),
+                nonce: U256::zero(),
                 from: caller,
                 to: None,
                 value,
                 gas_price: None,
-                max_fee_per_gas: None,
-                max_priority_fee_per_gas: None,
                 gas: gas_limit.into(),
                 input: init_code.into(),
-                creates: None,
-                raw: Default::default(),
-                public_key: None,
                 chain_id: None,
-                standard_v: Default::default(),
                 v: Default::default(),
                 r: Default::default(),
                 s: Default::default(),
-                transaction_type: None,
+                transaction_type: U256::zero(),
             },
             EvmTransaction::Create2 {
                 caller,
@@ -131,28 +85,18 @@ impl Transaction {
                 gas_limit,
                 ..
             } => Transaction {
-                hash,
-                nonce: Default::default(),
-                block_hash,
-                block_number,
-                transaction_index: Some(Default::default()),
+                nonce: U256::zero(),
                 from: caller,
                 to: None,
                 value,
                 gas_price: None,
-                max_fee_per_gas: None,
-                max_priority_fee_per_gas: None,
                 gas: gas_limit.into(),
                 input: init_code.into(),
-                creates: None,
-                raw: Default::default(),
-                public_key: None,
                 chain_id: None,
-                standard_v: Default::default(),
                 v: Default::default(),
                 r: Default::default(),
                 s: Default::default(),
-                transaction_type: None,
+                transaction_type: U256::zero(),
             },
         }
     }
@@ -181,28 +125,18 @@ mod test {
         let bytes: Bytes = vec![1, 2, 3].into();
 
         let transaction = Transaction {
-            hash: h256,
             nonce: u256,
-            block_hash: h256,
-            block_number: u256,
-            transaction_index: Some(u256),
             from: h160,
             to: Some(h160),
             value: u256,
             gas_price: Some(u256),
-            max_fee_per_gas: Some(u256),
-            max_priority_fee_per_gas: Some(u256),
             gas: u256,
             input: bytes.clone(),
-            creates: Some(h160),
-            raw: bytes,
-            public_key: Some(h512),
             chain_id: Some(u64),
-            standard_v: u256,
             v: u256,
             r: u256,
             s: u256,
-            transaction_type: Some(u256),
+            transaction_type: u256,
         };
 
         let json = serde_json::to_string(&transaction).unwrap();

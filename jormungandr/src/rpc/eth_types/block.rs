@@ -145,10 +145,9 @@ impl Block {
             false => {
                 let mut txs = Vec::new();
                 for tx in block.fragments() {
-                    let hash = H256::from_slice(tx.hash().as_bytes());
                     if let Fragment::Evm(tx) = tx {
                         let tx = tx.as_slice().payload().into_payload();
-                        txs.push(Transaction::build(header.hash, header.number, hash, tx))
+                        txs.push(Transaction::build(tx))
                     }
                 }
                 BlockTransactions::Full(txs)
