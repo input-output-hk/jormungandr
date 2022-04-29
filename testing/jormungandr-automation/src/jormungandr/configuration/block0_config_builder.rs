@@ -93,18 +93,22 @@ impl Block0ConfigurationBuilder {
         self.blockchain_configuration.consensus_leader_ids = leaders_ids;
         self
     }
+
     pub fn with_block0_consensus(&mut self, block0_consensus: ConsensusVersion) -> &mut Self {
         self.blockchain_configuration.block0_consensus = block0_consensus;
         self
     }
+
     pub fn with_kes_update_speed(&mut self, kes_update_speed: KesUpdateSpeed) -> &mut Self {
         self.blockchain_configuration.kes_update_speed = kes_update_speed;
         self
     }
+
     pub fn with_slots_per_epoch(&mut self, slots_per_epoch: NumberOfSlotsPerEpoch) -> &mut Self {
         self.blockchain_configuration.slots_per_epoch = slots_per_epoch;
         self
     }
+
     pub fn with_slot_duration(&mut self, slot_duration: SlotDuration) -> &mut Self {
         self.blockchain_configuration.slot_duration = slot_duration;
         self
@@ -122,6 +126,7 @@ impl Block0ConfigurationBuilder {
         self.blockchain_configuration.epoch_stability_depth = epoch_stability_depth;
         self
     }
+    
     pub fn with_active_slot_coeff(
         &mut self,
         consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,

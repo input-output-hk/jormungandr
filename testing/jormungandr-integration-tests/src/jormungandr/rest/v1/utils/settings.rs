@@ -1,11 +1,9 @@
-use std::num::NonZeroU64;
-
+use std::num::{NonZeroU64, NonZeroU32};
 use crate::startup;
-use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
 use chain_impl_mockchain::rewards::{CompoundingType, Parameters, Limit};
 use jormungandr_automation::jormungandr::ConfigurationBuilder;
-use jormungandr_lib::interfaces::Block0Configuration;
+use jormungandr_lib::interfaces::{Block0Configuration, TaxType, Ratio};
 use jormungandr_lib::interfaces::{SettingsDto, RewardParams, BlockchainConfiguration};
 use jormungandr_lib::time::SystemTime;
 use rstest::*;
@@ -96,10 +94,7 @@ pub fn test_default_settings () {
 
     let rest_settings = jormungandr.rest().settings().expect("Rest settings error");
     let block0_settings = get_settings_from_block0_configuration(jormungandr.block0_configuration());
-    println!("REST {:#?}",rest_settings);
-    println!("===================");
-    println!("BLOCK0 {:#?}",block0_settings);
-    assert_eq!(rest_settings,block0_settings);
+    assert_eq!(rest_settings,block0_settings);   
 }
 
 #[rstest]
@@ -110,6 +105,19 @@ pub fn test_custom_settings () {
     linear_fees.per_certificate_fees(PerCertificateFee::new(NonZeroU64::new(2), NonZeroU64::new(3), NonZeroU64::new(1)));
     linear_fees.per_vote_certificate_fees(PerVoteCertificateFee::new(NonZeroU64::new(3), NonZeroU64::new(3)));
     
+    let treasury_parameters = TaxType {
+        fixed: 200.into(),
+        ratio: Ratio::new_checked(10, 500).unwrap(),
+        max_limit: NonZeroU64::new(200),
+    };
+
+    let reward_parameters = RewardParams::Linear {
+        constant: 500_000,
+        ratio: Ratio::new_checked(5, 2_00).unwrap(),
+        epoch_start: 2,
+        epoch_rate: NonZeroU32::new(4).unwrap(),
+    };
+
     let jormungandr = startup::start_bft(
         vec![&alice],
         &mut ConfigurationBuilder::new()
@@ -118,16 +126,13 @@ pub fn test_custom_settings () {
         .with_epoch_stability_depth(2000)
         .with_slot_duration(1)
         .with_slots_per_epoch(6)
-        .with_total_rewards_supply(666.into())
+        .with_treasury_parameters(treasury_parameters)
+        .with_reward_parameters(reward_parameters)
         .with_tx_max_expiry_epochs(50),
     ).expect("Startup stake pool error");
 
     let rest_settings = jormungandr.rest().settings().expect("Rest settings error");
     let block0_settings = get_settings_from_block0_configuration(jormungandr.block0_configuration());
-    println!("REST {:#?}",rest_settings);
-    println!("===================");
-    println!("BLOCK0 {:#?}",block0_settings);
     assert_eq!(rest_settings,block0_settings);
-
 }
 
