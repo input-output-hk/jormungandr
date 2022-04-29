@@ -92,7 +92,7 @@ impl ConfigurationBuilder {
             discrimination: Discrimination::Test,
             block_content_max_size: 4092.into(),
             tx_max_expiry_epochs: None,
-            log_level: "trace".into(),       
+            log_level: "trace".into(),
         }
     }
 
