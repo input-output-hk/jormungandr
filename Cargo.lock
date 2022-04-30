@@ -288,7 +288,7 @@ source = "git+https://github.com/aurora-is-near/aurora-bn.git#8f1743884061981cac
 dependencies = [
  "byteorder",
  "getrandom 0.2.4",
- "rand 0.8.4",
+ "rand 0.8.5",
  "serde",
 ]
 
@@ -667,7 +667,7 @@ dependencies = [
  "hex",
  "proptest",
  "quickcheck",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_core 0.6.3",
  "rayon",
  "sha2 0.10.1",
@@ -723,7 +723,7 @@ dependencies = [
  "proptest",
  "quickcheck",
  "quickcheck_macros",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "sparse-array",
@@ -794,7 +794,7 @@ dependencies = [
  "chain-crypto",
  "const_format",
  "cryptoxide 0.4.2",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_core 0.6.3",
  "rayon",
  "thiserror",
@@ -826,9 +826,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "3.1.12"
+version = "3.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c167e37342afc5f33fd87bbc870cedd020d2a6dffa05d45ccd9241fbdd146db"
+checksum = "c4b3ee449efa0c4f95cd48b00539829d3655a98e189a90617246492788d22404"
 dependencies = [
  "atty",
  "bitflags",
@@ -842,9 +842,9 @@ dependencies = [
 
 [[package]]
 name = "clap_lex"
-version = "0.1.1"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "189ddd3b5d32a70b35e7686054371742a937b0d99128e76dde6340210e966669"
+checksum = "a37c35f1112dad5e6e0b1adaff798507497a18fceeb30cceb3bae7d1427b9213"
 dependencies = [
  "os_str_bytes",
 ]
@@ -858,7 +858,7 @@ dependencies = [
  "chacha20poly1305",
  "hmac 0.11.0",
  "pbkdf2 0.9.0",
- "rand 0.8.4",
+ "rand 0.8.5",
  "sha2 0.9.9",
  "zeroize",
 ]
@@ -1505,7 +1505,7 @@ dependencies = [
  "jormungandr-lib",
  "lazy_static",
  "parity-multiaddr",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "serde",
  "serde_json",
@@ -1591,7 +1591,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfcf0ed7fe52a17a03854ec54a9f76d6d84508d1c0e66bc1793301c73fc8493c"
 dependencies = [
  "byteorder",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rustc-hex",
  "static_assertions",
 ]
@@ -2053,7 +2053,7 @@ dependencies = [
  "jormungandr-lib",
  "jortestkit",
  "parity-multiaddr",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "reqwest",
@@ -2378,7 +2378,7 @@ dependencies = [
  "chain-impl-mockchain",
  "chain-time",
  "chain-vote",
- "clap 3.1.12",
+ "clap 3.1.13",
  "ed25519-bip32",
  "gtmpl",
  "hex",
@@ -2386,7 +2386,7 @@ dependencies = [
  "predicates",
  "quickcheck",
  "rand 0.7.3",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rayon",
  "reqwest",
@@ -2444,7 +2444,7 @@ dependencies = [
  "prometheus",
  "quickcheck",
  "quickcheck_macros",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "reqwest",
  "serde",
@@ -2505,7 +2505,7 @@ dependencies = [
  "poldercast",
  "predicates",
  "prost 0.9.0",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "regex",
@@ -2563,7 +2563,7 @@ dependencies = [
  "poldercast",
  "predicates",
  "prost 0.9.0",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "regex",
@@ -2605,7 +2605,7 @@ dependencies = [
  "quickcheck",
  "quickcheck_macros",
  "rand 0.7.3",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "serde",
@@ -2638,7 +2638,7 @@ dependencies = [
  "lazy_static",
  "os_info",
  "predicates",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "rayon",
@@ -2689,7 +2689,7 @@ dependencies = [
  "hyper",
  "jsonrpsee-types",
  "parking_lot 0.12.0",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rustc-hash",
  "serde",
  "serde_json",
@@ -2780,7 +2780,7 @@ dependencies = [
  "libsecp256k1-core",
  "libsecp256k1-gen-ecmult",
  "libsecp256k1-gen-genmult",
- "rand 0.8.4",
+ "rand 0.8.5",
  "serde",
 ]
 
@@ -2874,7 +2874,7 @@ dependencies = [
  "jormungandr-automation",
  "jormungandr-lib",
  "parity-multiaddr",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_core 0.6.3",
  "reqwest",
  "serde",
@@ -3008,7 +3008,7 @@ dependencies = [
  "jormungandr-lib",
  "jortestkit",
  "loki",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_core 0.6.3",
  "structopt",
  "thiserror",
@@ -3078,7 +3078,7 @@ dependencies = [
  "mime",
  "mime_guess",
  "quick-error 1.2.3",
- "rand 0.8.4",
+ "rand 0.8.5",
  "safemem",
  "tempfile",
  "twoway",
@@ -3754,7 +3754,7 @@ dependencies = [
  "num-traits",
  "primitive-types 0.10.1",
  "quick-error 2.0.1",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_xorshift",
  "rand_xoshiro",
@@ -3920,19 +3920,18 @@ dependencies = [
  "libc",
  "rand_chacha 0.2.2",
  "rand_core 0.5.1",
- "rand_hc 0.2.0",
+ "rand_hc",
 ]
 
 [[package]]
 name = "rand"
-version = "0.8.4"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e7573632e6454cf6b99d7aac4ccca54be06da05aca2ef7423d22d27d4d4bcd8"
+checksum = "34af8d1a0e25924bc5b7c43c079c942339d8f0a8b57c39049bef581b46327404"
 dependencies = [
  "libc",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
- "rand_hc 0.3.1",
 ]
 
 [[package]]
@@ -3983,15 +3982,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rand_hc"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d51e9f596de227fda2ea6c84607f5558e196eeaf43c986b724ba4fb8fdf497e7"
-dependencies = [
- "rand_core 0.6.3",
-]
-
-[[package]]
 name = "rand_xorshift"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4011,9 +4001,9 @@ dependencies = [
 
 [[package]]
 name = "rayon"
-version = "1.5.1"
+version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c06aca804d41dbc8ba42dfd964f0d01334eceb64314b9ecf7c5fad5188a06d90"
+checksum = "fd249e82c21598a9a426a4e00dd7adc1d640b22445ec8545feef801d1a74c221"
 dependencies = [
  "autocfg",
  "crossbeam-deque",
@@ -4023,14 +4013,13 @@ dependencies = [
 
 [[package]]
 name = "rayon-core"
-version = "1.9.1"
+version = "1.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d78120e2c850279833f1dd3582f730c4ab53ed95aeaaaa862a2a5c71b1656d8e"
+checksum = "9f51245e1e62e1f1629cbfec37b5793bbabcaeb90f30e94d2ba03564687353e4"
 dependencies = [
  "crossbeam-channel",
  "crossbeam-deque",
  "crossbeam-utils",
- "lazy_static",
  "num_cpus",
 ]
 
@@ -4891,7 +4880,7 @@ dependencies = [
  "jormungandr-automation",
  "jormungandr-lib",
  "jortestkit",
- "rand 0.8.4",
+ "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "serde",
@@ -5157,7 +5146,7 @@ dependencies = [
  "indexmap",
  "pin-project",
  "pin-project-lite",
- "rand 0.8.4",
+ "rand 0.8.5",
  "slab",
  "tokio",
  "tokio-stream",
@@ -5330,7 +5319,7 @@ dependencies = [
  "http",
  "httparse",
  "log",
- "rand 0.8.4",
+ "rand 0.8.5",
  "sha-1 0.9.8",
  "thiserror",
  "url",
@@ -5883,7 +5872,7 @@ dependencies = [
  "lazycell",
  "log",
  "pin-project-lite",
- "rand 0.8.4",
+ "rand 0.8.5",
  "zipkin-types",
 ]
 
