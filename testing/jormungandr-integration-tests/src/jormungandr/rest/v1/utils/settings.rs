@@ -10,12 +10,8 @@ use std::num::{NonZeroU32, NonZeroU64};
 pub fn test_default_settings() {
     let alice = thor::Wallet::default();
     let bob = thor::Wallet::default();
-    let (jormungandr, _stake_pools) = startup::start_stake_pool(
-        &[alice.clone()],
-        &[bob.clone()],
-        &mut ConfigurationBuilder::new(),
-    )
-    .unwrap();
+    let (jormungandr, _stake_pools) =
+        startup::start_stake_pool(&[alice], &[bob], &mut ConfigurationBuilder::new()).unwrap();
 
     let rest_settings = jormungandr.rest().settings().expect("Rest settings error");
     let block0_settings = jormungandr.block0_configuration().settings();
@@ -53,7 +49,7 @@ pub fn test_custom_settings() {
 
     let jormungandr = startup::start_bft(
         vec![&alice],
-        &mut ConfigurationBuilder::new()
+        ConfigurationBuilder::new()
             .with_linear_fees(linear_fees)
             .with_block_content_max_size(2000.into())
             .with_epoch_stability_depth(2000)
