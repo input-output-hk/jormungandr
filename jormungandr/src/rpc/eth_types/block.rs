@@ -3,19 +3,7 @@ use chain_evm::ethereum_types::{Bloom, H160, H256, U256};
 use serde::{Serialize, Serializer};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Bytes(Vec<u8>);
-
-impl From<Vec<u8>> for Bytes {
-    fn from(bytes: Vec<u8>) -> Bytes {
-        Bytes(bytes)
-    }
-}
-
-impl From<Bytes> for Vec<u8> {
-    fn from(val: Bytes) -> Self {
-        val.0
-    }
-}
+pub struct Bytes(Box<[u8]>);
 
 impl Serialize for Bytes {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -140,9 +128,9 @@ impl Block {
     pub fn build(full: bool) -> Self {
         let header = Header::build();
         let transactions = if full {
-            BlockTransactions::Hashes(vec![H256::zero()])
-        } else {
             BlockTransactions::Full(vec![Transaction::build()])
+        } else {
+            BlockTransactions::Hashes(vec![H256::zero()])
         };
 
         Self {

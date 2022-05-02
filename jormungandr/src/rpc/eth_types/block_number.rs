@@ -40,7 +40,7 @@ impl<'a> Visitor<'a> for BlockNumberVisitor {
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
-            "a block number or 'latest', 'earliest' or 'pending'"
+            "a numeric block number or 'latest', 'earliest' or 'pending'"
         )
     }
 

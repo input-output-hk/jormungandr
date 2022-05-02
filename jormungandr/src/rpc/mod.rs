@@ -12,7 +12,6 @@ pub struct Config {
 }
 
 pub async fn start_rpc_server(config: Config, _context: ContextLock) {
-    // it is initial dummy impl just for initialization rpc instance
     let server = HttpServerBuilder::default()
         .build(config.listen)
         .await

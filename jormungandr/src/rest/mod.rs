@@ -1,6 +1,4 @@
 //! REST API of the node
-
-pub mod context;
 #[cfg(feature = "prometheus-metrics")]
 mod prometheus;
 pub mod v0;
