@@ -11,7 +11,7 @@ pub struct Config {
     pub listen: SocketAddr,
 }
 
-pub async fn start_rpc_server(config: Config, _context: ContextLock) {
+pub async fn start_jrpc_server(config: Config, _context: ContextLock) {
     let server = HttpServerBuilder::default()
         .build(config.listen)
         .await

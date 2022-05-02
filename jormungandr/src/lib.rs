@@ -35,12 +35,12 @@ pub mod context;
 pub mod diagnostic;
 pub mod fragment;
 pub mod intercom;
+pub mod jrpc;
 pub mod leadership;
 pub mod log;
 pub mod metrics;
 pub mod network;
 pub mod rest;
-pub mod rpc;
 pub mod secure;
 pub mod settings;
 pub mod start_up;
@@ -654,12 +654,12 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         Some(rpc_config) => {
             let context = context.unwrap_or_else(|| init_context(diagnostic));
 
-            let rpc_config = rpc::Config {
+            let rpc_config = jrpc::Config {
                 listen: rpc_config.listen,
             };
-            let server_handler = rpc::start_rpc_server(rpc_config, context.clone());
+            let server_handler = jrpc::start_jrpc_server(rpc_config, context.clone());
             let service_context = context.clone();
-            services.spawn_future("rpc", |info| async move {
+            services.spawn_future("jrpc", |info| async move {
                 service_context.write().await.set_span(info.span().clone());
                 server_handler.await
             });

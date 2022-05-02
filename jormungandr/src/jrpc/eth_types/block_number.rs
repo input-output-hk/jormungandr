@@ -55,13 +55,9 @@ impl<'a> Visitor<'a> for BlockNumberVisitor {
             _ if value.starts_with("0x") => u64::from_str_radix(&value[2..], 16)
                 .map(BlockNumber::Num)
                 .map_err(|e| Error::custom(format!("Invalid block number: {}", e))),
-            _ => u64::from_str_radix(&value, 10)
-                .map(BlockNumber::Num)
-                .map_err(|_| {
-                    Error::custom(
-                        "Invalid block number: non-decimal or missing 0x prefix".to_string(),
-                    )
-                }),
+            _ => value.parse::<u64>().map(BlockNumber::Num).map_err(|_| {
+                Error::custom("Invalid block number: non-decimal or missing 0x prefix".to_string())
+            }),
         }
     }
 

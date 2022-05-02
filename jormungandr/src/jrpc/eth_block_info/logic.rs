@@ -1,7 +1,7 @@
 use super::Error;
 use crate::{
     context::Context,
-    rpc::eth_types::{block::Block, block_number::BlockNumber},
+    jrpc::eth_types::{block::Block, block_number::BlockNumber},
 };
 use chain_evm::ethereum_types::{H256, U256};
 
