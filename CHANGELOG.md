@@ -23,7 +23,7 @@
 - Bump ed25519-bip32 from 0.4.0 to 0.4.1
 - Now the tally is incremental and is always available in the rest API. The
 - Add standalone explorer crate.
-
+- Add new Ethreum RPC endpoints for the getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
 ## Release 0.13.0
 
 **New features:**
