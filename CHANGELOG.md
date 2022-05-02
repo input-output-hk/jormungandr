@@ -23,6 +23,10 @@
 - Bump ed25519-bip32 from 0.4.0 to 0.4.1
 - Now the tally is incremental and is always available in the rest API. The
 - Add standalone explorer crate.
+- Bump clap from 2.34.0 to 3.1.13
+- Bump time from 0.3.7 to 0.3.9
+- Bump libc from 0.2.117 to 0.2.124
+- Bump rand from 0.8.4 to 0.8.5
 
 ## Release 0.13.0
 
