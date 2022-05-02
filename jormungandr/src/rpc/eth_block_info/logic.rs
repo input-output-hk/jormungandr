@@ -1,5 +1,8 @@
 use super::Error;
-use crate::{context::Context, rpc::eth_types::block::Block};
+use crate::{
+    context::Context,
+    rpc::eth_types::{block::Block, block_number::BlockNumber},
+};
 use chain_evm::ethereum_types::{H256, U256};
 
 pub fn get_block_by_hash(
@@ -12,7 +15,7 @@ pub fn get_block_by_hash(
 }
 
 pub fn get_block_by_number(
-    _number: u64,
+    _number: BlockNumber,
     _full: bool,
     _context: &Context,
 ) -> Result<Option<Block>, Error> {
@@ -29,7 +32,7 @@ pub fn get_transaction_count_by_hash(
 }
 
 pub fn get_transaction_count_by_number(
-    _number: u64,
+    _number: BlockNumber,
     _context: &Context,
 ) -> Result<Option<U256>, Error> {
     // TODO implement
@@ -41,7 +44,7 @@ pub fn get_uncle_count_by_hash(_: H256, _: &Context) -> Result<Option<U256>, Err
     Ok(Some(0.into()))
 }
 
-pub fn get_uncle_count_by_number(_: u64, _: &Context) -> Result<Option<U256>, Error> {
+pub fn get_uncle_count_by_number(_: BlockNumber, _: &Context) -> Result<Option<U256>, Error> {
     // jormungandr block does not have any ethereum "uncles" so we allways return 0
     Ok(Some(0.into()))
 }
