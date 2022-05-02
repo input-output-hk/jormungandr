@@ -1,6 +1,7 @@
 pub mod asserts;
 pub mod benchmark;
 pub mod block0;
+pub mod blockchain_config;
 pub mod collector;
 pub mod configuration;
 pub mod keys;

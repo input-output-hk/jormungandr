@@ -2,7 +2,7 @@
 authors = ["dev@iohk.io"]
 description = "explorer service for jormungandr"
 documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/input-output-hk/jormungandr#README.md"
 license = "MIT OR Apache-2.0"
 name = "explorer"
@@ -33,7 +33,7 @@ tokio-stream = { version = "0.1.4", features = ["sync"] }
 tokio-util = { version = "0.6.0", features = ["time"] }
 tonic = "0.4"
 multiaddr = { package = "parity-multiaddr", version = "0.11" }
-rand = "0.8.3"
+rand = "0.8.5"
 rand_chacha = "0.3.0"
 base64 = "0.13.0"
 lazy_static = "1.4"

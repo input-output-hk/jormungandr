@@ -9,7 +9,7 @@ documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
 description = """
 Midgard Serpent
 """
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 rand = "0.8"
@@ -36,14 +36,10 @@ ed25519-bip32 = "0.4.1"
 thiserror = "1.0"
 bytes = "1.1"
 rpassword = "5.0"
+clap = { version = "3.1", default-features = false, features = ["suggestions", "color", "wrap_help", "std"] }
 
 [features]
 evm = ["jormungandr-lib/evm"]
-
-[dependencies.clap]
-version = "2.33"
-default-features = false
-features = [ "suggestions", "color", "wrap_help" ]
 
 [dependencies.reqwest]
 version = "0.11"
