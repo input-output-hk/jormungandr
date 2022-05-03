@@ -37,7 +37,7 @@ impl<'a> Visitor<'a> for BytesVisitor {
     where
         E: Error,
     {
-        if value.len() >= 2 && value.starts_with("0x") && value.len() % 2 == 0 {
+        if value.len() >= 2 && value.starts_with("0x") {
             Ok(Bytes(
                 hex::decode(&value[2..])
                     .map_err(|e| Error::custom(format!("Invalid hex: {}", e)))?
@@ -45,7 +45,7 @@ impl<'a> Visitor<'a> for BytesVisitor {
             ))
         } else {
             Err(Error::custom(
-                "Invalid bytes format. Expected a 0x-prefixed hex string with even length",
+                "Invalid bytes format. Expected a 0x-prefixed hex string",
             ))
         }
     }
