@@ -59,6 +59,9 @@ mod tests {
         });
 
         assert_eq!(serde_json::to_string(&ss_none).unwrap(), "false");
-        assert_eq!(serde_json::to_string(&ss_info).unwrap(), "{\"startingBlock\":\"0x0\",\"currentBlock\":\"0x0\",\"highestBlock\":\"0x0\"}");
+        assert_eq!(
+            serde_json::to_string(&ss_info).unwrap(),
+            "{\"startingBlock\":\"0x0\",\"currentBlock\":\"0x0\",\"highestBlock\":\"0x0\"}"
+        );
     }
 }

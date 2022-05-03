@@ -23,14 +23,15 @@ pub async fn start_jrpc_server(config: Config, _context: ContextLock) {
     let mut modules = RpcModule::new(());
 
     #[cfg(feature = "evm")]
-    modules
-        .merge(eth_block_info::eth_get_blocks_info_module(_context.clone()))
-        .unwrap();
+    {
+        modules
+            .merge(eth_block_info::eth_get_blocks_info_module(_context.clone()))
+            .unwrap();
 
-    #[cfg(feature = "evm")]
-    modules
-        .merge(eth_chain_info::eth_get_blocks_info_module(_context))
-        .unwrap();
+        modules
+            .merge(eth_chain_info::eth_get_blocks_info_module(_context))
+            .unwrap();
+    }
 
     server.start(modules).unwrap().await
 }
