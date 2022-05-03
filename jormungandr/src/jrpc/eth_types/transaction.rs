@@ -1,9 +1,8 @@
+use super::bytes::Bytes;
 use chain_evm::ethereum_types::{H160, U256, U64};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-use super::block::Bytes;
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     /// Nonce

@@ -3,6 +3,8 @@ mod eth_block_info;
 #[cfg(feature = "evm")]
 mod eth_chain_info;
 #[cfg(feature = "evm")]
+mod eth_transaction;
+#[cfg(feature = "evm")]
 mod eth_types;
 
 use crate::context::ContextLock;
@@ -25,11 +27,15 @@ pub async fn start_jrpc_server(config: Config, _context: ContextLock) {
     #[cfg(feature = "evm")]
     {
         modules
-            .merge(eth_block_info::eth_get_blocks_info_module(_context.clone()))
+            .merge(eth_block_info::eth_block_info_module(_context.clone()))
             .unwrap();
 
         modules
-            .merge(eth_chain_info::eth_get_blocks_info_module(_context))
+            .merge(eth_chain_info::eth_chain_info_module(_context.clone()))
+            .unwrap();
+
+        modules
+            .merge(eth_transaction::eth_transaction_module(_context))
             .unwrap();
     }
 

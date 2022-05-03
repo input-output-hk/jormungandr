@@ -1,20 +1,6 @@
-use super::transaction::Transaction;
+use super::{bytes::Bytes, transaction::Transaction};
 use chain_evm::ethereum_types::{Bloom, H160, H256, U256};
 use serde::{Serialize, Serializer};
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Bytes(Box<[u8]>);
-
-impl Serialize for Bytes {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut serialized = "0x".to_owned();
-        serialized.push_str(hex::encode(&self.0).as_str());
-        serializer.serialize_str(serialized.as_ref())
-    }
-}
 
 /// Block Transactions
 #[derive(Debug)]
