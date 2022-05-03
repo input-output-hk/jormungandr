@@ -650,14 +650,15 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         None => None,
     };
 
-    let context = match settings.rpc.clone() {
-        Some(rpc_config) => {
+    #[cfg(feature = "evm")]
+    let context = match settings.jrpc.clone() {
+        Some(jrpc_config) => {
             let context = context.unwrap_or_else(|| init_context(diagnostic));
 
-            let rpc_config = jrpc::Config {
-                listen: rpc_config.listen,
+            let jrpc_config = jrpc::Config {
+                listen: jrpc_config.listen,
             };
-            let server_handler = jrpc::start_jrpc_server(rpc_config, context.clone());
+            let server_handler = jrpc::start_jrpc_server(jrpc_config, context.clone());
             let service_context = context.clone();
             services.spawn_future("jrpc", |info| async move {
                 service_context.write().await.set_span(info.span().clone());

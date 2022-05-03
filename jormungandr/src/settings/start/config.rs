@@ -4,7 +4,7 @@ use crate::{
     settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
     topology::QuarantineConfig,
 };
-pub use jormungandr_lib::interfaces::{Cors, LayersConfig, Rest, Rpc, Tls, TrustedPeer};
+pub use jormungandr_lib::interfaces::{Cors, JRpc, LayersConfig, Rest, Tls, TrustedPeer};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
 
 use multiaddr::Multiaddr;
@@ -30,7 +30,7 @@ pub struct Config {
 
     pub rest: Option<Rest>,
 
-    pub rpc: Option<Rpc>,
+    pub jrpc: Option<JRpc>,
 
     #[serde(default)]
     pub p2p: P2pConfig,

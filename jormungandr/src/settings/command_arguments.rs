@@ -71,10 +71,10 @@ pub struct RestArguments {
 }
 
 #[derive(StructOpt, Debug)]
-pub struct RpcArguments {
-    /// RPC API listening address.
-    /// If not configured anywhere, defaults to RPC API being disabled
-    #[structopt(name = "rpc-listen")]
+pub struct JRpcArguments {
+    /// JRPC API listening address.
+    /// If not configured anywhere, defaults to JRPC API being disabled
+    #[structopt(name = "jrpc-listen")]
     pub listen: Option<SocketAddr>,
 }
 
@@ -115,7 +115,7 @@ pub struct CommandLine {
     pub rest_arguments: RestArguments,
 
     #[structopt(flatten)]
-    pub rpc_arguments: RpcArguments,
+    pub jrpc_arguments: JRpcArguments,
 
     #[structopt(flatten)]
     pub start_arguments: StartArguments,
