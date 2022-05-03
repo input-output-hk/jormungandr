@@ -229,8 +229,8 @@ jobs:
         shell: bash
         run: |
           case '${{ matrix.config.os }}' in
-            ubuntu-latest)  features=systemd,gelf ;;
-            *)              features=gelf ;;
+            ubuntu-latest)  features=systemd ;;
+            *)
           esac
           echo "JORMUNGANDR_FEATURES=$features" >> $GITHUB_ENV
 
