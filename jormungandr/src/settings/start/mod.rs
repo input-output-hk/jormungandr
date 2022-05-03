@@ -8,7 +8,7 @@ use crate::settings::{command_arguments::*, Block0Info};
 use crate::topology::layers::{self, LayersConfig, PreferredListConfig, RingsConfig};
 use chain_crypto::Ed25519;
 use jormungandr_lib::crypto::key::SigningKey;
-pub use jormungandr_lib::interfaces::{Cors, Mempool, Rest, Rpc, Tls};
+pub use jormungandr_lib::interfaces::{Cors, JRpc, Mempool, Rest, Tls};
 use jormungandr_lib::multiaddr;
 use std::convert::TryFrom;
 use std::{fs::File, path::PathBuf};
@@ -49,7 +49,7 @@ pub struct Settings {
     pub block_0: Block0Info,
     pub secret: Option<PathBuf>,
     pub rest: Option<Rest>,
-    pub rpc: Option<Rpc>,
+    pub jrpc: Option<JRpc>,
     pub mempool: Mempool,
     pub rewards_report_all: bool,
     pub leadership: Leadership,
@@ -154,13 +154,13 @@ impl RawSettings {
         }
     }
 
-    fn rpc_config(&self) -> Option<Rpc> {
-        let cmd_listen_opt = self.command_line.rpc_arguments.listen;
-        let config_rpc_opt = self.config.as_ref().and_then(|cfg| cfg.rpc.clone());
+    fn jrpc_config(&self) -> Option<JRpc> {
+        let cmd_listen_opt = self.command_line.jrpc_arguments.listen;
+        let config_rpc_opt = self.config.as_ref().and_then(|cfg| cfg.jrpc.clone());
         match (config_rpc_opt, cmd_listen_opt) {
-            (Some(_), Some(cmd_listen)) => Some(Rpc { listen: cmd_listen }),
+            (Some(_), Some(cmd_listen)) => Some(JRpc { listen: cmd_listen }),
             (Some(config_rpc), None) => Some(config_rpc),
-            (None, Some(cmd_listen)) => Some(Rpc { listen: cmd_listen }),
+            (None, Some(cmd_listen)) => Some(JRpc { listen: cmd_listen }),
             (None, None) => None,
         }
     }
@@ -172,7 +172,7 @@ impl RawSettings {
     /// This function will print&exit if anything is not as it should be.
     pub fn try_into_settings(self) -> Result<Settings, Error> {
         let rest = self.rest_config();
-        let rpc = self.rpc_config();
+        let jrpc = self.jrpc_config();
         let RawSettings {
             command_line,
             config,
@@ -224,7 +224,7 @@ impl RawSettings {
             secret,
             rewards_report_all: command_line.rewards_report_all,
             rest,
-            rpc,
+            jrpc,
             mempool: config
                 .as_ref()
                 .map_or(Mempool::default(), |cfg| cfg.mempool.clone()),
