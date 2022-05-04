@@ -17,8 +17,12 @@ const LEADER2: &str = "LEADER2";
 const LEADER3: &str = "LEADER3";
 const LEADER4: &str = "LEADER4";
 
+
+
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
+const SERVER1: &str = "SERVER1";
+
 
 const ALICE: &str = "ALICE";
 const BOB: &str = "BOB";
@@ -366,4 +370,45 @@ fn log_parser() {
     assert_eq!(parse_timestamp("00:45:12"), 45 * 60 + 12);
     assert_eq!(parse_timestamp("01:34:02"), 3600 + 34 * 60 + 2);
     assert_eq!(parse_timestamp("10:02:31"), 10 * 3600 + 2 * 60 + 31);
+}
+
+#[test]
+fn gossip_new_node() {
+    const INTERVAL_SECS: u64 = 30;
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER1))
+                .with_node(Node::new(SERVER).with_trusted_peer(SERVER1))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+        )
+        .blockchain_config(
+            Blockchain::default().with_leaders(vec![SERVER]),
+        )
+        .build()
+        .unwrap();
+
+    let server1 = controller
+        .spawn(SpawnParams::new(SERVER1).in_memory())
+        .unwrap();
+
+    let server = controller
+        .spawn(SpawnParams::new(SERVER).in_memory()
+        .gossip_interval(Duration::new(INTERVAL_SECS, 0)))
+        .unwrap();
+
+    let _client = controller
+        .spawn(SpawnParams::new(CLIENT))
+        .unwrap();
+
+    println!("server1 p2pview{:?}",server1.rest().p2p_view());
+    println!("server p2pview{:?}",server.rest().p2p_view());
+    println!("server {:?}",server1.rest().stats().unwrap().stats.unwrap().peer_connected_cnt);
+
+    utils::wait(35);
+
+    println!("server1 p2pview{:?}",server1.rest().p2p_view());
+    println!("server p2pview{:?}",server.rest().p2p_view());
+    println!("server {:?}",server1.rest().stats().unwrap().stats.unwrap().peer_connected_cnt);
+
 }
