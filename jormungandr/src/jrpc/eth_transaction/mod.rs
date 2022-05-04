@@ -53,8 +53,8 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
             "eth_getTransactionByBlockNumberAndIndex",
             |params, context| async move {
                 let context = context.read().await;
-                let tx = params.parse()?;
-                logic::send_transaction(tx, &context)
+                let (number, index) = params.parse()?;
+                logic::get_transaction_by_block_number_and_index(number, index, &context)
                     .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
             },
         )
@@ -63,8 +63,8 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
     module
         .register_async_method("eth_getTransactionReceipt", |params, context| async move {
             let context = context.read().await;
-            let tx = params.parse()?;
-            logic::send_transaction(tx, &context)
+            let hash = params.parse()?;
+            logic::get_transaction_receipt(hash, &context)
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();

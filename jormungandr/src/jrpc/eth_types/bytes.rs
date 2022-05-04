@@ -65,7 +65,10 @@ mod tests {
     #[test]
     fn bytes_json_serde() {
         let bytes = Bytes([1, 2, 3, 4, 5, 69].into());
-        assert_eq!(serde_json::to_string(&bytes).unwrap(), r#""0x010203040545""#);
+        assert_eq!(
+            serde_json::to_string(&bytes).unwrap(),
+            r#""0x010203040545""#
+        );
         let decoded: Bytes = serde_json::from_str(r#""0x010203040545""#).unwrap();
         assert_eq!(decoded, bytes);
 
