@@ -21,8 +21,8 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
     module
         .register_async_method("eth_sendRawTransaction", |params, context| async move {
             let context = context.read().await;
-            let tx = params.parse()?;
-            logic::send_transaction(tx, &context)
+            let raw_tx = params.parse()?;
+            logic::send_raw_transaction(raw_tx, &context)
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
@@ -30,8 +30,8 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
     module
         .register_async_method("eth_getTransactionByHash", |params, context| async move {
             let context = context.read().await;
-            let tx = params.parse()?;
-            logic::send_transaction(tx, &context)
+            let hash = params.parse()?;
+            logic::get_transaction_by_hash(hash, &context)
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
@@ -41,8 +41,8 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
             "eth_getTransactionByBlockHashAndIndex",
             |params, context| async move {
                 let context = context.read().await;
-                let tx = params.parse()?;
-                logic::send_transaction(tx, &context)
+                let (hash, index) = params.parse()?;
+                logic::get_transaction_by_block_hash_and_index(hash, index, &context)
                     .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
             },
         )

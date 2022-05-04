@@ -65,13 +65,13 @@ mod tests {
     #[test]
     fn bytes_json_serde() {
         let bytes = Bytes([1, 2, 3, 4, 5, 69].into());
-        assert_eq!(serde_json::to_string(&bytes).unwrap(), "\"0x010203040545\"");
-        let decoded: Bytes = serde_json::from_str("\"0x010203040545\"").unwrap();
+        assert_eq!(serde_json::to_string(&bytes).unwrap(), r#""0x010203040545""#);
+        let decoded: Bytes = serde_json::from_str(r#""0x010203040545""#).unwrap();
         assert_eq!(decoded, bytes);
 
         let bytes = Bytes([].into());
-        assert_eq!(serde_json::to_string(&bytes).unwrap(), "\"0x\"");
-        let decoded: Bytes = serde_json::from_str("\"0x\"").unwrap();
+        assert_eq!(serde_json::to_string(&bytes).unwrap(), r#""0x""#);
+        let decoded: Bytes = serde_json::from_str(r#""0x""#).unwrap();
         assert_eq!(decoded, bytes);
     }
 }

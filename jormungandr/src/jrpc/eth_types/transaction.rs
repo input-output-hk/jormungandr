@@ -2,7 +2,7 @@ use super::bytes::Bytes;
 use chain_evm::ethereum_types::{H160, U256, U64};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     /// Nonce
@@ -73,9 +73,9 @@ mod tests {
         };
         assert_eq!(
             serde_json::to_string(&transaction).unwrap(),
-            "{\"nonce\":\"0x0\",\"from\":\"0x0000000000000000000000000000000000000000\",\"to\":\"0x0000000000000000000000000000000000000000\",\"value\":\"0x0\",\"gas\":\"0x0\",\"input\":\"0x\",\"gasPrice\":\"0x0\",\"chainId\":\"0x0\",\"v\":\"0x0\",\"r\":\"0x0\",\"s\":\"0x0\",\"type\":\"0x0\"}"
+            r#"{"nonce":"0x0","from":"0x0000000000000000000000000000000000000000","to":"0x0000000000000000000000000000000000000000","value":"0x0","gas":"0x0","input":"0x","gasPrice":"0x0","chainId":"0x0","v":"0x0","r":"0x0","s":"0x0","type":"0x0"}"#
         );
-        let decoded: Transaction = serde_json::from_str("{\"nonce\":\"0x0\",\"from\":\"0x0000000000000000000000000000000000000000\",\"to\":\"0x0000000000000000000000000000000000000000\",\"value\":\"0x0\",\"gas\":\"0x0\",\"input\":\"0x\",\"gasPrice\":\"0x0\",\"chainId\":\"0x0\",\"v\":\"0x0\",\"r\":\"0x0\",\"s\":\"0x0\",\"type\":\"0x0\"}").unwrap();
+        let decoded: Transaction = serde_json::from_str(r#"{"nonce":"0x0","from":"0x0000000000000000000000000000000000000000","to":"0x0000000000000000000000000000000000000000","value":"0x0","gas":"0x0","input":"0x","gasPrice":"0x0","chainId":"0x0","v":"0x0","r":"0x0","s":"0x0","type":"0x0"}"#).unwrap();
         assert_eq!(decoded, transaction);
     }
 }
