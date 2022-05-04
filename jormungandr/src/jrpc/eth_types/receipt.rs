@@ -1,6 +1,8 @@
 use chain_evm::ethereum_types::{Bloom, H160, H256, U256, U64};
 use serde::Serialize;
 
+use super::log::Log;
+
 /// Receipt
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,8 +26,7 @@ pub struct Receipt {
     /// Contract address
     contract_address: Option<H160>,
     /// Logs
-    // TODO use Log type
-    logs: Vec<()>,
+    logs: Vec<Log>,
     /// Logs bloom
     logs_bloom: Bloom,
     /// State Root
@@ -52,11 +53,40 @@ impl Receipt {
             gas_used: U256::zero(),
             // This should be None if 'to' field has been set and vice versa
             contract_address: None,
-            logs: Default::default(),
+            logs: vec![Log::build()],
             logs_bloom: Default::default(),
             root: Some(H256::zero()),
             status: Some(U64::zero()),
             effective_gas_price: U256::zero(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn receipt_json_serialize() {
+        let receipt = Receipt {
+            transaction_hash: H256::zero(),
+            transaction_index: U256::zero(),
+            block_hash: H256::zero(),
+            block_number: U256::zero(),
+            from: H160::zero(),
+            to: Some(H160::zero()),
+            cumulative_gas_used: U256::zero(),
+            gas_used: U256::zero(),
+            contract_address: Some(H160::zero()),
+            logs: Default::default(),
+            logs_bloom: Default::default(),
+            root: Some(H256::zero()),
+            status: Some(U64::zero()),
+            effective_gas_price: U256::zero(),
+        };
+        assert_eq!(
+            serde_json::to_string(&receipt).unwrap(),
+            r#"{"transactionHash":"0x0000000000000000000000000000000000000000000000000000000000000000","transactionIndex":"0x0","blockHash":"0x0000000000000000000000000000000000000000000000000000000000000000","blockNumber":"0x0","from":"0x0000000000000000000000000000000000000000","to":"0x0000000000000000000000000000000000000000","cumulativeGasUsed":"0x0","gasUsed":"0x0","contractAddress":"0x0000000000000000000000000000000000000000","logs":[],"logsBloom":"0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000","root":"0x0000000000000000000000000000000000000000000000000000000000000000","status":"0x0","effectiveGasPrice":"0x0"}"#
+        );
     }
 }

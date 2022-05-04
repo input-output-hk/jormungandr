@@ -6,7 +6,7 @@ use crate::{
         transaction::Transaction,
     },
 };
-use chain_evm::ethereum_types::H256;
+use chain_evm::ethereum_types::{H160, H256, H512, U256};
 
 pub fn send_transaction(_tx: Transaction, _context: &Context) -> Result<H256, Error> {
     // TODO implement
@@ -47,4 +47,19 @@ pub fn get_transaction_by_block_number_and_index(
 pub fn get_transaction_receipt(_hash: H256, _context: &Context) -> Result<Option<Receipt>, Error> {
     // TODO implement
     Ok(Some(Receipt::build()))
+}
+
+pub fn sign_transaction(_tx: Transaction, _context: &Context) -> Result<Bytes, Error> {
+    // TODO implement
+    Ok(Default::default())
+}
+
+pub fn estimate_gas(_tx: Transaction, _context: &Context) -> Result<U256, Error> {
+    // TODO implement
+    Ok(U256::zero())
+}
+
+pub fn sign(_address: H160, _message: Bytes, _context: &Context) -> Result<H512, Error> {
+    // TODO implement
+    Ok(H512::zero())
 }

@@ -70,19 +70,10 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
         .unwrap();
 
     module
-        .register_async_method("eth_sign", |params, context| async move {
-            let context = context.read().await;
-            let tx = params.parse()?;
-            logic::send_transaction(tx, &context)
-                .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
-        })
-        .unwrap();
-
-    module
         .register_async_method("eth_signTransaction", |params, context| async move {
             let context = context.read().await;
             let tx = params.parse()?;
-            logic::send_transaction(tx, &context)
+            logic::sign_transaction(tx, &context)
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
@@ -91,7 +82,16 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
         .register_async_method("eth_estimateGas", |params, context| async move {
             let context = context.read().await;
             let tx = params.parse()?;
-            logic::send_transaction(tx, &context)
+            logic::estimate_gas(tx, &context)
+                .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
+        })
+        .unwrap();
+
+    module
+        .register_async_method("eth_sign", |params, context| async move {
+            let context = context.read().await;
+            let (address, message) = params.parse()?;
+            logic::sign(address, message, &context)
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
