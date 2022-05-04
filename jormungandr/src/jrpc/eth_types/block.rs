@@ -34,38 +34,38 @@ impl Serialize for BlockTransactions {
 #[serde(rename_all = "camelCase")]
 pub struct Header {
     /// Hash of the block
-    pub hash: H256,
+    hash: H256,
     /// Mix Hash of the block
-    pub mix_hash: H256,
+    mix_hash: H256,
     /// Nonce of the block,
-    pub nonce: U256,
+    nonce: U256,
     /// Hash of the parent
-    pub parent_hash: H256,
+    parent_hash: H256,
     /// Hash of the uncles
     #[serde(rename = "sha3Uncles")]
-    pub uncles_hash: H256,
+    uncles_hash: H256,
     /// Alias of `author`
-    pub miner: H160,
+    miner: H160,
     /// State root hash (same as transactions_root)
-    pub state_root: H256,
+    state_root: H256,
     /// Transactions root hash,
-    pub transactions_root: H256,
+    transactions_root: H256,
     /// Transactions receipts root hash
-    pub receipts_root: H256,
+    receipts_root: H256,
     /// Block number
-    pub number: U256,
+    number: U256,
     /// Gas Used
-    pub gas_used: U256,
+    gas_used: U256,
     /// Gas Limit
-    pub gas_limit: U256,
+    gas_limit: U256,
     /// Extra data
-    pub extra_data: Bytes,
+    extra_data: Bytes,
     /// Logs bloom
-    pub logs_bloom: Bloom,
+    logs_bloom: Bloom,
     /// Timestamp
-    pub timestamp: U256,
+    timestamp: U256,
     /// Difficulty
-    pub difficulty: Option<U256>,
+    difficulty: Option<U256>,
 }
 
 impl Header {
@@ -97,17 +97,17 @@ impl Header {
 pub struct Block {
     /// Header of the block
     #[serde(flatten)]
-    pub header: Header,
+    header: Header,
     /// Total difficulty
-    pub total_difficulty: U256,
+    total_difficulty: U256,
     /// Uncles' hashes
-    pub uncles: Vec<H256>,
+    uncles: Vec<H256>,
     /// Transactions
-    pub transactions: BlockTransactions,
+    transactions: BlockTransactions,
     /// Size in bytes
-    pub size: U256,
+    size: U256,
     /// Base Fee for post-EIP1559 blocks.
-    pub base_fee_per_gas: Option<U256>,
+    base_fee_per_gas: Option<U256>,
 }
 
 impl Block {

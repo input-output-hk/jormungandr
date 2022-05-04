@@ -2,34 +2,34 @@ use super::bytes::Bytes;
 use chain_evm::ethereum_types::{H160, U256, U64};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
     /// Nonce
-    pub nonce: U256,
+    nonce: U256,
     /// Sender
-    pub from: H160,
+    from: H160,
     /// Recipient
-    pub to: Option<H160>,
+    to: Option<H160>,
     /// Transfered value
-    pub value: U256,
+    value: U256,
     /// Gas
-    pub gas: U256,
+    gas: U256,
     /// Data
-    pub input: Bytes,
+    input: Bytes,
     /// Gas price
-    pub gas_price: U256,
+    gas_price: U256,
     /// The network id of the transaction, if any.
-    pub chain_id: Option<U64>,
+    chain_id: Option<U64>,
     /// The standardised V field of the signature.
-    pub v: U256,
+    v: U256,
     /// The R field of the signature.
-    pub r: U256,
+    r: U256,
     /// The S field of the signature.
-    pub s: U256,
+    s: U256,
     /// EIP-2718 type
     #[serde(rename = "type")]
-    pub transaction_type: U256,
+    transaction_type: U256,
 }
 
 impl Transaction {

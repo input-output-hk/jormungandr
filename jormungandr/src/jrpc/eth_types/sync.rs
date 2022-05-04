@@ -6,11 +6,11 @@ use serde::{Serialize, Serializer};
 #[serde(rename_all = "camelCase")]
 pub struct SyncInfo {
     /// Starting block
-    pub starting_block: U256,
+    starting_block: U256,
     /// Current block
-    pub current_block: U256,
+    current_block: U256,
     /// Highest block seen so far
-    pub highest_block: U256,
+    highest_block: U256,
 }
 
 /// Sync status
