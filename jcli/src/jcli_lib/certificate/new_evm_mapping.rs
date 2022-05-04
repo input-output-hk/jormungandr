@@ -6,7 +6,6 @@ use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::{
     certificate::{Certificate, EvmMapping},
     evm::Address,
-    transaction::UnspecifiedAccountIdentifier,
 };
 use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::path::PathBuf;
@@ -28,7 +27,7 @@ pub struct EvmMapCmd {
 impl EvmMapCmd {
     pub fn exec(self) -> Result<(), Error> {
         let content = EvmMapping {
-            account_id: UnspecifiedAccountIdentifier::from_single_account(self.account_id.into()),
+            account_id: self.account_id.into(),
             evm_address: self.evm_address,
         };
         let cert = Certificate::EvmMapping(content);
