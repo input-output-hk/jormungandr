@@ -64,7 +64,8 @@ pub fn explorer_sanity_test() {
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
-    let explorer = jormungandr.explorer();
+    let explorer_process = jormungandr.explorer();
+    let explorer = explorer_process.client();
 
     let transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
@@ -81,12 +82,12 @@ pub fn explorer_sanity_test() {
         .send(&transaction)
         .assert_in_block_with_wait(&wait);
 
-    transaction_by_id(&explorer, fragment_id);
-    blocks(&explorer, jormungandr.logger.get_created_blocks_hashes());
-    stake_pools(&explorer, initial_stake_pools.as_ref());
-    stake_pool(&explorer, initial_stake_pools.as_ref());
-    block_at_chain_length(&explorer, jormungandr.logger.get_created_blocks_hashes());
-    epoch(&explorer);
+    transaction_by_id(explorer, fragment_id);
+    blocks(explorer, jormungandr.logger.get_created_blocks_hashes());
+    stake_pools(explorer, initial_stake_pools.as_ref());
+    stake_pool(explorer, initial_stake_pools.as_ref());
+    block_at_chain_length(explorer, jormungandr.logger.get_created_blocks_hashes());
+    epoch(explorer);
 }
 
 fn transaction_by_id(explorer: &Explorer, fragment_id: FragmentId) {

@@ -2,7 +2,7 @@
 name = "jormungandr-automation"
 version = "0.13.0"
 authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -37,7 +37,7 @@ thiserror = "1.0"
 poldercast = "1.2"
 sysinfo = { version = "0.23.1" }
 os_info = { version = "3.1.0", default-features = false }
-zip = "0.5.6"
+zip = "0.6.0"
 flate2 = "1.0.21"
 tar = "0.4"
 hex = "0.4"
@@ -45,7 +45,7 @@ lazy_static = "1"
 serde_derive = "1.0"
 assert_fs = "1.0"
 serde_yaml = "0.8"
-regex = "1.4"
+regex = "1.5"
 fs_extra = "1.1.0"
 url = "2.2.0"
 graphql_client = "0.10.0"

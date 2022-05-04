@@ -21,6 +21,11 @@ pub struct Rest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct JRpc {
+    pub listen: SocketAddr,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Tls {
     /// Path to server X.509 certificate chain file, must be PEM-encoded and contain at least 1 item
@@ -289,6 +294,7 @@ pub struct NodeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<PathBuf>,
     pub rest: Rest,
+    pub jrpc: JRpc,
     pub p2p: P2p,
     pub log: Option<Log>,
     pub mempool: Option<Mempool>,

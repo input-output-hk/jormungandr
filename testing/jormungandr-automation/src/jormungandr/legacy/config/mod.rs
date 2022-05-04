@@ -5,7 +5,7 @@ pub use configuration_builder::{
     LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
 };
 use jormungandr_lib::interfaces::{
-    LayersConfig, LogEntry, LogOutput, Mempool, Policy, Rest, TopicsOfInterest,
+    JRpc, LayersConfig, LogEntry, LogOutput, Mempool, Policy, Rest, TopicsOfInterest,
 };
 use multiaddr::Multiaddr;
 use serde::{Deserialize, Serialize};
@@ -73,6 +73,7 @@ pub struct NodeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<PathBuf>,
     pub rest: Rest,
+    pub jrpc: JRpc,
     pub p2p: P2p,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log: Option<Log>,

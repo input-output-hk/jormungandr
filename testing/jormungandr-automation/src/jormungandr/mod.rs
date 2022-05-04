@@ -16,7 +16,9 @@ pub use self::{
         get_available_port, Block0ConfigurationBuilder, ConfigurationBuilder, JormungandrParams,
         NodeConfigBuilder, SecretModelFactory, TestConfig,
     },
-    explorer::{compare_schema as compare_explorer_schema, Explorer, ExplorerError},
+    explorer::{
+        compare_schema as compare_explorer_schema, Explorer, ExplorerError, ExplorerProcess,
+    },
     fragment_node::{FragmentNode, FragmentNodeError, MemPoolCheck},
     legacy::{
         download_last_n_releases, get_jormungandr_bin, version_0_8_19, BackwardCompatibleRest,

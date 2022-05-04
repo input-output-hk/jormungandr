@@ -3,7 +3,7 @@ version: 2.1
 executors:
   rust-stable:
     docker:
-      - image: cimg/rust:1.56.1
+      - image: cimg/rust:1.59.0
     working_directory: /home/circleci/build
 
 jobs:

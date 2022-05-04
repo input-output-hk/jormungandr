@@ -23,6 +23,11 @@
 - Bump ed25519-bip32 from 0.4.0 to 0.4.1
 - Now the tally is incremental and is always available in the rest API. The
 - Add standalone explorer crate.
+- Add new Ethreum RPC endpoints for the getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
+- Bump clap from 2.34.0 to 3.1.13
+- Bump time from 0.3.7 to 0.3.9
+- Bump libc from 0.2.117 to 0.2.124
+- Bump rand from 0.8.4 to 0.8.5
 
 ## Release 0.13.0
 
@@ -61,6 +66,72 @@
   the vote tally from the received fragments off-chain as a backup counting
   method.
 - `scripts/bootstrap.py`, a cross-platform Python script to replace tje older
+  collection of outdated shell scripts.
+
+**Changes:**
+
+- Updated the Poldercast implementation to use poldercast 1.2
+  and reworked quarantine rules to improve network stability.
+- The log configuration only deals with a single output backend.
+  It's no longer possible to configure multiple log outputs.
+- Changed the p2p listening address and port configuration:
+  the field name is `listen` and the value format is _addr_`:`_port_.
+- The fragment log REST API provides more elaborate information on fragment
+  status, including the rejection reason.
+- The REST API endpoints for submitting fragments return an error status code
+  if the fragments are rejected by the node, rather than being admitted to the
+  mempool and propagated across the network.
+- Added logging to track REST requests, including possible OpenZipkin/B3
+  tracing information from the HTTP headers.
+
+**Bugs fixed:**
+
+- Use voteplan ID as the CRS for private voting protocol to prevent use of
+  compromised CRS values.
+- Ignore an unworkably small value of `log_max_entries` in the configuration.
+  The minimum is `pool_max_entries * n_pools`.
+
+## Releases 0.10.x - 0.11.x
+
+**TODO:** fill in with a summary of changes.
+
+## Release 0.13.0
+
+**New features:**
+
+- Expiration block date must be set on all incoming fragments.
+  Fragments in the mempool that are not included to a block prior to
+  the expiration (AKA TTL) block date are rejected.
+  A new blockchain parameter configures the maximum number of epochs that
+  the expiration date can be ahead when accepted into the mempool.
+- Provide node metrics through the Prometheus API.
+
+**Changes:**
+
+- Only a single leader or stake pool is supported in the node configuration.
+- Change HRP for Bech32 keys used in the voting process to improve
+  discrimination.
+- Consistently format block dates as slot.epoch string value in human-readable
+  serialization formats. Deserializing from the structured format is supported
+  for backward compatibility.
+- Voting protocol elliptic curve backend is changed to Ristretto.
+
+**Bug fixes:**
+
+- No reordering for the fragments submitted to the mempool in a batch via the
+  REST API.
+- Writing of persistent fragment logs was slow, changed to use buffering.
+
+## Release 0.12.0
+
+**New features:**
+
+- Persistent fragment logs, optionally enabled to record all fragments received
+  by the node and accepted into the mempool. These logs can be used for
+  verification of the blockchain result, forensics, and possibly to compute
+  the vote tally from the received fragments off-chain as a backup counting
+  method.
+- `scripts/bootstrap.py`, a cross-platform Python script to replace the older
   collection of outdated shell scripts.
 
 **Changes:**

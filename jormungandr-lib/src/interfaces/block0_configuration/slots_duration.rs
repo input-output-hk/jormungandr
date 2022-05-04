@@ -34,7 +34,7 @@ impl SlotDuration {
     /// `SlotDuration::MINIMUM` and `SlotDuration::MAXIMUM`.
     #[allow(clippy::absurd_extreme_comparisons)]
     pub fn new(v: u8) -> Option<Self> {
-        if v < MINIMUM_SLOT_DURATION || MAXIMUM_SLOT_DURATION < v {
+        if !(MINIMUM_SLOT_DURATION..=MAXIMUM_SLOT_DURATION).contains(&v) {
             None
         } else {
             Some(Self(v))

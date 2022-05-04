@@ -26,7 +26,7 @@ use tracing_futures::Instrument;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Context(#[from] crate::rest::context::Error),
+    Context(#[from] crate::context::Error),
     #[error(transparent)]
     PublicKey(#[from] PublicKeyFromStrError),
     #[error(transparent)]

@@ -4,6 +4,7 @@ use crate::{
     blockcfg::{ApplyBlockLedger, Contents, ContentsBuilder, LedgerParameters},
     fragment::{Fragment, FragmentId},
 };
+use chain_core::property::Serialize;
 use jormungandr_lib::interfaces::{BlockDate, FragmentStatus};
 
 use async_trait::async_trait;
@@ -78,7 +79,6 @@ async fn try_apply_fragment(
     mut space_left: u32,
 ) -> Result<NewLedgerState, ApplyFragmentError> {
     use futures::future::{select, Either};
-    use std::convert::TryFrom;
 
     let raw_fragment_size = fragment.serialized_size();
     let fragment_size = match u32::try_from(raw_fragment_size) {
