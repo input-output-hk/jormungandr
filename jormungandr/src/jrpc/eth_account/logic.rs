@@ -3,7 +3,7 @@ use chain_evm::ethereum_types::{H160, H256, U256};
 use super::Error;
 use crate::{
     context::Context,
-    jrpc::eth_types::{block::Bytes, block_number::BlockNumber},
+    jrpc::eth_types::{block_number::BlockNumber, bytes::Bytes},
 };
 
 pub fn get_transaction_count(

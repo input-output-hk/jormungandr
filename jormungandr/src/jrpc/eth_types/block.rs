@@ -1,20 +1,6 @@
-use super::transaction::Transaction;
-use chain_evm::ethereum_types::{Bloom, H160, H256, U256};
+use super::{bytes::Bytes, number::Number, transaction::Transaction};
+use chain_evm::ethereum_types::{Bloom, H160, H256};
 use serde::{Serialize, Serializer};
-
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct Bytes(Box<[u8]>);
-
-impl Serialize for Bytes {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let mut serialized = "0x".to_owned();
-        serialized.push_str(hex::encode(&self.0).as_str());
-        serializer.serialize_str(serialized.as_ref())
-    }
-}
 
 /// Block Transactions
 #[derive(Debug)]
@@ -44,42 +30,42 @@ impl Serialize for BlockTransactions {
 }
 
 /// Block header representation.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Header {
     /// Hash of the block
-    pub hash: H256,
+    hash: H256,
     /// Mix Hash of the block
-    pub mix_hash: H256,
+    mix_hash: H256,
     /// Nonce of the block,
-    pub nonce: U256,
+    nonce: Number,
     /// Hash of the parent
-    pub parent_hash: H256,
+    parent_hash: H256,
     /// Hash of the uncles
     #[serde(rename = "sha3Uncles")]
-    pub uncles_hash: H256,
+    uncles_hash: H256,
     /// Alias of `author`
-    pub miner: H160,
+    miner: H160,
     /// State root hash (same as transactions_root)
-    pub state_root: H256,
+    state_root: H256,
     /// Transactions root hash,
-    pub transactions_root: H256,
+    transactions_root: H256,
     /// Transactions receipts root hash
-    pub receipts_root: H256,
+    receipts_root: H256,
     /// Block number
-    pub number: U256,
+    number: Number,
     /// Gas Used
-    pub gas_used: U256,
+    gas_used: Number,
     /// Gas Limit
-    pub gas_limit: U256,
+    gas_limit: Number,
     /// Extra data
-    pub extra_data: Bytes,
+    extra_data: Bytes,
     /// Logs bloom
-    pub logs_bloom: Bloom,
+    logs_bloom: Bloom,
     /// Timestamp
-    pub timestamp: U256,
+    timestamp: Number,
     /// Difficulty
-    pub difficulty: Option<U256>,
+    difficulty: Option<Number>,
 }
 
 impl Header {
@@ -87,41 +73,41 @@ impl Header {
         Self {
             hash: H256::zero(),
             mix_hash: H256::zero(),
-            nonce: U256::one(),
+            nonce: 1.into(),
             parent_hash: H256::zero(),
             uncles_hash: H256::zero(),
             miner: H160::zero(),
             state_root: H256::zero(),
             transactions_root: H256::zero(),
             receipts_root: H256::zero(),
-            number: U256::one(),
-            gas_used: U256::one(),
-            gas_limit: U256::one(),
+            number: 1.into(),
+            gas_used: 1.into(),
+            gas_limit: 1.into(),
             extra_data: Bytes::default(),
             logs_bloom: Bloom::zero(),
-            timestamp: U256::one(),
-            difficulty: Some(U256::one()),
+            timestamp: 1.into(),
+            difficulty: Some(1.into()),
         }
     }
 }
 
 /// Block representation
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Block {
     /// Header of the block
     #[serde(flatten)]
-    pub header: Header,
+    header: Header,
     /// Total difficulty
-    pub total_difficulty: U256,
+    total_difficulty: Number,
     /// Uncles' hashes
-    pub uncles: Vec<H256>,
+    uncles: Vec<H256>,
     /// Transactions
-    pub transactions: BlockTransactions,
+    transactions: BlockTransactions,
     /// Size in bytes
-    pub size: U256,
+    size: Number,
     /// Base Fee for post-EIP1559 blocks.
-    pub base_fee_per_gas: Option<U256>,
+    base_fee_per_gas: Option<Number>,
 }
 
 impl Block {
@@ -135,11 +121,11 @@ impl Block {
 
         Self {
             header,
-            total_difficulty: U256::one(),
+            total_difficulty: 1.into(),
             uncles: Default::default(),
             transactions,
-            size: U256::one(),
-            base_fee_per_gas: Some(U256::one()),
+            size: 1.into(),
+            base_fee_per_gas: Some(1.into()),
         }
     }
 }
