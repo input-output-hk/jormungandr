@@ -1,10 +1,12 @@
 use super::Error;
-use crate::{context::Context, jrpc::eth_types::sync::SyncStatus};
-use chain_evm::ethereum_types::{U256, U64};
+use crate::{
+    context::Context,
+    jrpc::eth_types::{number::Number, sync::SyncStatus},
+};
 
-pub fn get_chain_id(_context: &Context) -> Result<Option<U64>, Error> {
+pub fn get_chain_id(_context: &Context) -> Result<Number, Error> {
     // TODO implement
-    Ok(Some(0.into()))
+    Ok(0.into())
 }
 
 pub fn is_syncing(_context: &Context) -> Result<SyncStatus, Error> {
@@ -12,7 +14,7 @@ pub fn is_syncing(_context: &Context) -> Result<SyncStatus, Error> {
     Ok(SyncStatus::build())
 }
 
-pub fn get_gas_price(_context: &Context) -> Result<U256, Error> {
+pub fn get_gas_price(_context: &Context) -> Result<Number, Error> {
     // TODO implement
     Ok(0.into())
 }
