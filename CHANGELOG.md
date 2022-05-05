@@ -29,6 +29,7 @@
 - Bump libc from 0.2.117 to 0.2.124
 - Bump rand from 0.8.4 to 0.8.5
 - Add jcli option to generate and sign EVM mapping certificates.
+- Add new Ethreum RPC endpoints for the account handling: eth_getTransactionCount, eth_getBalance, eth_getCode, eth_getStorageAt
 
 ## Release 0.13.0
 
