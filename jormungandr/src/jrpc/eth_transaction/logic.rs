@@ -2,11 +2,11 @@ use super::Error;
 use crate::{
     context::Context,
     jrpc::eth_types::{
-        block_number::BlockNumber, bytes::Bytes, index::Index, receipt::Receipt,
+        block_number::BlockNumber, bytes::Bytes, number::Number, receipt::Receipt,
         transaction::Transaction,
     },
 };
-use chain_evm::ethereum_types::{H160, H256, H512, U256};
+use chain_evm::ethereum_types::{H160, H256, H512};
 
 pub fn send_transaction(_tx: Transaction, _context: &Context) -> Result<H256, Error> {
     // TODO implement
@@ -28,7 +28,7 @@ pub fn get_transaction_by_hash(
 
 pub fn get_transaction_by_block_hash_and_index(
     _hash: H256,
-    _index: Index,
+    _index: Number,
     _context: &Context,
 ) -> Result<Option<Transaction>, Error> {
     // TODO implement
@@ -37,7 +37,7 @@ pub fn get_transaction_by_block_hash_and_index(
 
 pub fn get_transaction_by_block_number_and_index(
     _number: BlockNumber,
-    _index: Index,
+    _index: Number,
     _context: &Context,
 ) -> Result<Option<Transaction>, Error> {
     // TODO implement
@@ -54,9 +54,9 @@ pub fn sign_transaction(_tx: Transaction, _context: &Context) -> Result<Bytes, E
     Ok(Default::default())
 }
 
-pub fn estimate_gas(_tx: Transaction, _context: &Context) -> Result<U256, Error> {
+pub fn estimate_gas(_tx: Transaction, _context: &Context) -> Result<Number, Error> {
     // TODO implement
-    Ok(U256::zero())
+    Ok(0.into())
 }
 
 pub fn sign(_address: H160, _message: Bytes, _context: &Context) -> Result<H512, Error> {

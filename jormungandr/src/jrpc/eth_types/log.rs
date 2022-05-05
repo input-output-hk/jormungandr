@@ -1,23 +1,23 @@
-use super::bytes::Bytes;
-use chain_evm::ethereum_types::{H160, H256, U256};
+use super::{bytes::Bytes, number::Number};
+use chain_evm::ethereum_types::{H160, H256};
 use serde::Serialize;
 
 /// Log
-#[derive(Debug, Serialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Log {
     /// Whether Log Type is Removed (Geth Compatibility Field)
     removed: bool,
     /// Log Index in Block
-    log_index: Option<U256>,
+    log_index: Option<Number>,
     /// Transaction Index
-    transaction_index: Option<U256>,
+    transaction_index: Option<Number>,
     /// Transaction Hash
     transaction_hash: Option<H256>,
     /// Block Hash
     block_hash: Option<H256>,
     /// Block Number
-    block_number: Option<U256>,
+    block_number: Option<Number>,
     /// H160
     address: Option<H160>,
     /// Data
@@ -30,11 +30,11 @@ impl Log {
     pub fn build() -> Self {
         Self {
             removed: true,
-            log_index: Some(U256::zero()),
-            transaction_index: Some(U256::zero()),
+            log_index: Some(1.into()),
+            transaction_index: Some(1.into()),
             transaction_hash: Some(H256::zero()),
             block_hash: Some(H256::zero()),
-            block_number: Some(U256::zero()),
+            block_number: Some(1.into()),
             address: Some(H160::zero()),
             data: Some(Default::default()),
             topics: Default::default(),
@@ -50,11 +50,11 @@ mod tests {
     fn receipt_json_serialize() {
         let log = Log {
             removed: true,
-            log_index: Some(U256::zero()),
-            transaction_index: Some(U256::zero()),
+            log_index: Some(0.into()),
+            transaction_index: Some(0.into()),
             transaction_hash: Some(H256::zero()),
             block_hash: Some(H256::zero()),
-            block_number: Some(U256::zero()),
+            block_number: Some(0.into()),
             address: Some(H160::zero()),
             data: Some(Default::default()),
             topics: Default::default(),

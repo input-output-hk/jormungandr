@@ -1,5 +1,5 @@
-use super::{bytes::Bytes, transaction::Transaction};
-use chain_evm::ethereum_types::{Bloom, H160, H256, U256};
+use super::{bytes::Bytes, number::Number, transaction::Transaction};
+use chain_evm::ethereum_types::{Bloom, H160, H256};
 use serde::{Serialize, Serializer};
 
 /// Block Transactions
@@ -30,7 +30,7 @@ impl Serialize for BlockTransactions {
 }
 
 /// Block header representation.
-#[derive(Debug, Clone, Serialize, PartialEq, Eq, Default)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Header {
     /// Hash of the block
@@ -38,7 +38,7 @@ pub struct Header {
     /// Mix Hash of the block
     mix_hash: H256,
     /// Nonce of the block,
-    nonce: U256,
+    nonce: Number,
     /// Hash of the parent
     parent_hash: H256,
     /// Hash of the uncles
@@ -53,19 +53,19 @@ pub struct Header {
     /// Transactions receipts root hash
     receipts_root: H256,
     /// Block number
-    number: U256,
+    number: Number,
     /// Gas Used
-    gas_used: U256,
+    gas_used: Number,
     /// Gas Limit
-    gas_limit: U256,
+    gas_limit: Number,
     /// Extra data
     extra_data: Bytes,
     /// Logs bloom
     logs_bloom: Bloom,
     /// Timestamp
-    timestamp: U256,
+    timestamp: Number,
     /// Difficulty
-    difficulty: Option<U256>,
+    difficulty: Option<Number>,
 }
 
 impl Header {
@@ -73,41 +73,41 @@ impl Header {
         Self {
             hash: H256::zero(),
             mix_hash: H256::zero(),
-            nonce: U256::one(),
+            nonce: 1.into(),
             parent_hash: H256::zero(),
             uncles_hash: H256::zero(),
             miner: H160::zero(),
             state_root: H256::zero(),
             transactions_root: H256::zero(),
             receipts_root: H256::zero(),
-            number: U256::one(),
-            gas_used: U256::one(),
-            gas_limit: U256::one(),
+            number: 1.into(),
+            gas_used: 1.into(),
+            gas_limit: 1.into(),
             extra_data: Bytes::default(),
             logs_bloom: Bloom::zero(),
-            timestamp: U256::one(),
-            difficulty: Some(U256::one()),
+            timestamp: 1.into(),
+            difficulty: Some(1.into()),
         }
     }
 }
 
 /// Block representation
-#[derive(Debug, Serialize, Default)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Block {
     /// Header of the block
     #[serde(flatten)]
     header: Header,
     /// Total difficulty
-    total_difficulty: U256,
+    total_difficulty: Number,
     /// Uncles' hashes
     uncles: Vec<H256>,
     /// Transactions
     transactions: BlockTransactions,
     /// Size in bytes
-    size: U256,
+    size: Number,
     /// Base Fee for post-EIP1559 blocks.
-    base_fee_per_gas: Option<U256>,
+    base_fee_per_gas: Option<Number>,
 }
 
 impl Block {
@@ -121,11 +121,11 @@ impl Block {
 
         Self {
             header,
-            total_difficulty: U256::one(),
+            total_difficulty: 1.into(),
             uncles: Default::default(),
             transactions,
-            size: U256::one(),
-            base_fee_per_gas: Some(U256::one()),
+            size: 1.into(),
+            base_fee_per_gas: Some(1.into()),
         }
     }
 }

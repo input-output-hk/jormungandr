@@ -1,15 +1,30 @@
 use serde::{
     de::{Error, Visitor},
-    Deserialize, Deserializer,
+    Deserialize, Deserializer, Serialize, Serializer,
 };
 use std::fmt;
 
 /// Represents usize.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Index(u64);
+pub struct Number(u64);
 
-impl<'a> Deserialize<'a> for Index {
-    fn deserialize<D>(deserializer: D) -> Result<Index, D::Error>
+impl From<u64> for Number {
+    fn from(val: u64) -> Self {
+        Self(val)
+    }
+}
+
+impl Serialize for Number {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(format!("{:#x}", self.0).as_str())
+    }
+}
+
+impl<'a> Deserialize<'a> for Number {
+    fn deserialize<D>(deserializer: D) -> Result<Number, D::Error>
     where
         D: Deserializer<'a>,
     {
@@ -20,7 +35,7 @@ impl<'a> Deserialize<'a> for Index {
 struct IndexVisitor;
 
 impl<'a> Visitor<'a> for IndexVisitor {
-    type Value = Index;
+    type Value = Number;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(formatter, "a hex-encoded or decimal index")
@@ -32,11 +47,11 @@ impl<'a> Visitor<'a> for IndexVisitor {
     {
         match value {
             _ if value.starts_with("0x") => u64::from_str_radix(&value[2..], 16)
-                .map(Index)
+                .map(Number)
                 .map_err(|e| Error::custom(format!("Invalid index: {}", e))),
             _ => value
                 .parse::<u64>()
-                .map(Index)
+                .map(Number)
                 .map_err(|e| Error::custom(format!("Invalid index: {}", e))),
         }
     }
@@ -52,7 +67,7 @@ impl<'a> Visitor<'a> for IndexVisitor {
     where
         E: Error,
     {
-        Ok(Index(value))
+        Ok(Number(value))
     }
 }
 
@@ -63,10 +78,15 @@ mod tests {
     #[test]
     fn index_deserialization() {
         let s = r#"["0xa", "10", 42, "0x45"]"#;
-        let deserialized: Vec<Index> = serde_json::from_str(s).unwrap();
+        let deserialized: Vec<Number> = serde_json::from_str(s).unwrap();
         assert_eq!(
             deserialized,
-            vec![Index(10), Index(10), Index(42), Index(69)]
+            vec![Number(10), Number(10), Number(42), Number(69)]
+        );
+
+        assert_eq!(
+            serde_json::to_string(&vec![Number(10), Number(42), Number(69)]).unwrap(),
+            r#"["0xa", "0xa", "0x2a", "0x45"]"#
         );
     }
 }

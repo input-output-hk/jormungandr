@@ -1,16 +1,17 @@
-use chain_evm::ethereum_types::U256;
 use serde::{Serialize, Serializer};
 
+use super::number::Number;
+
 /// Sync info
-#[derive(Default, Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncInfo {
     /// Starting block
-    starting_block: U256,
+    starting_block: Number,
     /// Current block
-    current_block: U256,
+    current_block: Number,
     /// Highest block seen so far
-    highest_block: U256,
+    highest_block: Number,
 }
 
 /// Sync status
@@ -26,9 +27,9 @@ pub enum SyncStatus {
 impl SyncStatus {
     pub fn build() -> Self {
         Self::Info(SyncInfo {
-            starting_block: U256::zero(),
-            current_block: U256::zero(),
-            highest_block: U256::zero(),
+            starting_block: 0.into(),
+            current_block: 0.into(),
+            highest_block: 0.into(),
         })
     }
 }
@@ -53,9 +54,9 @@ mod tests {
     fn sync_status_json_deserialize() {
         let ss_none = SyncStatus::None;
         let ss_info = SyncStatus::Info(SyncInfo {
-            starting_block: U256::zero(),
-            current_block: U256::zero(),
-            highest_block: U256::zero(),
+            starting_block: 0.into(),
+            current_block: 0.into(),
+            highest_block: 0.into(),
         });
 
         assert_eq!(serde_json::to_string(&ss_none).unwrap(), "false");
