@@ -23,13 +23,14 @@
 - Bump ed25519-bip32 from 0.4.0 to 0.4.1
 - Now the tally is incremental and is always available in the rest API. The
 - Add standalone explorer crate.
-- Add new Ethreum RPC endpoints for the getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
 - Bump clap from 2.34.0 to 3.1.13
 - Bump time from 0.3.7 to 0.3.9
 - Bump libc from 0.2.117 to 0.2.124
 - Bump rand from 0.8.4 to 0.8.5
 - Add jcli option to generate and sign EVM mapping certificates.
-
+- Add new Ethreum RPC endpoints for the getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
+- Add new Ethreum RPC endpoints for the transaction handling: eth_sendTransaction, eth_sendRawTransaction, eth_getTransactionByHash, eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex, eth_getTransactionReceipt, eth_signTransaction, eth_estimateGas, eth_sign
+- Add new Ethreum RPC endpoints for the getting chain info: eth_chainId, eth_syncing, eth_gasPrice, eth_protocolVersion
 ## Release 0.13.0
 
 **New features:**
