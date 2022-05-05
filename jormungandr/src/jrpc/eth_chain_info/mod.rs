@@ -6,7 +6,7 @@ mod logic;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {}
 
-pub fn eth_get_blocks_info_module(context: ContextLock) -> RpcModule<ContextLock> {
+pub fn eth_chain_info_module(context: ContextLock) -> RpcModule<ContextLock> {
     let mut module = RpcModule::new(context);
 
     module

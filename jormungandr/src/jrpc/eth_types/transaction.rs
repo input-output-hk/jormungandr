@@ -1,53 +1,94 @@
-use chain_evm::ethereum_types::{H160, U256, U64};
-use serde::Serialize;
+use super::{bytes::Bytes, number::Number};
+use chain_evm::ethereum_types::{H160, H256, U256};
+use serde::{Deserialize, Serialize};
 
-use super::block::Bytes;
-
-#[derive(Debug, Default, Clone, PartialEq, Serialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Transaction {
+    /// Block hash, null when pending
+    block_hash: Option<H256>,
+    /// Block number, null when pending
+    block_number: Option<Number>,
     /// Nonce
-    pub nonce: U256,
+    nonce: Number,
     /// Sender
-    pub from: H160,
+    from: H160,
     /// Recipient
-    pub to: Option<H160>,
+    to: Option<H160>,
     /// Transfered value
-    pub value: U256,
+    value: Number,
     /// Gas
-    pub gas: U256,
+    gas: Number,
     /// Data
-    pub input: Bytes,
-    #[serde(rename = "gasPrice", skip_serializing_if = "Option::is_none")]
-    pub gas_price: Option<U256>,
+    input: Bytes,
+    /// Gas price
+    gas_price: Number,
     /// The network id of the transaction, if any.
-    pub chain_id: Option<U64>,
+    chain_id: Option<Number>,
+    /// Transaction Index, null when pending
+    transaction_index: Option<Number>,
     /// The standardised V field of the signature.
-    pub v: U256,
+    v: Number,
     /// The R field of the signature.
-    pub r: U256,
+    r: U256,
     /// The S field of the signature.
-    pub s: U256,
+    s: U256,
     /// EIP-2718 type
     #[serde(rename = "type")]
-    pub transaction_type: U256,
+    transaction_type: Number,
 }
 
 impl Transaction {
     pub fn build() -> Self {
         Self {
-            nonce: U256::one(),
+            block_hash: None,
+            block_number: None,
+            nonce: 1.into(),
             from: H160::zero(),
             to: Some(H160::zero()),
-            value: U256::one(),
-            gas: U256::one(),
+            value: 1.into(),
+            gas: 1.into(),
             input: Default::default(),
-            gas_price: Some(U256::one()),
-            chain_id: Some(U64::one()),
-            v: U256::one(),
+            gas_price: 1.into(),
+            chain_id: Some(1.into()),
+            transaction_index: None,
+            v: 1.into(),
             r: U256::one(),
             s: U256::one(),
-            transaction_type: U256::one(),
+            transaction_type: 1.into(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn transaction_json_serde() {
+        let transaction = Transaction {
+            block_hash: None,
+            block_number: None,
+            nonce: 0.into(),
+            from: H160::zero(),
+            to: Some(H160::zero()),
+            value: 0.into(),
+            gas: 0.into(),
+            input: Default::default(),
+            gas_price: 0.into(),
+            chain_id: Some(0.into()),
+            transaction_index: None,
+            v: 0.into(),
+            r: U256::zero(),
+            s: U256::zero(),
+            transaction_type: 0.into(),
+        };
+        assert_eq!(
+            serde_json::to_string(&transaction).unwrap(),
+            r#"{"blockHash":null,"blockNumber":null,"nonce":"0x0","from":"0x0000000000000000000000000000000000000000","to":"0x0000000000000000000000000000000000000000","value":"0x0","gas":"0x0","input":"0x","gasPrice":"0x0","chainId":"0x0","transactionIndex":null,"v":"0x0","r":"0x0","s":"0x0","type":"0x0"}"#
+        );
+        let decoded: Transaction = serde_json::from_str(r#"{"blockHash":null,"blockNumber":null,"nonce":"0x0","from":"0x0000000000000000000000000000000000000000","to":"0x0000000000000000000000000000000000000000","value":"0x0","gas":"0x0","input":"0x","gasPrice":"0x0","chainId":"0x0","transactionIndex":null,"v":"0x0","r":"0x0","s":"0x0","type":"0x0"}"#
+    ).unwrap();
+        assert_eq!(decoded, transaction);
     }
 }
