@@ -1,16 +1,16 @@
-use chain_evm::ethereum_types::{H160, H256, U256};
+use chain_evm::ethereum_types::{H160, H256};
 
 use super::Error;
 use crate::{
     context::Context,
-    jrpc::eth_types::{block_number::BlockNumber, bytes::Bytes},
+    jrpc::eth_types::{block_number::BlockNumber, bytes::Bytes, number::Number},
 };
 
 pub fn get_transaction_count(
     _address: H160,
     _block_number: BlockNumber,
     _context: &Context,
-) -> Result<U256, Error> {
+) -> Result<Number, Error> {
     // TODO implement
     Ok(0.into())
 }
@@ -19,7 +19,7 @@ pub fn get_balance(
     _address: H160,
     _block_number: BlockNumber,
     _context: &Context,
-) -> Result<U256, Error> {
+) -> Result<Number, Error> {
     // TODO implement
     Ok(0.into())
 }
