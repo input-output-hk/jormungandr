@@ -157,9 +157,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql"
-version = "3.0.36"
+version = "3.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78e5de7666eb4c3e18e362890a2c1e06ba6e2fa53426574e252b5d52ee7f954a"
+checksum = "2106123e9c79a8d649bf0f7e9f58462a90ce2ca71ad9a0b69b4f2b67382c376f"
 dependencies = [
  "async-graphql-derive",
  "async-graphql-parser",
@@ -187,9 +187,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-derive"
-version = "3.0.36"
+version = "3.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "caa710ce371f4f3f301d60e5bcd7cec3f06c8ec8b3ef8ba55e986518a97254ce"
+checksum = "1a6ec150ac445a660169a3ad5075b953a7351ec75fe28095e639f6282aac9fdb"
 dependencies = [
  "Inflector",
  "async-graphql-parser",
@@ -203,9 +203,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-parser"
-version = "3.0.36"
+version = "3.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac5aa058dbe2ed53700360fc77f112ed12a22ec3247fbdaee0e6b2afc3e8ba38"
+checksum = "0302764f05e0e50fd3b381646d4a0ed07d4ce5c9fc1eaf79bbd7745bd4893adb"
 dependencies = [
  "async-graphql-value",
  "pest",
@@ -216,9 +216,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-value"
-version = "3.0.36"
+version = "3.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6fa83548a7b9fe164ad5a7526dc68c1a7bc2a4fdaf6eab1bc77d7701635df8e"
+checksum = "ba2e19876bcd2068f597fd0182f4ba602ce3c89cb04c4b8810d7c36f44724e92"
 dependencies = [
  "bytes",
  "indexmap",
@@ -228,9 +228,9 @@ dependencies = [
 
 [[package]]
 name = "async-graphql-warp"
-version = "3.0.36"
+version = "3.0.38"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d2cb9bc3dd9d3f8e34893c959c71c03428939f7d4772fb5442a692371672b90"
+checksum = "8e7feb19d00f7f706a08ad1affaef7dae99816e86f59b53f7c3119c9a4928748"
 dependencies = [
  "async-graphql",
  "futures-util",
