@@ -92,10 +92,10 @@ mod tests {
     #[test]
     fn filter_address_serialize() {
         let fa_single: FilterAddress =
-            serde_json::from_str(&r#""0x0000000000000000000000000000000000000000""#).unwrap();
+            serde_json::from_str(r#""0x0000000000000000000000000000000000000000""#).unwrap();
         let fa_multiple: FilterAddress =
-            serde_json::from_str(&r#"["0x0000000000000000000000000000000000000000"]"#).unwrap();
-        let fa_null: FilterAddress = serde_json::from_str(&r#"null"#).unwrap();
+            serde_json::from_str(r#"["0x0000000000000000000000000000000000000000"]"#).unwrap();
+        let fa_null: FilterAddress = serde_json::from_str(r#"null"#).unwrap();
 
         assert_eq!(fa_single, FilterAddress::Single(H160::zero()));
         assert_eq!(fa_multiple, FilterAddress::Multiple(vec![H160::zero()]));
@@ -105,22 +105,22 @@ mod tests {
     #[test]
     fn topic_serialize() {
         let t_single_single: Topic = serde_json::from_str(
-            &r#""0x0000000000000000000000000000000000000000000000000000000000000000""#,
+            r#""0x0000000000000000000000000000000000000000000000000000000000000000""#,
         )
         .unwrap();
         let t_single_multiple: Topic = serde_json::from_str(
-            &r#"["0x0000000000000000000000000000000000000000000000000000000000000000"]"#,
+            r#"["0x0000000000000000000000000000000000000000000000000000000000000000"]"#,
         )
         .unwrap();
         let t_multiple_multiple_1: Topic = serde_json::from_str(
-            &r#"["0x0000000000000000000000000000000000000000000000000000000000000000",["0x0000000000000000000000000000000000000000000000000000000000000000"]]"#,
+            r#"["0x0000000000000000000000000000000000000000000000000000000000000000",["0x0000000000000000000000000000000000000000000000000000000000000000"]]"#,
         )
         .unwrap();
         let t_multiple_multiple_2: Topic = serde_json::from_str(
-            &r#"[,["0x0000000000000000000000000000000000000000000000000000000000000000"]]"#,
+            r#"[null,["0x0000000000000000000000000000000000000000000000000000000000000000"]]"#,
         )
         .unwrap();
-        let t_null: Topic = serde_json::from_str(&r#"null"#).unwrap();
+        let t_null: Topic = serde_json::from_str(r#"null"#).unwrap();
 
         assert_eq!(
             t_single_single,
