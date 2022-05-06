@@ -450,18 +450,11 @@ fn gossip_new_node_bootstrap() {
     );
     super::assert_connected_cnt(&server1, 2, "After second node bootstrap");
 
-    let is_gossiping_with_one_node = server1
-        .logger
-        .get_lines_as_string()
-        .iter()
-        .any(|s| s.contains("received gossip on 1 nodes"));
-
     let is_gossiping_with_two_nodes = server1
         .logger
         .get_lines_as_string()
         .iter()
         .any(|s| s.contains("received gossip on 2 nodes"));
 
-    assert!(is_gossiping_with_one_node, "After second node bootstrap");
     assert!(is_gossiping_with_two_nodes, "After second node bootstrap");
 }
