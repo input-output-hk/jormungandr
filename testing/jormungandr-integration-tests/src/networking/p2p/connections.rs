@@ -17,12 +17,9 @@ const LEADER2: &str = "LEADER2";
 const LEADER3: &str = "LEADER3";
 const LEADER4: &str = "LEADER4";
 
-
-
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
-const SERVER1: &str = "SERVER1";
-
+const SERVER_1: &str = "SERVER_1";
 
 const ALICE: &str = "ALICE";
 const BOB: &str = "BOB";
@@ -373,42 +370,67 @@ fn log_parser() {
 }
 
 #[test]
-fn gossip_new_node() {
-    const INTERVAL_SECS: u64 = 30;
+fn gossip_new_node_bootstrap() {
     let mut controller = NetworkBuilder::default()
         .topology(
             Topology::default()
-                .with_node(Node::new(SERVER1))
-                .with_node(Node::new(SERVER).with_trusted_peer(SERVER1))
+                .with_node(Node::new(SERVER_1))
+                .with_node(Node::new(SERVER).with_trusted_peer(SERVER_1))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
         .blockchain_config(
-            Blockchain::default().with_leaders(vec![SERVER]),
+            Blockchain::default().with_leaders(vec![SERVER_1]),
         )
         .build()
         .unwrap();
 
     let server1 = controller
-        .spawn(SpawnParams::new(SERVER1).in_memory())
+        .spawn(SpawnParams::new(SERVER_1).in_memory())
         .unwrap();
 
     let server = controller
-        .spawn(SpawnParams::new(SERVER).in_memory()
-        .gossip_interval(Duration::new(INTERVAL_SECS, 0)))
+        .spawn(SpawnParams::new(SERVER).in_memory())
         .unwrap();
 
-    let _client = controller
+    utils::wait(2);
+    super::assert_are_in_network_view(&server1, vec![&server], "Before second node bootstrap");
+    super::assert_connected_cnt(&server1, 1, "Before second node bootstrap" );
+
+    let is_gossiping_with_one_node = server1
+        .logger
+        .get_lines_as_string()
+        .iter()
+        .any(|s| s.contains("received gossip on 1 nodes"));
+
+    let is_gossiping_with_two_nodes = server1
+        .logger
+        .get_lines_as_string()
+        .iter()
+        .any(|s| s.contains("received gossip on 2 nodes"));
+
+    assert!(is_gossiping_with_one_node,"Before second node bootstrap");
+    assert!(is_gossiping_with_two_nodes == false,"Before second node bootstrap");
+
+    let client = controller
         .spawn(SpawnParams::new(CLIENT))
         .unwrap();
 
-    println!("server1 p2pview{:?}",server1.rest().p2p_view());
-    println!("server p2pview{:?}",server.rest().p2p_view());
-    println!("server {:?}",server1.rest().stats().unwrap().stats.unwrap().peer_connected_cnt);
+    utils::wait(2);
+    super::assert_are_in_network_view(&server1, vec![&server,&client], "After second node bootstrap");
+    super::assert_connected_cnt(&server1, 2, "After second node bootstrap" );
 
-    utils::wait(35);
+    let is_gossiping_with_one_node = server1
+        .logger
+        .get_lines_as_string()
+        .iter()
+        .any(|s| s.contains("received gossip on 1 nodes"));
 
-    println!("server1 p2pview{:?}",server1.rest().p2p_view());
-    println!("server p2pview{:?}",server.rest().p2p_view());
-    println!("server {:?}",server1.rest().stats().unwrap().stats.unwrap().peer_connected_cnt);
+    let is_gossiping_with_two_nodes = server1
+        .logger
+        .get_lines_as_string()
+        .iter()
+        .any(|s| s.contains("received gossip on 2 nodes"));
 
+    assert!(is_gossiping_with_one_node,"After second node bootstrap");
+    assert!(is_gossiping_with_two_nodes,"After second node bootstrap");
 }
