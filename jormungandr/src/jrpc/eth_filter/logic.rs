@@ -1,7 +1,11 @@
 use super::Error;
 use crate::{
     context::Context,
-    jrpc::eth_types::{filter::Filter, number::Number},
+    jrpc::eth_types::{
+        filter::{Filter, FilterChanges},
+        log::Log,
+        number::Number,
+    },
 };
 
 pub fn new_filter(_filter: Filter, _context: &Context) -> Result<Number, Error> {
@@ -24,12 +28,12 @@ pub fn uninstall_filter(_filter_id: Number, _context: &Context) -> Result<bool, 
     Ok(true)
 }
 
-pub fn get_filter_changes(_filter_id: Number, _context: &Context) -> Result<(), Error> {
+pub fn get_filter_changes(_filter_id: Number, _context: &Context) -> Result<FilterChanges, Error> {
     // TODO implement
-    Ok(())
+    Ok(FilterChanges::Empty)
 }
 
-pub fn get_filter_logs(_filter_id: Number, _context: &Context) -> Result<(), Error> {
+pub fn get_filter_logs(_filter_id: Number, _context: &Context) -> Result<Vec<Log>, Error> {
     // TODO implement
-    Ok(())
+    Ok(vec![Log::build()])
 }
