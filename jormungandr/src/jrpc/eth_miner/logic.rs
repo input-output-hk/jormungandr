@@ -9,7 +9,7 @@ use super::Error;
 
 pub fn mining(_context: &Context) -> Result<bool, Error> {
     // TODO implement
-    Ok(true.into())
+    Ok(true)
 }
 
 pub fn hashrate(_context: &Context) -> Result<Number, Error> {
