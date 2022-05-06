@@ -50,13 +50,15 @@ pub type Topic = VariadicValue<VariadicValue<H256>>;
 #[serde(rename_all = "camelCase")]
 pub struct Filter {
     /// From Block
-    pub from_block: Option<BlockNumber>,
+    from_block: Option<BlockNumber>,
     /// To Block
-    pub to_block: Option<BlockNumber>,
+    to_block: Option<BlockNumber>,
     /// Address
-    pub address: FilterAddress,
+    address: FilterAddress,
     /// Topics
-    pub topics: Topic,
+    topics: Topic,
+    /// Block hash
+    block_hash: Option<H256>,
 }
 
 /// Results of the filter_changes RPC.

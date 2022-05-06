@@ -37,3 +37,8 @@ pub fn get_filter_logs(_filter_id: Number, _context: &Context) -> Result<Vec<Log
     // TODO implement
     Ok(vec![Log::build()])
 }
+
+pub fn get_logs(_filter: Filter, _context: &Context) -> Result<FilterChanges, Error> {
+    // TODO implement
+    Ok(FilterChanges::Empty)
+}

@@ -60,5 +60,14 @@ pub fn eth_filter_module(context: ContextLock) -> RpcModule<ContextLock> {
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
+
+    module
+        .register_async_method("eth_getLogs", |params, context| async move {
+            let context = context.read().await;
+            let filter = params.parse()?;
+            logic::get_logs(filter, &context)
+                .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
+        })
+        .unwrap();
     module
 }
