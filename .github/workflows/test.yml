@@ -169,6 +169,12 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
           key: cargo-deps-v1-${{ needs.cache_info.outputs.cargo-lock-hash }}
+ 
+      - name: Install cargo-nextest
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-nextest
 
       - name: Build jormungandr
         uses: actions-rs/cargo@v1
@@ -206,8 +212,8 @@ jobs:
         uses: actions-rs/cargo@v1
         timeout-minutes: 90
         with:
-          command: test
-          args: --tests ${{ env.CARGO_FLAGS }}
+          command: nextest
+          args: run --tests ${{ env.CARGO_FLAGS }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # TMPDIR and TMP are used respectively on unix and windows
@@ -220,8 +226,8 @@ jobs:
         uses: actions-rs/cargo@v1
         timeout-minutes: 90
         with:
-          command: test
-          args: --tests ${{ env.CARGO_FLAGS }} --features network
+          command: nextest
+          args: run --tests ${{ env.CARGO_FLAGS }} --features network
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # TMPDIR and TMP are used respectively on unix and windows
