@@ -169,7 +169,7 @@ jobs:
             ~/.cargo/registry/cache
             ~/.cargo/git/db
           key: cargo-deps-v1-${{ needs.cache_info.outputs.cargo-lock-hash }}
- 
+
       - name: Install cargo-nextest
         uses: actions-rs/cargo@v1
         with:
