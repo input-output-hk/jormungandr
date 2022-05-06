@@ -3,6 +3,8 @@ mod eth_block_info;
 #[cfg(feature = "evm")]
 mod eth_chain_info;
 #[cfg(feature = "evm")]
+mod eth_miner;
+#[cfg(feature = "evm")]
 mod eth_transaction;
 #[cfg(feature = "evm")]
 mod eth_types;
@@ -35,7 +37,11 @@ pub async fn start_jrpc_server(config: Config, _context: ContextLock) {
             .unwrap();
 
         modules
-            .merge(eth_transaction::eth_transaction_module(_context))
+            .merge(eth_transaction::eth_transaction_module(_context.clone()))
+            .unwrap();
+
+        modules
+            .merge(eth_miner::eth_miner_module(_context))
             .unwrap();
     }
 
