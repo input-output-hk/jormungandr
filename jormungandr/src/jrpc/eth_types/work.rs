@@ -1,7 +1,7 @@
 use chain_evm::ethereum_types::H256;
+use serde::{Serialize, Serializer};
 
-/// The result of an `eth_getWork` call: it differs based on an option
-/// whether to send the block number.
+/// Work
 #[derive(Debug, PartialEq, Eq)]
 pub struct Work {
     /// The proof-of-work hash.
@@ -10,6 +10,42 @@ pub struct Work {
     pub seed_hash: H256,
     /// The target.
     pub target: H256,
-    /// The block number: this isn't always stored.
-    pub number: Option<u64>,
+}
+
+impl Work {
+    pub fn build() -> Self {
+        Self {
+            pow_hash: H256::zero(),
+            seed_hash: H256::zero(),
+            target: H256::zero(),
+        }
+    }
+}
+
+impl Serialize for Work {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        vec![self.pow_hash, self.seed_hash, self.target].serialize(s)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn work_serialize() {
+        let work = Work {
+            pow_hash: H256::zero(),
+            seed_hash: H256::zero(),
+            target: H256::zero(),
+        };
+
+        assert_eq!(
+            serde_json::to_string(&work).unwrap(),
+            r#"["0x0000000000000000000000000000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000000000000000000000000000","0x0000000000000000000000000000000000000000000000000000000000000000"]"#
+        );
+    }
 }

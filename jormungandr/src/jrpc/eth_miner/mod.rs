@@ -31,17 +31,19 @@ pub fn eth_miner_module(context: ContextLock) -> RpcModule<ContextLock> {
         .unwrap();
 
     module
-        .register_async_method("eth_submitWork", |_, context| async move {
+        .register_async_method("eth_submitWork", |params, context| async move {
             let context = context.read().await;
-            logic::submit_work(&context)
+            let (nonce, pow_hash, mix_digest) = params.parse()?;
+            logic::submit_work(nonce, pow_hash, mix_digest, &context)
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
 
     module
-        .register_async_method("eth_submitHashrate", |_, context| async move {
+        .register_async_method("eth_submitHashrate", |params, context| async move {
             let context = context.read().await;
-            logic::submit_hashrate(&context)
+            let (hash_rate, id) = params.parse()?;
+            logic::submit_hashrate(hash_rate, id, &context)
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
