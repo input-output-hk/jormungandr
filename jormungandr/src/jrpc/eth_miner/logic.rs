@@ -1,15 +1,15 @@
-use crate::context::Context;
+use crate::{context::Context, jrpc::eth_types::number::Number};
 
 use super::Error;
 
-pub fn mining(_context: &Context) -> Result<(), Error> {
+pub fn mining(_context: &Context) -> Result<bool, Error> {
     // TODO implement
-    Ok(())
+    Ok(true.into())
 }
 
-pub fn hashrate(_context: &Context) -> Result<(), Error> {
+pub fn hashrate(_context: &Context) -> Result<Number, Error> {
     // TODO implement
-    Ok(())
+    Ok(0.into())
 }
 
 pub fn get_work(_context: &Context) -> Result<(), Error> {
