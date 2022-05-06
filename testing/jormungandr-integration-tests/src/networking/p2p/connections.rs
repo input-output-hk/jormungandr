@@ -111,7 +111,8 @@ pub fn node_trust_itself() {
 #[test]
 /// Ensures intervals between gossip attempts respect the `gossip_interval` timing parameter
 fn gossip_interval() {
-    const INTERVAL_SECS: u64 = 3;
+    const SERVER_GOSSIP_INTERVAL_SECS: u64 = 3;
+    const DEFAULT_GOSSIP_INTERVAL_SECS: u64 = 10;
 
     let mut network_controller = NetworkBuilder::default()
         .topology(
@@ -138,7 +139,7 @@ fn gossip_interval() {
     let server = network_controller
         .spawn(
             SpawnParams::new(SERVER)
-                .gossip_interval(Duration::new(INTERVAL_SECS, 0))
+                .gossip_interval(Duration::new(SERVER_GOSSIP_INTERVAL_SECS, 0))
                 .log_level(LogLevel::TRACE),
         )
         .unwrap();
@@ -147,7 +148,17 @@ fn gossip_interval() {
         .spawn(SpawnParams::new(CLIENT).in_memory())
         .unwrap();
 
-    utils::wait(10);
+    //check server gets the gossip sent by client every default gossip_interval
+    let last_gossip = server.rest().network_stats().unwrap().last().unwrap()
+                                        .last_gossip_received.unwrap();
+
+    utils::wait(DEFAULT_GOSSIP_INTERVAL_SECS+1);
+
+    let next_last_gossip = server.rest().network_stats().unwrap().last().unwrap()
+                                            .last_gossip_received.unwrap();
+
+    let client_gossip_interval = next_last_gossip.duration_since(last_gossip).unwrap().as_secs_f64().round() as u64;
+    assert_eq!(DEFAULT_GOSSIP_INTERVAL_SECS, client_gossip_interval);
 
     let log_timestamps: Vec<u64> = server
         .logger
@@ -163,7 +174,7 @@ fn gossip_interval() {
         match prev {
             None => prev = Some(log_timestamp),
             Some(p) => {
-                assert!(log_timestamp - p >= INTERVAL_SECS);
+                assert!(log_timestamp - p >= SERVER_GOSSIP_INTERVAL_SECS);
                 prev = Some(log_timestamp);
             }
         }
