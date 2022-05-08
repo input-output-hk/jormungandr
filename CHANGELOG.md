@@ -28,6 +28,7 @@
 - Bump time from 0.3.7 to 0.3.9
 - Bump libc from 0.2.117 to 0.2.124
 - Bump rand from 0.8.4 to 0.8.5
+- Bump log from 0.4.14 to 0.4.17
 - Add jcli option to generate and sign EVM mapping certificates.
 
 ## Release 0.13.0
