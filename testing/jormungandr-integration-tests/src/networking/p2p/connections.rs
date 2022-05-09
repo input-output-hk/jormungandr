@@ -435,10 +435,7 @@ fn gossip_new_node_bootstrap() {
         .any(|s| s.contains("received gossip on 2 nodes"));
 
     assert!(is_gossiping_with_one_node, "Before second node bootstrap");
-    assert!(
-        is_gossiping_with_two_nodes == false,
-        "Before second node bootstrap"
-    );
+    assert!(!is_gossiping_with_two_nodes, "Before second node bootstrap");
 
     let client = controller.spawn(SpawnParams::new(CLIENT)).unwrap();
 
