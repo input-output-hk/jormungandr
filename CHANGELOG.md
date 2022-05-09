@@ -31,7 +31,7 @@
 - Add new Ethreum RPC endpoints for getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
 - Add new Ethreum RPC endpoints for transaction handling: eth_sendTransaction, eth_sendRawTransaction, eth_getTransactionByHash, eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex, eth_getTransactionReceipt, eth_signTransaction, eth_estimateGas, eth_sign
 - Add new Ethreum RPC endpoints for getting chain info: eth_chainId, eth_syncing, eth_gasPrice, eth_protocolVersion
-- Add new Ethreum RPC endpoints for account handling: eth_getTransactionCount, eth_getBalance, eth_getCode, eth_getStorageAt
+- Add new Ethreum RPC endpoints for account handling: eth_accounts, eth_getTransactionCount, eth_getBalance, eth_getCode, eth_getStorageAt
 
 ## Release 0.13.0
 

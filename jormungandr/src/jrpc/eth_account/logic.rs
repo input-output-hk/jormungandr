@@ -1,10 +1,14 @@
-use chain_evm::ethereum_types::{H160, H256};
-
 use super::Error;
 use crate::{
     context::Context,
     jrpc::eth_types::{block_number::BlockNumber, bytes::Bytes, number::Number},
 };
+use chain_evm::ethereum_types::{H160, H256};
+
+pub fn accounts(_context: &Context) -> Result<Vec<H160>, Error> {
+    // TODO implement
+    Ok(vec![H160::zero()])
+}
 
 pub fn get_transaction_count(
     _address: H160,
