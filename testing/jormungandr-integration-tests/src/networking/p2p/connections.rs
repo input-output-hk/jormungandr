@@ -20,6 +20,7 @@ const LEADER4: &str = "LEADER4";
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
 const SERVER_1: &str = "SERVER_1";
+const SERVER_2: &str = "SERVER_2";
 
 const ALICE: &str = "ALICE";
 const BOB: &str = "BOB";
@@ -403,8 +404,8 @@ fn gossip_new_node_bootstrap() {
         .topology(
             Topology::default()
                 .with_node(Node::new(SERVER_1))
-                .with_node(Node::new(SERVER).with_trusted_peer(SERVER_1))
-                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
+                .with_node(Node::new(SERVER_2).with_trusted_peer(SERVER_1))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER_2)),
         )
         .blockchain_config(Blockchain::default().with_leaders(vec![SERVER_1]))
         .build()
@@ -414,12 +415,12 @@ fn gossip_new_node_bootstrap() {
         .spawn(SpawnParams::new(SERVER_1).in_memory())
         .unwrap();
 
-    let server = controller
-        .spawn(SpawnParams::new(SERVER).in_memory())
+    let server2 = controller
+        .spawn(SpawnParams::new(SERVER_2).in_memory())
         .unwrap();
 
     utils::wait(2);
-    super::assert_are_in_network_view(&server1, vec![&server], "Before second node bootstrap");
+    super::assert_are_in_network_view(&server1, vec![&server2], "Before second node bootstrap");
     super::assert_connected_cnt(&server1, 1, "Before second node bootstrap");
 
     let is_gossiping_with_one_node = server1
@@ -442,7 +443,7 @@ fn gossip_new_node_bootstrap() {
     utils::wait(2);
     super::assert_are_in_network_view(
         &server1,
-        vec![&server, &client],
+        vec![&server2, &client],
         "After second node bootstrap",
     );
     super::assert_connected_cnt(&server1, 2, "After second node bootstrap");
