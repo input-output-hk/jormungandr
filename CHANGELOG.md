@@ -28,10 +28,12 @@
 - Bump libc from 0.2.117 to 0.2.124
 - Bump rand from 0.8.4 to 0.8.5
 - Bump os_info from 3.1.0 to 3.3.0
+- Bump log from 0.4.14 to 0.4.17
 - Add jcli option to generate and sign EVM mapping certificates.
 - Add new Ethreum RPC endpoints for getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
 - Add new Ethreum RPC endpoints for transaction handling: eth_sendTransaction, eth_sendRawTransaction, eth_getTransactionByHash, eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex, eth_getTransactionReceipt, eth_signTransaction, eth_estimateGas, eth_sign
 - Add new Ethreum RPC endpoints for getting chain info: eth_chainId, eth_syncing, eth_gasPrice, eth_protocolVersion
+
 ## Release 0.13.0
 
 **New features:**
