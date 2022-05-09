@@ -64,7 +64,7 @@ Thor also allows you to use it as Api to perform any wallet operations from the 
 Thor api doesn't use any configuration files. However cli uses small cache folder on filesystem (located in: `~/.thor`).
 The purpose of this configuration is to store wallet lists as well as secret keys guarded by pass phrase.
 
-### full list of available commands 
+### full list of available commands
 
 Full list of commands is available on `thor --help` command.
 

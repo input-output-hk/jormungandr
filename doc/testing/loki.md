@@ -28,7 +28,7 @@ where:
 ```
 ---
 bft:
-    signing_key: ed25519_sk1w2tyr7e2w26w5vxv65xf36kpvcsach8rcdmlmrhg3rjzeumjnzyqvdvwfa 
+    signing_key: ed25519_sk1w2tyr7e2w26w5vxv65xf36kpvcsach8rcdmlmrhg3rjzeumjnzyqvdvwfa
 ```
 
 Then utilizing rest interface of loki node one can send some invalid GRPC messages to rest of the network:
@@ -42,13 +42,13 @@ curl --location --request POST 'http://127.0.0.1:8080/invalid_fragment' \
 }'
 ```
 
-where 
+where:
 
 `address` - address of "victim" node,
 `parent` - Parent block. Possible values:
 * `tip` - current tip of "victim" node,
 * `block0` - block0,
-* `{Hash}` - arbitrary parent block which hash is provided in request 
+* `{Hash}` - arbitrary parent block which hash is provided in request
 
 #### Other possible operations:
 
@@ -68,7 +68,7 @@ Loki also provides API for performing adversary operations, like sending invalid
     let receiver = ..
 
     // node initialization
-    let jormungandr = ...  
+    let jormungandr = ...
 
     let adversary_sender = AdversaryFragmentSender::new(
         jormungandr.genesis_block_hash(),

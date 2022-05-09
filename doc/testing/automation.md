@@ -10,7 +10,7 @@ cd testing/jormungandr-automation
 cargo build
 ```
 
-## jcli testing api 
+## jcli testing api
 
 Api that can be used to run jcli executable underneath and is capable to assert outcome of command. It can work with already installed jcli (using PATH variable) or custom path. For Example:
 
@@ -20,7 +20,7 @@ Api that can be used to run jcli executable underneath and is capable to assert 
     let public_key = jcli.key().convert_to_public_string(&private_key);
 ```
 
-## jormungandr testing api 
+## jormungandr testing api
 
 Collection of automation modules for node interaction and configuration:
 

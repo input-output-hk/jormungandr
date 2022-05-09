@@ -1,7 +1,7 @@
 
 # Hersir
 
-Hersir is a cli & api project capable of bootstrapping local jormungandr network which can be excercised by various tools. 
+Hersir is a cli & api project capable of bootstrapping local jormungandr network which can be excercised by various tools.
 
 ## build & install
 
@@ -46,7 +46,7 @@ blockchain:
 
 * blockchain section defines blockchain paramters, like what is the consensus and if we are using test or production addresses discrimination.
 
-### full list of available parameters 
+### full list of available parameters
 
 #### nodes
 
@@ -64,8 +64,8 @@ blockchain:
       ```
   *  `gossip_interval:` time (optional) - node gossip interval with the rest of the network. Format: `number unit`. For example: `10 s`,
   *  `jormungandr:` path (optional) - path to jormungandr node executable,
-  *  `leadership_mode:` enum (optional) - node leadership mode. Possible values: 
-     * `passive` - node won't be able to produce blocks, 
+  *  `leadership_mode:` enum (optional) - node leadership mode. Possible values:
+     * `passive` - node won't be able to produce blocks,
      * `leader` - node will be able to mint blocks,
   *  `listen_address: string (optional) - override listen address for node. Example: `/ip4/127.0.0.1/tcp/10005`,
   *  `log_level:` enum (optional) - log level, Possible values: (info/warn/error/debug/trace)
@@ -81,7 +81,7 @@ blockchain:
   *  `network_stuck_check:` time (optional) - check interval which node use to verify blockchain advanced. Format: `number unit`. For example: `10 s`,
   *  `node_key_file:` path (optional) - path to node network key,
   *  `persistence_mode:` enum (optional) - set persistence mode. Possible values:
-     * `inmemory` - everythin is kept in node memory. If node restarts, all history is gone, 
+     * `inmemory` - everythin is kept in node memory. If node restarts, all history is gone,
      * `persistence` - node uses local storage to preserve current state,
   *  `persistent_fragment_log:` path (optional) - persistent fragment log serializes every fragment node receives via REST api,
   *  `policy:` custom (optional) - defines nodes quarantine configuration. Example:
@@ -112,7 +112,7 @@ blockchain:
       ```
       topics_of_interest:
         blocks: normal # Default is normal - set to high for stakepool
-        messages: low  # Default is low    - set to high for stakepool  
+        messages: low  # Default is low    - set to high for stakepool
       ```
   *  `verbose:` bool (optional) - enable verbose mode, which prints additional information,
 
@@ -128,7 +128,7 @@ blockchain:
 * `block0_date:` date (optional) -  block0 date, if not provided current date would be taken,
 * `block_content_max_size:` number (optional) - maximum block content size in bytes,
 * `committees:` list (optional) - list of wallet aliases which will be committees (capable of tallying the vote),
-* `consensus:` enum (optional) - blockchain consensus, possible values: Bft,GenesisPraos, 
+* `consensus:` enum (optional) - blockchain consensus, possible values: Bft,GenesisPraos,
 * `consensus_genesis_praos_active_slot_coeff:` float (optional) - Determines minimum stake required to try becoming slot leader, must be in range (0,1],
 * `discrimination:` enum (optional) -  type of discrimination of the blockchain, if this blockchain is meant for production then use `production` otherwise set `test`,
 * `external_committees:` list (optional) - list of committees to be included in block0,
@@ -159,7 +159,7 @@ blockchain:
 * `log:` enum (optional) - log level, Possible values: (info/warn/error/debug/trace),
 * `title:` string (optional) - give local storage folder name instead of random one.
 
-### full list of available commands 
+### full list of available commands
 
 Full list of commands is available on `hersir --help` command.
 

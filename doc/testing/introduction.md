@@ -8,4 +8,4 @@ Jormungandr test libraries includes projects:
 * hersir - api & cli for bootstrapping entire network of nodes with some predefined configuration. Project takes care of proper settings for all nodes as well as block0,
 * thor - testing api & cli for all wallet operations,
 * mjolnir - load tool (api & cli) for all kind of jormungandr transactions,
-* loki - api & cli for sending invalid/adversary load as well as boostraping adversary node. 
+* loki - api & cli for sending invalid/adversary load as well as boostraping adversary node.

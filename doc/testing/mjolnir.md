@@ -15,7 +15,7 @@ cargo install --path . --force
 
 ### CLI
 
-Mjolnir can be used as a cli. It is capable of putting various load on jormungandr node. 
+Mjolnir can be used as a cli. It is capable of putting various load on jormungandr node.
 It has couple of different load types:
 
 * explorer    - Explorer load
@@ -74,12 +74,12 @@ use std::time::Duration;
 
     // initialize load in sync manner (duration of each request is calcuated by time difference between receiving response and sending request )
     let stats = load::start_sync(request, config, "Jormungandr rest load test");
-    
+
     // finally some way to assert expected correctness, like percentage of succesful requests
     assert!((stats.calculate_passrate() as u32) > 95);
 ```
 
-### full list of available commands 
+### full list of available commands
 
 Full list of commands is available on `mjolnir --help` command.
 
