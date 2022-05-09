@@ -1,4 +1,4 @@
-use chain_evm::ethereum_types::{H256, H64};
+use chain_evm::ethereum_types::{H160, H256, H64};
 
 use crate::{
     context::Context,
@@ -10,6 +10,11 @@ use super::Error;
 pub fn mining(_context: &Context) -> Result<bool, Error> {
     // TODO implement
     Ok(true)
+}
+
+pub fn coinbase(_context: &Context) -> Result<H160, Error> {
+    // TODO implement
+    Ok(H160::zero())
 }
 
 pub fn hashrate(_context: &Context) -> Result<Number, Error> {
