@@ -31,7 +31,7 @@
 - Add jcli option to generate and sign EVM mapping certificates.
 - Add new Ethreum RPC endpoints for getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
 - Add new Ethreum RPC endpoints for transaction handling: eth_sendTransaction, eth_sendRawTransaction, eth_getTransactionByHash, eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex, eth_getTransactionReceipt, eth_signTransaction, eth_estimateGas, eth_sign, eth_call
-- Add new Ethreum RPC endpoints for getting chain info: eth_chainId, eth_syncing, eth_gasPrice, eth_protocolVersion
+- Add new Ethreum RPC endpoints for getting chain info: eth_chainId, eth_syncing, eth_gasPrice, eth_protocolVersion, eth_feeHistory
 
 ## Release 0.13.0
 
