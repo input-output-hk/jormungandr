@@ -1,3 +1,7 @@
+use jormungandr_automation::testing::time::wait_for_epoch;
+use thor::FragmentSenderSetup;
+use thor::FragmentSender;
+use thor::vote_plan_cert;
 use assert_fs::NamedTempFile;
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
@@ -9,7 +13,7 @@ use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::header::BlockDate;
 use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{
-    certificate::VoteAction, chaintypes::ConsensusType,
+    certificate::{VoteAction, VoteTallyPayload}, chaintypes::ConsensusType,
     ledger::governance::TreasuryGovernanceAction, value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
@@ -414,4 +418,106 @@ pub fn jcli_private_vote_invalid_proof() {
         1,
         "Incorrect decryption shares",
     );
+}
+
+#[test]
+pub fn jcli_tally_no_vote_cast() {
+    let rewards_increase = 10u64;
+    let initial_fund_per_wallet = 1_000_000;
+    let temp_dir = TempDir::new().unwrap();
+
+    let mut alice = Wallet::default();
+
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::Treasury {
+            action: TreasuryGovernanceAction::TransferToRewards {
+                value: Value(rewards_increase),
+            },
+        })
+        .vote_start(BlockDate::from_epoch_slot_id(0, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(2, 0))
+        .public()
+        .build();
+
+    let vote_plan_cert = vote_plan_cert(
+        &alice,
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        &vote_plan,
+    )
+    .into();
+    let wallets = [&alice];
+
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
+    let config = ConfigurationBuilder::new()
+        .with_funds(
+            wallets
+                .iter()
+                .map(|x| x.to_initial_fund(initial_fund_per_wallet))
+                .collect(),
+        )
+        .with_token(InitialToken {
+            token_id: token_id.clone().into(),
+            policy: minting_policy.into(),
+            to: vec![
+                alice.to_initial_token(initial_fund_per_wallet),
+            ],
+        })
+        .with_committees(&[
+            alice.to_committee_id(),
+        ])
+        .with_slots_per_epoch(60)
+        .with_certs(vec![vote_plan_cert])
+        .with_slot_duration(1)
+        .with_treasury(1_000.into())
+        .build(&temp_dir);
+
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config)
+        .start()
+        .unwrap();
+
+    let transaction_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate::first()
+            .next_epoch()
+            .into(),
+        FragmentSenderSetup::resend_3_times(),
+    );
+
+    let rewards_before: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
+
+    wait_for_epoch(1, jormungandr.rest());
+
+    let transaction_sender =
+        transaction_sender.set_valid_until(chain_impl_mockchain::block::BlockDate {
+            epoch: 2,
+            slot_id: 0,
+        });
+
+    transaction_sender
+        .send_vote_tally(
+            &mut alice,
+            &vote_plan,
+            &jormungandr,
+            VoteTallyPayload::Public,
+        )
+        .unwrap();
+
+    wait_for_epoch(2, jormungandr.rest());
+
+    let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
+
+    assert!(
+        rewards_after == (rewards_before + rewards_increase),
+        "Vote was unsuccessful"
+    )
 }
