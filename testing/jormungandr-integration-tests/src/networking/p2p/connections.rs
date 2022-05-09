@@ -159,7 +159,7 @@ fn gossip_interval() {
         .last_gossip_received
         .unwrap();
 
-    utils::wait(DEFAULT_GOSSIP_INTERVAL_SECS + 1);
+    utils::wait(DEFAULT_GOSSIP_INTERVAL_SECS);
 
     let next_last_gossip = server
         .rest()
