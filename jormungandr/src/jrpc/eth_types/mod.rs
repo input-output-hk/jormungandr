@@ -1,6 +1,7 @@
 pub mod block;
 pub mod block_number;
 pub mod bytes;
+pub mod fee;
 pub mod filter;
 pub mod log;
 pub mod number;
