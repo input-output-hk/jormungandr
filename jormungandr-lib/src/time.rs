@@ -135,6 +135,10 @@ impl Duration {
         self.0.as_secs()
     }
 
+    pub fn as_secs_f64(&self) -> f64 {
+        self.0.as_secs_f64()
+    }
+
     pub fn as_millis(&self) -> u128 {
         self.0.as_millis()
     }
