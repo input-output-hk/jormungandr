@@ -34,6 +34,7 @@
 - Add new Ethreum RPC endpoints for getting chain info: eth_chainId, eth_syncing, eth_gasPrice, eth_protocolVersion, eth_feeHistory
 - Add new Ethreum RPC endpoints for account handling: eth_accounts, eth_getTransactionCount, eth_getBalance, eth_getCode, eth_getStorageAt
 - Add new Ethreum RPC filtering endpoints: eth_newFilter, eth_newBlockFilter, eth_newPendingTransactionFilter, eth_uninstallFilter, eth_getFilterChanges, eth_getFilterLogs, eth_getLogs
+- Add new Ethreum RPC mining endpoints: eth_mining, eth_coinbase, eth_hashrate, eth_getWork, eth_submitWork, eth_submitHashrate
 
 ## Release 0.13.0
 
