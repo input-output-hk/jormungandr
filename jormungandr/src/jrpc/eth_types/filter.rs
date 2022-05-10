@@ -1,42 +1,17 @@
-use chain_evm::ethereum_types::{H160, H256};
-use jsonrpsee_core::DeserializeOwned;
-use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
-
 use super::{block_number::BlockNumber, log::Log};
+use chain_evm::ethereum_types::{H160, H256};
+use serde::{Deserialize, Serialize, Serializer};
 
 /// Variadic value
-#[derive(Debug, PartialEq, Eq)]
-pub enum VariadicValue<T>
-where
-    T: DeserializeOwned,
-{
+#[derive(Debug, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum VariadicValue<T> {
     /// Single
     Single(T),
     /// List
     Multiple(Vec<T>),
     /// None
     Null,
-}
-
-impl<'a, T> Deserialize<'a> for VariadicValue<T>
-where
-    T: DeserializeOwned,
-{
-    fn deserialize<D>(deserializer: D) -> Result<VariadicValue<T>, D::Error>
-    where
-        D: Deserializer<'a>,
-    {
-        let v: serde_json::Value = Deserialize::deserialize(deserializer)?;
-
-        if v.is_null() {
-            return Ok(VariadicValue::Null);
-        }
-
-        serde_json::from_value(v.clone())
-            .map(VariadicValue::Single)
-            .or_else(|_| serde_json::from_value(v).map(VariadicValue::Multiple))
-            .map_err(|err| D::Error::custom(format!("Invalid variadic value type: {}", err)))
-    }
 }
 
 /// Filter Address
@@ -92,7 +67,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn filter_address_serialize() {
+    fn filter_address_deserialize() {
         let fa_single: FilterAddress =
             serde_json::from_str(r#""0x0000000000000000000000000000000000000000""#).unwrap();
         let fa_multiple: FilterAddress =
@@ -105,7 +80,7 @@ mod tests {
     }
 
     #[test]
-    fn topic_serialize() {
+    fn topic_deserialize() {
         let t_single_single: Topic = serde_json::from_str(
             r#""0x0000000000000000000000000000000000000000000000000000000000000000""#,
         )
@@ -146,7 +121,7 @@ mod tests {
                 <VariadicValue<H256>>::Multiple(vec![H256::zero()])
             ])
         );
-        assert_eq!(t_null, Topic::Null);
+        assert_eq!(t_null, Topic::Single(<VariadicValue<H256>>::Null));
     }
 
     #[test]
