@@ -7,3 +7,4 @@ pub mod number;
 pub mod receipt;
 pub mod sync;
 pub mod transaction;
+pub mod work;
