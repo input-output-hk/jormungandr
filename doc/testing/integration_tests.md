@@ -4,7 +4,7 @@ Integration test is a container project for all jormungandr & jcli tests. Tests 
 
 ## Architecture of tests
 
-Jormungandr tests architecture relies on test pyramid approach, where most of the effort is put into unti and api level and small amount of tests on E2E. Thanks to that we can create fast and reliable tests.
+Jormungandr tests architecture relies on test pyramid approach, where most of the effort is put into until and api level and small amount of tests on E2E. Thanks to that we can create fast and reliable tests.
 
 ![Testing architecture](./graphs/testing-architecture.svg)
 

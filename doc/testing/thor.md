@@ -82,7 +82,7 @@ FLAGS:
 SUBCOMMANDS:
     address                 Gets address of wallet in bech32 format
     clear-tx                Clears pending transactions to confirm. In case if expiration occured
-    confirm-tx              Confirms succesful transaction
+    confirm-tx              Confirms successful transaction
     connect                 Sets node rest API address. Verifies connection on set
     help                    Prints this message or the help of the given subcommand(s)
     logs                    Prints entire fragment logs from the node

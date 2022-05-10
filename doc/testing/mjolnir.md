@@ -72,10 +72,10 @@ use std::time::Duration;
         .status_pace(Duration::from_secs(1_000))
         .build();
 
-    // initialize load in sync manner (duration of each request is calcuated by time difference between receiving response and sending request )
+    // initialize load in sync manner (duration of each request is calculated by time difference between receiving response and sending request )
     let stats = load::start_sync(request, config, "Jormungandr rest load test");
 
-    // finally some way to assert expected correctness, like percentage of succesful requests
+    // finally some way to assert expected correctness, like percentage of successful requests
     assert!((stats.calculate_passrate() as u32) > 95);
 ```
 

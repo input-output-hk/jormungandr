@@ -1,7 +1,7 @@
 
 # Hersir
 
-Hersir is a cli & api project capable of bootstrapping local jormungandr network which can be excercised by various tools.
+Hersir is a cli & api project capable of bootstrapping local jormungandr network which can be exercised by various tools.
 
 ## build & install
 
@@ -44,7 +44,7 @@ blockchain:
 
 * nodes sections defines each network node. We can define alias, that is then used to express relations between the nodes and if we keep everything in memory or if node can mint blocks or not.
 
-* blockchain section defines blockchain paramters, like what is the consensus and if we are using test or production addresses discrimination.
+* blockchain section defines blockchain parameters, like what is the consensus and if we are using test or production addresses discrimination.
 
 ### full list of available parameters
 
@@ -67,11 +67,11 @@ blockchain:
   *  `leadership_mode:` enum (optional) - node leadership mode. Possible values:
      * `passive` - node won't be able to produce blocks,
      * `leader` - node will be able to mint blocks,
-  *  `listen_address: string (optional) - override listen address for node. Example: `/ip4/127.0.0.1/tcp/10005`,
+  *  `listen_address:` string (optional) - override listen address for node. Example: `/ip4/127.0.0.1/tcp/10005`,
   *  `log_level:` enum (optional) - log level, Possible values: (info/warn/error/debug/trace)
   *  `max_bootstrap_attempts:` number (optional) - maximum number of bootstrap attempt before abandon,
   *  `max_connections:` number (optional) - max connection node will create with other nodes,
-  *  `max_inbound_connections:` number (optional) - max inboud connection that node will accept,
+  *  `max_inbound_connections:` number (optional) - max inbound connection that node will accept,
   *  `mempool:` custom (optional) - mempool configuration. Example:
         ```
         mempool:
@@ -81,7 +81,7 @@ blockchain:
   *  `network_stuck_check:` time (optional) - check interval which node use to verify blockchain advanced. Format: `number unit`. For example: `10 s`,
   *  `node_key_file:` path (optional) - path to node network key,
   *  `persistence_mode:` enum (optional) - set persistence mode. Possible values:
-     * `inmemory` - everythin is kept in node memory. If node restarts, all history is gone,
+     * `inmemory` - everything is kept in node memory. If node restarts, all history is gone,
      * `persistence` - node uses local storage to preserve current state,
   *  `persistent_fragment_log:` path (optional) - persistent fragment log serializes every fragment node receives via REST api,
   *  `policy:` custom (optional) - defines nodes quarantine configuration. Example:
