@@ -1,4 +1,6 @@
 #[cfg(feature = "evm")]
+mod eth_account;
+#[cfg(feature = "evm")]
 mod eth_block_info;
 #[cfg(feature = "evm")]
 mod eth_chain_info;
@@ -35,7 +37,11 @@ pub async fn start_jrpc_server(config: Config, _context: ContextLock) {
             .unwrap();
 
         modules
-            .merge(eth_transaction::eth_transaction_module(_context))
+            .merge(eth_transaction::eth_transaction_module(_context.clone()))
+            .unwrap();
+
+        modules
+            .merge(eth_account::eth_account_module(_context))
             .unwrap();
     }
 
