@@ -1,7 +1,3 @@
-use jormungandr_automation::testing::time::wait_for_epoch;
-use thor::FragmentSenderSetup;
-use thor::FragmentSender;
-use thor::vote_plan_cert;
 use assert_fs::NamedTempFile;
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
@@ -13,16 +9,23 @@ use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::header::BlockDate;
 use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{
-    certificate::{VoteAction, VoteTallyPayload}, chaintypes::ConsensusType,
-    ledger::governance::TreasuryGovernanceAction, value::Value, vote::Choice,
+    certificate::{VoteAction, VoteTallyPayload},
+    chaintypes::ConsensusType,
+    ledger::governance::TreasuryGovernanceAction,
+    value::Value,
+    vote::Choice,
 };
 use chain_vote::MemberPublicKey;
 use jormungandr_automation::jcli::JCli;
 use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_automation::testing::time;
+use jormungandr_automation::testing::time::wait_for_epoch;
 use jormungandr_automation::testing::{VotePlanBuilder, VotePlanExtension};
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed};
 use rand::rngs::OsRng;
+use thor::vote_plan_cert;
+use thor::FragmentSender;
+use thor::FragmentSenderSetup;
 use thor::Wallet;
 
 #[test]
@@ -422,23 +425,52 @@ pub fn jcli_private_vote_invalid_proof() {
 
 #[test]
 pub fn jcli_tally_no_vote_cast() {
+    let jcli: JCli = Default::default();
     let rewards_increase = 10u64;
     let initial_fund_per_wallet = 1_000_000;
     let temp_dir = TempDir::new().unwrap();
 
     let mut alice = Wallet::default();
 
+    let communication_sk = jcli.votes().committee().communication_key().generate();
+    let communication_pk = jcli
+        .votes()
+        .committee()
+        .communication_key()
+        .to_public(communication_sk)
+        .unwrap();
+    let crs = "Committee member crs";
+    let member_sk =
+        jcli.votes()
+            .committee()
+            .member_key()
+            .generate(communication_pk, crs, 0, 1, None);
+    let member_pk = jcli
+        .votes()
+        .committee()
+        .member_key()
+        .to_public(member_sk.clone())
+        .unwrap();
+
+    let member_sk_file = NamedTempFile::new("member.sk").unwrap();
+    member_sk_file.write_str(&member_sk).unwrap();
+
+    let (_, member_pk_bech32) = bech32::decode(&member_pk).unwrap();
+    let member_pk_bytes = Vec::<u8>::from_base32(&member_pk_bech32).unwrap();
+
     let vote_plan = VotePlanBuilder::new()
-        .proposals_count(3)
+        .proposals_count(1)
         .action_type(VoteAction::Treasury {
             action: TreasuryGovernanceAction::TransferToRewards {
                 value: Value(rewards_increase),
             },
         })
-        .vote_start(BlockDate::from_epoch_slot_id(0, 0))
-        .tally_start(BlockDate::from_epoch_slot_id(1, 0))
-        .tally_end(BlockDate::from_epoch_slot_id(2, 0))
-        .public()
+        .private()
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .member_public_key(MemberPublicKey::from_bytes(&member_pk_bytes).unwrap())
+        .options_size(3)
         .build();
 
     let vote_plan_cert = vote_plan_cert(
@@ -465,13 +497,9 @@ pub fn jcli_tally_no_vote_cast() {
         .with_token(InitialToken {
             token_id: token_id.clone().into(),
             policy: minting_policy.into(),
-            to: vec![
-                alice.to_initial_token(initial_fund_per_wallet),
-            ],
+            to: vec![alice.to_initial_token(initial_fund_per_wallet)],
         })
-        .with_committees(&[
-            alice.to_committee_id(),
-        ])
+        .with_committees(&[alice.to_committee_id()])
         .with_slots_per_epoch(60)
         .with_certs(vec![vote_plan_cert])
         .with_slot_duration(1)
@@ -515,9 +543,4 @@ pub fn jcli_tally_no_vote_cast() {
     wait_for_epoch(2, jormungandr.rest());
 
     let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
-
-    assert!(
-        rewards_after == (rewards_before + rewards_increase),
-        "Vote was unsuccessful"
-    )
 }
