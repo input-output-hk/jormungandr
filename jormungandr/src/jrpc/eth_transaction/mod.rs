@@ -97,4 +97,13 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
         .unwrap();
 
     module
+        .register_async_method("eth_call", |params, context| async move {
+            let context = context.read().await;
+            let (tx, number) = params.parse()?;
+            logic::call(tx, number, &context)
+                .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
+        })
+        .unwrap();
+
+    module
 }
