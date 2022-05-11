@@ -6,12 +6,12 @@ use crate::{
 use chain_evm::ethereum_types::H256;
 
 pub fn get_block_by_hash(
-    _hash: H256,
+    hash: H256,
     full: bool,
-    _context: &Context,
+    context: &Context,
 ) -> Result<Option<Block>, Error> {
-    // TODO implement
-    Ok(Some(Block::build(full)))
+    let block = context.blockchain()?.storage().get(hash.0.into())?;
+    Ok(block.map(|_| Block::build(full)))
 }
 
 pub fn get_block_by_number(

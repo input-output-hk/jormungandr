@@ -4,7 +4,12 @@ use jsonrpsee_http_server::RpcModule;
 mod logic;
 
 #[derive(Debug, thiserror::Error)]
-pub enum Error {}
+pub enum Error {
+    #[error(transparent)]
+    ContextError(#[from] crate::context::Error),
+    #[error(transparent)]
+    Storage(#[from] crate::blockchain::StorageError),
+}
 
 pub fn eth_block_info_module(context: ContextLock) -> RpcModule<ContextLock> {
     let mut module = RpcModule::new(context);
