@@ -1,18 +1,14 @@
 use crate::{
     blockcfg::{Block, HeaderHash},
-    network::convert::Decode,
-    network::{concurrency_limits, keepalive_durations},
+    network::{concurrency_limits, convert::Decode, keepalive_durations},
     settings::start::network::{Peer, Protocol},
 };
-use chain_network::data as net_data;
-use chain_network::error as net_error;
-use chain_network::grpc::client::Builder;
+use chain_network::{data as net_data, error as net_error, grpc::client::Builder};
 use futures::prelude::*;
 use thiserror::Error;
 use tonic::transport;
 
-use std::convert::TryFrom;
-use std::net::SocketAddr;
+use std::{convert::TryFrom, net::SocketAddr};
 
 pub use chain_network::grpc::client::{
     BlockSubscription, FragmentSubscription, GossipSubscription,

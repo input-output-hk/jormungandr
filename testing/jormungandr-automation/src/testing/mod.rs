@@ -14,16 +14,18 @@ pub mod time;
 pub mod verify;
 pub mod vit;
 
-pub use jortestkit::archive::decompress;
-pub use jortestkit::github::{CachedReleases, GitHubApiBuilder, GitHubApiError, Release};
-pub use jortestkit::measurement::{
-    benchmark_consumption, benchmark_efficiency, benchmark_endurance, benchmark_speed,
-    ConsumptionBenchmarkError, ConsumptionBenchmarkRun, EfficiencyBenchmarkDef,
-    EfficiencyBenchmarkFinish, EfficiencyBenchmarkRun, Endurance, EnduranceBenchmarkDef,
-    EnduranceBenchmarkFinish, EnduranceBenchmarkRun, NamedProcess, ResourcesUsage, Speed,
-    SpeedBenchmarkDef, SpeedBenchmarkFinish, SpeedBenchmarkRun, Thresholds, Timestamp,
+pub use jortestkit::{
+    archive::decompress,
+    github::{CachedReleases, GitHubApiBuilder, GitHubApiError, Release},
+    measurement::{
+        benchmark_consumption, benchmark_efficiency, benchmark_endurance, benchmark_speed,
+        ConsumptionBenchmarkError, ConsumptionBenchmarkRun, EfficiencyBenchmarkDef,
+        EfficiencyBenchmarkFinish, EfficiencyBenchmarkRun, Endurance, EnduranceBenchmarkDef,
+        EnduranceBenchmarkFinish, EnduranceBenchmarkRun, NamedProcess, ResourcesUsage, Speed,
+        SpeedBenchmarkDef, SpeedBenchmarkFinish, SpeedBenchmarkRun, Thresholds, Timestamp,
+    },
+    web::download_file,
 };
-pub use jortestkit::web::download_file;
 
 pub use benchmark::sync::{
     ensure_node_is_in_sync_with_others, ensure_nodes_are_in_sync, MeasurementReportInterval,

@@ -1,5 +1,4 @@
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 pub use crate::jormungandr::{
     Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,

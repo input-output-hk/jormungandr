@@ -1,25 +1,34 @@
 mod peer_map;
 use super::Address;
-use crate::metrics::Metrics;
-use crate::network::{client::ConnectHandle, security_params::NONCE_LEN};
-use crate::topology::NodeId;
-use chain_network::data::block::{BlockEvent, ChainPullRequest};
-use chain_network::data::{BlockId, BlockIds, Fragment, Gossip, Header};
-use chain_network::error::Error;
-use futures::channel::mpsc;
-use futures::lock::{Mutex, MutexLockFuture};
-use futures::prelude::*;
-use futures::stream;
+use crate::{
+    metrics::Metrics,
+    network::{client::ConnectHandle, security_params::NONCE_LEN},
+    topology::NodeId,
+};
+use chain_network::{
+    data::{
+        block::{BlockEvent, ChainPullRequest},
+        BlockId, BlockIds, Fragment, Gossip, Header,
+    },
+    error::Error,
+};
+use futures::{
+    channel::mpsc,
+    lock::{Mutex, MutexLockFuture},
+    prelude::*,
+    stream,
+};
 use peer_map::{CommStatus, PeerMap};
 use std::fmt::Debug;
 use tracing::debug_span;
 
-use std::fmt;
-use std::mem;
-use std::net::SocketAddr;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::time::SystemTime;
+use std::{
+    fmt, mem,
+    net::SocketAddr,
+    pin::Pin,
+    task::{Context, Poll},
+    time::SystemTime,
+};
 use tracing::Span;
 use tracing_futures::Instrument;
 

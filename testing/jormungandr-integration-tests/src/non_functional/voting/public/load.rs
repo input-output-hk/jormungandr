@@ -1,5 +1,6 @@
-use crate::non_functional::voting::config::PublicVotingLoadTestConfig;
-use crate::non_functional::voting::public::public_vote_load_scenario;
+use crate::non_functional::voting::{
+    config::PublicVotingLoadTestConfig, public::public_vote_load_scenario,
+};
 
 #[test]
 pub fn public_vote_load_quick_test() {

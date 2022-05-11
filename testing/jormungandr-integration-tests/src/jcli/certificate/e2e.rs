@@ -2,8 +2,7 @@ use jormungandr_automation::{jcli::JCli, testing::keys::create_new_key_pair};
 
 use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
 
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
+use assert_fs::{prelude::*, TempDir};
 
 #[test]
 pub fn test_create_and_sign_new_stake_delegation() {

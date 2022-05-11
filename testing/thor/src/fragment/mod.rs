@@ -4,27 +4,27 @@ pub use self::{
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
     persistent_log::{write_into_persistent_log, PersistentLogViewer},
     sender::{BlockDateGenerator, FragmentSender, FragmentSenderError},
-    setup::DummySyncNode,
-    setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
+    setup::{DummySyncNode, FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
     verifier::{ExitStrategy as VerifyExitStrategy, FragmentVerifier, FragmentVerifierError},
 };
-use crate::wallet::account::Wallet as AccountWallet;
-use crate::{stake_pool::StakePool, wallet::Wallet};
-use chain_crypto::Ed25519;
-use chain_crypto::SecretKey;
-use chain_impl_mockchain::fee::FeeAlgorithm;
-use chain_impl_mockchain::transaction::InputOutputBuilder;
-use chain_impl_mockchain::transaction::TxBuilder;
-use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload};
+use crate::{
+    stake_pool::StakePool,
+    wallet::{account::Wallet as AccountWallet, Wallet},
+};
+use chain_crypto::{Ed25519, SecretKey};
 use chain_impl_mockchain::{
-    certificate::{PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally},
-    fee::LinearFee,
+    block::BlockDate,
+    certificate::{
+        PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally, VoteTallyPayload,
+    },
+    fee::{FeeAlgorithm, LinearFee},
     fragment::Fragment,
     testing::{
         data::{StakePool as StakePoolLib, Wallet as WalletLib},
         scenario::FragmentFactory,
         WitnessMode,
     },
+    transaction::{InputOutputBuilder, TxBuilder},
     vote::{Choice, Payload, PayloadType},
 };
 use jormungandr_lib::{

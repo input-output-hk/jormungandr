@@ -1,35 +1,29 @@
-use crate::builder::VotePlanKey;
-use crate::builder::VotePlanSettings;
 use crate::builder::{
-    Blockchain, ExternalWalletTemplate, Node as NodeTemplate, Random, Wallet, WalletTemplate,
-    WalletType,
+    Blockchain, ExternalWalletTemplate, Node as NodeTemplate, Random, VotePlanKey,
+    VotePlanSettings, Wallet, WalletTemplate, WalletType,
 };
-use assert_fs::fixture::ChildPath;
-use assert_fs::fixture::PathChild;
+use assert_fs::fixture::{ChildPath, PathChild};
 use chain_addr::Discrimination;
 use chain_crypto::Ed25519;
-use chain_impl_mockchain::block::BlockDate;
-use chain_impl_mockchain::testing::create_initial_vote_plan;
-use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{
-    certificate::VotePlan, chaintypes::ConsensusVersion, fee::LinearFee, vote::PayloadType,
+    block::BlockDate, certificate::VotePlan, chaintypes::ConsensusVersion, fee::LinearFee,
+    testing::create_initial_vote_plan, tokens::minting_policy::MintingPolicy, vote::PayloadType,
 };
 use jormungandr_automation::jormungandr::NodeAlias;
-use jormungandr_lib::crypto::account::Identifier;
-use jormungandr_lib::interfaces::Destination;
-use jormungandr_lib::interfaces::InitialToken;
-use jormungandr_lib::interfaces::{try_initial_fragment_from_message, VotePlan as VotePLanLib};
 use jormungandr_lib::{
-    crypto::key::SigningKey,
+    crypto::{account::Identifier, key::SigningKey},
     interfaces::{
-        Bft, Block0Configuration, BlockchainConfiguration, CommitteeIdDef, GenesisPraos, Initial,
-        InitialUTxO, NodeConfig, NodeId, NodeSecret, TrustedPeer,
+        try_initial_fragment_from_message, Bft, Block0Configuration, BlockchainConfiguration,
+        CommitteeIdDef, Destination, GenesisPraos, Initial, InitialToken, InitialUTxO, NodeConfig,
+        NodeId, NodeSecret, TrustedPeer, VotePlan as VotePLanLib,
     },
 };
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
-use thor::PrivateVoteCommitteeDataManager;
-use thor::{signed_stake_pool_cert, StakePool, Wallet as WalletLib, WalletAlias};
+use thor::{
+    signed_stake_pool_cert, PrivateVoteCommitteeDataManager, StakePool, Wallet as WalletLib,
+    WalletAlias,
+};
 
 /// contains all the data to start or interact with a node
 #[derive(Debug, Clone)]

@@ -1,7 +1,6 @@
 use crate::startup;
 use chain_impl_mockchain::value::Value;
-use jormungandr_automation::testing::time;
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder, testing::time};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, EpochRewardsInfo, StakePoolStats, Value as LibValue},

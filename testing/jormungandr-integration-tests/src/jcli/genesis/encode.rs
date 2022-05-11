@@ -9,11 +9,8 @@ use jormungandr_automation::{
 };
 use jormungandr_lib::interfaces::{Block0Configuration, Initial, InitialUTxO, LegacyUTxO};
 
-use assert_fs::fixture::ChildPath;
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
-use std::num::NonZeroU64;
-use std::path::Path;
+use assert_fs::{fixture::ChildPath, prelude::*, TempDir};
+use std::{num::NonZeroU64, path::Path};
 
 struct Fixture {
     temp_dir: TempDir,

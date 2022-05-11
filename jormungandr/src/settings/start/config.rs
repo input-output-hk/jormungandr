@@ -1,7 +1,9 @@
 use crate::{
     network::p2p::Address,
-    settings::logging::{LogFormat, LogOutput},
-    settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
+    settings::{
+        logging::{LogFormat, LogOutput},
+        LOG_FILTER_LEVEL_POSSIBLE_VALUES,
+    },
     topology::QuarantineConfig,
 };
 pub use jormungandr_lib::interfaces::{Cors, JRpc, LayersConfig, Rest, Tls, TrustedPeer};

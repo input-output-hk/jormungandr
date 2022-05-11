@@ -42,7 +42,10 @@ use jormungandr_lib::{
 
 use std::sync::Arc;
 
-use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
+use futures::{
+    channel::mpsc::{SendError, TrySendError},
+    prelude::*,
+};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
 

@@ -1,7 +1,6 @@
 use jormungandr_automation::jcli::JCli;
 
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
+use assert_fs::{prelude::*, TempDir};
 
 #[test]
 pub fn test_genesis_block_is_built_from_init_yaml() {

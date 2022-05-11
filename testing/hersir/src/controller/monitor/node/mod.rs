@@ -8,29 +8,34 @@ pub use legacy::LegacyNode;
 use crate::style;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_automation::jormungandr::LogLevel;
-use jormungandr_automation::jormungandr::NodeAlias;
 pub use jormungandr_automation::jormungandr::{
     grpc::{client::MockClientError, JormungandrClient},
     uri_from_socket_addr, FragmentNode, FragmentNodeError, JormungandrLogger, JormungandrRest,
     MemPoolCheck, RestError,
 };
-use jormungandr_automation::jormungandr::{
-    JormungandrProcess, ShutdownError, StartupError, StartupVerificationMode, Status,
+use jormungandr_automation::{
+    jormungandr::{
+        JormungandrProcess, LogLevel, NodeAlias, ShutdownError, StartupError,
+        StartupVerificationMode, Status,
+    },
+    testing::SyncNode,
 };
-use jormungandr_automation::testing::SyncNode;
-use jormungandr_lib::interfaces::NodeState;
-use jormungandr_lib::interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary};
-use jormungandr_lib::{crypto::hash::Hash, multiaddr};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary, NodeState},
+    multiaddr,
+};
 use std::collections::HashMap;
 
 use indicatif::ProgressBar;
 use std::net::SocketAddr;
 
-use std::io::{self, BufRead, BufReader};
-use std::path::PathBuf;
-use std::process::ExitStatus;
-use std::time::Duration;
+use std::{
+    io::{self, BufRead, BufReader},
+    path::PathBuf,
+    process::ExitStatus,
+    time::Duration,
+};
 
 #[derive(custom_debug::Debug, thiserror::Error)]
 pub enum Error {

@@ -5,9 +5,7 @@ use crate::{
     error::Error,
 };
 use serde::Deserialize;
-use std::collections::HashSet;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{collections::HashSet, path::PathBuf, str::FromStr};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {

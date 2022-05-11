@@ -12,8 +12,7 @@ pub use jormungandr_lib::interfaces::{
 };
 use jortestkit::file;
 
-use assert_fs::fixture::PathChild;
-use assert_fs::prelude::*;
+use assert_fs::{fixture::PathChild, prelude::*};
 
 use std::path::PathBuf;
 

@@ -1,8 +1,6 @@
 use crate::jcli::command::votes::committee::MemberKeyCommand;
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::assert::PathAssert;
-use assert_fs::fixture::FileWriteStr;
-use assert_fs::NamedTempFile;
+use assert_fs::{assert::PathAssert, fixture::FileWriteStr, NamedTempFile};
 use jortestkit::prelude::ProcessOutput;
 use std::path::Path;
 

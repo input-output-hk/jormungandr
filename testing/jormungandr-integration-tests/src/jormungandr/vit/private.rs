@@ -1,22 +1,21 @@
-use assert_fs::NamedTempFile;
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
-    TempDir,
+    NamedTempFile, TempDir,
 };
 use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as _;
-use chain_impl_mockchain::header::BlockDate;
-use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{
-    certificate::VoteAction, chaintypes::ConsensusType,
-    ledger::governance::TreasuryGovernanceAction, value::Value, vote::Choice,
+    certificate::VoteAction, chaintypes::ConsensusType, header::BlockDate,
+    ledger::governance::TreasuryGovernanceAction, tokens::minting_policy::MintingPolicy,
+    value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
-use jormungandr_automation::jcli::JCli;
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_automation::testing::time;
-use jormungandr_automation::testing::{VotePlanBuilder, VotePlanExtension};
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+    testing::{time, VotePlanBuilder, VotePlanExtension},
+};
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed};
 use rand::rngs::OsRng;
 use thor::Wallet;

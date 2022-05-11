@@ -2,26 +2,26 @@ pub use crate::intercom::WatchMsg as Message;
 use crate::{
     blockcfg::HeaderHash,
     blockchain::{Blockchain, Storage},
-    intercom::{self, ReplyStream},
-    utils::async_msg::MessageQueue,
+    intercom::{self, ReplyStream, ReplyStreamHandle},
+    utils::{
+        async_msg::{MessageBox, MessageQueue},
+        task::TokioServiceInfo,
+    },
 };
-use crate::{
-    intercom::ReplyStreamHandle,
-    utils::{async_msg::MessageBox, task::TokioServiceInfo},
+use chain_core::{
+    packer::Codec,
+    property::{Block as _, Deserialize, Serialize},
 };
-use chain_core::property::{Block as _, Serialize};
-use chain_core::{packer::Codec, property::Deserialize};
 use chain_impl_mockchain::header;
-use chain_network::grpc::watch::server::WatchService;
-use chain_network::{core::watch::server::Watch, grpc::watch::server};
 use chain_network::{
+    core::watch::server::Watch,
     data::{Block, BlockIds, Header},
     error::Code,
+    grpc::watch::{server, server::WatchService},
 };
-use futures::Stream;
 use futures::{
     stream::{Map, MapErr},
-    SinkExt, StreamExt, TryStream, TryStreamExt,
+    SinkExt, Stream, StreamExt, TryStream, TryStreamExt,
 };
 use std::{collections::HashSet, sync::Arc};
 use tokio::sync::{broadcast, watch};

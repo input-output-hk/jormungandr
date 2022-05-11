@@ -4,8 +4,7 @@ use indicatif::{MultiProgress, ProgressBar};
 use jormungandr_automation::testing::{benchmark_speed, SpeedBenchmarkFinish, SpeedBenchmarkRun};
 use jormungandr_lib::interfaces::NodeState;
 
-use crate::mjolnir_lib::bootstrap::ClientLoadConfig;
-use crate::mjolnir_lib::MjolnirError;
+use crate::mjolnir_lib::{bootstrap::ClientLoadConfig, MjolnirError};
 use jormungandr_automation::jormungandr::{JormungandrProcess, LogLevel};
 use std::{
     thread,

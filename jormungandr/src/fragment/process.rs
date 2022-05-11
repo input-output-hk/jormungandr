@@ -10,10 +10,12 @@ use crate::{
 };
 
 use chain_core::property::Fragment;
-use std::collections::HashMap;
-use std::convert::TryInto;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    convert::TryInto,
+    io,
+    path::{Path, PathBuf},
+};
 use tokio::fs::{self, File};
 
 use futures::{future, TryFutureExt};

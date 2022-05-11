@@ -1,9 +1,11 @@
-use crate::jcli_lib::utils::output_file::{self, OutputFile};
-use crate::jcli_lib::utils::{
-    key_parser,
-    vote::{SharesError, VotePlanError},
+use crate::{
+    jcli_lib::utils::{
+        key_parser,
+        output_file::{self, OutputFile},
+        vote::{SharesError, VotePlanError},
+    },
+    rest,
 };
-use crate::rest;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;

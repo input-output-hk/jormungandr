@@ -1,7 +1,5 @@
-use crate::db::error::BlockNotFound;
-use crate::db::ExplorerDb;
-use chain_impl_mockchain::block::Block;
-use chain_impl_mockchain::block::HeaderId as HeaderHash;
+use crate::db::{error::BlockNotFound, ExplorerDb};
+use chain_impl_mockchain::block::{Block, HeaderId as HeaderHash};
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;

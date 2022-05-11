@@ -174,8 +174,7 @@ impl property::Deserialize for Gossip {
 mod tests {
     use super::*;
     use chain_impl_mockchain::testing::serialization::serialization_bijection;
-    use quickcheck::quickcheck;
-    use quickcheck::{Arbitrary, TestResult};
+    use quickcheck::{quickcheck, Arbitrary, TestResult};
     use rand::SeedableRng;
     use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 

@@ -280,8 +280,9 @@ fn pack_tokens_in_mint_token_fragments(token: &InitialToken) -> Result<Vec<Fragm
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::crypto::key::KeyPair;
-    use crate::interfaces::ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT;
+    use crate::{
+        crypto::key::KeyPair, interfaces::ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT,
+    };
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     impl Arbitrary for Initial {

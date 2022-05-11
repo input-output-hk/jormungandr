@@ -2,8 +2,7 @@
 
 use chain_impl_mockchain::vote::PayloadType;
 use jormungandr_lib::interfaces::TaxType;
-use std::path::Path;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 #[derive(Debug)]
 pub struct CertificateCommand {

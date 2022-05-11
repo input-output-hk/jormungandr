@@ -1,9 +1,11 @@
-use crate::builder::NetworkBuilder;
-use crate::{args::Args, builder::Topology, config::Config, error::Error};
-use jormungandr_automation::jormungandr::JormungandrProcess;
-use jormungandr_automation::jormungandr::NodeAlias;
-use std::collections::HashMap;
-use std::time::Duration;
+use crate::{
+    args::Args,
+    builder::{NetworkBuilder, Topology},
+    config::Config,
+    error::Error,
+};
+use jormungandr_automation::jormungandr::{JormungandrProcess, NodeAlias};
+use std::{collections::HashMap, time::Duration};
 
 pub fn spawn_network(config: Config, mut topology: Topology, args: Args) -> Result<(), Error> {
     println!("Building network...");

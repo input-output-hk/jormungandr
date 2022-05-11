@@ -1,9 +1,10 @@
-use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
 use super::{
-    config_param::ConfigParams, Address, BftLeader, BlockDate, ExplorerAddress, Pool, Proposal,
-    TaxType,
+    config_param::ConfigParams,
+    error::ApiError,
+    extract_context,
+    scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId},
+    Address, BftLeader, BlockDate, ExplorerAddress, Pool, Proposal, TaxType,
 };
-use super::{error::ApiError, extract_context};
 use async_graphql::{Context, FieldResult, Object, Union};
 use chain_impl_mockchain::certificate;
 

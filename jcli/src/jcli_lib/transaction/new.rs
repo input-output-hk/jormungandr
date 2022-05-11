@@ -21,8 +21,7 @@ mod tests {
 
     use self::common::CommonTransaction;
     use super::*;
-    use assert_fs::prelude::*;
-    use assert_fs::NamedTempFile;
+    use assert_fs::{prelude::*, NamedTempFile};
     use predicates::prelude::*;
 
     #[test]

@@ -3,12 +3,14 @@ use crate::builder::VotePlanKey;
 use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
 use chain_impl_mockchain::{fee::LinearFee, milli::Milli};
-use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
-    ConsensusVersionDef, DiscriminationDef, KesUpdateSpeed, LinearFeeDef, NumberOfSlotsPerEpoch,
-    SlotDuration, VotePlan,
+use jormungandr_lib::{
+    interfaces::{
+        ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
+        ConsensusVersionDef, DiscriminationDef, KesUpdateSpeed, LinearFeeDef,
+        NumberOfSlotsPerEpoch, SlotDuration, VotePlan,
+    },
+    time::SecondsSinceUnixEpoch,
 };
-use jormungandr_lib::time::SecondsSinceUnixEpoch;
 use serde::Deserialize;
 use std::collections::HashMap;
 use thor::WalletAlias;

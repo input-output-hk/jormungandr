@@ -1,24 +1,25 @@
 use super::{Client, ClientBuilder, InboundSubscriptions};
-use crate::blockcfg::HeaderHash;
-use crate::network::{
-    grpc, p2p::comm::PeerComms, security_params::NONCE_LEN, Channels, ConnectionState,
+use crate::{
+    blockcfg::HeaderHash,
+    network::{grpc, p2p::comm::PeerComms, security_params::NONCE_LEN, Channels, ConnectionState},
+    topology::NodeId,
 };
-use crate::topology::NodeId;
 use chain_core::{
     packer::Codec,
     property::{DeserializeFromSlice, ReadError},
 };
-use chain_network::data::AuthenticatedNodeId;
-use chain_network::error::{self as net_error, HandshakeError};
+use chain_network::{
+    data::AuthenticatedNodeId,
+    error::{self as net_error, HandshakeError},
+};
 
-use futures::channel::oneshot;
-use futures::future::BoxFuture;
-use futures::prelude::*;
-use futures::ready;
+use futures::{channel::oneshot, future::BoxFuture, prelude::*, ready};
 use rand::Rng;
 
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 use tracing_futures::Instrument;
 
 /// Initiates a client connection, returning a connection handle and

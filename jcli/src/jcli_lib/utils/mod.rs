@@ -5,8 +5,7 @@ pub mod output_file;
 pub mod output_format;
 pub mod vote;
 
-pub use self::account_id::AccountId;
-pub use self::output_format::OutputFormat;
+pub use self::{account_id::AccountId, output_format::OutputFormat};
 
 use structopt::StructOpt;
 use thiserror::Error;

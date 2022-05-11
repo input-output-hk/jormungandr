@@ -1,7 +1,6 @@
 use crate::startup;
 use chain_crypto::Ed25519Extended;
-use jormungandr_automation::jormungandr::ConfigurationBuilder;
-use jormungandr_automation::testing::keys;
+use jormungandr_automation::{jormungandr::ConfigurationBuilder, testing::keys};
 
 #[test]
 pub fn test_genesis_stake_pool_with_account_faucet_starts_successfully() {

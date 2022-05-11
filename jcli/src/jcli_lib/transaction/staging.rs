@@ -8,7 +8,6 @@ use crate::jcli_lib::{
     utils::io,
 };
 use chain_addr::{Address, Kind};
-use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
 use chain_impl_mockchain::{
     self as chain,
     certificate::{Certificate, CertificatePayload, PoolSignature, SignedCertificate},
@@ -16,7 +15,7 @@ use chain_impl_mockchain::{
     fragment::Fragment,
     transaction::{
         self, Balance, InputOutputBuilder, Output, Payload, SetAuthData, SetTtl, Transaction,
-        TransactionSignDataHash, TxBuilder, TxBuilderState,
+        TransactionSignDataHash, TxBuilder, TxBuilderState, UnspecifiedAccountIdentifier,
     },
     value::{Value, ValueError},
 };

@@ -1,11 +1,12 @@
 use super::grpc;
-use crate::blockchain::{self, Blockchain, BootstrapError, Error as BlockchainError, Tip};
-use crate::network::convert::Decode;
-use crate::settings::start::network::Peer;
-use crate::topology;
+use crate::{
+    blockchain::{self, Blockchain, BootstrapError, Error as BlockchainError, Tip},
+    network::convert::Decode,
+    settings::start::network::Peer,
+    topology,
+};
 use chain_core::property::ReadError;
-use chain_network::data as net_data;
-use chain_network::error::Error as NetworkError;
+use chain_network::{data as net_data, error::Error as NetworkError};
 use futures::prelude::*;
 use tokio_util::sync::CancellationToken;
 

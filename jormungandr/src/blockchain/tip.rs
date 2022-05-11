@@ -13,8 +13,7 @@ use chain_impl_mockchain::block::Block;
 use futures::prelude::*;
 use jormungandr_lib::interfaces::FragmentStatus;
 use std::sync::Arc;
-use tokio::sync::RwLock;
-use tokio::time::MissedTickBehavior;
+use tokio::{sync::RwLock, time::MissedTickBehavior};
 use tracing::instrument;
 
 use std::time::Duration;

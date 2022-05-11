@@ -7,8 +7,7 @@ use jormungandr_automation::jormungandr::LeadershipMode;
 use jormungandr_lib::interfaces::{AccountState, BlockDate, InitialUTxO, SettingsDto, UTxOInfo};
 use thor::Wallet;
 
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
+use assert_fs::{prelude::*, TempDir};
 
 #[derive(Clone, Debug, PartialEq)]
 struct LedgerSnapshot {

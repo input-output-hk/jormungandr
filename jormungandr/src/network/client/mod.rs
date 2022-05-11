@@ -16,16 +16,19 @@ use crate::{
     topology::NodeId,
     utils::async_msg::MessageBox,
 };
-use chain_network::data as net_data;
-use chain_network::data::block::{BlockEvent, BlockIds, ChainPullRequest};
+use chain_network::{
+    data as net_data,
+    data::block::{BlockEvent, BlockIds, ChainPullRequest},
+};
 
-use futures::prelude::*;
-use futures::ready;
+use futures::{prelude::*, ready};
 use tracing::{instrument, Span};
 use tracing_futures::Instrument;
 
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
 

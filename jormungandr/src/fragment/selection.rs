@@ -1,5 +1,4 @@
-use super::logs::Logs;
-use super::pool::internal::Pool;
+use super::{logs::Logs, pool::internal::Pool};
 use crate::{
     blockcfg::{ApplyBlockLedger, Contents, ContentsBuilder, LedgerParameters},
     fragment::{Fragment, FragmentId},
@@ -11,8 +10,7 @@ use async_trait::async_trait;
 use futures::{channel::oneshot::Receiver, future::Shared, prelude::*};
 use tracing::{debug_span, Instrument};
 
-use std::error::Error;
-use std::iter;
+use std::{error::Error, iter};
 
 pub enum SelectionOutput {
     Commit { fragment_id: FragmentId },

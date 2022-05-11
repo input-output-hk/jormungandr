@@ -11,8 +11,10 @@ use chain_impl_mockchain::{
     },
 };
 use chain_time::{Epoch, TimeEra};
-use jormungandr_automation::jormungandr::grpc::client::MockClientError;
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{grpc::client::MockClientError, ConfigurationBuilder},
+};
 use jormungandr_lib::interfaces::InitialUTxO;
 
 use thor::TransactionHash;

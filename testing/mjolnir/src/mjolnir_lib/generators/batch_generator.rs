@@ -1,7 +1,5 @@
-use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::fragment::Fragment;
-use jormungandr_automation::jormungandr::RemoteJormungandr;
-use jormungandr_automation::testing::SyncNode;
+use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
+use jormungandr_automation::{jormungandr::RemoteJormungandr, testing::SyncNode};
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;

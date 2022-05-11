@@ -1,7 +1,6 @@
 use crate::settings::{start::config::TrustedPeer, LOG_FILTER_LEVEL_POSSIBLE_VALUES};
 use multiaddr::Multiaddr;
-use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf};
 use structopt::StructOpt;
 use tracing::level_filters::LevelFilter;
 

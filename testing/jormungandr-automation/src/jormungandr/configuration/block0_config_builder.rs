@@ -16,8 +16,10 @@ use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serde_derive::{Deserialize, Serialize};
 
-use std::num::{NonZeroU32, NonZeroU64};
-use std::vec::Vec;
+use std::{
+    num::{NonZeroU32, NonZeroU64},
+    vec::Vec,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Block0ConfigurationBuilder {

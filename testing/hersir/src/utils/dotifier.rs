@@ -1,10 +1,7 @@
 use crate::style;
 use std::io::Write;
 
-use crate::builder::NodeSetting;
-use crate::builder::Settings;
-use crate::builder::WalletTemplate;
-use crate::builder::WalletType;
+use crate::builder::{NodeSetting, Settings, WalletTemplate, WalletType};
 
 pub struct Dotifier;
 

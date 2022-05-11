@@ -11,8 +11,7 @@ use futures::prelude::*;
 use thiserror::Error;
 use tracing::Span;
 
-use std::convert::identity;
-use std::path::Path;
+use std::{convert::identity, path::Path};
 
 const MINIMUM_BLOCKS_TO_FLUSH: usize = 256;
 

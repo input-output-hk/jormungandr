@@ -1,14 +1,17 @@
 use super::tip::TipUpdater;
-use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::{
-    chain::{CheckHeaderProof, StreamInfo, StreamReporter},
-    Blockchain, Ref, Tip,
+use crate::{
+    blockcfg::{Block, HeaderHash},
+    blockchain::{
+        chain::{CheckHeaderProof, StreamInfo, StreamReporter},
+        Blockchain, Ref, Tip,
+    },
+    metrics::Metrics,
 };
-use crate::metrics::Metrics;
-use chain_core::packer::Codec;
-use chain_core::property::{Deserialize, ReadError};
-use chain_network::data as net_data;
-use chain_network::error::Error as NetworkError;
+use chain_core::{
+    packer::Codec,
+    property::{Deserialize, ReadError},
+};
+use chain_network::{data as net_data, error::Error as NetworkError};
 use futures::prelude::*;
 use tokio_util::sync::CancellationToken;
 

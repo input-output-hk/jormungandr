@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
-use std::fmt::{self, Display};
-use std::fs;
-use std::io;
 #[cfg(feature = "gelf")]
 use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::{
+    fmt::{self, Display},
+    fs, io,
+    path::PathBuf,
+    str::FromStr,
+};
 use tracing_subscriber::util::SubscriberInitExt;
 
 use tracing::level_filters::LevelFilter;

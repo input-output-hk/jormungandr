@@ -5,8 +5,7 @@ use jormungandr_lib::{
     interfaces::{Bft, GenesisPraos, NodeSecret},
 };
 
-use assert_fs::fixture::ChildPath;
-use assert_fs::prelude::*;
+use assert_fs::{fixture::ChildPath, prelude::*};
 use std::option::Option;
 
 #[derive(Debug, Clone)]

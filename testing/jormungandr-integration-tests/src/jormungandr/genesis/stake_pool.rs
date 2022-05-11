@@ -1,9 +1,9 @@
 use chain_crypto::{RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::fee::LinearFee;
-use jormungandr_automation::testing::keys;
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
+    testing::keys,
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -12,8 +12,7 @@ use jormungandr_lib::{
 use jortestkit::process::Wait;
 use thor::Wallet;
 
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
+use assert_fs::{prelude::*, TempDir};
 use std::str::FromStr;
 
 #[test]

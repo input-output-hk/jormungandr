@@ -1,10 +1,10 @@
-use std::fs;
-use std::io;
-use std::io::BufReader;
-use std::path::{Path, PathBuf};
+use std::{
+    fs, io,
+    io::BufReader,
+    path::{Path, PathBuf},
+};
 
-use crate::interfaces::FragmentDef;
-use crate::time::SecondsSinceUnixEpoch;
+use crate::{interfaces::FragmentDef, time::SecondsSinceUnixEpoch};
 
 use chain_impl_mockchain::fragment::Fragment;
 

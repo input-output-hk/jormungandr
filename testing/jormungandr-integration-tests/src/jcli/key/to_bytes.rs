@@ -1,7 +1,6 @@
 use jormungandr_automation::jcli::JCli;
 
-use assert_fs::prelude::*;
-use assert_fs::{NamedTempFile, TempDir};
+use assert_fs::{prelude::*, NamedTempFile, TempDir};
 
 #[test]
 pub fn test_key_from_and_to_bytes() {

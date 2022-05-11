@@ -1,8 +1,11 @@
-use assert_fs::fixture::PathChild;
-use assert_fs::TempDir;
-use jormungandr_automation::jormungandr::{download_last_n_releases, get_jormungandr_bin};
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode};
-use jormungandr_automation::testing::{BranchCount, StopCriteria, StorageBuilder};
+use assert_fs::{fixture::PathChild, TempDir};
+use jormungandr_automation::{
+    jormungandr::{
+        download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter,
+        StartupVerificationMode,
+    },
+    testing::{BranchCount, StopCriteria, StorageBuilder},
+};
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use std::time::Duration;
 

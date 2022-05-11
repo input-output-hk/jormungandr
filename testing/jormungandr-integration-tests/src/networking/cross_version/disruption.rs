@@ -3,21 +3,20 @@ use super::{ALICE, BOB, LEADER_1, LEADER_2, LEADER_3, LEADER_4};
 use crate::networking::utils;
 use assert_fs::fixture::PathChild;
 use function_name::named;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use hersir::config::SessionSettings;
+use hersir::{
+    builder::{
+        wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
+        SpawnParams, Topology,
+    },
+    config::SessionSettings,
+};
 use jormungandr_automation::{
     jormungandr::{download_last_n_releases, get_jormungandr_bin, Version},
     testing::{benchmark::MeasurementReportInterval, SyncNode, SyncWaitParams},
 };
 use rstest::rstest;
 use std::path::PathBuf;
-use thor::FragmentSender;
-use thor::FragmentSenderSetup;
+use thor::{FragmentSender, FragmentSenderSetup};
 
 #[rstest]
 #[case(0)]

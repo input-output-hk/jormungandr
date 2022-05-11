@@ -1,4 +1,7 @@
-use serde::{de::Error, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de::{Error, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

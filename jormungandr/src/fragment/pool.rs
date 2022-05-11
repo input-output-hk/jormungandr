@@ -16,8 +16,7 @@ use chain_core::{packer::Codec, property::Serialize};
 use chain_impl_mockchain::{
     block::BlockDate, fragment::Contents, setting::Settings, transaction::Transaction,
 };
-use futures::channel::mpsc::SendError;
-use futures::sink::SinkExt;
+use futures::{channel::mpsc::SendError, sink::SinkExt};
 use jormungandr_lib::{
     interfaces::{
         BlockDate as BlockDateDto, FragmentLog, FragmentOrigin, FragmentRejectionReason,
@@ -30,8 +29,10 @@ use tracing::Instrument;
 
 use std::mem;
 
-use tokio::fs::File;
-use tokio::io::{AsyncWriteExt, BufWriter};
+use tokio::{
+    fs::File,
+    io::{AsyncWriteExt, BufWriter},
+};
 
 // It's a pretty big buffer, but common cloud based storage solutions (like EBS or GlusterFS) benefits from
 // this and it's currently flushed after every request, so the possibility of losing fragments due to a crash

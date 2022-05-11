@@ -1,11 +1,9 @@
 use crate::startup;
 use chain_impl_mockchain::rewards::TaxType;
-use jormungandr_automation::testing::time;
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder, testing::time};
 use thor::TransactionHash;
 
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
+use assert_fs::{prelude::*, TempDir};
 
 #[test]
 pub fn update_pool_fees_is_not_allowed() {

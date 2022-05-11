@@ -9,12 +9,10 @@ use chain_impl_mockchain::{
     fee::LinearFee,
     tokens::{identifier::TokenIdentifier, minting_policy::MintingPolicy},
 };
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
+use hersir::builder::{
+    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
+    SpawnParams, Topology,
+};
 use jormungandr_automation::jormungandr::FragmentNode;
 use jormungandr_lib::interfaces::{
     BlockDate as BlockDateDto, InitialToken, InitialUTxO, Mempool, PersistentLog, SlotDuration,
@@ -27,10 +25,7 @@ use jormungandr_automation::{
 };
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::FragmentGenerator;
-use std::fs::metadata;
-use std::path::Path;
-use std::thread::sleep;
-use std::time::Duration;
+use std::{fs::metadata, path::Path, thread::sleep, time::Duration};
 use thor::{
     BlockDateGenerator, FragmentBuilder, FragmentExporter, FragmentSender, FragmentSenderSetup,
     FragmentVerifier, PersistentLogViewer,

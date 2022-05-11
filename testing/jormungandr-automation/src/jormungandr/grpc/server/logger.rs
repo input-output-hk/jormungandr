@@ -2,8 +2,10 @@ use crate::jormungandr::JormungandrLogger;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-use std::io::{Read, Result};
-use std::sync::mpsc::Receiver;
+use std::{
+    io::{Read, Result},
+    sync::mpsc::Receiver,
+};
 
 pub struct MockLogger(JormungandrLogger);
 

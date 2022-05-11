@@ -5,8 +5,7 @@ use chain_impl_mockchain::{
 use jormungandr_automation::{jcli::JCli, testing::keys::create_new_key_pair};
 use jormungandr_lib::interfaces::Certificate;
 
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
+use assert_fs::{prelude::*, TempDir};
 use std::str::FromStr;
 
 #[test]

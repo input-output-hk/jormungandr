@@ -69,29 +69,33 @@ mod security_params {
     pub const NONCE_LEN: usize = 32;
 }
 
-use self::client::ConnectError;
-use self::p2p::comm::Peers;
-use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::{Blockchain as NewBlockchain, Tip};
-use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TopologyMsg, TransactionMsg};
-use crate::metrics::Metrics;
-use crate::settings::start::network::{Configuration, Peer, Protocol};
-use crate::topology::{self, NodeId};
-use crate::utils::async_msg::{MessageBox, MessageQueue};
+use self::{client::ConnectError, p2p::comm::Peers};
+use crate::{
+    blockcfg::{Block, HeaderHash},
+    blockchain::{Blockchain as NewBlockchain, Tip},
+    intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TopologyMsg, TransactionMsg},
+    metrics::Metrics,
+    settings::start::network::{Configuration, Peer, Protocol},
+    topology::{self, NodeId},
+    utils::async_msg::{MessageBox, MessageQueue},
+};
 use chain_network::data::NodeKeyPair;
 use rand::seq::SliceRandom;
 use tonic::transport;
 use tracing::{instrument, span, Level, Span};
 use tracing_futures::Instrument;
 
-use std::collections::HashSet;
-use std::error;
-use std::fmt;
-use std::iter::FromIterator;
-use std::net::SocketAddr;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
+use std::{
+    collections::HashSet,
+    error, fmt,
+    iter::FromIterator,
+    net::SocketAddr,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 
 pub use self::bootstrap::Error as BootstrapError;
 
