@@ -29,8 +29,8 @@ use thor::{
 const INITIAL_FUND_PER_WALLET: u64 = 1_000_000;
 const INITIAL_TREASURY: u64 = 1000;
 const REWARD_INCREASE: u64 = 10;
-const SLOTS_PER_EPOCH: u32 = 5;
-const SLOT_DURATION: u8 = 1;
+const SLOTS_PER_EPOCH: u32 = 10;
+const SLOT_DURATION: u8 = 4;
 
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
@@ -110,7 +110,7 @@ pub fn jcli_e2e_flow_private_vote() {
             ],
         })
         .with_block0_consensus(ConsensusType::Bft)
-        .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
+        .with_kes_update_speed(KesUpdateSpeed::MAXIMUM) //KesUpdateSpeed::new(43200).unwrap()
         .with_treasury(INITIAL_TREASURY.into())
         .with_discrimination(Discrimination::Production)
         .with_committees(&[alice.to_committee_id()])
@@ -349,7 +349,7 @@ pub fn jcli_private_vote_invalid_proof() {
             to: vec![alice.to_initial_token(INITIAL_FUND_PER_WALLET)],
         })
         .with_block0_consensus(ConsensusType::Bft)
-        .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
+        .with_kes_update_speed(KesUpdateSpeed::MAXIMUM)
         .with_treasury(INITIAL_TREASURY.into())
         .with_discrimination(Discrimination::Production)
         .with_committees(&[alice.to_committee_id()])
@@ -427,12 +427,12 @@ pub fn jcli_private_vote_invalid_proof() {
 pub fn private_tally_no_vote_cast() {
     let temp_dir = TempDir::new().unwrap();
     let mut alice = Wallet::default();
-    let treshold = 1;
+    let threshold = 1;
 
     let private_vote_committee_data_manager = PrivateVoteCommitteeDataManager::new(
         &mut OsRng,
         vec![("Alice".to_owned(), alice.account_id())],
-        treshold,
+        threshold,
     );
 
     let vote_plan = VotePlanBuilder::new()
@@ -522,20 +522,17 @@ pub fn private_tally_no_vote_cast() {
         .send_private_vote_tally(&mut alice, &vote_plan, decrypted_shares, &jormungandr)
         .unwrap();
 
-    let fragment_is_in_block = FragmentVerifier::wait_and_verify_is_in_block(
+    assert!(FragmentVerifier::wait_and_verify_is_in_block(
         Duration::from_secs(5),
         mempool_check,
         &jormungandr,
     )
-    .is_ok();
+    .is_ok());
 
-    assert!(fragment_is_in_block);
+    assert_eq!(
+        NodeState::Running,
+        jormungandr.rest().stats().unwrap().state
+    );
 
-    let state = jormungandr.rest().stats().unwrap().state;
-
-    assert_eq!(NodeState::Running, state);
-
-    let logger_errors = jormungandr.check_no_errors_in_log().is_ok();
-
-    assert!(logger_errors);
+    assert!(jormungandr.check_no_errors_in_log().is_ok());
 }
