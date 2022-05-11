@@ -6,9 +6,7 @@ use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::{
-    certificate::{
-        DecryptedPrivateTally, DecryptedPrivateTallyProposal, VoteAction, VoteTallyPayload,
-    },
+    certificate::VoteAction,
     chaintypes::ConsensusType,
     header::BlockDate,
     ledger::governance::TreasuryGovernanceAction,
@@ -23,7 +21,7 @@ use jormungandr_automation::{
     jormungandr::{ConfigurationBuilder, Starter},
     testing::{time, time::wait_for_epoch, VotePlanBuilder, VotePlanExtension},
 };
-use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed};
+use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed, NodeState};
 use rand::rngs::OsRng;
 use thor::{
     vote_plan_cert, FragmentSender, FragmentSenderSetup, FragmentVerifier,
@@ -448,15 +446,10 @@ pub fn jcli_private_vote_invalid_proof() {
         .assert_in_block();
 
     time::wait_for_epoch(3, jormungandr.rest());
-
-    let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
 }
 
 #[test]
-pub fn jcli_tally_no_vote_cast() {
-    println!("*************************************************************************************************************** START");
-
-    let jcli: JCli = Default::default();
+pub fn private_tally_no_vote_cast() {
     let rewards_increase = 10u64;
     let initial_fund_per_wallet = 1_000_000;
     let temp_dir = TempDir::new().unwrap();
@@ -511,7 +504,7 @@ pub fn jcli_tally_no_vote_cast() {
             to: vec![alice.to_initial_token(initial_fund_per_wallet)],
         })
         .with_committees(&[alice.to_committee_id()])
-        .with_slots_per_epoch(10) // 60
+        .with_slots_per_epoch(4) // 60
         .with_certs(vec![vote_plan_cert])
         .with_slot_duration(1)
         .with_treasury(1_000.into())
@@ -556,15 +549,19 @@ pub fn jcli_tally_no_vote_cast() {
         .send_private_vote_tally(&mut alice, &vote_plan, decrypted_shares, &jormungandr)
         .unwrap();
 
-    FragmentVerifier::wait_and_verify_is_in_block(
+    let fragment_is_in_block = FragmentVerifier::wait_and_verify_is_in_block(
         Duration::from_secs(5),
         mempool_check,
         &jormungandr,
     ).is_ok();
 
-    let alive = jormungandr.rest().stats().unwrap();
+    assert_eq!(true, fragment_is_in_block);
 
-    let boolean = jormungandr.logger.contains_error();
+    let state = jormungandr.rest().stats().unwrap().state;
 
-    assert_eq!(true, boolean);
+    assert_eq!(NodeState::Running, state);
+
+    let logger_errors = jormungandr.check_no_errors_in_log().is_ok();
+
+    assert_eq!(true, logger_errors);
 }
