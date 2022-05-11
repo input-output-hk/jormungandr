@@ -6,13 +6,9 @@ use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::{
-    certificate::VoteAction,
-    chaintypes::ConsensusType,
-    header::BlockDate,
-    ledger::governance::TreasuryGovernanceAction,
-    tokens::minting_policy::MintingPolicy,
-    value::Value,
-    vote::Choice,
+    certificate::VoteAction, chaintypes::ConsensusType, header::BlockDate,
+    ledger::governance::TreasuryGovernanceAction, tokens::minting_policy::MintingPolicy,
+    value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
 use core::time::Duration;
@@ -21,18 +17,20 @@ use jormungandr_automation::{
     jormungandr::{ConfigurationBuilder, Starter},
     testing::{time, time::wait_for_epoch, VotePlanBuilder, VotePlanExtension},
 };
-use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed, NodeState};
+use jormungandr_lib::interfaces::{
+    BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed, NodeState,
+};
 use rand::rngs::OsRng;
 use thor::{
     vote_plan_cert, FragmentSender, FragmentSenderSetup, FragmentVerifier,
     PrivateVoteCommitteeDataManager, Wallet,
 };
 
-const INITIAL_FUND_PER_WALLET:u64 = 1_000_000;
-const INITIAL_TREASURY:u64 = 1000;
-const REWARD_INCREASE:u64 = 10;
-const SLOTS_PER_EPOCH:u32 = 5;
-const SLOT_DURATION:u8 = 1;
+const INITIAL_FUND_PER_WALLET: u64 = 1_000_000;
+const INITIAL_TREASURY: u64 = 1000;
+const REWARD_INCREASE: u64 = 10;
+const SLOTS_PER_EPOCH: u32 = 5;
+const SLOT_DURATION: u8 = 1;
 
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
@@ -528,9 +526,10 @@ pub fn private_tally_no_vote_cast() {
         Duration::from_secs(5),
         mempool_check,
         &jormungandr,
-    ).is_ok();
+    )
+    .is_ok();
 
-    assert_eq!(true, fragment_is_in_block);
+    assert!(fragment_is_in_block);
 
     let state = jormungandr.rest().stats().unwrap().state;
 
@@ -538,5 +537,5 @@ pub fn private_tally_no_vote_cast() {
 
     let logger_errors = jormungandr.check_no_errors_in_log().is_ok();
 
-    assert_eq!(true, logger_errors);
+    assert!(logger_errors);
 }
