@@ -28,15 +28,18 @@ use thor::{
     PrivateVoteCommitteeDataManager, Wallet,
 };
 
+const INITIAL_FUND_PER_WALLET:u64 = 1_000_000;
+const INITIAL_TREASURY:u64 = 1000;
+const REWARD_INCREASE:u64 = 10;
+const SLOTS_PER_EPOCH:u32 = 5;
+const SLOT_DURATION:u8 = 1;
+
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap().into_persistent();
-    let rewards_increase = 10;
     let yes_choice = Choice::new(1);
     let no_choice = Choice::new(2);
-
-    let wallet_initial_funds = 1_000_000;
 
     let mut rng = OsRng;
     let mut alice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
@@ -74,7 +77,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .proposals_count(1)
         .action_type(VoteAction::Treasury {
             action: TreasuryGovernanceAction::TransferToRewards {
-                value: Value(rewards_increase),
+                value: Value(REWARD_INCREASE),
             },
         })
         .private()
@@ -95,26 +98,26 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
-            alice.to_initial_fund(wallet_initial_funds),
-            bob.to_initial_fund(wallet_initial_funds),
-            clarice.to_initial_fund(wallet_initial_funds),
+            alice.to_initial_fund(INITIAL_FUND_PER_WALLET),
+            bob.to_initial_fund(INITIAL_FUND_PER_WALLET),
+            clarice.to_initial_fund(INITIAL_FUND_PER_WALLET),
         ])
         .with_token(InitialToken {
             token_id: token_id.clone().into(),
             policy: minting_policy.into(),
             to: vec![
-                alice.to_initial_token(wallet_initial_funds),
-                bob.to_initial_token(wallet_initial_funds),
-                clarice.to_initial_token(wallet_initial_funds),
+                alice.to_initial_token(INITIAL_FUND_PER_WALLET),
+                bob.to_initial_token(INITIAL_FUND_PER_WALLET),
+                clarice.to_initial_token(INITIAL_FUND_PER_WALLET),
             ],
         })
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
-        .with_treasury(1000.into())
+        .with_treasury(INITIAL_TREASURY.into())
         .with_discrimination(Discrimination::Production)
         .with_committees(&[alice.to_committee_id()])
-        .with_slot_duration(4)
-        .with_slots_per_epoch(10)
+        .with_slot_duration(SLOT_DURATION)
+        .with_slots_per_epoch(SLOTS_PER_EPOCH)
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config).start().unwrap();
@@ -268,7 +271,7 @@ pub fn jcli_e2e_flow_private_vote() {
 
     // We want to make sure that our small rewards increase is reflected in current rewards amount
     assert!(
-        rewards_after == rewards_before + rewards_increase,
+        rewards_after == rewards_before + REWARD_INCREASE,
         "Vote was unsuccessful"
     );
 }
@@ -277,7 +280,6 @@ pub fn jcli_e2e_flow_private_vote() {
 pub fn jcli_private_vote_invalid_proof() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap().into_persistent();
-    let wallet_initial_funds = 1_000_000;
 
     let mut rng = OsRng;
     let mut alice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
@@ -342,19 +344,19 @@ pub fn jcli_private_vote_invalid_proof() {
     let token_id = vote_plan.voting_token();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
+        .with_funds(vec![alice.to_initial_fund(INITIAL_FUND_PER_WALLET)])
         .with_token(InitialToken {
             token_id: token_id.clone().into(),
             policy: minting_policy.into(),
-            to: vec![alice.to_initial_token(wallet_initial_funds)],
+            to: vec![alice.to_initial_token(INITIAL_FUND_PER_WALLET)],
         })
         .with_block0_consensus(ConsensusType::Bft)
         .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
-        .with_treasury(1000.into())
+        .with_treasury(INITIAL_TREASURY.into())
         .with_discrimination(Discrimination::Production)
         .with_committees(&[alice.to_committee_id()])
-        .with_slot_duration(4)
-        .with_slots_per_epoch(10)
+        .with_slot_duration(SLOT_DURATION)
+        .with_slots_per_epoch(SLOTS_PER_EPOCH)
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config).start().unwrap();
@@ -425,23 +427,21 @@ pub fn jcli_private_vote_invalid_proof() {
 
 #[test]
 pub fn private_tally_no_vote_cast() {
-    let rewards_increase = 10u64;
-    let initial_fund_per_wallet = 1_000_000;
     let temp_dir = TempDir::new().unwrap();
-
     let mut alice = Wallet::default();
+    let treshold = 1;
 
     let private_vote_committee_data_manager = PrivateVoteCommitteeDataManager::new(
         &mut OsRng,
         vec![("Alice".to_owned(), alice.account_id())],
-        1,
+        treshold,
     );
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(1)
         .action_type(VoteAction::Treasury {
             action: TreasuryGovernanceAction::TransferToRewards {
-                value: Value(rewards_increase),
+                value: Value(REWARD_INCREASE),
             },
         })
         .private()
@@ -470,19 +470,19 @@ pub fn private_tally_no_vote_cast() {
         .with_funds(
             wallets
                 .iter()
-                .map(|x| x.to_initial_fund(initial_fund_per_wallet))
+                .map(|x| x.to_initial_fund(INITIAL_FUND_PER_WALLET))
                 .collect(),
         )
         .with_token(InitialToken {
             token_id: token_id.clone().into(),
             policy: minting_policy.into(),
-            to: vec![alice.to_initial_token(initial_fund_per_wallet)],
+            to: vec![alice.to_initial_token(INITIAL_FUND_PER_WALLET)],
         })
         .with_committees(&[alice.to_committee_id()])
-        .with_slots_per_epoch(4) // 60
+        .with_slots_per_epoch(SLOTS_PER_EPOCH)
         .with_certs(vec![vote_plan_cert])
-        .with_slot_duration(1)
-        .with_treasury(1_000.into())
+        .with_slot_duration(SLOT_DURATION)
+        .with_treasury(INITIAL_TREASURY.into())
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
