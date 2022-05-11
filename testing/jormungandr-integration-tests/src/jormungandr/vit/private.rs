@@ -2,7 +2,6 @@ use assert_fs::{
     fixture::{FileWriteStr, PathChild},
     NamedTempFile, TempDir,
 };
-use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::{
@@ -10,15 +9,16 @@ use chain_impl_mockchain::{
     ledger::governance::TreasuryGovernanceAction, tokens::minting_policy::MintingPolicy,
     value::Value, vote::Choice,
 };
-use chain_vote::MemberPublicKey;
+use bech32::FromBase32;
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
     testing::{time, VotePlanBuilder, VotePlanExtension},
 };
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed};
-use rand::rngs::OsRng;
+use chain_vote::MemberPublicKey;
 use thor::Wallet;
+use rand::rngs::OsRng;
 
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
