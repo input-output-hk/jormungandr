@@ -1,32 +1,34 @@
-use assert_fs::NamedTempFile;
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
-    TempDir,
+    NamedTempFile, TempDir,
 };
 use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as _;
-use chain_impl_mockchain::header::BlockDate;
-use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{
-    certificate::{VoteAction, VoteTallyPayload},
+    certificate::{
+        DecryptedPrivateTally, DecryptedPrivateTallyProposal, VoteAction, VoteTallyPayload,
+    },
     chaintypes::ConsensusType,
+    header::BlockDate,
     ledger::governance::TreasuryGovernanceAction,
+    tokens::minting_policy::MintingPolicy,
     value::Value,
     vote::Choice,
 };
 use chain_vote::MemberPublicKey;
-use jormungandr_automation::jcli::JCli;
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_automation::testing::time;
-use jormungandr_automation::testing::time::wait_for_epoch;
-use jormungandr_automation::testing::{VotePlanBuilder, VotePlanExtension};
+use core::time::Duration;
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+    testing::{time, time::wait_for_epoch, VotePlanBuilder, VotePlanExtension},
+};
 use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed};
 use rand::rngs::OsRng;
-use thor::vote_plan_cert;
-use thor::FragmentSender;
-use thor::FragmentSenderSetup;
-use thor::Wallet;
+use thor::{
+    vote_plan_cert, FragmentSender, FragmentSenderSetup, FragmentVerifier,
+    PrivateVoteCommitteeDataManager, Wallet,
+};
 
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
@@ -271,7 +273,7 @@ pub fn jcli_e2e_flow_private_vote() {
         rewards_after == rewards_before + rewards_increase,
         "Vote was unsuccessful"
     );
-}
+} // FLAG
 
 #[test]
 pub fn jcli_private_vote_invalid_proof() {
@@ -414,17 +416,46 @@ pub fn jcli_private_vote_invalid_proof() {
     let merged_shares_file = temp_dir.child("shares.json");
     merged_shares_file.write_str(&merged_shares).unwrap();
 
-    jcli.votes().tally().decrypt_results_expect_fail(
+    let result = jcli.votes().tally().decrypt_results(
         active_plans_file.path(),
         &vote_plan_id,
         merged_shares_file.path(),
         1,
-        "Incorrect decryption shares",
     );
+
+    let result_file = temp_dir.child("result.json");
+    result_file.write_str(&result).unwrap();
+
+    let vote_tally_cert = jcli.certificate().new_private_vote_tally(
+        result_file.path(),
+        vote_plan_id,
+        merged_shares_file.path(),
+    );
+
+    let tx = jcli
+        .transaction_builder(jormungandr.genesis_block_hash())
+        .new_transaction()
+        .add_account(&alice.address().to_string(), &Value::zero().into())
+        .add_certificate(&vote_tally_cert)
+        .set_expiry_date(BlockDateDto::new(3, 0))
+        .finalize()
+        .seal_with_witness_data(alice.witness_data())
+        .add_auth(alice_sk.path())
+        .to_message();
+
+    jcli.fragment_sender(&jormungandr)
+        .send(&tx)
+        .assert_in_block();
+
+    time::wait_for_epoch(3, jormungandr.rest());
+
+    let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
 }
 
 #[test]
 pub fn jcli_tally_no_vote_cast() {
+    println!("*************************************************************************************************************** START");
+
     let jcli: JCli = Default::default();
     let rewards_increase = 10u64;
     let initial_fund_per_wallet = 1_000_000;
@@ -432,31 +463,11 @@ pub fn jcli_tally_no_vote_cast() {
 
     let mut alice = Wallet::default();
 
-    let communication_sk = jcli.votes().committee().communication_key().generate();
-    let communication_pk = jcli
-        .votes()
-        .committee()
-        .communication_key()
-        .to_public(communication_sk)
-        .unwrap();
-    let crs = "Committee member crs";
-    let member_sk =
-        jcli.votes()
-            .committee()
-            .member_key()
-            .generate(communication_pk, crs, 0, 1, None);
-    let member_pk = jcli
-        .votes()
-        .committee()
-        .member_key()
-        .to_public(member_sk.clone())
-        .unwrap();
-
-    let member_sk_file = NamedTempFile::new("member.sk").unwrap();
-    member_sk_file.write_str(&member_sk).unwrap();
-
-    let (_, member_pk_bech32) = bech32::decode(&member_pk).unwrap();
-    let member_pk_bytes = Vec::<u8>::from_base32(&member_pk_bech32).unwrap();
+    let private_vote_committee_data_manager = PrivateVoteCommitteeDataManager::new(
+        &mut OsRng,
+        vec![("Alice".to_owned(), alice.account_id())],
+        1,
+    );
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(1)
@@ -469,7 +480,7 @@ pub fn jcli_tally_no_vote_cast() {
         .vote_start(BlockDate::from_epoch_slot_id(1, 0))
         .tally_start(BlockDate::from_epoch_slot_id(2, 0))
         .tally_end(BlockDate::from_epoch_slot_id(3, 0))
-        .member_public_key(MemberPublicKey::from_bytes(&member_pk_bytes).unwrap())
+        .member_public_keys(private_vote_committee_data_manager.member_public_keys())
         .options_size(3)
         .build();
 
@@ -500,7 +511,7 @@ pub fn jcli_tally_no_vote_cast() {
             to: vec![alice.to_initial_token(initial_fund_per_wallet)],
         })
         .with_committees(&[alice.to_committee_id()])
-        .with_slots_per_epoch(60)
+        .with_slots_per_epoch(10) // 60
         .with_certs(vec![vote_plan_cert])
         .with_slot_duration(1)
         .with_treasury(1_000.into())
@@ -521,26 +532,39 @@ pub fn jcli_tally_no_vote_cast() {
         FragmentSenderSetup::resend_3_times(),
     );
 
-    let rewards_before: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
-
-    wait_for_epoch(1, jormungandr.rest());
+    wait_for_epoch(2, jormungandr.rest());
 
     let transaction_sender =
         transaction_sender.set_valid_until(chain_impl_mockchain::block::BlockDate {
-            epoch: 2,
+            epoch: 3,
             slot_id: 0,
         });
 
-    transaction_sender
-        .send_vote_tally(
-            &mut alice,
-            &vote_plan,
-            &jormungandr,
-            VoteTallyPayload::Public,
-        )
+    let vote_plan_statuses = jormungandr
+        .rest()
+        .vote_plan_statuses()
+        .unwrap()
+        .first()
+        .unwrap()
+        .clone();
+
+    let decrypted_shares = private_vote_committee_data_manager
+        .decrypt_tally(&vote_plan_statuses.into())
         .unwrap();
 
-    wait_for_epoch(2, jormungandr.rest());
+    let mempool_check = transaction_sender
+        .send_private_vote_tally(&mut alice, &vote_plan, decrypted_shares, &jormungandr)
+        .unwrap();
 
-    let rewards_after: u64 = jormungandr.rest().remaining_rewards().unwrap().into();
+    FragmentVerifier::wait_and_verify_is_in_block(
+        Duration::from_secs(5),
+        mempool_check,
+        &jormungandr,
+    ).is_ok();
+
+    let alive = jormungandr.rest().stats().unwrap();
+
+    let boolean = jormungandr.logger.contains_error();
+
+    assert_eq!(true, boolean);
 }
