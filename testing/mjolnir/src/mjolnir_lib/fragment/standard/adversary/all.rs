@@ -21,8 +21,8 @@ pub struct AllAdversary {
     #[structopt(short = "c", long = "count", default_value = "3")]
     pub count: usize,
 
-    /// address in format:
-    /// /ip4/54.193.75.55/tcp/3000
+    /// Address in format:
+    /// `/ip4/54.193.75.55/tcp/3000`
     #[structopt(short = "a", long = "address")]
     pub endpoint: String,
 
@@ -34,7 +34,7 @@ pub struct AllAdversary {
     #[structopt(short = "d", long = "duration")]
     pub duration: u64,
 
-    // show progress
+    /// Show progress bar during tests
     #[structopt(
         long = "progress-bar-mode",
         short = "b",
@@ -43,12 +43,15 @@ pub struct AllAdversary {
     )]
     progress_bar_mode: ProgressBarMode,
 
+    /// Prints post load measurements
     #[structopt(short = "m", long = "measure")]
     pub measure: bool,
 
+    /// Secret key file for source address from which requests will be send
     #[structopt(long = "key", short = "k")]
     faucet_key_file: PathBuf,
 
+    /// Source address spending counter
     #[structopt(long = "spending-counter", short = "s")]
     faucet_spending_counter: u32,
 

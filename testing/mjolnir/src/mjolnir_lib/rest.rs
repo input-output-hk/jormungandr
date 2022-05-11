@@ -20,20 +20,20 @@ pub struct RestLoadCommand {
     /// Number of threads
     #[structopt(short = "c", long = "count", default_value = "3")]
     pub count: usize,
-    /// address in format:
+    /// Address in format:
     /// http://127.0.0.1:8002/api/
     #[structopt(short = "e", long = "endpoint")]
     pub endpoint: String,
 
-    /// amount of delay [milliseconds] between sync attempts
+    /// Amount of delay [milliseconds] between sync attempts
     #[structopt(long = "delay", default_value = "50")]
     pub delay: u64,
 
-    /// amount of delay [seconds] between sync attempts
+    /// Amount of delay [seconds] between sync attempts
     #[structopt(short = "d", long = "duration")]
     pub duration: u64,
 
-    // show progress
+    /// Show progress bar
     #[structopt(
         long = "progress-bar-mode",
         short = "b",
@@ -42,6 +42,7 @@ pub struct RestLoadCommand {
     )]
     progress_bar_mode: ProgressBarMode,
 
+    /// Prints post load measurements
     #[structopt(short = "m", long = "measure")]
     pub measure: bool,
 }

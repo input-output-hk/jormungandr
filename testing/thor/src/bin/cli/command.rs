@@ -4,24 +4,33 @@ use structopt::StructOpt;
 use thiserror::Error;
 use thor::cli::{CliController, Connection};
 
+///
+///
+/// Command line wallet for testing Jormungandr
+///
 #[derive(StructOpt, Debug)]
 pub enum Command {
-    /// connect to backend
+    /// Sets node rest API address. Verifies connection on set.
     Connect(Connect),
-    /// get Address
+    /// Gets address of wallet in bech32 format
     Address,
-    /// Prints wallet status
+    /// Prints wallet status (balance/spending counters/tokens)
     Status,
-    /// clear transaction
+    /// Clears pending transactions to confirm. In case if expiration occured
     ClearTx,
-    /// confirms transaction
+    /// Confirms succesful transaction
     ConfirmTx,
-    /// Prints wallets, nodes which can be used. Draw topology
+    /// Pulls wallet data from the node
     Refresh,
+    /// Prints entire fragment logs from the node
     Logs,
+    /// Prints pending or already sent fragments statuses
     Statuses,
+    /// Sends fragments to nodes
     Send(SendCommand),
+    /// Prints pending transactions (not confirmed)
     PendingTransactions,
+    /// Allows to manage wallets: add/remove/select operations
     Wallets(Wallets),
 }
 
