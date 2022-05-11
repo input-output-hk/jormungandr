@@ -271,7 +271,7 @@ pub fn jcli_e2e_flow_private_vote() {
         rewards_after == rewards_before + rewards_increase,
         "Vote was unsuccessful"
     );
-} // FLAG
+}
 
 #[test]
 pub fn jcli_private_vote_invalid_proof() {
@@ -414,38 +414,13 @@ pub fn jcli_private_vote_invalid_proof() {
     let merged_shares_file = temp_dir.child("shares.json");
     merged_shares_file.write_str(&merged_shares).unwrap();
 
-    let result = jcli.votes().tally().decrypt_results(
+    jcli.votes().tally().decrypt_results_expect_fail(
         active_plans_file.path(),
         &vote_plan_id,
         merged_shares_file.path(),
         1,
+        "Incorrect decryption shares",
     );
-
-    let result_file = temp_dir.child("result.json");
-    result_file.write_str(&result).unwrap();
-
-    let vote_tally_cert = jcli.certificate().new_private_vote_tally(
-        result_file.path(),
-        vote_plan_id,
-        merged_shares_file.path(),
-    );
-
-    let tx = jcli
-        .transaction_builder(jormungandr.genesis_block_hash())
-        .new_transaction()
-        .add_account(&alice.address().to_string(), &Value::zero().into())
-        .add_certificate(&vote_tally_cert)
-        .set_expiry_date(BlockDateDto::new(3, 0))
-        .finalize()
-        .seal_with_witness_data(alice.witness_data())
-        .add_auth(alice_sk.path())
-        .to_message();
-
-    jcli.fragment_sender(&jormungandr)
-        .send(&tx)
-        .assert_in_block();
-
-    time::wait_for_epoch(3, jormungandr.rest());
 }
 
 #[test]
