@@ -63,3 +63,8 @@ pub fn sign(_address: H160, _message: Bytes, _context: &Context) -> Result<H512,
     // TODO implement
     Ok(H512::zero())
 }
+
+pub fn call(_tx: Transaction, _number: BlockNumber, _context: &Context) -> Result<Bytes, Error> {
+    // TODO implement
+    Ok(Default::default())
+}
