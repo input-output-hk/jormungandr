@@ -11,16 +11,17 @@ pub fn get_block_by_hash(
     context: &Context,
 ) -> Result<Option<Block>, Error> {
     let block = context.blockchain()?.storage().get(hash.0.into())?;
-    Ok(block.map(|_| Block::build(full)))
+    Ok(block.map(|block| Block::build(block, full)))
 }
 
 pub fn get_block_by_number(
     _number: BlockNumber,
     full: bool,
-    _context: &Context,
+    context: &Context,
 ) -> Result<Option<Block>, Error> {
     // TODO implement
-    Ok(Some(Block::build(full)))
+    let block = context.blockchain()?.storage().get([0; 32].into())?;
+    Ok(block.map(|block| Block::build(block, full)))
 }
 
 pub fn get_transaction_count_by_hash(

@@ -1,6 +1,10 @@
 use super::{bytes::Bytes, number::Number, transaction::Transaction};
+use chain_core::property::Serialize;
 use chain_evm::ethereum_types::{Bloom, H160, H256};
-use serde::Serialize;
+use chain_impl_mockchain::{
+    block::{Block as JorBlock, Header as JorHeader},
+    fragment::Fragment,
+};
 
 /// Block Transactions
 #[derive(Debug, Serialize)]
@@ -52,24 +56,27 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn build() -> Self {
+    pub fn build(header: JorHeader) -> Self {
         Self {
-            hash: H256::zero(),
+            hash: H256::from_slice(header.hash().as_ref()),
             mix_hash: H256::zero(),
             nonce: 1.into(),
-            parent_hash: H256::zero(),
+            parent_hash: H256::from_slice(header.block_parent_hash().as_ref()),
             uncles_hash: H256::zero(),
-            miner: H160::zero(),
+            miner: header
+                .get_bft_leader_id()
+                .map(|id| H160::from_slice(id.as_ref()))
+                .unwrap_or_else(|| H160::zero()),
             state_root: H256::zero(),
-            transactions_root: H256::zero(),
+            transactions_root: H256::from_slice(header.block_content_hash().as_ref()),
             receipts_root: H256::zero(),
-            number: 1.into(),
-            gas_used: 1.into(),
-            gas_limit: 1.into(),
+            number: Into::<u64>::into(Into::<u32>::into(header.chain_length())).into(),
+            gas_used: 0.into(),
+            gas_limit: 0.into(),
             extra_data: Bytes::default(),
             logs_bloom: Bloom::zero(),
-            timestamp: 1.into(),
-            difficulty: Some(1.into()),
+            timestamp: 0.into(),
+            difficulty: Some(0.into()),
         }
     }
 }
@@ -94,20 +101,33 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn build(full: bool) -> Self {
-        let header = Header::build();
+    pub fn build(block: JorBlock, full: bool) -> Self {
+        let header = Header::build(block.header().clone());
         let transactions = if full {
-            BlockTransactions::Full(vec![Transaction::build()])
+            let mut res = Vec::new();
+            for fragment in block.fragments() {
+                if let Fragment::Evm(evm_tx) = fragment {
+                    let _evm_tx = evm_tx.as_slice().payload().into_payload();
+                    res.push(Transaction::build());
+                }
+            }
+            BlockTransactions::Full(res)
         } else {
-            BlockTransactions::Hashes(vec![H256::zero()])
+            let mut res = Vec::new();
+            for fragment in block.fragments() {
+                if let Fragment::Evm(evm_tx) = fragment {
+                    res.push(H256::from_slice(evm_tx.hash().as_ref()));
+                }
+            }
+            BlockTransactions::Hashes(res)
         };
 
         Self {
             header,
-            total_difficulty: 1.into(),
+            total_difficulty: 0.into(),
             uncles: Default::default(),
             transactions,
-            size: 1.into(),
+            size: (block.serialized_size() as u64).into(),
             base_fee_per_gas: Some(1.into()),
         }
     }
