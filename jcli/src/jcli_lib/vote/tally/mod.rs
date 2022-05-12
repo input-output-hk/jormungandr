@@ -1,5 +1,6 @@
 mod decrypt_tally;
 mod decryption_shares;
+pub(crate) mod merge_results;
 
 use super::Error;
 use structopt::StructOpt;
@@ -20,6 +21,11 @@ pub enum Tally {
     /// The decrypted tally data will be printed in hexadecimal encoding
     /// on standard output.
     DecryptResults(decrypt_tally::TallyVotePlanWithAllShares),
+    /// Decrypt all proposals in a vote plan.
+    ///
+    /// The decrypted tally data will be printed in hexadecimal encoding
+    /// on standard output.
+    MergeResults(merge_results::MergeVotePlan),
 }
 
 impl Tally {
@@ -28,6 +34,7 @@ impl Tally {
             Tally::DecryptionShares(cmd) => cmd.exec(),
             Tally::DecryptResults(cmd) => cmd.exec(),
             Tally::MergeShares(cmd) => cmd.exec(),
+            Tally::MergeResults(cmd) => cmd.exec(),
         }
     }
 }
