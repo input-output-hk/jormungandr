@@ -144,12 +144,12 @@ pub fn retire_stake_pool_explorer() {
         .unwrap();
 
     assert!(
-        !stake_pool_state_after
+        stake_pool_state_after
             .data
             .unwrap()
             .stake_pool
             .retirement
-            .is_none(),
+            .is_some(),
         "retirement field in explorer should not be empty",
     );
 
