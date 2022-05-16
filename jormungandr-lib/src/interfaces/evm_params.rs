@@ -1,6 +1,6 @@
 use chain_impl_mockchain::{config, evm};
 use serde::{Deserialize, Serialize};
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -49,14 +49,8 @@ impl TryFrom<config::EvmEnvSettings> for EvmEnvSettings {
     type Error = TryFromEvmEnvSettingsError;
     fn try_from(val: config::EvmEnvSettings) -> Result<Self, Self::Error> {
         Ok(Self {
-            gas_price: val
-                .gas_price
-                .try_into()
-                .map_err(|_| TryFromEvmEnvSettingsError::Incompatible)?,
-            block_gas_limit: val
-                .block_gas_limit
-                .try_into()
-                .map_err(|_| TryFromEvmEnvSettingsError::Incompatible)?,
+            gas_price: val.gas_price,
+            block_gas_limit: val.block_gas_limit,
         })
     }
 }
@@ -64,8 +58,8 @@ impl TryFrom<config::EvmEnvSettings> for EvmEnvSettings {
 impl From<EvmEnvSettings> for config::EvmEnvSettings {
     fn from(val: EvmEnvSettings) -> Self {
         Self {
-            gas_price: val.gas_price.into(),
-            block_gas_limit: val.block_gas_limit.into(),
+            gas_price: val.gas_price,
+            block_gas_limit: val.block_gas_limit,
         }
     }
 }
