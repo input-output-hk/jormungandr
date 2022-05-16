@@ -60,7 +60,7 @@ impl Header {
         Self {
             hash: H256::from_slice(header.hash().as_ref()),
             mix_hash: H256::zero(),
-            nonce: 1.into(),
+            nonce: 0.into(),
             parent_hash: H256::from_slice(header.block_parent_hash().as_ref()),
             uncles_hash: H256::zero(),
             miner: header
