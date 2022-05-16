@@ -29,6 +29,7 @@ pub fn eth_block_info_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let (block_number, full) = params.parse()?;
             logic::get_block_by_number(block_number, full, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();

@@ -11,19 +11,21 @@ pub async fn get_block_by_hash(
     context: &Context,
 ) -> Result<Option<Block>, Error> {
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
-    blockchain_tip.ledger().evm_block_gas_limit();
+    let gas_limit = blockchain_tip.ledger().evm_block_gas_limit();
     let block = context.blockchain()?.storage().get(hash.0.into())?;
-    Ok(block.map(|block| Block::build(block, full)))
+    Ok(block.map(|block| Block::build(block, full, gas_limit)))
 }
 
-pub fn get_block_by_number(
+pub async fn get_block_by_number(
     _number: BlockNumber,
     full: bool,
     context: &Context,
 ) -> Result<Option<Block>, Error> {
     // TODO implement
     let block = context.blockchain()?.storage().get([0; 32].into())?;
-    Ok(block.map(|block| Block::build(block, full)))
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
+    let gas_limit = blockchain_tip.ledger().evm_block_gas_limit();
+    Ok(block.map(|block| Block::build(block, full, gas_limit)))
 }
 
 pub fn get_transaction_count_by_hash(

@@ -1,6 +1,6 @@
 use super::{bytes::Bytes, number::Number, transaction::Transaction};
 use chain_core::property::Serialize;
-use chain_evm::ethereum_types::{Bloom, H160, H256};
+use chain_evm::ethereum_types::{Bloom, H160, H256, U256};
 use chain_impl_mockchain::{
     block::{Block as JorBlock, Header as JorHeader},
     fragment::Fragment,
@@ -56,7 +56,7 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn build(header: JorHeader) -> Self {
+    pub fn build(header: JorHeader, gas_limit: U256) -> Self {
         Self {
             hash: H256::from_slice(header.hash().as_ref()),
             mix_hash: H256::zero(),
@@ -72,7 +72,7 @@ impl Header {
             receipts_root: H256::zero(),
             number: Into::<u64>::into(Into::<u32>::into(header.chain_length())).into(),
             gas_used: 0.into(),
-            gas_limit: 0.into(),
+            gas_limit: gas_limit.as_u64().into(),
             extra_data: Bytes::default(),
             logs_bloom: Bloom::zero(),
             timestamp: 0.into(),
@@ -101,14 +101,19 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn build(block: JorBlock, full: bool) -> Self {
-        let header = Header::build(block.header().clone());
+    pub fn build(block: JorBlock, full: bool, gas_limit: U256) -> Self {
+        let header = Header::build(block.header().clone(), gas_limit);
         let transactions = if full {
             let mut res = Vec::new();
-            for fragment in block.fragments() {
+            for (i, fragment) in block.fragments().enumerate() {
                 if let Fragment::Evm(evm_tx) = fragment {
-                    let _evm_tx = evm_tx.as_slice().payload().into_payload();
-                    res.push(Transaction::build());
+                    let evm_tx = evm_tx.as_slice().payload().into_payload();
+                    res.push(Transaction::build(
+                        evm_tx,
+                        Some(header.hash),
+                        Some(header.number.clone()),
+                        Some((i as u64).into()),
+                    ));
                 }
             }
             BlockTransactions::Full(res)

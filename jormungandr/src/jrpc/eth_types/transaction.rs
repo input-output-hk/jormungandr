@@ -1,5 +1,6 @@
 use super::{bytes::Bytes, number::Number};
 use chain_evm::ethereum_types::{H160, H256, U256};
+use chain_impl_mockchain::evm::EvmTransaction;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -39,23 +40,84 @@ pub struct Transaction {
 }
 
 impl Transaction {
-    pub fn build() -> Self {
-        Self {
-            block_hash: None,
-            block_number: None,
-            nonce: 1.into(),
-            from: H160::zero(),
-            to: Some(H160::zero()),
-            value: 1.into(),
-            gas: 1.into(),
-            input: Default::default(),
-            gas_price: 1.into(),
-            chain_id: Some(1.into()),
-            transaction_index: None,
-            v: 1.into(),
-            r: U256::one(),
-            s: U256::one(),
-            transaction_type: 1.into(),
+    pub fn build(
+        tx: EvmTransaction,
+        block_hash: Option<H256>,
+        block_number: Option<Number>,
+        transaction_index: Option<Number>,
+    ) -> Self {
+        match tx {
+            EvmTransaction::Call {
+                caller,
+                address,
+                value,
+                data,
+                gas_limit,
+                access_list: _,
+            } => Self {
+                block_hash,
+                block_number,
+                nonce: 1.into(),
+                from: caller,
+                to: Some(address),
+                value: value.as_u64().into(),
+                gas: gas_limit.into(),
+                input: data.into(),
+                gas_price: 1.into(),
+                chain_id: Some(1.into()),
+                transaction_index,
+                v: 1.into(),
+                r: U256::one(),
+                s: U256::one(),
+                transaction_type: 1.into(),
+            },
+            EvmTransaction::Create {
+                caller,
+                value,
+                init_code,
+                gas_limit,
+                access_list: _,
+            } => Self {
+                block_hash,
+                block_number,
+                nonce: 1.into(),
+                from: caller,
+                to: None,
+                value: value.as_u64().into(),
+                gas: gas_limit.into(),
+                input: init_code.into(),
+                gas_price: 1.into(),
+                chain_id: Some(1.into()),
+                transaction_index,
+                v: 1.into(),
+                r: U256::one(),
+                s: U256::one(),
+                transaction_type: 1.into(),
+            },
+            EvmTransaction::Create2 {
+                caller,
+                value,
+                init_code,
+                salt: _,
+                gas_limit,
+                access_list: _,
+            } => Self {
+                block_hash,
+                block_number,
+                nonce: 1.into(),
+                from: caller,
+                to: None,
+                value: value.as_u64().into(),
+                gas: gas_limit.into(),
+                input: init_code.into(),
+                gas_price: 1.into(),
+                chain_id: Some(1.into()),
+                transaction_index,
+                v: 1.into(),
+                r: U256::one(),
+                s: U256::one(),
+                transaction_type: 1.into(),
+            },
         }
     }
 }
