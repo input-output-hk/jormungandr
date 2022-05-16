@@ -13,14 +13,14 @@ const LEADER_2: &str = "Leader_2";
 const LEADER_3: &str = "Leader_3";
 const LEADER_4: &str = "Leader_4";
 
-const INITIAL_FUNDS:u64 = 2_000_000_000; 
+const INITIAL_FUNDS: u64 = 2_000_000_000;
 const ALICE: &str = "ALICE";
-const BOB: &str = "BOB"; 
+const BOB: &str = "BOB";
 const CLARICE: &str = "CLARICE";
 const DAVID: &str = "DAVID";
 
 const SLOTS_PER_EPOCH: u32 = 10;
-const SLOT_DURATION:u8 = 1;
+const SLOT_DURATION: u8 = 1;
 
 #[test]
 pub fn retire_stake_pool_explorer() {
@@ -128,7 +128,6 @@ pub fn retire_stake_pool_explorer() {
     fragment_sender
         .send_pool_retire(&mut spo_3, &stake_pool_3, &leader_1)
         .unwrap();
-
 
     println!("***************************************************************************************** FLAG 6");
 
