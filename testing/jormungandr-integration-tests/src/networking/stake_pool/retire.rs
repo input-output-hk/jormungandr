@@ -20,16 +20,18 @@ const CLARICE: &str = "CLARICE";
 const DAVID: &str = "DAVID";
 
 const SLOTS_PER_EPOCH: u32 = 10;
-const SLOT_DURATION: u8 = 1;
+const SLOT_DURATION: u8 = 2;
 
 #[test]
 pub fn retire_stake_pool_explorer() {
-    println!("***************************************************************************************** START");
-
+    // Each step needs to be performed with one block between each other to avoid flakiness
     let first_date = BlockDate::new(0, SLOTS_PER_EPOCH / 2);
     let second_date = BlockDate::new(2, SLOTS_PER_EPOCH / 2);
     let third_date = BlockDate::new(4, SLOTS_PER_EPOCH / 2);
-
+    
+    // Assertion just need to be somewhere in the future
+    let assert_date = BlockDate::new(5, 0);
+    
     let mut controller = NetworkBuilder::default()
         .topology(
             Topology::default()
@@ -87,13 +89,9 @@ pub fn retire_stake_pool_explorer() {
 
     time::wait_for_date(first_date, leader_1.rest());
 
-    println!("***************************************************************************************** FLAG 1");
-
     let explorer_process = leader_1.explorer();
     let explorer = explorer_process.client();
     let stake_pool_3 = controller.stake_pool(LEADER_3).unwrap().clone();
-
-    println!("***************************************************************************************** FLAG 2");
 
     let stake_pool_state_before = explorer
         .stake_pool(stake_pool_3.info().to_id().to_string(), 0)
@@ -108,14 +106,10 @@ pub fn retire_stake_pool_explorer() {
         "retirement field in explorer should be empty",
     );
 
-    println!("***************************************************************************************** FLAG 3");
-
     let mut david = controller.wallet(DAVID).unwrap();
     let mut spo_3 = stake_pool_3.owner().clone();
 
     let fragment_sender = FragmentSender::from(&controller.settings().block0);
-
-    println!("***************************************************************************************** FLAG 4");
 
     fragment_sender
         .send_transaction(&mut david, &spo_3, &leader_1, 100.into())
@@ -123,20 +117,14 @@ pub fn retire_stake_pool_explorer() {
 
     time::wait_for_date(second_date, leader_1.rest());
 
-    println!("***************************************************************************************** FLAG 5");
-
     fragment_sender
         .send_pool_retire(&mut spo_3, &stake_pool_3, &leader_1)
         .unwrap();
-
-    println!("***************************************************************************************** FLAG 6");
 
     time::wait_for_date(third_date, leader_1.rest());
 
     let created_block_count = leader_3.logger.get_created_blocks_hashes().len();
     let start_time_no_block = std::time::SystemTime::now();
-
-    println!("***************************************************************************************** FLAG 7");
 
     // proof 1: explorer shows as retired
     let stake_pool_state_after = explorer
@@ -161,7 +149,7 @@ pub fn retire_stake_pool_explorer() {
     );
 
     //proof 3: no more minted blocks hashes in logs
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    time::wait_for_date(assert_date, leader_1.rest());
     assert!(
         leader_3
             .logger
