@@ -66,7 +66,7 @@ impl Header {
             miner: header
                 .get_bft_leader_id()
                 .map(|id| H160::from_slice(id.as_ref()))
-                .unwrap_or_else(|| H160::zero()),
+                .unwrap_or_else(H160::zero),
             state_root: H256::zero(),
             transactions_root: H256::from_slice(header.block_content_hash().as_ref()),
             receipts_root: H256::zero(),
@@ -165,7 +165,7 @@ mod tests {
         };
 
         let block = Block {
-            header: header,
+            header,
             total_difficulty: 0.into(),
             uncles: Default::default(),
             transactions: BlockTransactions::Hashes(vec![H256::zero()]),
