@@ -76,7 +76,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn index_deserialization() {
+    fn number_serde() {
         let s = r#"["0xa", "10", 42, "0x45"]"#;
         let deserialized: Vec<Number> = serde_json::from_str(s).unwrap();
         assert_eq!(
