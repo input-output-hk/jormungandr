@@ -37,12 +37,6 @@ pub struct EvmEnvSettings {
     block_gas_limit: u64,
 }
 
-// #[derive(Debug, Error)]
-// pub enum TryFromEvmEnvSettingsError {
-//     #[error("Incompatible Config param, expected EvmEnvSettings")]
-//     Incompatible,
-// }
-
 impl From<config::EvmEnvSettings> for EvmEnvSettings {
     fn from(val: config::EvmEnvSettings) -> Self {
         Self {
