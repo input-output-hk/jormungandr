@@ -3,10 +3,8 @@ use crate::jcli_lib::{
     utils::key_parser::parse_pub_key,
 };
 use chain_crypto::{Ed25519, PublicKey};
-use chain_impl_mockchain::{
-    certificate::{Certificate, EvmMapping},
-    evm::Address,
-};
+use chain_evm::Address;
+use chain_impl_mockchain::certificate::{Certificate, EvmMapping};
 use jormungandr_lib::interfaces::Certificate as CertificateType;
 use std::path::PathBuf;
 use structopt::StructOpt;

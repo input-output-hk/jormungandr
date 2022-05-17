@@ -30,6 +30,7 @@ chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-evm = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", optional = true }
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.6.0"
 ed25519-bip32 = "0.4.1"
@@ -39,7 +40,7 @@ rpassword = "5.0"
 clap = { version = "3.1", default-features = false, features = ["suggestions", "color", "wrap_help", "std"] }
 
 [features]
-evm = ["jormungandr-lib/evm"]
+evm = ["chain-evm","jormungandr-lib/evm"]
 
 [dependencies.reqwest]
 version = "0.11"
