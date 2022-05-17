@@ -28,10 +28,10 @@ pub fn retire_stake_pool_explorer() {
     let first_date = BlockDate::new(0, SLOTS_PER_EPOCH / 2);
     let second_date = BlockDate::new(2, SLOTS_PER_EPOCH / 2);
     let third_date = BlockDate::new(4, SLOTS_PER_EPOCH / 2);
-    
+
     // Assertion just need to be somewhere in the future
     let assert_date = BlockDate::new(5, 0);
-    
+
     let mut controller = NetworkBuilder::default()
         .topology(
             Topology::default()
