@@ -175,9 +175,6 @@ pub enum FromConfigParamsError {
     KesUpdateSpeed(#[from] super::kes_update_speed::TryFromKesUpdateSpeedError),
     #[error("Invalid FeesGoTo setting")]
     FeesGoTo(#[from] super::fees_go_to::TryFromFeesGoToError),
-    #[cfg(feature = "evm")]
-    #[error("Invalid EvmEnvSettings setting")]
-    EvmEnvSettings(#[from] crate::interfaces::evm_params::TryFromEvmEnvSettingsError),
 }
 
 impl TryFrom<ConfigParams> for BlockchainConfiguration {
@@ -344,7 +341,7 @@ impl BlockchainConfiguration {
                 }
                 #[cfg(feature = "evm")]
                 ConfigParam::EvmEnvironment(params) => evm_env_settings
-                    .replace(params.try_into()?)
+                    .replace(params.into())
                     .map(|_| "evm_evn_settings"),
             }
             .map(|name| Err(FromConfigParamsError::InitConfigParamDuplicate { name }))

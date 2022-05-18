@@ -4,6 +4,12 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Bytes(Box<[u8]>);
 
+impl From<Box<[u8]>> for Bytes {
+    fn from(val: Box<[u8]>) -> Self {
+        Self(val)
+    }
+}
+
 impl Serialize for Bytes {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

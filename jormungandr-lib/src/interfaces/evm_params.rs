@@ -1,7 +1,5 @@
 use chain_impl_mockchain::{config, evm};
 use serde::{Deserialize, Serialize};
-use std::convert::{TryFrom, TryInto};
-use thiserror::Error;
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 pub enum EvmConfig {
@@ -39,33 +37,20 @@ pub struct EvmEnvSettings {
     block_gas_limit: u64,
 }
 
-#[derive(Debug, Error)]
-pub enum TryFromEvmEnvSettingsError {
-    #[error("Incompatible Config param, expected EvmEnvSettings")]
-    Incompatible,
-}
-
-impl TryFrom<config::EvmEnvSettings> for EvmEnvSettings {
-    type Error = TryFromEvmEnvSettingsError;
-    fn try_from(val: config::EvmEnvSettings) -> Result<Self, Self::Error> {
-        Ok(Self {
-            gas_price: val
-                .gas_price
-                .try_into()
-                .map_err(|_| TryFromEvmEnvSettingsError::Incompatible)?,
-            block_gas_limit: val
-                .block_gas_limit
-                .try_into()
-                .map_err(|_| TryFromEvmEnvSettingsError::Incompatible)?,
-        })
+impl From<config::EvmEnvSettings> for EvmEnvSettings {
+    fn from(val: config::EvmEnvSettings) -> Self {
+        Self {
+            gas_price: val.gas_price,
+            block_gas_limit: val.block_gas_limit,
+        }
     }
 }
 
 impl From<EvmEnvSettings> for config::EvmEnvSettings {
     fn from(val: EvmEnvSettings) -> Self {
         Self {
-            gas_price: val.gas_price.into(),
-            block_gas_limit: val.block_gas_limit.into(),
+            gas_price: val.gas_price,
+            block_gas_limit: val.block_gas_limit,
         }
     }
 }
