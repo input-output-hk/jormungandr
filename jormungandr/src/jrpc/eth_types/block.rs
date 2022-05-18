@@ -137,6 +137,21 @@ impl Block {
             base_fee_per_gas: Some(1.into()),
         }
     }
+
+    pub fn calc_transactions_count(block: JorBlock) -> Number {
+        (block
+            .contents()
+            .iter()
+            .filter(|fragment| {
+                if let Fragment::Evm(_) = fragment {
+                    true
+                } else {
+                    false
+                }
+            })
+            .count() as u64)
+            .into()
+    }
 }
 
 #[cfg(test)]

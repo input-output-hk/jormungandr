@@ -53,6 +53,7 @@ pub fn eth_block_info_module(context: ContextLock) -> RpcModule<ContextLock> {
                 let context = context.read().await;
                 let block_number = params.parse()?;
                 logic::get_transaction_count_by_number(block_number, &context)
+                    .await
                     .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
             },
         )
