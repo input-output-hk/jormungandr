@@ -66,7 +66,7 @@ pub fn get_transaction_count_by_hash(
     context: &Context,
 ) -> Result<Option<Number>, Error> {
     let block = context.blockchain()?.storage().get(hash.0.into())?;
-    Ok(block.map(|block| Block::calc_transactions_count(block)))
+    Ok(block.map(Block::calc_transactions_count))
 }
 
 pub async fn get_transaction_count_by_number(
@@ -77,7 +77,7 @@ pub async fn get_transaction_count_by_number(
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
     Ok(
         get_block_by_number_from_context(number, blockchain, blockchain_tip)?
-            .map(|block| Block::calc_transactions_count(block)),
+            .map(Block::calc_transactions_count),
     )
 }
 
@@ -91,7 +91,7 @@ pub fn get_uncle_count_by_number(_: BlockNumber, _: &Context) -> Result<Option<N
     Ok(Some(0.into()))
 }
 
-pub fn get_block_number(_: &Context) -> Result<Number, Error> {
-    // TODO implement
-    Ok(0.into())
+pub async fn get_block_number(context: &Context) -> Result<Number, Error> {
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
+    Ok((Into::<u32>::into(blockchain_tip.chain_length()) as u64).into())
 }

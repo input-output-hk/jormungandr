@@ -142,13 +142,7 @@ impl Block {
         (block
             .contents()
             .iter()
-            .filter(|fragment| {
-                if let Fragment::Evm(_) = fragment {
-                    true
-                } else {
-                    false
-                }
-            })
+            .filter(|fragment| matches!(fragment, Fragment::Evm(_)))
             .count() as u64)
             .into()
     }
