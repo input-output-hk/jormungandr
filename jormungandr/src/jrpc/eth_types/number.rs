@@ -5,7 +5,7 @@ use serde::{
 use std::fmt;
 
 /// Represents usize.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Number(u64);
 
 impl From<u64> for Number {

@@ -77,9 +77,6 @@ pub enum FromConfigParamError {
     ActiveSlotCoefficient(#[from] super::block0_configuration::TryFromActiveSlotCoefficientError),
     #[error("Invalid KES Update speed value")]
     KesUpdateSpeed(#[from] super::block0_configuration::TryFromKesUpdateSpeedError),
-    #[cfg(feature = "evm")]
-    #[error("Invalid EvmEnvSettings value")]
-    EvmEnvSettings(#[from] super::evm_params::TryFromEvmEnvSettingsError),
 }
 
 impl From<ConfigParams> for ConfigParamsLib {
@@ -174,7 +171,7 @@ impl TryFrom<ConfigParamLib> for ConfigParam {
             #[cfg(feature = "evm")]
             ConfigParamLib::EvmConfiguration(val) => Self::EvmConfiguration(val.into()),
             #[cfg(feature = "evm")]
-            ConfigParamLib::EvmEnvironment(val) => Self::EvmEnvironment(val.try_into()?),
+            ConfigParamLib::EvmEnvironment(val) => Self::EvmEnvironment(val.into()),
         })
     }
 }

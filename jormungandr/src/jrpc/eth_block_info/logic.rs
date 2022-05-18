@@ -5,22 +5,29 @@ use crate::{
 };
 use chain_evm::ethereum_types::H256;
 
-pub fn get_block_by_hash(
-    _hash: H256,
+pub async fn get_block_by_hash(
+    hash: H256,
     full: bool,
-    _context: &Context,
+    context: &Context,
 ) -> Result<Option<Block>, Error> {
-    // TODO implement
-    Ok(Some(Block::build(full)))
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
+    let gas_limit = blockchain_tip.ledger().evm_block_gas_limit();
+    let gas_price = blockchain_tip.ledger().evm_gas_price();
+    let block = context.blockchain()?.storage().get(hash.0.into())?;
+    Ok(block.map(|block| Block::build(block, full, gas_limit, gas_price)))
 }
 
-pub fn get_block_by_number(
+pub async fn get_block_by_number(
     _number: BlockNumber,
     full: bool,
-    _context: &Context,
+    context: &Context,
 ) -> Result<Option<Block>, Error> {
     // TODO implement
-    Ok(Some(Block::build(full)))
+    let block = context.blockchain()?.storage().get([0; 32].into())?;
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
+    let gas_limit = blockchain_tip.ledger().evm_block_gas_limit();
+    let gas_price = blockchain_tip.ledger().evm_gas_price();
+    Ok(block.map(|block| Block::build(block, full, gas_limit, gas_price)))
 }
 
 pub fn get_transaction_count_by_hash(

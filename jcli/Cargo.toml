@@ -40,7 +40,7 @@ rpassword = "5.0"
 clap = { version = "3.1", default-features = false, features = ["suggestions", "color", "wrap_help", "std"] }
 
 [features]
-evm = ["chain-evm","jormungandr-lib/evm"]
+evm = ["jormungandr-lib/evm", "chain-evm"]
 
 [dependencies.reqwest]
 version = "0.11"
