@@ -44,7 +44,7 @@ pub fn retire_stake_pool_explorer() {
             BlockchainBuilder::default()
                 .slots_per_epoch(SLOTS_PER_EPOCH)
                 .slot_duration(SLOT_DURATION)
-                .leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4])
+                .leaders(vec![LEADER_1])
                 .build(),
         )
         .wallet_template(
