@@ -32,7 +32,7 @@ pub async fn get_block_by_number(
             Ok(block.map(|block| Block::build(block, full, gas_limit, gas_price)))
         }
         BlockNumber::Earliest => {
-            let block = blockchain.storage().get(blockchain.block0().clone())?;
+            let block = blockchain.storage().get(*blockchain.block0())?;
             Ok(block.map(|block| Block::build(block, full, gas_limit, gas_price)))
         }
         BlockNumber::Pending => Ok(None),
