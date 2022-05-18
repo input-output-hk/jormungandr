@@ -148,7 +148,7 @@ impl Storage {
                 let block = self
                     .storage
                     .get_block(block.id().as_ref())
-                    .expect("already found block, must exist inside store");
+                    .expect("already found this block, it must exists inside the storage");
                 Block::deserialize(&mut Codec::new(block.as_ref()))
                     .map(Some)
                     .map_err(Error::Deserialize)

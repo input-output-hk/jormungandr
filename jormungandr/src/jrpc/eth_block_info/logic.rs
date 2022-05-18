@@ -18,16 +18,33 @@ pub async fn get_block_by_hash(
 }
 
 pub async fn get_block_by_number(
-    _number: BlockNumber,
+    number: BlockNumber,
     full: bool,
     context: &Context,
 ) -> Result<Option<Block>, Error> {
-    // TODO implement
-    let block = context.blockchain()?.storage().get([0; 32].into())?;
+    let blockchain = context.blockchain()?;
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
     let gas_limit = blockchain_tip.ledger().evm_block_gas_limit();
     let gas_price = blockchain_tip.ledger().evm_gas_price();
-    Ok(block.map(|block| Block::build(block, full, gas_limit, gas_price)))
+    match number {
+        BlockNumber::Latest => {
+            let block = blockchain.storage().get(blockchain_tip.hash())?;
+            Ok(block.map(|block| Block::build(block, full, gas_limit, gas_price)))
+        }
+        BlockNumber::Earliest => {
+            let block = blockchain.storage().get(blockchain.block0().clone())?;
+            Ok(block.map(|block| Block::build(block, full, gas_limit, gas_price)))
+        }
+        BlockNumber::Pending => Ok(None),
+        BlockNumber::Num(number) if number <= blockchain_tip.chain_length().into() => {
+            let distance = Into::<u32>::into(blockchain_tip.chain_length()) - number;
+            let block = blockchain
+                .storage()
+                .get_nth_ancestor(blockchain_tip.hash(), distance)?;
+            Ok(block.map(|block| Block::build(block, full, gas_limit, gas_price)))
+        }
+        BlockNumber::Num(_) => Ok(None),
+    }
 }
 
 pub fn get_transaction_count_by_hash(
