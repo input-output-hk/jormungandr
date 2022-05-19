@@ -135,6 +135,29 @@ impl Storage {
             })
     }
 
+    pub fn get_nth_ancestor(
+        &self,
+        header_hash: HeaderHash,
+        distance: u32,
+    ) -> Result<Option<Block>, Error> {
+        match self
+            .storage
+            .get_nth_ancestor(header_hash.as_bytes(), distance)
+        {
+            Ok(block) => {
+                let block = self
+                    .storage
+                    .get_block(block.id().as_ref())
+                    .expect("already found this block, it must exists inside the storage");
+                Block::deserialize(&mut Codec::new(block.as_ref()))
+                    .map(Some)
+                    .map_err(Error::Deserialize)
+            }
+            Err(StorageError::BlockNotFound) => Ok(None),
+            Err(e) => Err(Error::BackendError(e)),
+        }
+    }
+
     pub fn put_block(&self, block: &Block) -> Result<(), Error> {
         let id = block
             .header()
