@@ -24,7 +24,7 @@ fn get_block_by_number_from_context(
         }
         BlockNumber::Pending => Ok(None),
         BlockNumber::Num(number) if number <= blockchain_tip.chain_length().into() => {
-            let distance = Into::<u32>::into(blockchain_tip.chain_length()) - number;
+            let distance = u32::from(blockchain_tip.chain_length()) - number;
             let block = blockchain
                 .storage()
                 .get_nth_ancestor(blockchain_tip.hash(), distance)?;
