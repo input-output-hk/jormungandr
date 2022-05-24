@@ -27,13 +27,12 @@ pub async fn start_rest_server(config: Config, context: ContextLock) {
         .write()
         .await
         .set_rest_server_stopper(ServerStopper::new(stopper_tx));
+    let api = v0::filter(context.clone()).or(v1::filter(context.clone()));
+    #[cfg(feature = "evm")]
+    let api = api.or(v2::filter(context.clone()));
 
     let api = warp::path!("api" / ..)
-        .and(
-            v0::filter(context.clone())
-                .or(v1::filter(context.clone()))
-                .or(v2::filter(context.clone())),
-        )
+        .and(api)
         .with(warp::filters::trace::trace(|info| {
             use http_zipkin::get_trace_context;
             use tracing::field::Empty;
