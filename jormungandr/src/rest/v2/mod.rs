@@ -25,7 +25,7 @@ pub fn filter(
 
         let get_evm_address = warp::path!("evm_address" / String)
             .and(warp::get())
-            .and(with_context.clone())
+            .and(with_context)
             .and_then(handlers::get_evm_address)
             .boxed();
 
@@ -40,12 +40,10 @@ pub fn filter(
 /// Convert rejections to actual HTTP errors
 async fn handle_rejection(err: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = err.find::<logic::Error>() {
-        let (body, code) = match err {
-            err => (
-                display_internal_server_error(err),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            ),
-        };
+        let (body, code) = (
+            display_internal_server_error(err),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        );
 
         return Ok(warp::reply::with_status(body, code));
     }
