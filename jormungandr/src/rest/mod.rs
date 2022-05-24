@@ -3,6 +3,8 @@
 mod prometheus;
 pub mod v0;
 mod v1;
+#[cfg(feature = "evm")]
+mod v2;
 
 use crate::context::{Context, ContextLock, ServerStopper};
 use futures::{channel::mpsc, prelude::*};
