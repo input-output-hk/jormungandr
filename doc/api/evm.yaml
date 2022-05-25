@@ -2,7 +2,7 @@ openapi: 3.0.2
 
 info:
   title: Generic blockchain node REST API
-  description: Jörmungandr Rest API v2
+  description: Jörmungandr Rest API evm
   version: 0.0.1
   contact:
     url: 'https://github.com/input-output-hk/jormungandr/'
@@ -14,7 +14,7 @@ tags:
   - name: address_mapping
 
 path:
-  /api/v2/address_mapping/jormungandr_address/{evm_hex_id}:
+  /api/evm/address_mapping/jormungandr_address/{evm_hex_id}:
     get:
     description: Gets corresponded, mapped jormungadr address for the provided evm address
     operationId: AddressMappingJorId
@@ -38,7 +38,7 @@ path:
               description: hex encoded jormungandr address
 
 path:
-  /api/v2/address_mapping/evm_address/{jor_hex_id}:
+  /api/evm/address_mapping/evm_address/{jor_hex_id}:
     get:
     description: Gets corresponded, mapped evm address for the provided jormungandr address
     operationId: AddressMappingEvmId

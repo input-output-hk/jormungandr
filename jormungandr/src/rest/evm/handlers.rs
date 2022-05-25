@@ -1,4 +1,4 @@
-use crate::{context::ContextLock, rest::v2::logic};
+use crate::{context::ContextLock, rest::evm::logic};
 use warp::{reject::Reject, Rejection, Reply};
 
 impl Reject for logic::Error {}
