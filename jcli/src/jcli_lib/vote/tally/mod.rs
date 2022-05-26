@@ -21,10 +21,10 @@ pub enum Tally {
     /// The decrypted tally data will be printed in hexadecimal encoding
     /// on standard output.
     DecryptResults(decrypt_tally::TallyVotePlanWithAllShares),
-    /// Decrypt all proposals in a vote plan.
+    /// Merge voteplans that have the same external proposal ids.
     ///
-    /// The decrypted tally data will be printed in hexadecimal encoding
-    /// on standard output.
+    /// The tally data will be printed in json encoding on standard output.
+    /// Voteplans that have no match will be ignored.
     MergeResults(merge_results::MergeVotePlan),
 }
 
