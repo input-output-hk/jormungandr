@@ -103,7 +103,7 @@ impl LayerBuilder for CustomLayerBuilder {
 
 impl P2pTopology {
     pub fn new(config: &Configuration, stats_counter: Metrics) -> Self {
-        let addr = config.public_address.or(Some(*LOCAL_ADDR)).unwrap();
+        let addr = config.public_address.unwrap_or(*LOCAL_ADDR);
         let key = secret_key_into_keynesis(config.node_key.clone());
 
         let quarantine = ReportRecords::from_config(config.policy.clone());

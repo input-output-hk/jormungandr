@@ -38,6 +38,7 @@
 - Add new Ethreum RPC mining endpoints: eth_mining, eth_coinbase, eth_hashrate, eth_getWork, eth_submitWork, eth_submitHashrate
 - Add chain-evm as optional dependency for jcli
 - Update gas price and block gas limit for EVM params
+- Add new 'evm' REST API endpoints 'address_mapping/jormungandr_address', 'address_mapping/evm_address` for getting info about address mapping. They are optional for the 'evm' feature.
 
 ## Release 0.13.0
 
