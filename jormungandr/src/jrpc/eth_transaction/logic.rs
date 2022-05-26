@@ -23,7 +23,7 @@ pub fn get_transaction_by_hash(
     _context: &Context,
 ) -> Result<Option<Transaction>, Error> {
     // TODO implement
-    Ok(Some(Transaction::build()))
+    Ok(None)
 }
 
 pub fn get_transaction_by_block_hash_and_index(
@@ -32,7 +32,7 @@ pub fn get_transaction_by_block_hash_and_index(
     _context: &Context,
 ) -> Result<Option<Transaction>, Error> {
     // TODO implement
-    Ok(Some(Transaction::build()))
+    Ok(None)
 }
 
 pub fn get_transaction_by_block_number_and_index(
@@ -41,7 +41,7 @@ pub fn get_transaction_by_block_number_and_index(
     _context: &Context,
 ) -> Result<Option<Transaction>, Error> {
     // TODO implement
-    Ok(Some(Transaction::build()))
+    Ok(None)
 }
 
 pub fn get_transaction_receipt(_hash: H256, _context: &Context) -> Result<Option<Receipt>, Error> {
