@@ -15,7 +15,7 @@ use chain_crypto::SecretKey;
 use chain_impl_mockchain::fee::FeeAlgorithm;
 use chain_impl_mockchain::transaction::InputOutputBuilder;
 use chain_impl_mockchain::transaction::TxBuilder;
-use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload};
+use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload, certificate::EvmMapping};
 use chain_impl_mockchain::{
     certificate::{PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally},
     fee::LinearFee,
@@ -373,6 +373,15 @@ impl FragmentBuilder {
             &inner_wallet,
             &signer_wallet.into(),
             update_vote,
+        )
+    }
+
+    pub fn evm_mapping(&self, from: &Wallet, evm_mapping: &EvmMapping) -> Fragment {
+        let inner_wallet = from.clone().into();
+        self.fragment_factory.evm_mapping (
+            self.valid_until,
+            &inner_wallet,
+            evm_mapping.clone(),
         )
     }
 }

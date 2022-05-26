@@ -15,3 +15,5 @@ pub mod tls;
 pub mod tokens;
 pub mod transactions;
 pub mod vit;
+#[cfg(feature = "evm")]
+pub mod evm_mapping;
