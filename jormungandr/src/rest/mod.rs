@@ -1,6 +1,4 @@
 //! REST API of the node
-#[cfg(feature = "evm")]
-mod evm;
 #[cfg(feature = "prometheus-metrics")]
 mod prometheus;
 pub mod v0;
@@ -28,8 +26,6 @@ pub async fn start_rest_server(config: Config, context: ContextLock) {
         .await
         .set_rest_server_stopper(ServerStopper::new(stopper_tx));
     let api = v0::filter(context.clone()).or(v1::filter(context.clone()));
-    #[cfg(feature = "evm")]
-    let api = api.or(evm::filter(context.clone()));
 
     let api = warp::path!("api" / ..)
         .and(api)

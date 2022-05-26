@@ -222,10 +222,29 @@ pub fn filter(
 
         let vote_plans = warp::path!("plans")
             .and(warp::get())
-            .and(with_context)
+            .and(with_context.clone())
             .and_then(handlers::get_active_vote_plans)
             .boxed();
         root.and(committees.or(vote_plans)).boxed()
+    };
+
+    #[cfg(feature = "evm")]
+    let address_mapping = {
+        let root = warp::path!("address_mapping" / ..);
+
+        let get_jor_address = warp::path!("jormungandr_address" / String)
+            .and(warp::get())
+            .and(with_context.clone())
+            .and_then(handlers::get_jor_address)
+            .boxed();
+
+        let get_evm_address = warp::path!("evm_address" / String)
+            .and(warp::get())
+            .and(with_context)
+            .and_then(handlers::get_evm_address)
+            .boxed();
+
+        root.and(get_jor_address.or(get_evm_address)).boxed()
     };
 
     let routes = shutdown
@@ -244,10 +263,12 @@ pub fn filter(
         .or(rewards)
         .or(utxo)
         .or(diagnostic)
-        .or(votes)
-        .boxed();
+        .or(votes);
 
-    root.and(routes).recover(handle_rejection).boxed()
+    #[cfg(feature = "evm")]
+    let routes = routes.or(address_mapping);
+
+    root.and(routes.boxed()).recover(handle_rejection).boxed()
 }
 
 /// Convert rejections to actual HTTP errors
