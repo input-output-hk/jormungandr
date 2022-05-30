@@ -183,6 +183,18 @@ impl RawRest {
         self.get(&request)
     }
 
+    #[cfg(feature = "evm")]
+    pub fn jor_address(&self, evm_address: String) -> Result<Response, reqwest::Error> {
+        let request = format!("evm/address_mapping/jormungandr_address/{}", evm_address);
+        self.get(&request)
+    }
+
+    #[cfg(feature = "evm")]
+    pub fn evm_address(&self, jor_address: String) -> Result<Response, reqwest::Error> {
+        let request = format!("evm/address_mapping/evm_address/{}", jor_address);
+        self.get(&request)
+    }
+
     pub fn account_votes_count(&self) -> Result<Response, reqwest::Error> {
         self.client
             .get(&self.path(ApiVersion::V1, "votes/plan/accounts-votes-count"))
