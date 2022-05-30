@@ -1,6 +1,8 @@
 pub mod bft;
 pub mod block;
 pub mod cors;
+#[cfg(feature = "evm")]
+pub mod evm_mapping;
 pub mod explorer;
 pub mod fragments;
 pub mod genesis;
@@ -15,5 +17,3 @@ pub mod tls;
 pub mod tokens;
 pub mod transactions;
 pub mod vit;
-#[cfg(feature = "evm")]
-pub mod evm_mapping;
