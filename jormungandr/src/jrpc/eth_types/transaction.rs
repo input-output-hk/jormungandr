@@ -1,6 +1,6 @@
 use super::{bytes::Bytes, number::Number};
 use chain_evm::ethereum_types::{H160, H256, U256};
-use chain_impl_mockchain::evm::EvmTransaction;
+use chain_impl_mockchain::evm::{EvmActionType, EvmTransaction};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -47,22 +47,15 @@ impl Transaction {
         transaction_index: Option<Number>,
         gas_price: u64,
     ) -> Self {
-        match tx {
-            EvmTransaction::Call {
-                caller,
-                address,
-                value,
-                data,
-                gas_limit,
-                access_list: _,
-            } => Self {
+        match tx.action_type {
+            EvmActionType::Call { address, data } => Self {
                 block_hash,
                 block_number,
-                nonce: 1.into(),
-                from: caller,
+                nonce: tx.nonce.into(),
+                from: tx.caller,
                 to: Some(address),
-                value: value.into(),
-                gas: gas_limit.into(),
+                value: tx.value.into(),
+                gas: tx.gas_limit.into(),
                 input: data.into(),
                 gas_price: gas_price.into(),
                 chain_id: Some(1.into()),
@@ -72,20 +65,14 @@ impl Transaction {
                 s: U256::one(),
                 transaction_type: 1.into(),
             },
-            EvmTransaction::Create {
-                caller,
-                value,
-                init_code,
-                gas_limit,
-                access_list: _,
-            } => Self {
+            EvmActionType::Create { init_code } => Self {
                 block_hash,
                 block_number,
-                nonce: 1.into(),
-                from: caller,
+                nonce: tx.nonce.into(),
+                from: tx.caller,
                 to: None,
-                value: value.into(),
-                gas: gas_limit.into(),
+                value: tx.value.into(),
+                gas: tx.gas_limit.into(),
                 input: init_code.into(),
                 gas_price: gas_price.into(),
                 chain_id: Some(1.into()),
@@ -95,21 +82,14 @@ impl Transaction {
                 s: U256::one(),
                 transaction_type: 1.into(),
             },
-            EvmTransaction::Create2 {
-                caller,
-                value,
-                init_code,
-                salt: _,
-                gas_limit,
-                access_list: _,
-            } => Self {
+            EvmActionType::Create2 { init_code, salt: _ } => Self {
                 block_hash,
                 block_number,
-                nonce: 1.into(),
-                from: caller,
+                nonce: tx.nonce.into(),
+                from: tx.caller,
                 to: None,
-                value: value.into(),
-                gas: gas_limit.into(),
+                value: tx.value.into(),
+                gas: tx.gas_limit.into(),
                 input: init_code.into(),
                 gas_price: gas_price.into(),
                 chain_id: Some(1.into()),
