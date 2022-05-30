@@ -12,12 +12,15 @@ use crate::wallet::account::Wallet as AccountWallet;
 use crate::{stake_pool::StakePool, wallet::Wallet};
 use chain_crypto::Ed25519;
 use chain_crypto::SecretKey;
+use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::fee::FeeAlgorithm;
 use chain_impl_mockchain::transaction::InputOutputBuilder;
 use chain_impl_mockchain::transaction::TxBuilder;
-use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload, certificate::EvmMapping};
 use chain_impl_mockchain::{
-    certificate::{PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally},
+    certificate::{
+        EvmMapping, PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally,
+        VoteTallyPayload,
+    },
     fee::LinearFee,
     fragment::Fragment,
     testing::{
@@ -376,12 +379,10 @@ impl FragmentBuilder {
         )
     }
 
+    #[cfg(feature = "evm")]
     pub fn evm_mapping(&self, from: &Wallet, evm_mapping: &EvmMapping) -> Fragment {
         let inner_wallet = from.clone().into();
-        self.fragment_factory.evm_mapping (
-            self.valid_until,
-            &inner_wallet,
-            evm_mapping.clone(),
-        )
+        self.fragment_factory
+            .evm_mapping(self.valid_until, &inner_wallet, evm_mapping.clone())
     }
 }
