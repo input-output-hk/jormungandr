@@ -107,9 +107,8 @@ impl Block {
             let mut res = Vec::new();
             for (i, fragment) in block.fragments().enumerate() {
                 if let Fragment::Evm(evm_tx) = fragment {
-                    let evm_tx = evm_tx.as_slice().payload().into_payload();
                     res.push(Transaction::build(
-                        evm_tx,
+                        evm_tx.clone(),
                         Some(header.hash),
                         Some(header.number.clone()),
                         Some((i as u64).into()),
@@ -121,8 +120,8 @@ impl Block {
         } else {
             let mut res = Vec::new();
             for fragment in block.fragments() {
-                if let Fragment::Evm(evm_tx) = fragment {
-                    res.push(H256::from_slice(evm_tx.hash().as_ref()));
+                if let Fragment::Evm(_) = fragment {
+                    res.push(H256::from_slice(fragment.hash().as_ref()));
                 }
             }
             BlockTransactions::Hashes(res)
