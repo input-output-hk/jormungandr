@@ -26,30 +26,133 @@ pub fn test_evm_mapping() {
 
     let evm_mapping = TestGen::evm_mapping_for_wallet(&alice.clone().into());
 
+    jormungandr
+        .rest()
+        .evm_address(&evm_mapping.account_id().to_string())
+        .unwrap_err();
+
+    jormungandr
+        .rest()
+        .jor_address(&evm_mapping.evm_address().to_string())
+        .unwrap_err();
+
     let alice_fragment = fragment_builder.evm_mapping(&alice, &evm_mapping);
 
-    transaction_sender.send_fragment(&mut alice, alice_fragment.clone(), &jormungandr);
+    transaction_sender
+        .send_fragment(&mut alice, alice_fragment.clone(), &jormungandr)
+        .unwrap();
 
-    println!(
-        "{:?}",
+    assert_eq!(
+        evm_mapping.account_id().to_string(),
         jormungandr
             .rest()
-            .raw()
-            .evm_address(evm_mapping.account_id().to_string())
+            .jor_address(&evm_mapping.evm_address().to_string())
             .unwrap()
     );
 
-    jormungandr.check_no_errors_in_log().unwrap();
-
-    let log = jormungandr.logger.get_lines_as_string();
-   // println!("{:?}", log);
-
-        let debug: Vec<String> = log.iter()
-        .filter(|x| x.contains("fragment"))
-        .cloned().collect();
-        println!("{:?}", debug);
-
+    assert_eq!(
+        evm_mapping.evm_address().to_string(),
+        jormungandr
+            .rest()
+            .evm_address(&evm_mapping.account_id().to_string())
+            .unwrap()
+    );
 }
+
+pub fn test_evm_mapping_already_mapped() {
+    let mut alice = thor::Wallet::default();
+    let bob = thor::Wallet::default();
+
+    let (jormungandr, _stake_pools) = startup::start_stake_pool(
+        &[alice.clone()],
+        &[bob.clone()],
+        &mut ConfigurationBuilder::new(),
+    )
+    .unwrap();
+
+    let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
+
+    let fragment_builder = thor::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let evm_mapping = TestGen::evm_mapping_for_wallet(&alice.clone().into());
+
+    jormungandr
+        .rest()
+        .evm_address(&evm_mapping.account_id().to_string())
+        .unwrap_err();
+
+    jormungandr
+        .rest()
+        .jor_address(&evm_mapping.evm_address().to_string())
+        .unwrap_err();
+
+    let alice_fragment = fragment_builder.evm_mapping(&alice, &evm_mapping);
+
+    transaction_sender
+        .send_fragment(&mut alice, alice_fragment.clone(), &jormungandr)
+        .unwrap();
+
+    assert_eq!(
+        evm_mapping.evm_address().to_string(),
+        jormungandr
+            .rest()
+            .evm_address(&evm_mapping.account_id().to_string())
+            .unwrap()
+    );
+
+    assert_eq!(
+        evm_mapping.account_id().to_string(),
+        jormungandr
+            .rest()
+            .jor_address(&evm_mapping.evm_address().to_string())
+            .unwrap()
+    );
+
+    let evm_mapping_2 = TestGen::evm_mapping_for_wallet(&alice.clone().into());
+
+    let alice_fragment_2 = fragment_builder.evm_mapping(&alice, &evm_mapping_2);
+
+    transaction_sender
+        .send_fragment(&mut alice, alice_fragment_2.clone(), &jormungandr)
+        .unwrap();
+
+    assert_eq!(
+        evm_mapping.evm_address().to_string(),
+        jormungandr
+            .rest()
+            .evm_address(&evm_mapping.account_id().to_string())
+            .unwrap()
+    );
+
+    assert_eq!(
+        evm_mapping.account_id().to_string(),
+        jormungandr
+            .rest()
+            .jor_address(&evm_mapping.evm_address().to_string())
+            .unwrap()
+    );
+
+    assert_ne!(
+        evm_mapping_2.account_id().to_string(),
+        jormungandr
+            .rest()
+            .jor_address(&evm_mapping.evm_address().to_string())
+            .unwrap()
+    );
+
+    assert_ne!(
+        evm_mapping_2.evm_address().to_string(),
+        jormungandr
+            .rest()
+            .evm_address(&evm_mapping.account_id().to_string())
+            .unwrap()
+    );
+}
+
 
 use assert_fs::TempDir;
 use chain_crypto::Ed25519;
@@ -60,7 +163,7 @@ use jormungandr_lib::interfaces::{BlockContentMaxSize, ConfigParam, ConfigParams
 use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier, TransactionHash};
 
 #[test]
-pub fn evm_m_test() {
+pub fn evm_mapping_jcli_test() {
     let temp_dir = TempDir::new().unwrap();
     let mut alice = thor::Wallet::default();
     let bft_secret = create_new_key_pair::<Ed25519>();
@@ -89,7 +192,7 @@ pub fn evm_m_test() {
     let fragment_builder = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
-        until, //BlockDate::first().next_epoch(),
+        BlockDate::first().next_epoch(),
     );
 
     let fs = FragmentSenderSetup::no_verify();
@@ -164,6 +267,3 @@ pub fn evm_m_test() {
             .unwrap()
     );
 }
-
-#[test]
-pub fn evm_mappin_jcli() {}
