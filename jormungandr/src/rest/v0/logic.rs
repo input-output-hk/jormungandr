@@ -82,6 +82,9 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
     #[error("Could not process fragment")]
     Fragment(FragmentsProcessingSummary),
+    #[cfg(feature = "evm")]
+    #[error("Can not parse address: {0}")]
+    AddressParseError(String),
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -593,4 +596,33 @@ pub async fn get_active_vote_plans(context: &Context) -> Result<Vec<VotePlanStat
         .map(VotePlanStatus::from)
         .collect();
     Ok(vp)
+}
+
+#[cfg(feature = "evm")]
+pub async fn get_jor_address(context: &Context, evm_id_hex: &str) -> Result<String, Error> {
+    Ok(context
+        .blockchain_tip()?
+        .get_ref()
+        .await
+        .ledger()
+        .jormungandr_mapped_address(
+            &chain_evm::Address::from_str(evm_id_hex)
+                .map_err(|e| Error::AddressParseError(e.to_string()))?,
+        )
+        .to_string())
+}
+
+#[cfg(feature = "evm")]
+pub async fn get_evm_address(context: &Context, jor_id_hex: &str) -> Result<Option<String>, Error> {
+    Ok(context
+        .blockchain_tip()?
+        .get_ref()
+        .await
+        .ledger()
+        .evm_mapped_address(
+            &PublicKey::<AccountAlg>::from_str(jor_id_hex)
+                .map_err(|e| Error::AddressParseError(e.to_string()))?
+                .into(),
+        )
+        .map(|val| val.to_string()))
 }

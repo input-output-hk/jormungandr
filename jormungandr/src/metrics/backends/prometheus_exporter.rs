@@ -270,9 +270,10 @@ impl MetricsBackend for Prometheus {
                     Fragment::MintToken(tx) => totals(tx),
                     Fragment::UpdateProposal(tx) => totals(tx),
                     Fragment::UpdateVote(tx) => totals(tx),
-                    Fragment::Evm(tx) => totals(tx),
                     Fragment::EvmMapping(tx) => totals(tx),
-                    Fragment::Initial(_) | Fragment::OldUtxoDeclaration(_) => return Ok(()),
+                    Fragment::Initial(_) | Fragment::OldUtxoDeclaration(_) | Fragment::Evm(_) => {
+                        return Ok(())
+                    }
                 }?;
                 block_tx_count += 1;
                 block_input_sum = (block_input_sum + total_input)?;

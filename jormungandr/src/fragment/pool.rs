@@ -360,7 +360,9 @@ fn is_fragment_valid(fragment: &Fragment) -> bool {
         Fragment::VoteCast(ref tx) => is_transaction_valid(tx),
         Fragment::VoteTally(ref tx) => is_transaction_valid(tx),
         Fragment::MintToken(ref tx) => is_transaction_valid(tx),
-        Fragment::Evm(ref tx) => is_transaction_valid(tx),
+        // evm stuff
+        // TODO, maybe we need to develop some evm specific stateless validation in this place
+        Fragment::Evm(_) => true,
         Fragment::EvmMapping(ref tx) => is_transaction_valid(tx),
     }
 }
@@ -373,6 +375,7 @@ fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
     match fragment {
         Fragment::Initial(_) => None,
         Fragment::OldUtxoDeclaration(_) => None,
+        Fragment::Evm(_) => None,
         Fragment::Transaction(tx) => Some(tx.as_slice().valid_until()),
         Fragment::OwnerStakeDelegation(tx) => Some(tx.as_slice().valid_until()),
         Fragment::StakeDelegation(tx) => Some(tx.as_slice().valid_until()),
@@ -385,7 +388,6 @@ fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
         Fragment::VoteCast(tx) => Some(tx.as_slice().valid_until()),
         Fragment::VoteTally(tx) => Some(tx.as_slice().valid_until()),
         Fragment::MintToken(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::Evm(tx) => Some(tx.as_slice().valid_until()),
         Fragment::EvmMapping(tx) => Some(tx.as_slice().valid_until()),
     }
 }

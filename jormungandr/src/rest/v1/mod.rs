@@ -54,11 +54,9 @@ pub fn filter(
         .and(with_context)
         .and_then(handlers::get_accounts_votes_count);
 
-    let routes = fragments;
+    let routes = fragments.or(votes_with_plan).or(votes).or(votes_count);
 
-    root.and(routes.or(votes_with_plan).or(votes).or(votes_count))
-        .recover(handle_rejection)
-        .boxed()
+    root.and(routes).recover(handle_rejection).boxed()
 }
 
 /// Convert rejections to actual HTTP errors
