@@ -114,6 +114,20 @@ impl BackwardCompatibleRest {
         Ok(response_text)
     }
 
+    #[cfg(feature = "evm")]
+    pub fn evm_address(&self, jor_address: &str) -> Result<String, reqwest::Error> {
+        let response_text = self.raw().evm_address(jor_address.to_string())?.text()?;
+        self.print_response_text(&response_text);
+        Ok(response_text)
+    }
+
+    #[cfg(feature = "evm")]
+    pub fn jor_address(&self, evm_address: &str) -> Result<String, reqwest::Error> {
+        let response_text = self.raw().jor_address(evm_address.to_string())?.text()?;
+        self.print_response_text(&response_text);
+        Ok(response_text)
+    }
+
     pub fn stake_pools(&self) -> Result<String, reqwest::Error> {
         let response_text = self.raw().stake_pools()?.text()?;
         self.print_response_text(&response_text);

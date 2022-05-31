@@ -180,6 +180,18 @@ impl JormungandrRest {
             .map_err(RestError::CannotDeserialize)
     }
 
+    #[cfg(feature = "evm")]
+    pub fn evm_address(&self, jor_address: &str) -> Result<String, RestError> {
+        serde_json::from_str(&self.inner.evm_address(jor_address)?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
+    #[cfg(feature = "evm")]
+    pub fn jor_address(&self, evm_address: &str) -> Result<String, RestError> {
+        serde_json::from_str(&self.inner.jor_address(evm_address)?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
     pub fn network_stats(&self) -> Result<Vec<PeerStats>, RestError> {
         serde_json::from_str(&self.inner.network_stats()?).map_err(RestError::CannotDeserialize)
     }
