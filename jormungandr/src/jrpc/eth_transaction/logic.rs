@@ -11,8 +11,8 @@ use chain_evm::ethereum_types::{H160, H256, H512};
 use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::interfaces::FragmentOrigin;
 
-pub async fn send_transaction(_tx: Transaction, context: &Context) -> Result<H256, Error> {
-    let fragment = Fragment::Initial(Default::default());
+pub async fn send_transaction(tx: Transaction, context: &Context) -> Result<H256, Error> {
+    let fragment = Fragment::Evm(tx.into());
     let (reply_handle, reply_future) = intercom::unary_reply();
     let msg = TransactionMsg::SendTransactions {
         origin: FragmentOrigin::JRpc,

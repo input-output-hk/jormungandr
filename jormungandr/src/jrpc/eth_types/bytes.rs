@@ -10,6 +10,12 @@ impl From<Box<[u8]>> for Bytes {
     }
 }
 
+impl From<Bytes> for Box<[u8]> {
+    fn from(val: Bytes) -> Self {
+        val.0
+    }
+}
+
 impl Serialize for Bytes {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

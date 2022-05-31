@@ -1,5 +1,8 @@
 use super::{bytes::Bytes, number::Number};
-use chain_evm::ethereum_types::{H160, H256, U256};
+use chain_evm::{
+    ethereum_types::{H160, H256, U256},
+    AccessList,
+};
 use chain_impl_mockchain::evm::{EvmActionType, EvmTransaction};
 use serde::{
     de::{self, Visitor},
@@ -12,11 +15,11 @@ pub enum TransactionType {
     Legacy,
     EIP2930 {
         /// Pre-pay to warm storage access.
-        access_list: Vec<Number>,
+        access_list: AccessList,
     },
     EIP1559 {
         /// Pre-pay to warm storage access.
-        access_list: Vec<Number>,
+        access_list: AccessList,
         /// Max BaseFeePerGas the user is willing to pay.
         max_fee_per_gas: Number,
         /// The miner's tip.
@@ -176,6 +179,44 @@ pub struct Transaction {
     transaction_type: TransactionType,
 }
 
+impl From<Transaction> for EvmTransaction {
+    fn from(val: Transaction) -> Self {
+        let caller = val.from;
+        let value = val.value.into();
+        let nonce = val.nonce.into();
+        let gas_limit = val.gas_price.into();
+        let access_list = match val.transaction_type {
+            TransactionType::Legacy => Vec::new(),
+            TransactionType::EIP2930 { access_list } => access_list,
+            TransactionType::EIP1559 { access_list, .. } => access_list,
+        };
+
+        match val.to {
+            Some(address) => Self {
+                caller,
+                value: value,
+                nonce,
+                gas_limit,
+                access_list,
+                action_type: EvmActionType::Call {
+                    address,
+                    data: val.input.into(),
+                },
+            },
+            None => Self {
+                caller,
+                value: value,
+                nonce,
+                gas_limit,
+                access_list,
+                action_type: EvmActionType::Create {
+                    init_code: val.input.into(),
+                },
+            },
+        }
+    }
+}
+
 impl Transaction {
     pub fn build(
         tx: EvmTransaction,
@@ -200,7 +241,9 @@ impl Transaction {
                 v: 1.into(),
                 r: U256::one(),
                 s: U256::one(),
-                transaction_type: TransactionType::Legacy,
+                transaction_type: TransactionType::EIP2930 {
+                    access_list: tx.access_list,
+                },
             },
             EvmActionType::Create { init_code } => Self {
                 block_hash,
@@ -217,7 +260,9 @@ impl Transaction {
                 v: 1.into(),
                 r: U256::one(),
                 s: U256::one(),
-                transaction_type: TransactionType::Legacy,
+                transaction_type: TransactionType::EIP2930 {
+                    access_list: tx.access_list,
+                },
             },
             EvmActionType::Create2 { init_code, salt: _ } => Self {
                 block_hash,
@@ -234,7 +279,9 @@ impl Transaction {
                 v: 1.into(),
                 r: U256::one(),
                 s: U256::one(),
-                transaction_type: TransactionType::Legacy,
+                transaction_type: TransactionType::EIP2930 {
+                    access_list: tx.access_list,
+                },
             },
         }
     }
