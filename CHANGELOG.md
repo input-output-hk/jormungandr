@@ -1,35 +1,40 @@
 # Change Log
 
-## Unreleased
+## Release 0.15.0
 
-- fix incorrect keys bech32 HRP by always using the ones provided by the library
-- update REST API: add new endpoint AccountVotes (`/api/v1/votes/plan/account-votes/{account_id}`)
+**New features:**
+
+
 - Support parallel lanes in spending counters on account outputs. This allows
   submitting transactions that can spend from the same account without
   requiring any particular order between the transactions.
-- add new setting proposal expiration into the initial config/genesis
-- add feature for changing blockchain config during the network run. Add new certificates `UpdateProposal` and `UpdateVote`, updated `jcli` with these new transactions.
-- Add new grpc watch service implementation for external (non-node) clients.
-- update explorer, add new GraphQL objects as `UpdateProposal`, `UpdateVote`, `ConfigParam` etc.
-- update REST API: add new endpoint account based votes count (`/api/v1/votes/plan/accounts-votes-count`)
 - Add jcli option to specify a spending counter lane in a user-friendly way
-- Add CORS config params: allowed headers and allowed methods.
-- Update REST API `/api/v0/account/{account_id}`, add new field with the token's state info.
-- Vote tally now uses the token in the voteplan instead of the native currency.
-- Remove `txPendingCnt` metric and related field in `node/stats`
-- Rename `txPendingTotalSize` to `mempoolTotalSize`
-- Add `mempoolUsageRatio` metric and related field in `node/stats` to track load on the mempool.
-- Change `blockContentSizeAvg` to represent information as a percentage of the block max size.
-- Bump ed25519-bip32 from 0.4.0 to 0.4.1
-- Now the tally is incremental and is always available in the rest API. The
-- Add standalone explorer crate.
+- update REST API: add new endpoint AccountVotes (`/api/v1/votes/plan/account-votes/{account_id}`)
+- add feature for changing blockchain config during the network run. Add new certificates `UpdateProposal` and `UpdateVote`, updated `jcli` with these new transactions.
+
+**Changes:**
+
 - Bump clap from 2.34.0 to 3.1.13
 - Bump time from 0.3.7 to 0.3.9
 - Bump libc from 0.2.117 to 0.2.124
 - Bump rand from 0.8.4 to 0.8.5
 - Bump os_info from 3.1.0 to 3.3.0
 - Bump log from 0.4.14 to 0.4.17
+- Bump ed25519-bip32 from 0.4.0 to 0.4.1
+- Remove `txPendingCnt` metric and related field in `node/stats`
+- Rename `txPendingTotalSize` to `mempoolTotalSize`
+- Add `mempoolUsageRatio` metric and related field in `node/stats` to track load on the mempool.
+- Change `blockContentSizeAvg` to represent information as a percentage of the block max size.
+- Update REST API `/api/v0/account/{account_id}`, add new field with the token's state info.
+- Add standalone explorer crate.
 - Add jcli option to generate and sign EVM mapping certificates.
+- add new setting proposal expiration into the initial config/genesis
+- Add new grpc watch service implementation for external (non-node) clients.
+- update explorer, add new GraphQL objects as `UpdateProposal`, `UpdateVote`, `ConfigParam` etc.
+- update REST API: add new endpoint account based votes count (`/api/v1/votes/plan/accounts-votes-count`)
+- Add CORS config params: allowed headers and allowed methods.
+- Vote tally now uses the token in the voteplan instead of the native currency.
+- Now the tally is incremental and is always available in the rest API. The
 - Add new Ethreum RPC endpoints for getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
 - Add new Ethreum RPC endpoints for transaction handling: eth_sendTransaction, eth_sendRawTransaction, eth_getTransactionByHash, eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex, eth_getTransactionReceipt, eth_signTransaction, eth_estimateGas, eth_sign, eth_call
 - Add new Ethreum RPC endpoints for getting chain info: eth_chainId, eth_syncing, eth_gasPrice, eth_protocolVersion, eth_feeHistory
@@ -39,6 +44,10 @@
 - Add chain-evm as optional dependency for jcli
 - Update gas price and block gas limit for EVM params
 - Add new 'evm' REST API endpoints 'address_mapping/jormungandr_address', 'address_mapping/evm_address` for getting info about address mapping. They are optional for the 'evm' feature.
+
+**Bug fixes:**
+
+- fix incorrect keys bech32 HRP by always using the ones provided by the library
 
 ## Release 0.13.0
 
