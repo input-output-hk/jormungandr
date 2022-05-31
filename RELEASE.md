@@ -44,3 +44,24 @@ scenario (e.g. security updates).
 ## Versioning
 
 Exact scheme TBD but globally this is following [Semantic Versioning](https://semver.org/)
+
+## How to do a release
+
+(As of May 2022)
+
+The release process is automatically started when a matching tag is created (e.g. `v0.15.0`). If you need to do a release, the steps roughly are:
+ - create a branch for this release (e.g. `catalyst-fund9`)
+ - update the versions of `jormungandr`, `jcli`, and `jormungandr-*` crates to match the version of the tag (i.e. if the tag is `v0.15.0`, the `Cargo.toml` of each crate should have `version = "0.15.0"`)
+ - run `cargo build` to update the corresponding version numbers in `Cargo.lock`
+ - commit and push those changes to your `origin/<branch-name>`
+ - create the tag to start the release process:
+   - make sure you've checked out the correct commit
+   - create the local tag with `git tag <tag-name>`
+   - push the tag to Github with `git push origin --tags`
+ - Check the Github Actions tab, if it goes wrong, and you need to try again, use:
+   - `git push --delete origin <tag-name>` to delete the tag on Github
+   - `git tag --delete <tag-name>` to delete the tag locally
+   - `git tag <tag-name>; git push origin --tags` to repeat the tagging process
+
+
+
