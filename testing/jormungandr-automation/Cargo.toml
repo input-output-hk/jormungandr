@@ -1,6 +1,6 @@
 [package]
 name = "jormungandr-automation"
-version = "0.13.0"
+version = "0.15.0"
 authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
 edition = "2021"
 
