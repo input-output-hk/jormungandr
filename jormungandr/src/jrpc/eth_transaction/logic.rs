@@ -1,12 +1,11 @@
-use super::Error;
 use crate::{
     context::Context,
     jrpc::{
-        eth_block_info,
         eth_types::{
             block::Block, block_number::BlockNumber, bytes::Bytes, number::Number,
             receipt::Receipt, transaction::Transaction,
         },
+        Error, eth_block_info::get_block_by_number_from_context,
     },
 };
 use chain_evm::ethereum_types::{H160, H256, H512};
@@ -72,7 +71,7 @@ pub async fn get_transaction_by_block_number_and_index(
     let gas_price = blockchain_tip.ledger().evm_gas_price();
     let blockchain = context.blockchain()?;
     let block =
-        eth_block_info::get_block_by_number_from_context(number, blockchain, blockchain_tip)
+        get_block_by_number_from_context(number, blockchain, blockchain_tip)
             .unwrap();
     Ok(get_transaction_from_block_by_index(block, index, gas_price))
 }

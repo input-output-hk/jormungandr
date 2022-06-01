@@ -1,11 +1,11 @@
-use chain_evm::ethereum_types::{H160, H256, H64};
-
 use crate::{
     context::Context,
-    jrpc::eth_types::{number::Number, work::Work},
+    jrpc::{
+        eth_types::{number::Number, work::Work},
+        Error,
+    },
 };
-
-use super::Error;
+use chain_evm::ethereum_types::{H160, H256, H64};
 
 pub fn mining(_context: &Context) -> Result<bool, Error> {
     // TODO implement
