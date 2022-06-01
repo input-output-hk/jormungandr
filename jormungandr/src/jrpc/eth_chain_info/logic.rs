@@ -1,8 +1,8 @@
-use super::Error;
 use crate::{
     context::Context,
-    jrpc::eth_types::{
-        block_number::BlockNumber, fee::FeeHistory, number::Number, sync::SyncStatus,
+    jrpc::{
+        eth_types::{block_number::BlockNumber, fee::FeeHistory, number::Number, sync::SyncStatus},
+        Error,
     },
 };
 

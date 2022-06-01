@@ -1,8 +1,10 @@
-use super::Error;
 use crate::{
     blockchain::{Blockchain, Ref},
     context::Context,
-    jrpc::eth_types::{block::Block, block_number::BlockNumber, number::Number},
+    jrpc::{
+        eth_types::{block::Block, block_number::BlockNumber, number::Number},
+        Error,
+    },
 };
 use chain_evm::ethereum_types::H256;
 use chain_impl_mockchain::block::Block as JorBlock;
