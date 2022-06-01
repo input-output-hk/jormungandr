@@ -23,8 +23,8 @@ pub enum Tally {
     DecryptResults(decrypt_tally::TallyVotePlanWithAllShares),
     /// Merge voteplans that have the same external proposal ids.
     ///
-    /// The tally data will be printed in json encoding on standard output.
-    /// Voteplans that have no match will be ignored.
+    /// The tally data will be printed in json encoding on standard output. There order of the
+    /// result is unspecified.
     MergeResults(merge_results::MergeVotePlan),
 }
 

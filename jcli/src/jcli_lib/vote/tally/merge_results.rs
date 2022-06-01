@@ -2,11 +2,11 @@ use crate::jcli_lib::utils::io;
 use crate::jcli_lib::utils::OutputFormat;
 use jormungandr_lib::crypto::hash::Hash;
 use jormungandr_lib::interfaces::VotePlanId;
-use jormungandr_lib::interfaces::{PrivateTallyState, Tally, VotePlanStatus, VoteProposalStatus};
+use jormungandr_lib::interfaces::{PrivateTallyState, Tally, VotePlanStatus};
 use serde::Deserialize;
 use serde::Serialize;
-use std::collections::BTreeMap;
 use std::collections::BTreeSet;
+use std::collections::HashMap;
 use std::ops::Range;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -64,111 +64,84 @@ pub struct MergedVoteProposalStatus {
     pub votes_cast: usize,
 }
 
-fn merge_voteplans(mut voteplans: Vec<VotePlanStatus>) -> Result<Vec<MergedVotePlan>, Error> {
-    let mut results = Vec::with_capacity(voteplans.len() / 2);
+fn merge_voteplans(voteplans: Vec<VotePlanStatus>) -> Result<Vec<MergedVotePlan>, Error> {
+    let mut group_by_proposals: HashMap<Vec<Hash>, Vec<VotePlanStatus>> = HashMap::new();
 
-    while !voteplans.is_empty() {
-        let vp1 = voteplans.swap_remove(0);
+    for mut voteplan in voteplans.into_iter() {
+        // this matters not only to have a normal form for the keys of the hashmap, but also to be
+        // able to zip and merge later
+        voteplan.proposals.sort_by_key(|p| p.proposal_id);
 
-        let mut ids = BTreeSet::from_iter([vp1.id]);
-
-        let mut p1: BTreeMap<Hash, MergedVoteProposalStatus> = vp1
+        let ids = voteplan
             .proposals
-            .into_iter()
-            .map(|vps| {
-                (
-                    vps.proposal_id,
-                    MergedVoteProposalStatus {
-                        proposal_id: vps.proposal_id,
-                        options: vps.options,
-                        tally: vps.tally,
-                        votes_cast: vps.votes_cast,
-                    },
-                )
-            })
-            .collect();
-
-        // indexes of the proposals that have the same external proposal set as vp1
-        let mut matches = voteplans
             .iter()
-            .enumerate()
-            .filter_map(|(i, vp2)| {
-                if vp2.proposals.len() == p1.len()
-                    && vp2
-                        .proposals
-                        .iter()
-                        .all(|p| p1.get(&p.proposal_id).is_some())
-                {
-                    Some(i)
-                } else {
-                    None
-                }
-            })
+            .map(|p| p.proposal_id)
             .collect::<Vec<_>>();
 
-        for i in &matches {
-            let vp2 = &voteplans[*i];
-            ids.insert(vp2.id);
-
-            let p2: BTreeMap<Hash, &VoteProposalStatus> = vp2
-                .proposals
-                .iter()
-                .map(|vps| (vps.proposal_id, vps))
-                .collect();
-
-            for (mut ps1, ps2) in p1.values_mut().zip(p2.into_iter().map(|(_, v)| v)) {
-                ps1.votes_cast += ps2.votes_cast;
-                ps1.tally = match (&ps1.tally, &ps2.tally) {
-                    (Tally::Public { result: result1 }, Tally::Public { result: result2 }) => {
-                        Tally::Public {
-                            result: result1.merge(result2),
-                        }
-                    }
-                    (
-                        Tally::Private {
-                            state: PrivateTallyState::Decrypted { result: result1 },
-                        },
-                        Tally::Private {
-                            state: PrivateTallyState::Decrypted { result: result2 },
-                        },
-                    ) => Tally::Private {
-                        state: PrivateTallyState::Decrypted {
-                            result: result1.merge(result2),
-                        },
-                    },
-                    (Tally::Public { result: _ }, Tally::Private { state: _ })
-                    | (Tally::Private { state: _ }, Tally::Public { result: _ }) => {
-                        return Err(Error::PrivacyMismatch);
-                    }
-                    (Tally::Private { state: _ }, Tally::Private { state: _ }) => {
-                        return Err(Error::VotePlanEncrypted)
-                    }
-                };
-            }
-        }
-
-        // already merged proposals shouldn't be considered again
-        //
-        // reverse is necessary because the last index can be in the list
-        matches.reverse();
-        for i in matches {
-            voteplans.swap_remove(i);
-        }
-
-        // FIXME: I'm not actually sure if this should be the correct behavior.
-        //
-        // On one hand, a voteplan without matches can't be merged.
-        //
-        // On the other, it can be considered as is trivially merged.
-        if ids.len() > 1 {
-            results.push(MergedVotePlan {
-                ids,
-                proposals: p1.into_iter().map(|(_, v)| v).collect(),
-            });
-        }
+        group_by_proposals
+            .entry(ids)
+            .or_insert_with(Vec::new)
+            .push(voteplan);
     }
 
-    Ok(results)
+    group_by_proposals
+        .into_iter()
+        .map(|(_key, mut group)| {
+            let ids = group.iter().map(|group| group.id).collect();
+
+            let mut proposals = group
+                .pop()
+                .map(|p| {
+                    p.proposals
+                        .into_iter()
+                        .map(|p| MergedVoteProposalStatus {
+                            proposal_id: p.proposal_id,
+                            options: p.options,
+                            tally: p.tally,
+                            votes_cast: p.votes_cast,
+                        })
+                        .collect::<Vec<_>>()
+                })
+                // there has to be at least one entry, since  the key comes from the value, so this
+                // can't panic.
+                .unwrap();
+
+            for vps in group {
+                for (a, b) in proposals.iter_mut().zip(vps.proposals.iter()) {
+                    a.votes_cast += b.votes_cast;
+
+                    a.tally = match (&a.tally, &b.tally) {
+                        (Tally::Public { result: result1 }, Tally::Public { result: result2 }) => {
+                            Tally::Public {
+                                result: result1.merge(result2),
+                            }
+                        }
+                        (
+                            Tally::Private {
+                                state: PrivateTallyState::Decrypted { result: result1 },
+                            },
+                            Tally::Private {
+                                state: PrivateTallyState::Decrypted { result: result2 },
+                            },
+                        ) => Tally::Private {
+                            state: PrivateTallyState::Decrypted {
+                                result: result1.merge(result2),
+                            },
+                        },
+                        (Tally::Public { result: _ }, Tally::Private { state: _ })
+                        | (Tally::Private { state: _ }, Tally::Public { result: _ }) => {
+                            return Err(Error::PrivacyMismatch);
+                        }
+                        (Tally::Private { state: _ }, Tally::Private { state: _ }) => {
+                            return Err(Error::VotePlanEncrypted)
+                        }
+                    };
+                }
+            }
+
+            Ok(MergedVotePlan { ids, proposals })
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -178,7 +151,7 @@ mod tests {
         tokens::identifier::{self, TokenIdentifier},
         vote::PayloadType,
     };
-    use jormungandr_lib::interfaces::{BlockDate, TallyResult, VotePlanId};
+    use jormungandr_lib::interfaces::{BlockDate, TallyResult, VotePlanId, VoteProposalStatus};
 
     use super::*;
 
@@ -293,9 +266,11 @@ mod tests {
         );
         voteplans.push(voteplan6);
 
-        let result = merge_voteplans(voteplans).unwrap();
+        let mut result = merge_voteplans(voteplans).unwrap();
 
-        assert_eq!(result.len(), 2);
+        result.sort_by_key(|r| r.ids.clone());
+
+        assert_eq!(result.len(), 3);
 
         match &result[0].proposals[0].tally {
             Tally::Private {
