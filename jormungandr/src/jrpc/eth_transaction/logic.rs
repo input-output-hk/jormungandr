@@ -1,9 +1,11 @@
-use super::Error;
 use crate::{
     context::Context,
-    jrpc::eth_types::{
-        block_number::BlockNumber, bytes::Bytes, number::Number, receipt::Receipt,
-        transaction::Transaction,
+    jrpc::{
+        eth_types::{
+            block_number::BlockNumber, bytes::Bytes, number::Number, receipt::Receipt,
+            transaction::Transaction,
+        },
+        Error,
     },
 };
 use chain_evm::ethereum_types::{H160, H256, H512};

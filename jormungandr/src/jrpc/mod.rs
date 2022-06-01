@@ -16,9 +16,18 @@ mod eth_types;
 use crate::context::ContextLock;
 use jsonrpsee_http_server::{HttpServerBuilder, RpcModule};
 use std::net::SocketAddr;
+use thiserror::Error;
 
 pub struct Config {
     pub listen: SocketAddr,
+}
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error(transparent)]
+    ContextError(#[from] crate::context::Error),
+    #[error(transparent)]
+    Storage(#[from] crate::blockchain::StorageError),
 }
 
 pub async fn start_jrpc_server(config: Config, _context: ContextLock) {
