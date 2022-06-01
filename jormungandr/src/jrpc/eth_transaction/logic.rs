@@ -1,10 +1,12 @@
-use super::Error;
 use crate::{
     context::Context,
     intercom::{self, TransactionMsg},
-    jrpc::eth_types::{
-        block_number::BlockNumber, bytes::Bytes, number::Number, receipt::Receipt,
-        transaction::Transaction,
+    jrpc::{
+        eth_types::{
+            block_number::BlockNumber, bytes::Bytes, number::Number, receipt::Receipt,
+            transaction::Transaction,
+        },
+        Error,
     },
 };
 use chain_evm::{
