@@ -18,6 +18,8 @@ pub enum Error {
     TxMsgSendError(#[from] TrySendError<TransactionMsg>),
     #[error("Could not process fragment")]
     Fragment(FragmentsProcessingSummary),
+    #[error("Cound not decode Ethereum transaction bytes, erorr: {0}")]
+    TransactionDecodedErorr(String),
 }
 
 pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
