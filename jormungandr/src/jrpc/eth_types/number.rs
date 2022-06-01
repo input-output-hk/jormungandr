@@ -14,6 +14,12 @@ impl From<u64> for Number {
     }
 }
 
+impl From<Number> for u64 {
+    fn from(val: Number) -> Self {
+        val.0
+    }
+}
+
 impl Serialize for Number {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

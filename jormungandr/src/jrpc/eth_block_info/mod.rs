@@ -1,5 +1,6 @@
 use crate::context::ContextLock;
 use jsonrpsee_http_server::RpcModule;
+pub use logic::get_block_by_number_from_context;
 
 mod logic;
 

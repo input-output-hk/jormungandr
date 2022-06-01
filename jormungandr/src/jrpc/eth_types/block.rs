@@ -3,6 +3,7 @@ use chain_core::property::Serialize;
 use chain_evm::ethereum_types::{Bloom, H160, H256};
 use chain_impl_mockchain::{
     block::{Block as JorBlock, Header as JorHeader},
+    evm::EvmTransaction,
     fragment::Fragment,
 };
 
@@ -144,6 +145,21 @@ impl Block {
             .filter(|fragment| matches!(fragment, Fragment::Evm(_)))
             .count() as u64)
             .into()
+    }
+
+    pub fn get_transaction_by_index(block: &JorBlock, index: usize) -> Option<EvmTransaction> {
+        match block
+            .contents()
+            .iter()
+            .enumerate()
+            .find(|(i, _)| *i == index)
+        {
+            Some((_, fragment)) => match fragment {
+                Fragment::Evm(tx) => Some(tx.clone()),
+                _ => None,
+            },
+            None => None,
+        }
     }
 }
 
