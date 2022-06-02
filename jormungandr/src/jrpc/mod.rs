@@ -36,7 +36,7 @@ pub enum Error {
     #[error(transparent)]
     IntercomError(#[from] intercom::Error),
     #[error(transparent)]
-    TxMsgSendError(#[from] TrySendError<TransactionMsg>),
+    TxMsgSendError(#[from] Box<TrySendError<TransactionMsg>>),
     #[error("Could not process fragment")]
     Fragment(FragmentsProcessingSummary),
     #[error("Cound not decode Ethereum transaction bytes, erorr: {0}")]

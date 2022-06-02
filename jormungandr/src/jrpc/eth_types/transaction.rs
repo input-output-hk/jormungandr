@@ -78,8 +78,7 @@ impl<'de> Visitor<'de> for TransactionTypeVisitor {
     where
         A: serde::de::MapAccess<'de>,
     {
-        const FIELDS: &'static [&'static str] =
-            &["type", "accessList", "maxFeePerGas", "maxPriorityFeePerGas"];
+        const FIELDS: &[&str] = &["type", "accessList", "maxFeePerGas", "maxPriorityFeePerGas"];
 
         let mut id: Option<Number> = None;
         let mut access_list = None;
@@ -194,7 +193,7 @@ impl From<Transaction> for EvmTransaction {
         match val.to {
             Some(address) => Self {
                 caller,
-                value: value,
+                value,
                 nonce,
                 gas_limit,
                 access_list,
@@ -205,7 +204,7 @@ impl From<Transaction> for EvmTransaction {
             },
             None => Self {
                 caller,
-                value: value,
+                value,
                 nonce,
                 gas_limit,
                 access_list,

@@ -26,7 +26,12 @@ pub async fn send_transaction(tx: Transaction, context: &Context) -> Result<H256
         reply_handle,
     };
 
-    context.try_full()?.transaction_task.clone().try_send(msg)?;
+    context
+        .try_full()?
+        .transaction_task
+        .clone()
+        .try_send(msg)
+        .map_err(Box::new)?;
     let reply = reply_future.await?;
     if reply.is_error() {
         Err(Error::Fragment(reply))
@@ -47,7 +52,12 @@ pub async fn send_raw_transaction(raw_tx: Bytes, context: &Context) -> Result<H2
         reply_handle,
     };
 
-    context.try_full()?.transaction_task.clone().try_send(msg)?;
+    context
+        .try_full()?
+        .transaction_task
+        .clone()
+        .try_send(msg)
+        .map_err(Box::new)?;
     let reply = reply_future.await?;
     if reply.is_error() {
         Err(Error::Fragment(reply))
