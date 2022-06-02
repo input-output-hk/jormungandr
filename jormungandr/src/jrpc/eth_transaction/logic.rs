@@ -1,11 +1,12 @@
 use crate::{
     context::Context,
     jrpc::{
+        eth_block_info::get_block_by_number_from_context,
         eth_types::{
             block::Block, block_number::BlockNumber, bytes::Bytes, number::Number,
             receipt::Receipt, transaction::Transaction,
         },
-        Error, eth_block_info::get_block_by_number_from_context,
+        Error,
     },
 };
 use chain_evm::ethereum_types::{H160, H256, H512};
@@ -48,7 +49,7 @@ pub async fn get_transaction_by_hash(
     _context: &Context,
 ) -> Result<Option<Transaction>, Error> {
     // TODO implement
-    Ok(None)
+    Err(Error::NonArchiveNode)
 }
 
 pub async fn get_transaction_by_block_hash_and_index(
@@ -70,15 +71,13 @@ pub async fn get_transaction_by_block_number_and_index(
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
     let gas_price = blockchain_tip.ledger().evm_gas_price();
     let blockchain = context.blockchain()?;
-    let block =
-        get_block_by_number_from_context(number, blockchain, blockchain_tip)
-            .unwrap();
+    let block = get_block_by_number_from_context(number, blockchain, blockchain_tip).unwrap();
     Ok(get_transaction_from_block_by_index(block, index, gas_price))
 }
 
 pub fn get_transaction_receipt(_hash: H256, _context: &Context) -> Result<Option<Receipt>, Error> {
     // TODO implement
-    Ok(Some(Receipt::build()))
+    Err(Error::NonArchiveNode)
 }
 
 pub fn sign_transaction(_tx: Transaction, _context: &Context) -> Result<Bytes, Error> {
