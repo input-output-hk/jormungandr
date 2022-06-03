@@ -154,11 +154,8 @@ impl Block {
             .enumerate()
             .find(|(i, _)| *i == index)
         {
-            Some((_, fragment)) => match fragment {
-                Fragment::Evm(tx) => Some(tx.clone()),
-                _ => None,
-            },
-            None => None,
+            Some((_, Fragment::Evm(tx))) => Some(tx.clone()),
+            _ => None,
         }
     }
 }

@@ -18,18 +18,16 @@ fn get_transaction_from_block_by_index(
     gas_price: u64,
 ) -> Option<Transaction> {
     match &block {
-        Some(block) => {
-            match Block::get_transaction_by_index(block, u64::from(index.clone()) as usize) {
-                Some(tx) => Some(Transaction::build(
+        Some(block) => Block::get_transaction_by_index(block, u64::from(index.clone()) as usize)
+            .map(|tx| {
+                Transaction::build(
                     tx,
                     Some(H256::from_slice(block.header().hash().as_bytes())),
                     Some((u32::from(block.header().chain_length()) as u64).into()),
                     Some(index),
                     gas_price,
-                )),
-                None => None,
-            }
-        }
+                )
+            }),
         None => None,
     }
 }
