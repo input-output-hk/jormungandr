@@ -2362,7 +2362,7 @@ paths:
 
 
   # it is only enabled with the "evm" feature included during the build
-  '/api/evm/address_mapping/jormungandr_address/{evm_hex_id}':
+  '/api/v0/address_mapping/jormungandr_address/{evm_hex_id}':
     get:
       description: Gets corresponded, mapped jormungadr address for the provided evm address
       operationId: AddressMappingJorId
@@ -2386,7 +2386,7 @@ paths:
                 description: hex encoded jormungandr address
 
   # it is only enabled with the "evm" feature included during the build
-  '/api/evm/address_mapping/evm_address/{jor_hex_id}':
+  '/api/v0/address_mapping/evm_address/{jor_hex_id}':
     get:
       description: Gets corresponded, mapped evm address for the provided jormungandr address
       operationId: AddressMappingEvmId
