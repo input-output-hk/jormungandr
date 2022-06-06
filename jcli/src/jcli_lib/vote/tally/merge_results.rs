@@ -78,10 +78,7 @@ fn merge_voteplans(voteplans: Vec<VotePlanStatus>) -> Result<Vec<MergedVotePlan>
             .map(|p| p.proposal_id)
             .collect::<Vec<_>>();
 
-        group_by_proposals
-            .entry(ids)
-            .or_insert_with(Vec::new)
-            .push(voteplan);
+        group_by_proposals.entry(ids).or_default().push(voteplan);
     }
 
     group_by_proposals
