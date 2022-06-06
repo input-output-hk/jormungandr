@@ -41,16 +41,16 @@ http-zipkin = "0.3.0"
 
 jormungandr-lib = {path = "../jormungandr-lib"}
 
-cardano-legacy-address = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-chain-addr = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-chain-core = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-chain-crypto = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-chain-impl-mockchain = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-chain-time = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-chain-vote = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-chain-ser = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-chain-network = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
-imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+cardano-legacy-address = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9"}
+chain-addr = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9"}
+chain-core = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9"}
+chain-crypto = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9"}
+chain-impl-mockchain = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9"}
+chain-time = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9"}
+chain-vote = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9"}
+chain-ser = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9"}
+chain-network = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9"}
+imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9"}
 
 [features]
 default = []
