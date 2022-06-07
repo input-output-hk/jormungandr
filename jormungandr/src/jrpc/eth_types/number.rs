@@ -34,13 +34,13 @@ impl<'a> Deserialize<'a> for Number {
     where
         D: Deserializer<'a>,
     {
-        deserializer.deserialize_any(IndexVisitor)
+        deserializer.deserialize_any(NumberVisitor)
     }
 }
 
-struct IndexVisitor;
+struct NumberVisitor;
 
-impl<'a> Visitor<'a> for IndexVisitor {
+impl<'a> Visitor<'a> for NumberVisitor {
     type Value = Number;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
