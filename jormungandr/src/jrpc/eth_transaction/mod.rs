@@ -82,6 +82,7 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let tx = params.parse()?;
             logic::estimate_gas(tx, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
