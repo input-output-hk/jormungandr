@@ -81,6 +81,8 @@ pub enum Error {
         source: std::io::Error,
         path: PathBuf,
     },
+    #[error(transparent)]
+    MergeError(#[from] tally::merge_results::Error),
 }
 
 #[derive(StructOpt)]
