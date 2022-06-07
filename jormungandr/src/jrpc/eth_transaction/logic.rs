@@ -1,5 +1,6 @@
 use crate::{
     context::Context,
+    intercom::{self, TransactionMsg},
     jrpc::{
         eth_types::{
             block_number::BlockNumber, bytes::Bytes, number::Number, receipt::Receipt,
@@ -8,16 +9,61 @@ use crate::{
         Error,
     },
 };
-use chain_evm::ethereum_types::{H160, H256, H512};
+use chain_evm::{
+    ethereum_types::{H160, H256, H512},
+    transaction::EthereumSignedTransaction,
+};
+use chain_impl_mockchain::fragment::Fragment;
+use jormungandr_lib::interfaces::FragmentOrigin;
 
-pub fn send_transaction(_tx: Transaction, _context: &Context) -> Result<H256, Error> {
-    // TODO implement
-    Ok(H256::zero())
+pub async fn send_transaction(tx: Transaction, context: &Context) -> Result<H256, Error> {
+    let fragment = Fragment::Evm(tx.into());
+    let (reply_handle, reply_future) = intercom::unary_reply();
+    let msg = TransactionMsg::SendTransactions {
+        origin: FragmentOrigin::JRpc,
+        fragments: vec![fragment],
+        fail_fast: true,
+        reply_handle,
+    };
+
+    context
+        .try_full()?
+        .transaction_task
+        .clone()
+        .try_send(msg)
+        .map_err(Box::new)?;
+    let reply = reply_future.await?;
+    if reply.is_error() {
+        Err(Error::Fragment(reply))
+    } else {
+        Ok(H256::zero())
+    }
 }
 
-pub fn send_raw_transaction(_raw_tx: Bytes, _context: &Context) -> Result<H256, Error> {
-    // TODO implement
-    Ok(H256::zero())
+pub async fn send_raw_transaction(raw_tx: Bytes, context: &Context) -> Result<H256, Error> {
+    let tx = EthereumSignedTransaction::from_bytes(raw_tx.as_ref())
+        .map_err(|e| Error::TransactionDecodedErorr(e.to_string()))?;
+    let fragment = Fragment::Evm(tx.try_into().map_err(Error::TransactionDecodedErorr)?);
+    let (reply_handle, reply_future) = intercom::unary_reply();
+    let msg = TransactionMsg::SendTransactions {
+        origin: FragmentOrigin::JRpc,
+        fragments: vec![fragment],
+        fail_fast: true,
+        reply_handle,
+    };
+
+    context
+        .try_full()?
+        .transaction_task
+        .clone()
+        .try_send(msg)
+        .map_err(Box::new)?;
+    let reply = reply_future.await?;
+    if reply.is_error() {
+        Err(Error::Fragment(reply))
+    } else {
+        Ok(H256::zero())
+    }
 }
 
 pub fn get_transaction_by_hash(

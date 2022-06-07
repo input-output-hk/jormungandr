@@ -14,6 +14,12 @@ impl From<u64> for Number {
     }
 }
 
+impl From<Number> for u64 {
+    fn from(val: Number) -> Self {
+        val.0
+    }
+}
+
 impl Serialize for Number {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -28,13 +34,13 @@ impl<'a> Deserialize<'a> for Number {
     where
         D: Deserializer<'a>,
     {
-        deserializer.deserialize_any(IndexVisitor)
+        deserializer.deserialize_any(NumberVisitor)
     }
 }
 
-struct IndexVisitor;
+struct NumberVisitor;
 
-impl<'a> Visitor<'a> for IndexVisitor {
+impl<'a> Visitor<'a> for NumberVisitor {
     type Value = Number;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
