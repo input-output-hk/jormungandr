@@ -42,8 +42,8 @@ pub async fn get_block_by_hash(
     context: &Context,
 ) -> Result<Option<Block>, Error> {
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
-    let gas_limit = blockchain_tip.ledger().evm_block_gas_limit();
-    let gas_price = blockchain_tip.ledger().evm_gas_price();
+    let gas_limit = blockchain_tip.ledger().get_evm_block_gas_limit();
+    let gas_price = blockchain_tip.ledger().get_evm_gas_price();
     let block = context.blockchain()?.storage().get(hash.0.into())?;
     Ok(block.map(|block| Block::build(block, full, gas_limit, gas_price)))
 }
@@ -55,8 +55,8 @@ pub async fn get_block_by_number(
 ) -> Result<Option<Block>, Error> {
     let blockchain = context.blockchain()?;
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
-    let gas_limit = blockchain_tip.ledger().evm_block_gas_limit();
-    let gas_price = blockchain_tip.ledger().evm_gas_price();
+    let gas_limit = blockchain_tip.ledger().get_evm_block_gas_limit();
+    let gas_price = blockchain_tip.ledger().get_evm_gas_price();
     Ok(
         get_block_by_number_from_context(number, blockchain, blockchain_tip)?
             .map(|block| Block::build(block, full, gas_limit, gas_price)),
