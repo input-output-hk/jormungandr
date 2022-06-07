@@ -41,6 +41,7 @@ pub struct Receipt {
 }
 
 impl Receipt {
+    #[allow(dead_code)]
     pub fn build() -> Self {
         Self {
             transaction_hash: H256::zero(),

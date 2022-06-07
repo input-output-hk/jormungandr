@@ -10,7 +10,7 @@ use chain_evm::ethereum_types::H256;
 use chain_impl_mockchain::block::Block as JorBlock;
 use std::sync::Arc;
 
-fn get_block_by_number_from_context(
+pub fn get_block_by_number_from_context(
     number: BlockNumber,
     blockchain: &Blockchain,
     blockchain_tip: Arc<Ref>,

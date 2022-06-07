@@ -33,6 +33,8 @@ pub enum Error {
     ContextError(#[from] crate::context::Error),
     #[error(transparent)]
     Storage(#[from] crate::blockchain::StorageError),
+    #[error("Currently we dont support archive and full modes, so unfortunately this functionality is not working at this moment")]
+    NonArchiveNode,
     #[error(transparent)]
     IntercomError(#[from] intercom::Error),
     #[error(transparent)]
