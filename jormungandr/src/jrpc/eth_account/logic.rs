@@ -1,7 +1,9 @@
-use super::Error;
 use crate::{
     context::Context,
-    jrpc::eth_types::{block_number::BlockNumber, bytes::Bytes, number::Number},
+    jrpc::{
+        eth_types::{block_number::BlockNumber, bytes::Bytes, number::Number},
+        Error,
+    },
 };
 use chain_evm::ethereum_types::{H160, H256};
 
@@ -16,7 +18,7 @@ pub fn get_transaction_count(
     _context: &Context,
 ) -> Result<Number, Error> {
     // TODO implement
-    Ok(0.into())
+    Err(Error::NonArchiveNode)
 }
 
 pub fn get_balance(

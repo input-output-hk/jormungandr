@@ -1,11 +1,7 @@
+use crate::context::ContextLock;
 use jsonrpsee_http_server::RpcModule;
 
-use crate::context::ContextLock;
-
 mod logic;
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {}
 
 pub fn eth_account_module(context: ContextLock) -> RpcModule<ContextLock> {
     let mut module = RpcModule::new(context);
