@@ -463,13 +463,27 @@ pub enum Tally {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct TallyResult {
-    results: Vec<u64>,
-    options: Range<u8>,
+    pub results: Vec<u64>,
+    pub options: Range<u8>,
 }
 
 impl TallyResult {
     pub fn results(&self) -> Vec<u64> {
         self.results.clone()
+    }
+
+    pub fn merge(&self, other: &Self) -> Self {
+        assert_eq!(self.options, other.options);
+
+        Self {
+            results: self
+                .results
+                .iter()
+                .zip(other.results().iter())
+                .map(|(l, r)| l + r)
+                .collect(),
+            options: self.options.clone(),
+        }
     }
 }
 
