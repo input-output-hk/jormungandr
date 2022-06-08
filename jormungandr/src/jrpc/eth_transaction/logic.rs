@@ -132,7 +132,8 @@ pub async fn estimate_gas(tx: Transaction, context: &Context) -> Result<Number, 
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
     Ok(blockchain_tip
         .ledger()
-        .estimate_evm_transaction(tx.into())?
+        .estimate_evm_transaction(tx.into())
+        .map_err(Box::new)?
         .into())
 }
 

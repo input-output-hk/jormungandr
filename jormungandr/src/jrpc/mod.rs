@@ -40,8 +40,8 @@ pub enum Error {
     IntercomError(#[from] intercom::Error),
     #[error(transparent)]
     TxMsgSendError(#[from] Box<TrySendError<TransactionMsg>>),
-    #[error("Can not estimate gas fees transaction")]
-    EstimationError(#[from] LedgerError),
+    #[error("Can not estimate gas fees transaction, error: {0}")]
+    EstimationError(#[from] Box<LedgerError>),
     #[error("Could not process fragment")]
     Fragment(FragmentsProcessingSummary),
     #[error("Cound not decode Ethereum transaction bytes, erorr: {0}")]
