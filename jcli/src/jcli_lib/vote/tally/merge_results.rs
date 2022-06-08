@@ -1,14 +1,14 @@
-use crate::jcli_lib::utils::io;
-use crate::jcli_lib::utils::OutputFormat;
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::VotePlanId;
-use jormungandr_lib::interfaces::{PrivateTallyState, Tally, VotePlanStatus};
-use serde::Deserialize;
-use serde::Serialize;
-use std::collections::BTreeSet;
-use std::collections::HashMap;
-use std::ops::Range;
-use std::path::PathBuf;
+use crate::jcli_lib::utils::{io, OutputFormat};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{PrivateTallyState, Tally, VotePlanId, VotePlanStatus},
+};
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::{BTreeSet, HashMap},
+    ops::Range,
+    path::PathBuf,
+};
 use structopt::StructOpt;
 
 #[derive(Debug, thiserror::Error)]
