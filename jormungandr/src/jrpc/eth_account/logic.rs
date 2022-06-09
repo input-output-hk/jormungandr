@@ -22,7 +22,7 @@ pub async fn get_transaction_count(
             let ledger = context.blockchain_tip()?.get_ref().await.ledger();
             let address = ledger.jormungandr_mapped_address(&address);
             let account = ledger.accounts().get_state(&address)?;
-            Ok(account.evm_state.nonce.clone().into())
+            Ok(account.evm_state.nonce.into())
         }
         _ => Err(Error::NonArchiveNode),
     }
