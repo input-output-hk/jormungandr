@@ -38,6 +38,8 @@ pub enum Error {
     #[error(transparent)]
     IntercomError(#[from] intercom::Error),
     #[error(transparent)]
+    AccountLedgerError(#[from] chain_impl_mockchain::account::LedgerError),
+    #[error(transparent)]
     TxMsgSendError(#[from] Box<TrySendError<TransactionMsg>>),
     #[error("Could not process fragment")]
     Fragment(FragmentsProcessingSummary),
