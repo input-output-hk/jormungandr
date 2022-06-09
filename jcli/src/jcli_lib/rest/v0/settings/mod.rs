@@ -3,7 +3,6 @@ use crate::jcli_lib::{
     utils::OutputFormat,
 };
 use jormungandr_lib::interfaces::SettingsDto;
-
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

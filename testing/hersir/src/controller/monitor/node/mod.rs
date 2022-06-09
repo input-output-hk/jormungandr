@@ -2,12 +2,10 @@
 
 mod legacy;
 
-use jormungandr_automation::jormungandr::ExplorerProcess;
-pub use legacy::LegacyNode;
-
 use crate::style;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
+use indicatif::ProgressBar;
 pub use jormungandr_automation::jormungandr::{
     grpc::{client::MockClientError, JormungandrClient},
     uri_from_socket_addr, FragmentNode, FragmentNodeError, JormungandrLogger, JormungandrRest,
@@ -15,7 +13,7 @@ pub use jormungandr_automation::jormungandr::{
 };
 use jormungandr_automation::{
     jormungandr::{
-        JormungandrProcess, LogLevel, NodeAlias, ShutdownError, StartupError,
+        ExplorerProcess, JormungandrProcess, LogLevel, NodeAlias, ShutdownError, StartupError,
         StartupVerificationMode, Status,
     },
     testing::SyncNode,
@@ -25,13 +23,11 @@ use jormungandr_lib::{
     interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary, NodeState},
     multiaddr,
 };
-use std::collections::HashMap;
-
-use indicatif::ProgressBar;
-use std::net::SocketAddr;
-
+pub use legacy::LegacyNode;
 use std::{
+    collections::HashMap,
     io::{self, BufRead, BufReader},
+    net::SocketAddr,
     path::PathBuf,
     process::ExitStatus,
     time::Duration,

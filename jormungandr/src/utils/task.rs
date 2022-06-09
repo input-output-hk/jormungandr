@@ -6,14 +6,6 @@
 //!
 
 use futures::{prelude::*, stream::FuturesUnordered};
-use thiserror::Error;
-use tokio::{
-    runtime::{Handle, Runtime},
-    task::JoinHandle,
-};
-use tracing::{span, Level, Span};
-use tracing_futures::Instrument;
-
 use std::{
     error,
     fmt::Debug,
@@ -21,6 +13,13 @@ use std::{
     sync::mpsc::Sender,
     time::{Duration, Instant},
 };
+use thiserror::Error;
+use tokio::{
+    runtime::{Handle, Runtime},
+    task::JoinHandle,
+};
+use tracing::{span, Level, Span};
+use tracing_futures::Instrument;
 
 /// hold onto the different services created
 pub struct Services {

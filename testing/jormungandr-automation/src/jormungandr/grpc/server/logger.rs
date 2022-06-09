@@ -1,8 +1,7 @@
 use crate::jormungandr::JormungandrLogger;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-
 use std::{
+    fmt,
     io::{Read, Result},
     sync::mpsc::Receiver,
 };

@@ -24,15 +24,13 @@ use jormungandr_lib::{
     },
     time::SecondsSinceUnixEpoch,
 };
-use thiserror::Error;
-use tracing::Instrument;
-
 use std::mem;
-
+use thiserror::Error;
 use tokio::{
     fs::File,
     io::{AsyncWriteExt, BufWriter},
 };
+use tracing::Instrument;
 
 // It's a pretty big buffer, but common cloud based storage solutions (like EBS or GlusterFS) benefits from
 // this and it's currently flushed after every request, so the possibility of losing fragments due to a crash
@@ -394,7 +392,6 @@ fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
 
 pub(super) mod internal {
     use super::*;
-
     use std::{
         cmp::Ordering,
         collections::{BTreeSet, HashMap},

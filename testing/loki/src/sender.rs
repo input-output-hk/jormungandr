@@ -1,8 +1,3 @@
-use thor::{
-    BlockDateGenerator, DummySyncNode, FragmentBuilderError, FragmentExporter,
-    FragmentExporterError, FragmentVerifier, Wallet,
-};
-
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
     block::BlockDate,
@@ -21,6 +16,10 @@ use jormungandr_automation::{
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentStatus};
 use rand::{thread_rng, Rng};
 use std::{path::PathBuf, time::Duration};
+use thor::{
+    BlockDateGenerator, DummySyncNode, FragmentBuilderError, FragmentExporter,
+    FragmentExporterError, FragmentVerifier, Wallet,
+};
 
 /// Send malformed transactions
 /// Only supports account based wallets

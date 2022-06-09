@@ -1,5 +1,5 @@
 use crate::{blockchain::Ref, metrics::MetricsBackend};
-
+use arc_swap::ArcSwapOption;
 use chain_impl_mockchain::{
     block::Block,
     fragment::Fragment,
@@ -10,7 +10,6 @@ use jormungandr_lib::{
     interfaces::NodeStats,
     time::{SecondsSinceUnixEpoch, SystemTime},
 };
-
 use std::{
     convert::TryInto,
     sync::{
@@ -19,8 +18,6 @@ use std::{
     },
     time::Instant,
 };
-
-use arc_swap::ArcSwapOption;
 
 const EXP_MOVING_AVERAGE_COEFF: f64 = 0.5;
 

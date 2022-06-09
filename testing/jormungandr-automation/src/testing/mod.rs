@@ -14,6 +14,10 @@ pub mod time;
 pub mod verify;
 pub mod vit;
 
+pub use benchmark::sync::{
+    ensure_node_is_in_sync_with_others, ensure_nodes_are_in_sync, MeasurementReportInterval,
+    MeasurementReporter, SyncNode, SyncNodeError, SyncWaitParams,
+};
 pub use jortestkit::{
     archive::decompress,
     github::{CachedReleases, GitHubApiBuilder, GitHubApiError, Release},
@@ -24,15 +28,9 @@ pub use jortestkit::{
         EnduranceBenchmarkFinish, EnduranceBenchmarkRun, NamedProcess, ResourcesUsage, Speed,
         SpeedBenchmarkDef, SpeedBenchmarkFinish, SpeedBenchmarkRun, Thresholds, Timestamp,
     },
+    openssl::Openssl,
     web::download_file,
-};
-
-pub use benchmark::sync::{
-    ensure_node_is_in_sync_with_others, ensure_nodes_are_in_sync, MeasurementReportInterval,
-    MeasurementReporter, SyncNode, SyncNodeError, SyncWaitParams,
 };
 pub use storage::{BranchCount, StopCriteria, StorageBuilder};
 pub use verify::{assert, assert_equals, Error as VerificationError};
 pub use vit::{VoteCastCounter, VotePlanBuilder, VotePlanExtension};
-
-pub use jortestkit::openssl::Openssl;

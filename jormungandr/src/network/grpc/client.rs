@@ -3,16 +3,14 @@ use crate::{
     network::{concurrency_limits, convert::Decode, keepalive_durations},
     settings::start::network::{Peer, Protocol},
 };
-use chain_network::{data as net_data, error as net_error, grpc::client::Builder};
-use futures::prelude::*;
-use thiserror::Error;
-use tonic::transport;
-
-use std::{convert::TryFrom, net::SocketAddr};
-
 pub use chain_network::grpc::client::{
     BlockSubscription, FragmentSubscription, GossipSubscription,
 };
+use chain_network::{data as net_data, error as net_error, grpc::client::Builder};
+use futures::prelude::*;
+use std::{convert::TryFrom, net::SocketAddr};
+use thiserror::Error;
+use tonic::transport;
 
 #[derive(Error, Debug)]
 pub enum FetchBlockError {

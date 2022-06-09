@@ -1,7 +1,6 @@
+use super::{log::Log, number::Number};
 use chain_evm::ethereum_types::{Bloom, H160, H256};
 use serde::Serialize;
-
-use super::{log::Log, number::Number};
 
 /// Receipt
 #[derive(Debug, Serialize)]

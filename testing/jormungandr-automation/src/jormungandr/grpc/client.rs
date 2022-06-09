@@ -1,5 +1,3 @@
-use crate::jormungandr::grpc::read_into;
-
 use super::{
     node::{
         node_client::NodeClient, HandshakeRequest, HandshakeResponse, PullBlocksRequest,
@@ -11,7 +9,7 @@ use super::{
         TipSubscriptionRequest,
     },
 };
-
+use crate::jormungandr::grpc::read_into;
 use chain_core::{
     packer::Codec,
     property::{FromStr, Serialize},
@@ -29,10 +27,9 @@ use std::{
     sync::{Arc, Condvar, Mutex},
     time::Duration,
 };
+use thiserror::Error;
 use tokio::runtime::{Builder, Runtime};
 use tonic::transport::Channel;
-
-use thiserror::Error;
 
 const CLIENT_RETRY_WAIT: Duration = Duration::from_millis(500);
 

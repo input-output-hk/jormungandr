@@ -3,14 +3,12 @@ use crate::{
     blockcfg::{ApplyBlockLedger, Contents, ContentsBuilder, LedgerParameters},
     fragment::{Fragment, FragmentId},
 };
-use chain_core::property::Serialize;
-use jormungandr_lib::interfaces::{BlockDate, FragmentStatus};
-
 use async_trait::async_trait;
+use chain_core::property::Serialize;
 use futures::{channel::oneshot::Receiver, future::Shared, prelude::*};
-use tracing::{debug_span, Instrument};
-
+use jormungandr_lib::interfaces::{BlockDate, FragmentStatus};
 use std::{error::Error, iter};
+use tracing::{debug_span, Instrument};
 
 pub enum SelectionOutput {
     Commit { fragment_id: FragmentId },

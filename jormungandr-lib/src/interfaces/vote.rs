@@ -2,6 +2,7 @@ use crate::{
     crypto::hash::Hash,
     interfaces::{blockdate::BlockDate, mint_token::TokenIdentifier, value::ValueDef},
 };
+use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::{
     certificate::{self, ExternalProposalId, Proposal, Proposals, VoteAction},
     ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
@@ -9,10 +10,7 @@ use chain_impl_mockchain::{
     vote::{self, Choice, Options, Weight},
 };
 use chain_vote::MemberPublicKey;
-
-use chain_crypto::bech32::Bech32;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
-
 use std::{
     convert::TryInto,
     fmt,

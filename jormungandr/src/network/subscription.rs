@@ -10,10 +10,8 @@ use chain_network::{
     data as net_data,
     error::{Code, Error},
 };
-use jormungandr_lib::interfaces::FragmentOrigin;
-
 use futures::{future::BoxFuture, prelude::*, ready};
-
+use jormungandr_lib::interfaces::FragmentOrigin;
 use std::{
     error::Error as _,
     mem,

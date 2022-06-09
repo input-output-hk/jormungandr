@@ -19,17 +19,16 @@ use futures::{
     stream,
 };
 use peer_map::{CommStatus, PeerMap};
-use std::fmt::Debug;
-use tracing::debug_span;
-
 use std::{
-    fmt, mem,
+    fmt,
+    fmt::Debug,
+    mem,
     net::SocketAddr,
     pin::Pin,
     task::{Context, Poll},
     time::SystemTime,
 };
-use tracing::Span;
+use tracing::{debug_span, Span};
 use tracing_futures::Instrument;
 
 // Buffer size determines the number of stream items pending processing that

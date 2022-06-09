@@ -1,8 +1,7 @@
 pub mod graphql;
 
-use crate::db::ExplorerDb;
-
 use self::graphql::EContext;
+use crate::db::ExplorerDb;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use futures::Future;
 use jormungandr_lib::interfaces::{Cors, Tls};

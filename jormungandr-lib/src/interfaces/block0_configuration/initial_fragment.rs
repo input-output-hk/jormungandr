@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use crate::interfaces::{
     mint_token::{MintingPolicy, TokenIdentifier},
     Address, OldAddress, SignedCertificate, Value,
@@ -14,6 +12,7 @@ use chain_impl_mockchain::{
     transaction::{NoExtra, Output, Payload, Transaction, TransactionSlice, TxBuilder},
 };
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use thiserror::Error;
 
 #[allow(clippy::large_enum_variant)]

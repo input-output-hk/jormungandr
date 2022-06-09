@@ -1,3 +1,5 @@
+use assert_fs::TempDir;
+use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
@@ -6,9 +8,6 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, InitialUTxO},
 };
-
-use assert_fs::TempDir;
-use chain_impl_mockchain::fee::LinearFee;
 use std::io::Write;
 
 #[test]

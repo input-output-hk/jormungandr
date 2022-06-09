@@ -13,9 +13,8 @@ use chain_core::{
 };
 use chain_network::{data as net_data, error::Error as NetworkError};
 use futures::prelude::*;
-use tokio_util::sync::CancellationToken;
-
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

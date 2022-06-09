@@ -4,13 +4,11 @@ use crate::{
     intercom::{ClientMsg, Error, ReplySendError, ReplyStreamHandle},
     utils::{async_msg::MessageQueue, task::TokioServiceInfo},
 };
-
 use futures::prelude::*;
+use std::{convert::identity, time::Duration};
 use tokio::time::timeout;
 use tracing::{span, Level};
 use tracing_futures::Instrument;
-
-use std::{convert::identity, time::Duration};
 
 const PROCESS_TIMEOUT_GET_BLOCK_TIP: u64 = 5;
 #[allow(dead_code)]

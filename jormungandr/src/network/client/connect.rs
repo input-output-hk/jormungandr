@@ -12,10 +12,8 @@ use chain_network::{
     data::AuthenticatedNodeId,
     error::{self as net_error, HandshakeError},
 };
-
 use futures::{channel::oneshot, future::BoxFuture, prelude::*, ready};
 use rand::Rng;
-
 use std::{
     pin::Pin,
     task::{Context, Poll},

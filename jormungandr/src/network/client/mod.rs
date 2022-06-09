@@ -1,5 +1,6 @@
 mod connect;
 
+pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
 use super::{
     buffer_sizes,
     convert::{Decode, Encode},
@@ -20,17 +21,13 @@ use chain_network::{
     data as net_data,
     data::block::{BlockEvent, BlockIds, ChainPullRequest},
 };
-
 use futures::{prelude::*, ready};
-use tracing::{instrument, Span};
-use tracing_futures::Instrument;
-
 use std::{
     pin::Pin,
     task::{Context, Poll},
 };
-
-pub use self::connect::{connect, ConnectError, ConnectFuture, ConnectHandle};
+use tracing::{instrument, Span};
+use tracing_futures::Instrument;
 
 #[must_use = "Client must be polled"]
 pub struct Client {

@@ -1,6 +1,5 @@
 use super::{limits, NodeId};
 use crate::network::p2p::Address;
-
 use chain_core::{packer::Codec, property};
 use std::net::{IpAddr, Ipv4Addr};
 use thiserror::Error;

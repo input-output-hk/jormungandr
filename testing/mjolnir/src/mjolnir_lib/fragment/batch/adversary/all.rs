@@ -14,10 +14,9 @@ use jortestkit::{
     prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
 };
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
-use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
-
 use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
+use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
 #[derive(StructOpt, Debug)]
 pub struct AdversaryAll {
     /// Number of threads

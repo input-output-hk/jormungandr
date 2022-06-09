@@ -3,7 +3,6 @@ use crate::{
     network::p2p::Address,
     topology::{layers::LayersConfig, NodeId, QuarantineConfig},
 };
-
 use chain_crypto::Ed25519;
 use jormungandr_lib::{crypto::key::SigningKey, multiaddr};
 use std::{net::SocketAddr, str, time::Duration};

@@ -11,9 +11,7 @@ use chain_network::{
     data as net_data,
     error::{Code, Error},
 };
-
 use futures::stream::{self, TryStreamExt};
-
 use std::convert::TryFrom;
 
 fn read<T, U>(src: &T) -> Result<U, Error>

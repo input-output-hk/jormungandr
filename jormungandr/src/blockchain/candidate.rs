@@ -6,7 +6,6 @@ use crate::{
     blockcfg::{Header, HeaderHash},
     utils::async_msg::MessageQueue,
 };
-
 use futures::{
     future::poll_fn,
     prelude::*,
@@ -14,7 +13,6 @@ use futures::{
     task::{Context, Poll},
 };
 use std::{marker::Unpin, pin::Pin};
-
 // derive
 use thiserror::Error;
 

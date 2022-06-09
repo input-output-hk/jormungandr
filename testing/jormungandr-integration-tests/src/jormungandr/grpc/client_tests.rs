@@ -16,11 +16,9 @@ use jormungandr_automation::{
     jormungandr::{grpc::client::MockClientError, ConfigurationBuilder},
 };
 use jormungandr_lib::interfaces::InitialUTxO;
-
-use thor::TransactionHash;
-
 use rand::Rng;
 use std::time::Duration;
+use thor::TransactionHash;
 
 const CHAIN_GROWTH_TIMEOUT: Duration = Duration::from_secs(60);
 

@@ -7,7 +7,6 @@ use jormungandr_automation::{
     testing::{benchmark_speed, SpeedBenchmarkFinish},
 };
 use jormungandr_lib::interfaces::NodeState;
-
 use std::{thread, time};
 pub struct IterationBasedClientLoad {
     config: ClientLoadConfig,

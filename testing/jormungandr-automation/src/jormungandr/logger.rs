@@ -3,7 +3,6 @@ use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
 use serde::{Deserialize, Serialize};
-
 use std::{
     cell::{Ref, RefCell},
     collections::HashMap,

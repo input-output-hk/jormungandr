@@ -8,12 +8,10 @@ use crate::{
 };
 pub use jormungandr_lib::interfaces::{Cors, JRpc, LayersConfig, Rest, Tls, TrustedPeer};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
-
 use multiaddr::Multiaddr;
 use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
-use tracing::level_filters::LevelFilter;
-
 use std::path::PathBuf;
+use tracing::level_filters::LevelFilter;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]

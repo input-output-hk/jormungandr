@@ -1,9 +1,8 @@
-use std::{env, path::PathBuf};
-
 pub use crate::jormungandr::{
     Block0ConfigurationBuilder, JormungandrParams, NodeConfigBuilder, SecretModelFactory,
     TestConfig,
 };
+use std::{env, path::PathBuf};
 
 /// Get jormungandr executable from current environment
 pub fn get_jormungandr_app() -> PathBuf {

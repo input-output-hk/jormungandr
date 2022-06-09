@@ -1,14 +1,11 @@
+use crate::{interfaces::FragmentDef, time::SecondsSinceUnixEpoch};
+use chain_impl_mockchain::fragment::Fragment;
+use serde::{Deserialize, Serialize};
 use std::{
     fs, io,
     io::BufReader,
     path::{Path, PathBuf},
 };
-
-use crate::{interfaces::FragmentDef, time::SecondsSinceUnixEpoch};
-
-use chain_impl_mockchain::fragment::Fragment;
-
-use serde::{Deserialize, Serialize};
 
 #[derive(thiserror::Error, Debug)]
 #[error("Couldn't deserialize entry {entry} in {file} due to: {cause}")]

@@ -19,9 +19,8 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary},
 };
-use std::collections::HashMap;
-
 use std::{
+    collections::HashMap,
     io::{BufRead, BufReader},
     process::ExitStatus,
     time::Duration,

@@ -1,3 +1,4 @@
+use super::State;
 use chain_impl_mockchain::{
     block::{ChainLength, HeaderId as HeaderHash},
     multiverse,
@@ -5,8 +6,6 @@ use chain_impl_mockchain::{
 use multiverse::Multiverse as MultiverseData;
 use std::{collections::BTreeSet, sync::Arc};
 use tokio::sync::RwLock;
-
-use super::State;
 
 pub struct Multiverse {
     inner: Arc<RwLock<Inner>>,

@@ -14,7 +14,6 @@ mod service;
 mod subscription;
 
 use self::convert::Encode;
-
 use futures::{future, prelude::*};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
@@ -69,6 +68,7 @@ mod security_params {
     pub const NONCE_LEN: usize = 32;
 }
 
+pub use self::bootstrap::Error as BootstrapError;
 use self::{client::ConnectError, p2p::comm::Peers};
 use crate::{
     blockcfg::{Block, HeaderHash},
@@ -81,10 +81,6 @@ use crate::{
 };
 use chain_network::data::NodeKeyPair;
 use rand::seq::SliceRandom;
-use tonic::transport;
-use tracing::{instrument, span, Level, Span};
-use tracing_futures::Instrument;
-
 use std::{
     collections::HashSet,
     error, fmt,
@@ -96,8 +92,9 @@ use std::{
     },
     time::Duration,
 };
-
-pub use self::bootstrap::Error as BootstrapError;
+use tonic::transport;
+use tracing::{instrument, span, Level, Span};
+use tracing_futures::Instrument;
 
 #[derive(Debug)]
 pub struct ListenError {

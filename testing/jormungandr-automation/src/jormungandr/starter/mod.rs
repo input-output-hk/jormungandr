@@ -25,7 +25,6 @@ use std::{
     time::{Duration, Instant},
 };
 pub use testing_directory::TestingDirectory;
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]

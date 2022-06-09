@@ -5,7 +5,6 @@ use super::{
     quarantine::ReportNodeStatus,
     topic, Gossips, NodeId, Peer, PeerInfo, ReportRecords,
 };
-
 use crate::{
     metrics::{Metrics, MetricsBackend},
     settings::start::network::Configuration,

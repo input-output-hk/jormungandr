@@ -36,9 +36,8 @@ impl Config {
 }
 
 pub mod client {
-    use jormungandr_automation::jormungandr::grpc::client::JormungandrWatchClient;
-
     use super::*;
+    use jormungandr_automation::jormungandr::grpc::client::JormungandrWatchClient;
     pub struct ClientBootstrap {
         pub client: JormungandrClient,
         pub watch_client: JormungandrWatchClient,

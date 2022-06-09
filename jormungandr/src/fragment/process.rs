@@ -8,19 +8,17 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
-
 use chain_core::property::Fragment;
+use futures::{future, TryFutureExt};
 use std::{
     collections::HashMap,
     convert::TryInto,
     io,
     path::{Path, PathBuf},
 };
-use tokio::fs::{self, File};
-
-use futures::{future, TryFutureExt};
 use thiserror::Error;
 use time::{macros::format_description, Duration, OffsetDateTime, Time};
+use tokio::fs::{self, File};
 use tokio_stream::StreamExt;
 use tracing::{debug_span, span, Level};
 use tracing_futures::Instrument;

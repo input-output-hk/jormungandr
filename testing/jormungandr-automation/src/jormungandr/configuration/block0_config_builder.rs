@@ -15,7 +15,6 @@ use jormungandr_lib::{
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serde_derive::{Deserialize, Serialize};
-
 use std::{
     num::{NonZeroU32, NonZeroU64},
     vec::Vec,

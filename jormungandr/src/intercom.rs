@@ -10,17 +10,15 @@ use crate::{
 };
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
 use chain_network::error as net_error;
-use jormungandr_lib::interfaces::{
-    BlockDate, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
-};
-use poldercast::layer::Selection;
-
 use futures::{
     channel::{mpsc, oneshot},
     prelude::*,
     ready,
 };
-
+use jormungandr_lib::interfaces::{
+    BlockDate, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
+};
+use poldercast::layer::Selection;
 use std::{
     collections::HashMap,
     error,

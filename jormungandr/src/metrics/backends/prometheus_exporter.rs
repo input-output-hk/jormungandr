@@ -1,19 +1,16 @@
 use crate::metrics::MetricsBackend;
-
+use arc_swap::ArcSwapOption;
 use chain_impl_mockchain::{
     block::BlockContentHash,
     fragment::Fragment,
     transaction::Transaction,
     value::{Value, ValueError},
 };
-
-use std::{convert::TryInto, sync::Arc, time::SystemTime};
-
-use arc_swap::ArcSwapOption;
 use prometheus::{
     core::{AtomicU64, GenericGauge},
     Encoder, Gauge, IntCounter, Registry, TextEncoder,
 };
+use std::{convert::TryInto, sync::Arc, time::SystemTime};
 
 type UIntGauge = GenericGauge<AtomicU64>;
 

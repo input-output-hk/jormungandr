@@ -1,3 +1,4 @@
+use super::wallet_lane_iter::SplitLaneIter;
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
 use jormungandr_automation::{jormungandr::RemoteJormungandr, testing::SyncNode};
 use jormungandr_lib::crypto::hash::Hash;
@@ -5,8 +6,6 @@ use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand_core::OsRng;
 use std::time::Instant;
 use thor::{BlockDateGenerator, FragmentBuilder, FragmentSender, FragmentSenderSetup, Wallet};
-
-use super::wallet_lane_iter::SplitLaneIter;
 
 pub struct BatchFragmentGenerator<'a, S: SyncNode + Send> {
     wallets: Vec<Wallet>,

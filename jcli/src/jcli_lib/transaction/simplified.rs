@@ -3,9 +3,11 @@ use crate::{
         rest::RestArgs,
         transaction::{common, Error},
     },
-    rest, transaction,
-    transaction::{mk_witness::WitnessType, staging::Staging},
-    utils::{key_parser::read_secret_key, AccountId},
+    rest,
+    rest::v0::message::post_fragment,
+    transaction,
+    transaction::{common::CommonFees, mk_witness::WitnessType, staging::Staging},
+    utils::{io::ask_yes_or_no, key_parser::read_secret_key, AccountId},
 };
 use chain_addr::Kind;
 use chain_core::property::FromStr;
@@ -13,12 +15,7 @@ use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
 use chain_impl_mockchain::{
     account::SpendingCounter, fee::FeeAlgorithm, key::EitherEd25519SecretKey, transaction::Output,
 };
-use jormungandr_lib::interfaces;
-
-use crate::{
-    rest::v0::message::post_fragment, transaction::common::CommonFees, utils::io::ask_yes_or_no,
-};
-use jormungandr_lib::interfaces::SettingsDto;
+use jormungandr_lib::{interfaces, interfaces::SettingsDto};
 use rand::{rngs::OsRng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::path::PathBuf;

@@ -31,11 +31,10 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Initial, Value},
 };
-pub use transaction_utils::TransactionHash;
-
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
 use thiserror::Error;
+pub use transaction_utils::TransactionHash;
 
 mod chain_sender;
 mod export;

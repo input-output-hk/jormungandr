@@ -143,14 +143,13 @@ fn merge_voteplans(voteplans: Vec<VotePlanStatus>) -> Result<Vec<MergedVotePlan>
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use chain_core::property::FromStr;
     use chain_impl_mockchain::{
         tokens::identifier::{self, TokenIdentifier},
         vote::PayloadType,
     };
     use jormungandr_lib::interfaces::{BlockDate, TallyResult, VotePlanId, VoteProposalStatus};
-
-    use super::*;
 
     fn gen_voteplan_status(
         token: TokenIdentifier,

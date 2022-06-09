@@ -1,3 +1,5 @@
+use crate::startup;
+use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_automation::{
     jcli::{JCli, WitnessType},
@@ -7,9 +9,6 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, InitialUTxO, UTxOInfo},
 };
-
-use crate::startup;
-use assert_fs::TempDir;
 
 lazy_static! {
     static ref FAKE_INPUT_TRANSACTION_ID: Hash = {

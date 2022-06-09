@@ -1,9 +1,8 @@
-use jormungandr_automation::jormungandr::{LogLevel, TestingDirectory};
-
 use crate::{
     builder::{Blockchain, Node, NodeAlias, SpawnParams, Topology},
     error::Error,
 };
+use jormungandr_automation::jormungandr::{LogLevel, TestingDirectory};
 use serde::Deserialize;
 use std::{collections::HashSet, path::PathBuf, str::FromStr};
 

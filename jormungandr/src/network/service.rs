@@ -13,6 +13,7 @@ use crate::{
     topology::{self, Gossips, NodeId},
     utils::async_msg::MessageBox,
 };
+use async_trait::async_trait;
 use chain_network::{
     core::server::{BlockService, FragmentService, GossipService, Node, PushStream},
     data::{
@@ -21,13 +22,10 @@ use chain_network::{
     },
     error::{Code as ErrorCode, Error},
 };
-
-use async_trait::async_trait;
 use futures::{prelude::*, try_join};
+use std::convert::TryFrom;
 use tracing::{instrument, Span};
 use tracing_futures::Instrument;
-
-use std::convert::TryFrom;
 
 #[derive(Clone)]
 pub struct NodeService {

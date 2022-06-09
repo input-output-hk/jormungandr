@@ -6,11 +6,8 @@ use std::{
     path::PathBuf,
     str::FromStr,
 };
-
-use tracing::level_filters::LevelFilter;
+use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
 use tracing_appender::non_blocking::WorkerGuard;
-
-use tracing::subscriber::SetGlobalDefaultError;
 #[allow(unused_imports)]
 use tracing_subscriber::layer::SubscriberExt;
 

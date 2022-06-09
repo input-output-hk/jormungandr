@@ -5,8 +5,6 @@
 // - When the Ok type is Option<T> - None should be converted to 404
 // - All errors should be processed on the framework  integration side. Usually
 //   they are 400 or 500.
-use std::net::SocketAddr;
-
 use crate::{
     blockchain::StorageError,
     diagnostic::Diagnostic,
@@ -30,6 +28,10 @@ use chain_impl_mockchain::{
     leadership::LeadershipConsensus,
     value::ValueError,
 };
+use futures::{
+    channel::mpsc::{SendError, TrySendError},
+    prelude::*,
+};
 use jormungandr_lib::{
     interfaces::{
         AccountState, EpochRewardsInfo, FragmentLog, FragmentOrigin, FragmentsProcessingSummary,
@@ -39,13 +41,7 @@ use jormungandr_lib::{
     },
     time::SystemTime,
 };
-
-use std::sync::Arc;
-
-use futures::{
-    channel::mpsc::{SendError, TrySendError},
-    prelude::*,
-};
+use std::{net::SocketAddr, sync::Arc};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
 

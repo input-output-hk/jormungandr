@@ -1,5 +1,4 @@
 use super::{ALICE, BOB, LEADER_1, LEADER_2, LEADER_3, LEADER_4};
-
 use crate::networking::utils;
 use assert_fs::fixture::PathChild;
 use function_name::named;

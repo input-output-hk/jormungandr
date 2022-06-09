@@ -1,3 +1,4 @@
+use crate::startup;
 use assert_fs::{
     fixture::{PathChild, PathCreateDir},
     TempDir,
@@ -13,15 +14,12 @@ use hersir::builder::{
     wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
     SpawnParams, Topology,
 };
-use jormungandr_automation::jormungandr::FragmentNode;
+use jormungandr_automation::{
+    jormungandr::{ConfigurationBuilder, FragmentNode, LeadershipMode, MemPoolCheck, Starter},
+    testing::time,
+};
 use jormungandr_lib::interfaces::{
     BlockDate as BlockDateDto, InitialToken, InitialUTxO, Mempool, PersistentLog, SlotDuration,
-};
-
-use crate::startup;
-use jormungandr_automation::{
-    jormungandr::{ConfigurationBuilder, LeadershipMode, MemPoolCheck, Starter},
-    testing::time,
 };
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::FragmentGenerator;
