@@ -2,8 +2,10 @@ use super::{
     ensure_nodes_are_in_sync, MeasurementReportInterval, MeasurementReporter, SyncNode,
     SyncWaitParams,
 };
-use crate::jormungandr::FragmentNode;
-use crate::testing::{benchmark_efficiency, benchmark_speed, Speed, Thresholds, VerificationError};
+use crate::{
+    jormungandr::FragmentNode,
+    testing::{benchmark_efficiency, benchmark_speed, Speed, Thresholds, VerificationError},
+};
 use chain_impl_mockchain::fragment::FragmentId;
 use std::time::{Duration, SystemTime};
 

@@ -1,8 +1,7 @@
 mod vote;
 
-pub use vote::VoteCommand;
-
 use std::process::Command;
+pub use vote::VoteCommand;
 
 pub struct V1Command {
     command: Command,

@@ -4,11 +4,11 @@ use crate::jcli_lib::{
 };
 use bech32::{self, ToBase32 as _};
 use chain_core::property::Serialize as _;
-use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::{
     account::SpendingCounter,
     accounting::account::spending::SpendingCounterIncreasing,
     header::HeaderId,
+    key::EitherEd25519SecretKey,
     transaction::{TransactionSignDataHash, Witness},
 };
 use std::{io::Write, path::PathBuf};

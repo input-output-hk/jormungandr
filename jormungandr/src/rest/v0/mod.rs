@@ -2,7 +2,6 @@ mod handlers;
 pub mod logic;
 
 use crate::rest::{display_internal_server_error, ContextLock};
-
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 pub fn filter(

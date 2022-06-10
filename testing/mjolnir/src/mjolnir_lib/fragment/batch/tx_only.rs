@@ -1,13 +1,14 @@
-use crate::generators::BatchFragmentGenerator;
-use crate::generators::FragmentStatusProvider;
-use crate::mjolnir_lib::DiscriminationExtensions;
-use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
+use crate::{
+    generators::{BatchFragmentGenerator, FragmentStatusProvider},
+    mjolnir_lib::{args::parse_shift, build_monitor, DiscriminationExtensions, MjolnirError},
+};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::{
-    load::ConfigurationBuilder, prelude::parse_progress_bar_mode_from_str, prelude::ProgressBarMode,
+    load::ConfigurationBuilder,
+    prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
 };
 use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;

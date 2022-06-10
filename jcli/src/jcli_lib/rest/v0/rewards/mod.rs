@@ -1,9 +1,7 @@
 mod epoch;
 mod history;
 
-use self::epoch::Epoch;
-use self::history::History;
-
+use self::{epoch::Epoch, history::History};
 use crate::jcli_lib::rest::Error;
 use structopt::StructOpt;
 

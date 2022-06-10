@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::startup;
 use assert_fs::{fixture::PathChild, TempDir};
 use chain_impl_mockchain::block::BlockDate;
@@ -10,6 +8,7 @@ pub use jortestkit::{
     load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor},
 };
 use mjolnir::generators::{BatchFragmentGenerator, FragmentStatusProvider};
+use std::time::Duration;
 use thor::{BlockDateGenerator, FragmentSenderSetup, PersistentLogViewer};
 
 #[test]

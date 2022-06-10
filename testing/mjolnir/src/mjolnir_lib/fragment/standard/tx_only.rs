@@ -1,6 +1,7 @@
-use crate::generators::TransactionGenerator;
-use crate::mjolnir_lib::DiscriminationExtensions;
-use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
+use crate::{
+    generators::TransactionGenerator,
+    mjolnir_lib::{args::parse_shift, build_monitor, DiscriminationExtensions, MjolnirError},
+};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
@@ -9,8 +10,7 @@ use jortestkit::{
     load::ConfigurationBuilder,
     prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
 };
-use std::time::Duration;
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
 use thor::{BlockDateGenerator, FragmentSenderSetup, Wallet};
 #[derive(StructOpt, Debug)]

@@ -1,17 +1,18 @@
-use super::{ALICE, BOB, CLARICE, DAVID};
-use super::{LEADER, PASSIVE};
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use hersir::config::SessionSettings;
-use hersir::controller::Controller;
-use jormungandr_automation::jormungandr::{
-    download_last_n_releases, get_jormungandr_bin, version_0_8_19, FragmentNode, Version,
+use super::{ALICE, BOB, CLARICE, DAVID, LEADER, PASSIVE};
+use hersir::{
+    builder::{
+        wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
+        SpawnParams, Topology,
+    },
+    config::SessionSettings,
+    controller::Controller,
 };
-use jormungandr_automation::testing::SyncNode;
+use jormungandr_automation::{
+    jormungandr::{
+        download_last_n_releases, get_jormungandr_bin, version_0_8_19, FragmentNode, Version,
+    },
+    testing::SyncNode,
+};
 use std::path::PathBuf;
 use thor::{FragmentSender, StakePool};
 

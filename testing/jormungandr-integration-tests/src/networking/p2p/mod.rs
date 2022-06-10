@@ -3,11 +3,9 @@ pub mod quarantine;
 pub mod stats;
 
 pub use connections::max_connections;
-pub use stats::p2p_stats_test;
-
 use jormungandr_automation::jormungandr::JormungandrProcess;
-
 use jormungandr_lib::interfaces::PeerRecord;
+pub use stats::p2p_stats_test;
 
 pub fn assert_connected_cnt(node: &JormungandrProcess, peer_connected_cnt: usize, info: &str) {
     let stats = node.rest().stats().unwrap().stats.expect("empty stats");

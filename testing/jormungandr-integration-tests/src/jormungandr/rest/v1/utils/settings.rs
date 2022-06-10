@@ -1,9 +1,9 @@
 use crate::startup;
 use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
-use jormungandr_automation::jormungandr::ConfigurationBuilder;
-use jormungandr_automation::testing::block0::Block0ConfigurationExtension;
-use jormungandr_lib::interfaces::RewardParams;
-use jormungandr_lib::interfaces::{Ratio, TaxType};
+use jormungandr_automation::{
+    jormungandr::ConfigurationBuilder, testing::block0::Block0ConfigurationExtension,
+};
+use jormungandr_lib::interfaces::{Ratio, RewardParams, TaxType};
 use std::num::{NonZeroU32, NonZeroU64};
 
 #[test]

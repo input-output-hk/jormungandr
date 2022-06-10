@@ -8,11 +8,9 @@ use chain_core::{
 };
 use chain_storage::{BlockInfo, BlockStore, Error as StorageError};
 use futures::prelude::*;
+use std::{convert::identity, path::Path};
 use thiserror::Error;
 use tracing::Span;
-
-use std::convert::identity;
-use std::path::Path;
 
 const MINIMUM_BLOCKS_TO_FLUSH: usize = 256;
 

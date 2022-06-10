@@ -5,7 +5,6 @@ mod single;
 pub use account::AccountCommand;
 pub use info::InfoCommand;
 pub use single::SingleCommand;
-
 use std::process::Command;
 pub struct AddressCommand {
     command: Command,

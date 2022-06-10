@@ -19,12 +19,10 @@ use crate::{
     },
 };
 use chain_core::property::{Block as _, Header as _};
-
 use futures::prelude::*;
+use std::{sync::Arc, time::Duration};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
-
-use std::{sync::Arc, time::Duration};
 
 type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
 type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, NodeId, ()>;

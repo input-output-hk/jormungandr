@@ -1,23 +1,25 @@
-use thor::{BlockDateGenerator, FragmentBuilderError, FragmentExporter, FragmentExporterError};
-use thor::{DummySyncNode, FragmentVerifier, Wallet};
-
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate::{Certificate, PoolId},
-    fee::LinearFee,
+    fee::{FeeAlgorithm, LinearFee},
     fragment::Fragment,
+    ledger::OutputAddress,
     testing::{build_owner_stake_full_delegation, FaultTolerantTxCertBuilder, TestGen},
     transaction::{Input, Output, TransactionSignDataHash, TxBuilder, Witness},
+    value::Value,
 };
-use chain_impl_mockchain::{fee::FeeAlgorithm, ledger::OutputAddress, value::Value};
-use jormungandr_automation::jormungandr::{FragmentNode, MemPoolCheck};
-use jormungandr_automation::testing::{
-    ensure_node_is_in_sync_with_others, SyncNode, SyncNodeError, SyncWaitParams,
+use jormungandr_automation::{
+    jormungandr::{FragmentNode, MemPoolCheck},
+    testing::{ensure_node_is_in_sync_with_others, SyncNode, SyncNodeError, SyncWaitParams},
 };
 use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentStatus};
 use rand::{thread_rng, Rng};
 use std::{path::PathBuf, time::Duration};
+use thor::{
+    BlockDateGenerator, DummySyncNode, FragmentBuilderError, FragmentExporter,
+    FragmentExporterError, FragmentVerifier, Wallet,
+};
 
 /// Send malformed transactions
 /// Only supports account based wallets

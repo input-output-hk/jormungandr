@@ -1,6 +1,5 @@
-use jsonrpsee_http_server::RpcModule;
-
 use crate::context::ContextLock;
+use jsonrpsee_http_server::RpcModule;
 
 mod logic;
 

@@ -1,12 +1,10 @@
+use assert_fs::{prelude::*, TempDir};
 use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::PoolId, testing::builders::cert_builder::build_stake_pool_retirement_cert,
 };
 use jormungandr_automation::{jcli::JCli, testing::keys::create_new_key_pair};
 use jormungandr_lib::interfaces::Certificate;
-
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
 use std::str::FromStr;
 
 #[test]

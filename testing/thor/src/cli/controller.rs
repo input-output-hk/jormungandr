@@ -1,30 +1,25 @@
-use super::Error;
-use super::WalletController;
-use crate::cli::config::ConfigManager;
-use crate::cli::config::WalletState;
-use crate::cli::Connection;
-use crate::FragmentSender;
-use crate::FragmentVerifier;
-use crate::Wallet;
-use bech32::u5;
-use bech32::FromBase32;
-use chain_crypto::Ed25519Extended;
-use chain_crypto::SecretKey;
-use chain_impl_mockchain::accounting::account::spending::SpendingCounterIncreasing;
-use chain_impl_mockchain::fragment::FragmentId;
+use super::{Error, WalletController};
+use crate::{
+    cli::{
+        config::{ConfigManager, WalletState},
+        Connection,
+    },
+    FragmentSender, FragmentVerifier, Wallet,
+};
+use bech32::{u5, FromBase32};
+use chain_crypto::{Ed25519Extended, SecretKey};
+use chain_impl_mockchain::{
+    accounting::account::spending::SpendingCounterIncreasing, fragment::FragmentId,
+};
 use cocoon::Cocoon;
-use jormungandr_automation::jormungandr::JormungandrRest;
-use jormungandr_automation::jormungandr::MemPoolCheck;
-use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
-use jormungandr_lib::crypto::account::SigningKey;
-use jormungandr_lib::interfaces::AccountState;
-use jormungandr_lib::interfaces::AccountVotes;
-use jormungandr_lib::interfaces::Address;
-use jormungandr_lib::interfaces::FragmentLog;
-use jormungandr_lib::interfaces::FragmentStatus;
-use jormungandr_lib::interfaces::VotePlanId;
-use std::collections::HashMap;
-use std::time::Duration;
+use jormungandr_automation::jormungandr::{
+    JormungandrRest, MemPoolCheck, RemoteJormungandrBuilder,
+};
+use jormungandr_lib::{
+    crypto::account::SigningKey,
+    interfaces::{AccountState, AccountVotes, Address, FragmentLog, FragmentStatus, VotePlanId},
+};
+use std::{collections::HashMap, time::Duration};
 
 const SLOT_COUNT: u64 = 3;
 

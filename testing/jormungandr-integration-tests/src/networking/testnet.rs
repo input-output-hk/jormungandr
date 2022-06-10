@@ -1,8 +1,7 @@
 use crate::jormungandr::genesis::stake_pool::{
     create_new_stake_pool, delegate_stake, retire_stake_pool,
 };
-use assert_fs::fixture::PathChild;
-use assert_fs::TempDir;
+use assert_fs::{fixture::PathChild, TempDir};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{

@@ -2,8 +2,11 @@ mod interactive;
 mod monitor;
 mod standard;
 
-use crate::config::{Config, SessionMode};
-use crate::{args::Args, error::Error};
+use crate::{
+    args::Args,
+    config::{Config, SessionMode},
+    error::Error,
+};
 use std::fs::File;
 
 pub fn spawn_network(args: Args) -> Result<(), Error> {

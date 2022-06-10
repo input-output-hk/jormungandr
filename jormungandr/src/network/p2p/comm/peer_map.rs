@@ -1,10 +1,12 @@
-use crate::metrics::{Metrics, MetricsBackend};
-use crate::network::{
-    client::ConnectHandle,
-    p2p::comm::{Address, PeerComms, PeerInfo, PeerStats},
-    security_params::NONCE_LEN,
+use crate::{
+    metrics::{Metrics, MetricsBackend},
+    network::{
+        client::ConnectHandle,
+        p2p::comm::{Address, PeerComms, PeerInfo, PeerStats},
+        security_params::NONCE_LEN,
+    },
+    topology::NodeId,
 };
-use crate::topology::NodeId;
 use chain_network::error::{Code as ErrorCode, Error as NetworkError};
 use linked_hash_map::LinkedHashMap;
 use lru::LruCache;

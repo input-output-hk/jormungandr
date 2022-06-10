@@ -11,9 +11,8 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, BlockDate, KesUpdateSpeed},
 };
-use mjolnir::generators::ExplorerRequestGen;
-
 use jortestkit::load::{ConfigurationBuilder as LoadConfigurationBuilder, Monitor};
+use mjolnir::generators::ExplorerRequestGen;
 use std::{str::FromStr, time::Duration};
 use thor::{BlockDateGenerator, Wallet};
 

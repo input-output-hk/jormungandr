@@ -1,7 +1,8 @@
-use crate::jcli_lib::rest::{Error, RestArgs};
-use crate::jcli_lib::utils::OutputFormat;
+use crate::jcli_lib::{
+    rest::{Error, RestArgs},
+    utils::OutputFormat,
+};
 use jormungandr_lib::interfaces::SettingsDto;
-
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

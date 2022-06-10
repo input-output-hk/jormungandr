@@ -1,15 +1,11 @@
 use crate::networking::utils;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_automation::testing::benchmark::sync::MeasurementReportInterval;
-use jormungandr_automation::testing::SyncWaitParams;
+use hersir::builder::{
+    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
+    SpawnParams, Topology,
+};
+use jormungandr_automation::testing::{benchmark::sync::MeasurementReportInterval, SyncWaitParams};
 use std::time::Duration;
-use thor::FragmentSender;
-use thor::FragmentVerifier;
+use thor::{FragmentSender, FragmentVerifier};
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
