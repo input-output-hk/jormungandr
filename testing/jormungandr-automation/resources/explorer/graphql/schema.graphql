@@ -52,22 +52,22 @@ type RemoveBftLeader {
 }
 
 type PerCertificateFee {
-  certificate_pool_registration: NonZero
-  certificate_stake_delegation: NonZero
-  certificate_owner_stake_delegation: NonZero
+  certificatePoolRegistration: Int
+  certificateStakeDelegation: Int
+  certificateOwnerStakeDelegation: Int
 }
 
 type PerVoteCertificateFee {
-  certificate_vote_plan: NonZero
-  certificate_vote_cast: NonZero
+  certificateVotePlan: Int
+  certificateVoteCast: Int
 }
 
 type LinearFee {
   constant: Int!
   coefficient: Int!
   certificate: Int!
-  per_certificate_fees: PerCertificateFee!
-  per_vote_certificate_fees: PerVoteCertificateFee!
+  perCertificateFees: PerCertificateFee!
+  perVoteCertificateFees: PerVoteCertificateFee!
 }
 
 type ProposalExpiration {
@@ -566,4 +566,3 @@ type VoteTally {
 }
 
 scalar Weight
-
