@@ -16,13 +16,13 @@ thiserror = "1.0"
 structopt = "^0.3"
 assert_fs = "1.0"
 indicatif = "0.15"
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "estimate-gas-price", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "estimate-gas-price", features = [ "property-test-api" ] }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "estimate-gas-price" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "estimate-gas-price", features = [ "property-test-api" ] }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "estimate-gas-price" }
-chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "estimate-gas-price", features = ["with-bench"] }
-chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "estimate-gas-price" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = ["with-bench"] }
+chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 tokio = { version = "1.15", features = ["macros"] }
 thor = { path = "../thor" }
 loki = { path = "../loki" }

@@ -568,7 +568,7 @@ dependencies = [
 [[package]]
 name = "cardano-legacy-address"
 version = "0.1.1"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "cbor_event",
  "cryptoxide 0.4.2",
@@ -639,7 +639,7 @@ dependencies = [
 [[package]]
 name = "chain-addr"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "bech32 0.8.1",
  "chain-core",
@@ -653,7 +653,7 @@ dependencies = [
 [[package]]
 name = "chain-core"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "chain-ser",
 ]
@@ -661,7 +661,7 @@ dependencies = [
 [[package]]
 name = "chain-crypto"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "bech32 0.8.1",
  "cryptoxide 0.4.2",
@@ -683,7 +683,7 @@ dependencies = [
 [[package]]
 name = "chain-evm"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "aurora-bn",
  "base64",
@@ -712,7 +712,7 @@ dependencies = [
 [[package]]
 name = "chain-impl-mockchain"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "cardano-legacy-address",
  "chain-addr",
@@ -744,7 +744,7 @@ dependencies = [
 [[package]]
 name = "chain-network"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "async-trait",
  "chain-crypto",
@@ -761,7 +761,7 @@ dependencies = [
 [[package]]
 name = "chain-ser"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "thiserror",
 ]
@@ -769,7 +769,7 @@ dependencies = [
 [[package]]
 name = "chain-storage"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "criterion",
  "data-pile",
@@ -782,7 +782,7 @@ dependencies = [
 [[package]]
 name = "chain-time"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "chain-core",
  "chain-ser",
@@ -794,7 +794,7 @@ dependencies = [
 [[package]]
 name = "chain-vote"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "cfg-if 0.1.10",
  "chain-core",
@@ -2261,7 +2261,7 @@ dependencies = [
 [[package]]
 name = "imhamt"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 dependencies = [
  "proptest",
  "rustc_version",
@@ -4705,7 +4705,7 @@ dependencies = [
 [[package]]
 name = "sparse-array"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 
 [[package]]
 name = "spin"
@@ -5466,7 +5466,7 @@ dependencies = [
 [[package]]
 name = "typed-bytes"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=estimate-gas-price#a8606ec5f16382b54c29b85d1f7daff423b460f4"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=master#8f1e738d7b17261d6bb7a6b090158cba2ac51a83"
 
 [[package]]
 name = "typenum"
