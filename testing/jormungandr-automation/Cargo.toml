@@ -24,6 +24,7 @@ chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = ["with-bench"] }
 chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-evm = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", optional = true }
 cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
@@ -74,8 +75,7 @@ features = ["json","fmt"]
 
 
 [features]
-default = []
-evm = []
+evm = ["jormungandr-lib/evm", "chain-evm"]
 property-test-api = [ ]
 
 [build-dependencies]

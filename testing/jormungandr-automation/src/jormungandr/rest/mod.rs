@@ -2,6 +2,9 @@ mod raw;
 mod settings;
 
 use crate::{jormungandr::legacy, jormungandr::MemPoolCheck};
+#[cfg(feature = "evm")]
+use chain_evm::Address as EvmAddress;
+use chain_impl_mockchain::account::Identifier as JorAddress;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::header::HeaderId;
@@ -181,13 +184,13 @@ impl JormungandrRest {
     }
 
     #[cfg(feature = "evm")]
-    pub fn evm_address(&self, jor_address: &str) -> Result<String, RestError> {
+    pub fn evm_address(&self, jor_address: &JorAddress) -> Result<String, RestError> {
         serde_json::from_str(&self.inner.evm_address(jor_address)?)
             .map_err(RestError::CannotDeserialize)
     }
 
     #[cfg(feature = "evm")]
-    pub fn jor_address(&self, evm_address: &str) -> Result<String, RestError> {
+    pub fn jor_address(&self, evm_address: &EvmAddress) -> Result<String, RestError> {
         serde_json::from_str(&self.inner.jor_address(evm_address)?)
             .map_err(RestError::CannotDeserialize)
     }
