@@ -194,7 +194,7 @@ impl RawRest {
 
     #[cfg(feature = "evm")]
     pub fn evm_address(&self, jor_address: &JorAddress) -> Result<Response, reqwest::Error> {
-        let request = format!("address_mapping/evm_address/{}", jor_address.to_string());
+        let request = format!("address_mapping/evm_address/{}", jor_address);
         self.get(&request)
     }
 

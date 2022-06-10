@@ -8,12 +8,9 @@ pub fn test_evm_mapping() {
     let mut alice = thor::Wallet::default();
     let bob = thor::Wallet::default();
 
-    let (jormungandr, _stake_pools) = startup::start_stake_pool(
-        &[alice.clone()],
-        &[bob.clone()],
-        &mut ConfigurationBuilder::new(),
-    )
-    .unwrap();
+    let (jormungandr, _stake_pools) =
+        startup::start_stake_pool(&[alice.clone()], &[bob], &mut ConfigurationBuilder::new())
+            .unwrap();
 
     let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
 
@@ -39,14 +36,14 @@ pub fn test_evm_mapping() {
     let alice_fragment = fragment_builder.evm_mapping(&alice, &evm_mapping);
 
     transaction_sender
-        .send_fragment(&mut alice, alice_fragment.clone(), &jormungandr)
+        .send_fragment(&mut alice, alice_fragment, &jormungandr)
         .unwrap();
 
     assert_eq!(
         evm_mapping.evm_address().to_string(),
         jormungandr
             .rest()
-            .evm_address(&evm_mapping.account_id())
+            .evm_address(evm_mapping.account_id())
             .unwrap()
     );
 
@@ -98,14 +95,14 @@ pub fn test_evm_mapping_twice() {
     let alice_fragment = fragment_builder.evm_mapping(&alice, &evm_mapping_alice);
 
     transaction_sender
-        .send_fragment(&mut alice, alice_fragment.clone(), &jormungandr)
+        .send_fragment(&mut alice, alice_fragment, &jormungandr)
         .unwrap();
 
     assert_eq!(
         evm_mapping_alice.evm_address().to_string(),
         jormungandr
             .rest()
-            .evm_address(&evm_mapping_alice.account_id())
+            .evm_address(evm_mapping_alice.account_id())
             .unwrap()
     );
 
@@ -136,14 +133,14 @@ pub fn test_evm_mapping_twice() {
     let bob_fragment = fragment_builder.evm_mapping(&bob, &evm_mapping_bob);
 
     transaction_sender
-        .send_fragment(&mut bob, bob_fragment.clone(), &jormungandr)
+        .send_fragment(&mut bob, bob_fragment, &jormungandr)
         .unwrap();
 
     assert_eq!(
         evm_mapping_bob.evm_address().to_string(),
         jormungandr
             .rest()
-            .evm_address(&evm_mapping_bob.account_id())
+            .evm_address(evm_mapping_bob.account_id())
             .unwrap()
     );
 
@@ -164,12 +161,9 @@ pub fn test_evm_mapping_already_mapped() {
     let mut alice = thor::Wallet::default();
     let bob = thor::Wallet::default();
 
-    let (jormungandr, _stake_pools) = startup::start_stake_pool(
-        &[alice.clone()],
-        &[bob.clone()],
-        &mut ConfigurationBuilder::new(),
-    )
-    .unwrap();
+    let (jormungandr, _stake_pools) =
+        startup::start_stake_pool(&[alice.clone()], &[bob], &mut ConfigurationBuilder::new())
+            .unwrap();
 
     let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
 
@@ -195,14 +189,14 @@ pub fn test_evm_mapping_already_mapped() {
     let alice_fragment = fragment_builder.evm_mapping(&alice, &evm_mapping);
 
     transaction_sender
-        .send_fragment(&mut alice, alice_fragment.clone(), &jormungandr)
+        .send_fragment(&mut alice, alice_fragment, &jormungandr)
         .unwrap();
 
     assert_eq!(
         evm_mapping.evm_address().to_string(),
         jormungandr
             .rest()
-            .evm_address(&evm_mapping.account_id())
+            .evm_address(evm_mapping.account_id())
             .unwrap()
     );
 
@@ -222,14 +216,14 @@ pub fn test_evm_mapping_already_mapped() {
     let alice_fragment_2 = fragment_builder.evm_mapping(&alice, &evm_mapping_2);
 
     transaction_sender
-        .send_fragment(&mut alice, alice_fragment_2.clone(), &jormungandr)
+        .send_fragment(&mut alice, alice_fragment_2, &jormungandr)
         .unwrap_err();
 
     assert_eq!(
         evm_mapping.evm_address().to_string(),
         jormungandr
             .rest()
-            .evm_address(&evm_mapping.account_id())
+            .evm_address(evm_mapping.account_id())
             .unwrap()
     );
 
