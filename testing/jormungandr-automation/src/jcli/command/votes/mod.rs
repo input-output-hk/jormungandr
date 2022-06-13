@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
-use std::path::Path;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 pub mod committee;
 mod crs;

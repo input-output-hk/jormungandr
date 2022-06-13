@@ -1,6 +1,7 @@
-use crate::non_functional::voting::config::adversary_noise_config;
-use crate::non_functional::voting::public::adversary_public_vote_load_scenario;
-use crate::non_functional::voting::public::PublicVotingLoadTestConfig;
+use crate::non_functional::voting::{
+    config::adversary_noise_config,
+    public::{adversary_public_vote_load_scenario, PublicVotingLoadTestConfig},
+};
 
 #[test]
 pub fn adversary_public_vote_quick_test() {

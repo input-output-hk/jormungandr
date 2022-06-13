@@ -5,8 +5,6 @@
 // - When the Ok type is Option<T> - None should be converted to 404
 // - All errors should be processed on the framework  integration side. Usually
 //   they are 400 or 500.
-use std::net::SocketAddr;
-
 use crate::{
     blockchain::StorageError,
     diagnostic::Diagnostic,
@@ -30,6 +28,10 @@ use chain_impl_mockchain::{
     leadership::LeadershipConsensus,
     value::ValueError,
 };
+use futures::{
+    channel::mpsc::{SendError, TrySendError},
+    prelude::*,
+};
 use jormungandr_lib::{
     interfaces::{
         AccountState, EpochRewardsInfo, FragmentLog, FragmentOrigin, FragmentsProcessingSummary,
@@ -39,10 +41,7 @@ use jormungandr_lib::{
     },
     time::SystemTime,
 };
-
-use std::sync::Arc;
-
-use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
+use std::{net::SocketAddr, sync::Arc};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
 
@@ -79,6 +78,9 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
     #[error("Could not process fragment")]
     Fragment(FragmentsProcessingSummary),
+    #[cfg(feature = "evm")]
+    #[error("Can not parse address: {0}")]
+    AddressParseError(String),
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -590,4 +592,33 @@ pub async fn get_active_vote_plans(context: &Context) -> Result<Vec<VotePlanStat
         .map(VotePlanStatus::from)
         .collect();
     Ok(vp)
+}
+
+#[cfg(feature = "evm")]
+pub async fn get_jor_address(context: &Context, evm_id_hex: &str) -> Result<String, Error> {
+    Ok(context
+        .blockchain_tip()?
+        .get_ref()
+        .await
+        .ledger()
+        .jormungandr_mapped_address(
+            &chain_evm::Address::from_str(evm_id_hex)
+                .map_err(|e| Error::AddressParseError(e.to_string()))?,
+        )
+        .to_string())
+}
+
+#[cfg(feature = "evm")]
+pub async fn get_evm_address(context: &Context, jor_id_hex: &str) -> Result<Option<String>, Error> {
+    Ok(context
+        .blockchain_tip()?
+        .get_ref()
+        .await
+        .ledger()
+        .evm_mapped_address(
+            &PublicKey::<AccountAlg>::from_str(jor_id_hex)
+                .map_err(|e| Error::AddressParseError(e.to_string()))?
+                .into(),
+        )
+        .map(|val| val.to_string()))
 }

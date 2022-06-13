@@ -1,11 +1,8 @@
 use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId};
-use jormungandr_automation::jormungandr::ConfigurationBuilder;
-use jormungandr_automation::jormungandr::JormungandrProcess;
-use jormungandr_automation::jormungandr::MemPoolCheck;
+use jormungandr_automation::jormungandr::{ConfigurationBuilder, JormungandrProcess, MemPoolCheck};
 use rstest::*;
-use thor::FragmentSender;
-use thor::FragmentSenderSetup;
+use thor::{FragmentSender, FragmentSenderSetup};
 
 #[fixture]
 fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {

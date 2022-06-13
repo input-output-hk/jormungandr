@@ -8,7 +8,7 @@ use std::fmt;
 #[derive(Debug, PartialEq, Eq)]
 pub enum BlockNumber {
     /// Number
-    Num(u64),
+    Num(u32),
     /// Latest block
     Latest,
     /// Earliest block (genesis)
@@ -52,10 +52,10 @@ impl<'a> Visitor<'a> for BlockNumberVisitor {
             "latest" => Ok(BlockNumber::Latest),
             "earliest" => Ok(BlockNumber::Earliest),
             "pending" => Ok(BlockNumber::Pending),
-            _ if value.starts_with("0x") => u64::from_str_radix(&value[2..], 16)
+            _ if value.starts_with("0x") => u32::from_str_radix(&value[2..], 16)
                 .map(BlockNumber::Num)
                 .map_err(|e| Error::custom(format!("Invalid block number: {}", e))),
-            _ => value.parse::<u64>().map(BlockNumber::Num).map_err(|_| {
+            _ => value.parse::<u32>().map(BlockNumber::Num).map_err(|_| {
                 Error::custom("Invalid block number: non-decimal or missing 0x prefix".to_string())
             }),
         }
@@ -68,7 +68,7 @@ impl<'a> Visitor<'a> for BlockNumberVisitor {
         self.visit_str(value.as_ref())
     }
 
-    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+    fn visit_u32<E>(self, value: u32) -> Result<Self::Value, E>
     where
         E: Error,
     {

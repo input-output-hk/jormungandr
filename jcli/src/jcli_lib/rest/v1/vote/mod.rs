@@ -1,6 +1,10 @@
-use crate::jcli_lib::rest::{Error, RestArgs};
-use crate::jcli_lib::utils::OutputFormat;
-use crate::utils::AccountId;
+use crate::{
+    jcli_lib::{
+        rest::{Error, RestArgs},
+        utils::OutputFormat,
+    },
+    utils::AccountId,
+};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

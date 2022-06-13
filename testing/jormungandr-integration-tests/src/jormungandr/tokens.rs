@@ -1,8 +1,10 @@
 use assert_fs::TempDir;
-use chain_impl_mockchain::testing::TestGen;
-use chain_impl_mockchain::tokens::identifier::TokenIdentifier;
-use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
-use chain_impl_mockchain::{fee::LinearFee, value::Value};
+use chain_impl_mockchain::{
+    fee::LinearFee,
+    testing::TestGen,
+    tokens::{identifier::TokenIdentifier, minting_policy::MintingPolicy},
+    value::Value,
+};
 use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_lib::interfaces::InitialToken;
 use thor::{FragmentSender, FragmentVerifier};

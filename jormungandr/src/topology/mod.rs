@@ -2,13 +2,13 @@
 //! selecting the subset to which we propagate info
 //!
 use crate::network::p2p::Address;
-use jormungandr_lib::interfaces::Subscription;
-use jormungandr_lib::time::SystemTime;
-use serde::Serialize;
-use serde::Serializer;
-use std::convert::{TryFrom, TryInto};
-use std::fmt;
-use std::hash::{Hash, Hasher};
+use jormungandr_lib::{interfaces::Subscription, time::SystemTime};
+use serde::{Serialize, Serializer};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 mod gossip;
 pub mod layers;
@@ -17,9 +17,11 @@ mod quarantine;
 #[allow(clippy::module_inception)]
 mod topology;
 
-pub use self::gossip::{Gossip, Gossips};
-pub use self::process::{start, TaskData, DEFAULT_NETWORK_STUCK_INTERVAL};
-pub use self::topology::{P2pTopology, View};
+pub use self::{
+    gossip::{Gossip, Gossips},
+    process::{start, TaskData, DEFAULT_NETWORK_STUCK_INTERVAL},
+    topology::{P2pTopology, View},
+};
 pub use quarantine::{QuarantineConfig, ReportRecords};
 
 /**

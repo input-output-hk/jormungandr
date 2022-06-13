@@ -1,8 +1,10 @@
 //! Hash interface for all that is a hash
 
 use crate::crypto::serde as internal;
-use chain_crypto::digest::{Digest, DigestOf};
-use chain_crypto::hash::Blake2b256;
+use chain_crypto::{
+    digest::{Digest, DigestOf},
+    hash::Blake2b256,
+};
 use chain_impl_mockchain::key;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};

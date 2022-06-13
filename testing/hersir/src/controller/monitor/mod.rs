@@ -1,23 +1,22 @@
 mod node;
 
-use crate::builder::NetworkBuilder;
-use crate::builder::Settings;
-use crate::builder::{Blockchain, SpawnParams, Topology, Wallet as WalletSetting};
-use crate::config::SessionSettings;
-use crate::controller::Controller as InnerController;
-use crate::controller::Error;
-use crate::style;
+use crate::{
+    builder::{
+        Blockchain, NetworkBuilder, Settings, SpawnParams, Topology, Wallet as WalletSetting,
+    },
+    config::SessionSettings,
+    controller::{Controller as InnerController, Error},
+    style,
+};
 use chain_impl_mockchain::testing::scenario::template::VotePlanDef;
 use indicatif::{MultiProgress, ProgressBar};
-use jormungandr_automation::jormungandr::LeadershipMode;
-use jormungandr_automation::jormungandr::PersistenceMode;
-use jormungandr_automation::jormungandr::TestingDirectory;
-use jormungandr_automation::jormungandr::Version;
-use jormungandr_automation::testing::observer::{Event, Observable, Observer};
+use jormungandr_automation::{
+    jormungandr::{LeadershipMode, PersistenceMode, TestingDirectory, Version},
+    testing::observer::{Event, Observable, Observer},
+};
 use jormungandr_lib::interfaces::Block0Configuration;
 pub use node::{Error as NodeError, LegacyNode, Node, ProgressBarController};
-use std::net::SocketAddr;
-use std::{path::PathBuf, rc::Rc, sync::Arc};
+use std::{net::SocketAddr, path::PathBuf, rc::Rc, sync::Arc};
 use thor::{StakePool, Wallet, WalletAlias};
 
 pub struct MonitorControllerBuilder {

@@ -1,10 +1,10 @@
 use crate::startup;
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
-use chain_impl_mockchain::accounting::account::{DelegationRatio, DelegationType};
-use chain_impl_mockchain::block::BlockDate;
-use jormungandr_automation::testing::time;
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
+use assert_fs::{prelude::*, TempDir};
+use chain_impl_mockchain::{
+    accounting::account::{DelegationRatio, DelegationType},
+    block::BlockDate,
+};
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder, testing::time};
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use std::time::Duration;

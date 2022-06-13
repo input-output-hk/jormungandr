@@ -5,19 +5,21 @@
 //! modules utilized in jormungandr.
 //!
 
-use futures::prelude::*;
-use futures::stream::FuturesUnordered;
+use futures::{prelude::*, stream::FuturesUnordered};
+use std::{
+    error,
+    fmt::Debug,
+    future::Future,
+    sync::mpsc::Sender,
+    time::{Duration, Instant},
+};
 use thiserror::Error;
-use tokio::runtime::{Handle, Runtime};
-use tokio::task::JoinHandle;
+use tokio::{
+    runtime::{Handle, Runtime},
+    task::JoinHandle,
+};
 use tracing::{span, Level, Span};
 use tracing_futures::Instrument;
-
-use std::error;
-use std::fmt::Debug;
-use std::future::Future;
-use std::sync::mpsc::Sender;
-use std::time::{Duration, Instant};
 
 /// hold onto the different services created
 pub struct Services {

@@ -1,15 +1,13 @@
-use super::config::Connection;
-use super::config::{Alias, WalletState};
-use super::Config;
-use super::ConfigManager;
-use super::Error;
+use super::{
+    config::{Alias, Connection, WalletState},
+    Config, ConfigManager, Error,
+};
 use chain_crypto::Ed25519Extended;
 use chain_impl_mockchain::fragment::FragmentId;
 use cocoon::Cocoon;
 use jcli_lib::key::gen_pub_key;
 use jormungandr_lib::interfaces::FragmentStatus;
-use std::collections::HashMap;
-use std::fs::File;
+use std::{collections::HashMap, fs::File};
 
 pub struct WalletController {
     config: Config,

@@ -1,7 +1,9 @@
 use lazy_static::lazy_static;
 use netstat2::{get_sockets_info, AddressFamilyFlags, ProtocolFlags};
-use std::collections::HashSet;
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::{
+    collections::HashSet,
+    sync::atomic::{AtomicU16, Ordering},
+};
 
 mod block0_config_builder;
 mod configuration_builder;

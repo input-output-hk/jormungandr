@@ -1,18 +1,17 @@
-use crate::networking::p2p::connections::parse_timestamp;
-use crate::networking::utils::wait;
-use crate::non_functional::network::*;
-use hersir::builder::blockchain::BlockchainBuilder;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_automation::jormungandr::LogLevel;
-use jormungandr_automation::testing::ensure_nodes_are_in_sync;
-use jormungandr_automation::testing::SyncWaitParams;
+use crate::{
+    networking::{p2p::connections::parse_timestamp, utils::wait},
+    non_functional::network::*,
+};
+use hersir::builder::{
+    blockchain::BlockchainBuilder, wallet::template::builder::WalletTemplateBuilder,
+    NetworkBuilder, Node, SpawnParams, Topology,
+};
+use jormungandr_automation::{
+    jormungandr::LogLevel,
+    testing::{ensure_nodes_are_in_sync, SyncWaitParams},
+};
 use std::time::{Duration, SystemTime};
-use thor::FragmentSender;
-use thor::FragmentVerifier;
+use thor::{FragmentSender, FragmentVerifier};
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE_1: &str = "Relay1";

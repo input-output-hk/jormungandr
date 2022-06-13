@@ -9,8 +9,7 @@ use jormungandr_lib::interfaces::{
 };
 use multiaddr::Multiaddr;
 use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct P2p {

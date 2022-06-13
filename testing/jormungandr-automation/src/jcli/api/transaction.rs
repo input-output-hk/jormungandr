@@ -1,9 +1,10 @@
-use crate::jcli::{command::TransactionCommand, data::Witness, WitnessData};
-use crate::testing::process::ProcessOutput;
+use crate::{
+    jcli::{command::TransactionCommand, data::Witness, WitnessData},
+    testing::process::ProcessOutput,
+};
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::TempDir;
-use chain_core::packer::Codec;
-use chain_core::property::DeserializeFromSlice;
+use chain_core::{packer::Codec, property::DeserializeFromSlice};
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
     crypto::hash::Hash,

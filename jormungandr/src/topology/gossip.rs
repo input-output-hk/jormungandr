@@ -1,6 +1,5 @@
 use super::{limits, NodeId};
 use crate::network::p2p::Address;
-
 use chain_core::{packer::Codec, property};
 use std::net::{IpAddr, Ipv4Addr};
 use thiserror::Error;
@@ -174,8 +173,7 @@ impl property::Deserialize for Gossip {
 mod tests {
     use super::*;
     use chain_impl_mockchain::testing::serialization::serialization_bijection;
-    use quickcheck::quickcheck;
-    use quickcheck::{Arbitrary, TestResult};
+    use quickcheck::{quickcheck, Arbitrary, TestResult};
     use rand::SeedableRng;
     use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 

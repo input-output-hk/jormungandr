@@ -4,18 +4,18 @@ use chain_impl_mockchain::{
     vote::Choice,
 };
 use chain_time::TimeEra;
-use jormungandr_automation::jormungandr::MemPoolCheck;
-use jormungandr_automation::jormungandr::RemoteJormungandr;
-use jormungandr_automation::testing::SyncNode;
-use jormungandr_automation::testing::{VoteCastCounter, VotePlanBuilder};
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
+use jormungandr_automation::{
+    jormungandr::{MemPoolCheck, RemoteJormungandr},
+    testing::{SyncNode, VoteCastCounter, VotePlanBuilder},
+};
+use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate as BlockDateDto};
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
-use std::iter;
-use std::time::Duration;
-use std::time::Instant;
+use std::{
+    iter,
+    time::{Duration, Instant},
+};
 use thor::{
     FragmentBuilder, FragmentSender, FragmentSenderError, FragmentVerifier, StakePool, Wallet,
 };

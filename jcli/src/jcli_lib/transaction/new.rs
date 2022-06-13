@@ -1,6 +1,5 @@
-use structopt::StructOpt;
-
 use crate::jcli_lib::transaction::{common, staging::Staging, Error};
+use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -21,8 +20,7 @@ mod tests {
 
     use self::common::CommonTransaction;
     use super::*;
-    use assert_fs::prelude::*;
-    use assert_fs::NamedTempFile;
+    use assert_fs::{prelude::*, NamedTempFile};
     use predicates::prelude::*;
 
     #[test]

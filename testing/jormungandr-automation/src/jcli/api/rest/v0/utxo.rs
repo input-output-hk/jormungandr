@@ -1,8 +1,9 @@
 use crate::jcli::command::rest::v0::UtxOCommand;
 use assert_cmd::assert::OutputAssertExt;
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::UTxOInfo;
-use jormungandr_lib::interfaces::UTxOOutputInfo;
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{UTxOInfo, UTxOOutputInfo},
+};
 use jortestkit::prelude::ProcessOutput;
 use std::str::FromStr;
 pub struct UtxO {

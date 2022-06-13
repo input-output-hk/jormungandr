@@ -6,8 +6,7 @@ use jormungandr_automation::jormungandr::{
 use loki::FaultyTransactionBuilder;
 use rstest::*;
 use std::time::Duration;
-use thor::FragmentSender;
-use thor::FragmentVerifier;
+use thor::{FragmentSender, FragmentVerifier};
 
 #[fixture]
 fn world() -> (
