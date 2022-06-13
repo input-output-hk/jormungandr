@@ -1,8 +1,6 @@
-use jormungandr_lib::interfaces::NodeConfig;
-use jormungandr_lib::multiaddr::to_tcp_socket_addr;
+use jormungandr_lib::{interfaces::NodeConfig, multiaddr::to_tcp_socket_addr};
 use multiaddr::Multiaddr;
-use std::net::SocketAddr;
-use std::path::Path;
+use std::{net::SocketAddr, path::Path};
 
 /// Abstracts over different versions of the node configuration.
 pub trait TestConfig {

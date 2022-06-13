@@ -799,8 +799,7 @@ fn write_reward_info(
 ) -> std::io::Result<()> {
     use std::{
         env::var,
-        fs::rename,
-        fs::File,
+        fs::{rename, File},
         io::{BufWriter, Write},
         path::PathBuf,
     };

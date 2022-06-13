@@ -1,12 +1,15 @@
 use super::Error;
-use crate::jcli_lib::utils::io;
-use crate::jcli_lib::utils::vote::{self, MemberVotePlanShares, VotePlanDecryptShares};
+use crate::jcli_lib::utils::{
+    io,
+    vote::{self, MemberVotePlanShares, VotePlanDecryptShares},
+};
 use chain_crypto::bech32::Bech32;
 use chain_vote::tally::{EncryptedTally, OpeningVoteKey};
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
-use std::convert::TryFrom;
-use std::path::PathBuf;
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{PrivateTallyState, Tally},
+};
+use std::{convert::TryFrom, path::PathBuf};
 use structopt::StructOpt;
 
 /// Create decryption shares for all proposals in a vote plan.

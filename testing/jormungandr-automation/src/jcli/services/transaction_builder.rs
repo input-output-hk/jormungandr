@@ -1,16 +1,12 @@
 #![allow(dead_code)]
 
 use crate::jcli::{JCli, Witness, WitnessData, WitnessType};
-use assert_fs::fixture::ChildPath;
-use assert_fs::{prelude::*, TempDir};
-use chain_core::packer::Codec;
-use chain_core::property::DeserializeFromSlice;
+use assert_fs::{fixture::ChildPath, prelude::*, TempDir};
+use chain_core::{packer::Codec, property::DeserializeFromSlice};
 use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee, fragment::Fragment};
-use jormungandr_lib::interfaces::Address;
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::BlockDate,
-    interfaces::{LegacyUTxO, UTxOInfo, Value},
+    interfaces::{Address, BlockDate, LegacyUTxO, UTxOInfo, Value},
 };
 use std::path::{Path, PathBuf};
 

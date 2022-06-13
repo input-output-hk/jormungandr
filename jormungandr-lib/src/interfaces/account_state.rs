@@ -1,9 +1,8 @@
+use super::mint_token::TokenIdentifier;
 use crate::{crypto::hash::Hash, interfaces::Value};
 use chain_impl_mockchain::{accounting::account, block::Epoch};
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, convert::TryInto};
-
-use super::mint_token::TokenIdentifier;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct DelegationType {

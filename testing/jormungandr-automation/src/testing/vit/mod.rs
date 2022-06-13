@@ -3,8 +3,7 @@ mod vote_cast_register;
 
 pub use builder::VotePlanBuilder;
 use chain_crypto::bech32::Bech32;
-use chain_impl_mockchain::certificate::VotePlan;
-use chain_impl_mockchain::vote::PayloadType;
+use chain_impl_mockchain::{certificate::VotePlan, vote::PayloadType};
 pub use vote_cast_register::VoteCastCounter;
 
 pub trait VotePlanExtension {

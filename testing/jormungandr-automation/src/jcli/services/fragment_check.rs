@@ -8,8 +8,10 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentLog, FragmentStatus, FragmentsProcessingSummary},
 };
-use jortestkit::prelude::ProcessOutput;
-use jortestkit::process::{run_process_until_response_matches, Wait};
+use jortestkit::{
+    prelude::ProcessOutput,
+    process::{run_process_until_response_matches, Wait},
+};
 use std::process::Command;
 
 pub struct FragmentCheck<'a> {

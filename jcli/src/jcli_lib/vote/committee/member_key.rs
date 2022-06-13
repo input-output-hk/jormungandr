@@ -4,8 +4,7 @@ use chain_vote::committee::{
     MemberCommunicationPublicKey, MemberPublicKey, MemberSecretKey, MemberState,
 };
 use rand::rngs::OsRng;
-use rand_chacha::rand_core::SeedableRng;
-use rand_chacha::ChaCha20Rng;
+use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
 use std::{convert::TryInto, io::Write, path::PathBuf};
 use structopt::StructOpt;
 

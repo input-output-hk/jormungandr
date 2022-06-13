@@ -2,8 +2,7 @@ mod command_arguments;
 pub mod logging;
 pub mod start;
 
-pub use self::command_arguments::CommandLine;
-pub use self::start::Error;
+pub use self::{command_arguments::CommandLine, start::Error};
 use crate::blockcfg::HeaderHash;
 use std::path::PathBuf;
 

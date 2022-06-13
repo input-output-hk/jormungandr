@@ -1,10 +1,9 @@
 mod v0;
 mod v1;
 
+use crate::jcli::command::RestCommand;
 use v0::RestV0;
 use v1::RestV1;
-
-use crate::jcli::command::RestCommand;
 
 pub struct Rest {
     rest_command: RestCommand,

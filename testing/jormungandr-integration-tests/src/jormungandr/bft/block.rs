@@ -5,8 +5,10 @@ use chain_impl_mockchain::{
     fee::LinearFee,
 };
 use hersir::builder::{Blockchain, NetworkBuilder, Node, SpawnParams, Topology};
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_automation::testing::keys;
+use jormungandr_automation::{
+    jormungandr::{ConfigurationBuilder, Starter},
+    testing::keys,
+};
 use jormungandr_lib::interfaces::SlotDuration;
 use loki::{block::BlockBuilder, process::AdversaryNodeBuilder};
 use thor::FragmentBuilder;

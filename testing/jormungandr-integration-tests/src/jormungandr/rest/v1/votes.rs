@@ -1,15 +1,18 @@
 use crate::startup;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate;
-use chain_impl_mockchain::certificate::VoteTallyPayload;
-use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
-use chain_impl_mockchain::{certificate::VoteAction, fee::LinearFee, vote::Choice};
-use jormungandr_automation::jormungandr::ConfigurationBuilder;
-use jormungandr_automation::testing::time;
-use jormungandr_automation::testing::VotePlanBuilder;
+use chain_impl_mockchain::{
+    certificate::{VoteAction, VoteTallyPayload},
+    fee::LinearFee,
+    tokens::minting_policy::MintingPolicy,
+    vote::Choice,
+};
+use jormungandr_automation::{
+    jormungandr::ConfigurationBuilder,
+    testing::{time, VotePlanBuilder},
+};
 use jormungandr_lib::interfaces::{AccountVotes, InitialToken};
-use std::collections::HashMap;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 use thor::FragmentSenderSetup;
 
 #[test]

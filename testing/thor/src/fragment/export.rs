@@ -1,13 +1,11 @@
 #![allow(dead_code)]
 
 use crate::wallet::Wallet;
-use chain_core::packer::Codec;
-use chain_core::property::DeserializeFromSlice;
+use chain_core::{packer::Codec, property::DeserializeFromSlice};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_automation::jormungandr::FragmentNode;
 use jormungandr_lib::interfaces::Address;
-use std::io::Write;
-use std::{fs, path::PathBuf};
+use std::{fs, io::Write, path::PathBuf};
 use thiserror::Error;
 use time::OffsetDateTime;
 

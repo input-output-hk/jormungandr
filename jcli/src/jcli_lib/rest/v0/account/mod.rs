@@ -1,5 +1,7 @@
-use crate::jcli_lib::rest::{Error, RestArgs};
-use crate::jcli_lib::utils::{AccountId, OutputFormat};
+use crate::jcli_lib::{
+    rest::{Error, RestArgs},
+    utils::{AccountId, OutputFormat},
+};
 use jormungandr_lib::interfaces::AccountState;
 use structopt::StructOpt;
 

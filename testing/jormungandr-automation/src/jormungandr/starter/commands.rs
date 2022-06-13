@@ -3,8 +3,7 @@ use crate::jormungandr::{
     starter::FromGenesis, FaketimeConfig, JormungandrParams, LeadershipMode, TestConfig,
 };
 use serde::Serialize;
-use std::path::Path;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 pub struct CommandBuilder<'a> {
     bin: &'a Path,
