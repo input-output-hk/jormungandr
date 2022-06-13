@@ -75,7 +75,7 @@ impl NodeSecret {
     pub fn evm_keys(&self) -> Vec<chain_evm::util::Secret> {
         self.evm_keys
             .iter()
-            .map(|key| chain_evm::util::Secret::from_hash(key).unwrap())
+            .map(|key| chain_evm::util::Secret::from_hash(key))
             .collect()
     }
 }
