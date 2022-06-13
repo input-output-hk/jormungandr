@@ -10,7 +10,7 @@ use chain_core::{
 };
 use chain_network::{
     data::AuthenticatedNodeId,
-    error::{self as net_error, HandshakeError},
+    error::{self as net_error, Code as ErrorCode, HandshakeError},
 };
 use futures::{channel::oneshot, future::BoxFuture, prelude::*, ready};
 use rand::Rng;
@@ -27,7 +27,11 @@ use tracing_futures::Instrument;
 /// gRPC protocol, all other code is generic in terms of network-core traits.
 /// This is intentional, to facilitate extension to different protocols
 /// in the future.
-pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, ConnectFuture) {
+pub fn connect(
+    state: ConnectionState,
+    channels: Channels,
+    expected_server_id: NodeId,
+) -> (ConnectHandle, ConnectFuture) {
     let (sender, receiver) = oneshot::channel();
     let peer = state.peer();
     let keypair = state.global.keypair.clone();
@@ -55,8 +59,21 @@ pub fn connect(state: ConnectionState, channels: Channels) -> (ConnectHandle, Co
         match_block0(expected, block0_hash)?;
 
         // Validate the server's node ID
-        //TODO: check id is the expected one
         let peer_id = validate_peer_auth(hr.auth, &nonce)?;
+        // TODO: this should be better done by adding a network level authenticated / encrypted connection.
+        if peer_id != expected_server_id {
+            tracing::warn!(
+                "server id ({}) is different from the expected one ({}), aborting handshake",
+                peer_id,
+                expected_server_id
+            );
+            return Err(ConnectError::Handshake(HandshakeError::InvalidNodeId(
+                net_error::Error::new(
+                    ErrorCode::Unknown, // should really use Unauthenticated, but it's not available yet in the library
+                    "returned id is different from expected one",
+                ),
+            )));
+        }
 
         tracing::debug!(node_id = %peer_id, "authenticated server peer node");
 
