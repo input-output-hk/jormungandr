@@ -1,26 +1,23 @@
 mod raw;
 mod settings;
 
-use crate::{jormungandr::legacy, jormungandr::MemPoolCheck};
-use chain_impl_mockchain::block::Block;
-use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use chain_impl_mockchain::header::HeaderId;
-use jormungandr_lib::crypto::account::Identifier;
-use jormungandr_lib::interfaces::{
-    AccountVotes, Address, FragmentStatus, FragmentsProcessingSummary, Value, VotePlanId,
+use crate::jormungandr::{legacy, MemPoolCheck};
+use chain_impl_mockchain::{
+    block::Block,
+    fragment::{Fragment, FragmentId},
+    header::HeaderId,
 };
 use jormungandr_lib::{
-    crypto::hash::Hash,
+    crypto::{account::Identifier, hash::Hash},
     interfaces::{
-        AccountState, EpochRewardsInfo, FragmentLog, LeadershipLog, NodeStatsDto, PeerRecord,
-        PeerStats, SettingsDto, StakeDistributionDto, VotePlanStatus,
+        AccountState, AccountVotes, Address, EpochRewardsInfo, FragmentLog, FragmentStatus,
+        FragmentsProcessingSummary, LeadershipLog, NodeStatsDto, PeerRecord, PeerStats,
+        SettingsDto, StakeDistributionDto, Value, VotePlanId, VotePlanStatus,
     },
 };
 pub use raw::RawRest;
 pub use settings::RestSettings;
-use std::collections::HashMap;
-use std::io::Read;
-use std::{fs::File, net::SocketAddr, path::Path};
+use std::{collections::HashMap, fs::File, io::Read, net::SocketAddr, path::Path};
 use thiserror::Error;
 
 #[derive(Debug, Error)]

@@ -1,17 +1,16 @@
 use crate::metrics::MetricsBackend;
-
-use chain_impl_mockchain::block::BlockContentHash;
-use chain_impl_mockchain::fragment::Fragment;
-use chain_impl_mockchain::transaction::Transaction;
-use chain_impl_mockchain::value::{Value, ValueError};
-
-use std::convert::TryInto;
-use std::sync::Arc;
-use std::time::SystemTime;
-
 use arc_swap::ArcSwapOption;
-use prometheus::core::{AtomicU64, GenericGauge};
-use prometheus::{Encoder, Gauge, IntCounter, Registry, TextEncoder};
+use chain_impl_mockchain::{
+    block::BlockContentHash,
+    fragment::Fragment,
+    transaction::Transaction,
+    value::{Value, ValueError},
+};
+use prometheus::{
+    core::{AtomicU64, GenericGauge},
+    Encoder, Gauge, IntCounter, Registry, TextEncoder,
+};
+use std::{convert::TryInto, sync::Arc, time::SystemTime};
 
 type UIntGauge = GenericGauge<AtomicU64>;
 
@@ -268,9 +267,10 @@ impl MetricsBackend for Prometheus {
                     Fragment::MintToken(tx) => totals(tx),
                     Fragment::UpdateProposal(tx) => totals(tx),
                     Fragment::UpdateVote(tx) => totals(tx),
-                    Fragment::Evm(tx) => totals(tx),
                     Fragment::EvmMapping(tx) => totals(tx),
-                    Fragment::Initial(_) | Fragment::OldUtxoDeclaration(_) => return Ok(()),
+                    Fragment::Initial(_) | Fragment::OldUtxoDeclaration(_) | Fragment::Evm(_) => {
+                        return Ok(())
+                    }
                 }?;
                 block_tx_count += 1;
                 block_input_sum = (block_input_sum + total_input)?;

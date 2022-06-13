@@ -4,33 +4,27 @@ mod commands;
 pub use commands::{get_command, CommandBuilder};
 
 mod testing_directory;
-use crate::jormungandr::{ConfigurationBuilder, JormungandrError, JormungandrProcess, RestError};
 use crate::{
     jormungandr::{
-        JormungandrParams, LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfig,
-        TestConfig, Version,
+        ConfigurationBuilder, JormungandrError, JormungandrParams, JormungandrProcess,
+        LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfig, RestError, TestConfig,
+        Version,
     },
     testing::{configuration::get_jormungandr_app, SpeedBenchmarkDef, SpeedBenchmarkRun},
 };
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::fixture::FixtureError;
-use assert_fs::TempDir;
+use assert_fs::{fixture::FixtureError, TempDir};
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::interfaces::NodeConfig;
 use jortestkit::process::{self as process_utils, ProcessError};
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
-use std::path::Path;
-use std::path::PathBuf;
-use std::process::Command;
-use std::process::ExitStatus;
-use std::process::Stdio;
 use std::{
-    process::Child,
+    fmt::Debug,
+    path::{Path, PathBuf},
+    process::{Child, Command, ExitStatus, Stdio},
     time::{Duration, Instant},
 };
 pub use testing_directory::TestingDirectory;
-
 use thiserror::Error;
 
 #[derive(Debug, Error)]

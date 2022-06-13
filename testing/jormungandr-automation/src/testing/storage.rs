@@ -1,7 +1,7 @@
-use chain_storage::test_utils::Block;
-use chain_storage::test_utils::BlockId;
-use chain_storage::BlockInfo;
-use chain_storage::BlockStore;
+use chain_storage::{
+    test_utils::{Block, BlockId},
+    BlockInfo, BlockStore,
+};
 use rand::RngCore;
 use rand_core::OsRng;
 use std::path::{Path, PathBuf};

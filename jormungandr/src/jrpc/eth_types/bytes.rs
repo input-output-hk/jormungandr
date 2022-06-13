@@ -1,8 +1,29 @@
-use serde::{de::Error, de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de::{Error, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Bytes(Box<[u8]>);
+
+impl From<Box<[u8]>> for Bytes {
+    fn from(val: Box<[u8]>) -> Self {
+        Self(val)
+    }
+}
+
+impl From<Bytes> for Box<[u8]> {
+    fn from(val: Bytes) -> Self {
+        val.0
+    }
+}
+
+impl AsRef<[u8]> for Bytes {
+    fn as_ref(&self) -> &[u8] {
+        &*self.0
+    }
+}
 
 impl Serialize for Bytes {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

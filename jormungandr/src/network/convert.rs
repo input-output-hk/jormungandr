@@ -1,13 +1,17 @@
-use crate::blockcfg::{Block, Fragment, Header, HeaderId};
-use crate::intercom;
-use crate::topology::{Gossip, Gossips, NodeId};
-use chain_core::packer::Codec;
-use chain_core::property::{DeserializeFromSlice, Serialize};
-use chain_network::data as net_data;
-use chain_network::error::{Code, Error};
-
+use crate::{
+    blockcfg::{Block, Fragment, Header, HeaderId},
+    intercom,
+    topology::{Gossip, Gossips, NodeId},
+};
+use chain_core::{
+    packer::Codec,
+    property::{DeserializeFromSlice, Serialize},
+};
+use chain_network::{
+    data as net_data,
+    error::{Code, Error},
+};
 use futures::stream::{self, TryStreamExt};
-
 use std::convert::TryFrom;
 
 fn read<T, U>(src: &T) -> Result<U, Error>

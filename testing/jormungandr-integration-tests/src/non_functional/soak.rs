@@ -1,7 +1,10 @@
 use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_automation::testing::{benchmark_consumption, benchmark_endurance};
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::ConfigurationBuilder,
+    testing::{benchmark_consumption, benchmark_endurance},
+};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed, Mempool};
 use jortestkit::process::Wait;
 use std::time::Duration;

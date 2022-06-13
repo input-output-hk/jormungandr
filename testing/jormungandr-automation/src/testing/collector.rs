@@ -1,6 +1,8 @@
-use std::io::{BufRead, Read};
-use std::sync::mpsc::{self, Receiver};
-use std::time::Instant;
+use std::{
+    io::{BufRead, Read},
+    sync::mpsc::{self, Receiver},
+    time::Instant,
+};
 
 pub struct OutputCollector {
     rx: Receiver<(Instant, String)>,

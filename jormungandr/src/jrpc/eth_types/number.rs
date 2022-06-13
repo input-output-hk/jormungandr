@@ -5,12 +5,18 @@ use serde::{
 use std::fmt;
 
 /// Represents usize.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Number(u64);
 
 impl From<u64> for Number {
     fn from(val: u64) -> Self {
         Self(val)
+    }
+}
+
+impl From<Number> for u64 {
+    fn from(val: Number) -> Self {
+        val.0
     }
 }
 
@@ -28,13 +34,13 @@ impl<'a> Deserialize<'a> for Number {
     where
         D: Deserializer<'a>,
     {
-        deserializer.deserialize_any(IndexVisitor)
+        deserializer.deserialize_any(NumberVisitor)
     }
 }
 
-struct IndexVisitor;
+struct NumberVisitor;
 
-impl<'a> Visitor<'a> for IndexVisitor {
+impl<'a> Visitor<'a> for NumberVisitor {
     type Value = Number;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -76,7 +82,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn index_deserialization() {
+    fn number_serde() {
         let s = r#"["0xa", "10", 42, "0x45"]"#;
         let deserialized: Vec<Number> = serde_json::from_str(s).unwrap();
         assert_eq!(

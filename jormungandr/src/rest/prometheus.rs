@@ -1,5 +1,4 @@
 use crate::rest::ContextLock;
-
 use warp::{Filter, Rejection, Reply};
 
 pub fn filter(

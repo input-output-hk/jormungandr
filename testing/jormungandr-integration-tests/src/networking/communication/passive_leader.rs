@@ -1,16 +1,18 @@
 use crate::networking::utils::wait;
-use hersir::builder::Blockchain;
-use hersir::builder::{wallet::template::builder::WalletTemplateBuilder, NetworkBuilder};
-use hersir::builder::{Node, SpawnParams, Topology};
-use jormungandr_automation::jormungandr::{LogLevel, MemPoolCheck};
-use jormungandr_automation::testing::benchmark::{
-    measure_and_log_sync_time, MeasurementReportInterval,
+use hersir::builder::{
+    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
+    SpawnParams, Topology,
 };
-use jormungandr_automation::testing::SyncWaitParams;
+use jormungandr_automation::{
+    jormungandr::{LogLevel, MemPoolCheck},
+    testing::{
+        benchmark::{measure_and_log_sync_time, MeasurementReportInterval},
+        SyncWaitParams,
+    },
+};
 use jormungandr_lib::interfaces::Policy;
 use std::time::Duration;
-use thor::FragmentSender;
-use thor::FragmentSenderSetup;
+use thor::{FragmentSender, FragmentSenderSetup};
 
 const PASSIVE: &str = "PASSIVE";
 const LEADER: &str = "LEADER";

@@ -1,6 +1,5 @@
-use serde::{Serialize, Serializer};
-
 use super::number::Number;
+use serde::{Serialize, Serializer};
 
 /// Sync info
 #[derive(Debug, Serialize, PartialEq, Eq)]

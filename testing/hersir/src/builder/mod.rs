@@ -7,24 +7,27 @@ pub mod vote;
 mod vote_plan_settings;
 pub mod wallet;
 
-use crate::config::SessionSettings;
-use crate::controller::Controller;
-use crate::controller::Error;
 pub use crate::controller::Error as ControllerError;
-use crate::utils::Dotifier;
+use crate::{
+    config::SessionSettings,
+    controller::{Controller, Error},
+    utils::Dotifier,
+};
 pub use blockchain::Blockchain;
 pub use jormungandr_automation::jormungandr::NodeAlias;
-use jormungandr_automation::jormungandr::NodeConfigBuilder;
-use jormungandr_automation::testing::observer::{Event, Observable, Observer};
-use jormungandr_lib::crypto::key::SigningKey;
-use jormungandr_lib::interfaces::NodeSecret;
+use jormungandr_automation::{
+    jormungandr::NodeConfigBuilder,
+    testing::observer::{Event, Observable, Observer},
+};
+use jormungandr_lib::{crypto::key::SigningKey, interfaces::NodeSecret};
 pub use rng::{Random, Seed};
 pub use settings::{NodeSetting, Settings};
 pub use spawn_params::SpawnParams;
-use std::collections::HashMap;
-use std::path::Path;
-use std::rc::Rc;
-use std::rc::Weak;
+use std::{
+    collections::HashMap,
+    path::Path,
+    rc::{Rc, Weak},
+};
 pub use topology::{Node, Topology};
 pub use vote::VotePlanKey;
 pub use vote_plan_settings::VotePlanSettings;

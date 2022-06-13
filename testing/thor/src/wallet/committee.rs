@@ -16,10 +16,7 @@ use chain_vote::{
 };
 use jormungandr_lib::crypto::account::Identifier;
 use rand_core::{CryptoRng, RngCore};
-use std::collections::HashMap;
-use std::fmt;
-use std::fs::File;
-use std::io::Write;
+use std::{collections::HashMap, fmt, fs::File, io::Write};
 
 #[derive(Clone)]
 pub struct PrivateVoteCommitteeData {

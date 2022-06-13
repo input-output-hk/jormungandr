@@ -17,16 +17,13 @@ use crate::{
     utils::{async_msg, task::Services},
 };
 use chain_impl_mockchain::leadership::LeadershipConsensus;
-use futures::executor::block_on;
-use futures::prelude::*;
+use futures::{executor::block_on, prelude::*};
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
+use std::{sync::Arc, time::Duration};
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use tracing::{span, Level, Span};
-
-use std::sync::Arc;
-use std::time::Duration;
 
 pub mod blockcfg;
 pub mod blockchain;

@@ -1,14 +1,11 @@
 use crate::non_functional::network::*;
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use hersir::builder::blockchain::BlockchainBuilder;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
+use hersir::builder::{
+    blockchain::BlockchainBuilder, wallet::template::builder::WalletTemplateBuilder,
+    NetworkBuilder, Node, SpawnParams, Topology,
+};
 use jormungandr_automation::jormungandr::FaketimeConfig;
-use thor::FragmentSender;
-use thor::Wallet;
+use thor::{FragmentSender, Wallet};
 
 #[test]
 pub fn bft_forks() {

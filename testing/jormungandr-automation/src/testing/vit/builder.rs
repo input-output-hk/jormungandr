@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::{
     block::BlockDate,
@@ -9,6 +7,7 @@ use chain_impl_mockchain::{
     vote::{Options, PayloadType},
 };
 use chain_vote::MemberPublicKey;
+use std::str::FromStr;
 pub struct VotePlanBuilder {
     proposals_count: usize,
     action: VoteAction,

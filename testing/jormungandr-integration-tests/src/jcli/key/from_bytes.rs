@@ -1,5 +1,4 @@
-use assert_fs::prelude::*;
-use assert_fs::NamedTempFile;
+use assert_fs::{prelude::*, NamedTempFile};
 use jormungandr_automation::jcli::JCli;
 
 #[test]

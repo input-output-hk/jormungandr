@@ -1,5 +1,7 @@
-use jormungandr_automation::jormungandr::{JormungandrError, RestError, StartupError};
-use jormungandr_automation::testing::block0::Block0Error;
+use jormungandr_automation::{
+    jormungandr::{JormungandrError, RestError, StartupError},
+    testing::block0::Block0Error,
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

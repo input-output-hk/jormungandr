@@ -1,8 +1,11 @@
-use assert_fs::fixture::FixtureError;
-use assert_fs::fixture::{ChildPath, PathChild};
-use assert_fs::TempDir;
-use std::fmt;
-use std::path::{Path, PathBuf};
+use assert_fs::{
+    fixture::{ChildPath, FixtureError, PathChild},
+    TempDir,
+};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
 use thiserror::Error;
 
 pub enum TestingDirectory {

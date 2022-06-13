@@ -5,10 +5,9 @@ mod to_public;
 
 pub use from_bytes::KeyFromBytesCommand;
 pub use generate::KeyGenerateCommand;
+use std::process::Command;
 pub use to_bytes::KeyToBytesCommand;
 pub use to_public::KeyToPublicCommand;
-
-use std::process::Command;
 
 pub struct KeyCommand {
     command: Command,

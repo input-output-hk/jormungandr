@@ -1,6 +1,5 @@
 use super::config::Alias;
-use crate::FragmentSenderError;
-use crate::FragmentVerifierError;
+use crate::{FragmentSenderError, FragmentVerifierError};
 use chain_crypto::SecretKeyError;
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_automation::jormungandr::RestError;

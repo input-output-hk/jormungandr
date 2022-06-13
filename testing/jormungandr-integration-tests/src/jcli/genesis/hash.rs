@@ -1,7 +1,5 @@
+use assert_fs::{prelude::*, TempDir};
 use jormungandr_automation::jcli::JCli;
-
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
 
 #[test]
 pub fn test_correct_hash_is_returned_for_correct_block() {

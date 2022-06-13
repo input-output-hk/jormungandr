@@ -1,3 +1,4 @@
+use super::{Context, Request};
 use crate::block::BlockBuilder;
 use chain_impl_mockchain::{
     block::{Block, BlockDate, ContentsBuilder},
@@ -7,8 +8,6 @@ use reqwest::StatusCode;
 use std::net::SocketAddr;
 use thor::FragmentBuilder;
 use warp::{reply::WithStatus, Reply};
-
-use super::{Context, Request};
 
 pub(super) fn invalid_signature(request: Request, context: Context) -> impl Reply {
     let Request { address, parent } = request;

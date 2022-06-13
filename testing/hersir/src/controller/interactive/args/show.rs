@@ -1,7 +1,7 @@
 use crate::controller::{do_for_all_alias, UserInteractionController};
-use jormungandr_automation::jormungandr::BackwardCompatibleRest;
-use jormungandr_automation::jormungandr::FragmentNode;
-use jormungandr_automation::jormungandr::{JormungandrLogger, LogLevel};
+use jormungandr_automation::jormungandr::{
+    BackwardCompatibleRest, FragmentNode, JormungandrLogger, LogLevel,
+};
 use structopt::StructOpt;
 use yaml_rust::Yaml;
 
