@@ -1,18 +1,22 @@
 query Settings {
   settings {
+    epochStabilityDepth {
+      epochStabilityDepth
+      }
     fees {
         constant
         coefficient
         certificate
-        perCertificateFees{
+        perCertificateFees {
                   certificatePoolRegistration
                   certificateStakeDelegation
                   certificateOwnerStakeDelegation
                 }
-        perVoteCertificateFees{
+        perVoteCertificateFees {
                   certificateVotePlan
                   certificateVoteCast
                 }
     }
+
   }
 }
