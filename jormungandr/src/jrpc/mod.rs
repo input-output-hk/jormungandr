@@ -43,6 +43,8 @@ pub enum Error {
     Fragment(FragmentsProcessingSummary),
     #[error("Cound not decode Ethereum transaction bytes, erorr: {0}")]
     TransactionDecodedErorr(String),
+    #[error("We are not supporting mining functionality")]
+    MinningAreNotAllowed,
 }
 
 pub async fn start_jrpc_server(config: Config, _context: ContextLock) {
