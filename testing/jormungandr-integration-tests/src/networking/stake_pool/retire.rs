@@ -5,21 +5,31 @@ use hersir::builder::{
 use jormungandr_automation::testing::time;
 use jormungandr_lib::interfaces::BlockDate;
 use thor::FragmentSender;
+
 const LEADER_1: &str = "Leader_1";
 const LEADER_2: &str = "Leader_2";
 const LEADER_3: &str = "Leader_3";
 const LEADER_4: &str = "Leader_4";
 
+const INITIAL_FUNDS: u64 = 2_000_000_000;
 const ALICE: &str = "ALICE";
 const BOB: &str = "BOB";
 const CLARICE: &str = "CLARICE";
 const DAVID: &str = "DAVID";
 
-// FIX: there's a bug in our current handling of stake pool retirement
-// re-enable this test once we fix that
+const SLOTS_PER_EPOCH: u32 = 10;
+const SLOT_DURATION: u8 = 2;
+
 #[test]
-#[ignore]
 pub fn retire_stake_pool_explorer() {
+    // Each step needs to be performed with one block between each other to avoid flakiness
+    let first_date = BlockDate::new(0, SLOTS_PER_EPOCH / 2);
+    let second_date = BlockDate::new(2, SLOTS_PER_EPOCH / 2);
+    let third_date = BlockDate::new(4, SLOTS_PER_EPOCH / 2);
+
+    // Assertion just need to be somewhere in the future
+    let assert_date = BlockDate::new(5, 0);
+
     let mut controller = NetworkBuilder::default()
         .topology(
             Topology::default()
@@ -30,32 +40,32 @@ pub fn retire_stake_pool_explorer() {
         )
         .blockchain_config(
             BlockchainBuilder::default()
-                .slots_per_epoch(60)
-                .slot_duration(2)
-                .leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4])
+                .slots_per_epoch(SLOTS_PER_EPOCH)
+                .slot_duration(SLOT_DURATION)
+                .leaders(vec![LEADER_1])
                 .build(),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
-                .with(2_000_000_000)
+                .with(INITIAL_FUNDS)
                 .delegated_to(LEADER_1)
                 .build(),
         )
         .wallet_template(
             WalletTemplateBuilder::new(BOB)
-                .with(2_000_000_000)
+                .with(INITIAL_FUNDS)
                 .delegated_to(LEADER_2)
                 .build(),
         )
         .wallet_template(
             WalletTemplateBuilder::new(CLARICE)
-                .with(2_000_000_000)
+                .with(INITIAL_FUNDS)
                 .delegated_to(LEADER_3)
                 .build(),
         )
         .wallet_template(
             WalletTemplateBuilder::new(DAVID)
-                .with(2_000_000_000)
+                .with(INITIAL_FUNDS)
                 .delegated_to(LEADER_4)
                 .build(),
         )
@@ -75,7 +85,7 @@ pub fn retire_stake_pool_explorer() {
         .spawn(SpawnParams::new(LEADER_4).in_memory())
         .unwrap();
 
-    time::wait_for_date(BlockDate::new(0, 30), leader_1.rest());
+    time::wait_for_date(first_date, leader_1.rest());
 
     let explorer_process = leader_1.explorer();
     let explorer = explorer_process.client();
@@ -103,11 +113,13 @@ pub fn retire_stake_pool_explorer() {
         .send_transaction(&mut david, &spo_3, &leader_1, 100.into())
         .unwrap();
 
+    time::wait_for_date(second_date, leader_1.rest());
+
     fragment_sender
         .send_pool_retire(&mut spo_3, &stake_pool_3, &leader_1)
         .unwrap();
 
-    time::wait_for_date(BlockDate::new(1, 30), leader_1.rest());
+    time::wait_for_date(third_date, leader_1.rest());
 
     let created_block_count = leader_3.logger.get_created_blocks_hashes().len();
     let start_time_no_block = std::time::SystemTime::now();
@@ -116,13 +128,14 @@ pub fn retire_stake_pool_explorer() {
     let stake_pool_state_after = explorer
         .stake_pool(stake_pool_3.id().to_string(), 0)
         .unwrap();
+
     assert!(
         stake_pool_state_after
             .data
             .unwrap()
             .stake_pool
             .retirement
-            .is_none(),
+            .is_some(),
         "retirement field in explorer should not be empty",
     );
 
@@ -134,7 +147,7 @@ pub fn retire_stake_pool_explorer() {
     );
 
     //proof 3: no more minted blocks hashes in logs
-    std::thread::sleep(std::time::Duration::from_secs(10));
+    time::wait_for_date(assert_date, leader_1.rest());
     assert!(
         leader_3
             .logger
