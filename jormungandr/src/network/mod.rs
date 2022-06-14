@@ -474,7 +474,7 @@ fn connect_and_propagate(
     let cf = async move {
         let conn_state = ConnectionState::new(state.clone(), &peer, Span::current());
         tracing::info!("connecting to peer");
-        let (handle, connecting) = client::connect(conn_state, channels.clone());
+        let (handle, connecting) = client::connect(conn_state, channels.clone(), id);
         state.peers.add_connecting(id, addr, handle, options).await;
         match connecting.await {
             Err(e) => {
