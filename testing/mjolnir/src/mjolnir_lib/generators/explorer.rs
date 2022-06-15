@@ -1,7 +1,5 @@
 use jormungandr_automation::jormungandr::{Explorer, ExplorerError};
-use jortestkit::load::Request;
-use jortestkit::load::RequestFailure;
-use jortestkit::load::RequestGenerator;
+use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
 use std::time::Instant;

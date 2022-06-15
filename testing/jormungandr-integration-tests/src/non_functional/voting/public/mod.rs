@@ -12,11 +12,11 @@ use chain_impl_mockchain::{
     ledger::governance::TreasuryGovernanceAction,
     value::Value,
 };
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_automation::testing::time::wait_for_epoch;
-use jormungandr_automation::testing::{benchmark_consumption, VotePlanBuilder};
-use jortestkit::load::Configuration;
-use jortestkit::measurement::Status;
+use jormungandr_automation::{
+    jormungandr::{ConfigurationBuilder, Starter},
+    testing::{benchmark_consumption, time::wait_for_epoch, VotePlanBuilder},
+};
+use jortestkit::{load::Configuration, measurement::Status};
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::{AdversaryFragmentGenerator, FragmentStatusProvider, VoteCastsGenerator};
 use thor::{vote_plan_cert, BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};

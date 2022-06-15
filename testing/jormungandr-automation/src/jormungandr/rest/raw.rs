@@ -2,7 +2,7 @@ use super::RestSettings;
 use crate::jormungandr::RestError;
 use bech32::FromBase32;
 use chain_core::property::Serialize;
-use chain_crypto::PublicKey;
+use chain_crypto::PublicKey
 #[cfg(feature = "evm")]
 use chain_evm::Address as EvmAddress;
 use chain_impl_mockchain::account;
@@ -11,6 +11,7 @@ use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::header::HeaderId;
 use jormungandr_lib::crypto::account::Identifier;
 use jormungandr_lib::interfaces::{Address, FragmentsBatch, VotePlanId};
+
 use jortestkit::process::Wait;
 use reqwest::{
     blocking::{Client, Response},

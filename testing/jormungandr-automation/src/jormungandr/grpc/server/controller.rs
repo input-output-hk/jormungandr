@@ -4,9 +4,8 @@ use chain_impl_mockchain::{
     block::{Block, Header},
     key::Hash,
 };
-use std::sync::RwLock;
 use std::{
-    sync::Arc,
+    sync::{Arc, RwLock},
     thread,
     time::{Duration, Instant},
 };

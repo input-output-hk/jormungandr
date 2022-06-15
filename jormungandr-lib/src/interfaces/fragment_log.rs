@@ -16,6 +16,9 @@ pub enum FragmentOrigin {
     /// This marks the fragment is coming from the REST interface
     /// (a client wallet or another service).
     Rest,
+    /// This marks the fragment is coming from the JRpc interface
+    /// (a client wallet or another service).
+    JRpc,
 }
 
 /// status of the fragment within the blockchain or the pool

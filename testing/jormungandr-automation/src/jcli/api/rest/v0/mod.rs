@@ -4,16 +4,15 @@ mod node;
 mod utxo;
 mod vote;
 
+use crate::jcli::command::rest::V0Command;
+use assert_cmd::assert::OutputAssertExt;
 use block::Block;
+use jormungandr_lib::interfaces::{AccountState, LeadershipLog, SettingsDto, StakePoolStats};
+use jortestkit::prelude::ProcessOutput;
 use message::Message;
 use node::Node;
 use utxo::UtxO;
 use vote::Vote;
-
-use crate::jcli::command::rest::V0Command;
-use assert_cmd::assert::OutputAssertExt;
-use jormungandr_lib::interfaces::{AccountState, LeadershipLog, SettingsDto, StakePoolStats};
-use jortestkit::prelude::ProcessOutput;
 pub struct RestV0 {
     v0_command: V0Command,
 }

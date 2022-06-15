@@ -4,8 +4,7 @@ pub use self::{
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
     persistent_log::{write_into_persistent_log, PersistentLogViewer},
     sender::{BlockDateGenerator, FragmentSender, FragmentSenderError},
-    setup::DummySyncNode,
-    setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
+    setup::{DummySyncNode, FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
     verifier::{ExitStrategy as VerifyExitStrategy, FragmentVerifier, FragmentVerifierError},
 };
 use crate::wallet::account::Wallet as AccountWallet;
@@ -22,23 +21,24 @@ use chain_impl_mockchain::{
         VoteTallyPayload,
     },
     fee::LinearFee,
+
     fragment::Fragment,
     testing::{
         data::{StakePool as StakePoolLib, Wallet as WalletLib},
         scenario::FragmentFactory,
         WitnessMode,
     },
+    transaction::{InputOutputBuilder, TxBuilder},
     vote::{Choice, Payload, PayloadType},
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Initial, Value},
 };
-pub use transaction_utils::TransactionHash;
-
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
 use thiserror::Error;
+pub use transaction_utils::TransactionHash;
 
 mod chain_sender;
 mod export;

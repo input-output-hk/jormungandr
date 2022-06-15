@@ -1,8 +1,5 @@
-use criterion::black_box;
-use criterion::Criterion;
-use criterion::{criterion_group, criterion_main};
-use jormungandr::context::Context;
-use jormungandr::rest::v0::logic::get_message_logs;
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use jormungandr::{context::Context, rest::v0::logic::get_message_logs};
 use tokio::runtime::Runtime;
 
 fn tokio() -> Runtime {

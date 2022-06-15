@@ -1,9 +1,8 @@
 pub mod template;
 
-use chain_impl_mockchain::accounting::account::SpendingCounterIncreasing;
 use chain_impl_mockchain::{
-    block::BlockDate, certificate::PoolId, transaction::UnspecifiedAccountIdentifier,
-    vote::CommitteeId,
+    accounting::account::SpendingCounterIncreasing, block::BlockDate, certificate::PoolId,
+    transaction::UnspecifiedAccountIdentifier, vote::CommitteeId,
 };
 use jormungandr_lib::interfaces::{Address, Initial};
 use rand_core::{CryptoRng, RngCore};

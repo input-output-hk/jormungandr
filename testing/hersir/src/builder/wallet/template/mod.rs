@@ -8,8 +8,10 @@ pub use external::ExternalWalletTemplate;
 use jormungandr_automation::jormungandr::NodeAlias;
 use jormungandr_lib::interfaces::{DiscriminationDef, TokenIdentifier, ValueDef};
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::HashMap,
+    hash::{Hash, Hasher},
+};
 use thor::WalletAlias;
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]
 pub struct WalletTemplate {

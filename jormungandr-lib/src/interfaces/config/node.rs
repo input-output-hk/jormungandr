@@ -1,7 +1,9 @@
-use crate::crypto::key::Identifier;
-use crate::interfaces::config::{Log, Mempool};
-use crate::multiaddr as multiaddr_utils;
-use crate::time::Duration;
+use crate::{
+    crypto::key::Identifier,
+    interfaces::config::{Log, Mempool},
+    multiaddr as multiaddr_utils,
+    time::Duration,
+};
 use chain_crypto::Ed25519;
 use multiaddr::Multiaddr;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};

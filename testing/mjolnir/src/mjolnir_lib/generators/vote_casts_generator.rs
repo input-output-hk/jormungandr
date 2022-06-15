@@ -1,10 +1,10 @@
 use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
-use jormungandr_automation::jormungandr::{MemPoolCheck, RemoteJormungandr};
-use jormungandr_automation::testing::SyncNode;
-use jormungandr_automation::testing::VoteCastCounter;
+use jormungandr_automation::{
+    jormungandr::{MemPoolCheck, RemoteJormungandr},
+    testing::{SyncNode, VoteCastCounter},
+};
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
-use rand_core::OsRng;
-use rand_core::RngCore;
+use rand_core::{OsRng, RngCore};
 use std::time::Instant;
 use thor::{FragmentSender, FragmentSenderError, Wallet};
 

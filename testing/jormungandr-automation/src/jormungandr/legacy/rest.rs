@@ -1,5 +1,6 @@
 use crate::jormungandr::{MemPoolCheck, RawRest, RestError, RestSettings};
 use chain_core::property::Fragment as _;
+
 #[cfg(feature = "evm")]
 use chain_evm::Address as EvmAddress;
 use chain_impl_mockchain::account::Identifier as JorAddress;
@@ -9,7 +10,6 @@ use jormungandr_lib::crypto::account::Identifier;
 use jormungandr_lib::interfaces::{
     Address, FragmentStatus, FragmentsProcessingSummary, VotePlanId,
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentLog};
 use reqwest::blocking::Response;
 use std::collections::HashMap;
 

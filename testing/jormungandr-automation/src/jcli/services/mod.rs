@@ -8,10 +8,9 @@ pub use certificate_builder::CertificateBuilder;
 pub use fragment_check::FragmentCheck;
 pub use fragment_sender::FragmentSender;
 pub use fragments_check::FragmentsCheck;
-pub use transaction_builder::TransactionBuilder;
-
 use jormungandr_lib::crypto::hash::Hash;
 use thiserror::Error;
+pub use transaction_builder::TransactionBuilder;
 
 #[derive(Debug, Error)]
 pub enum Error {

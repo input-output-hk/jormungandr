@@ -1,5 +1,4 @@
-use crate::startup;
-use crate::startup::start_stake_pool;
+use crate::{startup, startup::start_stake_pool};
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
     TempDir,
@@ -16,12 +15,14 @@ use chain_impl_mockchain::{
     value::Value,
     vote::{Choice, CommitteeId},
 };
-use jormungandr_automation::testing::asserts::VotePlanStatusAssert;
-use jormungandr_automation::testing::time::{self, wait_for_epoch};
-use jormungandr_automation::testing::VotePlanExtension;
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
+    testing::{
+        asserts::VotePlanStatusAssert,
+        time::{self, wait_for_epoch},
+        VotePlanExtension,
+    },
 };
 use jormungandr_lib::{
     crypto::key::KeyPair,

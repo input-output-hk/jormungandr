@@ -1,20 +1,18 @@
+use assert_fs::{prelude::*, TempDir};
 use chain_crypto::{RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::fee::LinearFee;
-use jormungandr_automation::testing::keys;
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
+    testing::keys,
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, InitialUTxO, Ratio, TaxType, Value},
 };
 use jortestkit::process::Wait;
-use thor::Wallet;
-
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
 use std::str::FromStr;
+use thor::Wallet;
 
 #[test]
 pub fn create_delegate_retire_stake_pool() {

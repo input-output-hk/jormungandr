@@ -12,26 +12,24 @@ mod proposal_expiration;
 mod reward_constraint;
 mod slots_duration;
 
-pub use self::active_slot_coefficient::ActiveSlotCoefficient;
-pub use self::active_slot_coefficient::TryFromActiveSlotCoefficientError;
-pub use self::block_content_max_size::BlockContentMaxSize;
-pub use self::default_values::*;
-pub use self::epoch_stability_depth::EpochStabilityDepth;
-pub use self::fees_go_to::FeesGoTo;
-pub use self::fees_go_to::TryFromFeesGoToError;
-pub use self::initial_config::{BlockchainConfiguration, ConsensusVersionDef, DiscriminationDef};
-pub use self::initial_fragment::{
-    try_initial_fragment_from_message, Destination, Initial, InitialToken, InitialUTxO, LegacyUTxO,
+pub use self::{
+    active_slot_coefficient::{ActiveSlotCoefficient, TryFromActiveSlotCoefficientError},
+    block_content_max_size::BlockContentMaxSize,
+    default_values::*,
+    epoch_stability_depth::EpochStabilityDepth,
+    fees_go_to::{FeesGoTo, TryFromFeesGoToError},
+    initial_config::{BlockchainConfiguration, ConsensusVersionDef, DiscriminationDef},
+    initial_fragment::{
+        try_initial_fragment_from_message, Destination, Initial, InitialToken, InitialUTxO,
+        LegacyUTxO,
+    },
+    kes_update_speed::{KesUpdateSpeed, TryFromKesUpdateSpeedError},
+    leader_id::ConsensusLeaderId,
+    number_of_slots_per_epoch::{NumberOfSlotsPerEpoch, TryFromNumberOfSlotsPerEpochError},
+    proposal_expiration::ProposalExpiration,
+    reward_constraint::{PoolParticipationCapping, RewardConstraints},
+    slots_duration::{SlotDuration, TryFromSlotDurationError},
 };
-pub use self::kes_update_speed::KesUpdateSpeed;
-pub use self::kes_update_speed::TryFromKesUpdateSpeedError;
-pub use self::leader_id::ConsensusLeaderId;
-pub use self::number_of_slots_per_epoch::NumberOfSlotsPerEpoch;
-pub use self::number_of_slots_per_epoch::TryFromNumberOfSlotsPerEpochError;
-pub use self::proposal_expiration::ProposalExpiration;
-pub use self::reward_constraint::{PoolParticipationCapping, RewardConstraints};
-pub use self::slots_duration::SlotDuration;
-pub use self::slots_duration::TryFromSlotDurationError;
 use chain_impl_mockchain::{
     block::{self, Block},
     fragment::{ContentsBuilder, Fragment},

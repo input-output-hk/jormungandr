@@ -2,8 +2,7 @@ use crate::{
     crypto::{account::Identifier, hash::Hash},
     interfaces::Value,
 };
-use chain_impl_mockchain::block::Epoch;
-use chain_impl_mockchain::ledger::EpochRewardsInfo as EpochRewardsInfoStd;
+use chain_impl_mockchain::{block::Epoch, ledger::EpochRewardsInfo as EpochRewardsInfoStd};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 

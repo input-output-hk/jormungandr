@@ -1,10 +1,12 @@
-use super::Error;
 use crate::{
     context::Context,
-    jrpc::eth_types::{
-        filter::{Filter, FilterChanges},
-        log::Log,
-        number::Number,
+    jrpc::{
+        eth_types::{
+            filter::{Filter, FilterChanges},
+            log::Log,
+            number::Number,
+        },
+        Error,
     },
 };
 

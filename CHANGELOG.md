@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Validate server id is the expected one during gRPC handshake
 - fix incorrect keys bech32 HRP by always using the ones provided by the library
 - update REST API: add new endpoint AccountVotes (`/api/v1/votes/plan/account-votes/{account_id}`)
 - Support parallel lanes in spending counters on account outputs. This allows
@@ -39,6 +40,7 @@
 - Add chain-evm as optional dependency for jcli
 - Update gas price and block gas limit for EVM params
 - Add new 'evm' REST API endpoints 'address_mapping/jormungandr_address', 'address_mapping/evm_address` for getting info about address mapping. They are optional for the 'evm' feature.
+- Add jcli command to merge the results of multiple voteplans with the same proposals.
 
 ## Release 0.13.0
 

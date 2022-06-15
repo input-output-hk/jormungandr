@@ -1,8 +1,5 @@
 mod error;
 
-use chain_core::packer::Codec;
-use tracing::{span, Level};
-
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::{Block, HeaderId},
@@ -10,6 +7,8 @@ use crate::{
     network,
     settings::start::Settings,
 };
+use chain_core::packer::Codec;
+use tracing::{span, Level};
 
 /// prepare the block storage from the given settings
 pub fn prepare_storage(setting: &Settings) -> Result<Storage, Error> {

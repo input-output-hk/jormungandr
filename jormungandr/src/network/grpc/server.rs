@@ -4,10 +4,8 @@ use super::super::{
 };
 use crate::settings::start::network::Listen;
 use chain_network::grpc::{self, watch::server::Server as WatchServer};
-
 use tonic::transport::Server;
 use tracing::{span, Level};
-
 use tracing_futures::Instrument;
 
 pub async fn run_listen_socket(
