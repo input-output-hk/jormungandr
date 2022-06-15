@@ -3,7 +3,7 @@
 
 if [ $# -ne 2 ]; then
     echo "usage: $0 <ENDPOINT> <OUTPUT_SCHEMA>"
-    echo "    <ENDPOINT>  graphql endpoint (http://127.0.0.1:8000/api/v0/explorer/graphql)"
+    echo "    <ENDPOINT>  graphql endpoint (http://127.0.0.1:10003/graphql)"
     echo "    <OUTPUT_SCHEMA> schema output location (schema.graphql)"
     exit 1
 fi
