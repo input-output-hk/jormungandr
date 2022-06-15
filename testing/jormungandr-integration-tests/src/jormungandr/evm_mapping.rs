@@ -30,7 +30,8 @@ pub fn test_evm_mapping() {
             .evm_address(evm_mapping.account_id())
             .unwrap()
             .text()
-            .unwrap()
+            .unwrap(),
+        "Evm address already existing"
     );
 
     let alice_fragment = fragment_builder.evm_mapping(&alice, &evm_mapping);
@@ -44,18 +45,17 @@ pub fn test_evm_mapping() {
         jormungandr
             .rest()
             .evm_address(evm_mapping.account_id())
-            .unwrap()
+            .unwrap(),
+        "Evm address not equal"
     );
 
     assert_eq!(
         evm_mapping.account_id().to_string(),
         jormungandr
             .rest()
-            .raw()
             .jor_address(evm_mapping.evm_address())
-            .unwrap()
-            .text()
-            .unwrap()
+            .unwrap(),
+        "Jor address not equal"
     );
 }
 
@@ -89,7 +89,8 @@ pub fn test_evm_mapping_twice() {
             .evm_address(evm_mapping_alice.account_id())
             .unwrap()
             .text()
-            .unwrap()
+            .unwrap(),
+        "Evm address already existing"
     );
 
     let alice_fragment = fragment_builder.evm_mapping(&alice, &evm_mapping_alice);
@@ -103,18 +104,17 @@ pub fn test_evm_mapping_twice() {
         jormungandr
             .rest()
             .evm_address(evm_mapping_alice.account_id())
-            .unwrap()
+            .unwrap(),
+        "Evm address not equal"
     );
 
     assert_eq!(
         evm_mapping_alice.account_id().to_string(),
         jormungandr
             .rest()
-            .raw()
             .jor_address(evm_mapping_alice.evm_address())
-            .unwrap()
-            .text()
-            .unwrap()
+            .unwrap(),
+        "Jor address not equal"
     );
 
     let evm_mapping_bob = TestGen::evm_mapping_for_wallet(&bob.clone().into());
@@ -127,7 +127,8 @@ pub fn test_evm_mapping_twice() {
             .evm_address(evm_mapping_bob.account_id())
             .unwrap()
             .text()
-            .unwrap()
+            .unwrap(),
+        "Evm address already existing"
     );
 
     let bob_fragment = fragment_builder.evm_mapping(&bob, &evm_mapping_bob);
@@ -141,18 +142,17 @@ pub fn test_evm_mapping_twice() {
         jormungandr
             .rest()
             .evm_address(evm_mapping_bob.account_id())
-            .unwrap()
+            .unwrap(),
+        "Evm address not equal"
     );
 
     assert_eq!(
         evm_mapping_bob.account_id().to_string(),
         jormungandr
             .rest()
-            .raw()
             .jor_address(evm_mapping_bob.evm_address())
-            .unwrap()
-            .text()
-            .unwrap()
+            .unwrap(),
+        "Jor address not equal"
     );
 }
 
@@ -183,7 +183,8 @@ pub fn test_evm_mapping_already_mapped() {
             .evm_address(evm_mapping.account_id())
             .unwrap()
             .text()
-            .unwrap()
+            .unwrap(),
+        "Evm address already existing"
     );
 
     let alice_fragment = fragment_builder.evm_mapping(&alice, &evm_mapping);
@@ -197,18 +198,17 @@ pub fn test_evm_mapping_already_mapped() {
         jormungandr
             .rest()
             .evm_address(evm_mapping.account_id())
-            .unwrap()
+            .unwrap(),
+        "Evm address not equal"
     );
 
     assert_eq!(
         evm_mapping.account_id().to_string(),
         jormungandr
             .rest()
-            .raw()
             .jor_address(evm_mapping.evm_address())
-            .unwrap()
-            .text()
-            .unwrap()
+            .unwrap(),
+        "Jor address not equal"
     );
 
     let evm_mapping_2 = TestGen::evm_mapping_for_wallet(&alice.clone().into());
@@ -224,17 +224,16 @@ pub fn test_evm_mapping_already_mapped() {
         jormungandr
             .rest()
             .evm_address(evm_mapping.account_id())
-            .unwrap()
+            .unwrap(),
+        "Evm address not equal"
     );
 
     assert_eq!(
         evm_mapping.account_id().to_string(),
         jormungandr
             .rest()
-            .raw()
             .jor_address(evm_mapping.evm_address())
-            .unwrap()
-            .text()
-            .unwrap()
+            .unwrap(),
+        "Jor address not equal"
     );
 }
