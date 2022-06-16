@@ -6,6 +6,7 @@ use chain_crypto::PublicKey;
 #[cfg(feature = "evm")]
 use chain_evm::Address as EvmAddress;
 use chain_impl_mockchain::account;
+#[cfg(feature = "evm")]
 use chain_impl_mockchain::account::Identifier as JorAddress;
 use chain_impl_mockchain::fragment::Fragment;
 use chain_impl_mockchain::header::HeaderId;

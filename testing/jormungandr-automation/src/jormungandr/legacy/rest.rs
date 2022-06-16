@@ -3,6 +3,7 @@ use chain_core::property::Fragment as _;
 use jormungandr_lib::interfaces::FragmentLog;
 #[cfg(feature = "evm")]
 use chain_evm::Address as EvmAddress;
+#[cfg(feature = "evm")]
 use chain_impl_mockchain::account::Identifier as JorAddress;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::header::HeaderId;

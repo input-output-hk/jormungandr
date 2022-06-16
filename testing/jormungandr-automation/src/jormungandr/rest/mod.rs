@@ -4,6 +4,7 @@ mod settings;
 use crate::{jormungandr::legacy, jormungandr::MemPoolCheck};
 #[cfg(feature = "evm")]
 use chain_evm::Address as EvmAddress;
+#[cfg(feature = "evm")]
 use chain_impl_mockchain::account::Identifier as JorAddress;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
