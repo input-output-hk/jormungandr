@@ -8,23 +8,19 @@ use crate::{
 use chain_evm::ethereum_types::{H160, H256, H64};
 
 pub fn mining(_context: &Context) -> Result<bool, Error> {
-    // TODO implement
-    Ok(true)
+    Err(Error::MiningIsNotAllowed)
 }
 
 pub fn coinbase(_context: &Context) -> Result<H160, Error> {
-    // TODO implement
-    Ok(H160::zero())
+    Err(Error::MiningIsNotAllowed)
 }
 
 pub fn hashrate(_context: &Context) -> Result<Number, Error> {
-    // TODO implement
-    Ok(0.into())
+    Err(Error::MiningIsNotAllowed)
 }
 
 pub fn get_work(_context: &Context) -> Result<Work, Error> {
-    // TODO implement
-    Ok(Work::build())
+    Err(Error::MiningIsNotAllowed)
 }
 
 pub fn submit_work(
@@ -33,11 +29,9 @@ pub fn submit_work(
     _mix_digest: H256,
     _context: &Context,
 ) -> Result<bool, Error> {
-    // TODO implement
-    Ok(true)
+    Err(Error::MiningIsNotAllowed)
 }
 
 pub fn submit_hashrate(_hash_rate: H256, _id: H256, _context: &Context) -> Result<bool, Error> {
-    // TODO implement
-    Ok(true)
+    Err(Error::MiningIsNotAllowed)
 }
