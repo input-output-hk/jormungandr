@@ -13,15 +13,14 @@ use chain_crypto::Ed25519;
 use chain_crypto::SecretKey;
 use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::fee::FeeAlgorithm;
-use chain_impl_mockchain::transaction::InputOutputBuilder;
-use chain_impl_mockchain::transaction::TxBuilder;
+#[cfg(feature = "evm")]
+use chain_impl_mockchain::certificate::EvmMapping;
 use chain_impl_mockchain::{
     certificate::{
-        EvmMapping, PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally,
+        PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally,
         VoteTallyPayload,
     },
     fee::LinearFee,
-
     fragment::Fragment,
     testing::{
         data::{StakePool as StakePoolLib, Wallet as WalletLib},
