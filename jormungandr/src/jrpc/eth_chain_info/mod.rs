@@ -23,7 +23,9 @@ pub fn eth_chain_info_module(context: ContextLock) -> RpcModule<ContextLock> {
     module
         .register_async_method("eth_gasPrice", |_, context| async move {
             let context = context.read().await;
-            logic::gas_price(&context).map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
+            logic::gas_price(&context)
+                .await
+                .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
 

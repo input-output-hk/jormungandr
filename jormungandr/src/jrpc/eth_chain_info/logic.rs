@@ -16,9 +16,10 @@ pub fn syncing(_context: &Context) -> Result<SyncStatus, Error> {
     Ok(SyncStatus::build())
 }
 
-pub fn gas_price(_context: &Context) -> Result<Number, Error> {
-    // TODO implement
-    Ok(0.into())
+pub async fn gas_price(context: &Context) -> Result<Number, Error> {
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
+    let gas_price = blockchain_tip.ledger().evm_gas_price();
+    Ok(gas_price.into())
 }
 
 pub fn protocol_verion(_context: &Context) -> Result<u64, Error> {
