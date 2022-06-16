@@ -1,6 +1,6 @@
 use crate::jormungandr::{MemPoolCheck, RawRest, RestError, RestSettings};
 use chain_core::property::Fragment as _;
-
+use jormungandr_lib::interfaces::FragmentLog;
 #[cfg(feature = "evm")]
 use chain_evm::Address as EvmAddress;
 use chain_impl_mockchain::account::Identifier as JorAddress;
@@ -12,6 +12,7 @@ use jormungandr_lib::interfaces::{
 };
 use reqwest::blocking::Response;
 use std::collections::HashMap;
+use jormungandr_lib::crypto::hash::Hash;
 
 /// Legacy tolerant rest api
 /// This layer returns raw strings without deserialization

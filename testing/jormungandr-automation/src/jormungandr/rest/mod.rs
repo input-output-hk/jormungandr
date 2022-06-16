@@ -8,10 +8,6 @@ use chain_impl_mockchain::account::Identifier as JorAddress;
 use chain_impl_mockchain::block::Block;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::header::HeaderId;
-use jormungandr_lib::crypto::account::Identifier;
-use jormungandr_lib::interfaces::{
-    AccountVotes, Address, FragmentStatus, FragmentsProcessingSummary, Value, VotePlanId,
-};
 use jormungandr_lib::{
     crypto::{account::Identifier, hash::Hash},
     interfaces::{
