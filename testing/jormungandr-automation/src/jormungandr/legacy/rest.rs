@@ -1,5 +1,9 @@
 use crate::jormungandr::{MemPoolCheck, RawRest, RestError, RestSettings};
 use chain_core::property::Fragment as _;
+#[cfg(feature = "evm")]
+use chain_evm::Address as EvmAddress;
+#[cfg(feature = "evm")]
+use chain_impl_mockchain::account::Identifier as JorAddress;
 use chain_impl_mockchain::{
     fragment::{Fragment, FragmentId},
     header::HeaderId,
@@ -123,6 +127,20 @@ impl BackwardCompatibleRest {
 
     pub fn stake_distribution_at(&self, epoch: u32) -> Result<String, reqwest::Error> {
         let response_text = self.raw().stake_distribution_at(epoch)?.text()?;
+        self.print_response_text(&response_text);
+        Ok(response_text)
+    }
+
+    #[cfg(feature = "evm")]
+    pub fn evm_address(&self, jor_address: &JorAddress) -> Result<String, reqwest::Error> {
+        let response_text = self.raw().evm_address(jor_address)?.text()?;
+        self.print_response_text(&response_text);
+        Ok(response_text)
+    }
+
+    #[cfg(feature = "evm")]
+    pub fn jor_address(&self, evm_address: &EvmAddress) -> Result<String, reqwest::Error> {
+        let response_text = self.raw().jor_address(evm_address)?.text()?;
         self.print_response_text(&response_text);
         Ok(response_text)
     }
