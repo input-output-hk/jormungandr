@@ -64,8 +64,8 @@ https://github.com/input-output-hk/jormungandr/releases/latest
 git clone https://github.com/input-output-hk/jormungandr
 cd jormungandr
 git checkout tags/<latest release tag> #replace this with something like v1.2.3
-cargo build # skip this if you do not want to run tests
-cargo test  # skip this if you do not want to run tests
+cargo build # skip this if you do not want to run the tests
+cargo test  # skip this if you do not want to run the tests
 cargo install --locked --path jormungandr # --features systemd # (on linux with systemd)
 cargo install --locked --path jcli
 ```
