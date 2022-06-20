@@ -155,9 +155,13 @@ pub struct Common {
 
 impl Common {
     pub fn open_output(&self) -> Result<impl Write, Error> {
-        io::open_file_write(&self.output_file).map_err(|source| Error::OutputInvalid {
-            source,
-            path: self.output_file.clone().unwrap_or_default(),
-        })
+        open_output(&self.output_file)
     }
+}
+
+pub fn open_output(file: &Option<PathBuf>) -> Result<impl Write, Error> {
+    io::open_file_write(file).map_err(|source| Error::OutputInvalid {
+        source,
+        path: file.clone().unwrap_or_default(),
+    })
 }
