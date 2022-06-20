@@ -1,5 +1,20 @@
 query TransactionById($id: String!){
     transaction(id: $id) {
         id
+        blocks{
+                id
+            }
+        inputs{
+            amount
+            address{
+                    id
+                }
+            }
+        outputs{
+            amount
+            address{
+                    id
+            }
+        }
     }
 }
