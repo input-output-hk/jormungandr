@@ -24,11 +24,11 @@ pub enum SyncStatus {
 }
 
 impl SyncStatus {
-    pub fn build() -> Self {
+    pub fn build(starting_block: u64, current_block: u64, highest_block: u64) -> Self {
         Self::Info(SyncInfo {
-            starting_block: 0.into(),
-            current_block: 0.into(),
-            highest_block: 0.into(),
+            starting_block: starting_block.into(),
+            current_block: current_block.into(),
+            highest_block: highest_block.into(),
         })
     }
 }
