@@ -36,7 +36,7 @@ custom_debug = "0.5"
 thiserror = "1.0"
 poldercast = "1.2"
 sysinfo = { version = "0.23.1" }
-os_info = { version = "3.3.0", default-features = false }
+os_info = { version = "3", default-features = false }
 zip = "0.6.0"
 flate2 = "1.0.21"
 tar = "0.4"
