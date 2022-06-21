@@ -17,6 +17,8 @@ use crate::{
     context::ContextLock,
     intercom::{self, TransactionMsg},
 };
+#[cfg(feature = "evm")]
+pub use eth_filter::EvmFilters;
 use futures::channel::mpsc::TrySendError;
 use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jsonrpsee_http_server::{HttpServerBuilder, RpcModule};

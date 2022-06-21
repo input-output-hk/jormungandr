@@ -46,6 +46,7 @@ pub enum FilterChanges {
     /// New hashes (block or transactions)
     Hashes(Vec<H256>),
     /// Empty result,
+    #[allow(dead_code)]
     Empty,
 }
 

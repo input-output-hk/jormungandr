@@ -1,3 +1,4 @@
+use super::filters::FilterType;
 use crate::{
     context::Context,
     jrpc::{
@@ -10,37 +11,34 @@ use crate::{
     },
 };
 
-pub fn new_filter(_filter: Filter, _context: &Context) -> Result<Number, Error> {
-    // TODO implement
-    Ok(0.into())
+pub fn new_filter(filter: Filter, context: &mut Context) -> Result<Number, Error> {
+    let filters = context.evm_filters();
+    Ok(filters.insert(FilterType::Log(filter)))
 }
 
-pub fn new_block_filter(_context: &Context) -> Result<Number, Error> {
-    // TODO implement
-    Ok(0.into())
+pub fn new_block_filter(context: &mut Context) -> Result<Number, Error> {
+    let filters = context.evm_filters();
+    Ok(filters.insert(FilterType::Block))
 }
 
-pub fn new_pending_transaction_filter(_context: &Context) -> Result<Number, Error> {
-    // TODO implement
-    Ok(0.into())
+pub fn new_pending_transaction_filter(context: &mut Context) -> Result<Number, Error> {
+    let filters = context.evm_filters();
+    Ok(filters.insert(FilterType::PendingTransaction))
 }
 
-pub fn uninstall_filter(_filter_id: Number, _context: &Context) -> Result<bool, Error> {
-    // TODO implement
-    Ok(true)
+pub fn uninstall_filter(filter_id: Number, context: &mut Context) -> Result<bool, Error> {
+    let filters = context.evm_filters();
+    Ok(filters.remove(&filter_id))
 }
 
 pub fn get_filter_changes(_filter_id: Number, _context: &Context) -> Result<FilterChanges, Error> {
-    // TODO implement
-    Ok(FilterChanges::Empty)
+    Err(Error::NonArchiveNode)
 }
 
 pub fn get_filter_logs(_filter_id: Number, _context: &Context) -> Result<Vec<Log>, Error> {
-    // TODO implement
-    Ok(vec![Log::build()])
+    Err(Error::NonArchiveNode)
 }
 
 pub fn get_logs(_filter: Filter, _context: &Context) -> Result<FilterChanges, Error> {
-    // TODO implement
-    Ok(FilterChanges::Empty)
+    Err(Error::NonArchiveNode)
 }
