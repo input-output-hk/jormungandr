@@ -243,7 +243,7 @@ jobs:
     steps:
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: stable
+          toolchain: nightly
           profile: minimal
           override: true
           default: true
@@ -276,7 +276,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features --all-targets -- -D warnings
+          args: +stable --all-features --all-targets -- -D warnings
 
   test_coverage:
     name: Test Coverage
