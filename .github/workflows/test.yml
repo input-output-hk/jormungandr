@@ -236,8 +236,8 @@ jobs:
           path: ${{ runner.temp }}/jormungandr_*
           retention-days: 30
 
-  lints:
-    name: Lints
+  clippy:
+    name: Clippy
     needs: [cache_info, update_deps]
     runs-on: ubuntu-latest
     steps:
@@ -247,16 +247,10 @@ jobs:
           profile: minimal
           override: true
           default: true
-          components: rustfmt, clippy
+          components: clippy
 
       - name: Checkout code
         uses: actions/checkout@v2
-
-      - name: rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
 
       - name: Restore cargo registry index
         uses: actions/cache@v2
@@ -277,6 +271,28 @@ jobs:
         with:
           command: clippy
           args: --all-features --all-targets -- -D warnings
+
+  fmt:
+    name: Fmt
+    needs: [cache_info, update_deps]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          override: true
+          default: true
+          components: rustfmt
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
 
   test_coverage:
     name: Test Coverage
