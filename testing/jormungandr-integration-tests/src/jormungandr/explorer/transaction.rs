@@ -1,5 +1,5 @@
 use crate::startup;
-use chain_impl_mockchain::block::BlockDate;
+use chain_impl_mockchain::{block::BlockDate, transaction};
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
 use jormungandr_automation::{
@@ -8,21 +8,22 @@ use jormungandr_automation::{
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
-use std::str::FromStr;
+use std::{str::FromStr, borrow::Borrow};
 use std::time::Duration;
-use thor::{StakePool, TransactionHash};
+use thor::TransactionHash;
 
 #[test]
-pub fn explorer_sanity_test() {
+pub fn explorer_transaction_test() {
     let jcli: JCli = Default::default();
-    let faucet = thor::Wallet::default();
+    let sender = thor::Wallet::default();
     let receiver = thor::Wallet::default();
+    let transaction_value = 1_000;
 
     let mut config = ConfigurationBuilder::new();
     config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
 
-    let (jormungandr, initial_stake_pools) =
-        startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
+    let (jormungandr, _initial_stake_pools) =
+        startup::start_stake_pool(&[sender.clone()], &[], &mut config).unwrap();
 
     let explorer_process = jormungandr.explorer();
     let explorer = explorer_process.client();
@@ -32,7 +33,7 @@ pub fn explorer_sanity_test() {
         &jormungandr.fees(),
         BlockDate::first().next_epoch(),
     )
-    .transaction(&faucet, receiver.address(), 1_000.into())
+    .transaction(&sender, receiver.address(), transaction_value.into())
     .unwrap()
     .encode();
 
@@ -42,18 +43,21 @@ pub fn explorer_sanity_test() {
         .send(&transaction)
         .assert_in_block_with_wait(&wait);
 
-    transaction_by_id(explorer, fragment_id);
-
-}
-
-fn transaction_by_id(explorer: &Explorer, fragment_id: FragmentId) {
     let explorer_transaction = explorer
         .transaction(fragment_id.into())
-        .expect("non existing transaction");
+        .expect("non existing transaction").data.unwrap().transaction;
 
-    assert_eq!(
-        fragment_id,
-        Hash::from_str(&explorer_transaction.data.unwrap().transaction.id).unwrap(),
-        "incorrect fragment id"
-    );
+        assert_eq!(
+            fragment_id,
+            Hash::from_str(&explorer_transaction.id).unwrap(),
+            "incorrect fragment id"
+        );
+
+    println!("{:?}", explorer_transaction.blocks[0].id);
+    assert_eq!(transaction_value, explorer_transaction.inputs[0].amount.parse::<u64>().unwrap());
+    assert_eq!(sender.address().to_string(), explorer_transaction.inputs[0].address.id);
+    assert_eq!(transaction_value, explorer_transaction.outputs[0].amount.parse::<u64>().unwrap());
+    assert_eq!(receiver.address().to_string(), explorer_transaction.outputs[0].address.id);
+
+
 }
