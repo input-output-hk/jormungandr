@@ -228,7 +228,7 @@
             };
             rustfmt = {
               enable = true;
-              entry = pkgs.lib.mkForce "${rust}/bin/cargo-fmt fmt -- --check --color always";
+              entry = pkgs.lib.mkForce "${rust}/bin/cargo-fmt fmt +nightly -- --check --color always";
             };
           };
         };
