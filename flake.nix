@@ -48,8 +48,8 @@
           overlays = [(import rust-overlay)];
         };
 
-        rust = let
-          _rust = pkgs.rust-bin.stable.latest.default.override {
+        mkRust = {channel ? "stable"}: let
+          _rust = pkgs.rust-bin.${channel}.latest.default.override {
             extensions = [
               "rust-src"
               "rust-analysis"
@@ -75,9 +75,12 @@
             '';
           };
 
+        rust-stable = mkRust {channel = "stable";};
+        rust-nightly = mkRust {channel = "nightly";};
+
         naersk-lib = naersk.lib."${system}".override {
-          cargo = rust;
-          rustc = rust;
+          cargo = mkRust "stable";
+          rustc = mkRust "stable";
         };
 
         mkPackage = name: let
@@ -228,7 +231,7 @@
             };
             rustfmt = {
               enable = true;
-              entry = pkgs.lib.mkForce "${rust}/bin/cargo-fmt fmt +nightly -- --check --color always";
+              entry = pkgs.lib.mkForce "${rust-nightly}/bin/cargo-fmt fmt -- --check --color always";
             };
           };
         };
@@ -246,7 +249,7 @@
           PROTOC = "${pkgs.protobuf}/bin/protoc";
           PROTOC_INCLUDE = "${pkgs.protobuf}/include";
           buildInputs =
-            [rust]
+            [rust-stable]
             ++ (with pkgs; [
               pkg-config
               openssl
