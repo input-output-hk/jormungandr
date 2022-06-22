@@ -79,8 +79,8 @@
         rust-nightly = mkRust {channel = "nightly";};
 
         naersk-lib = naersk.lib."${system}".override {
-          cargo = mkRust "stable";
-          rustc = mkRust "stable";
+          cargo = rust-stable;
+          rustc = rust-stable;
         };
 
         mkPackage = name: let
