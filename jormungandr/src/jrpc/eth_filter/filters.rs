@@ -44,11 +44,11 @@ mod tests {
         assert_eq!(filters.get(&index1), Some(&FilterType::Block));
         assert_eq!(filters.get(&index2), Some(&FilterType::PendingTransaction));
 
-        assert_eq!(filters.remove(&index1), true);
+        assert!(filters.remove(&index1));
 
         assert_eq!(filters.get(&index1), None);
         assert_eq!(filters.get(&index2), Some(&FilterType::PendingTransaction));
 
-        assert_eq!(filters.remove(&index1), false);
+        assert!(!filters.remove(&index1));
     }
 }
