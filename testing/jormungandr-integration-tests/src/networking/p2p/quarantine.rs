@@ -84,14 +84,16 @@ pub fn node_does_not_quarantine_whitelisted_node() {
                 // The client broadcast a different ip address from the one it's actually
                 // listening to, so that client_2 will fail connection
                 .public_address("/ip4/127.0.0.1/tcp/80".parse().unwrap())
-                .listen_address(Some(
-                    network_controller
-                        .node_config(CLIENT)
-                        .unwrap()
-                        .p2p
-                        .get_listen_addr()
-                        .unwrap(),
-                )),
+                .listen_address(
+                    Some(
+                        network_controller
+                            .node_config(CLIENT)
+                            .unwrap()
+                            .p2p
+                            .get_listen_addr()
+                            .unwrap(),
+                    ),
+                ),
         )
         .unwrap();
 
@@ -131,14 +133,16 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
                 // The client broadcast a different ip address from the one it's actually
                 // listening to, so that client_2 will fail connection and put it in quarantine
                 .public_address("/ip4/127.0.0.1/tcp/80".parse().unwrap())
-                .listen_address(Some(
-                    network_controller
-                        .node_config(CLIENT)
-                        .unwrap()
-                        .p2p
-                        .get_listen_addr()
-                        .unwrap(),
-                )),
+                .listen_address(
+                    Some(
+                        network_controller
+                            .node_config(CLIENT)
+                            .unwrap()
+                            .p2p
+                            .get_listen_addr()
+                            .unwrap(),
+                    ),
+                ),
         )
         .unwrap();
 
@@ -154,14 +158,16 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
                 // The client broadcast a different ip address from the one it's actually
                 // listening to, so that client will fail connection and put it in quarantine
                 .public_address("/ip4/127.0.0.1/tcp/810".parse().unwrap())
-                .listen_address(Some(
-                    network_controller
-                        .node_config(CLIENT_2)
-                        .unwrap()
-                        .p2p
-                        .get_listen_addr()
-                        .unwrap(),
-                )),
+                .listen_address(
+                    Some(
+                        network_controller
+                            .node_config(CLIENT_2)
+                            .unwrap()
+                            .p2p
+                            .get_listen_addr()
+                            .unwrap(),
+                    ),
+                ),
         )
         .unwrap();
 
