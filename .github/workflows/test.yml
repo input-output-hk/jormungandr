@@ -243,7 +243,7 @@ jobs:
     steps:
       - uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           profile: minimal
           override: true
           default: true
@@ -270,7 +270,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: +stable --all-features --all-targets -- -D warnings
+          args: --all-features --all-targets -- -D warnings
 
   fmt:
     name: Fmt
