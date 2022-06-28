@@ -315,22 +315,24 @@ pub fn list_cast_votes_count() {
             votes: vec![0, 1, 2],
         }],
     );
-    expected_votes_count.insert(
-        bob.public_key_bech32(),
-        vec![
-            AccountVotes {
-                vote_plan_id: vote_plan_2.to_id().into(),
-                votes: vec![0],
-            },
-            AccountVotes {
-                vote_plan_id: vote_plan_1.to_id().into(),
-                votes: vec![1, 2],
-            },
-        ],
-    );
+    let mut votes = vec![
+        AccountVotes {
+            vote_plan_id: vote_plan_2.to_id().into(),
+            votes: vec![0],
+        },
+        AccountVotes {
+            vote_plan_id: vote_plan_1.to_id().into(),
+            votes: vec![1, 2],
+        },
+    ];
 
-    assert_eq!(
-        jormungandr.rest().account_votes_all().unwrap(),
-        expected_votes_count
-    );
+    // sort votes by voteplan to ensure consistent results
+    votes.sort_by_key(|v| v.vote_plan_id);
+    expected_votes_count.insert(bob.public_key_bech32(), votes);
+
+    let mut res = jormungandr.rest().account_votes_all().unwrap();
+    for v in res.values_mut() {
+        v.sort_by_key(|v| v.vote_plan_id)
+    }
+    assert_eq!(res, expected_votes_count);
 }
