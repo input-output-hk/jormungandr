@@ -16,5 +16,28 @@ query TransactionById($id: String!){
                     id
             }
         }
-    }
+        certificate{
+            __typename
+            ... on StakeDelegation {account{id delegation {... poolInfo}}
+                                    pools {... poolInfo}}
+            ... on OwnerStakeDelegation {pools {... poolInfo}}
+            ... on PoolRegistration {pool {... poolInfo}}
+     #       ... on PoolRetirement {poolId retirementTime}
+     #       ... on PoolUpdate {poolId startValidity}
+            #... on VotePlan{}
+            #... on VoteCast{}
+            #... on VoteTally{}
+            #... on UpdateProposal {}
+            #... on UpdateVote{}
+            #... on MintToken{}
+            #... on EvmMapping {address}
+
+    }}
 }
+
+fragment poolInfo on Pool {
+        id
+        blocks(first: 1000){totalCount}
+        registration{pool{id}}
+        retirement{poolId}
+    }
