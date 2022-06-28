@@ -200,9 +200,9 @@ impl RawRest {
         self.get(&request)
     }
 
-    pub fn account_votes_count(&self) -> Result<Response, reqwest::Error> {
+    pub fn account_votes_all(&self) -> Result<Response, reqwest::Error> {
         self.client
-            .get(&self.path(ApiVersion::V1, "votes/plan/accounts-votes-count"))
+            .get(&self.path(ApiVersion::V1, "votes/plan/accounts-votes-all"))
             .send()
     }
 
