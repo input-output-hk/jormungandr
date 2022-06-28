@@ -4,7 +4,11 @@ pub type ChainLength = String;
 pub type PoolId = String;
 pub type Value = String;
 pub type VotePlanId = String;
+pub type NonZero = String;
 
+use chain_crypto::Ed25519;
+use chain_crypto::PublicKey;
+use chain_time::TimeOffsetSeconds;
 use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]
