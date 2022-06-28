@@ -65,9 +65,9 @@ pub async fn get_account_votes(
         .map(|r| warp::reply::json(&r))
 }
 
-pub async fn get_accounts_votes_count(context: ContextLock) -> Result<impl Reply, Rejection> {
+pub async fn get_accounts_votes_all(context: ContextLock) -> Result<impl Reply, Rejection> {
     let context = context.read().await;
-    logic::get_accounts_votes_count(&context)
+    logic::get_accounts_votes_all(&context)
         .await
         .map_err(warp::reject::custom)
         .map(|r| warp::reply::json(&r))
