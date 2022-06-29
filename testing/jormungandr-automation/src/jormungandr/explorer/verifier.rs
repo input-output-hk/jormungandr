@@ -52,8 +52,6 @@ impl ExplorerVerifier {
 
         assert_eq!(pool_cert.to_id().to_string(), exp_cert.pool.id);
         assert!(exp_cert.pool.retirement.is_none());
-
-        println!("HEREEEE");
     }
 
     pub fn epoch_stability_depth(depth: u32, exp_depth: i64) {
