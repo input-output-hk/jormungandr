@@ -101,7 +101,7 @@ pub async fn get_transaction_by_block_hash_and_index(
     context: &Context,
 ) -> Result<Option<Transaction>, Error> {
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
-    let gas_price = blockchain_tip.ledger().evm_gas_price();
+    let gas_price = blockchain_tip.ledger().get_evm_gas_price();
     let block = context.blockchain()?.storage().get(hash.0.into())?;
     Ok(get_transaction_from_block_by_index(block, index, gas_price))
 }
@@ -112,7 +112,7 @@ pub async fn get_transaction_by_block_number_and_index(
     context: &Context,
 ) -> Result<Option<Transaction>, Error> {
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
-    let gas_price = blockchain_tip.ledger().evm_gas_price();
+    let gas_price = blockchain_tip.ledger().get_evm_gas_price();
     let blockchain = context.blockchain()?;
     let block = get_block_by_number_from_context(number, blockchain, blockchain_tip).unwrap();
     Ok(get_transaction_from_block_by_index(block, index, gas_price))
