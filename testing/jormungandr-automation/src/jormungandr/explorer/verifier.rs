@@ -1,23 +1,37 @@
-use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment, certificate::PoolRegistration as chainPoolRegistration};
-
 use super::data::{
-    settings::SettingsSettingsFees, transaction_by_id::{TransactionByIdTransactionCertificate::{PoolRegistration, self}, TransactionByIdTransactionCertificateOnPoolRegistration},
+    settings::SettingsSettingsFees,
+    transaction_by_id::{
+        TransactionByIdTransaction, TransactionByIdTransactionCertificate,
+        TransactionByIdTransactionCertificateOnPoolRegistration,
+    },
+};
+use chain_impl_mockchain::{
+    certificate::PoolRegistration, fee::LinearFee, fragment::Fragment, transaction::Transaction,
 };
 
 pub struct ExplorerVerifier;
 
 impl ExplorerVerifier {
-    pub fn assert_transaction(){
+    pub fn assert_transaction() {}
 
-    }
-
-    pub fn assert_transaction_certificate(exp_cert: TransactionByIdTransactionCertificate){
+    pub fn assert_transaction_certificate(
+        frag_transaction: Fragment,
+        exp_transaction: TransactionByIdTransaction,
+    ) {
         Self::assert_transaction();
+        let exp_certificate = exp_transaction.certificate.unwrap();
 
-        match exp_cert {
+        match exp_certificate {
             TransactionByIdTransactionCertificate::StakeDelegation(_) => todo!(),
             TransactionByIdTransactionCertificate::OwnerStakeDelegation(_) => todo!(),
-            TransactionByIdTransactionCertificate::PoolRegistration(cert) => Self::assert_pool_registration(cert),
+            TransactionByIdTransactionCertificate::PoolRegistration(exp_cert) => {
+                if let Fragment::PoolRegistration(frag_cert) = frag_transaction {
+                    Self::assert_pool_registration(frag_cert, exp_cert);
+                } else {
+                    //TODO proper error
+                    println!("ERROR: exp_fragment different from what has been sent");
+                }
+            }
             TransactionByIdTransactionCertificate::PoolRetirement(_) => todo!(),
             TransactionByIdTransactionCertificate::PoolUpdate(_) => todo!(),
             TransactionByIdTransactionCertificate::VotePlan(_) => todo!(),
@@ -28,22 +42,22 @@ impl ExplorerVerifier {
             TransactionByIdTransactionCertificate::MintToken => todo!(),
             TransactionByIdTransactionCertificate::EvmMapping => todo!(),
         }
-
-
     }
 
-    fn assert_pool_registration(cert: TransactionByIdTransactionCertificateOnPoolRegistration){
-        //assert_eq!(cert.pool.id, first_stake_pool.id().to_string());
-        //assert_eq!(
-        //    cert.pool.registration.pool.id,
-        //    first_stake_pool.id().to_string()
-       // );
-        assert!(cert.pool.retirement.is_none());
+    fn assert_pool_registration(
+        frag_cert: Transaction<PoolRegistration>,
+        exp_cert: TransactionByIdTransactionCertificateOnPoolRegistration,
+    ) {
+        let pool_cert = frag_cert.as_slice().payload().into_payload();
 
+        assert_eq!(pool_cert.to_id().to_string(), exp_cert.pool.id);
+        assert!(exp_cert.pool.retirement.is_none());
+
+        println!("HEREEEE");
     }
 
-    pub fn epoch_stability_depth(depth: u32, exp_depth: i64){
-        assert_eq!(depth as u64 ,exp_depth as u64);
+    pub fn epoch_stability_depth(depth: u32, exp_depth: i64) {
+        assert_eq!(depth as u64, exp_depth as u64);
     }
 
     pub fn assert_fees(fees: LinearFee, exp_fees: SettingsSettingsFees) {

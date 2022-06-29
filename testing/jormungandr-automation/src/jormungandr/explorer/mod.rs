@@ -22,6 +22,7 @@ mod client;
 // do not respect the naming convention
 #[allow(clippy::upper_case_acronyms)]
 mod data;
+pub mod verifier;
 mod wrappers;
 
 pub use wrappers::LastBlockResponse;
