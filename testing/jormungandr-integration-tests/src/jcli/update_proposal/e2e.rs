@@ -4,10 +4,10 @@ use assert_fs::{
 };
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::value::Value;
-use jormungandr_automation::testing::time::{get_current_date, wait_for_epoch};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
+    testing::time::{get_current_date, wait_for_epoch},
 };
 use jormungandr_lib::interfaces::{
     BlockContentMaxSize, BlockDate, ConfigParam, ConfigParams, ConsensusLeaderId,

@@ -1,17 +1,12 @@
 use crate::wallet::discrimination::DiscriminationExtension;
 use chain_addr::{Address, AddressReadable, Discrimination, Kind};
-use chain_crypto::bech32::Bech32;
-use chain_crypto::Ed25519;
-use chain_crypto::PublicKey;
+use chain_crypto::{bech32::Bech32, Ed25519, PublicKey};
 use chain_impl_mockchain::account::Identifier;
-use jormungandr_automation::jormungandr::JormungandrRest;
-use jormungandr_automation::jormungandr::RestSettings;
+use jormungandr_automation::jormungandr::{JormungandrRest, RestSettings};
 use jormungandr_lib::crypto::hash::Hash;
 use serde::{Deserialize, Serialize};
 use serde_yaml;
-use std::collections::HashMap;
-use std::io::Write;
-use std::path::PathBuf;
+use std::{collections::HashMap, io::Write, path::PathBuf};
 use thiserror::Error;
 
 pub type Alias = String;

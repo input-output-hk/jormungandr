@@ -1,13 +1,11 @@
-use crate::networking::utils;
-use crate::non_functional::network::*;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_automation::jormungandr::{LeadershipMode, PersistenceMode};
-use jormungandr_automation::testing::benchmark::MeasurementReportInterval;
-use jormungandr_automation::testing::SyncWaitParams;
+use crate::{networking::utils, non_functional::network::*};
+use hersir::builder::{
+    wallet::template::builder::WalletTemplateBuilder, NetworkBuilder, Node, SpawnParams, Topology,
+};
+use jormungandr_automation::{
+    jormungandr::{LeadershipMode, PersistenceMode},
+    testing::{benchmark::MeasurementReportInterval, SyncWaitParams},
+};
 use thor::FragmentSender;
 #[test]
 pub fn passive_leader_disruption_no_overlap() {

@@ -1,8 +1,6 @@
 use chain_addr::AddressReadable;
 use chain_impl_mockchain::key::Hash;
-use jormungandr_lib::interfaces::Initial;
-use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_lib::interfaces::{PrivateTallyState, Tally, VotePlanStatus};
+use jormungandr_lib::interfaces::{Initial, InitialUTxO, PrivateTallyState, Tally, VotePlanStatus};
 use std::str::FromStr;
 
 pub trait VotePlanStatusAssert {

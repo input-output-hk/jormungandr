@@ -16,7 +16,6 @@ use jormungandr_lib::{
     },
     interfaces::{Address, Value},
 };
-
 use rand_core::{CryptoRng, RngCore};
 
 /// wallet for an account

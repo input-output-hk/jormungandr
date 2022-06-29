@@ -20,8 +20,7 @@ use jormungandr_lib::{
     interfaces::{LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
 };
-use std::cmp::Ordering;
-use std::{sync::Arc, time::Instant};
+use std::{cmp::Ordering, sync::Arc, time::Instant};
 use thiserror::Error;
 use tracing::{span, Level, Span};
 use tracing_futures::Instrument;

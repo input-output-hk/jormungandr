@@ -6,18 +6,18 @@ use crate::{
     topology::{Gossip, NodeId},
     utils::async_msg::{self, MessageBox},
 };
-use chain_network::data as net_data;
-use chain_network::error::{Code, Error};
+use chain_network::{
+    data as net_data,
+    error::{Code, Error},
+};
+use futures::{future::BoxFuture, prelude::*, ready};
 use jormungandr_lib::interfaces::FragmentOrigin;
-
-use futures::future::BoxFuture;
-use futures::prelude::*;
-use futures::ready;
-
-use std::error::Error as _;
-use std::mem;
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::{
+    error::Error as _,
+    mem,
+    pin::Pin,
+    task::{Context, Poll},
+};
 use tracing_futures::Instrument;
 
 fn filter_gossip_node(node: &Gossip, config: &Configuration) -> bool {

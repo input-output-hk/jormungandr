@@ -267,6 +267,7 @@ pub async fn get_jor_address(
     let context = context.read().await;
     logic::get_jor_address(&context, &evm_id_hex)
         .await
+        .map(|r| warp::reply::json(&r))
         .map_err(warp::reject::custom)
 }
 
@@ -278,6 +279,6 @@ pub async fn get_evm_address(
     let context = context.read().await;
     logic::get_evm_address(&context, &evm_id_hex)
         .await
-        .map_err(warp::reject::custom)
         .map(|r| warp::reply::json(&r))
+        .map_err(warp::reject::custom)
 }

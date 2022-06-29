@@ -1,6 +1,5 @@
 use super::UserInteractionController;
-use crate::controller::Error;
-use crate::style;
+use crate::{controller::Error, style};
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]

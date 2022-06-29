@@ -33,3 +33,6 @@ time = { version = "0.3", features = ["macros"] }
 
 [dev-dependencies]
 bincode = "1.3"
+
+[features]
+evm = ["chain-impl-mockchain/evm"]

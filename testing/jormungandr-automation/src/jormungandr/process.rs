@@ -1,39 +1,37 @@
-use super::explorer::ExplorerProcess;
-use super::{starter::StartupError, JormungandrError};
-use crate::jcli::JCli;
-use crate::jormungandr::grpc::JormungandrClient;
-use crate::jormungandr::NodeAlias;
-use crate::jormungandr::StartupVerificationMode;
-use crate::jormungandr::TestingDirectory;
-use crate::jormungandr::{
-    rest::uri_from_socket_addr, JormungandrLogger, JormungandrRest, JormungandrStateVerifier,
-    TestConfig,
+use super::{explorer::ExplorerProcess, starter::StartupError, JormungandrError};
+use crate::{
+    jcli::JCli,
+    jormungandr::{
+        grpc::JormungandrClient, rest::uri_from_socket_addr, FragmentNode, FragmentNodeError,
+        JormungandrLogger, JormungandrRest, JormungandrStateVerifier, LogLevel, MemPoolCheck,
+        NodeAlias, RemoteJormungandr, RemoteJormungandrBuilder, StartupVerificationMode,
+        TestConfig, TestingDirectory,
+    },
+    testing::SyncNode,
 };
-use crate::jormungandr::{
-    FragmentNode, FragmentNodeError, LogLevel, MemPoolCheck, RemoteJormungandr,
-    RemoteJormungandrBuilder,
-};
-use crate::testing::SyncNode;
 use ::multiaddr::Multiaddr;
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::fragment::Fragment;
-use chain_impl_mockchain::fragment::FragmentId;
+use chain_impl_mockchain::{
+    fee::LinearFee,
+    fragment::{Fragment, FragmentId},
+};
 use chain_time::TimeEra;
-use jormungandr_lib::interfaces::FragmentLog;
-use jormungandr_lib::interfaces::NodeState;
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{Block0Configuration, BlockDate, FragmentsProcessingSummary, TrustedPeer},
+    interfaces::{
+        Block0Configuration, BlockDate, FragmentLog, FragmentsProcessingSummary, NodeState,
+        TrustedPeer,
+    },
 };
 use jortestkit::prelude::NamedProcess;
-use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::path::Path;
-use std::process::Child;
-use std::process::ExitStatus;
-use std::str::FromStr;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    path::Path,
+    process::{Child, ExitStatus},
+    str::FromStr,
+    time::{Duration, Instant},
+};
 use thiserror::Error;
 
 #[derive(PartialEq, Debug, Clone)]

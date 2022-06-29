@@ -1,8 +1,7 @@
 use crate::block0;
 use chain_impl_mockchain::{
     block::Block,
-    header::BlockDate,
-    header::Header,
+    header::{BlockDate, Header},
     leadership::{self, Leadership, Verification},
     ledger::{EpochRewardsInfo, Ledger, LedgerParameters},
 };

@@ -1,8 +1,10 @@
-use crate::interfaces::{
-    DEFAULT_KES_SPEED_UPDATE, MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS,
-    MINIMUM_KES_SPEED_UPDATE_IN_SECONDS,
+use crate::{
+    interfaces::{
+        DEFAULT_KES_SPEED_UPDATE, MAXIMUM_KES_SPEED_UPDATE_IN_SECONDS,
+        MINIMUM_KES_SPEED_UPDATE_IN_SECONDS,
+    },
+    time::Duration,
 };
-use crate::time::Duration;
 use chain_impl_mockchain::config::ConfigParam;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::{convert::TryFrom, fmt, str::FromStr as _};

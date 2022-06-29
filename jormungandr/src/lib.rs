@@ -17,16 +17,13 @@ use crate::{
     utils::{async_msg, task::Services},
 };
 use chain_impl_mockchain::leadership::LeadershipConsensus;
-use futures::executor::block_on;
-use futures::prelude::*;
+use futures::{executor::block_on, prelude::*};
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
+use std::{sync::Arc, time::Duration};
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use tracing::{span, Level, Span};
-
-use std::sync::Arc;
-use std::time::Duration;
 
 pub mod blockcfg;
 pub mod blockchain;
@@ -235,28 +232,39 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             None
         }
     });
-    let leader_secret = bootstrapped_node
+    let node_secret = bootstrapped_node
         .settings
         .secret
         .map::<Result<_, start_up::Error>, _>(|secret_path| {
             let secret = secure::NodeSecret::load_from_file(secret_path.as_path())?;
-            if let (Some(leaders), Some(leader)) = (&bft_leaders, secret.bft()) {
-                let public_key = &leader.sig_key.to_public();
-                if !leaders.contains(public_key) {
-                    tracing::warn!(
-                        "node was started with a BFT secret key but the corresponding \
-                        public key {} is not listed among consensus leaders",
-                        public_key
-                    );
-                }
-            };
-            Ok(Leader {
-                bft_leader: secret.bft(),
-                genesis_leader: secret.genesis(),
-            })
+            Ok(secret)
         })
         .transpose()?;
+
+    let leader_secret = node_secret.as_ref().map(|secret| {
+        if let (Some(leaders), Some(leader)) = (&bft_leaders, secret.bft()) {
+            let public_key = &leader.sig_key.to_public();
+            if !leaders.contains(public_key) {
+                tracing::warn!(
+                    "node was started with a BFT secret key but the corresponding \
+                        public key {} is not listed among consensus leaders",
+                    public_key
+                );
+            }
+        };
+        Leader {
+            bft_leader: secret.bft(),
+            genesis_leader: secret.genesis(),
+        }
+    });
     let enclave = Enclave::new(leader_secret);
+
+    #[cfg(feature = "evm")]
+    let evm_keys = Arc::new(
+        node_secret
+            .map(|secret| secret.evm_keys())
+            .unwrap_or_default(),
+    );
 
     {
         let logs = leadership_logs.clone();
@@ -313,6 +321,8 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             transaction_task: fragment_msgbox,
             topology_task: topology_msgbox,
             leadership_logs,
+            #[cfg(feature = "evm")]
+            evm_keys,
             enclave,
             network_state,
             #[cfg(feature = "prometheus-metrics")]

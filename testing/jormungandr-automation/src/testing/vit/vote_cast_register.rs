@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 
 use chain_impl_mockchain::certificate::{VotePlan, VotePlanId};
-use std::iter;
-use std::ops::Range;
+use std::{iter, ops::Range};
 use thiserror::Error;
 
 #[derive(Clone)]

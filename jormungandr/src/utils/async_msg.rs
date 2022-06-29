@@ -1,11 +1,15 @@
 //! Multiple producer, single-consumer in-memory FIFO channels with
 //! asynchronous reading.
 
-use futures::channel::mpsc::{self, Receiver, Sender};
 pub use futures::channel::mpsc::{SendError, TrySendError};
-use futures::prelude::*;
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use futures::{
+    channel::mpsc::{self, Receiver, Sender},
+    prelude::*,
+};
+use std::{
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 /// The output end of an in-memory FIFO channel.
 #[derive(Debug)]

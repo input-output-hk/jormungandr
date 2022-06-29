@@ -1,15 +1,12 @@
-use crate::networking::p2p::assert_are_in_quarantine;
-use crate::networking::p2p::assert_empty_quarantine;
-use crate::networking::p2p::assert_node_stats;
-use crate::networking::utils;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_lib::interfaces::Policy;
-use jormungandr_lib::time::Duration;
+use crate::networking::{
+    p2p::{assert_are_in_quarantine, assert_empty_quarantine, assert_node_stats},
+    utils,
+};
+use hersir::builder::{
+    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
+    SpawnParams, Topology,
+};
+use jormungandr_lib::{interfaces::Policy, time::Duration};
 
 const CLIENT: &str = "CLIENT";
 const CLIENT_2: &str = "CLIENT_2";
@@ -87,14 +84,16 @@ pub fn node_does_not_quarantine_whitelisted_node() {
                 // The client broadcast a different ip address from the one it's actually
                 // listening to, so that client_2 will fail connection
                 .public_address("/ip4/127.0.0.1/tcp/80".parse().unwrap())
-                .listen_address(Some(
-                    network_controller
-                        .node_config(CLIENT)
-                        .unwrap()
-                        .p2p
-                        .get_listen_addr()
-                        .unwrap(),
-                )),
+                .listen_address(
+                    Some(
+                        network_controller
+                            .node_config(CLIENT)
+                            .unwrap()
+                            .p2p
+                            .get_listen_addr()
+                            .unwrap(),
+                    ),
+                ),
         )
         .unwrap();
 
@@ -134,14 +133,16 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
                 // The client broadcast a different ip address from the one it's actually
                 // listening to, so that client_2 will fail connection and put it in quarantine
                 .public_address("/ip4/127.0.0.1/tcp/80".parse().unwrap())
-                .listen_address(Some(
-                    network_controller
-                        .node_config(CLIENT)
-                        .unwrap()
-                        .p2p
-                        .get_listen_addr()
-                        .unwrap(),
-                )),
+                .listen_address(
+                    Some(
+                        network_controller
+                            .node_config(CLIENT)
+                            .unwrap()
+                            .p2p
+                            .get_listen_addr()
+                            .unwrap(),
+                    ),
+                ),
         )
         .unwrap();
 
@@ -157,14 +158,16 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
                 // The client broadcast a different ip address from the one it's actually
                 // listening to, so that client will fail connection and put it in quarantine
                 .public_address("/ip4/127.0.0.1/tcp/810".parse().unwrap())
-                .listen_address(Some(
-                    network_controller
-                        .node_config(CLIENT_2)
-                        .unwrap()
-                        .p2p
-                        .get_listen_addr()
-                        .unwrap(),
-                )),
+                .listen_address(
+                    Some(
+                        network_controller
+                            .node_config(CLIENT_2)
+                            .unwrap()
+                            .p2p
+                            .get_listen_addr()
+                            .unwrap(),
+                    ),
+                ),
         )
         .unwrap();
 

@@ -1,17 +1,22 @@
 pub mod config;
 pub mod network;
 
-use self::config::{Config, Leadership};
-use self::network::{Protocol, TrustedPeer};
-use crate::settings::logging::{LogFormat, LogInfoMsg, LogOutput, LogSettings, LogSettingsEntry};
-use crate::settings::{command_arguments::*, Block0Info};
-use crate::topology::layers::{self, LayersConfig, PreferredListConfig, RingsConfig};
+use self::{
+    config::{Config, Leadership},
+    network::{Protocol, TrustedPeer},
+};
+use crate::{
+    settings::{
+        command_arguments::*,
+        logging::{LogFormat, LogInfoMsg, LogOutput, LogSettings, LogSettingsEntry},
+        Block0Info,
+    },
+    topology::layers::{self, LayersConfig, PreferredListConfig, RingsConfig},
+};
 use chain_crypto::Ed25519;
-use jormungandr_lib::crypto::key::SigningKey;
 pub use jormungandr_lib::interfaces::{Cors, JRpc, Mempool, Rest, Tls};
-use jormungandr_lib::multiaddr;
-use std::convert::TryFrom;
-use std::{fs::File, path::PathBuf};
+use jormungandr_lib::{crypto::key::SigningKey, multiaddr};
+use std::{convert::TryFrom, fs::File, path::PathBuf};
 use thiserror::Error;
 use tracing::level_filters::LevelFilter;
 

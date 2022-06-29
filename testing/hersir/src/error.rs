@@ -1,6 +1,8 @@
 use crate::controller::Error as ControllerError;
-use jormungandr_automation::jormungandr::{ExplorerError, RestError};
-use jormungandr_automation::testing::ConsumptionBenchmarkError;
+use jormungandr_automation::{
+    jormungandr::{ExplorerError, RestError},
+    testing::ConsumptionBenchmarkError,
+};
 use jortestkit::prelude::InteractiveCommandError;
 use thiserror::Error;
 

@@ -1,14 +1,12 @@
 pub mod graphql;
 
-use crate::db::ExplorerDb;
-
 use self::graphql::EContext;
+use crate::db::ExplorerDb;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use futures::Future;
 use jormungandr_lib::interfaces::{Cors, Tls};
 use std::{net::SocketAddr, time::Duration};
-use warp::http::Response as HttpResponse;
-use warp::{Filter, Rejection, Reply};
+use warp::{http::Response as HttpResponse, Filter, Rejection, Reply};
 
 pub async fn setup_cors<API>(
     api: API,

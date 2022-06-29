@@ -1,9 +1,13 @@
-use chain_impl_mockchain::fragment::Fragment;
-use chain_impl_mockchain::testing::VoteTestGen;
-use chain_impl_mockchain::vote::PayloadType;
-use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
-use jormungandr_automation::jormungandr::{MemPoolCheck, RemoteJormungandr};
-use jormungandr_automation::testing::SyncNode;
+use chain_impl_mockchain::{
+    certificate::VotePlan,
+    fragment::Fragment,
+    testing::VoteTestGen,
+    vote::{Choice, PayloadType},
+};
+use jormungandr_automation::{
+    jormungandr::{MemPoolCheck, RemoteJormungandr},
+    testing::SyncNode,
+};
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
