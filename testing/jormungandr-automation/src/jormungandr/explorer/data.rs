@@ -5,10 +5,12 @@ pub type PoolId = String;
 pub type Value = String;
 pub type VotePlanId = String;
 pub type NonZero = String;
+pub type TimeOffsetSeconds = String;
+pub type PublicKey = String;
+pub type ExternalProposalId = String;
 
-use chain_crypto::Ed25519;
-use chain_crypto::PublicKey;
-use chain_time::TimeOffsetSeconds;
+//use chain_crypto::Ed25519;
+//use chain_crypto::PublicKey;
 use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]
