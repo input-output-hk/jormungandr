@@ -1,48 +1,87 @@
-use super::Error;
 use crate::{
     context::Context,
-    jrpc::eth_types::{block_number::BlockNumber, bytes::Bytes, number::Number},
+    jrpc::{
+        eth_types::{block_number::BlockNumber, bytes::Bytes, number::Number},
+        Error,
+    },
 };
 use chain_evm::ethereum_types::{H160, H256};
 
-pub fn accounts(_context: &Context) -> Result<Vec<H160>, Error> {
-    // TODO implement
-    Ok(vec![H160::zero()])
+pub fn accounts(context: &Context) -> Result<Vec<H160>, Error> {
+    Ok(context
+        .try_full()?
+        .evm_keys
+        .iter()
+        .map(|secret_key| secret_key.address())
+        .collect())
 }
 
-pub fn get_transaction_count(
-    _address: H160,
-    _block_number: BlockNumber,
-    _context: &Context,
+pub async fn get_transaction_count(
+    address: H160,
+    block_number: BlockNumber,
+    context: &Context,
 ) -> Result<Number, Error> {
-    // TODO implement
-    Ok(0.into())
+    match block_number {
+        BlockNumber::Latest => {
+            let ledger = context.blockchain_tip()?.get_ref().await.ledger();
+            let address = ledger.get_jormungandr_mapped_address(&address);
+            let account = ledger.accounts().get_state(&address)?;
+            Ok(account.evm_state.nonce.into())
+        }
+        _ => Err(Error::NonArchiveNode),
+    }
 }
 
-pub fn get_balance(
-    _address: H160,
-    _block_number: BlockNumber,
-    _context: &Context,
+pub async fn get_balance(
+    address: H160,
+    block_number: BlockNumber,
+    context: &Context,
 ) -> Result<Number, Error> {
-    // TODO implement
-    Ok(0.into())
+    match block_number {
+        BlockNumber::Latest => {
+            let ledger = context.blockchain_tip()?.get_ref().await.ledger();
+            let address = ledger.get_jormungandr_mapped_address(&address);
+            let account = ledger.accounts().get_state(&address)?;
+            Ok(account.value.0.into())
+        }
+        _ => Err(Error::NonArchiveNode),
+    }
 }
 
-pub fn get_code(
-    _address: H160,
-    _block_number: BlockNumber,
-    _context: &Context,
+pub async fn get_code(
+    address: H160,
+    block_number: BlockNumber,
+    context: &Context,
 ) -> Result<Bytes, Error> {
-    // TODO implement
-    Ok(Default::default())
+    match block_number {
+        BlockNumber::Latest => {
+            let ledger = context.blockchain_tip()?.get_ref().await.ledger();
+            let address = ledger.get_jormungandr_mapped_address(&address);
+            let account = ledger.accounts().get_state(&address)?;
+            Ok(account.evm_state.code.clone().into())
+        }
+        _ => Err(Error::NonArchiveNode),
+    }
 }
 
-pub fn get_storage_at(
-    _address: H160,
-    _key: H256,
-    _block_number: BlockNumber,
-    _context: &Context,
+pub async fn get_storage_at(
+    address: H160,
+    key: H256,
+    block_number: BlockNumber,
+    context: &Context,
 ) -> Result<H256, Error> {
-    // TODO implement
-    Ok(H256::zero())
+    match block_number {
+        BlockNumber::Latest => {
+            let ledger = context.blockchain_tip()?.get_ref().await.ledger();
+            let address = ledger.get_jormungandr_mapped_address(&address);
+            let account = ledger.accounts().get_state(&address)?;
+            Ok(account
+                .evm_state
+                .storage
+                .get(&key)
+                .cloned()
+                .unwrap_or_default())
+        }
+        _ => Err(Error::NonArchiveNode),
+    }
 }

@@ -28,7 +28,7 @@ pub async fn syncing(context: &Context) -> Result<SyncStatus, Error> {
 
 pub async fn gas_price(context: &Context) -> Result<Number, Error> {
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
-    let gas_price = blockchain_tip.ledger().evm_gas_price();
+    let gas_price = blockchain_tip.ledger().get_evm_gas_price();
     Ok(gas_price.into())
 }
 
