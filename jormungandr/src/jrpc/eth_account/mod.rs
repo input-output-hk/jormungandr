@@ -3,9 +3,6 @@ use jsonrpsee_http_server::RpcModule;
 
 mod logic;
 
-#[derive(Debug, thiserror::Error)]
-pub enum Error {}
-
 pub fn eth_account_module(context: ContextLock) -> RpcModule<ContextLock> {
     let mut module = RpcModule::new(context);
 
@@ -21,6 +18,7 @@ pub fn eth_account_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let (address, block_number) = params.parse()?;
             logic::get_transaction_count(address, block_number, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
@@ -30,6 +28,7 @@ pub fn eth_account_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let (address, block_number) = params.parse()?;
             logic::get_balance(address, block_number, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
@@ -39,6 +38,7 @@ pub fn eth_account_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let (address, block_number) = params.parse()?;
             logic::get_code(address, block_number, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
@@ -48,6 +48,7 @@ pub fn eth_account_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let (address, key, block_number) = params.parse()?;
             logic::get_storage_at(address, key, block_number, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();

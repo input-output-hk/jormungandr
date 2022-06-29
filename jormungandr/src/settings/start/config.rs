@@ -16,7 +16,6 @@ use tracing::level_filters::LevelFilter;
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    #[serde(default)]
     pub secret_file: Option<PathBuf>,
     pub storage: Option<PathBuf>,
     pub log: Option<ConfigLogSettings>,

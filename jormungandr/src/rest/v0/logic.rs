@@ -601,7 +601,7 @@ pub async fn get_jor_address(context: &Context, evm_id_hex: &str) -> Result<Stri
         .get_ref()
         .await
         .ledger()
-        .jormungandr_mapped_address(
+        .get_jormungandr_mapped_address(
             &chain_evm::Address::from_str(evm_id_hex)
                 .map_err(|e| Error::AddressParseError(e.to_string()))?,
         )
@@ -615,7 +615,7 @@ pub async fn get_evm_address(context: &Context, jor_id_hex: &str) -> Result<Opti
         .get_ref()
         .await
         .ledger()
-        .evm_mapped_address(
+        .get_evm_mapped_address(
             &PublicKey::<AccountAlg>::from_str(jor_id_hex)
                 .map_err(|e| Error::AddressParseError(e.to_string()))?
                 .into(),
