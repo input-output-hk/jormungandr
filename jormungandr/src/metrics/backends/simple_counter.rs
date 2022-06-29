@@ -1,19 +1,23 @@
-use crate::blockchain::Ref;
-use crate::metrics::MetricsBackend;
-
-use chain_impl_mockchain::block::Block;
-use chain_impl_mockchain::fragment::Fragment;
-use chain_impl_mockchain::transaction::Transaction;
-use chain_impl_mockchain::value::{Value, ValueError};
-use jormungandr_lib::interfaces::NodeStats;
-use jormungandr_lib::time::{SecondsSinceUnixEpoch, SystemTime};
-
-use std::convert::TryInto;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock};
-use std::time::Instant;
-
+use crate::{blockchain::Ref, metrics::MetricsBackend};
 use arc_swap::ArcSwapOption;
+use chain_impl_mockchain::{
+    block::Block,
+    fragment::Fragment,
+    transaction::Transaction,
+    value::{Value, ValueError},
+};
+use jormungandr_lib::{
+    interfaces::NodeStats,
+    time::{SecondsSinceUnixEpoch, SystemTime},
+};
+use std::{
+    convert::TryInto,
+    sync::{
+        atomic::{AtomicU64, AtomicUsize, Ordering},
+        Arc, RwLock,
+    },
+    time::Instant,
+};
 
 const EXP_MOVING_AVERAGE_COEFF: f64 = 0.5;
 

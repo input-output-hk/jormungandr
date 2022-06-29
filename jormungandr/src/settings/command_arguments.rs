@@ -1,14 +1,15 @@
-use crate::settings::{start::config::TrustedPeer, LOG_FILTER_LEVEL_POSSIBLE_VALUES};
-use multiaddr::Multiaddr;
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use structopt::StructOpt;
-use tracing::level_filters::LevelFilter;
-
 use crate::{
     blockcfg::HeaderHash,
-    settings::logging::{LogFormat, LogOutput},
+    settings::{
+        logging::{LogFormat, LogOutput},
+        start::config::TrustedPeer,
+        LOG_FILTER_LEVEL_POSSIBLE_VALUES,
+    },
 };
+use multiaddr::Multiaddr;
+use std::{net::SocketAddr, path::PathBuf};
+use structopt::StructOpt;
+use tracing::level_filters::LevelFilter;
 
 fn trusted_peer_from_json(json: &str) -> Result<TrustedPeer, serde_json::Error> {
     serde_json::from_str(json)

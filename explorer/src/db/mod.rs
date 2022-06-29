@@ -4,37 +4,37 @@ pub mod multiverse;
 pub mod persistent_sequence;
 mod tally;
 
-use self::error::{BlockNotFound, ExplorerError as Error};
-use self::indexing::{
-    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
-    ExplorerVote, ExplorerVotePlan, ExplorerVoteProposal, StakePool, StakePoolBlocks,
-    StakePoolData, Transactions, VotePlans,
+use self::{
+    error::{BlockNotFound, ExplorerError as Error},
+    indexing::{
+        Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
+        ExplorerVote, ExplorerVotePlan, ExplorerVoteProposal, StakePool, StakePoolBlocks,
+        StakePoolData, Transactions, VotePlans,
+    },
+    persistent_sequence::PersistentSequence,
 };
-use self::persistent_sequence::PersistentSequence;
-use crate::db::tally::compute_private_tally;
-use crate::db::tally::compute_public_tally;
+use crate::db::tally::{compute_private_tally, compute_public_tally};
 use chain_addr::Discrimination;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::{
-    block::HeaderId as HeaderHash,
-    certificate::VotePlanId,
-    stake::{Stake, StakeControl},
-};
-use chain_impl_mockchain::{
-    block::{Block, ChainLength, Epoch},
-    certificate::{Certificate, PoolId},
+    block::{Block, ChainLength, Epoch, HeaderId as HeaderHash},
+    certificate::{Certificate, PoolId, VotePlanId},
     chaintypes::ConsensusVersion,
     config::ConfigParam,
+    fee::LinearFee,
     fragment::{ConfigParams, Fragment, FragmentId},
+    stake::{Stake, StakeControl},
+    vote::PayloadType,
 };
-use chain_impl_mockchain::{fee::LinearFee, vote::PayloadType};
 use futures::prelude::*;
 use multiverse::Multiverse;
 pub use multiverse::Ref;
-use std::convert::Infallible;
-use std::sync::{
-    atomic::{AtomicU32, Ordering},
-    Arc,
+use std::{
+    convert::Infallible,
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc,
+    },
 };
 use tokio::sync::{broadcast, RwLock};
 

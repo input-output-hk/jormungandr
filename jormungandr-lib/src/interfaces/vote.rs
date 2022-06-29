@@ -2,6 +2,7 @@ use crate::{
     crypto::hash::Hash,
     interfaces::{blockdate::BlockDate, mint_token::TokenIdentifier, value::ValueDef},
 };
+use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::{
     certificate::{self, ExternalProposalId, Proposal, Proposals, VoteAction},
     ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
@@ -9,15 +10,13 @@ use chain_impl_mockchain::{
     vote::{self, Choice, Options, Weight},
 };
 use chain_vote::MemberPublicKey;
-
-use chain_crypto::bech32::Bech32;
-use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-use std::convert::TryInto;
-use std::fmt;
-use std::ops::Range;
-use std::str::{self, FromStr};
+use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use std::{
+    convert::TryInto,
+    fmt,
+    ops::Range,
+    str::{self, FromStr},
+};
 
 /// Serializable wrapper for the payload type enum.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -236,9 +235,11 @@ impl From<VotePlan> for certificate::VotePlan {
 
 mod serde_committee_member_public_keys {
     use crate::interfaces::vote::SerdeMemberPublicKey;
-    use serde::de::{SeqAccess, Visitor};
-    use serde::ser::SerializeSeq;
-    use serde::{Deserializer, Serializer};
+    use serde::{
+        de::{SeqAccess, Visitor},
+        ser::SerializeSeq,
+        Deserializer, Serializer,
+    };
 
     pub fn deserialize<'de, D>(
         deserializer: D,
@@ -500,8 +501,10 @@ impl AsRef<[u8]> for EncryptedTally {
 }
 
 pub mod serde_base64_bytes {
-    use serde::de::{Error, Visitor};
-    use serde::{Deserializer, Serializer};
+    use serde::{
+        de::{Error, Visitor},
+        Deserializer, Serializer,
+    };
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
     where
@@ -766,9 +769,7 @@ impl From<VotePlanStatus> for vote::VotePlanStatus {
 mod test {
     use super::*;
     use crate::interfaces::vote::{serde_committee_member_public_keys, SerdeMemberPublicKey};
-    use chain_impl_mockchain::block::BlockDate;
-    use chain_impl_mockchain::certificate;
-    use chain_impl_mockchain::tokens::identifier;
+    use chain_impl_mockchain::{block::BlockDate, certificate, tokens::identifier};
     use rand_chacha::rand_core::SeedableRng;
 
     #[test]

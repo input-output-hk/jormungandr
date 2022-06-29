@@ -1,11 +1,13 @@
-use crate::generators::AdversaryVoteCastsGenerator;
-use crate::generators::FragmentStatusProvider;
-use crate::mjolnir_lib::DiscriminationExtensions;
-use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
+use crate::{
+    generators::{AdversaryVoteCastsGenerator, FragmentStatusProvider},
+    mjolnir_lib::{args::parse_shift, build_monitor, DiscriminationExtensions, MjolnirError},
+};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
-use jormungandr_automation::testing::block0::{get_block, Block0ConfigurationExtension};
+use jormungandr_automation::{
+    jormungandr::RemoteJormungandrBuilder,
+    testing::block0::{get_block, Block0ConfigurationExtension},
+};
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::{
     load::ConfigurationBuilder,

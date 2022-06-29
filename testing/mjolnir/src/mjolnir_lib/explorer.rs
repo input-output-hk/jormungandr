@@ -1,5 +1,4 @@
-use crate::generators::ExplorerRequestGen;
-use crate::mjolnir_lib::MjolnirError;
+use crate::{generators::ExplorerRequestGen, mjolnir_lib::MjolnirError};
 use jormungandr_automation::jormungandr::Explorer;
 use jortestkit::{
     load::{ConfigurationBuilder, Monitor},

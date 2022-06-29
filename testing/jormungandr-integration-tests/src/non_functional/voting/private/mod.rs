@@ -6,26 +6,27 @@ mod soak;
 use crate::non_functional::voting::config::PrivateVotingLoadTestConfig;
 use assert_fs::TempDir;
 use chain_core::property::BlockDate as _;
-use chain_impl_mockchain::block::BlockDate;
-use chain_impl_mockchain::testing::data::CommitteeMembersManager;
 use chain_impl_mockchain::{
+    block::BlockDate,
     certificate::{VoteAction, VoteTallyPayload},
     ledger::governance::TreasuryGovernanceAction,
-    testing::decrypt_tally,
+    testing::{data::CommitteeMembersManager, decrypt_tally},
     value::Value,
 };
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_automation::testing::time::{wait_for_date, wait_for_epoch};
-use jormungandr_automation::testing::{benchmark_consumption, VotePlanBuilder};
+use jormungandr_automation::{
+    jormungandr::{ConfigurationBuilder, Starter},
+    testing::{
+        benchmark_consumption,
+        time::{wait_for_date, wait_for_epoch},
+        VotePlanBuilder,
+    },
+};
 use jormungandr_lib::interfaces::BlockDate as BlockDateLib;
-use jortestkit::load::Configuration;
-use jortestkit::measurement::Status;
-use loki::AdversaryFragmentSender;
-use loki::AdversaryFragmentSenderSetup;
+use jortestkit::{load::Configuration, measurement::Status};
+use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use mjolnir::generators::{AdversaryFragmentGenerator, FragmentStatusProvider, VoteCastsGenerator};
 use rand::rngs::OsRng;
-use thor::BlockDateGenerator;
-use thor::{vote_plan_cert, FragmentSender, FragmentSenderSetup, Wallet};
+use thor::{vote_plan_cert, BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
 
 const CRS_SEED: &[u8] = "Testing seed".as_bytes();
 

@@ -1,5 +1,4 @@
-use crate::generators::RestRequestGen;
-use crate::mjolnir_lib::MjolnirError;
+use crate::{generators::RestRequestGen, mjolnir_lib::MjolnirError};
 use jormungandr_automation::jormungandr::JormungandrRest;
 use jortestkit::{
     load::{ConfigurationBuilder, Monitor},

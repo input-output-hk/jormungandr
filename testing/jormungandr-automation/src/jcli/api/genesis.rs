@@ -1,11 +1,9 @@
 use crate::jcli::command::GenesisCommand;
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::assert::PathAssert;
-use assert_fs::fixture::ChildPath;
+use assert_fs::{assert::PathAssert, fixture::ChildPath};
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::prelude::ProcessOutput;
-use std::path::Path;
-use std::str::FromStr;
+use std::{path::Path, str::FromStr};
 pub struct Genesis {
     genesis_command: GenesisCommand,
 }

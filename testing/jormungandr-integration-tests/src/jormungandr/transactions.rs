@@ -1,7 +1,8 @@
 use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
-use jormungandr_automation::testing::time::wait_for_epoch;
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
+use jormungandr_automation::{
+    jcli::JCli, jormungandr::ConfigurationBuilder, testing::time::wait_for_epoch,
+};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, Mempool, Value};
 use thor::TransactionHash;
 

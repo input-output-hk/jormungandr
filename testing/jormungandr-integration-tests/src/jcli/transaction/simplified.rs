@@ -1,10 +1,13 @@
-use jormungandr_automation::jormungandr::ConfigurationBuilder;
-use jormungandr_automation::{jcli::JCli, jormungandr::Starter};
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::{BlockDate, InitialUTxO};
-
 use assert_fs::TempDir;
 use chain_impl_mockchain::fee::LinearFee;
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{BlockDate, InitialUTxO},
+};
 use std::io::Write;
 
 #[test]

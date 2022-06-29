@@ -1,10 +1,9 @@
-use crate::builder::SpawnParams;
-use crate::controller::interactive::ControllerError;
-use crate::controller::Controller;
-use crate::controller::Error;
+use crate::{
+    builder::SpawnParams,
+    controller::{interactive::ControllerError, Controller, Error},
+};
 use chain_impl_mockchain::vote::Choice;
-use jormungandr_automation::jormungandr::JormungandrProcess;
-use jormungandr_automation::jormungandr::Version;
+use jormungandr_automation::jormungandr::{JormungandrProcess, Version};
 use jormungandr_lib::interfaces::Value;
 use jortestkit::prelude::InteractiveCommandError;
 use thor::{FragmentSender, Wallet};

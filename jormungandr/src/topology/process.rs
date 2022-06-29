@@ -1,8 +1,10 @@
 use super::{Gossip, Gossips, P2pTopology, Peer};
-use crate::intercom::{NetworkMsg, PropagateMsg, TopologyMsg};
-use crate::metrics::Metrics;
-use crate::settings::start::network::Configuration;
-use crate::utils::async_msg::{MessageBox, MessageQueue};
+use crate::{
+    intercom::{NetworkMsg, PropagateMsg, TopologyMsg},
+    metrics::Metrics,
+    settings::start::network::Configuration,
+    utils::async_msg::{MessageBox, MessageQueue},
+};
 use std::time::Duration;
 use tokio::time::{Instant, Interval, MissedTickBehavior};
 use tokio_stream::StreamExt;

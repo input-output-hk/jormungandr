@@ -1,16 +1,14 @@
 use crate::networking::utils;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
+use hersir::builder::{
+    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
+    SpawnParams, Topology,
+};
 use jormungandr_automation::jormungandr::LogLevel;
-use jormungandr_lib::interfaces::TopicsOfInterest;
-use jormungandr_lib::interfaces::TrustedPeer;
-use jormungandr_lib::time::Duration;
-use thor::DummySyncNode;
-use thor::FragmentSender;
+use jormungandr_lib::{
+    interfaces::{TopicsOfInterest, TrustedPeer},
+    time::Duration,
+};
+use thor::{DummySyncNode, FragmentSender};
 
 const LEADER1: &str = "LEADER1";
 const LEADER2: &str = "LEADER2";

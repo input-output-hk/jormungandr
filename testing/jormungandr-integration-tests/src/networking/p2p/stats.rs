@@ -1,17 +1,12 @@
 use crate::networking::utils;
 use chain_impl_mockchain::header::BlockDate;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
+use hersir::builder::{
+    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
+    SpawnParams, Topology,
+};
 use jormungandr_automation::jormungandr::JormungandrProcess;
-use jormungandr_lib::interfaces::NodeStats;
-use jormungandr_lib::interfaces::Policy;
-use jormungandr_lib::interfaces::SlotDuration;
-use std::fmt::Display;
-use std::time::Duration;
+use jormungandr_lib::interfaces::{NodeStats, Policy, SlotDuration};
+use std::{fmt::Display, time::Duration};
 use thor::FragmentSender;
 
 const LEADER1: &str = "LEADER1";

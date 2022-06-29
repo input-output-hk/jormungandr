@@ -2,8 +2,7 @@ mod cast;
 mod tally;
 mod tx;
 
-use crate::controller::Error;
-use crate::controller::UserInteractionController;
+use crate::controller::{Error, UserInteractionController};
 use cast::CastVote;
 use structopt::StructOpt;
 use tally::VoteTally;

@@ -5,9 +5,10 @@ use super::{
     quarantine::ReportNodeStatus,
     topic, Gossips, NodeId, Peer, PeerInfo, ReportRecords,
 };
-
-use crate::metrics::{Metrics, MetricsBackend};
-use crate::settings::start::network::Configuration;
+use crate::{
+    metrics::{Metrics, MetricsBackend},
+    settings::start::network::Configuration,
+};
 use chain_crypto::Ed25519;
 use jormungandr_lib::crypto::key::SigningKey;
 use poldercast::{
@@ -16,8 +17,10 @@ use poldercast::{
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
-use std::convert::TryInto;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::{
+    convert::TryInto,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+};
 use tracing::instrument;
 
 lazy_static! {

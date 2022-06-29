@@ -1,7 +1,8 @@
-use crate::testing::{Speed, SpeedBenchmarkDef, SpeedBenchmarkFinish, Timestamp};
+use crate::{
+    jormungandr::JormungandrLogger,
+    testing::{Speed, SpeedBenchmarkDef, SpeedBenchmarkFinish, Timestamp},
+};
 use std::time::Duration;
-
-use crate::jormungandr::JormungandrLogger;
 
 pub fn storage_loading_benchmark_from_log(
     log: &JormungandrLogger,

@@ -4,41 +4,45 @@ mod connections;
 mod error;
 mod scalars;
 
-use self::config_param::{EpochStabilityDepth, LinearFee};
-use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PayloadType,
-    PoolCount, PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange,
-    VotePlanStatusCount,
-};
 use self::{
+    config_param::{EpochStabilityDepth, LinearFee},
     connections::{
         compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
         ValidatedPaginationArguments,
     },
-    scalars::VotePlanId,
+    error::ApiError,
+    scalars::{
+        BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero,
+        PayloadType, PoolCount, PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange,
+        VotePlanId, VotePlanStatusCount, Weight,
+    },
 };
-use self::{error::ApiError, scalars::Weight};
-use crate::db::indexing::{
-    BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, ExplorerVote,
-    ExplorerVotePlan, ExplorerVoteTally, StakePoolData,
+use crate::db::{
+    indexing::{
+        BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction,
+        ExplorerVote, ExplorerVotePlan, ExplorerVoteTally, StakePoolData,
+    },
+    persistent_sequence::PersistentSequence,
+    ExplorerDb, Settings as ChainSettings,
 };
-use crate::db::persistent_sequence::PersistentSequence;
-use crate::db::{ExplorerDb, Settings as ChainSettings};
-use async_graphql::connection::{query, Connection, Edge, EmptyFields};
 use async_graphql::{
+    connection::{query, Connection, Edge, EmptyFields},
     Context, EmptyMutation, FieldError, FieldResult, Object, SimpleObject, Subscription, Union,
 };
 use cardano_legacy_address::Addr as OldAddress;
 use certificates::*;
-use chain_impl_mockchain::key::BftLeaderId;
 use chain_impl_mockchain::{
     block::{BlockDate as InternalBlockDate, Epoch as InternalEpoch, HeaderId as HeaderHash},
+    certificate,
+    fragment::FragmentId,
+    key::BftLeaderId,
     vote::{EncryptedVote, ProofOfCorrectVote},
 };
-use chain_impl_mockchain::{certificate, fragment::FragmentId};
-use std::convert::{TryFrom, TryInto};
-use std::str::FromStr;
-use std::sync::Arc;
+use std::{
+    convert::{TryFrom, TryInto},
+    str::FromStr,
+    sync::Arc,
+};
 
 pub struct Branch {
     state: crate::db::Ref,

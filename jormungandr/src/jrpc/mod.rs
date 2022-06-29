@@ -39,6 +39,8 @@ pub enum Error {
     #[error(transparent)]
     IntercomError(#[from] intercom::Error),
     #[error(transparent)]
+    AccountLedgerError(#[from] chain_impl_mockchain::account::LedgerError),
+    #[error(transparent)]
     TxMsgSendError(#[from] Box<TrySendError<TransactionMsg>>),
     #[error("Can not estimate gas fees transaction, error: {0}")]
     EstimationError(#[from] Box<LedgerError>),
@@ -46,6 +48,8 @@ pub enum Error {
     Fragment(FragmentsProcessingSummary),
     #[error("Cound not decode Ethereum transaction bytes, erorr: {0}")]
     TransactionDecodedErorr(String),
+    #[error("Mining is not currently supported")]
+    MiningIsNotAllowed,
 }
 
 pub async fn start_jrpc_server(config: Config, _context: ContextLock) {

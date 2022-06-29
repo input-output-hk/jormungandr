@@ -3,14 +3,12 @@ use chain_core::{
     packer::Codec,
     property::{Deserialize, DeserializeFromSlice, ReadError, Serialize, WriteError},
 };
-use chain_impl_mockchain::block::Block;
-use chain_impl_mockchain::certificate::VotePlan;
-use chain_impl_mockchain::ledger::Ledger;
-use jormungandr_lib::interfaces::Initial;
-use jormungandr_lib::interfaces::{Block0Configuration, SettingsDto};
-use jormungandr_lib::{interfaces::Block0ConfigurationError, time::SystemTime};
-use std::io::BufReader;
-use std::path::Path;
+use chain_impl_mockchain::{block::Block, certificate::VotePlan, ledger::Ledger};
+use jormungandr_lib::{
+    interfaces::{Block0Configuration, Block0ConfigurationError, Initial, SettingsDto},
+    time::SystemTime,
+};
+use std::{io::BufReader, path::Path};
 use thiserror::Error;
 use url::Url;
 

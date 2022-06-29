@@ -159,6 +159,8 @@ pub struct FullContext {
     pub transaction_task: MessageBox<TransactionMsg>,
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,
+    #[cfg(feature = "evm")]
+    pub evm_keys: Arc<Vec<chain_evm::util::Secret>>,
     pub network_state: NetworkStateR,
     #[cfg(feature = "prometheus-metrics")]
     pub prometheus: Option<Arc<crate::metrics::backends::Prometheus>>,

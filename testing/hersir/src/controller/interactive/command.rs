@@ -1,6 +1,5 @@
-use structopt::{clap::AppSettings, StructOpt};
-
 use super::args::{describe, explorer, send, show, spawn};
+use structopt::{clap::AppSettings, StructOpt};
 
 #[derive(StructOpt, Debug)]
 #[structopt(setting = AppSettings::NoBinaryName)]

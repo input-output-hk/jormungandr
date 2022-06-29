@@ -3,17 +3,15 @@ mod command;
 mod data;
 mod services;
 
-pub use command::JCliCommand;
-pub use data::{Witness, WitnessData, WitnessType};
-pub use services::FragmentCheck;
-
-pub use services::Error;
-
 use super::jormungandr::JormungandrProcess;
 use crate::testing::configuration;
 use api::{Address, Certificate, Genesis, Key, Rest, Transaction, Votes};
+pub use command::JCliCommand;
+pub use data::{Witness, WitnessData, WitnessType};
 use jormungandr_lib::crypto::hash::Hash;
-pub use services::{CertificateBuilder, FragmentSender, FragmentsCheck, TransactionBuilder};
+pub use services::{
+    CertificateBuilder, Error, FragmentCheck, FragmentSender, FragmentsCheck, TransactionBuilder,
+};
 use std::{
     path::{Path, PathBuf},
     process::Command,

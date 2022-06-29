@@ -1,18 +1,14 @@
-use super::logs::Logs;
-use super::pool::internal::Pool;
+use super::{logs::Logs, pool::internal::Pool};
 use crate::{
     blockcfg::{ApplyBlockLedger, Contents, ContentsBuilder, LedgerParameters},
     fragment::{Fragment, FragmentId},
 };
-use chain_core::property::Serialize;
-use jormungandr_lib::interfaces::{BlockDate, FragmentStatus};
-
 use async_trait::async_trait;
+use chain_core::property::Serialize;
 use futures::{channel::oneshot::Receiver, future::Shared, prelude::*};
+use jormungandr_lib::interfaces::{BlockDate, FragmentStatus};
+use std::{error::Error, iter};
 use tracing::{debug_span, Instrument};
-
-use std::error::Error;
-use std::iter;
 
 pub enum SelectionOutput {
     Commit { fragment_id: FragmentId },

@@ -1,7 +1,6 @@
+use super::DEFAULT_PROPOSAL_EXPIRATION;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-
-use super::DEFAULT_PROPOSAL_EXPIRATION;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ProposalExpiration(u32);
