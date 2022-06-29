@@ -17,6 +17,7 @@ use crate::{
     context::ContextLock,
     intercom::{self, TransactionMsg},
 };
+use chain_impl_mockchain::ledger::Error as LedgerError;
 use futures::channel::mpsc::TrySendError;
 use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jsonrpsee_http_server::{HttpServerBuilder, RpcModule};
@@ -41,6 +42,8 @@ pub enum Error {
     AccountLedgerError(#[from] chain_impl_mockchain::account::LedgerError),
     #[error(transparent)]
     TxMsgSendError(#[from] Box<TrySendError<TransactionMsg>>),
+    #[error("Can not estimate gas fees transaction, error: {0}")]
+    EstimationError(#[from] Box<LedgerError>),
     #[error("Could not process fragment")]
     Fragment(FragmentsProcessingSummary),
     #[error("Cound not decode Ethereum transaction bytes, erorr: {0}")]
