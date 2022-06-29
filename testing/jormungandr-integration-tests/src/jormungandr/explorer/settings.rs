@@ -7,7 +7,7 @@ use jormungandr_lib::interfaces::DEFAULT_EPOCH_STABILITY_DEPTH;
 use std::num::NonZeroU64;
 
 #[test]
-#[should_panic]//BUG -> NPG-2098
+#[should_panic] //BUG -> NPG-2098
 
 pub fn explorer_settings() {
     let alice = thor::Wallet::default();
@@ -37,5 +37,10 @@ pub fn explorer_settings() {
     let explorer_settings = explorer.settings().unwrap().data.unwrap().settings;
 
     ExplorerVerifier::assert_fees(linear_fees, explorer_settings.fees);
-    ExplorerVerifier::epoch_stability_depth(DEFAULT_EPOCH_STABILITY_DEPTH, explorer_settings.epoch_stability_depth.epoch_stability_depth);
+    ExplorerVerifier::epoch_stability_depth(
+        DEFAULT_EPOCH_STABILITY_DEPTH,
+        explorer_settings
+            .epoch_stability_depth
+            .epoch_stability_depth,
+    );
 }
