@@ -1,11 +1,11 @@
 use crate::startup;
 use assert_fs::TempDir;
-use chain_impl_mockchain::fragment::{FragmentId, Fragment};
+use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::transaction::AccountIdentifier;
 use chain_impl_mockchain::{block::BlockDate, transaction};
-use jormungandr_automation::jormungandr::Starter;
 use jormungandr_automation::jormungandr::explorer::verifier::ExplorerVerifier;
+use jormungandr_automation::jormungandr::Starter;
 use jormungandr_automation::testing::time;
 use jormungandr_automation::{
     jcli::JCli,
@@ -14,24 +14,9 @@ use jormungandr_automation::{
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
 
-use jormungandr_automation::jormungandr::explorer::data::transaction_by_id::TransactionByIdTransactionCertificate;
-use jormungandr_automation::jormungandr::explorer::data::TransactionById;
 use std::time::Duration;
 use std::{borrow::Borrow, str::FromStr};
 use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
-
-/*use async_graphql::{Context, FieldResult, Object, Union};
-use async_graphql::Response;
-use self::{
-    client::GraphQlClient,
-    data::{
-        address, all_blocks, all_stake_pools, all_vote_plans, blocks_by_chain_length, epoch,
-        last_block, settings, stake_pool, transaction_by_id, Address, AllBlocks, AllStakePools,
-        AllVotePlans, BlocksByChainLength, Epoch, LastBlock, Settings, StakePool, TransactionById,
-    },
-};
-use graphql_client::GraphQLQuery;
-use graphql_client::*;*/
 
 #[test]
 pub fn explorer_stake_pool_certificates_test() {
@@ -90,26 +75,18 @@ pub fn explorer_stake_pool_certificates_test() {
         )
         .expect("error while sending registration certificate for first stake pool owner");
 
-    let stake_pool_reg_transaction = explorer
+    let exp_stake_pool_reg_transaction = explorer
         .transaction(stake_pool_reg_fragment.hash().into())
         .expect("non existing stake pool registration transaction")
         .data
-        .unwrap();
+        .unwrap()
+        .transaction;
 
-    //TODO
-    verify_transaction();
-    if let Fragment::PoolRegistration(f) = stake_pool_reg_fragment {f;}
+    ExplorerVerifier::assert_transaction_certificate(
+        stake_pool_reg_fragment,
+        exp_stake_pool_reg_transaction,
+    );
 
-    let cert = stake_pool_reg_transaction.transaction.certificate.unwrap();
-    ExplorerVerifier::assert_transaction_certificate( cert);
-
-/*
-    if let TransactionByIdTransactionCertificate::PoolRegistration(cert) = cert {
-        println!("{:?}", cert);
-
-    };
-*/
-    /*
     // 2. send owner delegation certificat
     let owner_deleg_fragment =
         fragment_builder.owner_delegation(&first_stake_pool_owner, &first_stake_pool);
@@ -117,13 +94,13 @@ pub fn explorer_stake_pool_certificates_test() {
     fragment_sender
         .send_fragment(
             &mut first_stake_pool_owner,
-            owner_deleg_fragment,
+            owner_deleg_fragment.clone(),
             &jormungandr,
         )
         .expect("error while sending owner delegation cert");
 
     let owner_deleg_transaction = explorer
-        .transaction(stake_pool_reg_fragment.hash().into())
+        .transaction(owner_deleg_fragment.hash().into())
         .expect("non existing owner delegation transaction")
         .data
         .unwrap();
@@ -132,7 +109,6 @@ pub fn explorer_stake_pool_certificates_test() {
 
     //if let TransactionByIdTransactionCertificate::OwnerStakeDelegation(cert) = cert {println!("value: {:?}", cert.pools);};
     println!("value2: {:?}", cert);
-
 
     // 3. send full delegation certificate
     let full_deleg_fragment = fragment_builder.delegation(&full_delegator, &first_stake_pool);
@@ -153,9 +129,8 @@ pub fn explorer_stake_pool_certificates_test() {
 
     let cert = stake_pool_reg_transaction.transaction.certificate.unwrap();
 
-        //if let TransactionByIdTransactionCertificate::StakeDelegation(cert) = cert {println!("value: {:?}", cert);};
-        println!("value3: {:?}", cert);
-
+    //if let TransactionByIdTransactionCertificate::StakeDelegation(cert) = cert {println!("value: {:?}", cert);};
+    println!("value3: {:?}", cert);
 
     // 4. send split delegation certificate
     let split_delegation_fragment = fragment_builder.delegation_to_many(
@@ -177,10 +152,12 @@ pub fn explorer_stake_pool_certificates_test() {
         .data
         .unwrap();
 
-    let cert = split_delegation_transaction.transaction.certificate.unwrap();
+    let cert = split_delegation_transaction
+        .transaction
+        .certificate
+        .unwrap();
 
     println!("value4: {:?}", cert);
-
 
     // 5. send pool update certificate
     let mut new_stake_pool = first_stake_pool.clone();
@@ -211,7 +188,10 @@ pub fn explorer_stake_pool_certificates_test() {
         .data
         .unwrap();
 
-    let cert = stake_pool_update_transaction.transaction.certificate.unwrap();
+    let cert = stake_pool_update_transaction
+        .transaction
+        .certificate
+        .unwrap();
 
     println!("value5: {:?}", cert);
 
@@ -233,9 +213,12 @@ pub fn explorer_stake_pool_certificates_test() {
         .data
         .unwrap();
 
-    let cert = stake_pool_retire_transaction.transaction.certificate.unwrap();
+    let cert = stake_pool_retire_transaction
+        .transaction
+        .certificate
+        .unwrap();
 
-    println!("value6: {:?}", cert);*/
+    println!("value6: {:?}", cert);
 }
 
 #[test]

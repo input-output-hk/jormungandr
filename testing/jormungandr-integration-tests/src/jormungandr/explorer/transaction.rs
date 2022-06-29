@@ -1,15 +1,15 @@
 use crate::startup;
-use chain_impl_mockchain::{block::BlockDate, transaction};
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
+use chain_impl_mockchain::{block::BlockDate, transaction};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Explorer},
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
-use std::{str::FromStr, borrow::Borrow};
 use std::time::Duration;
+use std::{borrow::Borrow, str::FromStr};
 use thor::TransactionHash;
 
 #[test]
@@ -45,19 +45,41 @@ pub fn explorer_transaction_test() {
 
     let explorer_transaction = explorer
         .transaction(fragment_id.into())
-        .expect("non existing transaction").data.unwrap().transaction;
+        .expect("non existing transaction")
+        .data
+        .unwrap()
+        .transaction;
 
-        assert_eq!(
-            fragment_id,
-            Hash::from_str(&explorer_transaction.id).unwrap(),
-            "incorrect fragment id"
-        );
+    assert_eq!(
+        fragment_id,
+        Hash::from_str(&explorer_transaction.id).unwrap(),
+        "incorrect fragment id"
+    );
 
-    println!("{:?}", explorer_transaction.blocks[0].id);
-    assert_eq!(transaction_value, explorer_transaction.inputs[0].amount.parse::<u64>().unwrap());
-    assert_eq!(sender.address().to_string(), explorer_transaction.inputs[0].address.id);
-    assert_eq!(transaction_value, explorer_transaction.outputs[0].amount.parse::<u64>().unwrap());
-    assert_eq!(receiver.address().to_string(), explorer_transaction.outputs[0].address.id);
+    println!("{:?}", explorer_transaction.inputs[0].address.id);
 
+    assert_eq!(
+        transaction_value,
+        explorer_transaction.inputs[0]
+            .amount
+            .parse::<u64>()
+            .unwrap()
+    );
+    assert_eq!(
+        sender.address().to_string(),
+        explorer_transaction.inputs[0].address.id
+    );
+    assert_eq!(
+        transaction_value,
+        explorer_transaction.outputs[0]
+            .amount
+            .parse::<u64>()
+            .unwrap()
+    );
+    assert_eq!(
+        receiver.address().to_string(),
+        explorer_transaction.outputs[0].address.id
+    );
 
+    println!("{:?}", transaction);
 }
