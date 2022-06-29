@@ -24,7 +24,7 @@ pub async fn get_transaction_count(
     match block_number {
         BlockNumber::Latest => {
             let ledger = context.blockchain_tip()?.get_ref().await.ledger();
-            let address = ledger.jormungandr_mapped_address(&address);
+            let address = ledger.get_jormungandr_mapped_address(&address);
             let account = ledger.accounts().get_state(&address)?;
             Ok(account.evm_state.nonce.into())
         }
@@ -40,7 +40,7 @@ pub async fn get_balance(
     match block_number {
         BlockNumber::Latest => {
             let ledger = context.blockchain_tip()?.get_ref().await.ledger();
-            let address = ledger.jormungandr_mapped_address(&address);
+            let address = ledger.get_jormungandr_mapped_address(&address);
             let account = ledger.accounts().get_state(&address)?;
             Ok(account.value.0.into())
         }
@@ -56,7 +56,7 @@ pub async fn get_code(
     match block_number {
         BlockNumber::Latest => {
             let ledger = context.blockchain_tip()?.get_ref().await.ledger();
-            let address = ledger.jormungandr_mapped_address(&address);
+            let address = ledger.get_jormungandr_mapped_address(&address);
             let account = ledger.accounts().get_state(&address)?;
             Ok(account.evm_state.code.clone().into())
         }
@@ -73,7 +73,7 @@ pub async fn get_storage_at(
     match block_number {
         BlockNumber::Latest => {
             let ledger = context.blockchain_tip()?.get_ref().await.ledger();
-            let address = ledger.jormungandr_mapped_address(&address);
+            let address = ledger.get_jormungandr_mapped_address(&address);
             let account = ledger.accounts().get_state(&address)?;
             Ok(account
                 .evm_state
