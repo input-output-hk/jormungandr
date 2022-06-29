@@ -1,30 +1,30 @@
 query TransactionById($id: String!){
     transaction(id: $id) {
         id
-        blocks{
-                id
-            }
-        inputs{
-            amount
-            address{
-                    id
-                }
-            }
-        outputs{
-            amount
-            address{
-                    id
-            }
-        }
+        blocks{id date{...blockDate}} #TODO check all the block parameters
+        inputs{amount address{id}}
+        outputs{amount address{id}}
         certificate{
             __typename
             ... on StakeDelegation {account{id delegation {... poolInfo}}
                                     pools {... poolInfo}}
             ... on OwnerStakeDelegation {pools {... poolInfo}}
-            ... on PoolRegistration {pool {... poolInfo}}
-     #       ... on PoolRetirement {poolId retirementTime}
-     #       ... on PoolUpdate {poolId startValidity}
-            #... on VotePlan{}
+            ... on PoolRegistration {pool {... poolInfo}
+                                    startValidity
+                                    managementThreshold
+                                    owners
+                                    operators
+                                    rewards {fixed ratio {numerator denominator} maxLimit}
+                                    rewardAccount {id delegation {... poolInfo}}
+                                    }
+            ... on PoolRetirement {poolId retirementTime}
+            ... on PoolUpdate {poolId startValidity}
+            ... on VotePlan{voteStart{...blockDate}
+                            voteEnd{...blockDate}
+                            committeeEnd{...blockDate}
+                            payloadType
+                            proposals {externalId}
+                            }
             #... on VoteCast{}
             #... on VoteTally{}
             #... on UpdateProposal {}
@@ -41,3 +41,8 @@ fragment poolInfo on Pool {
         registration{pool{id}}
         retirement{poolId}
     }
+
+fragment blockDate on BlockDate{
+                            epoch{id}
+                            slot
+                        }
