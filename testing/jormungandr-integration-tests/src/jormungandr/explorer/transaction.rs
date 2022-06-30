@@ -2,6 +2,7 @@ use crate::startup;
 use chain_impl_mockchain::fragment::FragmentId;
 use chain_impl_mockchain::key::Hash;
 use chain_impl_mockchain::{block::BlockDate, transaction};
+use jormungandr_automation::jormungandr::explorer::verifier::ExplorerVerifier;
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Explorer},
@@ -34,13 +35,12 @@ pub fn explorer_transaction_test() {
         BlockDate::first().next_epoch(),
     )
     .transaction(&sender, receiver.address(), transaction_value.into())
-    .unwrap()
-    .encode();
+    .unwrap();
 
     let wait = Wait::new(Duration::from_secs(3), 20);
     let fragment_id = jcli
         .fragment_sender(&jormungandr)
-        .send(&transaction)
+        .send(&transaction.encode())
         .assert_in_block_with_wait(&wait);
 
     let explorer_transaction = explorer
@@ -50,36 +50,5 @@ pub fn explorer_transaction_test() {
         .unwrap()
         .transaction;
 
-    assert_eq!(
-        fragment_id,
-        Hash::from_str(&explorer_transaction.id).unwrap(),
-        "incorrect fragment id"
-    );
-
-    println!("{:?}", explorer_transaction.inputs[0].address.id);
-
-    assert_eq!(
-        transaction_value,
-        explorer_transaction.inputs[0]
-            .amount
-            .parse::<u64>()
-            .unwrap()
-    );
-    assert_eq!(
-        sender.address().to_string(),
-        explorer_transaction.inputs[0].address.id
-    );
-    assert_eq!(
-        transaction_value,
-        explorer_transaction.outputs[0]
-            .amount
-            .parse::<u64>()
-            .unwrap()
-    );
-    assert_eq!(
-        receiver.address().to_string(),
-        explorer_transaction.outputs[0].address.id
-    );
-
-    println!("{:?}", transaction);
+    ExplorerVerifier::assert_transaction(transaction, explorer_transaction);
 }
