@@ -18,6 +18,8 @@ use crate::{
     intercom::{self, TransactionMsg},
 };
 use chain_impl_mockchain::ledger::Error as LedgerError;
+#[cfg(feature = "evm")]
+pub use eth_filter::EvmFilters;
 use futures::channel::mpsc::TrySendError;
 use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jsonrpsee_http_server::{HttpServerBuilder, RpcModule};

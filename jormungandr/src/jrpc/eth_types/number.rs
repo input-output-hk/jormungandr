@@ -5,8 +5,14 @@ use serde::{
 use std::fmt;
 
 /// Represents usize.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 pub struct Number(u64);
+
+impl Number {
+    pub fn inc(&mut self) {
+        self.0 += 1;
+    }
+}
 
 impl From<u64> for Number {
     fn from(val: u64) -> Self {
