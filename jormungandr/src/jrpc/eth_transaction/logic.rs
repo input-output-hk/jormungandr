@@ -128,9 +128,13 @@ pub fn sign_transaction(_tx: Transaction, _context: &Context) -> Result<Bytes, E
     Ok(Default::default())
 }
 
-pub fn estimate_gas(_tx: Transaction, _context: &Context) -> Result<Number, Error> {
-    // TODO implement
-    Ok(0.into())
+pub async fn estimate_gas(tx: Transaction, context: &Context) -> Result<Number, Error> {
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
+    Ok(blockchain_tip
+        .ledger()
+        .estimate_evm_transaction(tx.into())
+        .map_err(Box::new)?
+        .into())
 }
 
 pub fn sign(_address: H160, _message: Bytes, _context: &Context) -> Result<H512, Error> {
