@@ -16,16 +16,6 @@ pub struct FeeHistory {
     reward: Vec<Vec<Number>>,
 }
 
-impl FeeHistory {
-    pub fn build() -> Self {
-        Self {
-            oldest_block: 1.into(),
-            base_fee_per_gas: vec![1.into()],
-            reward: vec![vec![1.into()]],
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
