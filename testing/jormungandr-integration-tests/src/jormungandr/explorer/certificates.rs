@@ -1,21 +1,11 @@
-use crate::startup;
 use assert_fs::TempDir;
-use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use chain_impl_mockchain::key::Hash;
+use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::transaction::AccountIdentifier;
-use chain_impl_mockchain::{block::BlockDate, transaction};
 use jormungandr_automation::jormungandr::explorer::verifier::ExplorerVerifier;
 use jormungandr_automation::jormungandr::Starter;
-use jormungandr_automation::testing::time;
-use jormungandr_automation::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Explorer},
-};
-use jormungandr_lib::interfaces::ActiveSlotCoefficient;
-use jortestkit::process::Wait;
 
-use std::time::Duration;
-use std::{borrow::Borrow, str::FromStr};
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
+
 use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
 
 #[test]
@@ -75,19 +65,31 @@ pub fn explorer_stake_pool_certificates_test() {
         )
         .expect("error while sending registration certificate for first stake pool owner");
 
-    let exp_stake_pool_reg_transaction = explorer
+    let trans = explorer
         .transaction(stake_pool_reg_fragment.hash().into())
-        .expect("non existing stake pool registration transaction")
-        .data
-        .unwrap()
-        .transaction;
+        .expect("non existing stake pool registration transaction");
+
+    assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
+
+    let exp_stake_pool_reg_transaction = trans.data.unwrap().transaction;
 
     ExplorerVerifier::assert_transaction_certificate(
         stake_pool_reg_fragment,
         exp_stake_pool_reg_transaction,
     );
 
-    // 2. send owner delegation certificat
+    let stake_pool_reg_fragment =
+        fragment_builder.stake_pool_registration(&second_stake_pool_owner, &second_stake_pool);
+
+    fragment_sender
+        .send_fragment(
+            &mut second_stake_pool_owner,
+            stake_pool_reg_fragment,
+            &jormungandr,
+        )
+        .expect("error while sending registration certificate for second stake pool owner");
+
+    // 2. send owner delegation certificate
     let owner_deleg_fragment =
         fragment_builder.owner_delegation(&first_stake_pool_owner, &first_stake_pool);
 
@@ -99,16 +101,17 @@ pub fn explorer_stake_pool_certificates_test() {
         )
         .expect("error while sending owner delegation cert");
 
-    let owner_deleg_transaction = explorer
+    let trans = explorer
         .transaction(owner_deleg_fragment.hash().into())
-        .expect("non existing owner delegation transaction")
-        .data
-        .unwrap();
+        .expect("non existing owner delegation transaction");
 
-    let cert = owner_deleg_transaction.transaction.certificate.unwrap();
+    assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
-    //if let TransactionByIdTransactionCertificate::OwnerStakeDelegation(cert) = cert {println!("value: {:?}", cert.pools);};
-    println!("value2: {:?}", cert);
+    let owner_deleg_transaction = trans.data.unwrap().transaction;
+
+    println!("value2: {:?}", &owner_deleg_transaction);
+
+    ExplorerVerifier::assert_transaction_certificate(owner_deleg_fragment, owner_deleg_transaction);
 
     // 3. send full delegation certificate
     let full_deleg_fragment = fragment_builder.delegation(&full_delegator, &first_stake_pool);
@@ -121,17 +124,18 @@ pub fn explorer_stake_pool_certificates_test() {
         )
         .unwrap();
 
-    let stake_pool_reg_transaction = explorer
+    let trans = explorer
         .transaction(full_deleg_fragment.hash().into())
-        .expect("non existing full delegation transaction")
-        .data
-        .unwrap();
+        .expect("non existing full delegation transaction");
 
-    let cert = stake_pool_reg_transaction.transaction.certificate.unwrap();
+    assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
-    //if let TransactionByIdTransactionCertificate::StakeDelegation(cert) = cert {println!("value: {:?}", cert);};
-    println!("value3: {:?}", cert);
+    let stake_pool_reg_transaction = trans.data.unwrap().transaction;
 
+    ExplorerVerifier::assert_transaction_certificate(
+        full_deleg_fragment,
+        stake_pool_reg_transaction,
+    );
     // 4. send split delegation certificate
     let split_delegation_fragment = fragment_builder.delegation_to_many(
         &split_delegator,
@@ -146,18 +150,18 @@ pub fn explorer_stake_pool_certificates_test() {
         )
         .unwrap();
 
-    let split_delegation_transaction = explorer
+    let trans = explorer
         .transaction(split_delegation_fragment.hash().into())
-        .expect("non split delegation transaction")
-        .data
-        .unwrap();
+        .expect("non split delegation transaction");
 
-    let cert = split_delegation_transaction
-        .transaction
-        .certificate
-        .unwrap();
+    assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
-    println!("value4: {:?}", cert);
+    let exp_split_delegation_transaction = trans.data.unwrap().transaction;
+
+    ExplorerVerifier::assert_transaction_certificate(
+        split_delegation_fragment,
+        exp_split_delegation_transaction,
+    );
 
     // 5. send pool update certificate
     let mut new_stake_pool = first_stake_pool.clone();
@@ -182,18 +186,18 @@ pub fn explorer_stake_pool_certificates_test() {
         .assert_in_block();
     first_stake_pool_owner.confirm_transaction();
 
-    let stake_pool_update_transaction = explorer
+    let trans = explorer
         .transaction(stake_pool_update_fragment.hash().into())
-        .expect("non stake pool update transaction")
-        .data
-        .unwrap();
+        .expect("non stake pool update transaction");
 
-    let cert = stake_pool_update_transaction
-        .transaction
-        .certificate
-        .unwrap();
+    assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
-    println!("value5: {:?}", cert);
+    let stake_pool_update_transaction = trans.data.unwrap().transaction;
+
+    ExplorerVerifier::assert_transaction_certificate(
+        stake_pool_update_fragment,
+        stake_pool_update_transaction,
+    );
 
     // 6. send pool retire certificate
     let stake_pool_retire_fragment =
@@ -207,18 +211,18 @@ pub fn explorer_stake_pool_certificates_test() {
         )
         .unwrap();
 
-    let stake_pool_retire_transaction = explorer
+    let trans = explorer
         .transaction(stake_pool_retire_fragment.hash().into())
-        .expect("non stake pool update transaction")
-        .data
-        .unwrap();
+        .expect("non stake pool update transaction");
 
-    let cert = stake_pool_retire_transaction
-        .transaction
-        .certificate
-        .unwrap();
+    assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
-    println!("value6: {:?}", cert);
+    let stake_pool_retire_transaction = trans.data.unwrap().transaction;
+
+    ExplorerVerifier::assert_transaction_certificate(
+        stake_pool_retire_fragment,
+        stake_pool_retire_transaction,
+    );
 }
 
 #[test]
@@ -226,5 +230,3 @@ pub fn explorer_vote_certificates_test() {}
 
 #[test]
 pub fn explorer_evm_mapping_certificates_test() {}
-
-fn verify_transaction() {}
