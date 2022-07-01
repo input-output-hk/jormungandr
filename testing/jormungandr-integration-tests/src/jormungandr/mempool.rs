@@ -576,7 +576,7 @@ fn avg_block_size_stats() {
 
     let blockchain = Blockchain::default()
         .with_slot_duration(SlotDuration::new(SLOT_DURATION_SECS).unwrap())
-        .with_linear_fee(linear_fee)
+        .with_linear_fee(linear_fee.clone())
         .with_leader(LEADER)
         .with_block_content_max_size(200.into()); // This should only fit one transaction
 

@@ -1,6 +1,5 @@
 use crate::blockcfg::{
     BlockDate, ChainLength, EpochRewardsInfo, Header, HeaderHash, Leadership, Ledger,
-    LedgerParameters,
 };
 use chain_impl_mockchain::{multiverse, vote::VotePlanStatus};
 use chain_time::{
@@ -26,11 +25,6 @@ pub struct Ref {
     /// this object will be shared between different Ref of the same epoch
     epoch_leadership_schedule: Arc<Leadership>,
 
-    /// pointer to the current ledger parameters
-    ///
-    /// The object will be shared between different Ref of the same epoch
-    epoch_ledger_parameters: Arc<LedgerParameters>,
-
     /// If present, this is the rewards info distributed at the beginning of
     /// the epoch. Useful to follow up on the reward distribution history
     epoch_rewards_info: Option<Arc<EpochRewardsInfo>>,
@@ -52,7 +46,6 @@ impl Ref {
         ledger: multiverse::Ref<Ledger>,
         time_frame: Arc<TimeFrame>,
         epoch_leadership_schedule: Arc<Leadership>,
-        epoch_ledger_parameters: Arc<LedgerParameters>,
         epoch_rewards_info: Option<Arc<EpochRewardsInfo>>,
         header: Header,
         previous_epoch_state: Option<Arc<Ref>>,
@@ -67,7 +60,6 @@ impl Ref {
             ledger,
             time_frame,
             epoch_leadership_schedule,
-            epoch_ledger_parameters,
             epoch_rewards_info,
             header,
             previous_epoch_state,
@@ -112,10 +104,6 @@ impl Ref {
 
     pub fn epoch_leadership_schedule(&self) -> &Arc<Leadership> {
         &self.epoch_leadership_schedule
-    }
-
-    pub fn epoch_ledger_parameters(&self) -> &Arc<LedgerParameters> {
-        &self.epoch_ledger_parameters
     }
 
     /// access the rewards info that were distributed at the end of the previous epoch

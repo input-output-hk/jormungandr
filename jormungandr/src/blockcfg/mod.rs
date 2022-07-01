@@ -11,8 +11,7 @@ pub use chain_impl_mockchain::{
     },
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},
     ledger::{
-        ApplyBlockLedger, EpochRewardsInfo, Ledger, LedgerParameters, LedgerStaticParameters,
-        RewardsInfoParameters,
+        ApplyBlockLedger, EpochRewardsInfo, Ledger, LedgerStaticParameters, RewardsInfoParameters,
     },
     multiverse::Multiverse,
     value::{Value, ValueError},

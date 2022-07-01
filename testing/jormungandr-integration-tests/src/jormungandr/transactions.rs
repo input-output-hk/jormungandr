@@ -21,7 +21,7 @@ pub fn accounts_funds_are_updated_after_transaction() {
             .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_slot_duration(3)
-            .with_linear_fees(fee)
+            .with_linear_fees(fee.clone())
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),

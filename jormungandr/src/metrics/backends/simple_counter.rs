@@ -220,7 +220,7 @@ impl MetricsBackend for SimpleCounter {
 
         let content_size = block.header().block_content_size();
         let content_size_ratio =
-            content_size as f64 / block_ref.epoch_ledger_parameters().block_content_max_size as f64;
+            content_size as f64 / block_ref.ledger().settings().block_content_max_size as f64;
         let last_avg = if let Some(data) = self.tip_block.load().as_deref() {
             data.avg_content_size
         } else {

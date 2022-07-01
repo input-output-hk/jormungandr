@@ -88,7 +88,7 @@ impl VotesOnly {
         let settings = remote_jormungandr.rest().settings().unwrap();
 
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
-        let fees = settings.fees;
+        let fees = settings.fees.clone();
 
         let expiry_generator = self
             .valid_until

@@ -142,7 +142,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
     }
 
     pub fn fees(&self) -> LinearFee {
-        self.fees
+        self.fees.clone()
     }
 
     pub fn send_random_faulty_transaction<A: FragmentNode + SyncNode + Sized + Send>(
@@ -161,7 +161,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         let option: u8 = rng.gen();
         let faulty_tx_builder = FaultyTransactionBuilder::new(
             self.block0_hash,
-            self.fees,
+            self.fees.clone(),
             self.expiry_generator.clone(),
         );
         match option % 7 {
@@ -186,7 +186,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         let mut mem_checks = Vec::new();
         let faulty_tx_builder = FaultyTransactionBuilder::new(
             self.block0_hash,
-            self.fees,
+            self.fees.clone(),
             self.expiry_generator.clone(),
         );
 
@@ -207,7 +207,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
     ) -> Result<Vec<MemPoolCheck>, AdversaryFragmentSenderError> {
         let faulty_tx_builder = FaultyTransactionBuilder::new(
             self.block0_hash,
-            self.fees,
+            self.fees.clone(),
             self.expiry_generator.clone(),
         );
         let mut mem_checks = Vec::new();
@@ -250,7 +250,7 @@ impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
         let option: u8 = rng.gen();
         let faulty_tx_cert_builder = FaultTolerantTxCertBuilder::new(
             self.block0_hash.into_hash(),
-            self.fees,
+            self.fees.clone(),
             cert,
             valid_until,
             from.clone().into(),

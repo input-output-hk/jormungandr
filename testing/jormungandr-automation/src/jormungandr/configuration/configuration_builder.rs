@@ -362,7 +362,7 @@ impl ConfigurationBuilder {
             .with_treasury(self.treasury)
             .with_epoch_stability_depth(self.epoch_stability_depth)
             .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff)
-            .with_linear_fees(self.linear_fees)
+            .with_linear_fees(self.linear_fees.clone())
             .with_proposal_expiration(self.proposal_expiry_epochs)
             .with_block_content_max_size(self.block_content_max_size)
             .with_committee_ids(self.committee_ids.clone())

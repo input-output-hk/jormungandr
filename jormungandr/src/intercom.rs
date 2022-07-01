@@ -1,7 +1,5 @@
 use crate::{
-    blockcfg::{
-        ApplyBlockLedger, Block, Fragment, FragmentId, Header, HeaderHash, LedgerParameters,
-    },
+    blockcfg::{ApplyBlockLedger, Block, Fragment, FragmentId, Header, HeaderHash},
     blockchain::{Checkpoints, LeadershipBlock, StorageError},
     fragment::selection::FragmentSelectionAlgorithmParams,
     network::p2p::comm::PeerInfo,
@@ -519,7 +517,6 @@ pub enum TransactionMsg {
     ),
     SelectTransactions {
         ledger: ApplyBlockLedger,
-        ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
         reply_handle: ReplyHandle<(FragmentContents, ApplyBlockLedger)>,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,

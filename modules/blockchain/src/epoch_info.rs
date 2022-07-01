@@ -3,7 +3,7 @@ use chain_impl_mockchain::{
     block::Block,
     header::{BlockDate, Header},
     leadership::{self, Leadership, Verification},
-    ledger::{EpochRewardsInfo, Ledger, LedgerParameters},
+    ledger::{EpochRewardsInfo, Ledger},
 };
 use chain_time::{
     era::{EpochPosition, EpochSlotOffset},
@@ -19,11 +19,6 @@ pub struct EpochInfo {
     ///
     /// this object will be shared between different Ref of the same epoch
     epoch_leadership_schedule: Leadership,
-
-    /// pointer to the current ledger parameters
-    ///
-    /// The object will be shared between different Ref of the same epoch
-    epoch_ledger_parameters: LedgerParameters,
 
     /// If present, this is the rewards info distributed at the beginning of
     /// the epoch. Useful to follow up on the reward distribution history
@@ -61,13 +56,11 @@ impl EpochInfo {
         };
 
         let epoch_leadership_schedule = Leadership::new(epoch, ledger);
-        let epoch_ledger_parameters = epoch_leadership_schedule.ledger_parameters().clone();
         let epoch_rewards_info = None;
 
         Ok(Self {
             time_frame,
             epoch_leadership_schedule,
-            epoch_ledger_parameters,
             epoch_rewards_info,
         })
     }
@@ -79,7 +72,6 @@ impl EpochInfo {
     ) -> Self {
         Self {
             time_frame: self.time_frame.clone(),
-            epoch_ledger_parameters: leadership.ledger_parameters().clone(),
             epoch_leadership_schedule: leadership,
             epoch_rewards_info,
         }
@@ -124,10 +116,6 @@ impl EpochInfo {
 
     pub fn epoch_leadership_schedule(&self) -> &Leadership {
         &self.epoch_leadership_schedule
-    }
-
-    pub fn epoch_ledger_parameters(&self) -> &LedgerParameters {
-        &self.epoch_ledger_parameters
     }
 
     /// access the rewards info that were distributed at the end of the previous epoch
