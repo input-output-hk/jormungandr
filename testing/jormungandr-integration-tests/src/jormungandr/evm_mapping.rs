@@ -22,7 +22,7 @@ pub fn test_evm_mapping() {
     let evm_mapping = TestGen::evm_mapping_for_wallet(&alice.clone().into());
 
     assert_eq!(
-        "null",
+        "",
         jormungandr
             .rest()
             .raw()
@@ -81,7 +81,7 @@ pub fn test_evm_mapping_twice() {
     let evm_mapping_alice = TestGen::evm_mapping_for_wallet(&alice.clone().into());
 
     assert_eq!(
-        "null",
+        "",
         jormungandr
             .rest()
             .raw()
@@ -119,7 +119,7 @@ pub fn test_evm_mapping_twice() {
     let evm_mapping_bob = TestGen::evm_mapping_for_wallet(&bob.clone().into());
 
     assert_eq!(
-        "null",
+        "",
         jormungandr
             .rest()
             .raw()
@@ -175,7 +175,7 @@ pub fn test_evm_mapping_already_mapped() {
     let evm_mapping = TestGen::evm_mapping_for_wallet(&alice.clone().into());
 
     assert_eq!(
-        "null",
+        "",
         jormungandr
             .rest()
             .raw()
