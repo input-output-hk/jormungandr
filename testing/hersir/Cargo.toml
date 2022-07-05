@@ -10,10 +10,10 @@ edition = "2021"
 assert_fs = "1.0"
 custom_debug = "0.5"
 ctrlc = "3.2.1"
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
-chain-crypto      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs", features = [ "property-test-api" ] }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 indicatif = "0.15"
 jormungandr-automation = { path = "../jormungandr-automation" }
 jormungandr-lib = { path = "../../jormungandr-lib" }

@@ -12,17 +12,17 @@ Midgard Serpent
 edition = "2021"
 
 [dependencies]
-chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
-chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
-chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
-chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
-chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
-chain-evm = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs", optional = true }
-cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
-imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs" }
+chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-evm = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", optional = true }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 
 arc-swap = "^1.5.0"
 async-trait = "0.1.51"
@@ -69,9 +69,9 @@ reqwest = { version = "0.11",  default-features = false, features = ["rustls-tls
 tokio = { version = "^1.15", features = ["full"] }
 quickcheck = "0.9"
 quickcheck_macros = "0.9"
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs", features = [ "property-test-api" ] }
-chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs", features = [ "property-test-api" ] }
-chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "refactor-configs", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
+chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 criterion = { version = "0.3", features = ["html_reports", "async_tokio"] }
 
 [[bench]]

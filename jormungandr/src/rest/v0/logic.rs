@@ -310,8 +310,8 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
         epoch_stability_depth,
         slot_duration: blockchain_tip.time_frame().slot_duration(),
         slots_per_epoch,
-        treasury_tax: current_params.to_treasury_params(),
-        reward_params: current_params.to_reward_params(),
+        treasury_tax: current_params.treasury_params(),
+        reward_params: current_params.reward_params(),
         discrimination: static_params.discrimination,
         tx_max_expiry_epochs: ledger.settings().transaction_max_expiry_epochs,
     })
