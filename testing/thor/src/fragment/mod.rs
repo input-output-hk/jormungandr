@@ -67,7 +67,7 @@ pub struct FragmentBuilder {
 impl FragmentBuilder {
     pub fn new(block0_hash: &Hash, fees: &LinearFee, valid_until: BlockDate) -> Self {
         Self {
-            fragment_factory: FragmentFactory::new(block0_hash.into_hash(), *fees),
+            fragment_factory: FragmentFactory::new(block0_hash.into_hash(), fees.clone()),
             valid_until,
         }
     }

@@ -90,7 +90,7 @@ impl AllFragments {
         let settings = rest.settings().unwrap();
 
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
-        let fees = settings.fees;
+        let fees = settings.fees.clone();
 
         let fragment_sender = FragmentSender::new(
             block0_hash,

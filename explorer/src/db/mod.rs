@@ -780,7 +780,7 @@ impl BlockchainConfig {
                     consensus_version.replace(*v);
                 }
                 ConfigParam::LinearFee(fee) => {
-                    fees.replace(*fee);
+                    fees.replace(fee.clone());
                 }
                 ConfigParam::EpochStabilityDepth(d) => {
                     epoch_stability_depth.replace(*d);

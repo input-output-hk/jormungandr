@@ -1,5 +1,5 @@
 use crate::{
-    blockcfg::{ApplyBlockLedger, LedgerParameters},
+    blockcfg::ApplyBlockLedger,
     blockchain::{Ref, Tip},
     fragment::{
         selection::{
@@ -260,7 +260,6 @@ impl Pool {
     pub async fn select(
         &mut self,
         ledger: ApplyBlockLedger,
-        ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
@@ -276,7 +275,6 @@ impl Pool {
                 selection_alg
                     .select(
                         ledger,
-                        &ledger_params,
                         logs,
                         pool,
                         soft_deadline_future,

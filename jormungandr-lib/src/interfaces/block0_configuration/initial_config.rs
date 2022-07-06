@@ -426,7 +426,7 @@ impl BlockchainConfiguration {
         params.push(ConfigParam::Block0Date(Block0Date(block0_date.0)));
         params.push(ConfigParam::Discrimination(discrimination));
         params.push(ConfigParam::ConsensusVersion(block0_consensus));
-        params.push(ConfigParam::LinearFee(linear_fees));
+        params.push(ConfigParam::LinearFee(linear_fees.clone()));
         params.push(ConfigParam::from(slots_per_epoch));
         params.push(ConfigParam::from(slot_duration));
         params.push(ConfigParam::from(kes_update_speed));

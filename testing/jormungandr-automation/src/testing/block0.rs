@@ -62,7 +62,7 @@ impl Block0ConfigurationExtension for Block0Configuration {
             block0_time: blockchain_configuration.block0_date.into(),
             curr_slot_start_time: Some(SystemTime::from(blockchain_configuration.block0_date)),
             consensus_version: blockchain_configuration.block0_consensus.to_string(),
-            fees: blockchain_configuration.linear_fees,
+            fees: blockchain_configuration.linear_fees.clone(),
             block_content_max_size: blockchain_configuration.block_content_max_size.into(),
             epoch_stability_depth: blockchain_configuration.epoch_stability_depth.into(),
             slot_duration: u8::from(blockchain_configuration.slot_duration).into(),

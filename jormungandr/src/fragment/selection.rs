@@ -1,6 +1,6 @@
 use super::{logs::Logs, pool::internal::Pool};
 use crate::{
-    blockcfg::{ApplyBlockLedger, Contents, ContentsBuilder, LedgerParameters},
+    blockcfg::{ApplyBlockLedger, Contents, ContentsBuilder},
     fragment::{Fragment, FragmentId},
 };
 use async_trait::async_trait;
@@ -22,7 +22,6 @@ pub trait FragmentSelectionAlgorithm {
     async fn select(
         &mut self,
         ledger: ApplyBlockLedger,
-        ledger_params: &LedgerParameters,
         logs: &mut Logs,
         pool: &mut Pool,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
@@ -69,7 +68,6 @@ struct NewLedgerState {
 async fn try_apply_fragment(
     fragment: Fragment,
     ledger: ApplyBlockLedger,
-    ledger_params: &LedgerParameters,
     soft_deadline_future: Shared<Receiver<()>>,
     hard_deadline_future: Shared<Receiver<()>>,
     mut space_left: u32,
@@ -77,12 +75,13 @@ async fn try_apply_fragment(
     use futures::future::{select, Either};
 
     let raw_fragment_size = fragment.serialized_size();
+    let block_content_max_size = ledger.settings().block_content_max_size;
     let fragment_size = match u32::try_from(raw_fragment_size) {
-        Ok(size) if size <= ledger_params.block_content_max_size => size,
+        Ok(size) if size <= block_content_max_size => size,
         _ => {
             let reason = format!(
                 "fragment size {} exceeds maximum block content size {}",
-                raw_fragment_size, ledger_params.block_content_max_size
+                raw_fragment_size, block_content_max_size
             );
             return Err(ApplyFragmentError::Rejected(reason));
         }
@@ -103,7 +102,7 @@ async fn try_apply_fragment(
     let ledger_res = match select(fragment_future, soft_deadline_future.clone()).await {
         Either::Left((join_result, _)) => join_result.unwrap(),
         Either::Right((_, fragment_future)) => {
-            if space_left < ledger_params.block_content_max_size {
+            if space_left < block_content_max_size {
                 tracing::debug!(
                     "aborting processing of the current fragment to satisfy the soft deadline"
                 );
@@ -142,14 +141,13 @@ impl FragmentSelectionAlgorithm for OldestFirst {
     async fn select(
         &mut self,
         mut ledger: ApplyBlockLedger,
-        ledger_params: &LedgerParameters,
         logs: &mut Logs,
         pool: &mut Pool,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
     ) -> FragmentSelectionResult {
         let date: BlockDate = ledger.block_date().into();
-        let mut space_left = ledger_params.block_content_max_size;
+        let mut space_left = ledger.settings().block_content_max_size;
         let mut contents_builder = ContentsBuilder::new();
         let mut return_to_pool = Vec::new();
         let mut rejected_fragments_cnt = 0;
@@ -163,7 +161,6 @@ impl FragmentSelectionAlgorithm for OldestFirst {
                 let result = try_apply_fragment(
                     fragment.clone(),
                     ledger.clone(),
-                    ledger_params,
                     soft_deadline_future.clone(),
                     hard_deadline_future.clone(),
                     space_left,

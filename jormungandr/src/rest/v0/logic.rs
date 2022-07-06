@@ -288,8 +288,8 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
     let ledger = blockchain_tip.ledger();
     let static_params = ledger.get_static_parameters();
     let consensus_version = ledger.consensus_version();
-    let current_params = blockchain_tip.epoch_ledger_parameters();
-    let fees = current_params.fees;
+    let current_params = ledger.settings();
+    let fees = current_params.linear_fees.clone();
     let block_content_max_size = current_params.block_content_max_size;
     let epoch_stability_depth = current_params.epoch_stability_depth;
     let slots_per_epoch = blockchain_tip
@@ -310,8 +310,8 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
         epoch_stability_depth,
         slot_duration: blockchain_tip.time_frame().slot_duration(),
         slots_per_epoch,
-        treasury_tax: current_params.treasury_tax,
-        reward_params: current_params.reward_params.clone(),
+        treasury_tax: current_params.treasury_params(),
+        reward_params: current_params.reward_params(),
         discrimination: static_params.discrimination,
         tx_max_expiry_epochs: ledger.settings().transaction_max_expiry_epochs,
     })
@@ -574,7 +574,8 @@ pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
         .blockchain_tip()?
         .get_ref()
         .await
-        .epoch_ledger_parameters()
+        .ledger()
+        .settings()
         .committees
         .to_vec()
         .iter()

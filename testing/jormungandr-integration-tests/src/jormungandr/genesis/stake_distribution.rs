@@ -23,7 +23,7 @@ pub fn stake_distribution() {
             .with_slots_per_epoch(20)
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_rewards_history()
-            .with_linear_fees(fee)
+            .with_linear_fees(fee.clone())
             .with_total_rewards_supply(1_000_000.into())
             .with_slot_duration(3),
     )

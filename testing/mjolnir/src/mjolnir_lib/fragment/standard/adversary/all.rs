@@ -82,7 +82,7 @@ impl AllAdversary {
         let settings = remote_jormungandr.rest().settings().unwrap();
 
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
-        let fees = settings.fees;
+        let fees = settings.fees.clone();
 
         let expiry_generator = self
             .valid_until
@@ -91,7 +91,7 @@ impl AllAdversary {
 
         let transaction_sender = FragmentSender::new(
             block0_hash,
-            fees,
+            fees.clone(),
             expiry_generator.clone(),
             FragmentSenderSetup::no_verify(),
         );

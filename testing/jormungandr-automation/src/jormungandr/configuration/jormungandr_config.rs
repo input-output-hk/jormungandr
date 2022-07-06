@@ -111,6 +111,7 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
         self.block0_configuration
             .blockchain_configuration
             .linear_fees
+            .clone()
     }
 
     pub fn epoch_duration(&self) -> std::time::Duration {

@@ -280,6 +280,7 @@ impl JormungandrProcess {
         self.block0_configuration()
             .blockchain_configuration
             .linear_fees
+            .clone()
     }
 
     pub fn genesis_block_hash(&self) -> Hash {

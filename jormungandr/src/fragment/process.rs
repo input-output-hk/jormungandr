@@ -183,7 +183,6 @@ impl Process {
                                 }
                                 TransactionMsg::SelectTransactions {
                                     ledger,
-                                    ledger_params,
                                     selection_alg,
                                     reply_handle,
                                     soft_deadline_future,
@@ -198,7 +197,6 @@ impl Process {
                                         let contents = pool
                                         .select(
                                             ledger,
-                                            ledger_params,
                                             selection_alg,
                                             soft_deadline_future,
                                             hard_deadline_future,

@@ -122,7 +122,7 @@ fn create_receiver_secret_key_and_address(
 }
 
 fn common_fee_from_settings(settings: &SettingsDto) -> CommonFees {
-    let fees = settings.fees;
+    let fees = settings.fees.clone();
     CommonFees {
         constant: fees.constant,
         coefficient: fees.coefficient,

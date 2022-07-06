@@ -106,7 +106,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     }
 
     pub fn fees(&self) -> LinearFee {
-        self.fees
+        self.fees.clone()
     }
 
     pub fn date(&self) -> BlockDate {
@@ -659,7 +659,7 @@ impl<'a> From<&Block0Configuration> for FragmentSender<'a, DummySyncNode> {
     fn from(block0: &Block0Configuration) -> Self {
         Self::new(
             block0.to_block().header().hash().into(),
-            block0.blockchain_configuration.linear_fees,
+            block0.blockchain_configuration.linear_fees.clone(),
             BlockDateGenerator::rolling_from_blockchain_config(
                 &block0.blockchain_configuration,
                 BlockDate {
@@ -677,7 +677,7 @@ impl<'a> From<&SettingsDto> for FragmentSender<'a, DummySyncNode> {
     fn from(settings: &SettingsDto) -> Self {
         Self::new(
             settings.block0_hash.parse().unwrap(),
-            settings.fees,
+            settings.fees.clone(),
             BlockDateGenerator::rolling(
                 settings,
                 BlockDate {
