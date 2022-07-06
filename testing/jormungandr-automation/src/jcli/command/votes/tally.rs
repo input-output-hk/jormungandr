@@ -60,4 +60,14 @@ impl TallyCommand {
         println!("{:?}", self.command);
         self.command
     }
+
+    pub fn merge_results<P: AsRef<Path>>(mut self, vote_plan_statuses: P) -> Self {
+        self.command
+            .arg("merge-results")
+            .arg("--vote-plans")
+            .arg(vote_plan_statuses.as_ref())
+            .arg("--output-format")
+            .arg("json");
+        self
+    }
 }

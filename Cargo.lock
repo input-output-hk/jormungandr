@@ -2497,6 +2497,7 @@ dependencies = [
  "graphql_client",
  "hex",
  "humantime",
+ "jcli",
  "jormungandr-lib",
  "jortestkit",
  "json",
