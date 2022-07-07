@@ -202,6 +202,19 @@ jobs:
           command: build
           args: -p explorer ${{ env.CARGO_FLAGS }}
 
+      - name: Run evm tests
+        # Evm tests :)
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 90
+        with:
+          command: test
+          args: --tests ${{ env.CARGO_FLAGS }} --features evm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # TMPDIR and TMP are used respectively on unix and windows
+          TMPDIR: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
+
       - name: Run tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 90
@@ -222,20 +235,6 @@ jobs:
         with:
           command: test
           args: --tests ${{ env.CARGO_FLAGS }} --features network
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # TMPDIR and TMP are used respectively on unix and windows
-          TMPDIR: ${{ runner.temp }}
-          TMP: ${{ runner.temp }}
-
-      - name: Run evm tests
-        # Evm tests :)
-        if: ${{ matrix.profile == 'release' }}
-        uses: actions-rs/cargo@v1
-        timeout-minutes: 90
-        with:
-          command: test
-          args: --tests ${{ env.CARGO_FLAGS }} --features evm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # TMPDIR and TMP are used respectively on unix and windows
