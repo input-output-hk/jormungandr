@@ -8,8 +8,8 @@ use jormungandr_lib::interfaces::{Cors, Tls};
 use std::{net::SocketAddr, time::Duration};
 use warp::{http::Response as HttpResponse, Filter, Rejection, Reply};
 
-pub const QUERY_DEPTH_LIMIT: usize = 5;
-pub const QUERY_COMPLEXITY_LIMIT: usize = 15;
+const QUERY_DEPTH_LIMIT: usize = 15;
+const QUERY_COMPLEXITY_LIMIT: usize = 15;
 
 pub async fn setup_cors<API>(
     api: API,
