@@ -34,7 +34,7 @@ pub struct NodeSecret {
     bft: Option<Bft>,
     genesis: Option<GenesisPraos>,
     #[cfg(feature = "evm")]
-    evm_keys: Vec<chain_evm::ethereum_types::H256>,
+    evm_keys: Option<Vec<chain_evm::ethereum_types::H256>>,
 }
 
 /// Node Secret's Public parts
@@ -74,8 +74,12 @@ impl NodeSecret {
     #[cfg(feature = "evm")]
     pub fn evm_keys(&self) -> Vec<chain_evm::util::Secret> {
         self.evm_keys
-            .iter()
-            .map(chain_evm::util::Secret::from_hash)
-            .collect()
+            .as_ref()
+            .map(|keys| {
+                keys.iter()
+                    .map(chain_evm::util::Secret::from_hash)
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 }
