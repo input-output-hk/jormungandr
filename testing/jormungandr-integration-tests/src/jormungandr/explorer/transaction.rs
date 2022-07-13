@@ -1,16 +1,10 @@
 use crate::startup;
-use chain_impl_mockchain::fragment::FragmentId;
-use chain_impl_mockchain::key::Hash;
-use chain_impl_mockchain::{block::BlockDate, transaction};
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::jormungandr::explorer::verifier::ExplorerVerifier;
-use jormungandr_automation::{
-    jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Explorer},
-};
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
 use std::time::Duration;
-use std::{borrow::Borrow, str::FromStr};
 use thor::TransactionHash;
 
 #[test]
@@ -50,5 +44,5 @@ pub fn explorer_transaction_test() {
         .unwrap()
         .transaction;
 
-    ExplorerVerifier::assert_transaction(transaction, explorer_transaction);
+    ExplorerVerifier::assert_transaction(transaction, explorer_transaction).unwrap();
 }

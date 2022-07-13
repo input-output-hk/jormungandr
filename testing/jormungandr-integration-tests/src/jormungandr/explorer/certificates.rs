@@ -13,7 +13,6 @@ pub fn explorer_stake_pool_registration_test() {
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
-
     let config = ConfigurationBuilder::new()
         .with_funds(vec![first_stake_pool_owner.to_initial_fund(1_000_000)])
         .build(&temp_dir);
@@ -59,10 +58,8 @@ pub fn explorer_stake_pool_registration_test() {
 
     let exp_stake_pool_reg_transaction = trans.data.unwrap().transaction;
 
-    ExplorerVerifier::assert_transaction_certificate(
-        stake_pool_reg_fragment,
-        exp_stake_pool_reg_transaction,
-    );
+    ExplorerVerifier::assert_transaction(stake_pool_reg_fragment, exp_stake_pool_reg_transaction)
+        .unwrap();
 }
 
 #[test]
@@ -124,7 +121,7 @@ pub fn explorer_owner_delegation_test() {
 
     println!("value2: {:?}", &owner_deleg_transaction);
 
-    ExplorerVerifier::assert_transaction_certificate(owner_deleg_fragment, owner_deleg_transaction);
+    ExplorerVerifier::assert_transaction(owner_deleg_fragment, owner_deleg_transaction).unwrap();
 }
 
 #[test]
@@ -189,10 +186,7 @@ pub fn explorer_full_delegation_test() {
 
     let stake_pool_reg_transaction = trans.data.unwrap().transaction;
 
-    ExplorerVerifier::assert_transaction_certificate(
-        full_deleg_fragment,
-        stake_pool_reg_transaction,
-    );
+    ExplorerVerifier::assert_transaction(full_deleg_fragment, stake_pool_reg_transaction).unwrap();
 }
 
 #[test]
@@ -278,10 +272,11 @@ pub fn explorer_split_delegation_test() {
 
     let exp_split_delegation_transaction = trans.data.unwrap().transaction;
 
-    ExplorerVerifier::assert_transaction_certificate(
+    ExplorerVerifier::assert_transaction(
         split_delegation_fragment,
         exp_split_delegation_transaction,
-    );
+    )
+    .unwrap();
 }
 
 #[test]
@@ -359,10 +354,8 @@ pub fn explorer_pool_update_test() {
 
     let stake_pool_update_transaction = trans.data.unwrap().transaction;
 
-    ExplorerVerifier::assert_transaction_certificate(
-        stake_pool_update_fragment,
-        stake_pool_update_transaction,
-    );
+    ExplorerVerifier::assert_transaction(stake_pool_update_fragment, stake_pool_update_transaction)
+        .unwrap();
 }
 
 #[test]
@@ -426,10 +419,8 @@ pub fn explorer_pool_retire_test() {
 
     let stake_pool_retire_transaction = trans.data.unwrap().transaction;
 
-    ExplorerVerifier::assert_transaction_certificate(
-        stake_pool_retire_fragment,
-        stake_pool_retire_transaction,
-    );
+    ExplorerVerifier::assert_transaction(stake_pool_retire_fragment, stake_pool_retire_transaction)
+        .unwrap();
 }
 
 #[test]

@@ -6,7 +6,8 @@ query TransactionById($id: String!){
         outputs{amount address{id}}
         certificate{
             __typename
-            ... on StakeDelegation {account{id delegation {... poolInfo}}
+            ... on StakeDelegation {account{id #delegation {... poolInfo} not implemented yet NPG-2247
+                                    }
                                     pools {... poolInfo}}
             ... on OwnerStakeDelegation {pools {... poolInfo}}
             ... on PoolRegistration {pool {... poolInfo}
@@ -15,7 +16,8 @@ query TransactionById($id: String!){
                                     owners
                                     operators
                                     rewards {fixed ratio {numerator denominator} maxLimit}
-                                    rewardAccount {id delegation {... poolInfo}}
+                                    rewardAccount {id #delegation {... poolInfo} not implemented yet NPG-2247
+                                    }
                                     }
             ... on PoolRetirement {poolId retirementTime}
             ... on PoolUpdate {poolId startValidity}
@@ -25,12 +27,14 @@ query TransactionById($id: String!){
                             payloadType
                             proposals {externalId}
                             }
-            #... on VoteCast{}
-            #... on VoteTally{}
-            #... on UpdateProposal {}
-            #... on UpdateVote{}
-            #... on MintToken{}
-            #... on EvmMapping {address}
+            ... on VoteCast {votePlan proposalIndex}
+            ... on VoteTally {votePlan}
+            ... on UpdateProposal {changes {...configParams}
+                                    proposerId{id}
+                                }
+            ... on UpdateVote{proposalId voterId{id}}
+            ... on MintToken{name}
+            ... on EvmMapping {address} #check with evm dropping
 
     }}
 }
@@ -46,3 +50,9 @@ fragment blockDate on BlockDate{
                             epoch{id}
                             slot
                         }
+
+fragment configParams on ConfigParams
+{
+ __typename
+ #Block0Date | Discrimination | ConsensusType | SlotsPerEpoch | SlotDuration | EpochStabilityDepth | Milli | BlockContentMaxSize | AddBftLeader | RemoveBftLeader | LinearFee | ProposalExpiration | KesUpdateSpeed | TreasuryAdd | TreasuryParams | RewardPot | RewardParams | PerCertificateFee | FeesInTreasury | RewardLimitNone | RewardLimitByAbsoluteStake | PoolRewardParticipationCapping | AddCommitteeId | RemoveCommitteeId | PerVoteCertificateFee | TransactionMaxExpiryEpochs
+}

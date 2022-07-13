@@ -9,8 +9,6 @@ pub type TimeOffsetSeconds = String;
 pub type PublicKey = String;
 pub type ExternalProposalId = String;
 
-//use chain_crypto::Ed25519;
-//use chain_crypto::PublicKey;
 use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]
@@ -81,7 +79,7 @@ pub struct Settings;
 #[graphql(
     query_path = "resources/explorer/graphql/transaction_by_id.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",
-    response_derives = "Debug"
+    response_derives = "Debug,Clone"
 )]
 pub struct TransactionById;
 
