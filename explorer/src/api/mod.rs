@@ -8,9 +8,6 @@ use jormungandr_lib::interfaces::{Cors, Tls};
 use std::{net::SocketAddr, time::Duration};
 use warp::{http::Response as HttpResponse, Filter, Rejection, Reply};
 
-const QUERY_DEPTH_LIMIT: usize = 15;
-const QUERY_COMPLEXITY_LIMIT: usize = 15;
-
 pub async fn setup_cors<API>(
     api: API,
     listen_addr: SocketAddr,
@@ -75,9 +72,9 @@ pub fn filter(
         async_graphql::EmptyMutation,
         crate::api::graphql::Subscription {},
     )
+    .limit_depth(settings.query_depth_limit)
+    .limit_complexity(settings.query_complexity_limit)
     .data(EContext { db, settings })
-    .limit_depth(QUERY_DEPTH_LIMIT)
-    .limit_complexity(QUERY_COMPLEXITY_LIMIT)
     .finish();
 
     let graphql_post = async_graphql_warp::graphql(schema.clone())
