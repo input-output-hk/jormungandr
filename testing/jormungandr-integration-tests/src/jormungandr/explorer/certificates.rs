@@ -334,7 +334,6 @@ pub fn explorer_pool_update_test() {
             .into(),
     ));
 
-    //time::wait_for_epoch(2, jormungandr.rest());
     let stake_pool_update_fragment = fragment_builder.stake_pool_update(
         vec![&first_stake_pool_owner],
         &first_stake_pool,

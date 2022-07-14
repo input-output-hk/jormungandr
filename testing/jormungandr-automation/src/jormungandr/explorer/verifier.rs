@@ -11,7 +11,7 @@ use super::data::{
 };
 use bech32::FromBase32;
 use chain_addr::AddressReadable;
-use chain_crypto::PublicKey;
+use chain_crypto::{PublicKey, Ed25519};
 use std::num::NonZeroU64;
 
 use chain_impl_mockchain::{
@@ -68,7 +68,7 @@ impl ExplorerVerifier {
                     if let Fragment::OwnerStakeDelegation(frag_cert) = fragment {
                         Self::assert_transaction_params(frag_cert.clone(), exp_transaction.clone())
                             .unwrap();
-                        Self::assert_owner_delegation(frag_cert, exp_cert.clone());
+                        Self::assert_owner_delegation(frag_cert, exp_cert.clone()).unwrap();
                         Ok(())
                     } else {
                         Err(VerifierError::InvalidCertificate {
@@ -152,6 +152,7 @@ impl ExplorerVerifier {
             let mut exp_accounts = vec![];
 
             for exp_inputs in exp_transaction.inputs.iter() {
+                println!("exp inputs {:?}", exp_inputs.address.id);
                 let adr = AddressReadable::from_string_anyprefix(&exp_inputs.address.id).unwrap();
                 exp_accounts.push((
                     adr.to_address().public_key().unwrap().to_string(),
@@ -255,7 +256,7 @@ impl ExplorerVerifier {
             .owners
             .iter()
             .zip(exp_cert.owners.iter())
-            .filter(|&(a, b)| a.to_string() == Self::decode_bech32_pk(b))
+            .filter(|&(a, b)| *a == Self::decode_bech32_pk(b))
             .count();
 
         assert_eq!(pool_cert.owners.len(), owners_matching);
@@ -266,7 +267,7 @@ impl ExplorerVerifier {
             .operators
             .iter()
             .zip(exp_cert.operators.iter())
-            .filter(|&(a, b)| a.to_string() == Self::decode_bech32_pk(b))
+            .filter(|&(a, b)| *a == Self::decode_bech32_pk(b))
             .count();
 
         assert_eq!(pool_cert.operators.len(), operators_matching);
@@ -279,13 +280,14 @@ impl ExplorerVerifier {
         exp_cert: TransactionByIdTransactionCertificateOnStakeDelegation,
     ) -> Result<(), VerifierError> {
         let deleg_cert = frag_cert.as_slice().payload().into_payload();
+        let adr = AddressReadable::from_string_anyprefix(&exp_cert.account.id).unwrap();
         assert_eq!(
             deleg_cert
                 .account_id
                 .to_single_account()
                 .unwrap()
                 .to_string(),
-            Self::decode_bech32_pk(&exp_cert.account.id)
+                adr.to_address().public_key().unwrap().to_string()
         );
 
         match deleg_cert.delegation {
@@ -311,14 +313,15 @@ impl ExplorerVerifier {
     fn assert_owner_delegation(
         frag_cert: Transaction<OwnerStakeDelegation>,
         exp_cert: TransactionByIdTransactionCertificateOnOwnerStakeDelegation,
-    ) {
+    )-> Result<(),VerifierError> {
         let owner_cert = frag_cert.as_slice().payload().into_payload();
 
         match owner_cert.delegation {
-            DelegationType::NonDelegated => println!("Not delegated"),
+            DelegationType::NonDelegated => Err(VerifierError::Unimplemented),
             DelegationType::Full(pool_id) => {
                 assert_eq!(exp_cert.pools.len(), 1);
-                assert_eq!(pool_id.to_string(), exp_cert.pools[0].id)
+                assert_eq!(pool_id.to_string(), exp_cert.pools[0].id);
+                Ok(())
             }
             DelegationType::Ratio(deleg) => {
                 assert_eq!(exp_cert.pools.len(), deleg.pools().len());
@@ -328,7 +331,8 @@ impl ExplorerVerifier {
                     .zip(deleg.pools().iter())
                     .filter(|&(a, b)| a.id == b.0.to_string())
                     .count();
-                assert_eq!(pools_matching, exp_cert.pools.len())
+                assert_eq!(pools_matching, exp_cert.pools.len());
+                Ok(())
             }
         }
     }
@@ -422,10 +426,10 @@ impl ExplorerVerifier {
         );
     }
 
-    fn decode_bech32_pk(bech32_public_key: &str) -> String {
+    fn decode_bech32_pk(bech32_public_key: &str) -> PublicKey<Ed25519> {
         let (_, data, _variant) = bech32::decode(bech32_public_key).unwrap();
         let dat = Vec::from_base32(&data).unwrap();
-        let pk = PublicKey::from_binary(&dat).unwrap();
-        chain_impl_mockchain::account::Identifier::from(pk).to_string()
+        let pk = PublicKey::<Ed25519>::from_binary(&dat).unwrap();
+        pk
     }
 }
