@@ -89,15 +89,13 @@ impl Settings {
 
         let query_depth_limit = cmd
             .query_depth_limit
-            .clone()
-            .or_else(|| file.query_depth_limit.clone())
-            .unwrap_or_else(|| DEFAULT_QUERY_DEPTH_LIMIT);
+            .or(file.query_depth_limit)
+            .unwrap_or(DEFAULT_QUERY_DEPTH_LIMIT);
 
         let query_complexity_limit = cmd
             .query_complexity_limit
-            .clone()
-            .or_else(|| file.query_complexity_limit.clone())
-            .unwrap_or_else(|| DEFAULT_QUERY_COMPLEXITY_LIMIT);
+            .or(file.query_complexity_limit)
+            .unwrap_or(DEFAULT_QUERY_COMPLEXITY_LIMIT);
 
         let log_settings = Some(Self::log_settings(&cmd, &file));
 
