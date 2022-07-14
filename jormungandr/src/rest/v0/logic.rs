@@ -5,8 +5,6 @@
 // - When the Ok type is Option<T> - None should be converted to 404
 // - All errors should be processed on the framework  integration side. Usually
 //   they are 400 or 500.
-use std::net::SocketAddr;
-
 use crate::{
     blockchain::StorageError,
     diagnostic::Diagnostic,
@@ -30,6 +28,10 @@ use chain_impl_mockchain::{
     leadership::LeadershipConsensus,
     value::ValueError,
 };
+use futures::{
+    channel::mpsc::{SendError, TrySendError},
+    prelude::*,
+};
 use jormungandr_lib::{
     interfaces::{
         AccountState, EpochRewardsInfo, FragmentLog, FragmentOrigin, FragmentsProcessingSummary,
@@ -39,10 +41,7 @@ use jormungandr_lib::{
     },
     time::SystemTime,
 };
-
-use std::sync::Arc;
-
-use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
+use std::{net::SocketAddr, sync::Arc};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
 
@@ -50,7 +49,7 @@ use tracing_futures::Instrument;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    ContextError(#[from] crate::rest::context::Error),
+    ContextError(#[from] crate::context::Error),
     #[error(transparent)]
     PublicKey(#[from] PublicKeyFromStrError),
     #[error(transparent)]
@@ -79,6 +78,9 @@ pub enum Error {
     Hex(#[from] hex::FromHexError),
     #[error("Could not process fragment")]
     Fragment(FragmentsProcessingSummary),
+    #[cfg(feature = "evm")]
+    #[error("Can not parse address: {0}")]
+    AddressParseError(String),
 }
 
 fn parse_account_id(id_hex: &str) -> Result<Identifier, Error> {
@@ -286,8 +288,8 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
     let ledger = blockchain_tip.ledger();
     let static_params = ledger.get_static_parameters();
     let consensus_version = ledger.consensus_version();
-    let current_params = blockchain_tip.epoch_ledger_parameters();
-    let fees = current_params.fees;
+    let current_params = ledger.settings();
+    let fees = current_params.linear_fees.clone();
     let block_content_max_size = current_params.block_content_max_size;
     let epoch_stability_depth = current_params.epoch_stability_depth;
     let slots_per_epoch = blockchain_tip
@@ -308,8 +310,8 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
         epoch_stability_depth,
         slot_duration: blockchain_tip.time_frame().slot_duration(),
         slots_per_epoch,
-        treasury_tax: current_params.treasury_tax,
-        reward_params: current_params.reward_params.clone(),
+        treasury_tax: current_params.treasury_params(),
+        reward_params: current_params.reward_params(),
         discrimination: static_params.discrimination,
         tx_max_expiry_epochs: ledger.settings().transaction_max_expiry_epochs,
     })
@@ -317,7 +319,7 @@ pub async fn get_settings(context: &Context) -> Result<SettingsDto, Error> {
 
 pub async fn shutdown(context: &mut Context) -> Result<(), Error> {
     context.stop_bootstrap();
-    context.server_stopper()?.stop();
+    context.rest_server_stopper()?.stop();
     Ok(())
 }
 
@@ -572,7 +574,8 @@ pub async fn get_committees(context: &Context) -> Result<Vec<String>, Error> {
         .blockchain_tip()?
         .get_ref()
         .await
-        .epoch_ledger_parameters()
+        .ledger()
+        .settings()
         .committees
         .to_vec()
         .iter()
@@ -590,4 +593,33 @@ pub async fn get_active_vote_plans(context: &Context) -> Result<Vec<VotePlanStat
         .map(VotePlanStatus::from)
         .collect();
     Ok(vp)
+}
+
+#[cfg(feature = "evm")]
+pub async fn get_jor_address(context: &Context, evm_id_hex: &str) -> Result<String, Error> {
+    Ok(context
+        .blockchain_tip()?
+        .get_ref()
+        .await
+        .ledger()
+        .get_jormungandr_mapped_address(
+            &chain_evm::Address::from_str(evm_id_hex)
+                .map_err(|e| Error::AddressParseError(e.to_string()))?,
+        )
+        .to_string())
+}
+
+#[cfg(feature = "evm")]
+pub async fn get_evm_address(context: &Context, jor_id_hex: &str) -> Result<Option<String>, Error> {
+    Ok(context
+        .blockchain_tip()?
+        .get_ref()
+        .await
+        .ledger()
+        .get_evm_mapped_address(
+            &PublicKey::<AccountAlg>::from_str(jor_id_hex)
+                .map_err(|e| Error::AddressParseError(e.to_string()))?
+                .into(),
+        )
+        .map(|val| val.to_string()))
 }

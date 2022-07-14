@@ -1,5 +1,7 @@
-use crate::controller::{Error, UserInteractionController};
-use crate::style;
+use crate::{
+    controller::{Error, UserInteractionController},
+    style,
+};
 use chain_impl_mockchain::certificate::VotePlan;
 use structopt::StructOpt;
 

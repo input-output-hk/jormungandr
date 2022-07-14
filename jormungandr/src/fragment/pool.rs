@@ -1,5 +1,5 @@
 use crate::{
-    blockcfg::{ApplyBlockLedger, LedgerParameters},
+    blockcfg::ApplyBlockLedger,
     blockchain::{Ref, Tip},
     fragment::{
         selection::{
@@ -16,8 +16,7 @@ use chain_core::{packer::Codec, property::Serialize};
 use chain_impl_mockchain::{
     block::BlockDate, fragment::Contents, setting::Settings, transaction::Transaction,
 };
-use futures::channel::mpsc::SendError;
-use futures::sink::SinkExt;
+use futures::{channel::mpsc::SendError, sink::SinkExt};
 use jormungandr_lib::{
     interfaces::{
         BlockDate as BlockDateDto, FragmentLog, FragmentOrigin, FragmentRejectionReason,
@@ -25,13 +24,13 @@ use jormungandr_lib::{
     },
     time::SecondsSinceUnixEpoch,
 };
-use thiserror::Error;
-use tracing::Instrument;
-
 use std::mem;
-
-use tokio::fs::File;
-use tokio::io::{AsyncWriteExt, BufWriter};
+use thiserror::Error;
+use tokio::{
+    fs::File,
+    io::{AsyncWriteExt, BufWriter},
+};
+use tracing::Instrument;
 
 // It's a pretty big buffer, but common cloud based storage solutions (like EBS or GlusterFS) benefits from
 // this and it's currently flushed after every request, so the possibility of losing fragments due to a crash
@@ -261,7 +260,6 @@ impl Pool {
     pub async fn select(
         &mut self,
         ledger: ApplyBlockLedger,
-        ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
@@ -277,7 +275,6 @@ impl Pool {
                 selection_alg
                     .select(
                         ledger,
-                        &ledger_params,
                         logs,
                         pool,
                         soft_deadline_future,
@@ -359,7 +356,9 @@ fn is_fragment_valid(fragment: &Fragment) -> bool {
         Fragment::VoteCast(ref tx) => is_transaction_valid(tx),
         Fragment::VoteTally(ref tx) => is_transaction_valid(tx),
         Fragment::MintToken(ref tx) => is_transaction_valid(tx),
-        Fragment::Evm(ref tx) => is_transaction_valid(tx),
+        // evm stuff
+        // TODO, maybe we need to develop some evm specific stateless validation in this place
+        Fragment::Evm(_) => true,
         Fragment::EvmMapping(ref tx) => is_transaction_valid(tx),
     }
 }
@@ -372,6 +371,7 @@ fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
     match fragment {
         Fragment::Initial(_) => None,
         Fragment::OldUtxoDeclaration(_) => None,
+        Fragment::Evm(_) => None,
         Fragment::Transaction(tx) => Some(tx.as_slice().valid_until()),
         Fragment::OwnerStakeDelegation(tx) => Some(tx.as_slice().valid_until()),
         Fragment::StakeDelegation(tx) => Some(tx.as_slice().valid_until()),
@@ -384,14 +384,12 @@ fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
         Fragment::VoteCast(tx) => Some(tx.as_slice().valid_until()),
         Fragment::VoteTally(tx) => Some(tx.as_slice().valid_until()),
         Fragment::MintToken(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::Evm(tx) => Some(tx.as_slice().valid_until()),
         Fragment::EvmMapping(tx) => Some(tx.as_slice().valid_until()),
     }
 }
 
 pub(super) mod internal {
     use super::*;
-
     use std::{
         cmp::Ordering,
         collections::{BTreeSet, HashMap},

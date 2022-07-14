@@ -2,34 +2,24 @@ mod error;
 pub mod interactive;
 mod monitor;
 
-use crate::builder::NodeSetting;
-use crate::builder::Settings;
-use crate::builder::SpawnParams;
-use crate::builder::VotePlanKey;
-use crate::builder::Wallet as WalletSettings;
+use crate::builder::{NodeSetting, Settings, SpawnParams, VotePlanKey, Wallet as WalletSettings};
 use assert_fs::prelude::*;
 use chain_core::packer::Codec;
-use chain_impl_mockchain::certificate::{VoteAction, VotePlan};
-use chain_impl_mockchain::ledger::governance::{
-    ParametersGovernanceAction, TreasuryGovernanceAction,
-};
-use chain_impl_mockchain::testing::scenario::template::{
-    ProposalDefBuilder, VotePlanDef, VotePlanDefBuilder,
+use chain_impl_mockchain::{
+    certificate::{VoteAction, VotePlan},
+    ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
+    testing::scenario::template::{ProposalDefBuilder, VotePlanDef, VotePlanDefBuilder},
 };
 pub use error::Error;
 pub use interactive::{
     do_for_all_alias, InteractiveCommandError, JormungandrInteractiveCommandExec,
     UserInteractionController,
 };
-use jormungandr_automation::jormungandr::ConfiguredStarter;
-use jormungandr_automation::jormungandr::JormungandrParams;
-use jormungandr_automation::jormungandr::LegacyNodeConfig;
-use jormungandr_automation::jormungandr::LegacyNodeConfigConverter;
-use jormungandr_automation::jormungandr::NodeAlias;
-use jormungandr_automation::jormungandr::PersistenceMode;
-use jormungandr_automation::jormungandr::TestingDirectory;
-use jormungandr_automation::jormungandr::Version;
-use jormungandr_automation::jormungandr::{JormungandrProcess, LogLevel, Starter};
+use jormungandr_automation::jormungandr::{
+    ConfiguredStarter, JormungandrParams, JormungandrProcess, LegacyNodeConfig,
+    LegacyNodeConfigConverter, LogLevel, NodeAlias, PersistenceMode, Starter, TestingDirectory,
+    Version,
+};
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 pub use monitor::{
     LegacyNode as MonitorLegacyNode, MonitorController, MonitorControllerBuilder,

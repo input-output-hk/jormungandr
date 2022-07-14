@@ -12,7 +12,10 @@ use chain_impl_mockchain::{
     transaction::UnspecifiedAccountIdentifier,
     value::ValueError,
 };
-use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
+use futures::{
+    channel::mpsc::{SendError, TrySendError},
+    prelude::*,
+};
 use hex::ToHex;
 use jormungandr_lib::interfaces::{
     AccountVotes, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch,
@@ -26,7 +29,7 @@ use tracing_futures::Instrument;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Context(#[from] crate::rest::context::Error),
+    Context(#[from] crate::context::Error),
     #[error(transparent)]
     PublicKey(#[from] PublicKeyFromStrError),
     #[error(transparent)]

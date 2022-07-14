@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use chain_impl_mockchain::value::Value;
 use jormungandr_lib::interfaces::{TokenIdentifier, ValueDef};
 use serde::Deserialize;
+use std::collections::HashMap;
 use thor::WalletAlias;
 
 /// Struct can be used to differentiate wallet template

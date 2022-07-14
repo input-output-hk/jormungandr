@@ -2,7 +2,7 @@
 authors = ["dev@iohk.io"]
 description = "explorer service for jormungandr"
 documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/input-output-hk/jormungandr#README.md"
 license = "MIT OR Apache-2.0"
 name = "explorer"
@@ -16,7 +16,7 @@ futures-util = "0.3.5"
 async-graphql = "3"
 async-graphql-warp = "3"
 serde = {version = "1.0.114", features = ["derive"]}
-serde_json = "1.0.56"
+serde_json = "1.0.81"
 serde_yaml = "0.8.13"
 structopt = "0.3.15"
 thiserror = "1.0.20"
@@ -26,7 +26,6 @@ warp = {version = "0.3.1", features = ["tls"]}
 tracing = "0.1"
 tracing-futures = "0.2"
 tracing-gelf = { version = "0.6", optional = true }
-tracing-journald = { version = "0.2.0", optional = true }
 tracing-subscriber = { version = "0.3", features = ["fmt", "json"] }
 tracing-appender = "0.2"
 tokio = { version = "^1.4", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
@@ -34,7 +33,7 @@ tokio-stream = { version = "0.1.4", features = ["sync"] }
 tokio-util = { version = "0.6.0", features = ["time"] }
 tonic = "0.4"
 multiaddr = { package = "parity-multiaddr", version = "0.11" }
-rand = "0.8.3"
+rand = "0.8.5"
 rand_chacha = "0.3.0"
 base64 = "0.13.0"
 lazy_static = "1.4"

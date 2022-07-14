@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     blockchain::{Blockchain, Tip},
     diagnostic::Diagnostic,
@@ -7,42 +5,57 @@ use crate::{
     leadership::Logs as LeadershipLogs,
     metrics::backends::SimpleCounter,
     network::GlobalStateR as NetworkStateR,
-    rest::ServerStopper,
     secure::enclave::Enclave,
     utils::async_msg::MessageBox,
 };
+use futures::channel::mpsc;
 use jormungandr_lib::interfaces::NodeState;
-
+use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 use tracing::Span;
 
 pub type ContextLock = Arc<RwLock<Context>>;
 
+#[derive(Clone)]
+pub struct ServerStopper(mpsc::Sender<()>);
+
+impl ServerStopper {
+    pub fn new(sender: mpsc::Sender<()>) -> Self {
+        Self(sender)
+    }
+
+    pub fn stop(&self) {
+        self.0.clone().try_send(()).unwrap();
+    }
+}
+
 pub struct Context {
     full: Option<FullContext>,
-    server_stopper: Option<ServerStopper>,
+    rest_server_stopper: Option<ServerStopper>,
     node_state: NodeState,
     span: Option<Span>,
     diagnostic: Option<Diagnostic>,
     blockchain: Option<Blockchain>,
     blockchain_tip: Option<Tip>,
     bootstrap_stopper: Option<CancellationToken>,
+    #[cfg(feature = "evm")]
+    evm_filters: crate::jrpc::EvmFilters,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Full REST context not available yet")]
+    #[error("Full REST/RPC context not available yet")]
     FullContext,
-    #[error("Server stopper not set in REST context")]
+    #[error("Server stopper not set in REST/RPC context")]
     ServerStopper,
-    #[error("Log span not set in REST context")]
+    #[error("Log span not set in REST/RPC context")]
     Span,
-    #[error("Blockchain not set in REST context")]
+    #[error("Blockchain not set in REST/RPC context")]
     Blockchain,
-    #[error("Blockchain tip not set in REST context")]
+    #[error("Blockchain tip not set in REST/RPC context")]
     BlockchainTip,
-    #[error("Diagnostic data not set in REST context")]
+    #[error("Diagnostic data not set in REST/RPC context")]
     Diagnostic,
 }
 
@@ -58,13 +71,15 @@ impl Context {
     pub fn new() -> Self {
         Context {
             full: Default::default(),
-            server_stopper: Default::default(),
+            rest_server_stopper: Default::default(),
             node_state: NodeState::StartingRestServer,
             span: Default::default(),
             diagnostic: Default::default(),
             blockchain: Default::default(),
             blockchain_tip: Default::default(),
             bootstrap_stopper: Default::default(),
+            #[cfg(feature = "evm")]
+            evm_filters: Default::default(),
         }
     }
 
@@ -76,12 +91,14 @@ impl Context {
         self.full.as_ref().ok_or(Error::FullContext)
     }
 
-    pub fn set_server_stopper(&mut self, server_stopper: ServerStopper) {
-        self.server_stopper = Some(server_stopper);
+    pub fn set_rest_server_stopper(&mut self, server_stopper: ServerStopper) {
+        self.rest_server_stopper = Some(server_stopper);
     }
 
-    pub fn server_stopper(&self) -> Result<&ServerStopper, Error> {
-        self.server_stopper.as_ref().ok_or(Error::ServerStopper)
+    pub fn rest_server_stopper(&self) -> Result<&ServerStopper, Error> {
+        self.rest_server_stopper
+            .as_ref()
+            .ok_or(Error::ServerStopper)
     }
 
     pub fn set_node_state(&mut self, node_state: NodeState) {
@@ -124,6 +141,11 @@ impl Context {
         self.blockchain_tip.as_ref().ok_or(Error::BlockchainTip)
     }
 
+    #[cfg(feature = "evm")]
+    pub fn evm_filters(&mut self) -> &mut crate::jrpc::EvmFilters {
+        &mut self.evm_filters
+    }
+
     pub fn set_bootstrap_stopper(&mut self, bootstrap_stopper: CancellationToken) {
         self.bootstrap_stopper = Some(bootstrap_stopper);
     }
@@ -146,6 +168,8 @@ pub struct FullContext {
     pub transaction_task: MessageBox<TransactionMsg>,
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,
+    #[cfg(feature = "evm")]
+    pub evm_keys: Arc<Vec<chain_evm::util::Secret>>,
     pub network_state: NetworkStateR,
     #[cfg(feature = "prometheus-metrics")]
     pub prometheus: Option<Arc<crate::metrics::backends::Prometheus>>,

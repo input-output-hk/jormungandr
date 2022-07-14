@@ -1,14 +1,14 @@
 use crate::jormungandr::{
-    grpc::node::{
-        node_server::{Node, NodeServer},
-        {
+    grpc::{
+        node::{
+            node_server::{Node, NodeServer},
             BlockEvent, ClientAuthRequest, ClientAuthResponse, Gossip, HandshakeRequest,
             HandshakeResponse, PeersRequest, PeersResponse, PullBlocksRequest,
             PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse, TipRequest,
             TipResponse, UploadBlocksResponse,
         },
+        types::{Block, BlockIds, Fragment, FragmentIds, Header},
     },
-    grpc::types::{Block, BlockIds, Fragment, FragmentIds, Header},
     Block0ConfigurationBuilder,
 };
 use chain_core::{
@@ -16,9 +16,10 @@ use chain_core::{
     property::{DeserializeFromSlice, Header as BlockHeader, Serialize},
 };
 use chain_impl_mockchain::{block::BlockVersion, chaintypes::ConsensusVersion, key::Hash};
-use std::fmt;
-use std::sync::Arc;
-use std::sync::RwLock;
+use std::{
+    fmt,
+    sync::{Arc, RwLock},
+};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};

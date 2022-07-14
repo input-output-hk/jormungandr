@@ -1,5 +1,3 @@
-use crate::testing::configuration::get_explorer_app;
-
 use self::{
     client::GraphQlClient,
     data::{
@@ -8,10 +6,9 @@ use self::{
         AllVotePlans, BlocksByChainLength, Epoch, LastBlock, Settings, StakePool, TransactionById,
     },
 };
-use graphql_client::GraphQLQuery;
-use graphql_client::*;
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::BlockDate;
+use crate::testing::configuration::get_explorer_app;
+use graphql_client::{GraphQLQuery, *};
+use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
 use std::{
     process::{Command, Stdio},
     str::FromStr,
@@ -24,16 +21,13 @@ mod client;
 mod data;
 mod wrappers;
 
-pub use wrappers::LastBlockResponse;
-
+use super::get_available_port;
 use data::PoolId;
 use jortestkit::{file, process::Wait};
 use serde::Serialize;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
-
-use super::get_available_port;
+pub use wrappers::LastBlockResponse;
 
 #[derive(Error, Debug)]
 pub enum ExplorerError {

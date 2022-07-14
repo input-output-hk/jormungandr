@@ -1,11 +1,14 @@
 use assert_fs::TempDir;
 use chain_addr::Discrimination;
 use chain_crypto::Ed25519;
-use chain_impl_mockchain::certificate::UpdateProposal;
-use chain_impl_mockchain::certificate::UpdateVote;
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_automation::testing::keys::create_new_key_pair;
-use jormungandr_automation::testing::time::{get_current_date, wait_for_epoch};
+use chain_impl_mockchain::certificate::{UpdateProposal, UpdateVote};
+use jormungandr_automation::{
+    jormungandr::{ConfigurationBuilder, Starter},
+    testing::{
+        keys::create_new_key_pair,
+        time::{get_current_date, wait_for_epoch},
+    },
+};
 use jormungandr_lib::interfaces::{
     BlockContentMaxSize, ConfigParam, ConfigParams, ConsensusLeaderId,
 };

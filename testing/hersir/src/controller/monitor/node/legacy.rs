@@ -1,31 +1,30 @@
 #![allow(dead_code)]
 
 use super::Error;
-use crate::controller::monitor::ProgressBarController;
-use crate::style;
-use chain_impl_mockchain::fragment::Fragment;
-use chain_impl_mockchain::fragment::FragmentId;
-use chain_impl_mockchain::header::HeaderId;
-use jormungandr_automation::jormungandr::LegacyNodeConfig;
-use jormungandr_automation::jormungandr::LogLevel;
-use jormungandr_automation::jormungandr::NodeAlias;
-use jormungandr_automation::jormungandr::StartupError;
+use crate::{controller::monitor::ProgressBarController, style};
+use chain_impl_mockchain::{
+    fragment::{Fragment, FragmentId},
+    header::HeaderId,
+};
 pub use jormungandr_automation::jormungandr::{
     grpc::JormungandrClient, BackwardCompatibleRest, FragmentNode, FragmentNodeError,
     JormungandrLogger, JormungandrProcess, JormungandrRest, MemPoolCheck, StartupVerificationMode,
     Status,
 };
-use jormungandr_automation::testing::SyncNode;
-use jormungandr_lib::interfaces::FragmentsProcessingSummary;
+use jormungandr_automation::{
+    jormungandr::{LegacyNodeConfig, LogLevel, NodeAlias, StartupError},
+    testing::SyncNode,
+};
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{BlockDate, FragmentLog},
+    interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary},
 };
-use std::collections::HashMap;
-
-use std::io::{BufRead, BufReader};
-use std::process::ExitStatus;
-use std::time::Duration;
+use std::{
+    collections::HashMap,
+    io::{BufRead, BufReader},
+    process::ExitStatus,
+    time::Duration,
+};
 use yaml_rust::{Yaml, YamlLoader};
 
 pub struct LegacyNode {

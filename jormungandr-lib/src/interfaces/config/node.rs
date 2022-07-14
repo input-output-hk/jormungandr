@@ -1,7 +1,9 @@
-use crate::crypto::key::Identifier;
-use crate::interfaces::config::{Log, Mempool};
-use crate::multiaddr as multiaddr_utils;
-use crate::time::Duration;
+use crate::{
+    crypto::key::Identifier,
+    interfaces::config::{Log, Mempool},
+    multiaddr as multiaddr_utils,
+    time::Duration,
+};
 use chain_crypto::Ed25519;
 use multiaddr::Multiaddr;
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
@@ -21,7 +23,7 @@ pub struct Rest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Rpc {
+pub struct JRpc {
     pub listen: SocketAddr,
 }
 
@@ -294,7 +296,7 @@ pub struct NodeConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub storage: Option<PathBuf>,
     pub rest: Rest,
-    pub rpc: Rpc,
+    pub jrpc: JRpc,
     pub p2p: P2p,
     pub log: Option<Log>,
     pub mempool: Option<Mempool>,

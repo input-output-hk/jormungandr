@@ -1,8 +1,7 @@
 mod vote;
 
-use vote::Vote;
-
 use crate::jcli::command::rest::V1Command;
+use vote::Vote;
 
 pub struct RestV1 {
     v1_command: V1Command,

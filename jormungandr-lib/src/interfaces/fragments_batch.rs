@@ -1,7 +1,5 @@
 use crate::interfaces::FragmentDef;
-
 use chain_impl_mockchain::fragment::Fragment;
-
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 

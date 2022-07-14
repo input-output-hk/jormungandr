@@ -4,10 +4,10 @@ use chain_impl_mockchain::{
     block::BlockDate,
     transaction::AccountIdentifier,
 };
-use jormungandr_automation::testing::time;
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter},
+    testing::time,
 };
 use thor::{FragmentSender, StakePool, TransactionHash};
 

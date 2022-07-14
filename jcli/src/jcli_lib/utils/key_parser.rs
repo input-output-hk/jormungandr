@@ -1,6 +1,8 @@
 use super::io;
-use chain_crypto::bech32::{self, Bech32};
-use chain_crypto::{AsymmetricKey, AsymmetricPublicKey, PublicKey, SecretKey};
+use chain_crypto::{
+    bech32::{self, Bech32},
+    AsymmetricKey, AsymmetricPublicKey, PublicKey, SecretKey,
+};
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use std::path::{Path, PathBuf};
 use thiserror::Error;

@@ -4,9 +4,11 @@ use super::TestConfig;
 use chain_impl_mockchain::{block::Block, fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::interfaces::{Address, Block0Configuration, NodeConfig, UTxOInfo};
 use serde::Serialize;
-use std::fs::File;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::path::{Path, PathBuf};
+use std::{
+    fs::File,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Clone)]
 pub struct JormungandrParams<Conf = NodeConfig> {
@@ -109,6 +111,7 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
         self.block0_configuration
             .blockchain_configuration
             .linear_fees
+            .clone()
     }
 
     pub fn epoch_duration(&self) -> std::time::Duration {

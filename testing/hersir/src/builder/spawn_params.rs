@@ -1,18 +1,20 @@
 use super::NodeAlias;
-use jormungandr_automation::jormungandr::FaketimeConfig;
-use jormungandr_automation::jormungandr::LeadershipMode;
-use jormungandr_automation::jormungandr::PersistenceMode;
-use jormungandr_automation::jormungandr::{LogLevel, Version};
-use jormungandr_lib::interfaces::{
-    LayersConfig, Mempool, NodeConfig, PersistentLog, Policy, PreferredListConfig,
-    TopicsOfInterest, TrustedPeer,
+use jormungandr_automation::jormungandr::{
+    FaketimeConfig, LeadershipMode, LogLevel, PersistenceMode, Version,
 };
-use jormungandr_lib::time::Duration;
+use jormungandr_lib::{
+    interfaces::{
+        LayersConfig, Mempool, NodeConfig, PersistentLog, Policy, PreferredListConfig,
+        TopicsOfInterest, TrustedPeer,
+    },
+    time::Duration,
+};
 use multiaddr::Multiaddr;
 use serde::Deserialize;
-use std::net::SocketAddr;
-use std::path::Path;
-use std::path::PathBuf;
+use std::{
+    net::SocketAddr,
+    path::{Path, PathBuf},
+};
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct SpawnParams {

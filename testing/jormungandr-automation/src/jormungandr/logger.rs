@@ -3,13 +3,14 @@ use chain_core::property::FromStr;
 use chain_impl_mockchain::{block, key::Hash};
 use jormungandr_lib::{interfaces::BlockDate, time::SystemTime};
 use serde::{Deserialize, Serialize};
-
-use std::cell::{Ref, RefCell};
-use std::collections::HashMap;
-use std::convert::AsRef;
-use std::fmt;
-use std::io::Read;
-use std::ops::Index;
+use std::{
+    cell::{Ref, RefCell},
+    collections::HashMap,
+    convert::AsRef,
+    fmt,
+    io::Read,
+    ops::Index,
+};
 use strum::AsRefStr;
 
 // TODO: we use a RefCell because it would be very labor intensive to change

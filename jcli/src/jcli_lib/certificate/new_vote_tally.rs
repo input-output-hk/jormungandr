@@ -1,12 +1,15 @@
-use crate::jcli_lib::certificate::{write_cert, Error};
-use crate::jcli_lib::utils::vote;
+use crate::jcli_lib::{
+    certificate::{write_cert, Error},
+    utils::vote,
+};
 use chain_impl_mockchain::certificate::{
     Certificate, DecryptedPrivateTally, DecryptedPrivateTallyProposal, VotePlanId, VoteTally,
 };
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::{PrivateTallyState, Tally};
-use std::convert::TryInto;
-use std::path::PathBuf;
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{PrivateTallyState, Tally},
+};
+use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
 
 /// create a vote tally certificate

@@ -4,8 +4,7 @@ use crate::mjolnir_lib::{
 };
 use chain_impl_mockchain::key::Hash;
 use jormungandr_lib::interfaces::TrustedPeer;
-use std::path::PathBuf;
-use std::result::Result;
+use std::{path::PathBuf, result::Result};
 pub struct PassiveBootstrapLoad {
     config: ClientLoadConfig,
 }

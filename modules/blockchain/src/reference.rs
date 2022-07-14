@@ -140,10 +140,7 @@ impl Reference {
     /// compare the current Reference with the candidate one
     ///
     pub fn select(self: &Arc<Self>, candidate: &Arc<Self>) -> Selection {
-        let epoch_stability_depth = self
-            .epoch_info
-            .epoch_ledger_parameters()
-            .epoch_stability_depth;
+        let epoch_stability_depth = self.ledger().settings().epoch_stability_depth;
 
         if candidate.elapsed().is_err() {
             Selection::PreferCurrent
@@ -185,14 +182,7 @@ impl Reference {
 
         let ledger = transition_state
             .ledger()
-            .apply_block(
-                transition_state
-                    .epoch_info
-                    .epoch_ledger_parameters()
-                    .clone(),
-                block.contents(),
-                &metadata,
-            )
+            .apply_block(block.contents(), &metadata)
             .map_err(|e| Error::Ledger {
                 source: Box::new(e),
             })?;
@@ -223,11 +213,7 @@ impl Reference {
             .stake_distribution()
         {
             let (ledger, _rewards) = ledger
-                .distribute_rewards(
-                    distribution,
-                    self.epoch_info.epoch_ledger_parameters(),
-                    RewardsInfoParameters::default(),
-                )
+                .distribute_rewards(distribution, RewardsInfoParameters::default())
                 .map_err(|e| Error::Ledger {
                     source: Box::new(e),
                 })?;
