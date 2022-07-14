@@ -23,6 +23,7 @@
 - Bump ed25519-bip32 from 0.4.0 to 0.4.1
 - Now the tally is incremental and is always available in the rest API. The
 - Add standalone explorer crate.
+- Bump rpassword to 6.0.1
 
 ## Release 0.13.0
 
