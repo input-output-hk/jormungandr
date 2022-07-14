@@ -152,7 +152,6 @@ impl ExplorerVerifier {
             let mut exp_accounts = vec![];
 
             for exp_inputs in exp_transaction.inputs.iter() {
-                println!("exp inputs {:?}", exp_inputs.address.id);
                 let adr = AddressReadable::from_string_anyprefix(&exp_inputs.address.id).unwrap();
                 exp_accounts.push((
                     adr.to_address().public_key().unwrap().to_string(),
