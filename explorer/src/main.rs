@@ -287,6 +287,8 @@ async fn rest_service(mut state: broadcast::Receiver<GlobalState>, settings: Set
         db,
         crate::db::Settings {
             address_bech32_prefix: settings.address_bech32_prefix,
+            query_depth_limit: settings.query_depth_limit,
+            query_complexity_limit: settings.query_complexity_limit,
         },
     );
 

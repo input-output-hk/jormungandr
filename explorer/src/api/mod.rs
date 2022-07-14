@@ -72,6 +72,8 @@ pub fn filter(
         async_graphql::EmptyMutation,
         crate::api::graphql::Subscription {},
     )
+    .limit_depth(settings.query_depth_limit)
+    .limit_complexity(settings.query_complexity_limit)
     .data(EContext { db, settings })
     .finish();
 

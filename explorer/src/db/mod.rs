@@ -99,6 +99,9 @@ pub struct Settings {
     /// also be used, but the `Address` struct doesn't have a deserialization method right
     /// now
     pub address_bech32_prefix: String,
+
+    pub query_depth_limit: usize,
+    pub query_complexity_limit: usize,
 }
 
 impl ExplorerDb {
