@@ -1,7 +1,7 @@
 use crate::startup;
 use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
-
+#[ignore]
 #[test]
 pub fn explorer_address_test() {
     let _jcli: JCli = Default::default();

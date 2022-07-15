@@ -3,9 +3,7 @@ use chain_impl_mockchain::block::BlockDate;
 use chain_impl_mockchain::transaction::AccountIdentifier;
 use jormungandr_automation::jormungandr::explorer::verifier::ExplorerVerifier;
 use jormungandr_automation::jormungandr::Starter;
-
 use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
-
 use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
 
 #[test]

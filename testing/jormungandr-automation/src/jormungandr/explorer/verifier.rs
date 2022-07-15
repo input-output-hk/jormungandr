@@ -11,7 +11,7 @@ use super::data::{
 };
 use bech32::FromBase32;
 use chain_addr::AddressReadable;
-use chain_crypto::{PublicKey, Ed25519};
+use chain_crypto::{Ed25519, PublicKey};
 use std::num::NonZeroU64;
 
 use chain_impl_mockchain::{
@@ -35,10 +35,12 @@ pub enum VerifierError {
 pub struct ExplorerVerifier;
 
 impl ExplorerVerifier {
+
     pub fn assert_transaction(
         fragment: Fragment,
         exp_transaction: TransactionByIdTransaction,
     ) -> Result<(), VerifierError> {
+
         if exp_transaction.certificate.is_none() {
             if let Fragment::Transaction(frag_transaction) = fragment {
                 Self::assert_transaction_params(frag_transaction, exp_transaction).unwrap();
@@ -50,7 +52,6 @@ impl ExplorerVerifier {
             }
         } else {
             let exp_certificate = exp_transaction.certificate.as_ref().unwrap();
-
             match exp_certificate {
                 TransactionByIdTransactionCertificate::StakeDelegation(exp_cert) => {
                     if let Fragment::StakeDelegation(frag_cert) = fragment {
@@ -286,7 +287,7 @@ impl ExplorerVerifier {
                 .to_single_account()
                 .unwrap()
                 .to_string(),
-                adr.to_address().public_key().unwrap().to_string()
+            adr.to_address().public_key().unwrap().to_string()
         );
 
         match deleg_cert.delegation {
@@ -312,7 +313,7 @@ impl ExplorerVerifier {
     fn assert_owner_delegation(
         frag_cert: Transaction<OwnerStakeDelegation>,
         exp_cert: TransactionByIdTransactionCertificateOnOwnerStakeDelegation,
-    )-> Result<(),VerifierError> {
+    ) -> Result<(), VerifierError> {
         let owner_cert = frag_cert.as_slice().payload().into_payload();
 
         match owner_cert.delegation {
@@ -360,7 +361,7 @@ impl ExplorerVerifier {
         );
     }
 
-    pub fn epoch_stability_depth(depth: u32, exp_depth: i64) {
+    pub fn assert_epoch_stability_depth(depth: u32, exp_depth: i64) {
         assert_eq!(depth as u64, exp_depth as u64);
     }
 
