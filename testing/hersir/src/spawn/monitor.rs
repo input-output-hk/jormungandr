@@ -1,9 +1,12 @@
-use crate::builder::Topology;
-use crate::controller::{MonitorControllerBuilder, MonitorNode};
-use crate::{args::Args, config::Config, error::Error};
+use crate::{
+    args::Args,
+    builder::Topology,
+    config::Config,
+    controller::{MonitorControllerBuilder, MonitorNode},
+    error::Error,
+};
 use jormungandr_automation::jormungandr::NodeAlias;
-use std::collections::HashMap;
-use std::sync::mpsc::channel;
+use std::{collections::HashMap, sync::mpsc::channel};
 
 pub fn spawn_network(config: Config, mut topology: Topology, args: Args) -> Result<(), Error> {
     let (tx, rx) = channel();

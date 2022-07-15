@@ -39,6 +39,8 @@ pub struct Context {
     blockchain: Option<Blockchain>,
     blockchain_tip: Option<Tip>,
     bootstrap_stopper: Option<CancellationToken>,
+    #[cfg(feature = "evm")]
+    evm_filters: crate::jrpc::EvmFilters,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -76,6 +78,8 @@ impl Context {
             blockchain: Default::default(),
             blockchain_tip: Default::default(),
             bootstrap_stopper: Default::default(),
+            #[cfg(feature = "evm")]
+            evm_filters: Default::default(),
         }
     }
 
@@ -137,6 +141,11 @@ impl Context {
         self.blockchain_tip.as_ref().ok_or(Error::BlockchainTip)
     }
 
+    #[cfg(feature = "evm")]
+    pub fn evm_filters(&mut self) -> &mut crate::jrpc::EvmFilters {
+        &mut self.evm_filters
+    }
+
     pub fn set_bootstrap_stopper(&mut self, bootstrap_stopper: CancellationToken) {
         self.bootstrap_stopper = Some(bootstrap_stopper);
     }
@@ -159,6 +168,8 @@ pub struct FullContext {
     pub transaction_task: MessageBox<TransactionMsg>,
     pub leadership_logs: LeadershipLogs,
     pub enclave: Enclave,
+    #[cfg(feature = "evm")]
+    pub evm_keys: Arc<Vec<chain_evm::util::Secret>>,
     pub network_state: NetworkStateR,
     #[cfg(feature = "prometheus-metrics")]
     pub prometheus: Option<Arc<crate::metrics::backends::Prometheus>>,

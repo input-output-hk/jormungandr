@@ -1,19 +1,23 @@
-use crate::blockchain::Ref;
-use crate::metrics::MetricsBackend;
-
-use chain_impl_mockchain::block::Block;
-use chain_impl_mockchain::fragment::Fragment;
-use chain_impl_mockchain::transaction::Transaction;
-use chain_impl_mockchain::value::{Value, ValueError};
-use jormungandr_lib::interfaces::NodeStats;
-use jormungandr_lib::time::{SecondsSinceUnixEpoch, SystemTime};
-
-use std::convert::TryInto;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, RwLock};
-use std::time::Instant;
-
+use crate::{blockchain::Ref, metrics::MetricsBackend};
 use arc_swap::ArcSwapOption;
+use chain_impl_mockchain::{
+    block::Block,
+    fragment::Fragment,
+    transaction::Transaction,
+    value::{Value, ValueError},
+};
+use jormungandr_lib::{
+    interfaces::NodeStats,
+    time::{SecondsSinceUnixEpoch, SystemTime},
+};
+use std::{
+    convert::TryInto,
+    sync::{
+        atomic::{AtomicU64, AtomicUsize, Ordering},
+        Arc, RwLock,
+    },
+    time::Instant,
+};
 
 const EXP_MOVING_AVERAGE_COEFF: f64 = 0.5;
 
@@ -216,7 +220,7 @@ impl MetricsBackend for SimpleCounter {
 
         let content_size = block.header().block_content_size();
         let content_size_ratio =
-            content_size as f64 / block_ref.epoch_ledger_parameters().block_content_max_size as f64;
+            content_size as f64 / block_ref.ledger().settings().block_content_max_size as f64;
         let last_avg = if let Some(data) = self.tip_block.load().as_deref() {
             data.avg_content_size
         } else {

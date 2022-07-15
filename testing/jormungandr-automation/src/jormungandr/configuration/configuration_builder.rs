@@ -4,22 +4,18 @@ use crate::jormungandr::{
 };
 use assert_fs::fixture::{ChildPath, PathChild};
 use chain_addr::Discrimination;
-use chain_core::packer::Codec;
-use chain_core::property::Serialize;
+use chain_core::{packer::Codec, property::Serialize};
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
-use jormungandr_lib::crypto::key::KeyPair;
-use jormungandr_lib::interfaces::Block0Configuration;
-use jormungandr_lib::interfaces::BlockContentMaxSize;
-use jormungandr_lib::interfaces::InitialToken;
-use jormungandr_lib::interfaces::ProposalExpiration;
-use jormungandr_lib::interfaces::RewardParams;
-use jormungandr_lib::interfaces::TaxType;
-use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo,
-    Initial, InitialUTxO, KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
-    NodeSecret, NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
-    Value,
+use jormungandr_lib::{
+    crypto::key::KeyPair,
+    interfaces::{
+        ActiveSlotCoefficient, Block0Configuration, BlockContentMaxSize, CommitteeIdDef,
+        ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo, Initial, InitialToken, InitialUTxO,
+        KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret,
+        NumberOfSlotsPerEpoch, Policy, ProposalExpiration, RewardParams, SignedCertificate,
+        SlotDuration, TaxType, Tls, TrustedPeer, Value,
+    },
 };
 use std::path::PathBuf;
 const DEFAULT_SLOT_DURATION: u8 = 2;
@@ -366,7 +362,7 @@ impl ConfigurationBuilder {
             .with_treasury(self.treasury)
             .with_epoch_stability_depth(self.epoch_stability_depth)
             .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff)
-            .with_linear_fees(self.linear_fees)
+            .with_linear_fees(self.linear_fees.clone())
             .with_proposal_expiration(self.proposal_expiry_epochs)
             .with_block_content_max_size(self.block_content_max_size)
             .with_committee_ids(self.committee_ids.clone())

@@ -1,15 +1,12 @@
 use crate::startup;
-use chain_impl_mockchain::block::BlockDate;
-use chain_impl_mockchain::fragment::FragmentId;
-use chain_impl_mockchain::key::Hash;
+use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId, key::Hash};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Explorer},
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
-use std::str::FromStr;
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 use thor::{StakePool, TransactionHash};
 
 /// test checks if there is upto date schema

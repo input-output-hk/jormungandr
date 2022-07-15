@@ -5,21 +5,11 @@ use serde::{Serialize, Serializer};
 #[derive(Debug, PartialEq, Eq)]
 pub struct Work {
     /// The proof-of-work hash.
-    pub pow_hash: H256,
+    pow_hash: H256,
     /// The seed hash.
-    pub seed_hash: H256,
+    seed_hash: H256,
     /// The target.
-    pub target: H256,
-}
-
-impl Work {
-    pub fn build() -> Self {
-        Self {
-            pow_hash: H256::zero(),
-            seed_hash: H256::zero(),
-            target: H256::zero(),
-        }
-    }
+    target: H256,
 }
 
 impl Serialize for Work {

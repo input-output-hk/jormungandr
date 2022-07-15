@@ -13,7 +13,15 @@ mod eth_transaction;
 #[cfg(feature = "evm")]
 mod eth_types;
 
-use crate::context::ContextLock;
+use crate::{
+    context::ContextLock,
+    intercom::{self, TransactionMsg},
+};
+use chain_impl_mockchain::ledger::Error as LedgerError;
+#[cfg(feature = "evm")]
+pub use eth_filter::EvmFilters;
+use futures::channel::mpsc::TrySendError;
+use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use jsonrpsee_http_server::{HttpServerBuilder, RpcModule};
 use std::net::SocketAddr;
 use thiserror::Error;
@@ -28,6 +36,22 @@ pub enum Error {
     ContextError(#[from] crate::context::Error),
     #[error(transparent)]
     Storage(#[from] crate::blockchain::StorageError),
+    #[error("Currently we dont support archive and full modes, so unfortunately this functionality is not working at this moment")]
+    NonArchiveNode,
+    #[error(transparent)]
+    IntercomError(#[from] intercom::Error),
+    #[error(transparent)]
+    AccountLedgerError(#[from] chain_impl_mockchain::account::LedgerError),
+    #[error(transparent)]
+    TxMsgSendError(#[from] Box<TrySendError<TransactionMsg>>),
+    #[error("Can not estimate gas fees transaction, error: {0}")]
+    EstimationError(#[from] Box<LedgerError>),
+    #[error("Could not process fragment")]
+    Fragment(FragmentsProcessingSummary),
+    #[error("Cound not decode Ethereum transaction bytes, erorr: {0}")]
+    TransactionDecodedErorr(String),
+    #[error("Mining is not currently supported")]
+    MiningIsNotAllowed,
 }
 
 pub async fn start_jrpc_server(config: Config, _context: ContextLock) {

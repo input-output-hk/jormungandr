@@ -1,25 +1,22 @@
-use crate::jcli_lib::rest::RestArgs;
-use crate::jcli_lib::transaction::{common, Error};
-use crate::transaction::mk_witness::WitnessType;
-use crate::transaction::staging::Staging;
-use crate::utils::key_parser::read_secret_key;
-use crate::utils::AccountId;
-use crate::{rest, transaction};
+use crate::{
+    jcli_lib::{
+        rest::RestArgs,
+        transaction::{common, Error},
+    },
+    rest,
+    rest::v0::message::post_fragment,
+    transaction,
+    transaction::{common::CommonFees, mk_witness::WitnessType, staging::Staging},
+    utils::{io::ask_yes_or_no, key_parser::read_secret_key, AccountId},
+};
 use chain_addr::Kind;
 use chain_core::property::FromStr;
 use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
-use chain_impl_mockchain::account::SpendingCounter;
-use chain_impl_mockchain::fee::FeeAlgorithm;
-use chain_impl_mockchain::key::EitherEd25519SecretKey;
-use chain_impl_mockchain::transaction::Output;
-use jormungandr_lib::interfaces;
-
-use crate::rest::v0::message::post_fragment;
-use crate::transaction::common::CommonFees;
-use crate::utils::io::ask_yes_or_no;
-use jormungandr_lib::interfaces::SettingsDto;
-use rand::rngs::OsRng;
-use rand::SeedableRng;
+use chain_impl_mockchain::{
+    account::SpendingCounter, fee::FeeAlgorithm, key::EitherEd25519SecretKey, transaction::Output,
+};
+use jormungandr_lib::{interfaces, interfaces::SettingsDto};
+use rand::{rngs::OsRng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -125,7 +122,7 @@ fn create_receiver_secret_key_and_address(
 }
 
 fn common_fee_from_settings(settings: &SettingsDto) -> CommonFees {
-    let fees = settings.fees;
+    let fees = settings.fees.clone();
     CommonFees {
         constant: fees.constant,
         coefficient: fees.coefficient,

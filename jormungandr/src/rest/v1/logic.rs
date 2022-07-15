@@ -12,7 +12,10 @@ use chain_impl_mockchain::{
     transaction::UnspecifiedAccountIdentifier,
     value::ValueError,
 };
-use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
+use futures::{
+    channel::mpsc::{SendError, TrySendError},
+    prelude::*,
+};
 use hex::ToHex;
 use jormungandr_lib::interfaces::{
     AccountVotes, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch,

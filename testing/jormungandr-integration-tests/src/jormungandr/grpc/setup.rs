@@ -1,14 +1,18 @@
 use assert_fs::TempDir;
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use jormungandr_automation::jormungandr::{
-    get_available_port,
-    grpc::{client::JormungandrWatchClient, JormungandrClient},
-    ConfigurationBuilder, JormungandrParams, JormungandrProcess, Starter,
+use jormungandr_automation::{
+    jormungandr::{
+        get_available_port,
+        grpc::{client::JormungandrWatchClient, JormungandrClient},
+        ConfigurationBuilder, JormungandrParams, JormungandrProcess, Starter,
+    },
+    testing::SyncNode,
 };
-use jormungandr_automation::testing::SyncNode;
 use jormungandr_lib::interfaces::TrustedPeer;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::time::Duration;
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    time::Duration,
+};
 const DEFAULT_SLOT_DURATION: u8 = 2;
 const LOCALHOST: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 pub struct Config {
@@ -32,9 +36,8 @@ impl Config {
 }
 
 pub mod client {
-    use jormungandr_automation::jormungandr::grpc::client::JormungandrWatchClient;
-
     use super::*;
+    use jormungandr_automation::jormungandr::grpc::client::JormungandrWatchClient;
     pub struct ClientBootstrap {
         pub client: JormungandrClient,
         pub watch_client: JormungandrWatchClient,

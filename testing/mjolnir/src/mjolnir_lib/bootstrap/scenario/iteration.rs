@@ -1,12 +1,12 @@
 use super::ScenarioProgressBar;
-use crate::mjolnir_lib::bootstrap::ClientLoadConfig;
-use crate::mjolnir_lib::MjolnirError;
+use crate::mjolnir_lib::{bootstrap::ClientLoadConfig, MjolnirError};
 use assert_fs::TempDir;
 use indicatif::{MultiProgress, ProgressBar};
-use jormungandr_automation::jormungandr::LogLevel;
-use jormungandr_automation::testing::{benchmark_speed, SpeedBenchmarkFinish};
+use jormungandr_automation::{
+    jormungandr::LogLevel,
+    testing::{benchmark_speed, SpeedBenchmarkFinish},
+};
 use jormungandr_lib::interfaces::NodeState;
-
 use std::{thread, time};
 pub struct IterationBasedClientLoad {
     config: ClientLoadConfig,

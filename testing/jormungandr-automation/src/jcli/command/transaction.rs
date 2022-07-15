@@ -1,7 +1,6 @@
 use crate::jcli::WitnessType;
 use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee};
-use std::path::Path;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 #[derive(Debug)]
 pub struct TransactionCommand {

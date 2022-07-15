@@ -1,7 +1,6 @@
 use assert_fs::TempDir;
 use chain_impl_mockchain::{chaintypes::ConsensusType, testing::WitnessMode};
-use jormungandr_automation::jormungandr::ConfigurationBuilder;
-use jormungandr_automation::jormungandr::Starter;
+use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_lib::interfaces::InitialUTxO;
 use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
 

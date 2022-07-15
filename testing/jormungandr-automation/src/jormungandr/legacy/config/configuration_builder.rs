@@ -1,9 +1,9 @@
 use super::{P2p, TrustedPeer};
-use crate::jormungandr::legacy::config::NodeConfig;
-use crate::jormungandr::JormungandrParams;
-use crate::jormungandr::{legacy::version_0_13_0, Version};
-use jormungandr_lib::interfaces::NodeId;
-use jormungandr_lib::interfaces::{NodeConfig as NewestNodeConfig, Rest};
+use crate::jormungandr::{
+    legacy::{config::NodeConfig, version_0_13_0},
+    JormungandrParams, Version,
+};
+use jormungandr_lib::interfaces::{NodeConfig as NewestNodeConfig, NodeId, Rest};
 use rand::RngCore;
 use rand_core::OsRng;
 use thiserror::Error;

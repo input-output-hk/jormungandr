@@ -1,15 +1,16 @@
 use hersir::controller::Controller;
-use jormungandr_automation::jormungandr::FragmentNode;
 pub use jormungandr_automation::testing::{
     assert, assert_equals,
     benchmark::{
         measure_and_log_sync_time, measure_fragment_propagation_speed,
         measure_how_many_nodes_are_running,
     },
-    MeasurementReportInterval,
+    MeasurementReportInterval, SyncNode, SyncWaitParams,
 };
-use jormungandr_automation::testing::{Speed, Thresholds};
-pub use jormungandr_automation::testing::{SyncNode, SyncWaitParams};
+use jormungandr_automation::{
+    jormungandr::FragmentNode,
+    testing::{Speed, Thresholds},
+};
 use std::time::Duration;
 use thor::{FragmentSender, Wallet};
 

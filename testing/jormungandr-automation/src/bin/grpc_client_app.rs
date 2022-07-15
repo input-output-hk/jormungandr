@@ -1,6 +1,5 @@
 use jormungandr_automation::jormungandr::grpc::client::JormungandrClient;
 use rand::Rng;
-
 use std::env;
 
 fn main() {

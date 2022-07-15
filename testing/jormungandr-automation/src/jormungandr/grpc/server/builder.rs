@@ -1,15 +1,17 @@
 use super::{JormungandrServerImpl, MockController, MockLogger, MockServerData, ProtocolVersion};
-use crate::jormungandr::configuration::get_available_port;
-use crate::jormungandr::grpc::server::NodeServer;
+use crate::jormungandr::{configuration::get_available_port, grpc::server::NodeServer};
 use chain_core::property::Serialize;
 use chain_impl_mockchain::{block::Block, key::Hash};
 use chain_storage::BlockStore;
 use futures::FutureExt;
-use std::io::{Result, Write};
-use std::net::SocketAddr;
-use std::sync::mpsc::{sync_channel, SyncSender};
-use std::sync::Arc;
-use std::sync::RwLock;
+use std::{
+    io::{Result, Write},
+    net::SocketAddr,
+    sync::{
+        mpsc::{sync_channel, SyncSender},
+        Arc, RwLock,
+    },
+};
 use tokio::sync::oneshot;
 use tonic::transport::Server;
 

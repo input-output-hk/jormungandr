@@ -11,6 +11,7 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let tx = params.parse()?;
             logic::send_transaction(tx, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
@@ -20,6 +21,7 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let raw_tx = params.parse()?;
             logic::send_raw_transaction(raw_tx, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
@@ -29,6 +31,7 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let hash = params.parse()?;
             logic::get_transaction_by_hash(hash, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
@@ -40,6 +43,7 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
                 let context = context.read().await;
                 let (hash, index) = params.parse()?;
                 logic::get_transaction_by_block_hash_and_index(hash, index, &context)
+                    .await
                     .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
             },
         )
@@ -52,6 +56,7 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
                 let context = context.read().await;
                 let (number, index) = params.parse()?;
                 logic::get_transaction_by_block_number_and_index(number, index, &context)
+                    .await
                     .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
             },
         )
@@ -80,6 +85,7 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let tx = params.parse()?;
             logic::estimate_gas(tx, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();

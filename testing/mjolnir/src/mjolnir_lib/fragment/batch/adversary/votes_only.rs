@@ -1,7 +1,7 @@
-use crate::generators::AdversaryVoteCastsGenerator;
-use crate::generators::FragmentStatusProvider;
-use crate::mjolnir_lib::DiscriminationExtensions;
-use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
+use crate::{
+    generators::{AdversaryVoteCastsGenerator, FragmentStatusProvider},
+    mjolnir_lib::{args::parse_shift, build_monitor, DiscriminationExtensions, MjolnirError},
+};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::{
@@ -88,7 +88,7 @@ impl VotesOnly {
         let settings = remote_jormungandr.rest().settings().unwrap();
 
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
-        let fees = settings.fees;
+        let fees = settings.fees.clone();
 
         let expiry_generator = self
             .valid_until

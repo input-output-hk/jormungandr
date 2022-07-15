@@ -1,5 +1,4 @@
-use crate::crypto::hash::Hash;
-use crate::interfaces::stake::Stake;
+use crate::{crypto::hash::Hash, interfaces::stake::Stake};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

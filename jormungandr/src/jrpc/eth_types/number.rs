@@ -5,12 +5,24 @@ use serde::{
 use std::fmt;
 
 /// Represents usize.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Hash, PartialEq, Eq)]
 pub struct Number(u64);
+
+impl Number {
+    pub fn inc(&mut self) {
+        self.0 += 1;
+    }
+}
 
 impl From<u64> for Number {
     fn from(val: u64) -> Self {
         Self(val)
+    }
+}
+
+impl From<Number> for u64 {
+    fn from(val: Number) -> Self {
+        val.0
     }
 }
 
@@ -28,13 +40,13 @@ impl<'a> Deserialize<'a> for Number {
     where
         D: Deserializer<'a>,
     {
-        deserializer.deserialize_any(IndexVisitor)
+        deserializer.deserialize_any(NumberVisitor)
     }
 }
 
-struct IndexVisitor;
+struct NumberVisitor;
 
-impl<'a> Visitor<'a> for IndexVisitor {
+impl<'a> Visitor<'a> for NumberVisitor {
     type Value = Number;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

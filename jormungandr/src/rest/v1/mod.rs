@@ -2,9 +2,7 @@ mod handlers;
 mod logic;
 
 use crate::rest::{display_internal_server_error, ContextLock};
-
 use jormungandr_lib::interfaces::VotePlanId;
-
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 pub fn filter(

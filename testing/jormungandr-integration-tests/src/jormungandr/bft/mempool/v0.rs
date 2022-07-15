@@ -1,9 +1,9 @@
 use assert_fs::TempDir;
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_automation::testing::time;
-use jormungandr_lib::interfaces::BlockDate;
-use jormungandr_lib::interfaces::InitialUTxO;
-use jormungandr_lib::interfaces::Mempool;
+use jormungandr_automation::{
+    jormungandr::{ConfigurationBuilder, Starter},
+    testing::time,
+};
+use jormungandr_lib::interfaces::{BlockDate, InitialUTxO, Mempool};
 use std::time::Duration;
 use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier, VerifyExitStrategy};
 

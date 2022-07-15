@@ -1,5 +1,3 @@
-pub use chain_network::data::gossip::Gossip;
-
 pub use chain_impl_mockchain::{
     block::{builder as block_builder, Block},
     chaineval::HeaderContentEvalContext,
@@ -13,12 +11,12 @@ pub use chain_impl_mockchain::{
     },
     leadership::{BftLeader, GenesisLeader, Leader, LeaderOutput, Leadership},
     ledger::{
-        ApplyBlockLedger, EpochRewardsInfo, Ledger, LedgerParameters, LedgerStaticParameters,
-        RewardsInfoParameters,
+        ApplyBlockLedger, EpochRewardsInfo, Ledger, LedgerStaticParameters, RewardsInfoParameters,
     },
     multiverse::Multiverse,
     value::{Value, ValueError},
 };
+pub use chain_network::data::gossip::Gossip;
 use std::time::{Duration, SystemTime};
 use thiserror::Error;
 

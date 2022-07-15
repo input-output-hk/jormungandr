@@ -1,6 +1,5 @@
 use chain_core::packer::Codec;
 use chain_impl_mockchain::fragment::Fragment;
-
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::{DeserializeAs, SerializeAs};
 

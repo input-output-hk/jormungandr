@@ -4,23 +4,29 @@ use chain_impl_mockchain::{
     fee::LinearFee,
     header::Header,
 };
-use jormungandr_automation::jormungandr::grpc::{
-    client::MockClientError,
-    server::{
-        start_thread, MockBuilder, MockController, MockServerData as NodeData, ProtocolVersion,
+use jormungandr_automation::{
+    jormungandr::{
+        grpc::{
+            client::MockClientError,
+            server::{
+                start_thread, MockBuilder, MockController, MockServerData as NodeData,
+                ProtocolVersion,
+            },
+            JormungandrClient,
+        },
+        NodeAlias, TestingDirectory,
     },
-    JormungandrClient,
+    testing::{panic, SyncNode},
 };
-use jormungandr_automation::jormungandr::NodeAlias;
-use jormungandr_automation::jormungandr::TestingDirectory;
-use jormungandr_automation::testing::{panic, SyncNode};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Block0Configuration, TrustedPeer},
 };
-use std::collections::HashMap;
-use std::net::{IpAddr, SocketAddr};
-use std::sync::{Arc, RwLock};
+use std::{
+    collections::HashMap,
+    net::{IpAddr, SocketAddr},
+    sync::{Arc, RwLock},
+};
 use thor::{FragmentSender, FragmentSenderSetup};
 
 /// An adversary-controlled node, which can deviate in every way

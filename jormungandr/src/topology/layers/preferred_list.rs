@@ -1,13 +1,14 @@
-use crate::settings::start::network::TrustedPeer;
-use crate::topology::NodeId;
+use crate::{settings::start::network::TrustedPeer, topology::NodeId};
 use poldercast::{
     layer::{Layer, ViewBuilder},
     InterestLevel, PriorityMap, Profile, Topic,
 };
 use rand::seq::IteratorRandom;
 use rand_chacha::ChaChaRng;
-use std::collections::{HashMap, HashSet};
-use std::net::SocketAddr;
+use std::{
+    collections::{HashMap, HashSet},
+    net::SocketAddr,
+};
 
 #[derive(Clone)]
 pub struct PreferredListConfig {

@@ -4,13 +4,11 @@ pub mod delegation;
 pub mod discrimination;
 pub mod utxo;
 
-use crate::wallet::discrimination::DiscriminationExtension;
-use crate::FragmentBuilder;
-use crate::FragmentBuilderError;
-use chain_addr::AddressReadable;
-use chain_addr::Discrimination;
+use crate::{
+    wallet::discrimination::DiscriminationExtension, FragmentBuilder, FragmentBuilderError,
+};
+use chain_addr::{AddressReadable, Discrimination};
 use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Signature};
-use chain_impl_mockchain::accounting::account::SpendingCounterIncreasing;
 pub use chain_impl_mockchain::{
     account::SpendingCounter,
     block::Block,
@@ -23,6 +21,7 @@ pub use chain_impl_mockchain::{
     transaction::{Input, TransactionBindingAuthData},
 };
 use chain_impl_mockchain::{
+    accounting::account::SpendingCounterIncreasing,
     block::BlockDate,
     fee::FeeAlgorithm,
     key::EitherEd25519SecretKey,

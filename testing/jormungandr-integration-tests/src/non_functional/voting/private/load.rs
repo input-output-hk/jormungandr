@@ -1,5 +1,6 @@
-use crate::non_functional::voting::private::private_vote_load_scenario;
-use crate::non_functional::voting::private::PrivateVotingLoadTestConfig;
+use crate::non_functional::voting::private::{
+    private_vote_load_scenario, PrivateVotingLoadTestConfig,
+};
 
 #[test]
 pub fn private_vote_load_quick_test() {
