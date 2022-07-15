@@ -41,6 +41,7 @@
 - Update gas price and block gas limit for EVM params
 - Add new 'evm' REST API endpoints 'address_mapping/jormungandr_address', 'address_mapping/evm_address` for getting info about address mapping. They are optional for the 'evm' feature.
 - Add jcli command to merge the results of multiple voteplans with the same proposals.
+- Bump rpassword to 6.0.1
 
 ## Release 0.13.0
 
