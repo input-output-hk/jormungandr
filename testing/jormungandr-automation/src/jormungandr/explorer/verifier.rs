@@ -12,8 +12,6 @@ use super::data::{
 use bech32::FromBase32;
 use chain_addr::AddressReadable;
 use chain_crypto::{Ed25519, PublicKey};
-use std::num::NonZeroU64;
-
 use chain_impl_mockchain::{
     account::DelegationType,
     certificate::{
@@ -23,6 +21,7 @@ use chain_impl_mockchain::{
     fragment::Fragment,
     transaction::{AccountIdentifier, InputEnum, Transaction},
 };
+use std::num::NonZeroU64;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -35,12 +34,10 @@ pub enum VerifierError {
 pub struct ExplorerVerifier;
 
 impl ExplorerVerifier {
-
     pub fn assert_transaction(
         fragment: Fragment,
         exp_transaction: TransactionByIdTransaction,
     ) -> Result<(), VerifierError> {
-
         if exp_transaction.certificate.is_none() {
             if let Fragment::Transaction(frag_transaction) = fragment {
                 Self::assert_transaction_params(frag_transaction, exp_transaction).unwrap();

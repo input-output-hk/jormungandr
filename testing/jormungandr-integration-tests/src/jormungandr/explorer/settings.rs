@@ -1,8 +1,8 @@
 use crate::startup;
-use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::fee::{PerCertificateFee, PerVoteCertificateFee};
-use jormungandr_automation::jormungandr::explorer::verifier::ExplorerVerifier;
-use jormungandr_automation::jormungandr::ConfigurationBuilder;
+use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
+use jormungandr_automation::jormungandr::{
+    explorer::verifier::ExplorerVerifier, ConfigurationBuilder,
+};
 use jormungandr_lib::interfaces::DEFAULT_EPOCH_STABILITY_DEPTH;
 use std::num::NonZeroU64;
 
@@ -27,7 +27,7 @@ pub fn explorer_settings() {
     let jormungandr = startup::start_bft(
         vec![&alice],
         ConfigurationBuilder::new()
-            .with_linear_fees(linear_fees)
+            .with_linear_fees(linear_fees.clone())
             .with_epoch_stability_depth(DEFAULT_EPOCH_STABILITY_DEPTH),
     )
     .unwrap();

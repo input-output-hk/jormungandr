@@ -1,9 +1,9 @@
 use assert_fs::TempDir;
-use chain_impl_mockchain::block::BlockDate;
-use chain_impl_mockchain::transaction::AccountIdentifier;
-use jormungandr_automation::jormungandr::explorer::verifier::ExplorerVerifier;
-use jormungandr_automation::jormungandr::Starter;
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
+use chain_impl_mockchain::{block::BlockDate, transaction::AccountIdentifier};
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{explorer::verifier::ExplorerVerifier, ConfigurationBuilder, Starter},
+};
 use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
 
 #[test]
