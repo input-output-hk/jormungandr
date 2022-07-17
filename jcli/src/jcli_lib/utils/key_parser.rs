@@ -54,8 +54,7 @@ pub fn read_secret_key(secret_key_path: Option<PathBuf>) -> Result<EitherEd25519
     match secret_key_path {
         Some(path) => read_ed25519_secret_key_from_file(&Some(path)),
         None => {
-            let key =
-                rpassword::prompt_password_stdout("Introduce the bech32 format secret key:\n")?;
+            let key = rpassword::prompt_password("Introduce the bech32 format secret key:\n")?;
             parse_ed25519_secret_key(&key)
         }
     }
