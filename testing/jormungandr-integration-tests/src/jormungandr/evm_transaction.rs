@@ -1,7 +1,7 @@
 use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, testing::TestGen};
+use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
 use yaml_rust::scanner::TokenType::Value;
-use jormungandr_automation::{jcli::JCli,jormungandr::ConfigurationBuilder};
 
 const FIRST_NONCE: u64 = 0;
 const MAX_GAS_FEE: u64 = u64::MAX;
@@ -9,14 +9,16 @@ const TRANSFER_AMOUNT: u64 = 100;
 
 #[test]
 pub fn evm_transaction() {
-
     let jcli: JCli = Default::default();
     let mut alice = thor::Wallet::default();
     let mut bob = thor::Wallet::default();
 
-    let (jormungandr, _stake_pools) =
-        startup::start_stake_pool(&[alice.clone()], &[bob.clone()], &mut ConfigurationBuilder::new())
-            .unwrap();
+    let (jormungandr, _stake_pools) = startup::start_stake_pool(
+        &[alice.clone()],
+        &[bob.clone()],
+        &mut ConfigurationBuilder::new(),
+    )
+    .unwrap();
 
     let alice_account_state_before = jcli
         .rest()
@@ -56,8 +58,12 @@ pub fn evm_transaction() {
     bob.confirm_transaction();
 
     let evm_transaction = TestGen::evm_transaction(
-        alice_evm_mapping.evm_address, bob_evm_mapping.evm_address,
-        TRANSFER_AMOUNT, MAX_GAS_FEE, FIRST_NONCE);
+        alice_evm_mapping.evm_address,
+        bob_evm_mapping.evm_address,
+        TRANSFER_AMOUNT,
+        MAX_GAS_FEE,
+        FIRST_NONCE,
+    );
     let evm_transaction_fragment = fragment_builder.evm_transaction(evm_transaction);
 
     transaction_sender
@@ -78,6 +84,12 @@ pub fn evm_transaction() {
     let alice_balance_after: u64 = alice_account_state_after.value().clone().into();
     let bob_balance_after: u64 = bob_account_state_after.value().clone().into();
 
-    assert_eq!(alice_balance_after, alice_account_balance_before - TRANSFER_AMOUNT);
-    assert_eq!(bob_balance_after, bob_account_balance_before + TRANSFER_AMOUNT);
+    assert_eq!(
+        alice_balance_after,
+        alice_account_balance_before - TRANSFER_AMOUNT
+    );
+    assert_eq!(
+        bob_balance_after,
+        bob_account_balance_before + TRANSFER_AMOUNT
+    );
 }
