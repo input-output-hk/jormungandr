@@ -27,8 +27,8 @@ pub fn evm_transaction() {
         .v0()
         .account_stats(bob.address().to_string(), &jormungandr.rest_uri());
 
-    println!("Alice balance: {:?}", alice_account_state_before.value());
-    println!("Bob balance: {:?}", bob_account_state_before.value());
+    let alice_account_balance_before: u64 = alice_account_state_before.value().clone().into();
+    let bob_account_balance_before: u64 = bob_account_state_before.value().clone().into();
 
     let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
 
@@ -75,9 +75,9 @@ pub fn evm_transaction() {
         .v0()
         .account_stats(bob.address().to_string(), &jormungandr.rest_uri());
 
-    let alice_balance_after = alice_account_state_after.value();
-    let bob_balance_after = bob_account_state_after.value();
+    let alice_balance_after: u64 = alice_account_state_after.value().clone().into();
+    let bob_balance_after: u64 = bob_account_state_after.value().clone().into();
 
-    assert_eq!(alice_balance_after, alice_account_state_before.value() - TRANSFER_AMOUNT);
-    assert_eq!(bob_balance_after, bob_account_state_before.value() + TRANSFER_AMOUNT);
+    assert_eq!(alice_balance_after, alice_account_balance_before - TRANSFER_AMOUNT);
+    assert_eq!(bob_balance_after, bob_account_balance_before + TRANSFER_AMOUNT);
 }

@@ -388,6 +388,6 @@ impl FragmentBuilder {
 
     #[cfg(feature = "evm")]
     pub fn evm_transaction(&self, evm_transaction: EvmTransaction) -> Fragment {
-        self.fragment_factory.evm_transaction(evm_transaction);
+        self.fragment_factory.evm_transaction(evm_transaction)
     }
 }
