@@ -1,7 +1,6 @@
 use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, testing::TestGen};
 use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
-use yaml_rust::scanner::TokenType::Value;
 
 const FIRST_NONCE: u64 = 0;
 const MAX_GAS_FEE: u64 = u64::MAX;
