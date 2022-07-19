@@ -13,8 +13,8 @@ pub use jormungandr_automation::jormungandr::{
 };
 use jormungandr_automation::{
     jormungandr::{
-        ExplorerProcess, JormungandrProcess, LogLevel, NodeAlias, ShutdownError, StartupError,
-        StartupVerificationMode, Status,
+        explorer::configuration::ExplorerParams, ExplorerProcess, JormungandrProcess, LogLevel,
+        NodeAlias, ShutdownError, StartupError, StartupVerificationMode, Status,
     },
     testing::SyncNode,
 };
@@ -171,7 +171,7 @@ impl Node {
     }
 
     pub fn explorer(&self) -> ExplorerProcess {
-        self.process.explorer()
+        self.process.explorer(ExplorerParams::default())
     }
 
     pub fn log(&self, info: &str) {

@@ -2,7 +2,10 @@ use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{explorer::verifier::ExplorerVerifier, ConfigurationBuilder},
+    jormungandr::{
+        explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
+        ConfigurationBuilder,
+    },
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
@@ -22,7 +25,8 @@ pub fn explorer_transaction_test() {
     let (jormungandr, _initial_stake_pools) =
         startup::start_stake_pool(&[sender.clone()], &[], &mut config).unwrap();
 
-    let explorer_process = jormungandr.explorer();
+    let params = ExplorerParams::new("70".to_string(), None, None);
+    let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
     let transaction = thor::FragmentBuilder::new(

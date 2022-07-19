@@ -426,7 +426,6 @@ impl ExplorerVerifier {
     fn decode_bech32_pk(bech32_public_key: &str) -> PublicKey<Ed25519> {
         let (_, data, _variant) = bech32::decode(bech32_public_key).unwrap();
         let dat = Vec::from_base32(&data).unwrap();
-        let pk = PublicKey::<Ed25519>::from_binary(&dat).unwrap();
-        pk
+        PublicKey::<Ed25519>::from_binary(&dat).unwrap()
     }
 }

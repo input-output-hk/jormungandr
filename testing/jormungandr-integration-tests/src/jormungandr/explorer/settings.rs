@@ -1,7 +1,8 @@
 use crate::startup;
 use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
 use jormungandr_automation::jormungandr::{
-    explorer::verifier::ExplorerVerifier, ConfigurationBuilder,
+    explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
+    ConfigurationBuilder,
 };
 use jormungandr_lib::interfaces::DEFAULT_EPOCH_STABILITY_DEPTH;
 use std::num::NonZeroU64;
@@ -32,7 +33,7 @@ pub fn explorer_settings() {
     )
     .unwrap();
 
-    let explorer_process = jormungandr.explorer();
+    let explorer_process = jormungandr.explorer(ExplorerParams::default());
     let explorer = explorer_process.client();
     let explorer_settings = explorer.settings().unwrap().data.unwrap().settings;
 

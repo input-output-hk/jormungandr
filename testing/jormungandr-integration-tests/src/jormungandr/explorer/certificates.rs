@@ -2,7 +2,10 @@ use assert_fs::TempDir;
 use chain_impl_mockchain::{block::BlockDate, transaction::AccountIdentifier};
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{explorer::verifier::ExplorerVerifier, ConfigurationBuilder, Starter},
+    jormungandr::{
+        explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
+        ConfigurationBuilder, Starter,
+    },
 };
 use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
 
@@ -34,7 +37,8 @@ pub fn explorer_stake_pool_registration_test() {
         BlockDate::first().next_epoch(),
     );
 
-    let explorer_process = jormungandr.explorer();
+    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
     let stake_pool_reg_fragment =
@@ -96,7 +100,8 @@ pub fn explorer_owner_delegation_test() {
         .send_fragment(&mut stake_pool_owner, stake_pool_reg_fragment, &jormungandr)
         .expect("error while sending registration certificate for stake pool owner");
 
-    let explorer_process = jormungandr.explorer();
+    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
     let owner_deleg_fragment = fragment_builder.owner_delegation(&stake_pool_owner, &stake_pool);
@@ -163,7 +168,8 @@ pub fn explorer_full_delegation_test() {
         .send_fragment(&mut stake_pool_owner, stake_pool_reg_fragment, &jormungandr)
         .expect("error while sending registration certificate for stake pool owner");
 
-    let explorer_process = jormungandr.explorer();
+    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
     let full_deleg_fragment = fragment_builder.delegation(&full_delegator, &stake_pool);
@@ -246,7 +252,8 @@ pub fn explorer_split_delegation_test() {
         )
         .expect("error while sending registration certificate for stake pool owner");
 
-    let explorer_process = jormungandr.explorer();
+    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
     let split_delegation_fragment = fragment_builder.delegation_to_many(
@@ -308,7 +315,8 @@ pub fn explorer_pool_update_test() {
         BlockDate::first().next_epoch(),
     );
 
-    let explorer_process = jormungandr.explorer();
+    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
     let stake_pool_reg_fragment =
@@ -384,7 +392,8 @@ pub fn explorer_pool_retire_test() {
         BlockDate::first().next_epoch(),
     );
 
-    let explorer_process = jormungandr.explorer();
+    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
     let stake_pool_reg_fragment =

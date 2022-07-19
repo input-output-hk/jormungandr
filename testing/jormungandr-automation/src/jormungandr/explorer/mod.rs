@@ -1,5 +1,6 @@
 use self::{
     client::GraphQlClient,
+    configuration::ExplorerParams,
     data::{
         address, all_blocks, all_stake_pools, all_vote_plans, blocks_by_chain_length, epoch,
         last_block, settings, stake_pool, transaction_by_id, Address, AllBlocks, AllStakePools,
@@ -17,6 +18,7 @@ use std::{
 mod client;
 // Macro here expand to something containing PUBLIC/PRIVATE fields that
 // do not respect the naming convention
+pub mod configuration;
 #[allow(clippy::upper_case_acronyms)]
 mod data;
 pub mod verifier;
@@ -53,22 +55,49 @@ pub struct ExplorerProcess {
 }
 
 impl ExplorerProcess {
-    pub fn new(node_address: String, logs_dir: Option<std::path::PathBuf>) -> Self {
+    pub fn new(
+        node_address: String,
+        logs_dir: Option<std::path::PathBuf>,
+        params: ExplorerParams,
+    ) -> Self {
         let path = get_explorer_app();
         let explorer_port = get_available_port();
         let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
 
+        let mut explorer_cmd = Command::new(path);
+        explorer_cmd.args(&[
+            "--node",
+            node_address.as_ref(),
+            "--binding-address",
+            explorer_listen_address.as_ref(),
+            "--log-output",
+            "stdout",
+        ]);
+
+        if params.address_bech32_prefix.is_some() {
+            explorer_cmd.args([
+                "--address-bech32-prefix",
+                params.address_bech32_prefix.unwrap().as_ref(),
+            ]);
+        }
+
+        if params.query_depth_limit.is_some() {
+            explorer_cmd.args([
+                "--query-depth-limit",
+                params.query_depth_limit.unwrap().as_ref(),
+            ]);
+        }
+
+        if params.query_complexity_limit.is_some() {
+            explorer_cmd.args([
+                "--query-complexity-limit",
+                params.query_complexity_limit.unwrap().as_ref(),
+            ]);
+        }
+
         let process = ExplorerProcess {
             handler: Some(
-                Command::new(path)
-                    .args(&[
-                        "--node",
-                        node_address.as_ref(),
-                        "--binding-address",
-                        explorer_listen_address.as_ref(),
-                        "--log-output",
-                        "stdout",
-                    ])
+                explorer_cmd
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .spawn()
