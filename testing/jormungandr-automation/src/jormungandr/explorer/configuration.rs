@@ -1,4 +1,3 @@
-use crate::testing::configuration::get_explorer_app;
 #[derive(Clone)]
 pub struct ExplorerParams {
     pub query_complexity_limit: Option<String>,
