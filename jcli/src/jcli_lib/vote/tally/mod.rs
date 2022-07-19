@@ -3,6 +3,7 @@ mod decryption_shares;
 pub(crate) mod merge_results;
 
 use super::Error;
+pub use merge_results::MergedVotePlan;
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

@@ -14,6 +14,8 @@ mod committee;
 mod election_public_key;
 mod tally;
 
+pub use tally::MergedVotePlan;
+
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("I/O error")]
