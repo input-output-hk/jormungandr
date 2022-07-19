@@ -1,8 +1,10 @@
 use crate::startup;
 use assert_fs::fixture::TempDir;
 use chain_impl_mockchain::{block::BlockDate, testing::TestGen};
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
-use jormungandr_automation::jormungandr::Starter;
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+};
 use jormungandr_lib::interfaces::InitialUTxO;
 
 const FIRST_NONCE: u64 = 0;
@@ -109,7 +111,7 @@ pub fn evm_transaction_wrong_nonce() {
         &[bob.clone()],
         &mut ConfigurationBuilder::new(),
     )
-        .unwrap();
+    .unwrap();
 
     let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
 
@@ -145,9 +147,12 @@ pub fn evm_transaction_wrong_nonce() {
     );
     let evm_transaction_fragment = fragment_builder.evm_transaction(evm_transaction);
 
-    assert_eq!(transaction_sender
-        .send_fragment(&mut alice, evm_transaction_fragment, &jormungandr)
-        .is_err(), true, "Sending evm transaction with wrong nonce did not fail as expected.");
+    assert!(
+        transaction_sender
+            .send_fragment(&mut alice, evm_transaction_fragment, &jormungandr)
+            .is_err(),
+        "Sending evm transaction with wrong nonce did not fail as expected."
+    );
 }
 
 #[test]
@@ -170,7 +175,11 @@ pub fn evm_transaction_insufficient_funds() {
         ])
         .build(&temp_dir);
 
-    let jormungandr = Starter::new().config(config).temp_dir(temp_dir).start().unwrap();
+    let jormungandr = Starter::new()
+        .config(config)
+        .temp_dir(temp_dir)
+        .start()
+        .unwrap();
 
     let alice_account_state_before = jcli
         .rest()
@@ -218,9 +227,12 @@ pub fn evm_transaction_insufficient_funds() {
     );
     let evm_transaction_fragment = fragment_builder.evm_transaction(evm_transaction);
 
-    assert_eq!(transaction_sender
-                   .send_fragment(&mut alice, evm_transaction_fragment, &jormungandr)
-                   .is_err(), true, "Sending evm transaction with insufficient funds did not fail as expected.");
+    assert!(
+        transaction_sender
+            .send_fragment(&mut alice, evm_transaction_fragment, &jormungandr)
+            .is_err(),
+        "Sending evm transaction with insufficient funds did not fail as expected."
+    );
 
     let alice_account_state_after = jcli
         .rest()
@@ -234,13 +246,7 @@ pub fn evm_transaction_insufficient_funds() {
     let alice_balance_after: u64 = (*alice_account_state_after.value()).into();
     let bob_balance_after: u64 = (*bob_account_state_after.value()).into();
 
-    assert_eq!(
-        alice_balance_after,
-        alice_account_balance_before
-    );
+    assert_eq!(alice_balance_after, alice_account_balance_before);
 
-    assert_eq!(
-        bob_balance_after,
-        bob_account_balance_before
-    );
+    assert_eq!(bob_balance_after, bob_account_balance_before);
 }

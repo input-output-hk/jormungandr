@@ -6,9 +6,12 @@ use jormungandr_automation::jormungandr::ConfigurationBuilder;
 pub fn test_evm_mapping() {
     let mut alice = thor::Wallet::default();
 
-    let (jormungandr, _stake_pools) =
-        startup::start_stake_pool(&[alice.clone()], &[alice.clone()], &mut ConfigurationBuilder::new())
-            .unwrap();
+    let (jormungandr, _stake_pools) = startup::start_stake_pool(
+        &[alice.clone()],
+        &[alice.clone()],
+        &mut ConfigurationBuilder::new(),
+    )
+    .unwrap();
 
     let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
 
@@ -158,9 +161,12 @@ pub fn test_evm_mapping_twice() {
 pub fn test_evm_mapping_already_mapped() {
     let mut alice = thor::Wallet::default();
 
-    let (jormungandr, _stake_pools) =
-        startup::start_stake_pool(&[alice.clone()], &[alice.clone()], &mut ConfigurationBuilder::new())
-            .unwrap();
+    let (jormungandr, _stake_pools) = startup::start_stake_pool(
+        &[alice.clone()],
+        &[alice.clone()],
+        &mut ConfigurationBuilder::new(),
+    )
+    .unwrap();
 
     let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
 
