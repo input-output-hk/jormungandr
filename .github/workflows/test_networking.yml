@@ -1,4 +1,4 @@
-name: CI
+name: CI-Tests
 
 on:
   push:
@@ -101,7 +101,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         profile: [debug, release]
         toolchain: [stable]
         include:
@@ -135,13 +135,6 @@ jobs:
           [profile.release]
           lto = "thin"
           EOF
-
-      - name: Allow long paths on Windows
-        if: ${{ matrix.os == 'windows-latest' }}
-        shell: powershell
-        run: |
-          reg add HKLM\SYSTEM\CurrentControlSet\Control\FileSystem /v LongPathsEnabled /t REG_DWORD /d 1 /f
-          git config --system core.longpaths true
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -212,9 +205,7 @@ jobs:
           args: --tests ${{ env.CARGO_FLAGS }} --features network
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # TMPDIR and TMP are used respectively on unix and windows
           TMPDIR: ${{ runner.temp }}
-          TMP: ${{ runner.temp }}
 
       - name: Pack logs from failed tests
         if: ${{ failure() }}
