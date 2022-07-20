@@ -84,6 +84,14 @@ pub struct Settings;
 pub struct TransactionById;
 
 #[derive(GraphQLQuery)]
+#[graphql(
+    query_path = "resources/explorer/graphql/transaction_by_id_certificates.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug,Clone"
+)]
+pub struct TransactionByIdCertificates;
+
+#[derive(GraphQLQuery)]
 #[allow(clippy::upper_case_acronyms)]
 #[graphql(
     query_path = "resources/explorer/graphql/voteplans.graphql",

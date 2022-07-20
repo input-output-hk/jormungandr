@@ -44,11 +44,11 @@ pub fn explorer_transaction_test() {
         .assert_in_block_with_wait(&wait);
 
     let explorer_transaction = explorer
-        .transaction(fragment_id.into())
+        .transaction_certificates(fragment_id.into())
         .expect("non existing transaction")
         .data
         .unwrap()
         .transaction;
 
-    ExplorerVerifier::assert_transaction(transaction, explorer_transaction).unwrap();
+    ExplorerVerifier::assert_transaction_certificates(transaction, explorer_transaction).unwrap();
 }

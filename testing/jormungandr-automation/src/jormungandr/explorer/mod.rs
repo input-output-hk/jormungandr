@@ -3,8 +3,9 @@ use self::{
     configuration::ExplorerParams,
     data::{
         address, all_blocks, all_stake_pools, all_vote_plans, blocks_by_chain_length, epoch,
-        last_block, settings, stake_pool, transaction_by_id, Address, AllBlocks, AllStakePools,
-        AllVotePlans, BlocksByChainLength, Epoch, LastBlock, Settings, StakePool, TransactionById,
+        last_block, settings, stake_pool, transaction_by_id, transaction_by_id_certificates,
+        Address, AllBlocks, AllStakePools, AllVotePlans, BlocksByChainLength, Epoch, LastBlock,
+        Settings, StakePool, TransactionById, TransactionByIdCertificates,
     },
 };
 use crate::testing::configuration::get_explorer_app;
@@ -307,6 +308,22 @@ impl Explorer {
         self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body: Response<transaction_by_id::ResponseData> = response.json()?;
+        self.print_log(&response_body);
+        Ok(response_body)
+    }
+
+    pub fn transaction_certificates(
+        &self,
+        hash: Hash,
+    ) -> Result<Response<transaction_by_id_certificates::ResponseData>, ExplorerError> {
+        let query =
+            TransactionByIdCertificates::build_query(transaction_by_id_certificates::Variables {
+                id: hash.to_string(),
+            });
+        self.print_request(&query);
+        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response_body: Response<transaction_by_id_certificates::ResponseData> =
+            response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
     }

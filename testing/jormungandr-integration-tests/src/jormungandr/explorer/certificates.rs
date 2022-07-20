@@ -53,15 +53,18 @@ pub fn explorer_stake_pool_registration_test() {
         .expect("error while sending registration certificate for first stake pool owner");
 
     let trans = explorer
-        .transaction(stake_pool_reg_fragment.hash().into())
+        .transaction_certificates(stake_pool_reg_fragment.hash().into())
         .expect("non existing stake pool registration transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
     let exp_stake_pool_reg_transaction = trans.data.unwrap().transaction;
 
-    ExplorerVerifier::assert_transaction(stake_pool_reg_fragment, exp_stake_pool_reg_transaction)
-        .unwrap();
+    ExplorerVerifier::assert_transaction_certificates(
+        stake_pool_reg_fragment,
+        exp_stake_pool_reg_transaction,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -115,7 +118,7 @@ pub fn explorer_owner_delegation_test() {
         .expect("error while sending owner delegation cert");
 
     let trans = explorer
-        .transaction(owner_deleg_fragment.hash().into())
+        .transaction_certificates(owner_deleg_fragment.hash().into())
         .expect("non existing owner delegation transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
@@ -124,7 +127,11 @@ pub fn explorer_owner_delegation_test() {
 
     println!("value2: {:?}", &owner_deleg_transaction);
 
-    ExplorerVerifier::assert_transaction(owner_deleg_fragment, owner_deleg_transaction).unwrap();
+    ExplorerVerifier::assert_transaction_certificates(
+        owner_deleg_fragment,
+        owner_deleg_transaction,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -183,14 +190,18 @@ pub fn explorer_full_delegation_test() {
         .unwrap();
 
     let trans = explorer
-        .transaction(full_deleg_fragment.hash().into())
+        .transaction_certificates(full_deleg_fragment.hash().into())
         .expect("non existing full delegation transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
     let stake_pool_reg_transaction = trans.data.unwrap().transaction;
 
-    ExplorerVerifier::assert_transaction(full_deleg_fragment, stake_pool_reg_transaction).unwrap();
+    ExplorerVerifier::assert_transaction_certificates(
+        full_deleg_fragment,
+        stake_pool_reg_transaction,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -270,14 +281,14 @@ pub fn explorer_split_delegation_test() {
         .unwrap();
 
     let trans = explorer
-        .transaction(split_delegation_fragment.hash().into())
+        .transaction_certificates(split_delegation_fragment.hash().into())
         .expect("non split delegation transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
     let exp_split_delegation_transaction = trans.data.unwrap().transaction;
 
-    ExplorerVerifier::assert_transaction(
+    ExplorerVerifier::assert_transaction_certificates(
         split_delegation_fragment,
         exp_split_delegation_transaction,
     )
@@ -352,15 +363,18 @@ pub fn explorer_pool_update_test() {
     first_stake_pool_owner.confirm_transaction();
 
     let trans = explorer
-        .transaction(stake_pool_update_fragment.hash().into())
+        .transaction_certificates(stake_pool_update_fragment.hash().into())
         .expect("non stake pool update transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
     let stake_pool_update_transaction = trans.data.unwrap().transaction;
 
-    ExplorerVerifier::assert_transaction(stake_pool_update_fragment, stake_pool_update_transaction)
-        .unwrap();
+    ExplorerVerifier::assert_transaction_certificates(
+        stake_pool_update_fragment,
+        stake_pool_update_transaction,
+    )
+    .unwrap();
 }
 
 #[test]
@@ -418,15 +432,18 @@ pub fn explorer_pool_retire_test() {
         .unwrap();
 
     let trans = explorer
-        .transaction(stake_pool_retire_fragment.hash().into())
+        .transaction_certificates(stake_pool_retire_fragment.hash().into())
         .expect("non stake pool update transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
     let stake_pool_retire_transaction = trans.data.unwrap().transaction;
 
-    ExplorerVerifier::assert_transaction(stake_pool_retire_fragment, stake_pool_retire_transaction)
-        .unwrap();
+    ExplorerVerifier::assert_transaction_certificates(
+        stake_pool_retire_fragment,
+        stake_pool_retire_transaction,
+    )
+    .unwrap();
 }
 
 #[test]

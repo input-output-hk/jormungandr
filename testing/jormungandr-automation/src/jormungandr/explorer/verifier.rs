@@ -1,12 +1,12 @@
 use super::data::{
     settings::SettingsSettingsFees,
-    transaction_by_id::{
-        TransactionByIdTransaction, TransactionByIdTransactionCertificate,
-        TransactionByIdTransactionCertificateOnOwnerStakeDelegation,
-        TransactionByIdTransactionCertificateOnPoolRegistration,
-        TransactionByIdTransactionCertificateOnPoolRetirement,
-        TransactionByIdTransactionCertificateOnPoolUpdate,
-        TransactionByIdTransactionCertificateOnStakeDelegation,
+    transaction_by_id_certificates::{
+        TransactionByIdCertificatesTransaction, TransactionByIdCertificatesTransactionCertificate,
+        TransactionByIdCertificatesTransactionCertificateOnOwnerStakeDelegation,
+        TransactionByIdCertificatesTransactionCertificateOnPoolRegistration,
+        TransactionByIdCertificatesTransactionCertificateOnPoolRetirement,
+        TransactionByIdCertificatesTransactionCertificateOnPoolUpdate,
+        TransactionByIdCertificatesTransactionCertificateOnStakeDelegation,
     },
 };
 use bech32::FromBase32;
@@ -34,9 +34,9 @@ pub enum VerifierError {
 pub struct ExplorerVerifier;
 
 impl ExplorerVerifier {
-    pub fn assert_transaction(
+    pub fn assert_transaction_certificates(
         fragment: Fragment,
-        exp_transaction: TransactionByIdTransaction,
+        exp_transaction: TransactionByIdCertificatesTransaction,
     ) -> Result<(), VerifierError> {
         if exp_transaction.certificate.is_none() {
             if let Fragment::Transaction(frag_transaction) = fragment {
@@ -50,7 +50,7 @@ impl ExplorerVerifier {
         } else {
             let exp_certificate = exp_transaction.certificate.as_ref().unwrap();
             match exp_certificate {
-                TransactionByIdTransactionCertificate::StakeDelegation(exp_cert) => {
+                TransactionByIdCertificatesTransactionCertificate::StakeDelegation(exp_cert) => {
                     if let Fragment::StakeDelegation(frag_cert) = fragment {
                         Self::assert_transaction_params(frag_cert.clone(), exp_transaction.clone())
                             .unwrap();
@@ -62,7 +62,9 @@ impl ExplorerVerifier {
                         })
                     }
                 }
-                TransactionByIdTransactionCertificate::OwnerStakeDelegation(exp_cert) => {
+                TransactionByIdCertificatesTransactionCertificate::OwnerStakeDelegation(
+                    exp_cert,
+                ) => {
                     if let Fragment::OwnerStakeDelegation(frag_cert) = fragment {
                         Self::assert_transaction_params(frag_cert.clone(), exp_transaction.clone())
                             .unwrap();
@@ -74,7 +76,7 @@ impl ExplorerVerifier {
                         })
                     }
                 }
-                TransactionByIdTransactionCertificate::PoolRegistration(exp_cert) => {
+                TransactionByIdCertificatesTransactionCertificate::PoolRegistration(exp_cert) => {
                     if let Fragment::PoolRegistration(frag_cert) = fragment {
                         Self::assert_transaction_params(frag_cert.clone(), exp_transaction.clone())
                             .unwrap();
@@ -86,7 +88,7 @@ impl ExplorerVerifier {
                         })
                     }
                 }
-                TransactionByIdTransactionCertificate::PoolRetirement(exp_cert) => {
+                TransactionByIdCertificatesTransactionCertificate::PoolRetirement(exp_cert) => {
                     if let Fragment::PoolRetirement(frag_cert) = fragment {
                         Self::assert_transaction_params(frag_cert.clone(), exp_transaction.clone())
                             .unwrap();
@@ -98,7 +100,7 @@ impl ExplorerVerifier {
                         })
                     }
                 }
-                TransactionByIdTransactionCertificate::PoolUpdate(exp_cert) => {
+                TransactionByIdCertificatesTransactionCertificate::PoolUpdate(exp_cert) => {
                     if let Fragment::PoolUpdate(frag_cert) = fragment {
                         Self::assert_transaction_params(frag_cert.clone(), exp_transaction.clone())
                             .unwrap();
@@ -110,20 +112,20 @@ impl ExplorerVerifier {
                         })
                     }
                 }
-                TransactionByIdTransactionCertificate::VotePlan(_) => todo!(),
-                TransactionByIdTransactionCertificate::VoteCast(_) => todo!(),
-                TransactionByIdTransactionCertificate::VoteTally(_) => todo!(),
-                TransactionByIdTransactionCertificate::UpdateProposal(_) => todo!(),
-                TransactionByIdTransactionCertificate::UpdateVote(_) => todo!(),
-                TransactionByIdTransactionCertificate::MintToken(_) => todo!(),
-                TransactionByIdTransactionCertificate::EvmMapping(_) => todo!(),
+                TransactionByIdCertificatesTransactionCertificate::VotePlan(_) => todo!(),
+                TransactionByIdCertificatesTransactionCertificate::VoteCast(_) => todo!(),
+                TransactionByIdCertificatesTransactionCertificate::VoteTally(_) => todo!(),
+                TransactionByIdCertificatesTransactionCertificate::UpdateProposal(_) => todo!(),
+                TransactionByIdCertificatesTransactionCertificate::UpdateVote(_) => todo!(),
+                TransactionByIdCertificatesTransactionCertificate::MintToken(_) => todo!(),
+                TransactionByIdCertificatesTransactionCertificate::EvmMapping(_) => todo!(),
             }
         }
     }
 
     fn assert_transaction_params<P>(
         frag_transaction: Transaction<P>,
-        exp_transaction: TransactionByIdTransaction,
+        exp_transaction: TransactionByIdCertificatesTransaction,
     ) -> Result<(), VerifierError> {
         assert_eq!(
             frag_transaction.as_slice().nb_inputs(),
@@ -202,7 +204,7 @@ impl ExplorerVerifier {
 
     fn assert_pool_registration(
         frag_cert: Transaction<PoolRegistration>,
-        exp_cert: TransactionByIdTransactionCertificateOnPoolRegistration,
+        exp_cert: TransactionByIdCertificatesTransactionCertificateOnPoolRegistration,
     ) {
         let pool_cert = frag_cert.as_slice().payload().into_payload();
 
@@ -274,7 +276,7 @@ impl ExplorerVerifier {
 
     fn assert_stake_delegation(
         frag_cert: Transaction<StakeDelegation>,
-        exp_cert: TransactionByIdTransactionCertificateOnStakeDelegation,
+        exp_cert: TransactionByIdCertificatesTransactionCertificateOnStakeDelegation,
     ) -> Result<(), VerifierError> {
         let deleg_cert = frag_cert.as_slice().payload().into_payload();
         let adr = AddressReadable::from_string_anyprefix(&exp_cert.account.id).unwrap();
@@ -309,7 +311,7 @@ impl ExplorerVerifier {
     }
     fn assert_owner_delegation(
         frag_cert: Transaction<OwnerStakeDelegation>,
-        exp_cert: TransactionByIdTransactionCertificateOnOwnerStakeDelegation,
+        exp_cert: TransactionByIdCertificatesTransactionCertificateOnOwnerStakeDelegation,
     ) -> Result<(), VerifierError> {
         let owner_cert = frag_cert.as_slice().payload().into_payload();
 
@@ -336,7 +338,7 @@ impl ExplorerVerifier {
 
     fn assert_pool_retirement(
         frag_cert: Transaction<PoolRetirement>,
-        exp_cert: TransactionByIdTransactionCertificateOnPoolRetirement,
+        exp_cert: TransactionByIdCertificatesTransactionCertificateOnPoolRetirement,
     ) {
         let ret_cert = frag_cert.as_slice().payload().into_payload();
         assert_eq!(ret_cert.pool_id.to_string(), exp_cert.pool_id);
@@ -348,7 +350,7 @@ impl ExplorerVerifier {
 
     fn assert_pool_update(
         frag_cert: Transaction<PoolUpdate>,
-        exp_cert: TransactionByIdTransactionCertificateOnPoolUpdate,
+        exp_cert: TransactionByIdCertificatesTransactionCertificateOnPoolUpdate,
     ) {
         let update_cert = frag_cert.as_slice().payload().into_payload();
         assert_eq!(update_cert.pool_id.to_string(), exp_cert.pool_id);
