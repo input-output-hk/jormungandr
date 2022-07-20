@@ -95,7 +95,7 @@ jobs:
         run: cargo fetch --locked
 
   tests:
-    name: Tests
+    name: Evm Tests
     needs: [cache_info, update_deps]
     runs-on: ${{ matrix.os }}
     strategy:
