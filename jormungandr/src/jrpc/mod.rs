@@ -52,6 +52,9 @@ pub enum Error {
     TransactionDecodedErorr(String),
     #[error("Mining is not currently supported")]
     MiningIsNotAllowed,
+    #[cfg(feature = "evm")]
+    #[error(transparent)]
+    TransactionSignatureError(#[from] chain_impl_mockchain::evm::crypto::secp256k1::Error),
 }
 
 pub async fn start_jrpc_server(config: Config, _context: ContextLock) {

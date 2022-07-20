@@ -12,7 +12,7 @@ use crate::{
 };
 use chain_evm::{
     ethereum_types::{H160, H256, H512},
-    transaction::EthereumSignedTransaction,
+    transaction::{EthereumSignedTransaction, EthereumUnsignedTransaction},
 };
 use chain_impl_mockchain::{block::Block as JorBlock, fragment::Fragment};
 use jormungandr_lib::interfaces::FragmentOrigin;
@@ -123,9 +123,16 @@ pub fn get_transaction_receipt(_hash: H256, _context: &Context) -> Result<Option
     Err(Error::NonArchiveNode)
 }
 
-pub fn sign_transaction(_tx: Transaction, _context: &Context) -> Result<Bytes, Error> {
-    // TODO implement
-    Ok(Default::default())
+pub fn sign_transaction(raw_tx: Bytes, _context: &Context) -> Result<Bytes, Error> {
+    // FIXME: the account secret is assumed to be obtained by an internal keystore
+    //        THIS IMPLEMENTATION GENERATES A RANDOM SECRET EACH TIME, and is meant
+    //        to be a placeholder that mocks getting the account secret. DO NOT RELY
+    //        ON THIS METHOD UNTIL A SECURE KEYSTORE MECHANISM IS IN PLACE.
+    let account_secret = chain_impl_mockchain::evm::util::generate_account_secret();
+    let tx = EthereumUnsignedTransaction::from_bytes(raw_tx.as_ref())
+        .map_err(|e| Error::TransactionDecodedErorr(e.to_string()))?;
+    let signed = account_secret.sign(tx)?;
+    Ok(Bytes::from(signed.to_bytes().into_boxed_slice()))
 }
 
 pub async fn estimate_gas(tx: Transaction, context: &Context) -> Result<Number, Error> {
