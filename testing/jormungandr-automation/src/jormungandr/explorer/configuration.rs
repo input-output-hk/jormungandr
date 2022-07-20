@@ -19,6 +19,7 @@ impl ExplorerParams {
     }
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for ExplorerParams {
     fn default() -> Self {
         ExplorerParams {
