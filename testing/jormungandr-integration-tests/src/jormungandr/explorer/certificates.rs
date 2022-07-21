@@ -11,6 +11,8 @@ use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
 
 #[test]
 pub fn explorer_stake_pool_registration_test() {
+    let query_complexity_limit = 70;
+    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
@@ -37,7 +39,11 @@ pub fn explorer_stake_pool_registration_test() {
         BlockDate::first().next_epoch(),
     );
 
-    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let params = ExplorerParams::new(
+        query_complexity_limit.to_string(),
+        query_depth_limit.to_string(),
+        None,
+    );
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
@@ -69,6 +75,8 @@ pub fn explorer_stake_pool_registration_test() {
 
 #[test]
 pub fn explorer_owner_delegation_test() {
+    let query_complexity_limit = 70;
+    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut stake_pool_owner = thor::Wallet::default();
     let stake_pool = StakePool::new(&stake_pool_owner);
@@ -103,7 +111,11 @@ pub fn explorer_owner_delegation_test() {
         .send_fragment(&mut stake_pool_owner, stake_pool_reg_fragment, &jormungandr)
         .expect("error while sending registration certificate for stake pool owner");
 
-    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let params = ExplorerParams::new(
+        query_complexity_limit.to_string(),
+        query_depth_limit.to_string(),
+        None,
+    );
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
@@ -125,8 +137,6 @@ pub fn explorer_owner_delegation_test() {
 
     let owner_deleg_transaction = trans.data.unwrap().transaction;
 
-    println!("value2: {:?}", &owner_deleg_transaction);
-
     ExplorerVerifier::assert_transaction_certificates(
         owner_deleg_fragment,
         owner_deleg_transaction,
@@ -136,6 +146,8 @@ pub fn explorer_owner_delegation_test() {
 
 #[test]
 pub fn explorer_full_delegation_test() {
+    let query_complexity_limit = 70;
+    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut stake_pool_owner = thor::Wallet::default();
     let mut full_delegator = thor::Wallet::default();
@@ -175,7 +187,11 @@ pub fn explorer_full_delegation_test() {
         .send_fragment(&mut stake_pool_owner, stake_pool_reg_fragment, &jormungandr)
         .expect("error while sending registration certificate for stake pool owner");
 
-    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let params = ExplorerParams::new(
+        query_complexity_limit.to_string(),
+        query_depth_limit.to_string(),
+        None,
+    );
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
@@ -206,6 +222,8 @@ pub fn explorer_full_delegation_test() {
 
 #[test]
 pub fn explorer_split_delegation_test() {
+    let query_complexity_limit = 70;
+    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
     let mut split_delegator = thor::Wallet::default();
@@ -263,7 +281,11 @@ pub fn explorer_split_delegation_test() {
         )
         .expect("error while sending registration certificate for stake pool owner");
 
-    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let params = ExplorerParams::new(
+        query_complexity_limit.to_string(),
+        query_depth_limit.to_string(),
+        None,
+    );
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
@@ -282,7 +304,7 @@ pub fn explorer_split_delegation_test() {
 
     let trans = explorer
         .transaction_certificates(split_delegation_fragment.hash().into())
-        .expect("non split delegation transaction");
+        .expect("non existing split delegation transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
@@ -297,6 +319,8 @@ pub fn explorer_split_delegation_test() {
 
 #[test]
 pub fn explorer_pool_update_test() {
+    let query_complexity_limit = 70;
+    let query_depth_limit = 30;
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
@@ -326,7 +350,11 @@ pub fn explorer_pool_update_test() {
         BlockDate::first().next_epoch(),
     );
 
-    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let params = ExplorerParams::new(
+        query_complexity_limit.to_string(),
+        query_depth_limit.to_string(),
+        None,
+    );
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
@@ -364,7 +392,7 @@ pub fn explorer_pool_update_test() {
 
     let trans = explorer
         .transaction_certificates(stake_pool_update_fragment.hash().into())
-        .expect("non stake pool update transaction");
+        .expect("non existing stake pool update transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
@@ -379,6 +407,8 @@ pub fn explorer_pool_update_test() {
 
 #[test]
 pub fn explorer_pool_retire_test() {
+    let query_complexity_limit = 70;
+    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
@@ -406,7 +436,11 @@ pub fn explorer_pool_retire_test() {
         BlockDate::first().next_epoch(),
     );
 
-    let params = ExplorerParams::new("70".to_string(), "30".to_string(), None);
+    let params = ExplorerParams::new(
+        query_complexity_limit.to_string(),
+        query_depth_limit.to_string(),
+        None,
+    );
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
@@ -433,7 +467,7 @@ pub fn explorer_pool_retire_test() {
 
     let trans = explorer
         .transaction_certificates(stake_pool_retire_fragment.hash().into())
-        .expect("non stake pool update transaction");
+        .expect("non existing stake pool update transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
