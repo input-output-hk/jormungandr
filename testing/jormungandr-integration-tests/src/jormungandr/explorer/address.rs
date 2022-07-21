@@ -4,6 +4,7 @@ use jormungandr_automation::{
     jormungandr::{explorer::configuration::ExplorerParams, ConfigurationBuilder},
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
+//TODO still wip
 #[ignore]
 #[test]
 pub fn explorer_address_test() {
