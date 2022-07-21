@@ -123,15 +123,13 @@ pub fn get_transaction_receipt(_hash: H256, _context: &Context) -> Result<Option
     Err(Error::NonArchiveNode)
 }
 
-pub fn sign_transaction(raw_tx: Bytes, _context: &Context) -> Result<Bytes, Error> {
-    // FIXME: the account secret is assumed to be obtained by an internal keystore
-    //        THIS IMPLEMENTATION GENERATES A RANDOM SECRET EACH TIME, and is meant
-    //        to be a placeholder that mocks getting the account secret. DO NOT RELY
-    //        ON THIS METHOD UNTIL A SECURE KEYSTORE MECHANISM IS IN PLACE.
-    let account_secret = chain_impl_mockchain::evm::util::generate_account_secret();
+pub fn sign_transaction(raw_tx: Bytes, context: &Context) -> Result<Bytes, Error> {
+    // FIXME: this currently gets the first evm key it finds in the temporary
+    //        keystore.
+    let account_secret = context.try_full()?.evm_keys.first().ok_or(Error::AccountSignatureError)?;
     let tx = EthereumUnsignedTransaction::from_bytes(raw_tx.as_ref())
-        .map_err(|e| Error::TransactionDecodedErorr(e.to_string()))?;
-    let signed = account_secret.sign(tx)?;
+        .map_err(|e| Error::TransactionDecodedError(e.to_string()))?;
+    let signed = tx.sign(&account_secret)?;
     Ok(Bytes::from(signed.to_bytes().into_boxed_slice()))
 }
 
@@ -144,9 +142,13 @@ pub async fn estimate_gas(tx: Transaction, context: &Context) -> Result<Number, 
         .into())
 }
 
-pub fn sign(_address: H160, _message: Bytes, _context: &Context) -> Result<H512, Error> {
-    // TODO implement
-    Ok(H512::zero())
+pub fn sign(_address: H160, message: Bytes, context: &Context) -> Result<H512, Error> {
+    // FIXME: this currently gets the first evm key it finds in the temporary
+    //        keystore provided by the `FullContext` type instead of finding
+    //        the secret for the provided `_address` argument.
+    let account_secret = context.try_full()?.evm_keys.first().ok_or(Error::AccountSignatureError)?;
+    let signed = sign_data(message.as_ref(), &account_secret)?;
+    todo!("call eip_191_signature method");
 }
 
 pub fn call(_tx: Transaction, _number: BlockNumber, _context: &Context) -> Result<Bytes, Error> {
