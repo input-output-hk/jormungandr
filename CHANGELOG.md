@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add /v1/account-votes-all endpoint to return the list of proposals a user has voted for
+- Remove /v1/account-votes-count endpoint
 - Validate server id is the expected one during gRPC handshake
 - fix incorrect keys bech32 HRP by always using the ones provided by the library
 - update REST API: add new endpoint AccountVotes (`/api/v1/votes/plan/account-votes/{account_id}`)
@@ -30,6 +32,7 @@
 - Bump rand from 0.8.4 to 0.8.5
 - Bump os_info from 3.1.0 to 3.3.0
 - Bump log from 0.4.14 to 0.4.17
+- Bump regex from 1.5.5 to 1.6.0
 - Add jcli option to generate and sign EVM mapping certificates.
 - Add new Ethreum RPC endpoints for getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
 - Add new Ethreum RPC endpoints for transaction handling: eth_sendTransaction, eth_sendRawTransaction, eth_getTransactionByHash, eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex, eth_getTransactionReceipt, eth_signTransaction, eth_estimateGas, eth_sign, eth_call

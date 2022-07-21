@@ -47,10 +47,10 @@ pub fn filter(
         .and(with_context.clone())
         .and_then(handlers::get_account_votes);
 
-    let votes_count = warp::path!("votes" / "plan" / "accounts-votes-count")
+    let votes_count = warp::path!("votes" / "plan" / "accounts-votes-all")
         .and(warp::get())
         .and(with_context)
-        .and_then(handlers::get_accounts_votes_count);
+        .and_then(handlers::get_accounts_votes_all);
 
     let routes = fragments.or(votes_with_plan).or(votes).or(votes_count);
 
