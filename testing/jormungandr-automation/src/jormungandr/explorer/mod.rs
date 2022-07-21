@@ -17,10 +17,7 @@ use std::{
     time::Duration,
 };
 mod client;
-// Macro here expand to something containing PUBLIC/PRIVATE fields that
-// do not respect the naming convention
 pub mod configuration;
-#[allow(clippy::upper_case_acronyms)]
 mod data;
 pub mod verifier;
 mod wrappers;
