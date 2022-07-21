@@ -63,8 +63,8 @@ pub async fn send_transaction(tx: Transaction, context: &Context) -> Result<H256
 
 pub async fn send_raw_transaction(raw_tx: Bytes, context: &Context) -> Result<H256, Error> {
     let tx = EthereumSignedTransaction::from_bytes(raw_tx.as_ref())
-        .map_err(|e| Error::TransactionDecodedErorr(e.to_string()))?;
-    let fragment = Fragment::Evm(tx.try_into().map_err(Error::TransactionDecodedErorr)?);
+        .map_err(|e| Error::TransactionDecodedError(e.to_string()))?;
+    let fragment = Fragment::Evm(tx.try_into().map_err(Error::TransactionDecodedError)?);
     let (reply_handle, reply_future) = intercom::unary_reply();
     let msg = TransactionMsg::SendTransactions {
         origin: FragmentOrigin::JRpc,

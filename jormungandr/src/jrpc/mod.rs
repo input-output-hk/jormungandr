@@ -48,8 +48,8 @@ pub enum Error {
     EstimationError(#[from] Box<LedgerError>),
     #[error("Could not process fragment")]
     Fragment(FragmentsProcessingSummary),
-    #[error("Cound not decode Ethereum transaction bytes, erorr: {0}")]
-    TransactionDecodedErorr(String),
+    #[error("Cound not decode Ethereum transaction bytes, error: {0}")]
+    TransactionDecodedError(String),
     #[error("Mining is not currently supported")]
     MiningIsNotAllowed,
     #[cfg(feature = "evm")]
