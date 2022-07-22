@@ -92,12 +92,12 @@ pub fn explorer_sanity_test() {
 fn transaction_by_id(explorer: &Explorer, fragment_id: FragmentId) {
     let explorer_transaction = explorer
         .transaction(fragment_id.into())
-        .expect("non existing transaction");
+        .expect("Non existing transaction");
 
     assert_eq!(
         fragment_id,
         Hash::from_str(&explorer_transaction.data.unwrap().transaction.id).unwrap(),
-        "incorrect fragment id"
+        "Incorrect fragment id"
     );
 }
 

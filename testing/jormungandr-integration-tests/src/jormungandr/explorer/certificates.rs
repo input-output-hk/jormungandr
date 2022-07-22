@@ -24,7 +24,7 @@ pub fn explorer_stake_pool_registration_test() {
         .temp_dir(temp_dir)
         .config(config)
         .start()
-        .expect("cannot start jormungandr");
+        .expect("Cannot start jormungandr");
 
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -56,11 +56,11 @@ pub fn explorer_stake_pool_registration_test() {
             stake_pool_reg_fragment.clone(),
             &jormungandr,
         )
-        .expect("error while sending registration certificate for first stake pool owner");
+        .expect("Error while sending registration certificate for first stake pool owner");
 
     let trans = explorer
         .transaction_certificates(stake_pool_reg_fragment.hash().into())
-        .expect("non existing stake pool registration transaction");
+        .expect("Non existing stake pool registration transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
@@ -89,7 +89,7 @@ pub fn explorer_owner_delegation_test() {
         .temp_dir(temp_dir)
         .config(config)
         .start()
-        .expect("cannot start jormungandr");
+        .expect("Cannot start jormungandr");
 
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -109,7 +109,7 @@ pub fn explorer_owner_delegation_test() {
 
     fragment_sender
         .send_fragment(&mut stake_pool_owner, stake_pool_reg_fragment, &jormungandr)
-        .expect("error while sending registration certificate for stake pool owner");
+        .expect("Error while sending registration certificate for stake pool owner");
 
     let params = ExplorerParams::new(
         query_complexity_limit.to_string(),
@@ -127,11 +127,11 @@ pub fn explorer_owner_delegation_test() {
             owner_deleg_fragment.clone(),
             &jormungandr,
         )
-        .expect("error while sending owner delegation cert");
+        .expect("Error while sending owner delegation cert");
 
     let trans = explorer
         .transaction_certificates(owner_deleg_fragment.hash().into())
-        .expect("non existing owner delegation transaction");
+        .expect("Non existing owner delegation transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
@@ -165,7 +165,7 @@ pub fn explorer_full_delegation_test() {
         .temp_dir(temp_dir)
         .config(config)
         .start()
-        .expect("cannot start jormungandr");
+        .expect("Cannot start jormungandr");
 
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -185,7 +185,7 @@ pub fn explorer_full_delegation_test() {
 
     fragment_sender
         .send_fragment(&mut stake_pool_owner, stake_pool_reg_fragment, &jormungandr)
-        .expect("error while sending registration certificate for stake pool owner");
+        .expect("Error while sending registration certificate for stake pool owner");
 
     let params = ExplorerParams::new(
         query_complexity_limit.to_string(),
@@ -207,7 +207,7 @@ pub fn explorer_full_delegation_test() {
 
     let trans = explorer
         .transaction_certificates(full_deleg_fragment.hash().into())
-        .expect("non existing full delegation transaction");
+        .expect("Non existing full delegation transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
@@ -244,7 +244,7 @@ pub fn explorer_split_delegation_test() {
         .temp_dir(temp_dir)
         .config(config)
         .start()
-        .expect("cannot start jormungandr");
+        .expect("Cannot start jormungandr");
 
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -268,7 +268,7 @@ pub fn explorer_split_delegation_test() {
             stake_pool_reg_fragment,
             &jormungandr,
         )
-        .expect("error while sending registration certificate for stake pool owner");
+        .expect("Error while sending registration certificate for stake pool owner");
 
     let stake_pool_reg_fragment =
         fragment_builder.stake_pool_registration(&second_stake_pool_owner, &second_stake_pool);
@@ -279,7 +279,7 @@ pub fn explorer_split_delegation_test() {
             stake_pool_reg_fragment,
             &jormungandr,
         )
-        .expect("error while sending registration certificate for stake pool owner");
+        .expect("Error while sending registration certificate for stake pool owner");
 
     let params = ExplorerParams::new(
         query_complexity_limit.to_string(),
@@ -304,7 +304,7 @@ pub fn explorer_split_delegation_test() {
 
     let trans = explorer
         .transaction_certificates(split_delegation_fragment.hash().into())
-        .expect("non existing split delegation transaction");
+        .expect("Non existing split delegation transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
@@ -335,7 +335,7 @@ pub fn explorer_pool_update_test() {
         .temp_dir(temp_dir)
         .config(config)
         .start()
-        .expect("cannot start jormungandr");
+        .expect("Cannot start jormungandr");
 
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -367,7 +367,7 @@ pub fn explorer_pool_update_test() {
             stake_pool_reg_fragment,
             &jormungandr,
         )
-        .expect("error while sending registration certificate for first stake pool owner");
+        .expect("Error while sending registration certificate for first stake pool owner");
 
     let mut new_stake_pool = first_stake_pool.clone();
     let mut stake_pool_info = new_stake_pool.info_mut();
@@ -392,7 +392,7 @@ pub fn explorer_pool_update_test() {
 
     let trans = explorer
         .transaction_certificates(stake_pool_update_fragment.hash().into())
-        .expect("non existing stake pool update transaction");
+        .expect("Non existing stake pool update transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
@@ -421,7 +421,7 @@ pub fn explorer_pool_retire_test() {
         .temp_dir(temp_dir)
         .config(config)
         .start()
-        .expect("cannot start jormungandr");
+        .expect("Cannot start jormungandr");
 
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
@@ -453,7 +453,7 @@ pub fn explorer_pool_retire_test() {
             stake_pool_reg_fragment,
             &jormungandr,
         )
-        .expect("error while sending registration certificate for first stake pool owner");
+        .expect("Error while sending registration certificate for first stake pool owner");
     let stake_pool_retire_fragment =
         fragment_builder.stake_pool_retire(vec![&first_stake_pool_owner], &first_stake_pool);
 
@@ -467,7 +467,7 @@ pub fn explorer_pool_retire_test() {
 
     let trans = explorer
         .transaction_certificates(stake_pool_retire_fragment.hash().into())
-        .expect("non existing stake pool update transaction");
+        .expect("Non existing stake pool update transaction");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
@@ -479,9 +479,3 @@ pub fn explorer_pool_retire_test() {
     )
     .unwrap();
 }
-
-#[test]
-pub fn explorer_vote_certificates_test() {}
-
-#[test]
-pub fn explorer_evm_mapping_certificates_test() {}

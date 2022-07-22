@@ -40,7 +40,7 @@ pub fn explorer_transaction_test() {
 
     let attempts_number = 20;
     let wait = Wait::new(Duration::from_secs(3), attempts_number);
-    
+
     let fragment_id = jcli
         .fragment_sender(&jormungandr)
         .send(&transaction.encode())
@@ -48,7 +48,7 @@ pub fn explorer_transaction_test() {
 
     let explorer_transaction = explorer
         .transaction_certificates(fragment_id.into())
-        .expect("non existing transaction")
+        .expect("Non existing transaction")
         .data
         .unwrap()
         .transaction;

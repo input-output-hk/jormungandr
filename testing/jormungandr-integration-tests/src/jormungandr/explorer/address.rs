@@ -12,6 +12,7 @@ pub fn explorer_address_test() {
     let sender = thor::Wallet::default();
     let _receiver = thor::Wallet::default();
     let _transaction_value = 1_000;
+    let address_bech32_prefix = "ca".to_string();
 
     let mut config = ConfigurationBuilder::new();
     config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
@@ -19,10 +20,7 @@ pub fn explorer_address_test() {
     let (jormungandr, _initial_stake_pools) =
         startup::start_stake_pool(&[sender.clone()], &[], &mut config).unwrap();
 
-    let params = ExplorerParams {
-        address_bech32_prefix: "ca".to_string().into(),
-        ..Default::default()
-    };
+    let params = ExplorerParams::new(None, None, address_bech32_prefix);
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
@@ -37,6 +35,6 @@ pub fn explorer_address_test() {
     assert_eq!(
         explorer_address.data.unwrap().address.id,
         sender.address().to_string(),
-        "Addresses not the same"
+        "Addresses is not the same"
     );
 }
