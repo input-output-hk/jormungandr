@@ -2,12 +2,13 @@ use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId, key::Hash};
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{explorer::configuration::ExplorerParams, ConfigurationBuilder, Explorer},
+    jormungandr::{explorer::configuration::ExplorerParams, ConfigurationBuilder, Explorer}, testing::time,
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
 use std::{str::FromStr, time::Duration};
 use thor::{StakePool, TransactionHash};
+use jormungandr_lib::interfaces::BlockDate as jorBlockDate;
 
 /// test checks if there is upto date schema
 /// prereq:
@@ -55,10 +56,10 @@ pub fn explorer_sanity_test() {
     let faucet = thor::Wallet::default();
     let receiver = thor::Wallet::default();
     let query_complexity_limit = 70;
-    let attempts_number = 20;
 
     let mut config = ConfigurationBuilder::new();
-    config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
+    config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+    .with_slot_duration(5).with_slots_per_epoch(10);
 
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
@@ -76,12 +77,13 @@ pub fn explorer_sanity_test() {
     .unwrap()
     .encode();
 
-    let wait = Wait::new(Duration::from_secs(3), attempts_number);
+    //let wait = Wait::new(Duration::from_secs(3), attempts_number);
     let fragment_id = jcli
         .fragment_sender(&jormungandr)
-        .send(&transaction)
-        .assert_in_block_with_wait(&wait);
+        .send(&transaction).fragment_id();
+        //.assert_in_block_with_wait(&wait);
 
+    time::wait_for_date(jorBlockDate::new(0, 8), jormungandr.rest());
     transaction_by_id(explorer, fragment_id);
     blocks(explorer, jormungandr.logger.get_created_blocks_hashes());
     stake_pools(explorer, initial_stake_pools.as_ref());
