@@ -20,6 +20,8 @@ const DAVID: &str = "DAVID";
 #[test]
 #[ignore]
 pub fn retire_stake_pool_explorer() {
+    let wait_epoch = 0;
+    let wait_slot_id = 30;
     let mut controller = NetworkBuilder::default()
         .topology(
             Topology::default()
@@ -75,7 +77,7 @@ pub fn retire_stake_pool_explorer() {
         .spawn(SpawnParams::new(LEADER_4).in_memory())
         .unwrap();
 
-    time::wait_for_date(BlockDate::new(0, 30), leader_1.rest());
+    time::wait_for_date(BlockDate::new(wait_epoch, wait_slot_id), leader_1.rest());
 
     let explorer_process = leader_1.explorer(ExplorerParams::default());
     let explorer = explorer_process.client();

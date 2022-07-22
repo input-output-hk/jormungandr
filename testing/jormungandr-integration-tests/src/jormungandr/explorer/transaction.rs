@@ -38,7 +38,9 @@ pub fn explorer_transaction_test() {
     .transaction(&sender, receiver.address(), transaction_value.into())
     .unwrap();
 
-    let wait = Wait::new(Duration::from_secs(3), 20);
+    let attempts_number = 20;
+    let wait = Wait::new(Duration::from_secs(3), attempts_number);
+    
     let fragment_id = jcli
         .fragment_sender(&jormungandr)
         .send(&transaction.encode())

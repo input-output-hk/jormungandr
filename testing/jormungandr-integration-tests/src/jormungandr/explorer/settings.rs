@@ -12,8 +12,11 @@ use std::num::NonZeroU64;
 
 pub fn explorer_settings() {
     let alice = thor::Wallet::default();
+    let constant_fee = 1;
+    let coefficient_fee = 2;
+    let certificate_fee = 1;
 
-    let mut linear_fees = LinearFee::new(1, 2, 1);
+    let mut linear_fees = LinearFee::new(constant_fee, coefficient_fee, certificate_fee);
     linear_fees.per_certificate_fees(PerCertificateFee::new(
         NonZeroU64::new(2),
         NonZeroU64::new(3),
