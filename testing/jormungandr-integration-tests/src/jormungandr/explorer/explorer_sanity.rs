@@ -55,6 +55,7 @@ pub fn explorer_sanity_test() {
     let faucet = thor::Wallet::default();
     let receiver = thor::Wallet::default();
     let query_complexity_limit = 70;
+    let attempts_number = 20;
 
     let mut config = ConfigurationBuilder::new();
     config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
@@ -75,7 +76,7 @@ pub fn explorer_sanity_test() {
     .unwrap()
     .encode();
 
-    let wait = Wait::new(Duration::from_secs(3), 20);
+    let wait = Wait::new(Duration::from_secs(3), attempts_number);
     let fragment_id = jcli
         .fragment_sender(&jormungandr)
         .send(&transaction)

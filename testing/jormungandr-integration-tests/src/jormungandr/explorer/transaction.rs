@@ -21,7 +21,6 @@ pub fn explorer_transaction_test() {
     let query_complexity_limit = 70;
     let attempts_number = 20;
 
-
     let mut config = ConfigurationBuilder::new();
     config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
 
