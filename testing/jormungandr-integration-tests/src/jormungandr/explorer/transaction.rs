@@ -19,6 +19,8 @@ pub fn explorer_transaction_test() {
     let receiver = thor::Wallet::default();
     let transaction_value = 1_000;
     let query_complexity_limit = 70;
+    let attempts_number = 20;
+
 
     let mut config = ConfigurationBuilder::new();
     config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
@@ -38,7 +40,6 @@ pub fn explorer_transaction_test() {
     .transaction(&sender, receiver.address(), transaction_value.into())
     .unwrap();
 
-    let attempts_number = 20;
     let wait = Wait::new(Duration::from_secs(3), attempts_number);
 
     let fragment_id = jcli
