@@ -54,6 +54,7 @@ pub fn explorer_sanity_test() {
     let jcli: JCli = Default::default();
     let faucet = thor::Wallet::default();
     let receiver = thor::Wallet::default();
+    let query_complexity_limit = 70;
 
     let mut config = ConfigurationBuilder::new();
     config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
@@ -61,7 +62,7 @@ pub fn explorer_sanity_test() {
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
-    let params = ExplorerParams::new("70".to_string(), None, None);
+    let params = ExplorerParams::new(query_complexity_limit.to_string(), None, None);
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
