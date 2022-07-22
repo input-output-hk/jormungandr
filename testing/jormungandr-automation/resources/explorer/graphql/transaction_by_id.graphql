@@ -1,7 +1,7 @@
 query TransactionById($id: String!){
     transaction(id: $id) {
         id
-        blocks{id date{...blockDate}} #TODO check all the block parameters
+        blocks{id date{...blockDate}}
         inputs{amount address{id}}
         outputs{amount address{id}}}}
 

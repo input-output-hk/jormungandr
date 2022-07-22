@@ -34,8 +34,7 @@ query TransactionByIdCertificates($id: String!){
                                 }
             ... on UpdateVote{proposalId voterId{id}}
             ... on MintToken{name}
-            ... on EvmMapping {address} #check with evm dropping
-
+            ... on EvmMapping {address}
     }}
 }
 
