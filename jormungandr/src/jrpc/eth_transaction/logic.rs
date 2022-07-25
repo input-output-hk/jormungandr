@@ -11,7 +11,7 @@ use crate::{
     },
 };
 use chain_evm::{
-    ethereum_types::{H160, H256},
+    ethereum_types::{H160, H256, H512},
     signature::eip_191_signature,
     transaction::{EthereumSignedTransaction, EthereumUnsignedTransaction},
 };
@@ -124,7 +124,7 @@ pub fn get_transaction_receipt(_hash: H256, _context: &Context) -> Result<Option
     Err(Error::NonArchiveNode)
 }
 
-pub fn sign_transaction(raw_tx: Bytes, context: &Context) -> Result<Bytes, Error> {
+pub fn sign_transaction(tx: Transaction, context: &Context) -> Result<Bytes, Error> {
     // FIXME: this currently gets the first evm key it finds in the temporary
     //        keystore.
     let account_secret = context
@@ -147,9 +147,7 @@ pub async fn estimate_gas(tx: Transaction, context: &Context) -> Result<Number, 
         .into())
 }
 
-pub fn sign(_address: H160, message: Bytes, context: &Context) -> Result<Bytes, Error> {
-    // FIXME: this currently gets the first evm key it finds in the temporary
-    //        keystore.
+pub fn sign(address: H160, message: Bytes, context: &Context) -> Result<H512, Error> {
     let account_secret = context
         .try_full()?
         .evm_keys
@@ -166,10 +164,11 @@ pub fn sign(_address: H160, message: Bytes, context: &Context) -> Result<Bytes, 
     Ok(Bytes::from(Box::from(signature)))
 }
 
-pub async fn call(_tx: Bytes, _number: BlockNumber, context: &Context) -> Result<Bytes, Error> {
-    // TODO implement
-    let tx = EthereumUnsignedTransaction::from_bytes(_tx.as_ref())
-        .map_err(|e| Error::TransactionDecodedError(e.to_string()))?;
+pub async fn call(
+    tx: Transaction,
+    _number: BlockNumber,
+    context: &Context,
+) -> Result<Bytes, Error> {
     // FIXME: this currently gets the first evm key it finds in the temporary
     //        keystore.
     let account_secret = context
@@ -180,6 +179,7 @@ pub async fn call(_tx: Bytes, _number: BlockNumber, context: &Context) -> Result
     let _evm_transaction = EvmTransaction::try_from(tx.sign(account_secret)?).unwrap();
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
     if let Some(_ledger) = std::sync::Arc::get_mut(&mut blockchain_tip.ledger()) {
+        // TODO implement running transaction
         unimplemented!("run transaction and update ledger");
     };
     Ok(Default::default())
