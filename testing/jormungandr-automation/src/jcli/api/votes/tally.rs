@@ -1,5 +1,6 @@
 use crate::jcli::command::votes::TallyCommand;
 use assert_cmd::assert::OutputAssertExt;
+use jcli_lib::vote::MergedVotePlan;
 use jortestkit::prelude::ProcessOutput;
 use std::path::Path;
 
@@ -67,5 +68,21 @@ impl Tally {
             .success()
             .get_output()
             .as_lossy_string()
+    }
+
+    pub fn merge_results<P: AsRef<Path>>(
+        self,
+        vote_plans: P,
+    ) -> Result<Vec<MergedVotePlan>, serde_json::Error> {
+        serde_json::from_str(
+            &self
+                .tally_command
+                .merge_results(vote_plans)
+                .build()
+                .assert()
+                .success()
+                .get_output()
+                .as_lossy_string(),
+        )
     }
 }

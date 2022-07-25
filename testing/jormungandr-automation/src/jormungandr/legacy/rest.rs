@@ -84,8 +84,8 @@ impl BackwardCompatibleRest {
         Ok(response_text)
     }
 
-    pub fn account_votes_count(&self) -> Result<String, reqwest::Error> {
-        let response_text = self.raw().account_votes_count()?.text()?;
+    pub fn account_votes_all(&self) -> Result<String, reqwest::Error> {
+        let response_text = self.raw().account_votes_all()?.text()?;
         self.print_response_text(&response_text);
         Ok(response_text)
     }
