@@ -46,6 +46,14 @@ impl GraphQlClient {
                 query.query, self.base_url
             );
         }
+        if reqwest::blocking::Client::new()
+                .head(&self.base_url)
+                .send()
+                .is_ok()
+            {
+                println!("explorer is up again at {:?}",self.base_url );
+            };
+
         reqwest::blocking::Client::new()
             .post(&self.base_url)
             .json(&query)

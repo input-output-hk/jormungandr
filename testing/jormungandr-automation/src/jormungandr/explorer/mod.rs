@@ -112,7 +112,7 @@ impl ExplorerProcess {
                 .send()
                 .is_ok()
             {
-                println!("explorer is up");
+                println!("explorer is up at http://{}/", &explorer_listen_address);
                 break;
             };
             println!("Waiting for explorer bootstrap...attempt {:?} of {:?}",wait_bootstrap.current(),wait_bootstrap.attempts());
