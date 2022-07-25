@@ -6,7 +6,9 @@ use jormungandr_automation::{
         explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
         ConfigurationBuilder, Starter,
     },
+    testing::time,
 };
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, BlockDate as jorBlockDate};
 use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
 
 #[test]
@@ -159,6 +161,9 @@ pub fn explorer_full_delegation_test() {
             stake_pool_owner.to_initial_fund(1_000_000),
             full_delegator.to_initial_fund(2_000_000),
         ])
+        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+        .with_slot_duration(5)
+        .with_slots_per_epoch(10)
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
@@ -204,6 +209,8 @@ pub fn explorer_full_delegation_test() {
             &jormungandr,
         )
         .unwrap();
+
+    time::wait_for_date(jorBlockDate::new(0, 8), jormungandr.rest());
 
     let trans = explorer
         .transaction_certificates(full_deleg_fragment.hash().into())
@@ -329,6 +336,9 @@ pub fn explorer_pool_update_test() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![first_stake_pool_owner.to_initial_fund(1_000_000)])
+        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+        .with_slot_duration(5)
+        .with_slots_per_epoch(10)
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
@@ -390,6 +400,7 @@ pub fn explorer_pool_update_test() {
         .assert_in_block();
     first_stake_pool_owner.confirm_transaction();
 
+    time::wait_for_date(jorBlockDate::new(0, 8), jormungandr.rest());
     let trans = explorer
         .transaction_certificates(stake_pool_update_fragment.hash().into())
         .expect("Non existing stake pool update transaction");
