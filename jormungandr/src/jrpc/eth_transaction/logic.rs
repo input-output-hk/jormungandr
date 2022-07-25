@@ -12,8 +12,8 @@ use crate::{
 };
 use chain_evm::{
     ethereum_types::{H160, H256},
-    transaction::{EthereumSignedTransaction, EthereumUnsignedTransaction},
     signature::eip_191_signature,
+    transaction::{EthereumSignedTransaction, EthereumUnsignedTransaction},
 };
 use chain_impl_mockchain::{block::Block as JorBlock, fragment::Fragment};
 use jormungandr_lib::interfaces::FragmentOrigin;
@@ -127,10 +127,14 @@ pub fn get_transaction_receipt(_hash: H256, _context: &Context) -> Result<Option
 pub fn sign_transaction(raw_tx: Bytes, context: &Context) -> Result<Bytes, Error> {
     // FIXME: this currently gets the first evm key it finds in the temporary
     //        keystore.
-    let account_secret = context.try_full()?.evm_keys.first().ok_or(Error::AccountSignatureError)?;
+    let account_secret = context
+        .try_full()?
+        .evm_keys
+        .first()
+        .ok_or(Error::AccountSignatureError)?;
     let tx = EthereumUnsignedTransaction::from_bytes(raw_tx.as_ref())
         .map_err(|e| Error::TransactionDecodedError(e.to_string()))?;
-    let signed = tx.sign(&account_secret)?;
+    let signed = tx.sign(account_secret)?;
     Ok(Bytes::from(signed.to_bytes().into_boxed_slice()))
 }
 
@@ -146,8 +150,12 @@ pub async fn estimate_gas(tx: Transaction, context: &Context) -> Result<Number, 
 pub fn sign(_address: H160, message: Bytes, context: &Context) -> Result<Bytes, Error> {
     // FIXME: this currently gets the first evm key it finds in the temporary
     //        keystore.
-    let account_secret = context.try_full()?.evm_keys.first().ok_or(Error::AccountSignatureError)?;
-    let signed = eip_191_signature(message, &account_secret)?;
+    let account_secret = context
+        .try_full()?
+        .evm_keys
+        .first()
+        .ok_or(Error::AccountSignatureError)?;
+    let signed = eip_191_signature(message, account_secret)?;
     let (recovery_id, sig_bytes) = signed.serialize_compact();
     let signature = {
         let mut sig = [0u8; 65];
