@@ -11,8 +11,9 @@ use crate::{
     },
 };
 use chain_evm::{
-    ethereum_types::{H160, H256, H512},
+    ethereum_types::{H160, H256},
     transaction::{EthereumSignedTransaction, EthereumUnsignedTransaction},
+    signature::eip_191_signature,
 };
 use chain_impl_mockchain::{block::Block as JorBlock, fragment::Fragment};
 use jormungandr_lib::interfaces::FragmentOrigin;
@@ -142,13 +143,19 @@ pub async fn estimate_gas(tx: Transaction, context: &Context) -> Result<Number, 
         .into())
 }
 
-pub fn sign(_address: H160, message: Bytes, context: &Context) -> Result<H512, Error> {
+pub fn sign(_address: H160, message: Bytes, context: &Context) -> Result<Bytes, Error> {
     // FIXME: this currently gets the first evm key it finds in the temporary
-    //        keystore provided by the `FullContext` type instead of finding
-    //        the secret for the provided `_address` argument.
+    //        keystore.
     let account_secret = context.try_full()?.evm_keys.first().ok_or(Error::AccountSignatureError)?;
-    let signed = sign_data(message.as_ref(), &account_secret)?;
-    todo!("call eip_191_signature method");
+    let signed = eip_191_signature(message, &account_secret)?;
+    let (recovery_id, sig_bytes) = signed.serialize_compact();
+    let signature = {
+        let mut sig = [0u8; 65];
+        sig[..64].copy_from_slice(&sig_bytes[..]);
+        sig[64] = (recovery_id.to_i32() % 2) as u8;
+        sig
+    };
+    Ok(Bytes::from(Box::from(signature)))
 }
 
 pub fn call(_tx: Transaction, _number: BlockNumber, _context: &Context) -> Result<Bytes, Error> {
