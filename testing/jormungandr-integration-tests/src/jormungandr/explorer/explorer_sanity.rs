@@ -60,7 +60,7 @@ pub fn explorer_sanity_test() {
     config
         .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
         .with_slot_duration(5)
-        .with_slots_per_epoch(10);
+        .with_slots_per_epoch(15);
 
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
@@ -85,7 +85,7 @@ pub fn explorer_sanity_test() {
         .fragment_id();
     //.assert_in_block_with_wait(&wait);
 
-    time::wait_for_date(jorBlockDate::new(0, 8), jormungandr.rest());
+    time::wait_for_date(jorBlockDate::new(0, 13), jormungandr.rest());
     transaction_by_id(explorer, fragment_id);
     blocks(explorer, jormungandr.logger.get_created_blocks_hashes());
     stake_pools(explorer, initial_stake_pools.as_ref());
