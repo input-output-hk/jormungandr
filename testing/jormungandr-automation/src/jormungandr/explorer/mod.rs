@@ -112,6 +112,7 @@ impl ExplorerProcess {
                 .send()
                 .is_ok()
             {
+                println!("explorer is up");
                 break;
             };
             println!("Waiting for explorer bootstrap...attempt {:?} of {:?}",wait_bootstrap.current(),wait_bootstrap.attempts());
