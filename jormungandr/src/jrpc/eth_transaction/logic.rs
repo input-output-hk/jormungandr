@@ -15,7 +15,7 @@ use chain_evm::{
     signature::eip_191_signature,
     transaction::{EthereumSignedTransaction, EthereumUnsignedTransaction},
 };
-use chain_impl_mockchain::{block::Block as JorBlock, fragment::Fragment};
+use chain_impl_mockchain::{block::Block as JorBlock, evm::EvmTransaction, fragment::Fragment};
 use jormungandr_lib::interfaces::FragmentOrigin;
 
 fn get_transaction_from_block_by_index(
@@ -166,7 +166,21 @@ pub fn sign(_address: H160, message: Bytes, context: &Context) -> Result<Bytes, 
     Ok(Bytes::from(Box::from(signature)))
 }
 
-pub fn call(_tx: Transaction, _number: BlockNumber, _context: &Context) -> Result<Bytes, Error> {
+pub async fn call(_tx: Bytes, _number: BlockNumber, context: &Context) -> Result<Bytes, Error> {
     // TODO implement
+    let tx = EthereumUnsignedTransaction::from_bytes(_tx.as_ref())
+        .map_err(|e| Error::TransactionDecodedError(e.to_string()))?;
+    // FIXME: this currently gets the first evm key it finds in the temporary
+    //        keystore.
+    let account_secret = context
+        .try_full()?
+        .evm_keys
+        .first()
+        .ok_or(Error::AccountSignatureError)?;
+    let _evm_transaction = EvmTransaction::try_from(tx.sign(account_secret)?).unwrap();
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
+    if let Some(_ledger) = std::sync::Arc::get_mut(&mut blockchain_tip.ledger()) {
+        unimplemented!("run transaction and update ledger");
+    };
     Ok(Default::default())
 }
