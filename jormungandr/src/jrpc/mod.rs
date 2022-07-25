@@ -58,6 +58,8 @@ pub enum Error {
     #[cfg(feature = "evm")]
     #[error("Could not retrieve Ethereum account secret")]
     AccountSignatureError,
+    #[error("Ethereum signature error: {0}")]
+    EthereumSignatureError(String),
 }
 
 pub async fn start_jrpc_server(config: Config, _context: ContextLock) {

@@ -132,8 +132,7 @@ pub fn sign_transaction(tx: Transaction, context: &Context) -> Result<Bytes, Err
         .evm_keys
         .first()
         .ok_or(Error::AccountSignatureError)?;
-    let tx = EthereumUnsignedTransaction::from_bytes(raw_tx.as_ref())
-        .map_err(|e| Error::TransactionDecodedError(e.to_string()))?;
+    let tx = EthereumUnsignedTransaction::from(tx);
     let signed = tx.sign(account_secret)?;
     Ok(Bytes::from(signed.to_bytes().into_boxed_slice()))
 }
@@ -151,7 +150,8 @@ pub fn sign(address: H160, message: Bytes, context: &Context) -> Result<H512, Er
     let account_secret = context
         .try_full()?
         .evm_keys
-        .first()
+        .iter()
+        .find(|&sec| sec.address() == address)
         .ok_or(Error::AccountSignatureError)?;
     let signed = eip_191_signature(message, account_secret)?;
     let (recovery_id, sig_bytes) = signed.serialize_compact();
@@ -161,7 +161,7 @@ pub fn sign(address: H160, message: Bytes, context: &Context) -> Result<H512, Er
         sig[64] = (recovery_id.to_i32() % 2) as u8;
         sig
     };
-    Ok(Bytes::from(Box::from(signature)))
+    Ok(H512::from_slice(&signature[..]))
 }
 
 pub async fn call(
@@ -174,13 +174,12 @@ pub async fn call(
     let account_secret = context
         .try_full()?
         .evm_keys
-        .first()
+        .iter()
+        .find(|&sec| sec.address() == tx.from)
         .ok_or(Error::AccountSignatureError)?;
-    let _evm_transaction = EvmTransaction::try_from(tx.sign(account_secret)?).unwrap();
-    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
-    if let Some(_ledger) = std::sync::Arc::get_mut(&mut blockchain_tip.ledger()) {
-        // TODO implement running transaction
-        unimplemented!("run transaction and update ledger");
-    };
+    let eth_tx = EthereumUnsignedTransaction::from(tx);
+    let _evm_transaction = EvmTransaction::try_from(eth_tx.sign(account_secret)?)
+        .map_err(Error::EthereumSignatureError)?;
+    let _blockchain_tip = context.blockchain_tip()?.get_ref().await;
     Ok(Default::default())
 }
