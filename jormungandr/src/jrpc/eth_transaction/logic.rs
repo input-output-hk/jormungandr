@@ -125,12 +125,11 @@ pub fn get_transaction_receipt(_hash: H256, _context: &Context) -> Result<Option
 }
 
 pub fn sign_transaction(tx: Transaction, context: &Context) -> Result<Bytes, Error> {
-    // FIXME: this currently gets the first evm key it finds in the temporary
-    //        keystore.
     let account_secret = context
         .try_full()?
         .evm_keys
-        .first()
+        .iter()
+        .find(|&sec| sec.address() == tx.from)
         .ok_or(Error::AccountSignatureError)?;
     let tx = EthereumUnsignedTransaction::from(tx);
     let signed = tx.sign(account_secret)?;
@@ -166,11 +165,9 @@ pub fn sign(address: H160, message: Bytes, context: &Context) -> Result<H512, Er
 
 pub async fn call(
     tx: Transaction,
-    _number: BlockNumber,
+    _: BlockNumber,
     context: &Context,
 ) -> Result<Bytes, Error> {
-    // FIXME: this currently gets the first evm key it finds in the temporary
-    //        keystore.
     let account_secret = context
         .try_full()?
         .evm_keys
@@ -178,8 +175,12 @@ pub async fn call(
         .find(|&sec| sec.address() == tx.from)
         .ok_or(Error::AccountSignatureError)?;
     let eth_tx = EthereumUnsignedTransaction::from(tx);
-    let _evm_transaction = EvmTransaction::try_from(eth_tx.sign(account_secret)?)
+    let evm_transaction = EvmTransaction::try_from(eth_tx.sign(account_secret)?)
         .map_err(Error::EthereumSignatureError)?;
-    let _blockchain_tip = context.blockchain_tip()?.get_ref().await;
-    Ok(Default::default())
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
+    Ok(blockchain_tip
+        .ledger()
+        .call_evm_transaction(evm_transaction)
+        .map_err(Box::new)?
+        .into())
 }
