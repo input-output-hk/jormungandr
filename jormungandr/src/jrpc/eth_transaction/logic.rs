@@ -163,11 +163,7 @@ pub fn sign(address: H160, message: Bytes, context: &Context) -> Result<H512, Er
     Ok(H512::from_slice(&signature[..]))
 }
 
-pub async fn call(
-    tx: Transaction,
-    _: BlockNumber,
-    context: &Context,
-) -> Result<Bytes, Error> {
+pub async fn call(tx: Transaction, _: BlockNumber, context: &Context) -> Result<Bytes, Error> {
     let account_secret = context
         .try_full()?
         .evm_keys
