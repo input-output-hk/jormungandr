@@ -309,9 +309,9 @@ paths:
                       items:
                         type: integer
 
-  /api/v1/votes/plan/accounts-votes-count:
+  /api/v1/votes/plan/accounts-votes-all:
     get:
-      description: Get count of submitted and accepted ballots per account
+      description: Get submitted and accepted ballots per every account
       tags:
         - vote
       responses:
@@ -326,8 +326,12 @@ paths:
                     type: string
                     description: hex encoded account identifier
                   text:
-                    type: integer
-                    description: total votes casted
+                    type: array
+                    items:
+                      type: string
+                      description: Hex-encoded proposal id
+                      pattern: '[0-9a-f]{64}'
+                    description: ids of the proposals a user has voted for
 
 components:
   schemas:

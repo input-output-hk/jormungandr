@@ -3,6 +3,8 @@ pub mod block;
 pub mod cors;
 #[cfg(feature = "evm")]
 pub mod evm_mapping;
+#[cfg(feature = "evm")]
+pub mod evm_transaction;
 pub mod explorer;
 pub mod fragments;
 pub mod genesis;
