@@ -105,7 +105,7 @@ impl ExplorerProcess {
             client: Explorer::new(explorer_listen_address.clone()),
         };
 
-        let mut wait_bootstrap = Wait::new(Duration::from_secs(1), 10);
+        let mut wait_bootstrap = Wait::new(Duration::from_secs(1), 60);
         while !wait_bootstrap.timeout_reached() {
             if reqwest::blocking::Client::new()
                 .head(format!("http://{}/", &explorer_listen_address))
@@ -114,7 +114,7 @@ impl ExplorerProcess {
             {
                 break;
             };
-
+            println!("Waiting for explorer bootstrap...attempt {:?} of {:?}",wait_bootstrap.current(),wait_bootstrap.attempts());
             wait_bootstrap.advance();
         }
 
