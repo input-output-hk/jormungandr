@@ -41,16 +41,16 @@ http-zipkin = "0.3.0"
 
 jormungandr-lib = {path = "../jormungandr-lib"}
 
-cardano-legacy-address = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature"}
-chain-addr = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature"}
-chain-core = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature"}
-chain-crypto = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature"}
-chain-impl-mockchain = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature"}
-chain-time = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature"}
-chain-vote = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature"}
-chain-ser = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature"}
-chain-network = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature"}
-imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature"}
+cardano-legacy-address = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-addr = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-core = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-crypto = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-impl-mockchain = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-time = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-vote = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-ser = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+chain-network = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
+imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
 
 [features]
 default = []

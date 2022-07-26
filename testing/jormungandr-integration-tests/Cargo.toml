@@ -12,12 +12,12 @@ tokio = { version = "1.15", features = ["macros", "time"] }
 futures      = "0.3.21"
 base64 = "0.13"
 hex = "0.4.2"
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature" }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature" }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature" }
-chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "evm-crypto-signature" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 hersir = { path = "../hersir" }
 loki = { path = "../loki" }
