@@ -104,6 +104,7 @@ pub fn eth_transaction_module(context: ContextLock) -> RpcModule<ContextLock> {
             let context = context.read().await;
             let (tx, number) = params.parse()?;
             logic::call(tx, number, &context)
+                .await
                 .map_err(|err| jsonrpsee_core::Error::Custom(err.to_string()))
         })
         .unwrap();
