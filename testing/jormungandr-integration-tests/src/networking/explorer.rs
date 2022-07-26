@@ -2,7 +2,7 @@ use hersir::builder::{
     blockchain::BlockchainBuilder, wallet::template::builder::WalletTemplateBuilder,
     NetworkBuilder, Node, SpawnParams, Topology,
 };
-use jormungandr_automation::testing::time;
+use jormungandr_automation::{jormungandr::explorer::configuration::ExplorerParams, testing::time};
 use jormungandr_lib::interfaces::BlockDate;
 use thor::FragmentSender;
 const LEADER_1: &str = "Leader_1";
@@ -16,6 +16,8 @@ const CLARICE: &str = "CLARICE";
 
 #[test]
 pub fn passive_node_explorer() {
+    let wait_epoch = 0;
+    let wait_slot_id = 30;
     let mut controller = NetworkBuilder::default()
         .topology(
             Topology::default()
@@ -77,10 +79,10 @@ pub fn passive_node_explorer() {
         .unwrap();
 
     // give some time to update explorer
-    time::wait_for_date(BlockDate::new(0, 30), leader_1.rest());
+    time::wait_for_date(BlockDate::new(wait_epoch, wait_slot_id), leader_1.rest());
 
     let transaction_id = passive
-        .explorer()
+        .explorer(ExplorerParams::default())
         .client()
         .transaction((*mem_pool_check.fragment_id()).into())
         .unwrap()

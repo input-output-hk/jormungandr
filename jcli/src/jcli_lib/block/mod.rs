@@ -114,7 +114,7 @@ pub struct Input {
     /// If not available the command will expect to read the configuration from
     /// the standard input.
     #[structopt(long = "input", parse(from_os_str), name = "FILE_INPUT")]
-    input_file: Option<std::path::PathBuf>,
+    pub input_file: Option<std::path::PathBuf>,
 }
 
 impl Input {
@@ -154,9 +154,13 @@ pub struct Common {
 
 impl Common {
     pub fn open_output(&self) -> Result<impl Write, Error> {
-        io::open_file_write(&self.output_file).map_err(|source| Error::OutputInvalid {
-            source,
-            path: self.output_file.clone().unwrap_or_default(),
-        })
+        open_output(&self.output_file)
     }
+}
+
+pub fn open_output(path: &Option<PathBuf>) -> Result<impl Write, Error> {
+    io::open_file_write(path).map_err(|source| Error::OutputInvalid {
+        source,
+        path: path.clone().unwrap_or_default(),
+    })
 }

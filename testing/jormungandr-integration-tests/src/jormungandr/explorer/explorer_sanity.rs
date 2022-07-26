@@ -2,7 +2,7 @@ use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId, key::Hash};
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Explorer},
+    jormungandr::{explorer::configuration::ExplorerParams, ConfigurationBuilder, Explorer},
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
@@ -54,6 +54,8 @@ pub fn explorer_sanity_test() {
     let jcli: JCli = Default::default();
     let faucet = thor::Wallet::default();
     let receiver = thor::Wallet::default();
+    let query_complexity_limit = 70;
+    let attempts_number = 20;
 
     let mut config = ConfigurationBuilder::new();
     config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
@@ -61,7 +63,8 @@ pub fn explorer_sanity_test() {
     let (jormungandr, initial_stake_pools) =
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
-    let explorer_process = jormungandr.explorer();
+    let params = ExplorerParams::new(query_complexity_limit.to_string(), None, None);
+    let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
     let transaction = thor::FragmentBuilder::new(
@@ -73,7 +76,7 @@ pub fn explorer_sanity_test() {
     .unwrap()
     .encode();
 
-    let wait = Wait::new(Duration::from_secs(3), 20);
+    let wait = Wait::new(Duration::from_secs(3), attempts_number);
     let fragment_id = jcli
         .fragment_sender(&jormungandr)
         .send(&transaction)
@@ -90,12 +93,12 @@ pub fn explorer_sanity_test() {
 fn transaction_by_id(explorer: &Explorer, fragment_id: FragmentId) {
     let explorer_transaction = explorer
         .transaction(fragment_id.into())
-        .expect("non existing transaction");
+        .expect("Non existing transaction");
 
     assert_eq!(
         fragment_id,
         Hash::from_str(&explorer_transaction.data.unwrap().transaction.id).unwrap(),
-        "incorrect fragment id"
+        "Incorrect fragment id"
     );
 }
 

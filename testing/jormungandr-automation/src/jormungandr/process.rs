@@ -1,4 +1,8 @@
-use super::{explorer::ExplorerProcess, starter::StartupError, JormungandrError};
+use super::{
+    explorer::{configuration::ExplorerParams, ExplorerProcess},
+    starter::StartupError,
+    JormungandrError,
+};
 use crate::{
     jcli::JCli,
     jormungandr::{
@@ -295,7 +299,7 @@ impl JormungandrProcess {
         self.child.id()
     }
 
-    pub fn explorer(&self) -> ExplorerProcess {
+    pub fn explorer(&self, params: ExplorerParams) -> ExplorerProcess {
         let mut p2p_public_address = self.p2p_public_address.clone();
         let port = match p2p_public_address.pop().unwrap() {
             multiaddr::Protocol::Tcp(port) => port,
@@ -307,7 +311,11 @@ impl JormungandrProcess {
             _ => todo!("only ipv4 supported for now"),
         };
 
-        ExplorerProcess::new(format!("http://{}:{}/", address, port), self.temp_dir())
+        ExplorerProcess::new(
+            format!("http://{}:{}/", address, port),
+            self.temp_dir(),
+            params,
+        )
     }
 
     pub fn to_trusted_peer(&self) -> TrustedPeer {
