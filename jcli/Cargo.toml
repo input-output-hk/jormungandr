@@ -37,7 +37,7 @@ ed25519-bip32 = "0.4.1"
 thiserror = "1.0"
 bytes = "1.1"
 rpassword = "6.0"
-clap = { version = "3.1", default-features = false, features = ["suggestions", "color", "wrap_help", "std"] }
+clap = { version = "3.2", default-features = false, features = ["suggestions", "color", "wrap_help", "std"] }
 
 [features]
 evm = ["jormungandr-lib/evm", "chain-evm"]
