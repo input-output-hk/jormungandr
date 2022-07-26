@@ -15,7 +15,7 @@ use chain_evm::{
     signature::eip_191_signature,
     transaction::{EthereumSignedTransaction, EthereumUnsignedTransaction},
 };
-use chain_impl_mockchain::{block::Block as JorBlock, evm::EvmTransaction, fragment::Fragment};
+use chain_impl_mockchain::{block::Block as JorBlock, fragment::Fragment};
 use jormungandr_lib::interfaces::FragmentOrigin;
 
 fn get_transaction_from_block_by_index(
@@ -164,19 +164,10 @@ pub fn sign(address: H160, message: Bytes, context: &Context) -> Result<H512, Er
 }
 
 pub async fn call(tx: Transaction, _: BlockNumber, context: &Context) -> Result<Bytes, Error> {
-    let account_secret = context
-        .try_full()?
-        .evm_keys
-        .iter()
-        .find(|&sec| sec.address() == tx.from)
-        .ok_or(Error::AccountSignatureError)?;
-    let eth_tx = EthereumUnsignedTransaction::from(tx);
-    let evm_transaction = EvmTransaction::try_from(eth_tx.sign(account_secret)?)
-        .map_err(Error::EthereumSignatureError)?;
     let blockchain_tip = context.blockchain_tip()?.get_ref().await;
     Ok(blockchain_tip
         .ledger()
-        .call_evm_transaction(evm_transaction)
+        .call_evm_transaction(tx.into())
         .map_err(Box::new)?
         .into())
 }
