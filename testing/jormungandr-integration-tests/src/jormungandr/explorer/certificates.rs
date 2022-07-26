@@ -479,3 +479,73 @@ pub fn explorer_pool_retire_test() {
     )
     .unwrap();
 }
+
+#[test]
+pub fn explorer_vote_plan_certificates_test() {
+    let query_complexity_limit = 70;
+    let query_depth_limit = 30;
+    let mut first_stake_pool_owner = thor::Wallet::default();
+    let bob = thor::Wallet::default();
+    let discrimination = Discrimination::Test;
+
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .action_type(VoteAction::OffChain)
+        .vote_start(propertyBlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(propertyBlockDate::from_epoch_slot_id(20, 0))
+        .tally_end(propertyBlockDate::from_epoch_slot_id(30, 0))
+        .public()
+        .build();
+
+    let jormungandr = startup::start_bft(
+        vec![&first_stake_pool_owner, &bob],
+        ConfigurationBuilder::new()
+            .with_discrimination(discrimination)
+            .with_slots_per_epoch(20)
+            .with_slot_duration(3)
+            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_token(InitialToken {
+                token_id: vote_plan.voting_token().clone().into(),
+                policy: MintingPolicy::new().into(),
+                to: vec![first_stake_pool_owner.to_initial_token(1_000)],
+            }),
+    )
+    .unwrap();
+
+    let fragment_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        BlockDate::first().next_epoch().into(),
+        Default::default(),
+    );
+
+    let fragment_builder = FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let params = ExplorerParams::new(query_complexity_limit.to_string(), query_complexity_limit.to_string(), None);
+    let explorer_process = jormungandr.explorer(params);
+    let explorer = explorer_process.client();
+
+    let vote_plan_fragment = fragment_builder.vote_plan(&first_stake_pool_owner, &vote_plan);
+
+    assert!(jormungandr
+        .rest()
+        .account_votes_with_plan_id(vote_plan.to_id().into(), first_stake_pool_owner.address())
+        .is_err());
+
+        fragment_sender
+        .send_fragment(&mut first_stake_pool_owner, vote_plan_fragment.clone(), &jormungandr)
+        .unwrap();
+
+    let trans = explorer
+        .transaction(vote_plan_fragment.hash().into())
+        .expect("vote plan transaction not found");
+
+    assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
+
+    let vote_plan_transaction = trans.data.unwrap().transaction;
+
+}
