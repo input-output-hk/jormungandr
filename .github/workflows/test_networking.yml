@@ -1,4 +1,4 @@
-name: CI-Tests
+name: CI-Networking-Tests
 
 on:
   push:
