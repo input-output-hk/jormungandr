@@ -12,8 +12,7 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - '!**.md'
-      - .github/workflows/test.yml
+      - .github/workflows/test_networking.yml
   pull_request:
     paths:
       - doc/api/**.yaml
@@ -23,8 +22,7 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - '!**.md'
-      - .github/workflows/test.yml
+      - .github/workflows/test_networking.yml
 
 jobs:
   cache_info:
@@ -102,7 +100,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        profile: [debug, release]
+        profile: [release]
         toolchain: [stable]
         include:
           - os: ubuntu-latest

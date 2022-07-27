@@ -12,8 +12,7 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - '!**.md'
-      - .github/workflows/test.yml
+      - .github/workflows/test_evm.yml
   pull_request:
     paths:
       - doc/api/**.yaml
@@ -23,8 +22,7 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - '!**.md'
-      - .github/workflows/test.yml
+      - .github/workflows/test_evm.yml
 
 jobs:
   cache_info:
