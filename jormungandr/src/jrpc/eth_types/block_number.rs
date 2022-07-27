@@ -75,14 +75,14 @@ impl<'a> Visitor<'a> for BlockNumberVisitor {
         Ok(BlockNumber::Num(value))
     }
 
-fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
+    fn visit_u64<E>(self, value: u64) -> Result<Self::Value, E>
     where
         E: Error,
-{
-    Ok(BlockNumber::Num(value.try_into().map_err(
-        |e: TryFromIntError| Error::custom(e.to_string()),
-    )?))
-}
+    {
+        Ok(BlockNumber::Num(value.try_into().map_err(
+            |e: TryFromIntError| Error::custom(e.to_string()),
+        )?))
+    }
 }
 
 #[cfg(test)]
