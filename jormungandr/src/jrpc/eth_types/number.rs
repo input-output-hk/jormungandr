@@ -97,8 +97,8 @@ mod tests {
         );
 
         assert_eq!(
-            serde_json::to_string(&vec![Number(10), Number(42), Number(69)]).unwrap(),
-            r#"["0xa", "0xa", "0x2a", "0x45"]"#
+            serde_json::to_string(&vec![Number(10), Number(10), Number(42), Number(69)]).unwrap(),
+            r#"["0xa","0xa","0x2a","0x45"]"#
         );
     }
 }
