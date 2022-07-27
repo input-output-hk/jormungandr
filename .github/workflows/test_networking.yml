@@ -104,7 +104,7 @@ jobs:
         toolchain: [stable]
         include:
           - os: ubuntu-latest
-            profile: debug
+            profile: release
             toolchain: nightly
     env:
       RUSTFLAGS: -D warnings
