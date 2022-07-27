@@ -29,7 +29,12 @@ pub fn explorer_transaction_test() {
 
     let params = ExplorerParams::new(query_complexity_limit.to_string(), None, None);
     let explorer_process = jormungandr.explorer(params);
+
     let explorer = explorer_process.client();
+
+
+
+
 
     let transaction = thor::FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
@@ -53,5 +58,11 @@ pub fn explorer_transaction_test() {
         .unwrap()
         .transaction;
 
+       // let filename = jormungandr.temp_dir().unwrap();
+       // println!("log file {:?}",filename);
+       // let contents = std::fs::read_to_string(filename.as_path())
+       //     .expect("Something went wrong reading the file");
+
+       // println!("With text:\n{}", contents);
     ExplorerVerifier::assert_transaction_certificates(transaction, explorer_transaction).unwrap();
 }

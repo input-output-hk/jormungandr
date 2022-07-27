@@ -12,7 +12,7 @@ use crate::testing::configuration::get_explorer_app;
 use graphql_client::{GraphQLQuery, *};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
 use std::{
-    process::{Command, Stdio},
+    process::{Command, Stdio, Child},
     str::FromStr,
     time::Duration,
 };
@@ -92,7 +92,7 @@ impl ExplorerProcess {
                 params.query_complexity_limit.unwrap().as_ref(),
             ]);
         }
-
+        println!("Running start command: {:?}", explorer_cmd);
         let process = ExplorerProcess {
             handler: Some(
                 explorer_cmd
@@ -137,6 +137,15 @@ impl ExplorerProcess {
 
 impl Drop for ExplorerProcess {
     fn drop(&mut self) {
+        println!("Explorer DROPPING");
+
+        //let filename = self.logs_dir.as_ref().unwrap();
+        //println!("log file {:?}",filename);
+        //let contents = std::fs::read_to_string(filename.as_path())
+        //.expect("Something went wrong reading the file");
+
+       // println!("Logs dir:\n{}", contents);
+
         let output = if let Some(mut handler) = self.handler.take() {
             let _ = handler.kill();
             handler.wait_with_output().unwrap()
@@ -144,19 +153,21 @@ impl Drop for ExplorerProcess {
             return;
         };
 
-        if std::thread::panicking() {
+       // if std::thread::panicking() {
             if let Some(logs_dir) = &self.logs_dir {
                 println!(
                     "persisting explorer logs after panic: {}",
                     logs_dir.display()
                 );
 
+                println!("STDERR {:?}",output.stderr);
+                println!("STATUS {:?}",output.status);
                 std::fs::write(logs_dir.join("explorer.log"), output.stdout)
                     .unwrap_or_else(|e| eprint!("Could not write explorer logs to disk: {}", e));
             }
         }
     }
-}
+//}
 
 impl Explorer {
     pub fn new(explorer_listen_address: String) -> Explorer {
