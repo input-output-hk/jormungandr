@@ -12,7 +12,7 @@ use crate::testing::configuration::get_explorer_app;
 use graphql_client::{GraphQLQuery, *};
 use jormungandr_lib::{crypto::hash::Hash, interfaces::BlockDate};
 use std::{
-    process::{Command, Stdio, Child},
+    process::{Command, Stdio},
     str::FromStr,
     time::Duration,
 };
@@ -115,7 +115,11 @@ impl ExplorerProcess {
                 println!("explorer is up at http://{}/", &explorer_listen_address);
                 break;
             };
-            println!("Waiting for explorer bootstrap...attempt {:?} of {:?}",wait_bootstrap.current(),wait_bootstrap.attempts());
+            println!(
+                "Waiting for explorer bootstrap...attempt {:?} of {:?}",
+                wait_bootstrap.current(),
+                wait_bootstrap.attempts()
+            );
             wait_bootstrap.advance();
         }
 
@@ -144,7 +148,7 @@ impl Drop for ExplorerProcess {
         //let contents = std::fs::read_to_string(filename.as_path())
         //.expect("Something went wrong reading the file");
 
-       // println!("Logs dir:\n{}", contents);
+        // println!("Logs dir:\n{}", contents);
 
         let output = if let Some(mut handler) = self.handler.take() {
             let _ = handler.kill();
@@ -153,20 +157,20 @@ impl Drop for ExplorerProcess {
             return;
         };
 
-       // if std::thread::panicking() {
-            if let Some(logs_dir) = &self.logs_dir {
-                println!(
-                    "persisting explorer logs after panic: {}",
-                    logs_dir.display()
-                );
+        // if std::thread::panicking() {
+        if let Some(logs_dir) = &self.logs_dir {
+            println!(
+                "persisting explorer logs after panic: {}",
+                logs_dir.display()
+            );
 
-                println!("STDERR {:?}",output.stderr);
-                println!("STATUS {:?}",output.status);
-                std::fs::write(logs_dir.join("explorer.log"), output.stdout)
-                    .unwrap_or_else(|e| eprint!("Could not write explorer logs to disk: {}", e));
-            }
+            println!("STDERR {:?}", output.stderr);
+            println!("STATUS {:?}", output.status);
+            std::fs::write(logs_dir.join("explorer.log"), output.stdout)
+                .unwrap_or_else(|e| eprint!("Could not write explorer logs to disk: {}", e));
         }
     }
+}
 //}
 
 impl Explorer {
