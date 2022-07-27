@@ -34,17 +34,18 @@
 - Bump log from 0.4.14 to 0.4.17
 - Bump regex from 1.5.5 to 1.6.0
 - Add jcli option to generate and sign EVM mapping certificates.
-- Add new Ethreum RPC endpoints for getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
-- Add new Ethreum RPC endpoints for transaction handling: eth_sendTransaction, eth_sendRawTransaction, eth_getTransactionByHash, eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex, eth_getTransactionReceipt, eth_signTransaction, eth_estimateGas, eth_sign, eth_call
-- Add new Ethreum RPC endpoints for getting chain info: eth_chainId, eth_syncing, eth_gasPrice, eth_protocolVersion, eth_feeHistory
-- Add new Ethreum RPC endpoints for account handling: eth_accounts, eth_getTransactionCount, eth_getBalance, eth_getCode, eth_getStorageAt
-- Add new Ethreum RPC filtering endpoints: eth_newFilter, eth_newBlockFilter, eth_newPendingTransactionFilter, eth_uninstallFilter, eth_getFilterChanges, eth_getFilterLogs, eth_getLogs
-- Add new Ethreum RPC mining endpoints: eth_mining, eth_coinbase, eth_hashrate, eth_getWork, eth_submitWork, eth_submitHashrate
+- Add new Ethereum RPC endpoints for getting block info: eth_getBlockByHash, eth_getBlockByNumber, eth_getBlockTransactionCountByHash, eth_getBlockTransactionCountByNumber, eth_getUncleCountByBlockHash, eth_getUncleCountByBlockNumber, eth_blockNumber
+- Add new Ethereum RPC endpoints for transaction handling: eth_sendTransaction, eth_sendRawTransaction, eth_getTransactionByHash, eth_getTransactionByBlockHashAndIndex, eth_getTransactionByBlockNumberAndIndex, eth_getTransactionReceipt, eth_signTransaction, eth_estimateGas, eth_sign, eth_call
+- Add new Ethereum RPC endpoints for getting chain info: eth_chainId, eth_syncing, eth_gasPrice, eth_protocolVersion, eth_feeHistory
+- Add new Ethereum RPC endpoints for account handling: eth_accounts, eth_getTransactionCount, eth_getBalance, eth_getCode, eth_getStorageAt
+- Add new Ethereum RPC filtering endpoints: eth_newFilter, eth_newBlockFilter, eth_newPendingTransactionFilter, eth_uninstallFilter, eth_getFilterChanges, eth_getFilterLogs, eth_getLogs
+- Add new Ethereum RPC mining endpoints: eth_mining, eth_coinbase, eth_hashrate, eth_getWork, eth_submitWork, eth_submitHashrate
 - Add chain-evm as optional dependency for jcli
 - Update gas price and block gas limit for EVM params
-- Add new 'evm' REST API endpoints 'address_mapping/jormungandr_address', 'address_mapping/evm_address` for getting info about address mapping. They are optional for the 'evm' feature.
+- Add new 'evm' REST API endpoints 'address_mapping/jormungandr_address', 'address_mapping/evm_address' for getting info about address mapping. They are optional for the 'evm' feature.
 - Add jcli command to merge the results of multiple voteplans with the same proposals.
 - Bump rpassword to 6.0.1
+- Update implementation for Ethereum RPC transaction endpoints: eth_signTransaction, eth_sign, and eth_call
 
 ## Release 0.13.0
 

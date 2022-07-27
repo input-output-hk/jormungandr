@@ -4,6 +4,10 @@ pub type ChainLength = String;
 pub type PoolId = String;
 pub type Value = String;
 pub type VotePlanId = String;
+pub type NonZero = String;
+pub type TimeOffsetSeconds = String;
+pub type PublicKey = String;
+pub type ExternalProposalId = String;
 
 use graphql_client::GraphQLQuery;
 
@@ -75,9 +79,17 @@ pub struct Settings;
 #[graphql(
     query_path = "resources/explorer/graphql/transaction_by_id.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",
-    response_derives = "Debug"
+    response_derives = "Debug,Clone"
 )]
 pub struct TransactionById;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    query_path = "resources/explorer/graphql/transaction_by_id_certificates.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug,Clone"
+)]
+pub struct TransactionByIdCertificates;
 
 #[derive(GraphQLQuery)]
 #[allow(clippy::upper_case_acronyms)]

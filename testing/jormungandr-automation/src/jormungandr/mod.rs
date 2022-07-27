@@ -1,5 +1,5 @@
 mod configuration;
-mod explorer;
+pub mod explorer;
 mod fragment_node;
 mod legacy;
 mod logger;

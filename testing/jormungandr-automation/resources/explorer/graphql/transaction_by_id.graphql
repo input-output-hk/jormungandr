@@ -1,5 +1,11 @@
 query TransactionById($id: String!){
     transaction(id: $id) {
         id
-    }
-}
+        blocks{id date{...blockDate}}
+        inputs{amount address{id}}
+        outputs{amount address{id}}}}
+
+fragment blockDate on BlockDate{
+                            epoch{id}
+                            slot
+                        }
