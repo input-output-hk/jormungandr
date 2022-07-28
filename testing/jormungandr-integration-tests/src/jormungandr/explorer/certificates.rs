@@ -1,12 +1,20 @@
+use crate::startup;
 use assert_fs::TempDir;
-use chain_impl_mockchain::{block::BlockDate, transaction::AccountIdentifier};
+use chain_addr::Discrimination;
+use chain_core::property::BlockDate as propertyBlockDate;
+use chain_impl_mockchain::{
+    block::BlockDate, certificate::VoteAction, fee::LinearFee,
+    tokens::minting_policy::MintingPolicy, transaction::AccountIdentifier, vote::Choice,
+};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
         explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
         ConfigurationBuilder, Starter,
     },
+    testing::VotePlanBuilder,
 };
+use jormungandr_lib::interfaces::InitialToken;
 use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
 
 #[test]
@@ -525,7 +533,11 @@ pub fn explorer_vote_plan_certificates_test() {
         BlockDate::first().next_epoch(),
     );
 
-    let params = ExplorerParams::new(query_complexity_limit.to_string(), query_complexity_limit.to_string(), None);
+    let params = ExplorerParams::new(
+        query_complexity_limit.to_string(),
+        query_depth_limit.to_string(),
+        None,
+    );
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
@@ -536,16 +548,99 @@ pub fn explorer_vote_plan_certificates_test() {
         .account_votes_with_plan_id(vote_plan.to_id().into(), first_stake_pool_owner.address())
         .is_err());
 
-        fragment_sender
-        .send_fragment(&mut first_stake_pool_owner, vote_plan_fragment.clone(), &jormungandr)
+    fragment_sender
+        .send_fragment(
+            &mut first_stake_pool_owner,
+            vote_plan_fragment.clone(),
+            &jormungandr,
+        )
         .unwrap();
 
     let trans = explorer
-        .transaction(vote_plan_fragment.hash().into())
+        .transaction_certificates(vote_plan_fragment.hash().into())
         .expect("vote plan transaction not found");
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
     let vote_plan_transaction = trans.data.unwrap().transaction;
+}
 
+#[test]
+pub fn explorer_vote_cast_certificates_test() {
+    let query_complexity_limit = 70;
+    let query_depth_limit = 30;
+    let temp_dir = TempDir::new().unwrap();
+    let mut alice = thor::Wallet::default();
+
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(3)
+        .vote_start(BlockDate::from_epoch_slot_id(0, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(2, 0))
+        .public()
+        .build();
+
+    let vote_plan_cert = thor::vote_plan_cert(
+        &alice,
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        &vote_plan,
+    )
+    .into();
+    let wallets = [&alice];
+    let config = ConfigurationBuilder::new()
+        .with_funds(wallets.iter().map(|x| x.to_initial_fund(1000)).collect())
+        .with_token(InitialToken {
+            token_id: vote_plan.voting_token().clone().into(),
+            policy: MintingPolicy::new().into(),
+            to: vec![alice.to_initial_token(1000)],
+        })
+        .with_committees(&[alice.to_committee_id()])
+        .with_slots_per_epoch(60)
+        .with_certs(vec![vote_plan_cert])
+        .with_treasury(1_000.into())
+        .build(&temp_dir);
+
+    let jormungandr = Starter::new()
+        .config(config)
+        .temp_dir(temp_dir)
+        .start()
+        .unwrap();
+
+    let fragment_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        BlockDate::first().next_epoch().into(),
+        Default::default(),
+    );
+
+    let fragment_builder = FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let params = ExplorerParams::new(
+        query_complexity_limit.to_string(),
+        query_depth_limit.to_string(),
+        None,
+    );
+    let explorer_process = jormungandr.explorer(params);
+    let explorer = explorer_process.client();
+
+    let vote_cast_fragment = fragment_builder.vote_cast(&mut alice, &vote_plan, 2, &Choice::new(0));
+
+    fragment_sender
+        .send_fragment(&mut alice, vote_cast_fragment.clone(), &jormungandr)
+        .unwrap();
+
+    let trans = explorer
+        .transaction_certificates(vote_cast_fragment.hash().into())
+        .expect("vote plan transaction not found");
+
+    assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
+
+    let _vote_cast_transaction = trans.data.unwrap().transaction;
 }
