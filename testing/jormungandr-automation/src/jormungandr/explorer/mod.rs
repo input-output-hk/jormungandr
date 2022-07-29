@@ -364,19 +364,25 @@ impl Explorer {
                 id: hash.to_string(),
             });
         self.print_request(&query);
+        let mut count=0;
+        let max_count=10;
         //let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
-        let response = match self.client.run(&query) {
-            Ok(response) => response,
+        let response = loop {match self.client.run(&query) {
+            Ok(response) => {break response;}
             Err(_) => {
-                use std::{thread, time};
+                if count > max_count
+                    {panic!("Too many tries")}
+                else{
+                    count = count +1;
+                    use std::{thread, time};
 
-                thread::sleep(time::Duration::from_secs(10));
-                println!("Running query again_____");
-                self.client
-                    .run(&query)
-                    .map_err(ExplorerError::ClientError)?
-            }
-        };
+                    thread::sleep(time::Duration::from_secs(10));
+                    println!("Running query again_____");
+                    self.client
+                        .run(&query)
+                        .map_err(ExplorerError::ClientError)?;
+            }}
+        }};
         let response_body: Response<transaction_by_id_certificates::ResponseData> =
             response.json()?;
         self.print_log(&response_body);
