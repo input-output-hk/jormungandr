@@ -38,7 +38,7 @@ impl GraphQlClient {
 
     pub fn run<T: Serialize>(
         &self,
-        query: QueryBody<T>,
+        query: &QueryBody<T>,
     ) -> Result<reqwest::blocking::Response, GraphQlClientError> {
         if self.print_out {
             println!(

@@ -211,7 +211,10 @@ impl Explorer {
             bech32: bech32_address.into(),
         });
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         let response_body: Response<address::ResponseData> = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
@@ -223,7 +226,10 @@ impl Explorer {
     ) -> Result<Response<all_stake_pools::ResponseData>, ExplorerError> {
         let query = AllStakePools::build_query(all_stake_pools::Variables { first: limit });
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
@@ -232,7 +238,10 @@ impl Explorer {
     pub fn blocks(&self, limit: i64) -> Result<Response<all_blocks::ResponseData>, ExplorerError> {
         let query = AllBlocks::build_query(all_blocks::Variables { last: limit });
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
@@ -241,7 +250,10 @@ impl Explorer {
     pub fn last_block(&self) -> Result<LastBlockResponse, ExplorerError> {
         let query = LastBlock::build_query(last_block::Variables);
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
         Ok(LastBlockResponse::new(response_body))
@@ -255,7 +267,10 @@ impl Explorer {
             length: length.to_string(),
         });
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
@@ -271,7 +286,10 @@ impl Explorer {
             blocks_limit: limit,
         });
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
@@ -284,7 +302,10 @@ impl Explorer {
     ) -> Result<Response<stake_pool::ResponseData>, ExplorerError> {
         let query = StakePool::build_query(stake_pool::Variables { id, first: limit });
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
@@ -293,7 +314,10 @@ impl Explorer {
     pub fn settings(&self) -> Result<Response<settings::ResponseData>, ExplorerError> {
         let query = Settings::build_query(settings::Variables);
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
@@ -305,7 +329,10 @@ impl Explorer {
     ) -> Result<Response<all_vote_plans::ResponseData>, ExplorerError> {
         let query = AllVotePlans::build_query(all_vote_plans::Variables { first: limit });
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
@@ -319,7 +346,10 @@ impl Explorer {
             id: hash.to_string(),
         });
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         let response_body: Response<transaction_by_id::ResponseData> = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
@@ -334,7 +364,19 @@ impl Explorer {
                 id: hash.to_string(),
             });
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        //let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = match self.client.run(&query) {
+            Ok(response) => response,
+            Err(_) => {
+                use std::{thread, time};
+
+                thread::sleep(time::Duration::from_secs(10));
+                println!("Running query again_____");
+                self.client
+                    .run(&query)
+                    .map_err(ExplorerError::ClientError)?
+            }
+        };
         let response_body: Response<transaction_by_id_certificates::ResponseData> =
             response.json()?;
         self.print_log(&response_body);
@@ -350,7 +392,10 @@ impl Explorer {
         query: QueryBody<T>,
     ) -> Result<reqwest::blocking::Response, ExplorerError> {
         self.print_request(&query);
-        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response = self
+            .client
+            .run(&query)
+            .map_err(ExplorerError::ClientError)?;
         self.print_log(&response);
         Ok(response)
     }
