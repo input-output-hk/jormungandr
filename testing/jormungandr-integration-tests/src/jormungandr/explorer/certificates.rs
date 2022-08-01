@@ -4,7 +4,7 @@ use chain_addr::Discrimination;
 use chain_core::property::BlockDate as propertyBlockDate;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
-    block::BlockDate, certificate::{VoteAction, VoteTallyPayload, UpdateProposal, UpdateVote}, fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee},
+    block::BlockDate, certificate::{VoteAction, VoteTallyPayload, UpdateProposal, UpdateVote}, fee::LinearFee,
     tokens::minting_policy::MintingPolicy, transaction::AccountIdentifier, vote::Choice,
 };
 use jormungandr_automation::{
@@ -514,11 +514,6 @@ pub fn explorer_vote_plan_certificates_test() {
             .with_slots_per_epoch(20)
             .with_slot_duration(3)
             .with_linear_fees(LinearFee::new(0, 0, 0))
-            .with_token(InitialToken {
-                token_id: vote_plan.voting_token().clone().into(),
-                policy: MintingPolicy::new().into(),
-                to: vec![first_stake_pool_owner.to_initial_token(1_000)],
-            }),
     )
     .unwrap();
 
@@ -564,7 +559,7 @@ pub fn explorer_vote_plan_certificates_test() {
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
-    let vote_plan_transaction = trans.data.unwrap().transaction;
+    let _vote_plan_transaction = trans.data.unwrap().transaction;
 }
 
 #[test]
@@ -748,7 +743,8 @@ pub fn explorer_update_proposal_certificate_test(){
         .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
         .with_consensus_leaders_ids(vec![bft_secret.identifier().into()])
         .with_proposal_expiry_epochs(20)
-        .with_slots_per_epoch(10)
+        .with_slots_per_epoch(30)
+        .with_linear_fees(LinearFee::new(0, 0, 0))
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
@@ -760,7 +756,7 @@ pub fn explorer_update_proposal_certificate_test(){
     let new_block_context_max_size = 1000;
     let change_params = ConfigParams::new(vec![ConfigParam::BlockContentMaxSize(
         BlockContentMaxSize::from(new_block_context_max_size)),
-        ConfigParam::LinearFee(LinearFee{constant: 1, coefficient: 0, certificate: 0, per_certificate_fees: PerCertificateFee::new(None,None,None), per_vote_certificate_fees: PerVoteCertificateFee::new(None,None)})
+        ConfigParam::LinearFee(LinearFee::new(1, 0, 0))
     ]);
 
     let old_settings = jormungandr.rest().settings().unwrap();
@@ -816,7 +812,7 @@ pub fn explorer_update_proposal_certificate_test(){
 
     let new_settings = jormungandr.rest().settings().unwrap();
 
-    println!("old {:?} new {:?}",old_settings.fees.constant,new_settings.fees.constant);
+    println!("old {:?} new {:?}",old_settings,new_settings);
     assert_eq!(old_settings, new_settings);
 
     let trans = explorer
