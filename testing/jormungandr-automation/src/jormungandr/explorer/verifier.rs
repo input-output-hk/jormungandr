@@ -1,28 +1,24 @@
 use super::data::{
     settings::SettingsSettingsFees,
-    transaction_by_id_certificates::{
-        TransactionByIdCertificatesTransaction, TransactionByIdCertificatesTransactionCertificate,
-        TransactionByIdCertificatesTransactionCertificateOnOwnerStakeDelegation,
-        TransactionByIdCertificatesTransactionCertificateOnPoolRegistration,
-        TransactionByIdCertificatesTransactionCertificateOnPoolRetirement,
-        TransactionByIdCertificatesTransactionCertificateOnPoolUpdate,
-        TransactionByIdCertificatesTransactionCertificateOnStakeDelegation,
-    },
+    transaction_by_id_certificates::*
 };
+use crate::jormungandr::explorer::data::transaction_by_id_certificates::PayloadType as expPayloadType;
 use bech32::FromBase32;
 use chain_addr::AddressReadable;
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::{
     account::DelegationType,
-    certificate::{
-        OwnerStakeDelegation, PoolRegistration, PoolRetirement, PoolUpdate, StakeDelegation,
-    },
+    certificate::*,
     fee::LinearFee,
     fragment::Fragment,
     transaction::{AccountIdentifier, InputEnum, Transaction},
+    vote::PayloadType, chaintypes::ConsensusType,
 };
 use std::num::NonZeroU64;
 use thiserror::Error;
+
+use chain_impl_mockchain::config::ConfigParam::*;
+use crate::jormungandr::explorer::data::transaction_by_id_certificates::*;
 
 #[derive(Debug, Error)]
 pub enum VerifierError {
@@ -136,13 +132,85 @@ impl ExplorerVerifier {
                         })
                     }
                 }
-                TransactionByIdCertificatesTransactionCertificate::VotePlan(_) => todo!(),
-                TransactionByIdCertificatesTransactionCertificate::VoteCast(_) => todo!(),
-                TransactionByIdCertificatesTransactionCertificate::VoteTally(_) => todo!(),
-                TransactionByIdCertificatesTransactionCertificate::UpdateProposal(_) => todo!(),
-                TransactionByIdCertificatesTransactionCertificate::UpdateVote(_) => todo!(),
-                TransactionByIdCertificatesTransactionCertificate::MintToken(_) => todo!(),
-                TransactionByIdCertificatesTransactionCertificate::EvmMapping(_) => todo!(),
+                TransactionByIdCertificatesTransactionCertificate::VotePlan(explorer_cert) => {
+                    if let Fragment::VotePlan(fragment_cert) = fragment {
+                        Self::assert_transaction_params(
+                            fragment_cert.clone(),
+                            explorer_transaction.clone(),
+                        )
+                        .unwrap();
+                        Self::assert_vote_plan(fragment_cert, explorer_cert.clone());
+                        Ok(())
+                    } else {
+                        Err(VerifierError::InvalidCertificate {
+                            received: "VotePlan".to_string(),
+                        })
+                    }
+                }
+                TransactionByIdCertificatesTransactionCertificate::VoteCast(explorer_cert) => {
+                    if let Fragment::VoteCast(fragment_cert) = fragment {
+                        Self::assert_transaction_params(
+                            fragment_cert.clone(),
+                            explorer_transaction.clone(),
+                        )
+                        .unwrap();
+                        Self::assert_vote_cast(fragment_cert, explorer_cert.clone());
+                        Ok(())
+                    } else {
+                        Err(VerifierError::InvalidCertificate {
+                            received: "VoteCast".to_string(),
+                        })
+                    }
+                }
+                TransactionByIdCertificatesTransactionCertificate::VoteTally(explorer_cert) => {
+                    if let Fragment::VoteTally(fragment_cert) = fragment {
+                        Self::assert_transaction_params(
+                            fragment_cert.clone(),
+                            explorer_transaction.clone(),
+                        )
+                        .unwrap();
+                        Self::assert_vote_tally(fragment_cert, explorer_cert.clone());
+                        Ok(())
+                    } else {
+                        Err(VerifierError::InvalidCertificate {
+                            received: "VoteTally".to_string(),
+                        })
+                    }
+                }
+                TransactionByIdCertificatesTransactionCertificate::UpdateProposal(explorer_cert) => {
+                    if let Fragment::UpdateProposal(fragment_cert) = fragment {
+                        Self::assert_transaction_params(
+                            fragment_cert.clone(),
+                            explorer_transaction.clone(),
+                        )
+                        .unwrap();
+                        Self::assert_update_proposal(fragment_cert, explorer_cert.clone());
+                        Ok(())
+                    } else {
+                        Err(VerifierError::InvalidCertificate {
+                            received: "UpdateProposal".to_string(),
+                        })
+                    }
+                }
+                TransactionByIdCertificatesTransactionCertificate::UpdateVote(explorer_cert) => {
+                    if let Fragment::UpdateVote(fragment_cert) = fragment {
+                        Self::assert_transaction_params(
+                            fragment_cert.clone(),
+                            explorer_transaction.clone(),
+                        )
+                        .unwrap();
+                        Self::assert_update_vote(fragment_cert, explorer_cert.clone());
+                        Ok(())
+                    } else {
+                        Err(VerifierError::InvalidCertificate {
+                            received: "UpdateVote".to_string(),
+                        })
+                    }
+                }
+                TransactionByIdCertificatesTransactionCertificate::MintToken(_) => todo!("MintToken can be only in block0"),
+                TransactionByIdCertificatesTransactionCertificate::EvmMapping(_) => {
+                    todo!("Not implemented because of the bug EAS-238")
+                }
             }
         }
     }
@@ -389,6 +457,203 @@ impl ExplorerVerifier {
             u64::from(update_cert.new_pool_reg.start_validity),
             explorer_cert.start_validity.parse::<u64>().unwrap()
         );
+    }
+
+    fn assert_vote_plan(
+        fragment_cert: Transaction<VotePlan>,
+        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnVotePlan,
+    ) {
+        let vote_plan_cert = fragment_cert.as_slice().payload().into_payload();
+        assert_eq!(
+            explorer_cert.vote_start.epoch.id.parse::<u32>().unwrap(),
+            vote_plan_cert.vote_start().epoch
+        );
+        assert_eq!(
+            explorer_cert.vote_start.slot.parse::<u32>().unwrap(),
+            vote_plan_cert.vote_start().slot_id
+        );
+        assert_eq!(
+            explorer_cert.vote_end.epoch.id.parse::<u32>().unwrap(),
+            vote_plan_cert.vote_end().epoch
+        );
+        assert_eq!(
+            explorer_cert.vote_end.slot.parse::<u32>().unwrap(),
+            vote_plan_cert.vote_end().slot_id
+        );
+        assert_eq!(
+            explorer_cert.committee_end.epoch.id.parse::<u32>().unwrap(),
+            vote_plan_cert.committee_end().epoch
+        );
+        assert_eq!(
+            explorer_cert.committee_end.slot.parse::<u32>().unwrap(),
+            vote_plan_cert.committee_end().slot_id
+        );
+
+        match vote_plan_cert.payload_type() {
+            PayloadType::Public => {
+                assert!(matches!(explorer_cert.payload_type, expPayloadType::PUBLIC))
+            }
+            PayloadType::Private => assert!(matches!(
+                explorer_cert.payload_type,
+                expPayloadType::PRIVATE
+            )),
+        }
+
+        assert_eq!(
+            explorer_cert.proposals.len(),
+            vote_plan_cert.proposals().len()
+        );
+        let matching_proposal = explorer_cert
+            .proposals
+            .iter()
+            .zip(vote_plan_cert.proposals().iter())
+            .filter(|&(a, b)| a.external_id == b.external_id().to_string())
+            .count();
+        assert_eq!(explorer_cert.proposals.len(), matching_proposal);
+    }
+
+    fn assert_vote_cast(
+        fragment_cert: Transaction<VoteCast>,
+        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnVoteCast,
+    ) {
+        let vote_cast_cert = fragment_cert.as_slice().payload().into_payload();
+
+        assert_eq!(explorer_cert.vote_plan,vote_cast_cert.vote_plan().to_string());
+        assert_eq!(explorer_cert.proposal_index as u8,vote_cast_cert.proposal_index());
+    }
+
+    fn assert_vote_tally(
+        fragment_cert: Transaction<VoteTally>,
+        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnVoteTally,
+    ) {
+        let vote_tally_cert = fragment_cert.as_slice().payload().into_payload();
+        assert_eq!(explorer_cert.vote_plan,vote_tally_cert.id().to_string());
+
+    }
+
+    #[allow(non_snake_case)]
+    fn assert_update_proposal(
+        fragment_cert: Transaction<UpdateProposal>,
+        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnUpdateProposal,
+    ) {
+        let update_proposal_cert = fragment_cert.as_slice().payload().into_payload();
+        assert_eq!(explorer_cert.proposer_id.id, update_proposal_cert.proposer_id().as_public_key().to_string());
+        assert_eq!(explorer_cert.changes.config_params.len(), update_proposal_cert.changes().iter().len() + 1);
+        
+        //for each parameter in the update proposal certificate check that the same
+        //parameter is in the explorer query answer and that they have the same value
+        for update_proposal_param in update_proposal_cert.changes().iter(){
+            match update_proposal_param{
+                Block0Date(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::Block0Date(explorer_param)
+                        if explorer_param.block0_date as u64 == certificate_param.0)).count();
+                    assert_eq!(matching_params, 1);
+                }
+                Discrimination(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::Discrimination(explorer_param)
+                        if { match explorer_param.discrimination{
+                            DiscriminationEnum::PRODUCTION => {matches!(certificate_param, chain_addr::Discrimination::Production)},
+                            DiscriminationEnum::TEST => {matches!(certificate_param, chain_addr::Discrimination::Test)},
+                            DiscriminationEnum::Other(_) => return false,
+                        }})).count();
+                    assert_eq!(matching_params, 1);
+                }
+                ConsensusVersion(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::ConsensusType(explorer_param)
+                        if { match explorer_param.consensus_type{
+                            ConsensusTypeEnum::BFT => {matches!(certificate_param, ConsensusType::Bft)},
+                            ConsensusTypeEnum::GENESIS_PRAOS => {matches!(certificate_param, ConsensusType::GenesisPraos)},
+                            ConsensusTypeEnum::Other(_) => return false,
+                        }})).count();
+                    assert_eq!(matching_params, 1);
+                }
+                SlotsPerEpoch(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::SlotsPerEpoch(explorer_param)
+                        if explorer_param.slots_per_epoch as u32 == *certificate_param)).count();
+                    assert_eq!(matching_params, 1);
+                }
+                SlotDuration(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::SlotDuration(explorer_param)
+                        if explorer_param.slot_duration as u8 == *certificate_param)).count();
+                    assert_eq!(matching_params, 1);
+                }
+                EpochStabilityDepth(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::EpochStabilityDepth(explorer_param)
+                        if explorer_param.epoch_stability_depth as u32 == *certificate_param)).count();
+                    assert_eq!(matching_params, 1);
+                }
+                ConsensusGenesisPraosActiveSlotsCoeff(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::Milli(explorer_param)
+                        if explorer_param.milli as u64 == certificate_param.to_millis())).count();
+                    assert_eq!(matching_params, 1);
+                }
+                BlockContentMaxSize(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::BlockContentMaxSize(explorer_param)
+                        if explorer_param.block_content_max_size as u32 == *certificate_param)).count();
+                    assert_eq!(matching_params, 1);
+                }
+                AddBftLeader(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::AddBftLeader(explorer_param)
+                        if explorer_param.add_bft_leader.id == certificate_param.as_public_key().to_string())).count();
+                    assert_eq!(matching_params, 1);
+                }
+                RemoveBftLeader(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::RemoveBftLeader(explorer_param)
+                        if explorer_param.remove_bft_leader.id == certificate_param.as_public_key().to_string())).count();
+                    assert_eq!(matching_params, 1);
+                }
+                LinearFee(_) => todo!(),
+                ProposalExpiration(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::ProposalExpiration(explorer_param)
+                        if explorer_param.proposal_expiration as u32 == *certificate_param)).count();
+                    assert_eq!(matching_params, 1);
+                }
+                KesUpdateSpeed(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::KesUpdateSpeed(explorer_param)
+                        if explorer_param.kes_update_speed as u32 == *certificate_param)).count();
+                    assert_eq!(matching_params, 1);
+                }
+                TreasuryAdd(_) => todo!(),
+                TreasuryParams(_) => todo!(),
+                RewardPot(_) => todo!(),
+                RewardParams(_) => todo!(),
+                PerCertificateFees(_) => todo!(),
+                FeesInTreasury(_) => todo!(),
+                RewardLimitNone => todo!(),
+                RewardLimitByAbsoluteStake(_) => todo!(),
+                PoolRewardParticipationCapping(_) => todo!(),
+                AddCommitteeId(_) => todo!(),
+                RemoveCommitteeId(_) => todo!(),
+                PerVoteCertificateFees(_) => todo!(),
+                TransactionMaxExpiryEpochs(certificate_param) => {
+                    let matching_params = explorer_cert.changes.config_params.iter()
+                        .filter(|&configParam| matches!(configParam, configParam::TransactionMaxExpiryEpochs(explorer_param)
+                        if explorer_param.transaction_max_expiry_epochs as u8 == *certificate_param)).count();
+                    assert_eq!(matching_params, 1);
+                }
+            }
+        }
+    }
+
+    fn assert_update_vote(
+        fragment_cert: Transaction<UpdateVote>,
+        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnUpdateVote,
+    ) {
+        let update_vote_cert = fragment_cert.as_slice().payload().into_payload();
+        assert_eq!(explorer_cert.proposal_id, update_vote_cert.proposal_id().to_string());
+        assert_eq!(explorer_cert.voter_id.id, update_vote_cert.voter_id().as_public_key().to_string());
     }
 
     pub fn assert_epoch_stability_depth(depth: u32, explorer_depth: i64) {
