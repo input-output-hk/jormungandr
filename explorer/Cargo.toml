@@ -13,7 +13,7 @@ version = "0.9.1"
 futures = "0.3.5"
 futures-channel = "0.3.5"
 futures-util = "0.3.5"
-async-graphql = "3"
+async-graphql = "4"
 async-graphql-warp = "3"
 serde = {version = "1.0.114", features = ["derive"]}
 serde_json = "1.0.81"
