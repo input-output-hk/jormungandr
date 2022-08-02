@@ -1,24 +1,22 @@
-use super::data::{
-    settings::SettingsSettingsFees,
-    transaction_by_id_certificates::*
+use super::data::{settings::SettingsSettingsFees, transaction_by_id_certificates::*};
+use crate::jormungandr::explorer::data::transaction_by_id_certificates::{
+    PayloadType as expPayloadType, *,
 };
-use crate::jormungandr::explorer::data::transaction_by_id_certificates::PayloadType as expPayloadType;
 use bech32::FromBase32;
 use chain_addr::AddressReadable;
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::{
     account::DelegationType,
     certificate::*,
+    chaintypes::ConsensusType,
+    config::ConfigParam::*,
     fee::LinearFee,
     fragment::Fragment,
     transaction::{AccountIdentifier, InputEnum, Transaction},
-    vote::PayloadType, chaintypes::ConsensusType,
+    vote::PayloadType,
 };
 use std::num::NonZeroU64;
 use thiserror::Error;
-
-use chain_impl_mockchain::config::ConfigParam::*;
-use crate::jormungandr::explorer::data::transaction_by_id_certificates::*;
 
 #[derive(Debug, Error)]
 pub enum VerifierError {
@@ -177,7 +175,9 @@ impl ExplorerVerifier {
                         })
                     }
                 }
-                TransactionByIdCertificatesTransactionCertificate::UpdateProposal(explorer_cert) => {
+                TransactionByIdCertificatesTransactionCertificate::UpdateProposal(
+                    explorer_cert,
+                ) => {
                     if let Fragment::UpdateProposal(fragment_cert) = fragment {
                         Self::assert_transaction_params(
                             fragment_cert.clone(),
@@ -207,7 +207,9 @@ impl ExplorerVerifier {
                         })
                     }
                 }
-                TransactionByIdCertificatesTransactionCertificate::MintToken(_) => todo!("MintToken can be only in block0"),
+                TransactionByIdCertificatesTransactionCertificate::MintToken(_) => {
+                    todo!("MintToken can be only in block0")
+                }
                 TransactionByIdCertificatesTransactionCertificate::EvmMapping(_) => {
                     todo!("Not implemented because of the bug EAS-238")
                 }
@@ -518,8 +520,14 @@ impl ExplorerVerifier {
     ) {
         let vote_cast_cert = fragment_cert.as_slice().payload().into_payload();
 
-        assert_eq!(explorer_cert.vote_plan,vote_cast_cert.vote_plan().to_string());
-        assert_eq!(explorer_cert.proposal_index as u8,vote_cast_cert.proposal_index());
+        assert_eq!(
+            explorer_cert.vote_plan,
+            vote_cast_cert.vote_plan().to_string()
+        );
+        assert_eq!(
+            explorer_cert.proposal_index as u8,
+            vote_cast_cert.proposal_index()
+        );
     }
 
     fn assert_vote_tally(
@@ -527,8 +535,7 @@ impl ExplorerVerifier {
         explorer_cert: TransactionByIdCertificatesTransactionCertificateOnVoteTally,
     ) {
         let vote_tally_cert = fragment_cert.as_slice().payload().into_payload();
-        assert_eq!(explorer_cert.vote_plan,vote_tally_cert.id().to_string());
-
+        assert_eq!(explorer_cert.vote_plan, vote_tally_cert.id().to_string());
     }
 
     #[allow(non_snake_case)]
@@ -537,17 +544,32 @@ impl ExplorerVerifier {
         explorer_cert: TransactionByIdCertificatesTransactionCertificateOnUpdateProposal,
     ) {
         let update_proposal_cert = fragment_cert.as_slice().payload().into_payload();
-        assert_eq!(explorer_cert.proposer_id.id, update_proposal_cert.proposer_id().as_public_key().to_string());
-        assert_eq!(explorer_cert.changes.config_params.len(), update_proposal_cert.changes().iter().len() + 1);
-        
+        assert_eq!(
+            explorer_cert.proposer_id.id,
+            update_proposal_cert
+                .proposer_id()
+                .as_public_key()
+                .to_string()
+        );
+        assert_eq!(
+            explorer_cert.changes.config_params.len(),
+            update_proposal_cert.changes().iter().len() + 1
+        );
+
         //for each parameter in the update proposal certificate check that the same
         //parameter is in the explorer query answer and that they have the same value
-        for update_proposal_param in update_proposal_cert.changes().iter(){
-            match update_proposal_param{
+        for update_proposal_param in update_proposal_cert.changes().iter() {
+            match update_proposal_param {
                 Block0Date(certificate_param) => {
-                    let matching_params = explorer_cert.changes.config_params.iter()
-                        .filter(|&configParam| matches!(configParam, configParam::Block0Date(explorer_param)
-                        if explorer_param.block0_date as u64 == certificate_param.0)).count();
+                    let matching_params = explorer_cert
+                        .changes
+                        .config_params
+                        .iter()
+                        .filter(|&configParam| {
+                            matches!(configParam, configParam::Block0Date(explorer_param)
+                        if explorer_param.block0_date as u64 == certificate_param.0)
+                        })
+                        .count();
                     assert_eq!(matching_params, 1);
                 }
                 Discrimination(certificate_param) => {
@@ -571,33 +593,63 @@ impl ExplorerVerifier {
                     assert_eq!(matching_params, 1);
                 }
                 SlotsPerEpoch(certificate_param) => {
-                    let matching_params = explorer_cert.changes.config_params.iter()
-                        .filter(|&configParam| matches!(configParam, configParam::SlotsPerEpoch(explorer_param)
-                        if explorer_param.slots_per_epoch as u32 == *certificate_param)).count();
+                    let matching_params = explorer_cert
+                        .changes
+                        .config_params
+                        .iter()
+                        .filter(|&configParam| {
+                            matches!(configParam, configParam::SlotsPerEpoch(explorer_param)
+                        if explorer_param.slots_per_epoch as u32 == *certificate_param)
+                        })
+                        .count();
                     assert_eq!(matching_params, 1);
                 }
                 SlotDuration(certificate_param) => {
-                    let matching_params = explorer_cert.changes.config_params.iter()
-                        .filter(|&configParam| matches!(configParam, configParam::SlotDuration(explorer_param)
-                        if explorer_param.slot_duration as u8 == *certificate_param)).count();
+                    let matching_params = explorer_cert
+                        .changes
+                        .config_params
+                        .iter()
+                        .filter(|&configParam| {
+                            matches!(configParam, configParam::SlotDuration(explorer_param)
+                        if explorer_param.slot_duration as u8 == *certificate_param)
+                        })
+                        .count();
                     assert_eq!(matching_params, 1);
                 }
                 EpochStabilityDepth(certificate_param) => {
-                    let matching_params = explorer_cert.changes.config_params.iter()
-                        .filter(|&configParam| matches!(configParam, configParam::EpochStabilityDepth(explorer_param)
-                        if explorer_param.epoch_stability_depth as u32 == *certificate_param)).count();
+                    let matching_params = explorer_cert
+                        .changes
+                        .config_params
+                        .iter()
+                        .filter(|&configParam| {
+                            matches!(configParam, configParam::EpochStabilityDepth(explorer_param)
+                        if explorer_param.epoch_stability_depth as u32 == *certificate_param)
+                        })
+                        .count();
                     assert_eq!(matching_params, 1);
                 }
                 ConsensusGenesisPraosActiveSlotsCoeff(certificate_param) => {
-                    let matching_params = explorer_cert.changes.config_params.iter()
-                        .filter(|&configParam| matches!(configParam, configParam::Milli(explorer_param)
-                        if explorer_param.milli as u64 == certificate_param.to_millis())).count();
+                    let matching_params = explorer_cert
+                        .changes
+                        .config_params
+                        .iter()
+                        .filter(|&configParam| {
+                            matches!(configParam, configParam::Milli(explorer_param)
+                        if explorer_param.milli as u64 == certificate_param.to_millis())
+                        })
+                        .count();
                     assert_eq!(matching_params, 1);
                 }
                 BlockContentMaxSize(certificate_param) => {
-                    let matching_params = explorer_cert.changes.config_params.iter()
-                        .filter(|&configParam| matches!(configParam, configParam::BlockContentMaxSize(explorer_param)
-                        if explorer_param.block_content_max_size as u32 == *certificate_param)).count();
+                    let matching_params = explorer_cert
+                        .changes
+                        .config_params
+                        .iter()
+                        .filter(|&configParam| {
+                            matches!(configParam, configParam::BlockContentMaxSize(explorer_param)
+                        if explorer_param.block_content_max_size as u32 == *certificate_param)
+                        })
+                        .count();
                     assert_eq!(matching_params, 1);
                 }
                 AddBftLeader(certificate_param) => {
@@ -614,15 +666,27 @@ impl ExplorerVerifier {
                 }
                 LinearFee(_) => todo!(),
                 ProposalExpiration(certificate_param) => {
-                    let matching_params = explorer_cert.changes.config_params.iter()
-                        .filter(|&configParam| matches!(configParam, configParam::ProposalExpiration(explorer_param)
-                        if explorer_param.proposal_expiration as u32 == *certificate_param)).count();
+                    let matching_params = explorer_cert
+                        .changes
+                        .config_params
+                        .iter()
+                        .filter(|&configParam| {
+                            matches!(configParam, configParam::ProposalExpiration(explorer_param)
+                        if explorer_param.proposal_expiration as u32 == *certificate_param)
+                        })
+                        .count();
                     assert_eq!(matching_params, 1);
                 }
                 KesUpdateSpeed(certificate_param) => {
-                    let matching_params = explorer_cert.changes.config_params.iter()
-                        .filter(|&configParam| matches!(configParam, configParam::KesUpdateSpeed(explorer_param)
-                        if explorer_param.kes_update_speed as u32 == *certificate_param)).count();
+                    let matching_params = explorer_cert
+                        .changes
+                        .config_params
+                        .iter()
+                        .filter(|&configParam| {
+                            matches!(configParam, configParam::KesUpdateSpeed(explorer_param)
+                        if explorer_param.kes_update_speed as u32 == *certificate_param)
+                        })
+                        .count();
                     assert_eq!(matching_params, 1);
                 }
                 TreasuryAdd(_) => todo!(),
@@ -652,8 +716,14 @@ impl ExplorerVerifier {
         explorer_cert: TransactionByIdCertificatesTransactionCertificateOnUpdateVote,
     ) {
         let update_vote_cert = fragment_cert.as_slice().payload().into_payload();
-        assert_eq!(explorer_cert.proposal_id, update_vote_cert.proposal_id().to_string());
-        assert_eq!(explorer_cert.voter_id.id, update_vote_cert.voter_id().as_public_key().to_string());
+        assert_eq!(
+            explorer_cert.proposal_id,
+            update_vote_cert.proposal_id().to_string()
+        );
+        assert_eq!(
+            explorer_cert.voter_id.id,
+            update_vote_cert.voter_id().as_public_key().to_string()
+        );
     }
 
     pub fn assert_epoch_stability_depth(depth: u32, explorer_depth: i64) {
