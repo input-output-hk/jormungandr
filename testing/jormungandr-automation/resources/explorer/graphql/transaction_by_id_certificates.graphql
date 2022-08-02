@@ -29,7 +29,7 @@ query TransactionByIdCertificates($id: String!){
                             }
             ... on VoteCast {votePlan proposalIndex}
             ... on VoteTally {votePlan}
-            ... on UpdateProposal {changes {...configParams}
+            ... on UpdateProposal {changes { configParams {...configParam}}
                                     proposerId{id}
                                 }
             ... on UpdateVote{proposalId voterId{id}}
@@ -50,7 +50,7 @@ fragment blockDate on BlockDate{
                             slot
                         }
 
-fragment configParams on ConfigParams
+fragment configParam on ConfigParam
 {
  __typename
     ... on Block0Date { block0Date }
