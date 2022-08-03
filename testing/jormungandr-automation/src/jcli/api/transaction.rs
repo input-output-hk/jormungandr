@@ -11,6 +11,7 @@ use jormungandr_lib::{
     interfaces::{BlockDate, LegacyUTxO, UTxOInfo, Value},
 };
 use jortestkit::process::output_extensions::ProcessOutput as _;
+use serde::Deserialize;
 use std::path::Path;
 
 pub struct Transaction {
@@ -248,8 +249,9 @@ impl Transaction {
         secret: impl AsRef<Path>,
         staging_file: impl AsRef<Path>,
         post: bool,
-    ) {
-        self.command
+    ) -> Vec<Hash> {
+        let output = self
+            .command
             .make_transaction(
                 host,
                 sender,
@@ -263,7 +265,20 @@ impl Transaction {
             )
             .build()
             .assert()
-            .success();
+            .success()
+            .get_output()
+            .as_lossy_string();
+        let base64_str = output.trim_start_matches("Posted fragment id: ").trim();
+        let json_bytes = base64::decode(base64_str).unwrap();
+        let json_str = String::from_utf8(json_bytes).unwrap();
+
+        #[derive(Deserialize)]
+        struct ResponseFormat {
+            accepted: Vec<Hash>,
+        }
+
+        let ResponseFormat { accepted } = serde_json::from_str(&json_str).unwrap();
+        accepted
     }
 
     pub fn convert_to_message<P: AsRef<Path>>(self, staging_file: P) -> String {

@@ -7,6 +7,7 @@ use chain_core::{
     property::{DeserializeFromSlice as _, Serialize},
 };
 use chain_impl_mockchain::fragment::Fragment;
+use serde_json::Value;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -66,12 +67,15 @@ fn post_message(args: RestArgs, file: Option<PathBuf>) -> Result<(), Error> {
     Ok(())
 }
 
-pub fn post_fragment(args: RestArgs, fragment: Fragment) -> Result<String, Error> {
-    let fragment_id = args
+pub fn post_fragment(args: RestArgs, fragment: Fragment) -> Result<Value, Error> {
+    let fragment_ids = args
         .client()?
         .post(&["v0", "message"])
         .body(fragment.serialize_as_vec()?)
         .execute()?
         .text()?;
-    Ok(fragment_id)
+    // the response comes back as base64 encoded json
+    let json_bytes = base64::decode(&fragment_ids)?;
+    let json_str = String::from_utf8(json_bytes)?;
+    Ok(serde_json::from_str(&json_str)?)
 }

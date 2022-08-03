@@ -88,8 +88,8 @@ impl MakeTransaction {
 
         if self.post {
             let fragment = transaction.fragment()?;
-            let fragment_id = post_fragment(self.rest_args, fragment)?;
-            println!("Posted fragment id: {}", fragment_id);
+            let fragment_ids = post_fragment(self.rest_args, fragment)?;
+            println!("Posted fragment id: {}", fragment_ids);
         } else {
             // if not posted make the transaction available as a file
             transaction.store(&self.common.staging_file)?;

@@ -2,6 +2,8 @@ mod config;
 pub mod v0;
 pub mod v1;
 
+use std::string::FromUtf8Error;
+
 use crate::jcli_lib::utils::{io::ReadYamlError, output_format};
 use chain_core::property::{ReadError, WriteError};
 pub use config::RestArgs;
@@ -37,6 +39,10 @@ pub enum Error {
     RequestError(#[from] config::Error),
     #[error("error loading data from response")]
     SerdeError(#[from] serde_json::Error),
+    #[error("invalid utf8")]
+    FromUtf8(#[from] FromUtf8Error),
+    #[error("invalid base64")]
+    Base64(#[from] base64::DecodeError),
 }
 
 impl From<ReadYamlError> for Error {
