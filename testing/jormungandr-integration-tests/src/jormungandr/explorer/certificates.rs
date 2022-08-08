@@ -4,8 +4,12 @@ use chain_addr::Discrimination;
 use chain_core::property::BlockDate as propertyBlockDate;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
-    block::BlockDate, certificate::{VoteAction, VoteTallyPayload, UpdateProposal, UpdateVote}, fee::LinearFee,
-    tokens::minting_policy::MintingPolicy, transaction::AccountIdentifier, vote::Choice,
+    block::BlockDate,
+    certificate::{UpdateProposal, UpdateVote, VoteAction, VoteTallyPayload},
+    fee::LinearFee,
+    tokens::minting_policy::MintingPolicy,
+    transaction::AccountIdentifier,
+    vote::Choice,
 };
 use jormungandr_automation::{
     jcli::JCli,
@@ -13,15 +17,20 @@ use jormungandr_automation::{
         explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
         ConfigurationBuilder, Starter,
     },
-    testing::{VotePlanBuilder, time::wait_for_epoch, keys::create_new_key_pair},
+    testing::{
+        keys::create_new_key_pair,
+        time::{wait_for_date, wait_for_epoch},
+        VotePlanBuilder,
+    },
 };
-use jormungandr_lib::interfaces::{InitialToken, ConfigParams, ConfigParam, BlockContentMaxSize};
-use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
-use thor::BlockDateGenerator::Fixed;
+use jormungandr_lib::interfaces::{BlockContentMaxSize, ConfigParam, ConfigParams, InitialToken};
+use thor::{
+    BlockDateGenerator::Fixed, FragmentBuilder, FragmentSender, StakePool, TransactionHash,
+};
 
 #[test]
 pub fn explorer_stake_pool_registration_test() {
-    let query_complexity_limit = 70;
+    let query_complexity_limit = 140;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
@@ -85,7 +94,7 @@ pub fn explorer_stake_pool_registration_test() {
 
 #[test]
 pub fn explorer_owner_delegation_test() {
-    let query_complexity_limit = 70;
+    let query_complexity_limit = 140;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut stake_pool_owner = thor::Wallet::default();
@@ -156,7 +165,7 @@ pub fn explorer_owner_delegation_test() {
 
 #[test]
 pub fn explorer_full_delegation_test() {
-    let query_complexity_limit = 70;
+    let query_complexity_limit = 140;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut stake_pool_owner = thor::Wallet::default();
@@ -232,7 +241,7 @@ pub fn explorer_full_delegation_test() {
 
 #[test]
 pub fn explorer_split_delegation_test() {
-    let query_complexity_limit = 70;
+    let query_complexity_limit = 140;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
@@ -329,7 +338,7 @@ pub fn explorer_split_delegation_test() {
 
 #[test]
 pub fn explorer_pool_update_test() {
-    let query_complexity_limit = 70;
+    let query_complexity_limit = 140;
     let query_depth_limit = 30;
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
@@ -417,7 +426,7 @@ pub fn explorer_pool_update_test() {
 
 #[test]
 pub fn explorer_pool_retire_test() {
-    let query_complexity_limit = 70;
+    let query_complexity_limit = 140;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
@@ -492,7 +501,7 @@ pub fn explorer_pool_retire_test() {
 
 #[test]
 pub fn explorer_vote_plan_certificates_test() {
-    let query_complexity_limit = 70;
+    let query_complexity_limit = 140;
     let query_depth_limit = 30;
     let mut first_stake_pool_owner = thor::Wallet::default();
     let bob = thor::Wallet::default();
@@ -513,7 +522,7 @@ pub fn explorer_vote_plan_certificates_test() {
             .with_discrimination(discrimination)
             .with_slots_per_epoch(20)
             .with_slot_duration(3)
-            .with_linear_fees(LinearFee::new(0, 0, 0))
+            .with_linear_fees(LinearFee::new(0, 0, 0)),
     )
     .unwrap();
 
@@ -540,11 +549,6 @@ pub fn explorer_vote_plan_certificates_test() {
 
     let vote_plan_fragment = fragment_builder.vote_plan(&first_stake_pool_owner, &vote_plan);
 
-    assert!(jormungandr
-        .rest()
-        .account_votes_with_plan_id(vote_plan.to_id().into(), first_stake_pool_owner.address())
-        .is_err());
-
     fragment_sender
         .send_fragment(
             &mut first_stake_pool_owner,
@@ -559,12 +563,15 @@ pub fn explorer_vote_plan_certificates_test() {
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
-    let _vote_plan_transaction = trans.data.unwrap().transaction;
+    let vote_plan_transaction = trans.data.unwrap().transaction;
+
+    ExplorerVerifier::assert_transaction_certificates(vote_plan_fragment, vote_plan_transaction)
+        .unwrap();
 }
 
 #[test]
 pub fn explorer_vote_cast_certificates_test() {
-    let query_complexity_limit = 70;
+    let query_complexity_limit = 140;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut alice = thor::Wallet::default();
@@ -627,7 +634,7 @@ pub fn explorer_vote_cast_certificates_test() {
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
-    let vote_cast_fragment = fragment_builder.vote_cast(&mut alice, &vote_plan, 2, &Choice::new(0));
+    let vote_cast_fragment = fragment_builder.vote_cast(&alice, &vote_plan, 2, &Choice::new(0));
 
     fragment_sender
         .send_fragment(&mut alice, vote_cast_fragment.clone(), &jormungandr)
@@ -639,14 +646,14 @@ pub fn explorer_vote_cast_certificates_test() {
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
-    let _vote_cast_transaction = trans.data.unwrap().transaction;
-
-
+    let vote_cast_transaction = trans.data.unwrap().transaction;
+    ExplorerVerifier::assert_transaction_certificates(vote_cast_fragment, vote_cast_transaction)
+        .unwrap();
 }
 
 #[test]
-pub fn explorer_vote_tally_certificate_test(){
-    let query_complexity_limit = 70;
+pub fn explorer_vote_tally_certificate_test() {
+    let query_complexity_limit = 140;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut alice = thor::Wallet::default();
@@ -691,14 +698,20 @@ pub fn explorer_vote_tally_certificate_test(){
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        Fixed(BlockDate{ epoch: 2, slot_id: 0 }),
+        Fixed(BlockDate {
+            epoch: 2,
+            slot_id: 0,
+        }),
         Default::default(),
     );
 
     let fragment_builder = FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
-        BlockDate{ epoch: 2, slot_id: 0 },
+        BlockDate {
+            epoch: 2,
+            slot_id: 0,
+        },
     );
 
     let params = ExplorerParams::new(
@@ -709,17 +722,20 @@ pub fn explorer_vote_tally_certificate_test(){
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
-    let vote_cast_fragment = fragment_builder.vote_cast(&mut alice, &vote_plan, 2, &Choice::new(0));
+    let vote_cast_fragment = fragment_builder.vote_cast(&alice, &vote_plan, 2, &Choice::new(0));
 
     fragment_sender
-        .send_fragment(&mut alice, vote_cast_fragment.clone(), &jormungandr)
+        .send_fragment(&mut alice, vote_cast_fragment, &jormungandr)
         .unwrap();
 
     wait_for_epoch(1, jormungandr.rest());
 
-    let vote_tally_fragment = fragment_builder.vote_tally(&mut alice, &vote_plan, VoteTallyPayload::Public);
+    let vote_tally_fragment =
+        fragment_builder.vote_tally(&alice, &vote_plan, VoteTallyPayload::Public);
 
-    fragment_sender.send_fragment(&mut alice, vote_tally_fragment.clone(), &jormungandr).unwrap();
+    fragment_sender
+        .send_fragment(&mut alice, vote_tally_fragment.clone(), &jormungandr)
+        .unwrap();
 
     let trans = explorer
         .transaction_certificates(vote_tally_fragment.hash().into())
@@ -727,23 +743,34 @@ pub fn explorer_vote_tally_certificate_test(){
 
     assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
 
-    let _vote_tally_transaction = trans.data.unwrap().transaction;
+    let vote_tally_transaction = trans.data.unwrap().transaction;
+    ExplorerVerifier::assert_transaction_certificates(vote_tally_fragment, vote_tally_transaction)
+        .unwrap();
 }
 
+#[should_panic]
 #[test]
-pub fn explorer_update_proposal_certificate_test(){
-    let query_complexity_limit = 70;
+pub fn explorer_update_proposal_certificate_test() {
+    let query_complexity_limit = 140;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut alice = thor::Wallet::default();
-    let bft_secret = create_new_key_pair::<Ed25519>();
+    let mut bob = thor::Wallet::default();
+    let bft_secret_alice = create_new_key_pair::<Ed25519>();
+    let bft_secret_bob = create_new_key_pair::<Ed25519>();
     let wallet_initial_funds = 5_000_000;
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
-        .with_consensus_leaders_ids(vec![bft_secret.identifier().into()])
+        .with_funds(vec![
+            alice.to_initial_fund(wallet_initial_funds),
+            bob.to_initial_fund(wallet_initial_funds),
+        ])
+        .with_consensus_leaders_ids(vec![
+            bft_secret_alice.identifier().into(),
+            bft_secret_bob.identifier().into(),
+        ])
         .with_proposal_expiry_epochs(20)
-        .with_slots_per_epoch(30)
+        .with_slots_per_epoch(20)
         .with_linear_fees(LinearFee::new(0, 0, 0))
         .build(&temp_dir);
 
@@ -755,28 +782,31 @@ pub fn explorer_update_proposal_certificate_test(){
 
     let new_block_context_max_size = 1000;
     let change_params = ConfigParams::new(vec![ConfigParam::BlockContentMaxSize(
-        BlockContentMaxSize::from(new_block_context_max_size)),
-        ConfigParam::LinearFee(LinearFee::new(1, 0, 0))
-    ]);
-
-    let old_settings = jormungandr.rest().settings().unwrap();
+        BlockContentMaxSize::from(new_block_context_max_size),
+    )]);
 
     let update_proposal = UpdateProposal::new(
         change_params.into(),
-        bft_secret.identifier().into_public_key().into(),
+        bft_secret_alice.identifier().into_public_key().into(),
     );
 
     let fragment_sender = FragmentSender::new(
         jormungandr.genesis_block_hash(),
         jormungandr.fees(),
-        Fixed(BlockDate{ epoch: 10, slot_id: 0 }),
+        Fixed(BlockDate {
+            epoch: 10,
+            slot_id: 0,
+        }),
         Default::default(),
     );
 
     let fragment_builder = FragmentBuilder::new(
         &jormungandr.genesis_block_hash(),
         &jormungandr.fees(),
-        BlockDate{ epoch: 10, slot_id: 0 },
+        BlockDate {
+            epoch: 10,
+            slot_id: 0,
+        },
     );
 
     let params = ExplorerParams::new(
@@ -787,39 +817,92 @@ pub fn explorer_update_proposal_certificate_test(){
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
-    let proposal_update_fragment = fragment_builder.update_proposal(&mut alice, update_proposal, &bft_secret.signing_key().into_secret_key());
+    let proposal_update_fragment = fragment_builder.update_proposal(
+        &alice,
+        update_proposal,
+        &bft_secret_alice.signing_key().into_secret_key(),
+    );
 
-    let check = fragment_sender
+    fragment_sender
         .send_fragment(&mut alice, proposal_update_fragment.clone(), &jormungandr)
         .unwrap();
 
-    wait_for_epoch(2, jormungandr.rest());
+    wait_for_date(
+        BlockDate {
+            epoch: 0,
+            slot_id: 10,
+        }
+        .into(),
+        jormungandr.rest(),
+    );
 
     let update_vote = UpdateVote::new(
-        *check.fragment_id(),
-        bft_secret.identifier().into_public_key().into(),
+        proposal_update_fragment.hash(),
+        bft_secret_alice.identifier().into_public_key().into(),
     );
+
     fragment_sender
         .send_update_vote(
             &mut alice,
-            &bft_secret.signing_key().into_secret_key(),
+            &bft_secret_alice.signing_key().into_secret_key(),
             update_vote,
             &jormungandr,
         )
         .unwrap();
 
-    wait_for_epoch(5, jormungandr.rest());
+    let update_vote = UpdateVote::new(
+        proposal_update_fragment.hash(),
+        bft_secret_bob.identifier().into_public_key().into(),
+    );
 
-    let new_settings = jormungandr.rest().settings().unwrap();
+    let update_vote_fragment = fragment_builder.update_vote(
+        &bob,
+        update_vote,
+        &bft_secret_bob.signing_key().into_secret_key(),
+    );
 
-    println!("old {:?} new {:?}",old_settings,new_settings);
-    assert_eq!(old_settings, new_settings);
+    fragment_sender
+        .send_fragment(&mut bob, update_vote_fragment.clone(), &jormungandr)
+        .unwrap();
 
-    let trans = explorer
+    wait_for_date(
+        BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        }
+        .into(),
+        jormungandr.rest(),
+    );
+
+    let update_vote_resp = explorer
+        .transaction_certificates(update_vote_fragment.hash().into())
+        .expect("update vote transaction not found");
+
+    assert!(
+        update_vote_resp.errors.is_none(),
+        "{:?}",
+        update_vote_resp.errors.unwrap()
+    );
+    let update_vote_transaction = update_vote_resp.data.unwrap().transaction;
+    ExplorerVerifier::assert_transaction_certificates(
+        update_vote_fragment,
+        update_vote_transaction,
+    )
+    .unwrap();
+
+    let proposal_update_resp = explorer
         .transaction_certificates(proposal_update_fragment.hash().into())
         .expect("update proposal transaction not found");
 
-    assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
-
-    let _update_proposal_transaction = trans.data.unwrap().transaction;
+    assert!(
+        proposal_update_resp.errors.is_none(),
+        "{:?}",
+        proposal_update_resp.errors.unwrap()
+    );
+    let proposal_update_transaction = proposal_update_resp.data.unwrap().transaction;
+    ExplorerVerifier::assert_transaction_certificates(
+        proposal_update_fragment,
+        proposal_update_transaction,
+    )
+    .unwrap();
 }
