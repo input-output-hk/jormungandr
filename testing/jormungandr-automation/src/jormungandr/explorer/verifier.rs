@@ -545,15 +545,12 @@ impl ExplorerVerifier {
     ) {
         let update_proposal_cert = fragment_cert.as_slice().payload().into_payload();
         assert_eq!(
-            explorer_cert.proposer_id.id,
-            update_proposal_cert
-                .proposer_id()
-                .as_public_key()
-                .to_string()
+            Self::decode_bech32_pk(&explorer_cert.proposer_id.id),
+            *update_proposal_cert.proposer_id().as_public_key()
         );
         assert_eq!(
             explorer_cert.changes.config_params.len(),
-            update_proposal_cert.changes().iter().len() + 1
+            update_proposal_cert.changes().iter().len()
         );
 
         //for each parameter in the update_proposal_certificate check that there is only one parameter
@@ -849,8 +846,8 @@ impl ExplorerVerifier {
             update_vote_cert.proposal_id().to_string()
         );
         assert_eq!(
-            explorer_cert.voter_id.id,
-            update_vote_cert.voter_id().as_public_key().to_string()
+            Self::decode_bech32_pk(&explorer_cert.voter_id.id),
+            *update_vote_cert.voter_id().as_public_key()
         );
     }
 
