@@ -3,6 +3,8 @@ use assert_fs::TempDir;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as propertyBlockDate;
 use chain_crypto::Ed25519;
+#[cfg(feature = "evm")]
+use chain_impl_mockchain::testing::TestGen;
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate::{UpdateProposal, UpdateVote, VoteAction, VoteTallyPayload},
@@ -497,6 +499,76 @@ pub fn explorer_pool_retire_test() {
         stake_pool_retire_transaction,
     )
     .unwrap();
+}
+
+#[cfg(feature = "evm")]
+#[should_panic] //BUG EAS-238
+#[test]
+pub fn explorer_evm_mapping_certificates_test() {
+    let temp_dir = TempDir::new().unwrap();
+    let mut first_stake_pool_owner = thor::Wallet::default();
+    let query_complexity_limit = 70;
+    let query_depth_limit = 30;
+
+    let config = ConfigurationBuilder::new()
+        .with_funds(vec![first_stake_pool_owner.to_initial_fund(1_000_000)])
+        .build(&temp_dir);
+
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config)
+        .start()
+        .expect("cannot start jormungandr");
+
+    let fragment_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        BlockDate::first().next_epoch().into(),
+        Default::default(),
+    );
+
+    let fragment_builder = FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let params = ExplorerParams::new(
+        query_complexity_limit.to_string(),
+        query_depth_limit.to_string(),
+        None,
+    );
+    let explorer_process = jormungandr.explorer(params);
+    let explorer = explorer_process.client();
+
+    let evm_mapping = TestGen::evm_mapping_for_wallet(&first_stake_pool_owner.clone().into());
+
+    let evm_mapping_fragment = fragment_builder.evm_mapping(&first_stake_pool_owner, &evm_mapping);
+
+    fragment_sender
+        .send_fragment(
+            &mut first_stake_pool_owner,
+            evm_mapping_fragment.clone(),
+            &jormungandr,
+        )
+        .unwrap();
+
+    assert_eq!(
+        evm_mapping.evm_address().to_string(),
+        jormungandr
+            .rest()
+            .evm_address(evm_mapping.account_id())
+            .unwrap(),
+        "Evm address not equal"
+    );
+
+    let trans = explorer
+        .transaction_certificates(evm_mapping_fragment.hash().into())
+        .expect("evm mapping transaction not found");
+
+    assert!(trans.errors.is_none(), "{:?}", trans.errors.unwrap());
+
+    let _evm_mapping_transaction = trans.data.unwrap().transaction;
 }
 
 #[test]

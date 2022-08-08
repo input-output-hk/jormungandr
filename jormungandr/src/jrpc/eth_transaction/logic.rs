@@ -12,7 +12,8 @@ use crate::{
 };
 use chain_evm::{
     ethereum_types::{H160, H256, H512},
-    transaction::EthereumSignedTransaction,
+    signature::eip_191_signature,
+    transaction::{EthereumSignedTransaction, EthereumUnsignedTransaction},
 };
 use chain_impl_mockchain::{block::Block as JorBlock, fragment::Fragment};
 use jormungandr_lib::interfaces::FragmentOrigin;
@@ -63,8 +64,8 @@ pub async fn send_transaction(tx: Transaction, context: &Context) -> Result<H256
 
 pub async fn send_raw_transaction(raw_tx: Bytes, context: &Context) -> Result<H256, Error> {
     let tx = EthereumSignedTransaction::from_bytes(raw_tx.as_ref())
-        .map_err(|e| Error::TransactionDecodedErorr(e.to_string()))?;
-    let fragment = Fragment::Evm(tx.try_into().map_err(Error::TransactionDecodedErorr)?);
+        .map_err(|e| Error::TransactionDecodedError(e.to_string()))?;
+    let fragment = Fragment::Evm(tx.try_into().map_err(Error::TransactionDecodedError)?);
     let (reply_handle, reply_future) = intercom::unary_reply();
     let msg = TransactionMsg::SendTransactions {
         origin: FragmentOrigin::JRpc,
@@ -123,9 +124,16 @@ pub fn get_transaction_receipt(_hash: H256, _context: &Context) -> Result<Option
     Err(Error::NonArchiveNode)
 }
 
-pub fn sign_transaction(_tx: Transaction, _context: &Context) -> Result<Bytes, Error> {
-    // TODO implement
-    Ok(Default::default())
+pub fn sign_transaction(tx: Transaction, context: &Context) -> Result<Bytes, Error> {
+    let account_secret = context
+        .try_full()?
+        .evm_keys
+        .iter()
+        .find(|&sec| sec.address() == tx.from)
+        .ok_or(Error::AccountSignatureError)?;
+    let tx = EthereumUnsignedTransaction::from(tx);
+    let signed = tx.sign(account_secret)?;
+    Ok(Bytes::from(signed.to_bytes().into_boxed_slice()))
 }
 
 pub async fn estimate_gas(tx: Transaction, context: &Context) -> Result<Number, Error> {
@@ -137,12 +145,29 @@ pub async fn estimate_gas(tx: Transaction, context: &Context) -> Result<Number, 
         .into())
 }
 
-pub fn sign(_address: H160, _message: Bytes, _context: &Context) -> Result<H512, Error> {
-    // TODO implement
-    Ok(H512::zero())
+pub fn sign(address: H160, message: Bytes, context: &Context) -> Result<H512, Error> {
+    let account_secret = context
+        .try_full()?
+        .evm_keys
+        .iter()
+        .find(|&sec| sec.address() == address)
+        .ok_or(Error::AccountSignatureError)?;
+    let signed = eip_191_signature(message, account_secret)?;
+    let (recovery_id, sig_bytes) = signed.serialize_compact();
+    let signature = {
+        let mut sig = [0u8; 65];
+        sig[..64].copy_from_slice(&sig_bytes[..]);
+        sig[64] = (recovery_id.to_i32() % 2) as u8;
+        sig
+    };
+    Ok(H512::from_slice(&signature[..]))
 }
 
-pub fn call(_tx: Transaction, _number: BlockNumber, _context: &Context) -> Result<Bytes, Error> {
-    // TODO implement
-    Ok(Default::default())
+pub async fn call(tx: Transaction, _: BlockNumber, context: &Context) -> Result<Bytes, Error> {
+    let blockchain_tip = context.blockchain_tip()?.get_ref().await;
+    Ok(blockchain_tip
+        .ledger()
+        .call_evm_transaction(tx.into())
+        .map_err(Box::new)?
+        .into())
 }

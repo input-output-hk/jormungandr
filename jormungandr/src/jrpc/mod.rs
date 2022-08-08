@@ -48,10 +48,18 @@ pub enum Error {
     EstimationError(#[from] Box<LedgerError>),
     #[error("Could not process fragment")]
     Fragment(FragmentsProcessingSummary),
-    #[error("Cound not decode Ethereum transaction bytes, erorr: {0}")]
-    TransactionDecodedErorr(String),
+    #[error("Cound not decode Ethereum transaction bytes, error: {0}")]
+    TransactionDecodedError(String),
     #[error("Mining is not currently supported")]
     MiningIsNotAllowed,
+    #[cfg(feature = "evm")]
+    #[error(transparent)]
+    TransactionSignatureError(#[from] chain_impl_mockchain::evm::crypto::secp256k1::Error),
+    #[cfg(feature = "evm")]
+    #[error("Could not retrieve Ethereum account secret")]
+    AccountSignatureError,
+    #[error("Ethereum signature error: {0}")]
+    EthereumSignatureError(String),
 }
 
 pub async fn start_jrpc_server(config: Config, _context: ContextLock) {

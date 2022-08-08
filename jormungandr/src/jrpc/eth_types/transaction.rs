@@ -1,6 +1,7 @@
 use super::{bytes::Bytes, number::Number};
 use chain_evm::{
     ethereum_types::{H160, H256, U256},
+    transaction::EthereumUnsignedTransaction,
     AccessList,
 };
 use chain_impl_mockchain::evm::{EvmActionType, EvmTransaction};
@@ -149,7 +150,7 @@ pub struct Transaction {
     /// Nonce
     nonce: Number,
     /// Sender
-    from: H160,
+    pub(crate) from: H160,
     /// Recipient
     to: Option<H160>,
     /// Transfered value
@@ -176,6 +177,12 @@ pub struct Transaction {
     s: U256,
     #[serde(flatten)]
     transaction_type: TransactionType,
+}
+
+impl From<Transaction> for EthereumUnsignedTransaction {
+    fn from(_other: Transaction) -> Self {
+        unimplemented!("this is left as pending for future work");
+    }
 }
 
 impl From<Transaction> for EvmTransaction {

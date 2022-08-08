@@ -1,4 +1,4 @@
-name: CI-Tests
+name: CI-Evm-Tests
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - .github/workflows/test.yml
+      - .github/workflows/test_evm.yml
   pull_request:
     paths:
       - doc/api/**.yaml
@@ -22,7 +22,7 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - .github/workflows/test.yml
+      - .github/workflows/test_evm.yml
 
 jobs:
   cache_info:
@@ -93,13 +93,13 @@ jobs:
         run: cargo fetch --locked
 
   tests:
-    name: Tests
+    name: Evm Tests
     needs: [cache_info, update_deps]
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         profile: [debug, release]
         toolchain: [stable]
         include:
@@ -133,13 +133,6 @@ jobs:
           [profile.release]
           lto = "thin"
           EOF
-
-      - name: Allow long paths on Windows
-        if: ${{ matrix.os == 'windows-latest' }}
-        shell: powershell
-        run: |
-          reg add HKLM\SYSTEM\CurrentControlSet\Control\FileSystem /v LongPathsEnabled /t REG_DWORD /d 1 /f
-          git config --system core.longpaths true
 
       - uses: actions-rs/toolchain@v1
         with:
@@ -175,8 +168,7 @@ jobs:
           command: build
           args: |
             --manifest-path jormungandr/Cargo.toml
-            --no-default-features
-            --features ${{ env.JORMUNGANDR_FEATURES }}
+            --features=evm
             ${{ env.CARGO_FLAGS }}
 
       - name: Build jcli
@@ -191,7 +183,7 @@ jobs:
         timeout-minutes: 30
         with:
           command: build
-          args: --tests --all-features ${{ env.CARGO_FLAGS }}
+          args: --tests --features=evm ${{ env.CARGO_FLAGS }}
 
       - name: Build explorer
         uses: actions-rs/cargo@v1
@@ -200,17 +192,15 @@ jobs:
           command: build
           args: -p explorer ${{ env.CARGO_FLAGS }}
 
-      - name: Run tests
+      - name: Run evm tests
         uses: actions-rs/cargo@v1
         timeout-minutes: 90
         with:
           command: test
-          args: --tests ${{ env.CARGO_FLAGS }}
+          args: --tests ${{ env.CARGO_FLAGS }} --features evm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # TMPDIR and TMP are used respectively on unix and windows
           TMPDIR: ${{ runner.temp }}
-          TMP: ${{ runner.temp }}
 
       - name: Pack logs from failed tests
         if: ${{ failure() }}
@@ -219,106 +209,3 @@ jobs:
           name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
           path: ${{ runner.temp }}/jormungandr_*
           retention-days: 30
-
-  clippy:
-    name: Clippy
-    needs: [cache_info, update_deps]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-          default: true
-          components: clippy
-
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Restore cargo registry index
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/registry/index
-          key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
-
-      - name: Restore cargo dependencies
-        uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: cargo-deps-v1-${{ needs.cache_info.outputs.cargo-lock-hash }}
-
-      - name: clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --all-targets -- -D warnings
-
-  fmt:
-    name: Fmt
-    needs: [cache_info, update_deps]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          profile: minimal
-          override: true
-          default: true
-          components: rustfmt
-
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
-
-  test_coverage:
-    name: Test Coverage
-    needs: update_deps
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - name: Restore cargo registry index
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/registry/index
-          key: cargo-index-v2-${{ needs.update_deps.outputs.crates-io-index-head }}
-
-      - name: Restore dependency crates
-        uses: actions/cache@v2
-        with:
-          path: ~/.cargo/registry/cache
-          key: cargo-deps-v2-${{ hashFiles('Cargo.lock') }}
-
-      - name: Build jormungandr
-        uses: actions-rs/cargo@v1
-        timeout-minutes: 30
-        with:
-          command: build
-          args: --release --all
-
-      - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          args: '--ignore-tests --out Lcov --features network --release --skip-clean --exclude-files testing'
-          timeout: 3600
-
-      - name: upload to Coveralls
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: './lcov.info'
