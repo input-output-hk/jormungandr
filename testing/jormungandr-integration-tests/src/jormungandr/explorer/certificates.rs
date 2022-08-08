@@ -820,7 +820,7 @@ pub fn explorer_vote_tally_certificate_test() {
         .unwrap();
 }
 
-#[should_panic]
+#[should_panic]//bug NPG-2742
 #[test]
 pub fn explorer_update_proposal_certificate_test() {
     let query_complexity_limit = 140;
