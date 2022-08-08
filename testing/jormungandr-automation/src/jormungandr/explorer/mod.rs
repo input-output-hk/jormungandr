@@ -367,21 +367,22 @@ impl Explorer {
         let mut count=0;
         let max_count=10;
         //let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
-        let response = loop {match self.client.run(&query) {
-            Ok(response) => {break response;}
-            Err(_) => {
-                if count > max_count
-                    {panic!("Too many tries")}
-                else{
-                    count = count +1;
-                    use std::{thread, time};
-
-                    thread::sleep(time::Duration::from_secs(10));
-                    println!("Running query again_____");
-                    self.client
-                        .run(&query)
-                        .map_err(ExplorerError::ClientError)?;
-            }}
+        let response = loop {
+            match self.client.run(&query) {
+                Ok(response) => {
+                    println!("Response OK");
+                    break response;
+                }
+                Err(_) => {
+                    println!("Response Error");
+                    if count > max_count
+                        { panic!("Too many tries, count {:?}",count) }
+                    else{
+                        count = count +1;
+                        use std::{thread, time};
+                        thread::sleep(time::Duration::from_secs(10));
+                        println!("Running query again after wait. Count {:?}",count);
+                }}
         }};
         let response_body: Response<transaction_by_id_certificates::ResponseData> =
             response.json()?;
