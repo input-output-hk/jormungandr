@@ -7,10 +7,12 @@ use jormungandr_automation::{
         ConfigurationBuilder, Starter,
     },
 };
+use std::time::Instant;
 use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
 
 #[test]
 pub fn explorer_stake_pool_registration_test() {
+    let start = Instant::now();
     let query_complexity_limit = 70;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
@@ -58,6 +60,8 @@ pub fn explorer_stake_pool_registration_test() {
         )
         .expect("Error while sending registration certificate for first stake pool owner");
 
+    println!("TIME elapsed {:?}", start.elapsed());
+
     let trans = explorer
         .transaction_certificates(stake_pool_reg_fragment.hash().into())
         .expect("Non existing stake pool registration transaction");
@@ -75,6 +79,7 @@ pub fn explorer_stake_pool_registration_test() {
 
 #[test]
 pub fn explorer_owner_delegation_test() {
+    let start = Instant::now();
     let query_complexity_limit = 70;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
@@ -129,6 +134,8 @@ pub fn explorer_owner_delegation_test() {
         )
         .expect("Error while sending owner delegation cert");
 
+    println!("TIME elapsed {:?}", start.elapsed());
+
     let trans = explorer
         .transaction_certificates(owner_deleg_fragment.hash().into())
         .expect("Non existing owner delegation transaction");
@@ -146,6 +153,7 @@ pub fn explorer_owner_delegation_test() {
 
 #[test]
 pub fn explorer_full_delegation_test() {
+    let start = Instant::now();
     let query_complexity_limit = 70;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
@@ -205,6 +213,8 @@ pub fn explorer_full_delegation_test() {
         )
         .unwrap();
 
+    println!("TIME elapsed {:?}", start.elapsed());
+
     let trans = explorer
         .transaction_certificates(full_deleg_fragment.hash().into())
         .expect("Non existing full delegation transaction");
@@ -222,6 +232,7 @@ pub fn explorer_full_delegation_test() {
 
 #[test]
 pub fn explorer_split_delegation_test() {
+    let start = Instant::now();
     let query_complexity_limit = 70;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
@@ -301,6 +312,7 @@ pub fn explorer_split_delegation_test() {
             &jormungandr,
         )
         .unwrap();
+    println!("TIME elapsed {:?}", start.elapsed());
 
     let trans = explorer
         .transaction_certificates(split_delegation_fragment.hash().into())
@@ -319,6 +331,7 @@ pub fn explorer_split_delegation_test() {
 
 #[test]
 pub fn explorer_pool_update_test() {
+    let start = Instant::now();
     let query_complexity_limit = 70;
     let query_depth_limit = 30;
     let jcli: JCli = Default::default();
@@ -390,6 +403,8 @@ pub fn explorer_pool_update_test() {
         .assert_in_block();
     first_stake_pool_owner.confirm_transaction();
 
+    println!("TIME elapsed {:?}", start.elapsed());
+
     let trans = explorer
         .transaction_certificates(stake_pool_update_fragment.hash().into())
         .expect("Non existing stake pool update transaction");
@@ -407,6 +422,7 @@ pub fn explorer_pool_update_test() {
 
 #[test]
 pub fn explorer_pool_retire_test() {
+    let start = Instant::now();
     let query_complexity_limit = 70;
     let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
@@ -464,6 +480,7 @@ pub fn explorer_pool_retire_test() {
             &jormungandr,
         )
         .unwrap();
+    println!("TIME elapsed {:?}", start.elapsed());
 
     let trans = explorer
         .transaction_certificates(stake_pool_retire_fragment.hash().into())
