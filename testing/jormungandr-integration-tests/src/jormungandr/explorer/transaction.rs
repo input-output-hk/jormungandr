@@ -18,7 +18,7 @@ pub fn explorer_transaction_test() {
     let sender = thor::Wallet::default();
     let receiver = thor::Wallet::default();
     let transaction_value = 1_000;
-    let query_complexity_limit = 70;
+    let query_complexity_limit = 140;
     let attempts_number = 20;
 
     let mut config = ConfigurationBuilder::new();
