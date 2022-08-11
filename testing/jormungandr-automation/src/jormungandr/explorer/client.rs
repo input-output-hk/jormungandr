@@ -52,7 +52,7 @@ impl GraphQlClient {
             .send()
             .is_ok()
         {
-            println!("explorer is up again at {:?}", self.base_url);
+            println!("explorer is up again at  {:?}", self.base_url);
         };
 
         reqwest::blocking::Client::new()
