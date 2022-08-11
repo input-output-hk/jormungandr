@@ -152,7 +152,6 @@ pub struct Common {
     pub output_file: Option<std::path::PathBuf>,
 }
 
-
 impl Common {
     pub fn open_output(&self) -> Result<impl Write, Error> {
         io::open_file_write(&self.output_file).map_err(|source| Error::OutputInvalid {
