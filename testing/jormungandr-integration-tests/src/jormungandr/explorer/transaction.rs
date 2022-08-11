@@ -27,7 +27,7 @@ pub fn explorer_transaction_test() {
     let (jormungandr, _initial_stake_pools) =
         startup::start_stake_pool(&[sender.clone()], &[], &mut config).unwrap();
 
-    let params = ExplorerParams::new(query_complexity_limit.to_string(), None, None);
+    let params = ExplorerParams::new(query_complexity_limit, None, None);
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
