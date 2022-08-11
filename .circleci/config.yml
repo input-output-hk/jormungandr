@@ -106,7 +106,8 @@ commands:
           environment:
             RUST_BACKTRACE: 1
           command: |
-            cargo test --workspace --tests << parameters.mode >> << parameters.cargo_behavior >>
+            cargo test --workspace --tests << parameters.mode >> << parameters.cargo_behavior >> \
+              -- --test-threads=1
           no_output_timeout: 30m
       - run:
           name: Run doc tests
