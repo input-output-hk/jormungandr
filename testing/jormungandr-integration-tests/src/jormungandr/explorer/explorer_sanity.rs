@@ -49,7 +49,7 @@ pub fn explorer_schema_diff_test() {
 
     jormungandr_automation::jormungandr::compare_explorer_schema(actual_schema_path.path());
 }
-
+#[ignore]
 #[test]
 #[serial]
 pub fn explorer_sanity_test() {

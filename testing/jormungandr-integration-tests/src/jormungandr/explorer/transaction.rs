@@ -12,7 +12,7 @@ use jortestkit::process::Wait;
 use serial_test::serial;
 use std::time::Duration;
 use thor::TransactionHash;
-
+#[ignore]
 #[test]
 #[serial]
 pub fn explorer_transaction_test() {
