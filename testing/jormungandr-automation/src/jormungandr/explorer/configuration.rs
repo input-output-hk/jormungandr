@@ -1,14 +1,14 @@
 #[derive(Clone)]
 pub struct ExplorerParams {
-    pub query_complexity_limit: Option<String>,
-    pub query_depth_limit: Option<String>,
+    pub query_complexity_limit: Option<u64>,
+    pub query_depth_limit: Option<u64>,
     pub address_bech32_prefix: Option<String>,
 }
 
 impl ExplorerParams {
     pub fn new(
-        query_complexity_limit: impl Into<Option<String>>,
-        query_depth_limit: impl Into<Option<String>>,
+        query_complexity_limit: impl Into<Option<u64>>,
+        query_depth_limit: impl Into<Option<u64>>,
         address_bech32_prefix: impl Into<Option<String>>,
     ) -> ExplorerParams {
         ExplorerParams {

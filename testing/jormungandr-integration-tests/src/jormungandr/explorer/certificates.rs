@@ -30,10 +30,11 @@ use thor::{
     BlockDateGenerator::Fixed, FragmentBuilder, FragmentSender, StakePool, TransactionHash,
 };
 
+const TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT: u64 = 140;
+const TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT: u64 = 30;
+
 #[test]
 pub fn explorer_stake_pool_registration_test() {
-    let query_complexity_limit = 140;
-    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
@@ -61,8 +62,8 @@ pub fn explorer_stake_pool_registration_test() {
     );
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);
@@ -96,8 +97,6 @@ pub fn explorer_stake_pool_registration_test() {
 
 #[test]
 pub fn explorer_owner_delegation_test() {
-    let query_complexity_limit = 140;
-    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut stake_pool_owner = thor::Wallet::default();
     let stake_pool = StakePool::new(&stake_pool_owner);
@@ -133,8 +132,8 @@ pub fn explorer_owner_delegation_test() {
         .expect("Error while sending registration certificate for stake pool owner");
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);
@@ -167,8 +166,6 @@ pub fn explorer_owner_delegation_test() {
 
 #[test]
 pub fn explorer_full_delegation_test() {
-    let query_complexity_limit = 140;
-    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut stake_pool_owner = thor::Wallet::default();
     let mut full_delegator = thor::Wallet::default();
@@ -209,8 +206,8 @@ pub fn explorer_full_delegation_test() {
         .expect("Error while sending registration certificate for stake pool owner");
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);
@@ -243,8 +240,6 @@ pub fn explorer_full_delegation_test() {
 
 #[test]
 pub fn explorer_split_delegation_test() {
-    let query_complexity_limit = 140;
-    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
     let mut split_delegator = thor::Wallet::default();
@@ -303,8 +298,8 @@ pub fn explorer_split_delegation_test() {
         .expect("Error while sending registration certificate for stake pool owner");
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);
@@ -340,8 +335,6 @@ pub fn explorer_split_delegation_test() {
 
 #[test]
 pub fn explorer_pool_update_test() {
-    let query_complexity_limit = 140;
-    let query_depth_limit = 30;
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
@@ -372,8 +365,8 @@ pub fn explorer_pool_update_test() {
     );
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);
@@ -428,8 +421,6 @@ pub fn explorer_pool_update_test() {
 
 #[test]
 pub fn explorer_pool_retire_test() {
-    let query_complexity_limit = 140;
-    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
@@ -458,8 +449,8 @@ pub fn explorer_pool_retire_test() {
     );
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);
@@ -507,8 +498,6 @@ pub fn explorer_pool_retire_test() {
 pub fn explorer_evm_mapping_certificates_test() {
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
-    let query_complexity_limit = 70;
-    let query_depth_limit = 30;
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![first_stake_pool_owner.to_initial_fund(1_000_000)])
@@ -534,8 +523,8 @@ pub fn explorer_evm_mapping_certificates_test() {
     );
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);
@@ -573,8 +562,6 @@ pub fn explorer_evm_mapping_certificates_test() {
 
 #[test]
 pub fn explorer_vote_plan_certificates_test() {
-    let query_complexity_limit = 140;
-    let query_depth_limit = 30;
     let mut first_stake_pool_owner = thor::Wallet::default();
     let bob = thor::Wallet::default();
     let discrimination = Discrimination::Test;
@@ -612,8 +599,8 @@ pub fn explorer_vote_plan_certificates_test() {
     );
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);
@@ -643,8 +630,6 @@ pub fn explorer_vote_plan_certificates_test() {
 
 #[test]
 pub fn explorer_vote_cast_certificates_test() {
-    let query_complexity_limit = 140;
-    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut alice = thor::Wallet::default();
 
@@ -699,8 +684,8 @@ pub fn explorer_vote_cast_certificates_test() {
     );
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);
@@ -725,8 +710,6 @@ pub fn explorer_vote_cast_certificates_test() {
 
 #[test]
 pub fn explorer_vote_tally_certificate_test() {
-    let query_complexity_limit = 140;
-    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut alice = thor::Wallet::default();
 
@@ -787,8 +770,8 @@ pub fn explorer_vote_tally_certificate_test() {
     );
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);
@@ -823,8 +806,6 @@ pub fn explorer_vote_tally_certificate_test() {
 #[should_panic] //bug NPG-2742
 #[test]
 pub fn explorer_update_proposal_certificate_test() {
-    let query_complexity_limit = 140;
-    let query_depth_limit = 30;
     let temp_dir = TempDir::new().unwrap();
     let mut alice = thor::Wallet::default();
     let mut bob = thor::Wallet::default();
@@ -882,8 +863,8 @@ pub fn explorer_update_proposal_certificate_test() {
     );
 
     let params = ExplorerParams::new(
-        query_complexity_limit.to_string(),
-        query_depth_limit.to_string(),
+        TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
+        TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
     let explorer_process = jormungandr.explorer(params);

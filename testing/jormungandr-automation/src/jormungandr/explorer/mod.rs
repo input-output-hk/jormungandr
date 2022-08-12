@@ -82,14 +82,14 @@ impl ExplorerProcess {
         if params.query_depth_limit.is_some() {
             explorer_cmd.args([
                 "--query-depth-limit",
-                params.query_depth_limit.unwrap().as_ref(),
+                &params.query_depth_limit.unwrap().to_string(),
             ]);
         }
 
         if params.query_complexity_limit.is_some() {
             explorer_cmd.args([
                 "--query-complexity-limit",
-                params.query_complexity_limit.unwrap().as_ref(),
+                &params.query_complexity_limit.unwrap().to_string(),
             ]);
         }
 
