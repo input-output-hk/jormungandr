@@ -6,6 +6,7 @@ use jormungandr_automation::{
     testing::time,
 };
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, BlockDate as jorBlockDate};
+use serial_test::serial;
 use std::str::FromStr;
 use thor::{StakePool, TransactionHash};
 
@@ -50,6 +51,7 @@ pub fn explorer_schema_diff_test() {
 }
 
 #[test]
+#[serial]
 pub fn explorer_sanity_test() {
     let jcli: JCli = Default::default();
     let faucet = thor::Wallet::default();

@@ -1,4 +1,5 @@
 use assert_fs::TempDir;
+use serial_test::serial;
 use chain_impl_mockchain::{block::BlockDate, transaction::AccountIdentifier};
 use jormungandr_automation::{
     jcli::JCli,
@@ -11,6 +12,7 @@ use std::time::Instant;
 use thor::{FragmentBuilder, FragmentSender, StakePool, TransactionHash};
 
 #[test]
+#[serial]
 pub fn explorer_stake_pool_registration_test() {
     let start = Instant::now();
     let query_complexity_limit = 70;
@@ -78,6 +80,7 @@ pub fn explorer_stake_pool_registration_test() {
 }
 
 #[test]
+#[serial]
 pub fn explorer_owner_delegation_test() {
     let start = Instant::now();
     let query_complexity_limit = 70;
@@ -152,6 +155,7 @@ pub fn explorer_owner_delegation_test() {
 }
 
 #[test]
+#[serial]
 pub fn explorer_full_delegation_test() {
     let start = Instant::now();
     let query_complexity_limit = 70;
@@ -231,6 +235,7 @@ pub fn explorer_full_delegation_test() {
 }
 
 #[test]
+#[serial]
 pub fn explorer_split_delegation_test() {
     let start = Instant::now();
     let query_complexity_limit = 70;
@@ -330,6 +335,7 @@ pub fn explorer_split_delegation_test() {
 }
 
 #[test]
+#[serial]
 pub fn explorer_pool_update_test() {
     let start = Instant::now();
     let query_complexity_limit = 70;
@@ -421,6 +427,7 @@ pub fn explorer_pool_update_test() {
 }
 
 #[test]
+#[serial]
 pub fn explorer_pool_retire_test() {
     let start = Instant::now();
     let query_complexity_limit = 70;

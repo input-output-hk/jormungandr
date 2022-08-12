@@ -9,10 +9,12 @@ use jormungandr_automation::{
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
+use serial_test::serial;
 use std::time::Duration;
 use thor::TransactionHash;
 
 #[test]
+#[serial]
 pub fn explorer_transaction_test() {
     let jcli: JCli = Default::default();
     let sender = thor::Wallet::default();

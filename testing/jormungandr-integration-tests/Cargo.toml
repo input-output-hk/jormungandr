@@ -5,6 +5,7 @@ authors = [ "dev@iohk.io" ]
 edition = "2021"
 
 [dependencies]
+serial_test = "*"
 tonic = "0.6"
 bech32 = "0.7"
 prost = "0.9"
