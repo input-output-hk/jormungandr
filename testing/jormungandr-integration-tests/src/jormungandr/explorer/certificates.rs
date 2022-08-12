@@ -231,9 +231,8 @@ pub fn explorer_full_delegation_test() {
     )
     .unwrap();
 }
-#[ignore]
+
 #[test]
-#[serial]
 pub fn explorer_split_delegation_test() {
     let start = Instant::now();
     let query_complexity_limit = 70;
