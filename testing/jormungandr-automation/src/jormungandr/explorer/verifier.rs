@@ -1,4 +1,6 @@
-use super::data::{settings::SettingsSettingsFees, transaction_by_id_certificates::*};
+use super::data::{
+    address::AddressAddress, settings::SettingsSettingsFees, transaction_by_id_certificates::*,
+};
 use crate::jormungandr::explorer::data::transaction_by_id_certificates::PayloadType as expPayloadType;
 use bech32::FromBase32;
 use chain_addr::AddressReadable;
@@ -13,6 +15,7 @@ use chain_impl_mockchain::{
     transaction::{AccountIdentifier, InputEnum, Transaction},
     vote::PayloadType,
 };
+use jormungandr_lib::interfaces::Address;
 use std::num::NonZeroU64;
 use thiserror::Error;
 
@@ -914,6 +917,10 @@ impl ExplorerVerifier {
                     .unwrap()
             )
         );
+    }
+
+    pub fn assert_address(address: Address, explorer_address: AddressAddress) {
+        assert_eq!(address.to_string(), explorer_address.id);
     }
 
     fn decode_bech32_pk(bech32_public_key: &str) -> PublicKey<Ed25519> {

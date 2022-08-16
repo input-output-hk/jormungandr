@@ -1,17 +1,13 @@
 use crate::startup;
-use jormungandr_automation::{
-    jcli::JCli,
-    jormungandr::{explorer::configuration::ExplorerParams, ConfigurationBuilder},
+use jormungandr_automation::jormungandr::{
+    explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
+    ConfigurationBuilder,
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
-//TODO still wip
-#[ignore]
+
 #[test]
 pub fn explorer_address_test() {
-    let _jcli: JCli = Default::default();
     let sender = thor::Wallet::default();
-    let _receiver = thor::Wallet::default();
-    let _transaction_value = 1_000;
     let address_bech32_prefix = "ca".to_string();
 
     let mut config = ConfigurationBuilder::new();
@@ -32,9 +28,5 @@ pub fn explorer_address_test() {
         explorer_address.errors.unwrap()
     );
 
-    assert_eq!(
-        explorer_address.data.unwrap().address.id,
-        sender.address().to_string(),
-        "Addresses is not the same"
-    );
+    ExplorerVerifier::assert_address(sender.address(), explorer_address.data.unwrap().address);
 }
