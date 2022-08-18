@@ -1,0 +1,20 @@
+query TransactionsByAddress($bech32: String!){
+    tip {
+        transactionsByAddress(addressBech32: $bech32) {
+                totalCount
+                edges {
+                        node {
+                            id
+                            blocks {
+                                date {
+                                    epoch {
+                                        id
+                                    }
+                                    slot
+                                }
+                            }
+                        }
+                    }
+        }
+    }
+}

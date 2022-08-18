@@ -1,5 +1,6 @@
 use super::data::{
     address::AddressAddress, settings::SettingsSettingsFees, transaction_by_id_certificates::*,
+    transactions_by_address::TransactionsByAddressTipTransactionsByAddress,
 };
 use crate::jormungandr::explorer::data::transaction_by_id_certificates::PayloadType as expPayloadType;
 use bech32::FromBase32;
@@ -921,6 +922,19 @@ impl ExplorerVerifier {
 
     pub fn assert_address(address: Address, explorer_address: AddressAddress) {
         assert_eq!(address.to_string(), explorer_address.id);
+    }
+
+    pub fn assert_transactions_address(
+        fragment_transactions: Vec<Fragment>,
+        explorer_transactions: TransactionsByAddressTipTransactionsByAddress,
+    ) {
+        assert_eq!(
+            fragment_transactions.len() as i64,
+            explorer_transactions.total_count
+        );
+
+        //fragment_transactions[0];
+        //explorer_transactions.edges.unwrap()[0].unwrap().node;
     }
 
     fn decode_bech32_pk(bech32_public_key: &str) -> PublicKey<Ed25519> {

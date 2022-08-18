@@ -21,6 +21,14 @@ pub struct Address;
 
 #[derive(GraphQLQuery)]
 #[graphql(
+    query_path = "resources/explorer/graphql/transactions_by_address.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug"
+)]
+pub struct TransactionsByAddress;
+
+#[derive(GraphQLQuery)]
+#[graphql(
     query_path = "resources/explorer/graphql/allblocks.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",
     response_derives = "Debug"
