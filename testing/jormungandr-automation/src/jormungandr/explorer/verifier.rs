@@ -16,8 +16,8 @@ use chain_impl_mockchain::{
     transaction::{AccountIdentifier, InputEnum, Transaction},
     vote::PayloadType,
 };
-use jormungandr_lib::interfaces::Address;
-use std::num::NonZeroU64;
+use jormungandr_lib::interfaces::{Address, FragmentStatus};
+use std::{collections::HashMap, num::NonZeroU64};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -925,16 +925,33 @@ impl ExplorerVerifier {
     }
 
     pub fn assert_transactions_address(
-        fragment_transactions: Vec<Fragment>,
+        fragment_statuses: HashMap<String, (&Fragment, &FragmentStatus)>,
         explorer_transactions: TransactionsByAddressTipTransactionsByAddress,
     ) {
         assert_eq!(
-            fragment_transactions.len() as i64,
+            fragment_statuses.len() as i64,
             explorer_transactions.total_count
         );
 
-        //fragment_transactions[0];
-        //explorer_transactions.edges.unwrap()[0].unwrap().node;
+        assert!(explorer_transactions.edges.is_some());
+
+        assert_eq!(
+            fragment_statuses.len(),
+            explorer_transactions.edges.as_ref().unwrap().len()
+        );
+
+        for edges in explorer_transactions.edges.unwrap().iter() {
+            let node = &edges.as_ref().unwrap().node;
+            assert!(fragment_statuses.get(&node.id.to_string()).is_some());
+            let fragment_status = fragment_statuses.get(&node.id.to_string()).unwrap().1;
+            assert!(
+                matches!(fragment_status, FragmentStatus::InABlock { date, block: _ } if
+                    date.epoch() == node.blocks[0].date.epoch.id.parse::<u32>().unwrap() && date.slot() == node.blocks[0].date.slot.parse::<u32>().unwrap()
+                )
+            );
+            let fragment = fragment_statuses.get(&node.id.to_string()).unwrap().0;
+            assert_eq!(fragment.hash().to_string(), node.id.to_string());
+        }
     }
 
     fn decode_bech32_pk(bech32_public_key: &str) -> PublicKey<Ed25519> {

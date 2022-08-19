@@ -1,10 +1,6 @@
 use crate::startup;
 use assert_fs::TempDir;
-use chain_impl_mockchain::{
-    block::BlockDate,
-    fragment::Fragment,
-    transaction::{NoExtra, Transaction},
-};
+use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
@@ -12,9 +8,9 @@ use jormungandr_automation::{
         ConfigurationBuilder, Starter,
     },
 };
-use jormungandr_lib::interfaces::{ActiveSlotCoefficient, FragmentLog};
+use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 use thor::TransactionHash;
 
 #[test]
@@ -68,8 +64,7 @@ pub fn explorer_transactions_not_existing_address_test() {
 
     let wait = Wait::new(Duration::from_secs(3), attempts_number);
 
-    let _fragment_id = jcli
-        .fragment_sender(&jormungandr)
+    jcli.fragment_sender(&jormungandr)
         .send(&transaction.encode())
         .assert_in_block_with_wait(&wait);
 
@@ -88,10 +83,12 @@ pub fn explorer_transactions_not_existing_address_test() {
     let explorer_transactions_by_address =
         explorer_address.data.unwrap().tip.transactions_by_address;
 
-    ExplorerVerifier::assert_transactions_address(Vec::new(), explorer_transactions_by_address);
+    ExplorerVerifier::assert_transactions_address(HashMap::new(), explorer_transactions_by_address);
 }
 
-#[test] //BUG NPG-2869
+#[should_panic] // BUG NPG-2869
+#[test] // TODO comment out the fields (inputs,outputs) in transaction_by_address.graphql when the bug is fixed
+        //add the verifier for those fields (inputs,outputs) in explorer_verifier
 pub fn explorer_transactions_address_test() {
     let jcli: JCli = Default::default();
     let mut sender = thor::Wallet::default();
@@ -101,10 +98,10 @@ pub fn explorer_transactions_address_test() {
     let transaction3_value = 3_0;
     let attempts_number = 20;
     let temp_dir = TempDir::new().unwrap();
+    let mut fragments = vec![];
 
-    let config = ConfigurationBuilder::new()
+    let config = ConfigurationBuilder::default()
         .with_funds(vec![sender.to_initial_fund(1_000_000)])
-        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
@@ -114,65 +111,63 @@ pub fn explorer_transactions_address_test() {
         .expect("Cannot start jormungandr");
 
     let wait = Wait::new(Duration::from_secs(3), attempts_number);
-    /*
-        let transaction_1 = thor::FragmentBuilder::new(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-        )
+
+    let fragment_builder = thor::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let transaction_1 = fragment_builder
         .transaction(&sender, receiver.address(), transaction1_value.into())
         .unwrap();
 
-        let fragment_id_1 = jcli
-            .fragment_sender(&jormungandr)
-            .send(&transaction_1.encode())
-            .assert_in_block_with_wait(&wait);
+    jcli.fragment_sender(&jormungandr)
+        .send(&transaction_1.encode())
+        .assert_in_block_with_wait(&wait);
 
-        sender.confirm_transaction();
+    fragments.push(&transaction_1);
 
-        let transaction_2 = thor::FragmentBuilder::new(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-        )
+    sender.confirm_transaction();
+
+    let transaction_2 = fragment_builder
         .transaction(&sender, receiver.address(), transaction2_value.into())
         .unwrap();
 
-         let fragment_id2 = jcli
-            .fragment_sender(&jormungandr)
-            .send(&transaction_2.encode())
-            .assert_in_block_with_wait(&wait);
+    jcli.fragment_sender(&jormungandr)
+        .send(&transaction_2.encode())
+        .assert_in_block_with_wait(&wait);
 
-        let transaction_3 = thor::FragmentBuilder::new(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
-            BlockDate::first().next_epoch(),
-        )
+    fragments.push(&transaction_2);
+
+    let transaction_3 = fragment_builder
         .transaction(&receiver, sender.address(), transaction3_value.into())
         .unwrap();
 
-        let fragment_id_3 = jcli
-            .fragment_sender(&jormungandr)
-            .send(&transaction_3.encode())
-            .assert_in_block_with_wait(&wait);
+    jcli.fragment_sender(&jormungandr)
+        .send(&transaction_3.encode())
+        .assert_in_block_with_wait(&wait);
 
-        let fragments = vec![transaction_1, transaction_2, transaction_3];
+    fragments.push(&transaction_3);
 
-        let fragments_log = jcli.rest().v0().message().logs(jormungandr.rest_uri());
+    let mut fragments_log = jcli.rest().v0().message().logs(jormungandr.rest_uri());
 
-        let f = fragments_log
-            .iter()
-            .zip(fragments.iter())
-            .filter(|&(a, b)| a.fragment_id().to_string() == b.hash().to_string())
-            .collect::<Vec<_>>();
+    fragments_log.sort();
+    fragments.sort_by_key(|a| a.hash());
 
-        println!("fragment log {:?}",fragments_log.len());
-        for x in f.iter(){
-            println!("FRAA {:?} {:?}",x.0.fragment_id().to_string(),x.1.hash().to_string());
-        }
-    */
+    // make and hashmap of tuples of fragment and fragment status
+    let fragments_statuses: HashMap<_, _> = fragments
+        .iter()
+        .zip(fragments_log.iter())
+        .map(|(&a, b)| (a.hash().to_string(), (a, b.status())))
+        .collect();
+
     let explorer_process = jormungandr.explorer(ExplorerParams::default());
     let explorer = explorer_process.client();
+
+    assert!(explorer
+        .transactions_address(sender.address().to_string())
+        .is_ok());
 
     let explorer_address = explorer
         .transactions_address(sender.address().to_string())
@@ -186,10 +181,9 @@ pub fn explorer_transactions_address_test() {
 
     let explorer_transactions_by_address =
         explorer_address.data.unwrap().tip.transactions_by_address;
-    println!(
-        "EDGES {:?}",
-        explorer_transactions_by_address.edges.unwrap().len()
-    );
 
-    //ExplorerVerifier::assert_transactions_address(vec![transaction_1,transaction_2,transaction_3], explorer_transactions_by_address);
+    ExplorerVerifier::assert_transactions_address(
+        fragments_statuses,
+        explorer_transactions_by_address,
+    );
 }
