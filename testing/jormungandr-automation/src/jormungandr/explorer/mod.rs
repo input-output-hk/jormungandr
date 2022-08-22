@@ -2,10 +2,10 @@ use self::{
     client::GraphQlClient,
     configuration::ExplorerParams,
     data::{
-        address, all_blocks, all_stake_pools, all_vote_plans, blocks_by_chain_length, epoch,
-        last_block, settings, stake_pool, transaction_by_id, transaction_by_id_certificates,
-        Address, AllBlocks, AllStakePools, AllVotePlans, BlocksByChainLength, Epoch, LastBlock,
-        Settings, StakePool, TransactionById, TransactionByIdCertificates,
+        address, all_blocks, all_stake_pools, all_vote_plans, block_by_id, blocks_by_chain_length,
+        epoch, last_block, settings, stake_pool, transaction_by_id, transaction_by_id_certificates,
+        Address, AllBlocks, AllStakePools, AllVotePlans, BlockById, BlocksByChainLength, Epoch,
+        LastBlock, Settings, StakePool, TransactionById, TransactionByIdCertificates,
     },
 };
 use crate::testing::configuration::get_explorer_app;
@@ -321,6 +321,15 @@ impl Explorer {
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body: Response<transaction_by_id_certificates::ResponseData> =
             response.json()?;
+        self.print_log(&response_body);
+        Ok(response_body)
+    }
+
+    pub fn block(&self, id: String) -> Result<Response<block_by_id::ResponseData>, ExplorerError> {
+        let query = BlockById::build_query(block_by_id::Variables { id });
+        self.print_request(&query);
+        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response_body: Response<block_by_id::ResponseData> = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
     }

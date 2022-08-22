@@ -1,0 +1,155 @@
+query BlockById($id: String!){
+    block(id: $id) {
+        id
+        date {
+            epoch {
+              id
+            }
+            slot
+          }
+        chainLength
+        leader {
+            __typename
+            ... on Pool{ id }
+            ... on BftLeader{ id }
+        }
+        previousBlock { id }
+        totalInput
+        totalOutput
+        isConfirmed
+        branches { id }
+        transactions{totalCount
+                    edges {
+                        node {
+                            id
+                            blocks{id date{...blockDate}}
+                            inputs{amount address{id}}
+                            outputs{amount address{id}}
+                            certificate{
+            __typename
+            ... on StakeDelegation {account{id #delegation {... poolInfo} not implemented yet NPG-2247
+                                    }
+                                    pools {... poolInfo}}
+            ... on OwnerStakeDelegation {pools {... poolInfo}}
+            ... on PoolRegistration {pool {... poolInfo}
+                                    startValidity
+                                    managementThreshold
+                                    owners
+                                    operators
+                                    rewards {fixed ratio {numerator denominator} maxLimit}
+                                    rewardAccount {id #delegation {... poolInfo} not implemented yet NPG-2247
+                                    }
+                                    }
+            ... on PoolRetirement {poolId retirementTime}
+            ... on PoolUpdate {poolId startValidity}
+            ... on VotePlan{voteStart{...blockDate}
+                            voteEnd{...blockDate}
+                            committeeEnd{...blockDate}
+                            payloadType
+                            proposals {externalId}
+                            }
+            ... on VoteCast {votePlan proposalIndex}
+            ... on VoteTally {votePlan}
+            ... on UpdateProposal {changes { configParams {...configParam}}
+                                    proposerId{id}
+                                }
+            ... on UpdateVote{proposalId voterId{id}}
+            ... on MintToken{name}
+            ... on EvmMapping {address}
+    }
+                        }
+                    }}
+    }
+}
+
+fragment poolInfo on Pool {
+        id
+        blocks(first: 1000){totalCount}
+        registration{pool{id}}
+        retirement{poolId}
+    }
+
+fragment blockDate on BlockDate{
+                            epoch{id}
+                            slot
+                        }
+
+fragment configParam on ConfigParam
+{
+ __typename
+    ... on Block0Date { block0Date }
+    ... on Discrimination { discrimination }
+    ... on ConsensusType { consensusType }
+    ... on SlotsPerEpoch { slotsPerEpoch }
+    ... on SlotDuration { slotDuration}
+    ... on EpochStabilityDepth { epochStabilityDepth }
+    ... on Milli { milli}
+    ... on BlockContentMaxSize { blockContentMaxSize}
+    ... on AddBftLeader { addBftLeader{ id }}
+    ... on RemoveBftLeader { removeBftLeader { id }}
+    ... on LinearFee {
+                    constant
+                    coefficient
+                    certificate
+                    perCertificateFees {
+                        certificatePoolRegistration
+                        certificateStakeDelegation
+                        certificateOwnerStakeDelegation
+                    }
+                    perVoteCertificateFees {
+                        certificateVotePlan
+                        certificateVoteCast
+                    }}
+    ... on ProposalExpiration{ proposalExpiration }
+    ... on KesUpdateSpeed { kesUpdateSpeed}
+    ... on TreasuryAdd { treasuryAdd }
+    ... on TreasuryParams { treasuryParams {
+                                            fixed
+                                            ratio {
+                                                numerator
+                                                denominator
+                                                }
+                                            maxLimit
+                            }}
+    ... on RewardPot { rewardPot }
+    ... on RewardParams { rewardParams {
+                                    __typename
+                                    ... on LinearRewardParams{
+                                        constant
+                                        ratio {
+                                                numerator
+                                                denominator
+                                            }
+                                        epochStart
+                                        epochRate
+                                    }
+                                    ... on HalvingRewardParams {
+                                        constant
+                                        ratio {
+                                                numerator
+                                                denominator
+                                            }
+                                        epochStart
+                                        epochRate
+                                    }
+                                }}
+    ... on PerCertificateFee{
+            certificatePoolRegistration
+            certificateStakeDelegation
+            certificateOwnerStakeDelegation
+    }
+    ... on FeesInTreasury { feesInTreasury}
+    ... on RewardLimitNone { rewardLimitNone }
+    ... on RewardLimitByAbsoluteStake { rewardLimitByAbsoluteStake {
+                                        numerator
+                                        denominator
+                                    }}
+    ... on PoolRewardParticipationCapping { min max }
+    ... on AddCommitteeId { addCommitteeId}
+    ... on RemoveCommitteeId { removeCommitteeId }
+    ... on PerVoteCertificateFee {
+                                    certificateVotePlan
+                                    certificateVoteCast
+                                }
+    ... on TransactionMaxExpiryEpochs { transactionMaxExpiryEpochs }
+}

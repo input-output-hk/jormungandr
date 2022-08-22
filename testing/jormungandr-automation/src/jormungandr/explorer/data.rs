@@ -99,3 +99,12 @@ pub struct TransactionByIdCertificates;
     response_derives = "Debug"
 )]
 pub struct AllVotePlans;
+
+#[derive(GraphQLQuery)]
+#[allow(clippy::upper_case_acronyms)]
+#[graphql(
+    query_path = "resources/explorer/graphql/block_by_id.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug"
+)]
+pub struct BlockById;
