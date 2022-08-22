@@ -8,6 +8,7 @@ query TransactionsByAddress($bech32: String!){
                             blocks{id date{...blockDate}}
                             #inputs{amount address{id}}
                             #outputs{amount address{id}}
+                            #certificate
                         }
                     }
         }
