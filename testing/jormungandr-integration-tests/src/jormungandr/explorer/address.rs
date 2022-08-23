@@ -1,10 +1,6 @@
 use crate::startup;
 use assert_fs::TempDir;
-
-use chain_impl_mockchain::{
-    block::BlockDate,
-    fragment::Fragment,
-};
+use chain_impl_mockchain::{block::BlockDate, fragment::Fragment};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
@@ -93,7 +89,6 @@ pub fn explorer_transactions_not_existing_address_test() {
 // BUG NPG-2869
 // TODO comment out the fields (inputs,outputs, certificate) in transaction_by_address.graphql when the bug is fixed
 //add the verifier for those fields (inputs,outputs,certificate) in explorer_verifier
-//#[should_panic]
 #[test]
 pub fn explorer_transactions_address_test() {
     let jcli: JCli = Default::default();
@@ -169,7 +164,7 @@ pub fn explorer_transactions_address_test() {
         .collect();
 
     let block0 = jormungandr.block0_configuration().to_block();
-    let block0fragment: &Fragment = block0.fragments().last().unwrap().into();
+    let block0fragment: &Fragment = block0.fragments().last().unwrap();
     let block0_fragment_status = FragmentStatus::InABlock {
         date: block0.header().block_date().into(),
         block: block0.header().block_content_hash().into(),
