@@ -928,10 +928,14 @@ impl ExplorerVerifier {
         fragment_statuses: HashMap<String, (&Fragment, &FragmentStatus)>,
         explorer_transactions: TransactionsByAddressTipTransactionsByAddress,
     ) {
-        assert_eq!(
-            fragment_statuses.len() as i64,
-            explorer_transactions.total_count
-        );
+        if fragment_statuses.len() == 0 {
+            assert!(explorer_transactions.total_count == 0);
+        } else {
+            assert_eq!(
+                fragment_statuses.len() as i64 + 1,
+                explorer_transactions.total_count
+            );
+        };
 
         assert!(explorer_transactions.edges.is_some());
 

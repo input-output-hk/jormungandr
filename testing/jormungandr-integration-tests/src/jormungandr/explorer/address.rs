@@ -1,6 +1,10 @@
 use crate::startup;
 use assert_fs::TempDir;
-use chain_impl_mockchain::block::BlockDate;
+
+use chain_impl_mockchain::{
+    block::BlockDate,
+    fragment::Fragment,
+};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
@@ -8,7 +12,7 @@ use jormungandr_automation::{
         ConfigurationBuilder, Starter,
     },
 };
-use jormungandr_lib::interfaces::ActiveSlotCoefficient;
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, FragmentStatus};
 use jortestkit::process::Wait;
 use std::{collections::HashMap, time::Duration};
 use thor::TransactionHash;
@@ -89,7 +93,7 @@ pub fn explorer_transactions_not_existing_address_test() {
 // BUG NPG-2869
 // TODO comment out the fields (inputs,outputs, certificate) in transaction_by_address.graphql when the bug is fixed
 //add the verifier for those fields (inputs,outputs,certificate) in explorer_verifier
-#[should_panic]
+//#[should_panic]
 #[test]
 pub fn explorer_transactions_address_test() {
     let jcli: JCli = Default::default();
@@ -158,11 +162,22 @@ pub fn explorer_transactions_address_test() {
     fragments.sort_by_key(|a| a.hash());
 
     // make and hashmap of tuples of fragment and fragment status
-    let fragments_statuses: HashMap<_, _> = fragments
+    let mut fragments_statuses: HashMap<_, _> = fragments
         .iter()
         .zip(fragments_log.iter())
         .map(|(&a, b)| (a.hash().to_string(), (a, b.status())))
         .collect();
+
+    let block0 = jormungandr.block0_configuration().to_block();
+    let block0fragment: &Fragment = block0.fragments().last().unwrap().into();
+    let block0_fragment_status = FragmentStatus::InABlock {
+        date: block0.header().block_date().into(),
+        block: block0.header().block_content_hash().into(),
+    };
+    fragments_statuses.insert(
+        block0fragment.hash().to_string(),
+        (block0fragment, &block0_fragment_status),
+    );
 
     let explorer_process = jormungandr.explorer(ExplorerParams::default());
     let explorer = explorer_process.client();
