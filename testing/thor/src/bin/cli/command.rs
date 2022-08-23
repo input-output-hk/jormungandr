@@ -1,8 +1,14 @@
 use super::wallet::Wallets;
 use crate::cli::send::SendCommand;
+use chain_crypto::digest::DigestOf;
+use chain_impl_mockchain::{certificate::ExternalProposalId, testing::VoteTestGen};
+use jormungandr_lib::interfaces::VotePlan;
+use serde_json::json;
+use std::{fs, path::PathBuf};
 use structopt::StructOpt;
 use thiserror::Error;
 use thor::cli::{CliController, Connection};
+use typed_bytes::ByteBuilder;
 
 ///
 ///
@@ -32,6 +38,8 @@ pub enum Command {
     PendingTransactions,
     /// Allows to manage wallets: add/remove/select operations
     Wallets(Wallets),
+    /// Utility command
+    Utils(Utils),
 }
 
 const DELIMITER: &str = "===================";
@@ -97,6 +105,7 @@ impl Command {
                 Ok(())
             }
             Command::Send(send) => send.exec(controller),
+            Command::Utils(utils) => utils.exec(),
         }
     }
 }
@@ -127,6 +136,88 @@ impl Connect {
     }
 }
 
+#[derive(StructOpt, Debug)]
+pub enum Utils {
+    Examples(Examples),
+    Decode(Decode),
+}
+
+impl Utils {
+    pub fn exec(&self) -> Result<(), Error> {
+        match self {
+            Utils::Examples(examples) => examples.exec(),
+            Utils::Decode(decode) => decode.exec(),
+        }
+    }
+}
+
+#[derive(StructOpt, Debug)]
+pub enum Examples {
+    VotePlan,
+    Proposal,
+}
+
+impl Examples {
+    pub fn exec(&self) -> Result<(), Error> {
+        match self {
+            Self::VotePlan => {
+                let vote_plan: VotePlan = VoteTestGen::vote_plan().into();
+                println!("{}", serde_json::to_string_pretty(&vote_plan)?);
+                Ok(())
+            }
+            Self::Proposal => {
+                let json = json!({
+                    "category_name": "Fund 9",
+                    "chain_vote_options": "blank,yes,no",
+                    "challenge_id": "3",
+                    "challenge_type": "simple",
+                    "chain_vote_type": "private",
+                    "internal_id": "0",
+                    "proposal_funds": "22200",
+                    "proposal_id": "423260",
+                    "proposal_impact_score": "312",
+                    "proposal_summary": "There is a lack a community engagement on twitter and many other social media platforms.",
+                    "proposal_title": "Hard Fork Cafe",
+                    "proposal_url": "https://cardano.ideascale.com/a/dtd/00000000",
+                    "proposer_email": "example@mail",
+                    "proposer_name": "hardforq, Q",
+                    "proposer_relevant_experience": "Created a twitter thread in Fund 7 and 8 for Catalyst.",
+                    "proposer_url": "https://twitter.com/Example",
+                    "proposal_solution": "The Hard Fork creates information channels to increase communication and understanding of Catalyst."
+                });
+                println!("{}", serde_json::to_string_pretty(&json)?);
+                Ok(())
+            }
+        }
+    }
+}
+
+#[derive(StructOpt, Debug)]
+pub enum Decode {
+    Proposal {
+        #[structopt(short, long)]
+        json: PathBuf,
+    },
+}
+
+impl Decode {
+    pub fn exec(&self) -> Result<(), Error> {
+        match self {
+            Self::Proposal { json } => {
+                let json_as_string = serde_yaml::to_string(&fs::read_to_string(&json)?)?;
+                let proposal_id: ExternalProposalId = DigestOf::digest_byteslice(
+                    &ByteBuilder::new()
+                        .bytes(json_as_string.as_bytes())
+                        .finalize()
+                        .as_byteslice(),
+                );
+                println!("{}", proposal_id);
+                Ok(())
+            }
+        }
+    }
+}
+
 #[allow(clippy::large_enum_variant)]
 #[derive(Error, Debug)]
 pub enum Error {
@@ -136,4 +227,10 @@ pub enum Error {
     Config(#[from] thor::cli::ConfigError),
     #[error(transparent)]
     Key(#[from] jcli_lib::key::Error),
+    #[error(transparent)]
+    SerdeYaml(#[from] serde_yaml::Error),
+    #[error(transparent)]
+    SerdeJson(#[from] serde_json::Error),
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
 }

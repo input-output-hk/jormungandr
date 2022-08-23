@@ -13,11 +13,14 @@ use chain_impl_mockchain::{
 };
 use cocoon::Cocoon;
 use jormungandr_automation::jormungandr::{
-    JormungandrRest, MemPoolCheck, RemoteJormungandrBuilder,
+    JormungandrRest, MemPoolCheck, RemoteJormungandr, RemoteJormungandrBuilder,
 };
 use jormungandr_lib::{
     crypto::account::SigningKey,
-    interfaces::{AccountState, AccountVotes, Address, FragmentLog, FragmentStatus, VotePlanId},
+    interfaces::{
+        AccountState, AccountVotes, Address, FragmentLog, FragmentStatus, SettingsDto, VotePlan,
+        VotePlanId,
+    },
 };
 use std::{collections::HashMap, time::Duration};
 
@@ -147,12 +150,42 @@ impl CliController {
             &node,
             ada.into(),
         )?;
+        self.post_fragment_send(check, wait_for_transaction, settings, &node, thor_wallet)
+    }
+
+    pub fn send_vote_plan(
+        &mut self,
+        password: &str,
+        wait_for_transaction: bool,
+        vote_plan: VotePlan,
+    ) -> Result<MemPoolCheck, Error> {
+        let mut thor_wallet = self.thor_wallet(password)?;
+        let settings = self.client.settings()?;
+        let node = RemoteJormungandrBuilder::new("dummy".to_string())
+            .with_rest_client(self.client.clone())
+            .build();
+        let check = FragmentSender::from(&settings).send_vote_plan(
+            &mut thor_wallet,
+            &vote_plan.into(),
+            &node,
+        )?;
+        self.post_fragment_send(check, wait_for_transaction, settings, &node, thor_wallet)
+    }
+
+    fn post_fragment_send(
+        &mut self,
+        check: MemPoolCheck,
+        wait_for_transaction: bool,
+        settings: SettingsDto,
+        node: &RemoteJormungandr,
+        thor_wallet: Wallet,
+    ) -> Result<MemPoolCheck, Error> {
         if wait_for_transaction {
             FragmentVerifier::wait_fragment(
                 Duration::from_secs(settings.slot_duration * SLOT_COUNT),
                 check.clone(),
                 Default::default(),
-                &node,
+                node,
             )?;
             self.wallets.wallet_mut()?.spending_counters = thor_wallet
                 .spending_counter()

@@ -4881,10 +4881,12 @@ dependencies = [
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "serde",
+ "serde_json",
  "serde_yaml",
  "structopt",
  "thiserror",
  "time",
+ "typed-bytes",
 ]
 
 [[package]]
