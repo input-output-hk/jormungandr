@@ -22,7 +22,7 @@ jobs:
       volumes:
         - cargo-registry-index:/usr/local/cargo/registry/index
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - id: ls-crates-io-index
         name: Get head commit hash of crates.io registry index
