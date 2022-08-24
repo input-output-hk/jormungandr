@@ -928,7 +928,7 @@ impl ExplorerVerifier {
         fragment_statuses: HashMap<String, (&Fragment, &FragmentStatus)>,
         explorer_transactions: TransactionsByAddressTipTransactionsByAddress,
     ) {
-        if fragment_statuses.len() == 0 {
+        if fragment_statuses.is_empty() {
             assert!(explorer_transactions.total_count == 0);
         } else {
             assert_eq!(
