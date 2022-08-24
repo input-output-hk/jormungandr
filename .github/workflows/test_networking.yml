@@ -207,7 +207,7 @@ jobs:
 
       - name: Pack logs from failed tests
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
           path: ${{ runner.temp }}/jormungandr_*
