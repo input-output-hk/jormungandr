@@ -6,7 +6,7 @@ query TransactionsByAddress($bech32: String!){
                         node {
                             id
                             blocks{id date{...blockDate}}
-                            #inputs{amount address{id}}
+                            #inputs{amount address{id}} // BUG NPG-2869
                             #outputs{amount address{id}}
                             #certificate
                         }
@@ -19,3 +19,4 @@ fragment blockDate on BlockDate{
                             epoch{id}
                             slot
                         }
+                        
