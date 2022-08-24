@@ -24,7 +24,7 @@ jobs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: 'true'
 
@@ -70,7 +70,7 @@ jobs:
       cargo-lock-hash: ${{ steps.hash-cargo-lock.outputs.hash }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - id: ls-crates-io-index
         name: Get head commit hash of crates.io registry index
@@ -126,7 +126,7 @@ jobs:
           key: cargo-deps-v1-${{ needs.cache_info.outputs.cargo-lock-hash }}
 
       - name: Check out the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
 
@@ -207,7 +207,7 @@ jobs:
           default: true
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
 
@@ -316,7 +316,7 @@ jobs:
       status: ${{ job.status }}
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Publish release
         env:
@@ -334,7 +334,7 @@ jobs:
     if: ${{ always() && needs.publish_release.outputs.status != 'success' }}
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Remove release
         env:

@@ -13,7 +13,7 @@ jobs:
       - name: Install linters
         run: pip3 install black
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Check formatting (black)
         run: black ./ci ./scripts --check

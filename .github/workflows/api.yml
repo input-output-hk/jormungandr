@@ -12,7 +12,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: stoplightio/spectral-action@v0.8.8
         with:
           file_glob: doc/api/*.yaml
