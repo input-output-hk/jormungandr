@@ -61,7 +61,7 @@ Thor also allows you to use it as Api to perform any wallet operations from the 
 
 ## Configuration
 
-Thor api doesn't use any configuration files. However cli uses small cache folder on filesystem (located in: `~/.thor`).
+Thor api doesn't use any configuration files. However, cli uses small cache folder on filesystem (located in: `~/.thor`).
 The purpose of this configuration is to store wallet lists as well as secret keys guarded by pass phrase.
 
 ### full list of available commands
@@ -92,4 +92,40 @@ SUBCOMMANDS:
     status                  Prints wallet status (balance/spending counters/tokens)
     statuses                Prints pending or already sent fragments statuses
     wallets                 Allows to manage wallets: add/remove/select operations
+```
+
+## Sending transactions
+
+### Send vote plan
+
+```
+thor send vote-plan --json vote_plan.json --pin 1111
+```
+
+Along with send command there are two helpful utility method (`decode` and `example`), so user can easily create vote plan.
+
+For example: Let say that we want to create a vote plan from single proposal. This can be done in 3 commands:
+
+First let's generate proposal and save example proposal.json file whose hash will be used in vote plan
+
+```
+thor utils examples proposal > proposal.json
+```
+
+Then let us print out hash which will should be used in vote plan
+
+```
+thor utils decode proposal
+```
+
+Next, let's save example vote_plan.json file which hash will be our vote plan metadata
+
+```
+thor utils examples vote-plan > vote_plan.json
+```
+
+and finally:
+
+```
+thor send vote-plan --json vote_plan.json --pin 1111
 ```
