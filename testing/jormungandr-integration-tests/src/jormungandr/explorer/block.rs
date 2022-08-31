@@ -1,11 +1,14 @@
 use assert_fs::TempDir;
-use chain_core::{property::Deserialize, packer::Codec};
-use chain_impl_mockchain::{header::BlockDate, block::Block};
+use chain_core::{packer::Codec, property::Deserialize};
+use chain_impl_mockchain::{block::Block, header::BlockDate};
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier}, ConfigurationBuilder, Starter},
+    jormungandr::{
+        explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
+        ConfigurationBuilder, Starter,
+    },
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentStatus};
+use jormungandr_lib::interfaces::FragmentStatus;
 use jortestkit::process::Wait;
 use std::time::Duration;
 use thor::TransactionHash;
@@ -63,6 +66,16 @@ pub fn explorer_block_test() {
             panic!("Fragment not in block")
         };
 
+    let encoded_block = jcli
+        .rest()
+        .v0()
+        .block()
+        .get(fragment_block_id.to_string(), jormungandr.rest_uri());
+
+    let bytes_block = hex::decode(encoded_block.trim()).unwrap();
+    let reader = std::io::Cursor::new(&bytes_block);
+    let decoded_block = Block::deserialize(&mut Codec::new(reader)).unwrap();
+
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
@@ -76,15 +89,8 @@ pub fn explorer_block_test() {
     );
 
     let explorer_block = explorer_block_response.data.unwrap().block;
-    let block = jcli
-        .rest()
-        .v0()
-        .block()
-        .get(fragment_block_id.to_string(), jormungandr.rest_uri());
 
-    let bytes = block.into_bytes();
-    let reader = std::io::Cursor::new(&bytes);
-    let decoded_block = Block::deserialize(&mut Codec::new(reader)).unwrap();
+    ExplorerVerifier::assert_block(decoded_block, explorer_block);
 }
 
 #[test]
@@ -105,7 +111,7 @@ pub fn explorer_block0_test() {
 
     let explorer_block0 = explorer_block0_response.data.unwrap().block;
     let block0 = jormungandr.block0_configuration().to_block();
-    ExplorerVerifier::assert_block(block0,explorer_block0);
+    ExplorerVerifier::assert_block(block0, explorer_block0);
 }
 
 #[should_panic] //NPG-2899
