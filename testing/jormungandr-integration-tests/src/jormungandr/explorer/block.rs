@@ -1,22 +1,111 @@
+use assert_fs::TempDir;
+use chain_core::{property::Deserialize, packer::Codec};
+use chain_impl_mockchain::{header::BlockDate, block::Block};
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{explorer::configuration::ExplorerParams, Starter},
+    jormungandr::{explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier}, ConfigurationBuilder, Starter},
 };
+use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentStatus};
+use jortestkit::process::Wait;
+use std::time::Duration;
+use thor::TransactionHash;
 
 const BLOCK_QUERY_COMPLEXITY_LIMIT: u64 = 150;
 const BLOCK_QUERY_DEPTH_LIMIT: u64 = 30;
 
 #[test]
-pub fn explorer_block0_test() {
+pub fn explorer_block_test() {
     let jcli: JCli = Default::default();
-    let jormungandr = Starter::new().start().unwrap();
-    let rest_uri = jormungandr.rest_uri();
-    let block0_id = jcli.rest().v0().tip(&rest_uri);
+    let mut sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
+    let transaction_value = 1_000;
+    let attempts_number = 20;
+    let temp_dir = TempDir::new().unwrap();
+
+    let config = ConfigurationBuilder::default()
+        .with_funds(vec![sender.to_initial_fund(1_000_000)])
+        .build(&temp_dir);
+
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config)
+        .start()
+        .expect("Cannot start jormungandr");
+
+    let wait = Wait::new(Duration::from_secs(3), attempts_number);
+
+    let fragment_builder = thor::FragmentBuilder::new(
+        &jormungandr.genesis_block_hash(),
+        &jormungandr.fees(),
+        BlockDate::first().next_epoch(),
+    );
+
+    let transaction = fragment_builder
+        .transaction(&sender, receiver.address(), transaction_value.into())
+        .unwrap();
+
+    jcli.fragment_sender(&jormungandr)
+        .send(&transaction.encode())
+        .assert_in_block_with_wait(&wait);
+
+    sender.confirm_transaction();
+
+    let fragments_log = jcli.rest().v0().message().logs(jormungandr.rest_uri());
+    let fragment_log = fragments_log
+        .iter()
+        .find(|x| *x.fragment_id().to_string() == transaction.hash().to_string())
+        .unwrap();
+
+    let fragment_block_id =
+        if let &FragmentStatus::InABlock { date: _, block } = fragment_log.status() {
+            block
+        } else {
+            panic!("Fragment not in block")
+        };
+
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
     let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
-    explorer.block(block0_id).unwrap();
+    let explorer_block_response = explorer.block(fragment_block_id.to_string()).unwrap();
+
+    assert!(
+        explorer_block_response.errors.is_none(),
+        "{:?}",
+        explorer_block_response.errors.unwrap()
+    );
+
+    let explorer_block = explorer_block_response.data.unwrap().block;
+    let block = jcli
+        .rest()
+        .v0()
+        .block()
+        .get(fragment_block_id.to_string(), jormungandr.rest_uri());
+
+    let bytes = block.into_bytes();
+    let reader = std::io::Cursor::new(&bytes);
+    let decoded_block = Block::deserialize(&mut Codec::new(reader)).unwrap();
+}
+
+#[test]
+pub fn explorer_block0_test() {
+    let jormungandr = Starter::new().start().unwrap();
+    let block0_id = jormungandr.genesis_block_hash().to_string();
+    let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
+    let explorer_process = jormungandr.explorer(params);
+    let explorer = explorer_process.client();
+
+    let explorer_block0_response = explorer.block(block0_id).unwrap();
+
+    assert!(
+        explorer_block0_response.errors.is_none(),
+        "{:?}",
+        explorer_block0_response.errors.unwrap()
+    );
+
+    let explorer_block0 = explorer_block0_response.data.unwrap().block;
+    let block0 = jormungandr.block0_configuration().to_block();
+    ExplorerVerifier::assert_block(block0,explorer_block0);
 }
 
 #[should_panic] //NPG-2899

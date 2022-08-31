@@ -1,4 +1,4 @@
-use super::data::{settings::SettingsSettingsFees, transaction_by_id_certificates::*};
+use super::data::{settings::SettingsSettingsFees, transaction_by_id_certificates::*, block_by_id::BlockByIdBlock};
 use crate::jormungandr::explorer::data::transaction_by_id_certificates::PayloadType as expPayloadType;
 use bech32::FromBase32;
 use chain_addr::AddressReadable;
@@ -11,7 +11,7 @@ use chain_impl_mockchain::{
     fee::LinearFee,
     fragment::Fragment,
     transaction::{AccountIdentifier, InputEnum, Transaction},
-    vote::PayloadType,
+    vote::PayloadType, block::Block,
 };
 use std::num::NonZeroU64;
 use thiserror::Error;
@@ -834,6 +834,10 @@ impl ExplorerVerifier {
                 EvmEnvironment(_) => unimplemented!(),
             }
         }
+    }
+
+    pub fn assert_block(block: Block, explorer_block: BlockByIdBlock){
+        //explorer_block.transactions.edges.unwrap()[0].unwrap().node;
     }
 
     fn assert_update_vote(
