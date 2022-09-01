@@ -9,6 +9,11 @@ pub type TimeOffsetSeconds = String;
 pub type PublicKey = String;
 pub type ExternalProposalId = String;
 
+use self::block_by_id::{
+    BlockByIdBlockTransactionsEdgesNodeCertificate,
+    BlockByIdBlockTransactionsEdgesNodeCertificateOnStakeDelegation,
+};
+use chain_impl_mockchain::certificate::{Certificate, StakeDelegation};
 use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]

@@ -19,7 +19,7 @@ use std::{
 mod client;
 pub mod configuration;
 mod data;
-pub mod verifier;
+pub mod verifiers;
 mod wrappers;
 
 use super::get_available_port;
