@@ -1,26 +1,8 @@
 use super::ExplorerVerifier;
-use crate::jormungandr::explorer::data::{
-    block_by_id::{
-        BlockByIdBlock, BlockByIdBlockLeader, BlockByIdBlockTransactionsEdgesNodeCertificate,
-    },
-    transaction_by_id_certificates::PayloadType as expPayloadType,
+use crate::jormungandr::explorer::data::block_by_id::{
+    BlockByIdBlock, BlockByIdBlockTransactionsEdgesNodeCertificate,
 };
-use bech32::FromBase32;
-use chain_addr::AddressReadable;
-use chain_core::property::HasHeader;
-use chain_crypto::{Ed25519, PublicKey};
-use chain_impl_mockchain::{
-    account::DelegationType,
-    block::Block,
-    certificate::*,
-    chaintypes::ConsensusType,
-    config::{ConfigParam::*, RewardParams},
-    fee::LinearFee,
-    fragment::Fragment,
-    transaction::{AccountIdentifier, InputEnum, Transaction},
-    vote::PayloadType,
-};
-use std::num::NonZeroU64;
+use chain_impl_mockchain::{block::Block, fragment::Fragment};
 
 impl ExplorerVerifier {
     pub fn assert_block(block: Block, explorer_block: BlockByIdBlock) {

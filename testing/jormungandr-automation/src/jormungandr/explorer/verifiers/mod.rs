@@ -1,26 +1,10 @@
 pub mod block_by_id_verifier;
 pub mod transaction_by_id_verifier;
 
-use crate::jormungandr::explorer::data::{
-    settings::SettingsSettingsFees,
-    transaction_by_id_certificates::{PayloadType as expPayloadType, *},
-};
+use crate::jormungandr::explorer::data::settings::SettingsSettingsFees;
 use bech32::FromBase32;
-use chain_addr::AddressReadable;
-use chain_core::property::HasHeader;
 use chain_crypto::{Ed25519, PublicKey};
-use chain_impl_mockchain::{
-    account::DelegationType,
-    block::Block,
-    certificate::*,
-    chaintypes::ConsensusType,
-    config::{ConfigParam::*, RewardParams},
-    fee::LinearFee,
-    fragment::Fragment,
-    transaction::{AccountIdentifier, InputEnum, Transaction},
-    vote::PayloadType,
-};
-use std::num::NonZeroU64;
+use chain_impl_mockchain::fee::LinearFee;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
