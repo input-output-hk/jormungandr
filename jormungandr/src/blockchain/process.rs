@@ -528,8 +528,7 @@ async fn process_network_block(
                 Err(Error::MissingParentBlock(parent_hash))
             }
             PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
-                let r = check_and_apply_block(blockchain, parent_ref, block, watch_msg_box).await;
-                r
+                check_and_apply_block(blockchain, parent_ref, block, watch_msg_box).await
             }
         }
     }

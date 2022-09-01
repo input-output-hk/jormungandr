@@ -748,7 +748,7 @@ impl Transaction {
             .await;
 
         if block_hashes.is_empty() {
-            return Err(ApiError::NotFound(format!("transaction not found: {}", &id,)).into());
+            Err(ApiError::NotFound(format!("transaction not found: {}", &id,)).into())
         } else {
             Ok(Transaction {
                 id,
