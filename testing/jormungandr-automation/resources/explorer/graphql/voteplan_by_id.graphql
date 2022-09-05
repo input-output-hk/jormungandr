@@ -1,5 +1,5 @@
 query VotePlanById($id: String!){
-    voteplan(id: $id) {
+    votePlan(id: $id) {
         id
         voteStart {...blockDate}
         voteEnd {...blockDate}
@@ -20,7 +20,7 @@ query VotePlanById($id: String!){
                             node{
                                 address{
                                         id
-                                        delegation{id}
+                                        #delegation{id}
                                     }
                                 payload{
                                     __typename
@@ -28,14 +28,13 @@ query VotePlanById($id: String!){
                                     ... on VotePayloadPrivateStatus {proof encryptedVote}
                                 }
                         }
-                        totalCount
                     }
+                    totalCount
             }
         }
     }
-
+}
 fragment blockDate on BlockDate{
                             epoch{id}
                             slot
                         }
-                        
