@@ -12,7 +12,10 @@ use crate::{
     metrics::{Metrics, MetricsBackend},
     utils::async_msg::MessageBox,
 };
-use chain_core::{packer::Codec, property::Serialize};
+use chain_core::{
+    packer::Codec,
+    property::{Fragment as _, Serialize},
+};
 use chain_impl_mockchain::{
     block::BlockDate, fragment::Contents, setting::Settings, transaction::Transaction,
 };
@@ -154,7 +157,7 @@ impl Pool {
     pub async fn insert_and_propagate_all(
         &mut self,
         origin: FragmentOrigin,
-        fragments: Vec<(Fragment, FragmentId)>,
+        fragments: Vec<Fragment>,
         fail_fast: bool,
     ) -> Result<FragmentsProcessingSummary, Error> {
         tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
@@ -162,7 +165,10 @@ impl Pool {
         let mut filtered_fragments = Vec::new();
         let mut rejected = Vec::new();
 
-        let mut fragments = fragments.into_iter();
+        let mut fragments = fragments.into_iter().map(|el| {
+            let id = el.id();
+            (el, id)
+        });
 
         let tip = self.tip.get_ref().await;
         let ledger = tip.ledger();
