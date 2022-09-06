@@ -141,10 +141,11 @@ impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
         vote_plan: &VotePlan,
         tally_type: VoteTallyPayload,
     ) -> Result<Self, FragmentChainSenderError> {
-        self.last_mempool_check = Some(
-            self.sender
-                .send_vote_tally(from, vote_plan, &self.node, tally_type)?,
-        );
+        self.last_mempool_check =
+            Some(
+                self.sender
+                    .send_vote_tally(from, vote_plan.to_id(), &self.node, tally_type)?,
+            );
         Ok(self)
     }
 }

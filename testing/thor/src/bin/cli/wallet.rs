@@ -12,7 +12,17 @@ pub enum Wallets {
         alias: Alias,
     },
     /// recover wallet funds from qr code
-    Import {
+    Import(Import),
+    Delete {
+        #[structopt(name = "ALIAS")]
+        alias: Alias,
+    },
+    List,
+}
+
+#[derive(StructOpt, Debug)]
+pub enum Import {
+    Key {
         #[structopt(name = "SECRET")]
         secret: PathBuf,
 
@@ -25,21 +35,22 @@ pub enum Wallets {
         #[structopt(short, long)]
         alias: Alias,
     },
-    Delete {
-        #[structopt(name = "ALIAS")]
+    MemberKey {
+        #[structopt(name = "SECRET")]
+        secret: PathBuf,
+
+        #[structopt(short, long)]
         alias: Alias,
+
+        #[structopt(short, long)]
+        password: String,
     },
-    List,
 }
 
-impl Wallets {
+impl Import {
     pub fn exec(self, mut model: CliController) -> Result<(), Error> {
         match self {
-            Self::Use { alias } => {
-                model.wallets_mut().set_default_alias(alias)?;
-                model.save_config().map_err(Into::into)
-            }
-            Self::Import {
+            Self::Key {
                 secret,
                 alias,
                 testing,
@@ -51,6 +62,29 @@ impl Wallets {
                     .add_wallet(alias, testing, data, &password)?;
                 model.save_config().map_err(Into::into)
             }
+            Self::MemberKey {
+                secret,
+                alias,
+                password,
+            } => {
+                let (_, data, _) = read_bech32(Some(&secret))?;
+                model
+                    .wallets_mut()
+                    .add_wallet_member_key(alias, &password, data)?;
+                model.save_config().map_err(Into::into)
+            }
+        }
+    }
+}
+
+impl Wallets {
+    pub fn exec(self, mut model: CliController) -> Result<(), Error> {
+        match self {
+            Self::Use { alias } => {
+                model.wallets_mut().set_default_alias(alias)?;
+                model.save_config().map_err(Into::into)
+            }
+            Self::Import(import) => import.exec(model),
             Self::Delete { alias } => {
                 model.wallets_mut().remove_wallet(alias)?;
                 model.save_config().map_err(Into::into)

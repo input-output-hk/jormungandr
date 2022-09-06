@@ -519,7 +519,7 @@ pub fn private_tally_no_vote_cast() {
         .unwrap();
 
     let mempool_check = transaction_sender
-        .send_private_vote_tally(&mut alice, &vote_plan, decrypted_shares, &jormungandr)
+        .send_private_vote_tally(&mut alice, vote_plan.to_id(), decrypted_shares, &jormungandr)
         .unwrap();
 
     assert!(FragmentVerifier::wait_and_verify_is_in_block(

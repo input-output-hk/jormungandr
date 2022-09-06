@@ -2,6 +2,7 @@ use super::{
     config::{Alias, Connection, WalletState},
     Config, ConfigManager, Error,
 };
+use bech32::u5;
 use chain_crypto::Ed25519Extended;
 use chain_impl_mockchain::fragment::FragmentId;
 use cocoon::Cocoon;
@@ -17,6 +18,33 @@ pub struct WalletController {
 impl WalletController {
     pub fn new(app_name: &str) -> Result<Self, Error> {
         Self::new_from_manager(ConfigManager::new(app_name))
+    }
+
+    pub fn add_wallet_member_key(
+        &mut self,
+        member_key_alias: Alias,
+        password: &str,
+        data: Vec<u5>,
+    ) -> Result<(), Error> {
+        let cocoon = Cocoon::new(password.as_bytes());
+        let secret_file = self.config_manager.alias_member_secret_file(
+            self.default_alias().ok_or(Error::NoDefaultAliasDefined)?,
+            &member_key_alias,
+        )?;
+
+        let wallet = self.wallet_mut()?;
+        if wallet.committee_members_key.contains_key(&member_key_alias) {
+            return Err(Error::DuplicatedMemberKeyAlias(member_key_alias));
+        }
+
+        let mut file = File::create(&secret_file)?;
+        let data_u8 = data.iter().map(|x| x.to_u8()).collect();
+        cocoon.dump(data_u8, &mut file)?;
+
+        wallet
+            .committee_members_key
+            .insert(member_key_alias.clone(), secret_file);
+        Ok(())
     }
 
     pub fn new_from_manager(config_manager: ConfigManager) -> Result<Self, Error> {
@@ -43,7 +71,7 @@ impl WalletController {
             self.config.wallets.default = Some(alias);
             Ok(())
         } else {
-            Err(Error::UknownAlias(alias))
+            Err(Error::UnknownAlias(alias))
         }
     }
 
@@ -61,10 +89,16 @@ impl WalletController {
 
     pub fn remove_wallet(&mut self, alias: Alias) -> Result<(), Error> {
         if self.alias_exists(&alias) {
+            let wallet = self.config.wallets.wallets.get(&alias).unwrap().clone();
+            for (_,committee_key_file) in wallet.committee_members_key {
+                std::fs::remove_file(committee_key_file)?;
+            }
             self.config.wallets.wallets.retain(|x, _| x != &alias);
             std::fs::remove_file(self.config_manager.alias_secret_file(&alias)?).map_err(Into::into)
+
+
         } else {
-            Err(Error::UknownAlias(alias))
+            Err(Error::UnknownAlias(alias))
         }
     }
 
@@ -73,7 +107,7 @@ impl WalletController {
             None => Err(Error::NoDefaultAliasDefined),
             Some(alias) => {
                 if !self.alias_exists(alias) {
-                    return Err(Error::UknownAlias(alias.to_string()));
+                    return Err(Error::UnknownAlias(alias.to_string()));
                 }
                 Ok(self.config.wallets.wallets.get(alias).unwrap().clone())
             }
@@ -85,7 +119,7 @@ impl WalletController {
             None => Err(Error::NoDefaultAliasDefined),
             Some(alias) => {
                 if !self.alias_exists(alias) {
-                    return Err(Error::UknownAlias(alias.to_string()));
+                    return Err(Error::UnknownAlias(alias.to_string()));
                 }
                 Ok(self.config.wallets.wallets.get_mut(alias).unwrap())
             }
@@ -139,6 +173,7 @@ impl WalletController {
                     0, 536870912, 1073741824, 1610612736, 2147483648, 2684354560, 3221225472,
                     3758096384,
                 ],
+                committee_members_key: HashMap::new(),
                 value: 0,
             },
         );

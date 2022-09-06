@@ -2,6 +2,7 @@ use super::wallet::Wallets;
 use crate::cli::send::SendCommand;
 use chain_crypto::digest::DigestOf;
 use chain_impl_mockchain::{certificate::ExternalProposalId, testing::VoteTestGen};
+use jormungandr_automation::jormungandr::RestError;
 use jormungandr_lib::interfaces::VotePlan;
 use serde_json::json;
 use std::{fs, path::PathBuf};
@@ -28,8 +29,6 @@ pub enum Command {
     ConfirmTx,
     /// Pulls wallet data from the node
     Refresh,
-    /// Prints entire fragment logs from the node
-    Logs,
     /// Prints pending or already sent fragments statuses
     Statuses,
     /// Sends fragments to nodes
@@ -40,6 +39,8 @@ pub enum Command {
     Wallets(Wallets),
     /// Utility command
     Utils(Utils),
+    /// Rest api commands
+    Rest(Rest),
 }
 
 const DELIMITER: &str = "===================";
@@ -92,10 +93,7 @@ impl Command {
                 controller.refresh_state()?;
                 controller.save_config().map_err(Into::into)
             }
-            Command::Logs => {
-                println!("{:#?}", controller.fragment_logs()?);
-                Ok(())
-            }
+            Command::Rest(rest) => rest.exec(controller),
             Command::Statuses => {
                 print_delim();
                 for (idx, (id, status)) in controller.statuses()?.iter().enumerate() {
@@ -133,6 +131,48 @@ impl Connect {
         });
         controller.check_connection()?;
         controller.save_config().map_err(Into::into)
+    }
+}
+
+#[derive(StructOpt, Debug)]
+pub enum Rest {
+    VotePlans(VotePlans),
+    Fragments,
+}
+
+impl Rest {
+    pub fn exec(&self, controller: CliController) -> Result<(), Error> {
+        match self {
+            Self::Fragments => {
+                println!("{:#?}", controller.fragment_logs()?);
+                Ok(())
+            }
+            Self::VotePlans(vote_plans) => vote_plans.exec(controller),
+        }
+    }
+}
+
+#[derive(StructOpt, Debug)]
+pub enum VotePlans {
+    List,
+}
+
+impl VotePlans {
+    pub fn exec(&self, controller: CliController) -> Result<(), Error> {
+        match self {
+            Self::List => {
+                println!(
+                    "{:#?}",
+                    controller
+                        .client()
+                        .vote_plan_statuses()?
+                        .iter()
+                        .map(|x| x.id.to_string())
+                        .collect::<Vec<String>>()
+                );
+                Ok(())
+            }
+        }
     }
 }
 
@@ -233,4 +273,6 @@ pub enum Error {
     SerdeJson(#[from] serde_json::Error),
     #[error(transparent)]
     Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Rest(#[from] RestError),
 }

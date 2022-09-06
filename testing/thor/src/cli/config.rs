@@ -80,6 +80,8 @@ pub struct WalletState {
     pub spending_counters: Vec<u32>,
     //path to secret key in format of SecretKey struct
     pub secret_file: PathBuf,
+    #[serde(default)]
+    pub committee_members_key: HashMap<Alias, PathBuf>,
     pub testing: bool,
     pub value: u64,
 }
@@ -138,6 +140,15 @@ impl ConfigManager {
 
     pub fn alias_secret_file(&self, alias: &Alias) -> Result<PathBuf, Error> {
         let filename = format!("{}.secret", alias);
+        Ok(self.app_dir()?.join(filename))
+    }
+
+    pub fn alias_member_secret_file(
+        &self,
+        wallet_alias: &Alias,
+        member_key_alias: &Alias,
+    ) -> Result<PathBuf, Error> {
+        let filename = format!("{}_{}.secret", wallet_alias, member_key_alias);
         Ok(self.app_dir()?.join(filename))
     }
 

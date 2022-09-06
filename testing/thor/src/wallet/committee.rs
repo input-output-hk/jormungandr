@@ -10,7 +10,7 @@ use chain_impl_mockchain::{
 use chain_vote::{
     committee::{
         ElectionPublicKey, MemberCommunicationKey, MemberCommunicationPublicKey, MemberPublicKey,
-        MemberState,
+        MemberSecretKey, MemberState,
     },
     tally::{batch_decrypt, Crs, OpeningVoteKey},
 };
@@ -184,43 +184,54 @@ impl PrivateVoteCommitteeDataManager {
         &self,
         vote_plan_status: &VotePlanStatus,
     ) -> Result<DecryptedPrivateTally, DecryptedPrivateTallyError> {
-        let (shares, tallies): (Vec<_>, Vec<_>) = vote_plan_status
-            .proposals
-            .iter()
-            .map(|proposal| {
-                let tally_state = &proposal.tally;
-                let encrypted_tally = tally_state.private_encrypted().unwrap().clone();
-                let decrypt_shares = self
-                    .members()
-                    .iter()
-                    .map(|member| member.member_secret_key())
-                    .map(|secret_key| {
-                        encrypted_tally.partial_decrypt(&mut rand::thread_rng(), &secret_key)
-                    })
-                    .collect::<Vec<_>>();
-                let tally = encrypted_tally
-                    .validate_partial_decryptions(
-                        &vote_plan_status.committee_public_keys,
-                        &decrypt_shares,
-                    )
-                    .unwrap();
-                (decrypt_shares, tally)
-            })
-            .unzip();
-        let tallies = batch_decrypt(&tallies).unwrap();
-
-        DecryptedPrivateTally::new(
-            tallies
-                .into_iter()
-                .zip(shares)
-                .map(
-                    |(tally_result, decrypt_shares)| DecryptedPrivateTallyProposal {
-                        tally_result: tally_result.votes.into_boxed_slice(),
-                        decrypt_shares: decrypt_shares.into_boxed_slice(),
-                    },
-                )
+        decrypt_tally_with_member_keys(
+            self.members()
+                .iter()
+                .map(|member| member.member_secret_key())
                 .collect(),
+            vote_plan_status,
         )
-        .map_err(Into::into)
     }
+}
+
+pub fn decrypt_tally_with_member_keys(
+    members_keys: Vec<MemberSecretKey>,
+    vote_plan_status: &VotePlanStatus,
+) -> Result<DecryptedPrivateTally, DecryptedPrivateTallyError> {
+    let (shares, tallies): (Vec<_>, Vec<_>) = vote_plan_status
+        .proposals
+        .iter()
+        .map(|proposal| {
+            let tally_state = &proposal.tally;
+            let encrypted_tally = tally_state.private_encrypted().unwrap().clone();
+            let decrypt_shares = members_keys
+                .iter()
+                .map(|secret_key| {
+                    encrypted_tally.partial_decrypt(&mut rand::thread_rng(), &secret_key)
+                })
+                .collect::<Vec<_>>();
+            let tally = encrypted_tally
+                .validate_partial_decryptions(
+                    &vote_plan_status.committee_public_keys,
+                    &decrypt_shares,
+                )
+                .unwrap();
+            (decrypt_shares, tally)
+        })
+        .unzip();
+    let tallies = batch_decrypt(&tallies).unwrap();
+
+    DecryptedPrivateTally::new(
+        tallies
+            .into_iter()
+            .zip(shares)
+            .map(
+                |(tally_result, decrypt_shares)| DecryptedPrivateTallyProposal {
+                    tally_result: tally_result.votes.into_boxed_slice(),
+                    decrypt_shares: decrypt_shares.into_boxed_slice(),
+                },
+            )
+            .collect(),
+    )
+    .map_err(Into::into)
 }

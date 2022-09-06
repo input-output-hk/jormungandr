@@ -2,8 +2,9 @@ use super::{Error, WalletController};
 use crate::{
     cli::{
         config::{ConfigManager, WalletState},
-        Connection,
+        Alias, Connection,
     },
+    wallet::committee::decrypt_tally_with_member_keys,
     FragmentSender, FragmentVerifier, Wallet,
 };
 use bech32::{u5, FromBase32};
@@ -11,6 +12,7 @@ use chain_crypto::{Ed25519Extended, SecretKey};
 use chain_impl_mockchain::{
     accounting::account::spending::SpendingCounterIncreasing, fragment::FragmentId,
 };
+use chain_vote::committee::MemberSecretKey;
 use cocoon::Cocoon;
 use jormungandr_automation::jormungandr::{
     JormungandrRest, MemPoolCheck, RemoteJormungandr, RemoteJormungandrBuilder,
@@ -22,7 +24,7 @@ use jormungandr_lib::{
         VotePlanId,
     },
 };
-use std::{collections::HashMap, time::Duration};
+use std::{collections::HashMap, path::Path, str::FromStr, time::Duration};
 
 const SLOT_COUNT: u64 = 3;
 
@@ -84,6 +86,10 @@ impl CliController {
         Ok(())
     }
 
+    pub fn client(&self) -> &JormungandrRest {
+        &self.client
+    }
+
     pub fn account_state(&self) -> Result<AccountState, Error> {
         self.client
             .account_state_by_pk(&self.wallets.wallet()?.pk_bech32())
@@ -120,9 +126,7 @@ impl CliController {
         password: &str,
         wallet_state: &WalletState,
     ) -> Result<SigningKey, Error> {
-        let contents = std::fs::read(&wallet_state.secret_file)?;
-        let cocoon = Cocoon::new(password.as_bytes());
-        let unwrapped: Vec<u8> = cocoon.unwrap(&contents)?;
+        let unwrapped = self.secret_key_bytes(password, &wallet_state.secret_file)?;
         let data_u5: Vec<u5> = unwrapped
             .iter()
             .map(|x| bech32::u5::try_from_u8(*x).unwrap())
@@ -130,6 +134,78 @@ impl CliController {
         let secret: SecretKey<Ed25519Extended> =
             SecretKey::from_binary(&Vec::<u8>::from_base32(&data_u5)?)?;
         Ok(secret.into())
+    }
+
+    pub fn secret_key_bytes<P: AsRef<Path>>(
+        &self,
+        password: &str,
+        secret_key: P,
+    ) -> Result<Vec<u8>, Error> {
+        let contents = std::fs::read(secret_key)?;
+        let cocoon = Cocoon::new(password.as_bytes());
+        cocoon.unwrap(&contents).map_err(Into::into)
+    }
+
+    pub fn send_private_vote_tally(
+        &mut self,
+        password: &str,
+        wait_for_transaction: bool,
+        vote_plan_id: String,
+        member_key_alias: Alias,
+    ) -> Result<MemPoolCheck, Error> {
+        let mut thor_wallet = self.thor_wallet(password)?;
+        let settings = self.client.settings()?;
+        let node = RemoteJormungandrBuilder::new("dummy".to_string())
+            .with_rest_client(self.client.clone())
+            .build();
+        let wallet = self.wallets.wallet()?;
+        let member_key_file = wallet
+            .committee_members_key
+            .get(&member_key_alias)
+            .ok_or(Error::UnknownMemberKeyAlias(member_key_alias))?;
+
+
+        let member_secret_key = self.secret_member_key(password, &member_key_file)?;
+
+        let vote_plan_status = node
+            .rest()
+            .vote_plan_statuses()?
+            .iter()
+            .find(|x| x.id.to_string() == vote_plan_id)
+            .ok_or(Error::CannotFindVoteplan)?
+            .clone();
+
+        let check = FragmentSender::from(&settings).send_private_vote_tally(
+            &mut thor_wallet,
+            VotePlanId::from_str(&vote_plan_id)
+                .map_err(|_| Error::InvalidVoteplanId)?
+                .into(),
+            decrypt_tally_with_member_keys(vec![member_secret_key], &vote_plan_status.into())?,
+            &node,
+        )?;
+        self.post_fragment_send(check, wait_for_transaction, settings, &node, thor_wallet)
+    }
+
+    pub fn send_public_vote_tally(
+        &mut self,
+        password: &str,
+        wait_for_transaction: bool,
+        vote_plan_id: String,
+    ) -> Result<MemPoolCheck, Error> {
+        let mut thor_wallet = self.thor_wallet(password)?;
+        let settings = self.client.settings()?;
+        let node = RemoteJormungandrBuilder::new("dummy".to_string())
+            .with_rest_client(self.client.clone())
+            .build();
+
+        let check = FragmentSender::from(&settings).send_public_vote_tally(
+            &mut thor_wallet,
+            VotePlanId::from_str(&vote_plan_id)
+                .map_err(|_| Error::InvalidVoteplanId)?
+                .into(),
+            &node,
+        )?;
+        self.post_fragment_send(check, wait_for_transaction, settings, &node, thor_wallet)
     }
 
     pub fn transaction(
@@ -243,5 +319,12 @@ impl CliController {
 
     pub fn save_config(&self) -> Result<(), Error> {
         self.wallets.save_config().map_err(Into::into)
+    }
+    fn secret_member_key<P: AsRef<Path>>(&self, password: &str, secret_file: P) -> Result<MemberSecretKey,Error> {
+        let data_u5: Vec<u5> = self.secret_key_bytes(password, &secret_file).unwrap()
+            .iter()
+            .map(|x| bech32::u5::try_from_u8(*x).unwrap())
+            .collect();
+         MemberSecretKey::from_bytes(&Vec::<u8>::from_base32(&data_u5)?).ok_or(Error::CannotReadSecretKey)
     }
 }

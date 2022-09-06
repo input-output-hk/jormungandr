@@ -85,9 +85,9 @@ SUBCOMMANDS:
     confirm-tx              Confirms successful transaction
     connect                 Sets node rest API address. Verifies connection on set
     help                    Prints this message or the help of the given subcommand(s)
-    logs                    Prints entire fragment logs from the node
     pending-transactions    Prints pending transactions (not confirmed)
     refresh                 Pulls wallet data from the node
+    rest                    Retieve information from node
     send                    Sends fragments to nodes
     status                  Prints wallet status (balance/spending counters/tokens)
     statuses                Prints pending or already sent fragments statuses

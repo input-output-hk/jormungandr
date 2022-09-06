@@ -1,7 +1,7 @@
 use super::config::Alias;
 use crate::{FragmentSenderError, FragmentVerifierError};
 use chain_crypto::SecretKeyError;
-use chain_impl_mockchain::fragment::FragmentId;
+use chain_impl_mockchain::{certificate::DecryptedPrivateTallyError, fragment::FragmentId};
 use jormungandr_automation::jormungandr::RestError;
 use jormungandr_lib::crypto::account::SigningKeyParseError;
 use thiserror::Error;
@@ -30,20 +30,28 @@ pub enum Error {
     CannotrSerializeSecretKey,
     #[error("cannot create spending counter")]
     SpendingCounter,
-
+    #[error("cannot decode voteplan id")]
+    InvalidVoteplanId,
     #[error("cannot read secret key")]
     CannotReadSecretKey,
     #[error("unknown alias: '{0}'")]
-    UknownAlias(Alias),
+    UnknownAlias(Alias),
+    #[error("duplicated member key alias: '{0}'")]
+    DuplicatedMemberKeyAlias(Alias),
+    #[error("unknown member key alias: '{0}'")]
+    UnknownMemberKeyAlias(Alias),
     #[error("no default alias specified")]
     NoDefaultAliasDefined,
+    #[error("cannot find voteplan")]
+    CannotFindVoteplan,
     #[error("cannot read/write secret key")]
     Cocoon,
     #[error("Bincode error")]
     Bincode,
     #[error(transparent)]
     Key(#[from] jcli_lib::key::Error),
-
+    #[error(transparent)]
+    DecryptedPrivateTally(#[from] DecryptedPrivateTallyError),
     #[error("cannot find proposal: voteplan({vote_plan_name}) index({proposal_index})")]
     CannotFindProposal {
         vote_plan_name: String,

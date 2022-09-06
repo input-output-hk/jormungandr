@@ -19,7 +19,8 @@ use chain_impl_mockchain::evm::EvmTransaction;
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate::{
-        PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally, VoteTallyPayload,
+        PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VotePlanId, VoteTally,
+        VoteTallyPayload,
     },
     fee::{FeeAlgorithm, LinearFee},
     fragment::Fragment,
@@ -323,14 +324,14 @@ impl FragmentBuilder {
     pub fn vote_tally(
         &self,
         wallet: &Wallet,
-        vote_plan: &VotePlan,
+        vote_plan_id: VotePlanId,
         payload: VoteTallyPayload,
     ) -> Fragment {
         let inner_wallet = wallet.clone().into();
 
         let vote_tally = match payload {
-            VoteTallyPayload::Public => VoteTally::new_public(vote_plan.to_id()),
-            VoteTallyPayload::Private { inner } => VoteTally::new_private(vote_plan.to_id(), inner),
+            VoteTallyPayload::Public => VoteTally::new_public(vote_plan_id),
+            VoteTallyPayload::Private { inner } => VoteTally::new_private(vote_plan_id, inner),
         };
         self.fragment_factory
             .vote_tally(self.valid_until, &inner_wallet, vote_tally)

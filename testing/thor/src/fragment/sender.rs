@@ -6,7 +6,9 @@ use chain_core::property::Fragment as _;
 use chain_crypto::{Ed25519, SecretKey};
 use chain_impl_mockchain::{
     block::BlockDate,
-    certificate::{DecryptedPrivateTally, UpdateProposal, UpdateVote, VotePlan, VoteTallyPayload},
+    certificate::{
+        DecryptedPrivateTally, UpdateProposal, UpdateVote, VotePlan, VotePlanId, VoteTallyPayload,
+    },
     fee::LinearFee,
     fragment::Fragment,
     testing::WitnessMode,
@@ -402,10 +404,10 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     pub fn send_public_vote_tally<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,
-        vote_plan: &VotePlan,
+        vote_plan_id: VotePlanId,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        self.send_vote_tally(from, vote_plan, via, VoteTallyPayload::Public)
+        self.send_vote_tally(from, vote_plan_id, via, VoteTallyPayload::Public)
     }
 
     pub fn send_update_proposal<A: FragmentNode + SyncNode + Sized + Send>(
@@ -447,17 +449,17 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     pub fn send_private_vote_tally<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,
-        vote_plan: &VotePlan,
+        vote_plan_id: VotePlanId,
         inner: DecryptedPrivateTally,
         via: &A,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
-        self.send_vote_tally(from, vote_plan, via, VoteTallyPayload::Private { inner })
+        self.send_vote_tally(from, vote_plan_id, via, VoteTallyPayload::Private { inner })
     }
 
     pub fn send_vote_tally<A: FragmentNode + SyncNode + Sized + Send>(
         &self,
         from: &mut Wallet,
-        vote_plan: &VotePlan,
+        vote_plan_id: VotePlanId,
         via: &A,
         tally_type: VoteTallyPayload,
     ) -> Result<MemPoolCheck, FragmentSenderError> {
@@ -467,7 +469,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
             self.expiry_generator.block_date(),
         )
         .witness_mode(self.witness_mode)
-        .vote_tally(from, vote_plan, tally_type);
+        .vote_tally(from, vote_plan_id, tally_type);
         self.dump_fragment_if_enabled(from, &fragment, via)?;
         self.send_fragment(from, fragment, via)
     }
