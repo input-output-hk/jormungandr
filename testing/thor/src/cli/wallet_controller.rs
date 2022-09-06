@@ -90,13 +90,11 @@ impl WalletController {
     pub fn remove_wallet(&mut self, alias: Alias) -> Result<(), Error> {
         if self.alias_exists(&alias) {
             let wallet = self.config.wallets.wallets.get(&alias).unwrap().clone();
-            for (_,committee_key_file) in wallet.committee_members_key {
+            for (_, committee_key_file) in wallet.committee_members_key {
                 std::fs::remove_file(committee_key_file)?;
             }
             self.config.wallets.wallets.retain(|x, _| x != &alias);
             std::fs::remove_file(self.config_manager.alias_secret_file(&alias)?).map_err(Into::into)
-
-
         } else {
             Err(Error::UnknownAlias(alias))
         }

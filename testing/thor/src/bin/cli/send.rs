@@ -31,7 +31,6 @@ pub enum SendSubCommand {
     Tx(TxCommand),
     /// Send vote related transactions
     Vote(SendVoteCommand),
-
 }
 
 #[derive(StructOpt, Debug)]
@@ -43,7 +42,7 @@ pub enum SendVoteCommand {
 impl SendVoteCommand {
     pub fn exec(self, controller: CliController, wait: bool) -> Result<(), Error> {
         match self {
-            Self::VotePlan(vote_plan) => vote_plan.exec(controller,wait),
+            Self::VotePlan(vote_plan) => vote_plan.exec(controller, wait),
             Self::Tally(send_tally_vote) => send_tally_vote.exec(controller, wait),
         }
     }

@@ -164,7 +164,6 @@ impl CliController {
             .get(&member_key_alias)
             .ok_or(Error::UnknownMemberKeyAlias(member_key_alias))?;
 
-
         let member_secret_key = self.secret_member_key(password, &member_key_file)?;
 
         let vote_plan_status = node
@@ -320,11 +319,18 @@ impl CliController {
     pub fn save_config(&self) -> Result<(), Error> {
         self.wallets.save_config().map_err(Into::into)
     }
-    fn secret_member_key<P: AsRef<Path>>(&self, password: &str, secret_file: P) -> Result<MemberSecretKey,Error> {
-        let data_u5: Vec<u5> = self.secret_key_bytes(password, &secret_file).unwrap()
+    fn secret_member_key<P: AsRef<Path>>(
+        &self,
+        password: &str,
+        secret_file: P,
+    ) -> Result<MemberSecretKey, Error> {
+        let data_u5: Vec<u5> = self
+            .secret_key_bytes(password, &secret_file)
+            .unwrap()
             .iter()
             .map(|x| bech32::u5::try_from_u8(*x).unwrap())
             .collect();
-         MemberSecretKey::from_bytes(&Vec::<u8>::from_base32(&data_u5)?).ok_or(Error::CannotReadSecretKey)
+        MemberSecretKey::from_bytes(&Vec::<u8>::from_base32(&data_u5)?)
+            .ok_or(Error::CannotReadSecretKey)
     }
 }
