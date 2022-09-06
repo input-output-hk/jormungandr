@@ -103,7 +103,10 @@ pub fn explorer_vote_plan_flow_test() {
             proposal.proposal_id, proposal.votes.total_count
         );
     }
-    println!("{:#?}", vote_plan);
+    println!(
+        "Vote plan started {:#?}",
+        jormungandr.rest().vote_plan_statuses().unwrap()
+    );
 
     assert!(vote_plan.can_vote(get_current_date(&mut jormungandr.rest()).into()));
 
@@ -147,6 +150,11 @@ pub fn explorer_vote_plan_flow_test() {
             proposal.proposal_id, proposal.votes.total_count
         );
     }
+    println!(
+        "Voting started {:#?}",
+        jormungandr.rest().vote_plan_statuses().unwrap()
+    );
+
     wait_for_date(vote_plan.vote_end().into(), jormungandr.rest());
 
     //3.Start talling
@@ -171,6 +179,10 @@ pub fn explorer_vote_plan_flow_test() {
             proposal.tally.unwrap()
         );
     }
+    println!(
+        "Talling started {:#?}",
+        jormungandr.rest().vote_plan_statuses().unwrap()
+    );
 
     wait_for_date(vote_plan.committee_end().into(), jormungandr.rest());
 
@@ -194,5 +206,8 @@ pub fn explorer_vote_plan_flow_test() {
         );
     }
 
-    println!("{:?}", jormungandr.rest().vote_plan_statuses().unwrap());
+    println!(
+        "End talling {:#?}",
+        jormungandr.rest().vote_plan_statuses().unwrap()
+    );
 }
