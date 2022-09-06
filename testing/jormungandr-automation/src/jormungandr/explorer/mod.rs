@@ -4,9 +4,9 @@ use self::{
     data::{
         address, all_blocks, all_stake_pools, all_vote_plans, blocks_by_chain_length, epoch,
         last_block, settings, stake_pool, transaction_by_id, transaction_by_id_certificates,
-        transactions_by_address, Address, AllBlocks, AllStakePools, AllVotePlans,
+        transactions_by_address, vote_plan_by_id, Address, AllBlocks, AllStakePools, AllVotePlans,
         BlocksByChainLength, Epoch, LastBlock, Settings, StakePool, TransactionById,
-        TransactionByIdCertificates, TransactionsByAddress, VotePlanById, vote_plan_by_id,
+        TransactionByIdCertificates, TransactionsByAddress, VotePlanById,
     },
 };
 use crate::testing::configuration::get_explorer_app;
@@ -300,9 +300,7 @@ impl Explorer {
         &self,
         id: String,
     ) -> Result<Response<vote_plan_by_id::ResponseData>, ExplorerError> {
-        let query = VotePlanById::build_query(vote_plan_by_id::Variables {
-            id
-        });
+        let query = VotePlanById::build_query(vote_plan_by_id::Variables { id });
         self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body: Response<vote_plan_by_id::ResponseData> = response.json()?;
