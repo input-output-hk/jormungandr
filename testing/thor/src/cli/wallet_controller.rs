@@ -43,7 +43,7 @@ impl WalletController {
 
         wallet
             .committee_members_key
-            .insert(member_key_alias.clone(), secret_file);
+            .insert(member_key_alias, secret_file);
         Ok(())
     }
 

@@ -266,7 +266,7 @@ pub fn test_vote_flow_bft() {
     transaction_sender
         .send_vote_tally(
             &mut clarice,
-            &vote_plan,
+            vote_plan.to_id(),
             &jormungandr,
             VoteTallyPayload::Public,
         )
@@ -298,7 +298,7 @@ fn assert_first_proposal_has_votes(stake: u64, vote_plan_statuses: Vec<VotePlanS
     match &proposal.tally {
         Tally::Public { result } => {
             let results = result.results();
-            assert_eq!(*results.get(0).unwrap(), 0);
+            assert_eq!(*results.first().unwrap(), 0);
             assert_eq!(*results.get(1).unwrap(), stake);
             assert_eq!(*results.get(2).unwrap(), 0);
         }
@@ -457,7 +457,7 @@ pub fn test_vote_flow_praos() {
     transaction_sender
         .send_vote_tally(
             &mut alice,
-            &vote_plan,
+            vote_plan.to_id(),
             &jormungandr,
             VoteTallyPayload::Public,
         )

@@ -142,11 +142,11 @@ pub fn merge_two_voteplans() {
     let vote_plan_statuses = jormungandr.rest().vote_plan_statuses().unwrap();
 
     transaction_sender
-        .send_public_vote_tally(&mut alice, &first_vote_plan, &jormungandr)
+        .send_public_vote_tally(&mut alice, first_vote_plan.to_id(), &jormungandr)
         .unwrap();
 
     transaction_sender
-        .send_public_vote_tally(&mut alice, &second_vote_plan, &jormungandr)
+        .send_public_vote_tally(&mut alice, second_vote_plan.to_id(), &jormungandr)
         .unwrap();
 
     wait_for_epoch(2, jormungandr.rest());

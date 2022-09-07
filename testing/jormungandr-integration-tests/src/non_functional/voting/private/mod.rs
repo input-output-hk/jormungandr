@@ -175,7 +175,7 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
     transaction_sender
         .send_vote_tally(
             &mut committee,
-            &vote_plan,
+            vote_plan.to_id(),
             &jormungandr,
             VoteTallyPayload::Private { inner: shares },
         )
@@ -367,7 +367,7 @@ pub fn adversary_private_vote_load_scenario(
     transaction_sender
         .send_vote_tally(
             &mut committee,
-            &vote_plan,
+            vote_plan.to_id(),
             &jormungandr,
             VoteTallyPayload::Private { inner: shares },
         )

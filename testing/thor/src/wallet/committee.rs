@@ -207,7 +207,7 @@ pub fn decrypt_tally_with_member_keys(
             let decrypt_shares = members_keys
                 .iter()
                 .map(|secret_key| {
-                    encrypted_tally.partial_decrypt(&mut rand::thread_rng(), &secret_key)
+                    encrypted_tally.partial_decrypt(&mut rand::thread_rng(), secret_key)
                 })
                 .collect::<Vec<_>>();
             let tally = encrypted_tally

@@ -134,7 +134,7 @@ pub fn public_vote_load_scenario(quick_config: PublicVotingLoadTestConfig) {
     transaction_sender
         .send_vote_tally(
             &mut committee,
-            &vote_plan,
+            vote_plan.to_id(),
             &jormungandr,
             VoteTallyPayload::Public,
         )
@@ -292,7 +292,7 @@ pub fn adversary_public_vote_load_scenario(
     transaction_sender
         .send_vote_tally(
             &mut committee,
-            &vote_plan,
+            vote_plan.to_id(),
             &jormungandr,
             VoteTallyPayload::Public,
         )

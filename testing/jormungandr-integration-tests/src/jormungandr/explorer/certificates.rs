@@ -786,7 +786,7 @@ pub fn explorer_vote_tally_certificate_test() {
     wait_for_epoch(1, jormungandr.rest());
 
     let vote_tally_fragment =
-        fragment_builder.vote_tally(&alice, &vote_plan, VoteTallyPayload::Public);
+        fragment_builder.vote_tally(&alice, vote_plan.to_id(), VoteTallyPayload::Public);
 
     fragment_sender
         .send_fragment(&mut alice, vote_tally_fragment.clone(), &jormungandr)

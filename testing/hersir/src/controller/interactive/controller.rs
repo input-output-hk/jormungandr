@@ -2,7 +2,7 @@ use crate::{
     builder::SpawnParams,
     controller::{interactive::ControllerError, Controller, Error},
 };
-use chain_impl_mockchain::vote::Choice;
+use chain_impl_mockchain::{certificate::VotePlan, vote::Choice};
 use jormungandr_automation::jormungandr::{JormungandrProcess, Version};
 use jormungandr_lib::interfaces::Value;
 use jortestkit::prelude::InteractiveCommandError;
@@ -93,12 +93,14 @@ impl UserInteractionController {
 
         let fragment_sender = FragmentSender::from(&self.controller.settings().block0);
 
+        let vote_plan: VotePlan = vote_plan_def.into();
+
         let check = match (node, legacy_node) {
             (Some(node), None) => {
-                fragment_sender.send_public_vote_tally(committee, &vote_plan_def.into(), node)?
+                fragment_sender.send_public_vote_tally(committee, vote_plan.to_id(), node)?
             }
             (None, Some(node)) => {
-                fragment_sender.send_public_vote_tally(committee, &vote_plan_def.into(), node)?
+                fragment_sender.send_public_vote_tally(committee, vote_plan.to_id(), node)?
             }
             _ => Err(InteractiveCommandError::UserError(format!(
                 "alias not found {}",

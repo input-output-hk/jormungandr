@@ -275,7 +275,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
 
                 self.fragment_sender.send_vote_tally(
                     &mut self.sender,
-                    vote_plan,
+                    vote_plan.to_id(),
                     &self.node,
                     VoteTallyPayload::Public,
                 )
