@@ -18,6 +18,75 @@ const VOTE_PLAN_QUERY_COMPLEXITY_LIMIT: u64 = 50;
 const VOTE_PLAN_QUERY_DEPTH_LIMIT: u64 = 30;
 
 #[test]
+pub fn explorer_vote_plan_not_existing(){
+    let temp_dir = TempDir::new().unwrap();
+    let alice = Wallet::default();
+    let bob = Wallet::default();
+    let wallets = vec![alice, bob];
+    let proposal_count = 1;
+
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(proposal_count)
+        .vote_start(BlockDate::from_epoch_slot_id(0, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(1, 10))
+        .public()
+        .build();
+
+    let config = ConfigurationBuilder::new()
+        .with_funds(wallets.iter().map(|x| x.to_initial_fund(1000)).collect())
+        .with_token(InitialToken {
+            token_id: vote_plan.voting_token().clone().into(),
+            policy: MintingPolicy::new().into(),
+            to: vec![
+                wallets[0].to_initial_token(1000),
+                wallets[1].to_initial_token(2000),
+            ],
+        })
+        .with_committees(&[wallets[0].to_committee_id()])
+        .with_slots_per_epoch(20)
+        .with_treasury(1_000.into())
+        .build(&temp_dir);
+
+    let jormungandr = Starter::new()
+        .config(config)
+        .temp_dir(temp_dir)
+        .start()
+        .unwrap();
+
+    let params = ExplorerParams::new(
+        VOTE_PLAN_QUERY_COMPLEXITY_LIMIT,
+        VOTE_PLAN_QUERY_DEPTH_LIMIT,
+        None,
+    );
+    let explorer_process = jormungandr.explorer(params);
+    let explorer = explorer_process.client();
+
+    let query_response = explorer
+        .vote_plan(vote_plan.to_id().to_string())
+        .expect("vote plan transaction not found");
+
+    assert!(
+        query_response.data.is_none(),
+        "{:?}",
+        query_response.errors.unwrap()
+    );
+
+    assert!(
+        query_response.errors.is_some(),
+        "{:?}",
+        query_response.errors.unwrap()
+    );
+
+    assert!(
+        &query_response.errors.as_ref().unwrap().last().unwrap().message.contains("not found"),
+        "{:?}",
+        query_response.errors.unwrap()
+    );
+
+}
+
+#[test]
 pub fn explorer_vote_plan_flow_test() {
     let temp_dir = TempDir::new().unwrap();
     let alice = Wallet::default();
@@ -50,7 +119,7 @@ pub fn explorer_vote_plan_flow_test() {
             policy: MintingPolicy::new().into(),
             to: vec![
                 wallets[0].to_initial_token(1000),
-                wallets[1].to_initial_token(1000),
+                wallets[1].to_initial_token(2000),
             ],
         })
         .with_committees(&[wallets[0].to_committee_id()])
@@ -125,7 +194,7 @@ pub fn explorer_vote_plan_flow_test() {
             &mut wallets[1],
             &vote_plan,
             0,
-            &Choice::new(1),
+            &Choice::new(0),
             &jormungandr,
         )
         .unwrap();
