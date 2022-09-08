@@ -12,10 +12,7 @@ use crate::{
     metrics::{Metrics, MetricsBackend},
     utils::async_msg::MessageBox,
 };
-use chain_core::{
-    packer::Codec,
-    property::{Fragment as _, Serialize},
-};
+use chain_core::{packer::Codec, property::Serialize};
 use chain_impl_mockchain::{
     block::BlockDate, fragment::Contents, setting::Settings, transaction::Transaction,
 };
@@ -166,7 +163,7 @@ impl Pool {
         let mut rejected = Vec::new();
 
         let mut fragments = fragments.into_iter().map(|el| {
-            let id = el.id();
+            let id = el.hash();
             (el, id)
         });
 
