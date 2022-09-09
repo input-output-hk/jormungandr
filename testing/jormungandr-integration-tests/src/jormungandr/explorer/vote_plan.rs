@@ -134,19 +134,19 @@ pub fn explorer_vote_plan_public_flow_test() {
     .into();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(voters.iter().map(|x| x.to_initial_fund(1000)).collect())
+        .with_funds(voters.iter().map(|x| x.to_initial_fund(INITIAL_TREASURY)).collect())
         .with_token(InitialToken {
             token_id: vote_plan.voting_token().clone().into(),
             policy: MintingPolicy::new().into(),
             to: vec![
-                voters[0].to_initial_token(1000),
-                voters[1].to_initial_token(2000),
+                voters[0].to_initial_token(INITIAL_FUND_PER_WALLET_1),
+                voters[1].to_initial_token(INITIAL_FUND_PER_WALLET_2),
             ],
         })
         .with_committees(&[voters[0].to_committee_id()])
-        .with_slots_per_epoch(20)
+        .with_slots_per_epoch(SLOTS_PER_EPOCH)
         .with_certs(vec![vote_plan_cert])
-        .with_treasury(1_000.into())
+        .with_treasury(INITIAL_TREASURY.into())
         .build(&temp_dir);
 
     let jormungandr = Starter::new()
@@ -210,6 +210,7 @@ pub fn explorer_vote_plan_public_flow_test() {
             &jormungandr,
         )
         .unwrap();
+
     transaction_sender
         .send_vote_cast(
             &mut voters[1],
@@ -219,6 +220,7 @@ pub fn explorer_vote_plan_public_flow_test() {
             &jormungandr,
         )
         .unwrap();
+
     transaction_sender
         .send_vote_cast(
             &mut voters[0],
@@ -228,6 +230,7 @@ pub fn explorer_vote_plan_public_flow_test() {
             &jormungandr,
         )
         .unwrap();
+
     transaction_sender
         .send_vote_cast(
             &mut voters[1],
@@ -433,10 +436,11 @@ pub fn explorer_vote_plan_private_flow_test() {
 
     let first_voter_luigi_fragment =
         fragment_builder.private_vote_cast(&voters[0], &vote_plan, VOTE_FOR_LUIGI, &yes_choice);
-    let second_voter_luigi_fragment =
+
+        let second_voter_luigi_fragment =
         fragment_builder.private_vote_cast(&voters[1], &vote_plan, VOTE_FOR_LUIGI, &yes_choice);
-    //voters[1].update_counter(SpendingCounter::new(0,1));
     voters[1].confirm_transaction();
+
     let second_voter_mario_fragment =
         fragment_builder.private_vote_cast(&voters[1], &vote_plan, VOTE_FOR_MARIO, &no_choice);
 
@@ -447,8 +451,6 @@ pub fn explorer_vote_plan_private_flow_test() {
     transaction_sender
         .send_fragment(&mut voters[1], second_voter_luigi_fragment, &jormungandr)
         .unwrap();
-    //voters[1].confirm_transaction_at_lane(0);
-    // voters[0].update_counter(SpendingCounter::new(0,1));
 
     transaction_sender
         .send_fragment(&mut voters[1], second_voter_mario_fragment, &jormungandr)
