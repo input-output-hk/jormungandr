@@ -1,0 +1,3 @@
+query Block($id: String!) {
+        block(id:$id){id}
+}

@@ -505,7 +505,7 @@ impl Block {
             Ok(Arc::clone(block))
         } else {
             let block = db.get_block(&self.hash).await.ok_or_else(|| {
-                ApiError::InternalError("Couldn't find block's contents in explorer".to_owned())
+                ApiError::InternalError("Couldn't find block in the explorer".to_owned())
             })?;
 
             *contents = Some(Arc::clone(&block));
@@ -518,7 +518,7 @@ impl Block {
             db.get_block_with_branches(&self.hash)
                 .await
                 .ok_or_else(|| {
-                    ApiError::InternalError("Couldn't find block's contents in explorer".to_owned())
+                    ApiError::InternalError("Couldn't find block in the explorer".to_owned())
                 })?;
 
         let mut contents = self.contents.lock().await;
