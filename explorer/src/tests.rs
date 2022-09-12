@@ -1,13 +1,9 @@
 use chain_core::property::FromStr;
-
-use jormungandr_automation::jormungandr::JormungandrProcess;
 use jormungandr_automation::jormungandr::{
-    explorer::configuration::ExplorerParams, ConfigurationBuilder, Explorer,
+    explorer::configuration::ExplorerParams, ConfigurationBuilder, Explorer, JormungandrProcess,
 };
-
 use jormungandr_integration_tests::startup;
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::ActiveSlotCoefficient;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::ActiveSlotCoefficient};
 
 pub struct ExplorerTestConfig {
     query_complexity_limit: u64,
