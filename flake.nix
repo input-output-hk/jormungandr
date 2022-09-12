@@ -37,7 +37,6 @@
     [
       flake-utils.lib.system.x86_64-linux
       flake-utils.lib.system.aarch64-linux
-      flake-utils.lib.system.x86_64-darwin
     ]
     (
       system: let
