@@ -12,10 +12,9 @@ mod tests {
     use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 
     pub fn get_invalid_block(explorer: &Explorer) {
-        let hash = Hash::from_str(
-            &"000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f".to_string(),
-        )
-        .unwrap();
+        let hash =
+            Hash::from_str("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f")
+                .unwrap();
 
         if let Some(errors) = explorer.block(hash).unwrap().errors {
             for error in &errors {
@@ -44,7 +43,7 @@ mod tests {
         config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
 
         let (jormungandr, _initial_stake_pools) =
-            startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
+            startup::start_stake_pool(&[faucet], &[], &mut config).unwrap();
 
         let params = ExplorerParams::new(query_complexity_limit, None, None);
         let explorer_process = jormungandr.explorer(params);
