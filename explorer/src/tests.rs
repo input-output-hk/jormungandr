@@ -13,6 +13,14 @@ pub struct ExplorerTestConfig {
     query_complexity_limit: u64,
 }
 
+impl Default for ExplorerTestConfig {
+    fn default() -> Self {
+        ExplorerTestConfig {
+            query_complexity_limit: 150,
+        }
+    }
+}
+
 pub fn explorer_test_context(
     test_config: ExplorerTestConfig,
 ) -> (
@@ -65,9 +73,7 @@ pub fn get_valid_block(explorer: &Explorer, genesis_block: Hash) {
 
 #[test]
 pub fn explorer_tests() {
-    let config = ExplorerTestConfig {
-        query_complexity_limit: 70,
-    };
+    let config = ExplorerTestConfig::default();
 
     let (explorer, jormungandr) = explorer_test_context(config);
 
