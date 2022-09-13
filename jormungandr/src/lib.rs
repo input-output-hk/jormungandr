@@ -639,7 +639,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
     let context = match settings.rest.clone() {
         Some(rest_config) => {
-            let context = init_context(diagnostic.clone());
+            let context = init_context(diagnostic);
 
             let rest_config = rest::Config {
                 listen: rest_config.listen,

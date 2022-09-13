@@ -64,7 +64,7 @@ impl ExplorerProcess {
         let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
 
         let mut explorer_cmd = Command::new(path);
-        explorer_cmd.args(&[
+        explorer_cmd.args([
             "--node",
             node_address.as_ref(),
             "--binding-address",

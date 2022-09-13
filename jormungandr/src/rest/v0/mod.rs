@@ -221,7 +221,7 @@ pub fn filter(
 
         let vote_plans = warp::path!("plans")
             .and(warp::get())
-            .and(with_context.clone())
+            .and(with_context)
             .and_then(handlers::get_active_vote_plans)
             .boxed();
         root.and(committees.or(vote_plans)).boxed()

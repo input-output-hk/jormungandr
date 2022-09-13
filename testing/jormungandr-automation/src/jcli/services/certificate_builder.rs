@@ -39,7 +39,7 @@ impl CertificateBuilder {
         let stake_delegation_signcert_file = temp_dir.child("stake_delegation.signcert");
 
         self.jcli.certificate().sign(
-            &stake_key_file,
+            stake_key_file,
             stake_delegation_cert_file.path(),
             stake_delegation_signcert_file.path(),
         );
