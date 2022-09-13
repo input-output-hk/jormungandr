@@ -93,7 +93,7 @@ fn basic_change_config_test() {
         .set_expiry_date(BlockDate::new(3, 0))
         .finalize()
         .seal_with_witness_data(alice.witness_data())
-        .add_auth(&alice_sk.path())
+        .add_auth(alice_sk.path())
         .to_message();
     alice.confirm_transaction();
     jcli.fragment_sender(&jormungandr)

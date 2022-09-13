@@ -50,7 +50,7 @@ impl Serialize for CommitteeIdDef {
         S: Serializer,
     {
         if serializer.is_human_readable() {
-            let hex = hex::encode(&self.0);
+            let hex = hex::encode(self.0);
             serializer.serialize_str(&hex)
         } else {
             serializer.serialize_bytes(&self.0)

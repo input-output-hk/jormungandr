@@ -118,7 +118,7 @@ fn address_info(address: &AddressReadable) -> Result<(), Error> {
             println!("public key: {}", pubk.to_bech32_str());
             println!("group key:  {}", groupk.to_bech32_str());
         }
-        Kind::Script(id) => println!("script identifier: {}", hex::encode(&id)),
+        Kind::Script(id) => println!("script identifier: {}", hex::encode(id)),
     }
     Ok(())
 }

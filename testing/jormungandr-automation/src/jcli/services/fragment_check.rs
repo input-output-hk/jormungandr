@@ -154,7 +154,7 @@ impl<'a> FragmentCheck<'a> {
                     self.jormungandr.logger.get_log_content()
                 );
                 match x.status() {
-                    FragmentStatus::Rejected { reason } => assert!(reason.contains(&expected_msg)),
+                    FragmentStatus::Rejected { reason } => assert!(reason.contains(expected_msg)),
                     _ => panic!("Non expected state for for rejected log"),
                 }
             }

@@ -171,7 +171,7 @@ pub fn non_existing_folder() {
 
     assert!(path.exists());
     assert!(metadata(path).unwrap().is_dir());
-    assert!(std::fs::read_dir(&path).unwrap().count() > 0);
+    assert!(std::fs::read_dir(path).unwrap().count() > 0);
 }
 
 #[test]

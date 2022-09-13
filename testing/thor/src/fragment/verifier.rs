@@ -195,7 +195,7 @@ impl FragmentVerifier {
     ) -> Result<(), FragmentVerifierError> {
         if let FragmentStatus::Rejected { reason } = status {
             let expected_part = expected_part.into();
-            reason.contains(&expected_part).then(|| ()).ok_or(
+            reason.contains(&expected_part).then_some(()).ok_or(
                 FragmentVerifierError::UnexpectedRejectionReason {
                     message: reason,
                     expected_part,
