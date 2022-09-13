@@ -5,7 +5,7 @@ authors = [ "dev@iohk.io" ]
 edition = "2021"
 
 [dependencies]
-tonic = "0.6"
+tonic = "0.8"
 bech32 = "0.7"
 prost = "0.9"
 tokio = { version = "1.15", features = ["macros", "time"] }
