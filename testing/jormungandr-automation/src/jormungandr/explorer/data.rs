@@ -9,7 +9,6 @@ pub type TimeOffsetSeconds = String;
 pub type PublicKey = String;
 pub type ExternalProposalId = String;
 pub type Weight = String;
-
 use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]

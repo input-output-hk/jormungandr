@@ -19,7 +19,7 @@ use std::{
 };
 mod client;
 pub mod configuration;
-mod data;
+pub mod data;
 pub mod verifier;
 mod wrappers;
 
