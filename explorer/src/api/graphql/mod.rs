@@ -126,12 +126,14 @@ impl Branch {
                     }
                 };
 
-                connection.append(edges.iter().map(|(h, chain_length)| {
-                    Edge::new(
-                        IndexCursor::from(u32::from(*chain_length)),
-                        Block::from_valid_hash(*h),
-                    )
-                }));
+                connection
+                    .edges
+                    .extend(edges.iter().map(|(h, chain_length)| {
+                        Edge::new(
+                            IndexCursor::from(u32::from(*chain_length)),
+                            Block::from_valid_hash(*h),
+                        )
+                    }));
 
                 Ok::<_, async_graphql::Error>(connection)
             },
@@ -201,7 +203,7 @@ impl Branch {
                         .collect(),
                 };
 
-                connection.append(edges.iter().map(|(h, i)| {
+                connection.edges.extend(edges.iter().map(|(h, i)| {
                     Edge::new(IndexCursor::from(*i), Transaction::from_valid_id(*h))
                 }));
 
@@ -279,7 +281,7 @@ impl Branch {
                     }
                 };
 
-                connection.append(
+                connection.edges.extend(
                     edges
                         .iter()
                         .map(|(vps, cursor)| Edge::new(IndexCursor::from(*cursor), vps.clone())),
@@ -365,7 +367,7 @@ impl Branch {
                     }
                 };
 
-                connection.append(
+                connection.edges.extend(
                     edges
                         .iter()
                         .map(|(pool, cursor)| Edge::new(IndexCursor::from(*cursor), pool.clone())),
@@ -456,7 +458,7 @@ impl Branch {
                             .collect::<Vec<_>>(),
                     };
 
-                    connection.append(edges.iter().map(|(id, cursor)| {
+                    connection.edges.extend(edges.iter().map(|(id, cursor)| {
                         Edge::new(IndexCursor::from(*cursor), Block::from_valid_hash(*id))
                     }));
 
@@ -623,7 +625,7 @@ impl Block {
                     }
                 };
 
-                connection.append(
+                connection.edges.extend(
                     edges
                         .iter()
                         .map(|(tx, cursor)| Edge::new(IndexCursor::from(*cursor), tx.clone())),
@@ -1103,7 +1105,7 @@ impl Pool {
                     },
                 );
 
-                connection.append(
+                connection.edges.extend(
                     edges
                         .iter()
                         .map(|(h, i)| Edge::new(IndexCursor::from(*i), Block::from_valid_hash(*h))),
@@ -1468,7 +1470,7 @@ impl VoteProposalStatus {
                     }
                 };
 
-                connection.append(
+                connection.edges.extend(
                     edges
                         .iter()
                         .map(|(vs, cursor)| Edge::new(IndexCursor::from(*cursor), vs.clone())),
