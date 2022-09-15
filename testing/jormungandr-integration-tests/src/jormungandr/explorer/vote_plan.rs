@@ -210,7 +210,7 @@ pub fn explorer_vote_plan_public_flow_test() {
 
     ExplorerVerifier::assert_vote_plan_by_id(
         vote_plan_transaction,
-        vote_plan_status.clone(),
+        vote_plan_status,
         proposal_votes.clone(),
     );
 
@@ -317,7 +317,7 @@ pub fn explorer_vote_plan_public_flow_test() {
 
     ExplorerVerifier::assert_vote_plan_by_id(
         vote_plan_transaction,
-        vote_plan_status.clone(),
+        vote_plan_status,
         proposal_votes.clone(),
     );
 
@@ -348,7 +348,7 @@ pub fn explorer_vote_plan_public_flow_test() {
 
     ExplorerVerifier::assert_vote_plan_by_id(
         vote_plan_transaction,
-        vote_plan_status.clone(),
+        vote_plan_status,
         proposal_votes.clone(),
     );
 
@@ -376,7 +376,7 @@ pub fn explorer_vote_plan_public_flow_test() {
 
     ExplorerVerifier::assert_vote_plan_by_id(
         vote_plan_transaction,
-        vote_plan_status.clone(),
+        vote_plan_status,
         proposal_votes.clone(),
     );
 }
@@ -506,7 +506,7 @@ pub fn explorer_vote_plan_private_flow_test() {
 
     ExplorerVerifier::assert_vote_plan_by_id(
         vote_plan_transaction,
-        vote_plan_status.clone(),
+        vote_plan_status,
         proposal_votes.clone(),
     );
 
@@ -595,7 +595,7 @@ pub fn explorer_vote_plan_private_flow_test() {
 
     ExplorerVerifier::assert_vote_plan_by_id(
         vote_plan_transaction,
-        vote_plan_status.clone(),
+        vote_plan_status,
         proposal_votes.clone(),
     );
 
@@ -644,7 +644,7 @@ pub fn explorer_vote_plan_private_flow_test() {
 
     ExplorerVerifier::assert_vote_plan_by_id(
         vote_plan_transaction,
-        vote_plan_status.clone(),
+        vote_plan_status,
         proposal_votes.clone(),
     );
 
@@ -680,7 +680,7 @@ pub fn explorer_vote_plan_private_flow_test() {
 
     ExplorerVerifier::assert_vote_plan_by_id(
         vote_plan_transaction,
-        vote_plan_status.clone(),
+        vote_plan_status,
         proposal_votes.clone(),
     );
 }
