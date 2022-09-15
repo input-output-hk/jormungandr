@@ -2,10 +2,10 @@ use self::{
     client::GraphQlClient,
     configuration::ExplorerParams,
     data::{
-        address, all_blocks, all_stake_pools, all_vote_plans, blocks_by_chain_length, epoch,
+        address, all_blocks, all_stake_pools, all_vote_plans, block, blocks_by_chain_length, epoch,
         last_block, settings, stake_pool, transaction_by_id, transaction_by_id_certificates,
         transactions_by_address, vote_plan_by_id, Address, AllBlocks, AllStakePools, AllVotePlans,
-        BlocksByChainLength, Epoch, LastBlock, Settings, StakePool, TransactionById,
+        Block, BlocksByChainLength, Epoch, LastBlock, Settings, StakePool, TransactionById,
         TransactionByIdCertificates, TransactionsByAddress, VotePlanById,
     },
 };
@@ -64,7 +64,7 @@ impl ExplorerProcess {
         let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
 
         let mut explorer_cmd = Command::new(path);
-        explorer_cmd.args(&[
+        explorer_cmd.args([
             "--node",
             node_address.as_ref(),
             "--binding-address",
@@ -210,6 +210,17 @@ impl Explorer {
         self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
+        self.print_log(&response_body);
+        Ok(response_body)
+    }
+
+    pub fn block(&self, hash: Hash) -> Result<Response<block::ResponseData>, ExplorerError> {
+        let query = Block::build_query(block::Variables {
+            id: hash.to_string(),
+        });
+        self.print_request(&query);
+        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response_body: Response<block::ResponseData> = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
     }

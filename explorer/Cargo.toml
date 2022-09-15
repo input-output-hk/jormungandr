@@ -40,6 +40,9 @@ lazy_static = "1.4"
 http-zipkin = "0.3.0"
 
 jormungandr-lib = {path = "../jormungandr-lib"}
+jormungandr-automation = { path = "../testing/jormungandr-automation" }
+jormungandr-integration-tests = { path = "../testing/jormungandr-integration-tests" }
+thor = { path = "../testing/thor" }
 
 cardano-legacy-address = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
 chain-addr = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}

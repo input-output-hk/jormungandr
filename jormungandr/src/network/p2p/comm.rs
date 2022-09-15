@@ -699,7 +699,7 @@ impl Peers {
             let mut map = self.inner().await;
             match map.peer_comms(peer) {
                 Some(comms) => {
-                    Span::current().record("peer_addr", &format_args!("{}", comms.remote_addr));
+                    Span::current().record("peer_addr", format_args!("{}", comms.remote_addr));
                     tracing::debug!("sending block solicitation");
                     comms
                         .block_solicitations
@@ -734,7 +734,7 @@ impl Peers {
             let mut map = self.inner().await;
             match map.peer_comms(peer) {
                 Some(comms) => {
-                    Span::current().record("peer_addr", &format_args!("{}", comms.remote_addr));
+                    Span::current().record("peer_addr", format_args!("{}", comms.remote_addr));
                     tracing::debug!("sending header pull request");
                     comms
                         .chain_pulls
