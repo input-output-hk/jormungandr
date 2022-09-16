@@ -39,7 +39,7 @@ impl VotesCommand {
     ) -> Self {
         self.command
             .arg("election-key")
-            .arg(&output_file.as_ref())
+            .arg(output_file.as_ref())
             .arg("--keys")
             .arg(member_key.into());
         self

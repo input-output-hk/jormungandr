@@ -252,7 +252,7 @@ mod filter_level_opt_serde {
         Option::<String>::deserialize(deserializer)?
             .map(|variant| {
                 variant.parse().map_err(|_| {
-                    D::Error::unknown_variant(&variant, &**LOG_FILTER_LEVEL_POSSIBLE_VALUES)
+                    D::Error::unknown_variant(&variant, &LOG_FILTER_LEVEL_POSSIBLE_VALUES)
                 })
             })
             .transpose()

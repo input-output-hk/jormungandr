@@ -42,7 +42,7 @@ impl fmt::Display for EvmTransaction {
 impl FromStr for EvmTransaction {
     type Err = EvmTransactionFromStrError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let data = hex::decode(&s)?;
+        let data = hex::decode(s)?;
         Ok(Self(evm::EvmTransaction::deserialize_from_slice(
             &mut Codec::new(data.as_slice()),
         )?))

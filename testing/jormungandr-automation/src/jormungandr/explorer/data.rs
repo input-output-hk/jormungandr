@@ -37,6 +37,14 @@ pub struct AllBlocks;
 
 #[derive(GraphQLQuery)]
 #[graphql(
+    query_path = "resources/explorer/graphql/block.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug"
+)]
+pub struct Block;
+
+#[derive(GraphQLQuery)]
+#[graphql(
     query_path = "resources/explorer/graphql/allstakepools.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",
     response_derives = "Debug"

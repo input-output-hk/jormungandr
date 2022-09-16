@@ -76,7 +76,7 @@ impl LegacyNodeConfigConverter {
     }
 
     fn build_node_config_after_0_13_0(&self, source: &NewestNodeConfig) -> NodeConfig {
-        let mut rng = OsRng;
+        let rng = OsRng;
 
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
@@ -84,8 +84,7 @@ impl LegacyNodeConfigConverter {
             .iter()
             .map(|peer| {
                 let id = NodeId::from(
-                    <chain_crypto::SecretKey<chain_crypto::Ed25519>>::generate(&mut rng)
-                        .to_public(),
+                    <chain_crypto::SecretKey<chain_crypto::Ed25519>>::generate(rng).to_public(),
                 );
 
                 TrustedPeer {
@@ -165,7 +164,7 @@ impl LegacyNodeConfigConverter {
     fn generate_legacy_poldercast_id(rng: &mut OsRng) -> String {
         let mut bytes: [u8; 24] = [0; 24];
         rng.fill_bytes(&mut bytes);
-        hex::encode(&bytes)
+        hex::encode(bytes)
     }
 
     fn build_node_config_before_0_8_19(&self, source: &NewestNodeConfig) -> NodeConfig {

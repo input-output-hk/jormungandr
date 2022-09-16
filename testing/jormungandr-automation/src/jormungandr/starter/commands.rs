@@ -72,7 +72,7 @@ impl<'a> CommandBuilder<'a> {
     pub fn command(self) -> Command {
         let mut command = if let Some(faketime) = &self.faketime {
             let mut cmd = Command::new("faketime");
-            cmd.args(&["-f", &format!("{:+}s", faketime.offset)]);
+            cmd.args(["-f", &format!("{:+}s", faketime.offset)]);
             cmd.arg(self.bin);
             cmd
         } else {
