@@ -1,17 +1,28 @@
-use assert_fs::TempDir;
-use chain_core::{packer::Codec, property::Deserialize};
-use chain_impl_mockchain::{block::Block, header::BlockDate};
+use crate::startup;
+use chain_core::{
+    packer::Codec,
+    property::{Deserialize, FromStr},
+};
+use chain_impl_mockchain::{
+    block::Block,
+    chaintypes::ConsensusType,
+    fee::LinearFee,
+    tokens::{identifier::TokenIdentifier, minting_policy::MintingPolicy},
+};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
         explorer::{configuration::ExplorerParams, verifiers::ExplorerVerifier},
-        ConfigurationBuilder, Starter,
+        ConfigurationBuilder, MemPoolCheck, Starter,
     },
+    testing::time,
 };
-use jormungandr_lib::interfaces::FragmentStatus;
-use jortestkit::process::Wait;
+use jormungandr_lib::interfaces::{
+    ActiveSlotCoefficient, BlockDate, FragmentStatus, InitialToken, Mempool,
+};
+use mjolnir::generators::FragmentGenerator;
 use std::time::Duration;
-use thor::{TransactionHash, StakePool};
+use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
 
 const BLOCK_QUERY_COMPLEXITY_LIMIT: u64 = 150;
 const BLOCK_QUERY_DEPTH_LIMIT: u64 = 30;
@@ -19,55 +30,74 @@ const BLOCK_QUERY_DEPTH_LIMIT: u64 = 30;
 #[test]
 pub fn explorer_block_test() {
     let jcli: JCli = Default::default();
-    let mut sender = thor::Wallet::default();
+    let sender = thor::Wallet::default();
     let receiver = thor::Wallet::default();
-    let stake_pool = StakePool::new(&sender);
-    let transaction_value = 1_000;
-    let attempts_number = 20;
-    let temp_dir = TempDir::new().unwrap();
 
-    let config = ConfigurationBuilder::default()
-        .with_funds(vec![sender.to_initial_fund(1_000_000)])
-        .build(&temp_dir);
+    let (jormungandr, _) = startup::start_stake_pool(
+        &[sender.clone()],
+        &[receiver.clone()],
+        ConfigurationBuilder::new()
+            .with_block0_consensus(ConsensusType::GenesisPraos)
+            .with_slots_per_epoch(20)
+            .with_block_content_max_size(100000.into())
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_slot_duration(3)
+            .with_linear_fees(LinearFee::new(1, 1, 1))
+            .with_mempool(Mempool {
+                pool_max_entries: 1_000_000usize.into(),
+                log_max_entries: 1_000_000usize.into(),
+                persistent_log: None,
+            })
+            .with_token(InitialToken {
+                // FIXME: this works because I know it's the VotePlanBuilder's default, but
+                // probably should me more explicit.
+                token_id: TokenIdentifier::from_str(
+                    "00000000000000000000000000000000000000000000000000000000.00000000",
+                )
+                .unwrap()
+                .into(),
+                policy: MintingPolicy::new().into(),
+                to: vec![sender.to_initial_token(1_000_000)],
+            }),
+    )
+    .unwrap();
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
-        .expect("Cannot start jormungandr");
-
-    let wait = Wait::new(Duration::from_secs(3), attempts_number);
-
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
+    let fragment_sender = FragmentSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        FragmentSenderSetup::no_verify(),
     );
 
-    let stake_pool_reg_fragment =
-    fragment_builder.stake_pool_registration(&sender, &stake_pool);
+    let time_era = jormungandr.time_era();
 
-    jcli.fragment_sender(&jormungandr)
-        .send(&stake_pool_reg_fragment.encode())
-        .assert_in_block_with_wait(&wait);
+    let mut fragment_generator = FragmentGenerator::new(
+        sender,
+        receiver,
+        jormungandr.to_remote(),
+        time_era.slots_per_epoch(),
+        2,
+        2,
+        2,
+        fragment_sender,
+    );
 
-    sender.confirm_transaction();
+    fragment_generator.prepare(BlockDate::new(1, 0));
 
+    time::wait_for_epoch(2, jormungandr.rest());
 
-    let transaction = fragment_builder
-        .transaction(&sender, receiver.address(), transaction_value.into())
-        .unwrap();
-
-    jcli.fragment_sender(&jormungandr)
-        .send(&transaction.encode())
-        .assert_in_block_with_wait(&wait);
-
-    sender.confirm_transaction();
+    let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
+    FragmentVerifier::wait_and_verify_all_are_in_block(
+        Duration::from_secs(2),
+        mem_checks.clone(),
+        &jormungandr,
+    )
+    .unwrap();
 
     let fragments_log = jcli.rest().v0().message().logs(jormungandr.rest_uri());
     let fragment_log = fragments_log
         .iter()
-        .find(|x| *x.fragment_id().to_string() == stake_pool_reg_fragment.hash().to_string())
+        .find(|x| {
+            *x.fragment_id().to_string() == mem_checks.last().unwrap().fragment_id().to_string()
+        })
         .unwrap();
 
     let fragment_block_id =
@@ -104,6 +134,7 @@ pub fn explorer_block_test() {
     ExplorerVerifier::assert_block(decoded_block, explorer_block).unwrap();
 }
 
+#[should_panic]
 #[test] //NPG-3274
 pub fn explorer_block0_test() {
     let jormungandr = Starter::new().start().unwrap();
@@ -145,7 +176,8 @@ pub fn explorer_block_incorrect_id_test() {
 
     let jormungandr = Starter::new().start().unwrap();
 
-    let explorer_process = jormungandr.explorer(ExplorerParams::default());
+    let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
+    let explorer_process = jormungandr.explorer(params);
     let explorer = explorer_process.client();
 
     for (incorrect_block_id, error_message) in incorrect_block_ids {

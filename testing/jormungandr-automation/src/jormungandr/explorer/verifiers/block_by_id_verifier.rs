@@ -48,25 +48,53 @@ impl ExplorerVerifier {
                 assert!(block.header().get_bft_leader_id().is_none());
             }
         }
-        //Some logging
+        //Logging the fragments in the block
         for f in block.fragments() {
             match f {
-                Fragment::Initial(_) => println!("Fragment::Initial hash {}", f.hash().to_string()),
-                Fragment::OldUtxoDeclaration(_) => println!("Fragment::OldUtxoDeclaration hash {}", f.hash().to_string()),
-                Fragment::Transaction(_) => println!("Fragment::Transaction hash {}", f.hash().to_string()),
-                Fragment::OwnerStakeDelegation(_) => println!("Fragment::OwnerStakeDelegation hash {}", f.hash().to_string()),
-                Fragment::StakeDelegation(_) => println!("Fragment::StakeDelegation hash {}", f.hash().to_string()),
-                Fragment::PoolRegistration(_) => println!("Fragment::PoolRegistration hash {}", f.hash().to_string()),
-                Fragment::PoolRetirement(_) => println!("Fragment::PoolRetirement hash {}", f.hash().to_string()),
-                Fragment::PoolUpdate(_) => println!("Fragment::PoolUpdate hash {}", f.hash().to_string()),
-                Fragment::UpdateProposal(_) => println!("Fragment::UpdateProposal hash {}", f.hash().to_string()),
-                Fragment::UpdateVote(_) => println!("Fragment::UpdateVote hash {}", f.hash().to_string()),
-                Fragment::VotePlan(_) => println!("Fragment::VotePlan hash {}", f.hash().to_string()),
-                Fragment::VoteCast(_) => println!("Fragment::VoteCast hash {}", f.hash().to_string()),
-                Fragment::VoteTally(_) => println!("Fragment::VoteTall hash {}", f.hash().to_string()),
-                Fragment::MintToken(_) => println!("Fragment::MintToken hash {}", f.hash().to_string()),
-                Fragment::Evm(_) => println!("Fragment::Evm hash {}", f.hash().to_string()),
-                Fragment::EvmMapping(_) => println!("Fragment::EvmMapping hash {}", f.hash().to_string()),
+                Fragment::Initial(_) => println!("Fragment::Initial hash {}", f.hash()),
+                Fragment::OldUtxoDeclaration(_) => {
+                    println!("Fragment::OldUtxoDeclaration hash {}", f.hash())
+                }
+                Fragment::Transaction(_) => {
+                    println!("Fragment::Transaction hash {}", f.hash())
+                }
+                Fragment::OwnerStakeDelegation(_) => {
+                    println!("Fragment::OwnerStakeDelegation hash {}", f.hash())
+                }
+                Fragment::StakeDelegation(_) => {
+                    println!("Fragment::StakeDelegation hash {}", f.hash())
+                }
+                Fragment::PoolRegistration(_) => {
+                    println!("Fragment::PoolRegistration hash {}", f.hash())
+                }
+                Fragment::PoolRetirement(_) => {
+                    println!("Fragment::PoolRetirement hash {}", f.hash())
+                }
+                Fragment::PoolUpdate(_) => {
+                    println!("Fragment::PoolUpdate hash {}", f.hash())
+                }
+                Fragment::UpdateProposal(_) => {
+                    println!("Fragment::UpdateProposal hash {}", f.hash())
+                }
+                Fragment::UpdateVote(_) => {
+                    println!("Fragment::UpdateVote hash {}", f.hash())
+                }
+                Fragment::VotePlan(_) => {
+                    println!("Fragment::VotePlan hash {}", f.hash())
+                }
+                Fragment::VoteCast(_) => {
+                    println!("Fragment::VoteCast hash {}", f.hash())
+                }
+                Fragment::VoteTally(_) => {
+                    println!("Fragment::VoteTall hash {}", f.hash())
+                }
+                Fragment::MintToken(_) => {
+                    println!("Fragment::MintToken hash {}", f.hash())
+                }
+                Fragment::Evm(_) => println!("Fragment::Evm hash {}", f.hash()),
+                Fragment::EvmMapping(_) => {
+                    println!("Fragment::EvmMapping hash {}", f.hash())
+                }
             }
         }
 
