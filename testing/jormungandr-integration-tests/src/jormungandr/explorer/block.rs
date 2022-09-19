@@ -131,7 +131,7 @@ pub fn explorer_block_test() {
 
     let explorer_block = explorer_block_response.data.unwrap().block;
 
-    ExplorerVerifier::assert_block(decoded_block, explorer_block).unwrap();
+    ExplorerVerifier::assert_block_by_id(decoded_block, explorer_block).unwrap();
 }
 
 #[should_panic]
@@ -153,7 +153,7 @@ pub fn explorer_block0_test() {
 
     let explorer_block0 = explorer_block0_response.data.unwrap().block;
     let block0 = jormungandr.block0_configuration().to_block();
-    ExplorerVerifier::assert_block(block0, explorer_block0).unwrap();
+    ExplorerVerifier::assert_block_by_id(block0, explorer_block0).unwrap();
 }
 
 #[should_panic] //NPG-2899
