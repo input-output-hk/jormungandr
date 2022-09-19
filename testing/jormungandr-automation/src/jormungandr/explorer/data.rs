@@ -105,6 +105,6 @@ pub struct AllVotePlans;
 #[graphql(
     query_path = "resources/explorer/graphql/block_by_id.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",
-    response_derives = "Debug"
+    response_derives = "Debug,Clone"
 )]
 pub struct BlockById;

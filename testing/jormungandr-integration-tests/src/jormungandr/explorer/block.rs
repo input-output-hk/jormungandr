@@ -11,7 +11,7 @@ use jormungandr_automation::{
 use jormungandr_lib::interfaces::FragmentStatus;
 use jortestkit::process::Wait;
 use std::time::Duration;
-use thor::TransactionHash;
+use thor::{TransactionHash, StakePool};
 
 const BLOCK_QUERY_COMPLEXITY_LIMIT: u64 = 150;
 const BLOCK_QUERY_DEPTH_LIMIT: u64 = 30;
@@ -21,6 +21,7 @@ pub fn explorer_block_test() {
     let jcli: JCli = Default::default();
     let mut sender = thor::Wallet::default();
     let receiver = thor::Wallet::default();
+    let stake_pool = StakePool::new(&sender);
     let transaction_value = 1_000;
     let attempts_number = 20;
     let temp_dir = TempDir::new().unwrap();
@@ -43,6 +44,16 @@ pub fn explorer_block_test() {
         BlockDate::first().next_epoch(),
     );
 
+    let stake_pool_reg_fragment =
+    fragment_builder.stake_pool_registration(&sender, &stake_pool);
+
+    jcli.fragment_sender(&jormungandr)
+        .send(&stake_pool_reg_fragment.encode())
+        .assert_in_block_with_wait(&wait);
+
+    sender.confirm_transaction();
+
+
     let transaction = fragment_builder
         .transaction(&sender, receiver.address(), transaction_value.into())
         .unwrap();
@@ -56,7 +67,7 @@ pub fn explorer_block_test() {
     let fragments_log = jcli.rest().v0().message().logs(jormungandr.rest_uri());
     let fragment_log = fragments_log
         .iter()
-        .find(|x| *x.fragment_id().to_string() == transaction.hash().to_string())
+        .find(|x| *x.fragment_id().to_string() == stake_pool_reg_fragment.hash().to_string())
         .unwrap();
 
     let fragment_block_id =
@@ -90,10 +101,10 @@ pub fn explorer_block_test() {
 
     let explorer_block = explorer_block_response.data.unwrap().block;
 
-    ExplorerVerifier::assert_block(decoded_block, explorer_block);
+    ExplorerVerifier::assert_block(decoded_block, explorer_block).unwrap();
 }
 
-#[test]
+#[test] //NPG-3274
 pub fn explorer_block0_test() {
     let jormungandr = Starter::new().start().unwrap();
     let block0_id = jormungandr.genesis_block_hash().to_string();
@@ -111,7 +122,7 @@ pub fn explorer_block0_test() {
 
     let explorer_block0 = explorer_block0_response.data.unwrap().block;
     let block0 = jormungandr.block0_configuration().to_block();
-    ExplorerVerifier::assert_block(block0, explorer_block0);
+    ExplorerVerifier::assert_block(block0, explorer_block0).unwrap();
 }
 
 #[should_panic] //NPG-2899
