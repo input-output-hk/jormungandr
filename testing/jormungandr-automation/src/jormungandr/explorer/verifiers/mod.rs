@@ -1,4 +1,5 @@
 pub mod block_by_id_verifier;
+pub mod last_block_verifier;
 pub mod transaction_by_id_verifier;
 
 use crate::jormungandr::explorer::data::settings::SettingsSettingsFees;
