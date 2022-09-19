@@ -50,7 +50,6 @@ impl ExplorerVerifier {
         }
         //Some logging
         for f in block.fragments() {
-            println!("Fragment hash {}", f.hash().to_string());
             match f {
                 Fragment::Initial(_) => println!("Fragment::Initial hash {}", f.hash().to_string()),
                 Fragment::OldUtxoDeclaration(_) => println!("Fragment::OldUtxoDeclaration hash {}", f.hash().to_string()),
