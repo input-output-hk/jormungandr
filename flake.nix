@@ -12,8 +12,6 @@
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.gitignore.url = "github:hercules-ci/gitignore.nix";
-  inputs.gitignore.inputs.nixpkgs.follows = "nixpkgs";
   inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
   inputs.pre-commit-hooks.inputs.nixpkgs.follows = "nixpkgs";
   inputs.pre-commit-hooks.inputs.flake-utils.follows = "flake-utils";
@@ -28,7 +26,6 @@
     nixpkgs,
     flake-compat,
     flake-utils,
-    gitignore,
     pre-commit-hooks,
     rust-overlay,
     naersk,
@@ -83,7 +80,15 @@
           rustc = rust-stable;
         };
 
-        mkPackage = name: let
+        naersk-lib-nighlty = naersk.lib."${system}".override {
+          cargo = rust-nightly;
+          rustc = rust-nightly;
+        };
+
+        mkPackage = {
+          naersk-lib ? naersk-lib,
+          name,
+        }: let
           pkgCargo = readTOML ./${name}/Cargo.toml;
           cargoOptions =
             [
@@ -98,7 +103,7 @@
           naersk-lib.buildPackage {
             inherit (pkgCargo.package) name version;
 
-            root = gitignore.lib.gitignoreSource self;
+            root = self;
 
             cargoBuildOptions = x: x ++ cargoOptions;
             cargoTestOptions = x: x ++ cargoOptions;
@@ -123,7 +128,21 @@
             builtins.map
             (name: {
               inherit name;
-              value = mkPackage name;
+              value = mkPackage {inherit name;};
+            })
+            workspaceCargo.workspace.members
+          );
+
+        workspace-nightly =
+          builtins.listToAttrs
+          (
+            builtins.map
+            (name: {
+              name = "nightly-${name}";
+              value = mkPackage {
+                inherit name;
+                naersk-lib = naersk-lib-nighlty;
+              };
             })
             workspaceCargo.workspace.members
           );
@@ -240,6 +259,7 @@
       in rec {
         packages =
           workspace
+          // workspace-nightly
           // {
             inherit jormungandr-entrypoint;
             default = workspace.jormungandr;
