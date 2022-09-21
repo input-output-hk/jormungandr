@@ -75,7 +75,7 @@
         rust-stable = mkRust {channel = "stable";};
         rust-nightly = mkRust {channel = "nightly";};
 
-        naersk-lib = naersk.lib."${system}".override {
+        naersk-lib-stable = naersk.lib."${system}".override {
           cargo = rust-stable;
           rustc = rust-stable;
         };
@@ -86,7 +86,7 @@
         };
 
         mkPackage = {
-          naersk-lib ? naersk-lib,
+          naersk-lib ? naersk-lib-stable,
           name,
         }: let
           pkgCargo = readTOML ./${name}/Cargo.toml;
@@ -261,7 +261,7 @@
           workspace
           // workspace-nightly
           // {
-            inherit jormungandr-entrypoint;
+            inherit jormungandr-entrypoint pre-commit;
             default = workspace.jormungandr;
           };
 
