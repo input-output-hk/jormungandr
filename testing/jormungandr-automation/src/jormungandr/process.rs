@@ -38,7 +38,7 @@ use std::{
 };
 use thiserror::Error;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Eq)]
 pub enum Status {
     Running,
     Starting,

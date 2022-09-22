@@ -4,7 +4,10 @@ use chain_impl_mockchain::{
     chaintypes::{ConsensusType, ConsensusVersion},
     fee::LinearFee,
 };
-use hersir::builder::{Blockchain, NetworkBuilder, Node, SpawnParams, Topology};
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams},
+};
 use jormungandr_automation::{
     jormungandr::{ConfigurationBuilder, Starter},
     testing::keys,

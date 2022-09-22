@@ -22,8 +22,8 @@ use jormungandr_lib::interfaces::{
 };
 use rand::rngs::OsRng;
 use thor::{
-    vote_plan_cert, FragmentSender, FragmentSenderSetup, FragmentVerifier,
-    PrivateVoteCommitteeDataManager, Wallet,
+    vote_plan_cert, CommitteeDataManager, FragmentSender, FragmentSenderSetup, FragmentVerifier,
+    Wallet,
 };
 
 const INITIAL_FUND_PER_WALLET: u64 = 1_000_000;
@@ -429,11 +429,8 @@ pub fn private_tally_no_vote_cast() {
     let mut alice = Wallet::default();
     let threshold = 1;
 
-    let private_vote_committee_data_manager = PrivateVoteCommitteeDataManager::new(
-        &mut OsRng,
-        vec![("Alice".to_owned(), alice.account_id())],
-        threshold,
-    );
+    let private_vote_committee_data_manager =
+        CommitteeDataManager::private(&mut OsRng, vec![alice.account_id()], threshold);
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(1)

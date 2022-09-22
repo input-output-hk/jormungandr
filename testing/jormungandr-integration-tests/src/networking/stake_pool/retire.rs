@@ -1,6 +1,6 @@
-use hersir::builder::{
-    blockchain::BlockchainBuilder, wallet::template::builder::WalletTemplateBuilder,
-    NetworkBuilder, Node, SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{BlockchainBuilder, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::{jormungandr::explorer::configuration::ExplorerParams, testing::time};
 use jormungandr_lib::interfaces::BlockDate;
@@ -96,7 +96,7 @@ pub fn retire_stake_pool_explorer() {
         "retirement field in explorer should be empty",
     );
 
-    let mut david = controller.wallet(DAVID).unwrap();
+    let mut david = controller.controlled_wallet(DAVID).unwrap();
     let mut spo_3 = stake_pool_3.owner().clone();
 
     let fragment_sender = FragmentSender::from(&controller.settings().block0);

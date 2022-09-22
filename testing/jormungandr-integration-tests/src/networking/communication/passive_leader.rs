@@ -1,7 +1,7 @@
 use crate::networking::utils::wait;
-use hersir::builder::{
-    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
-    SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::{
     jormungandr::{LogLevel, MemPoolCheck},
@@ -48,8 +48,8 @@ pub fn two_nodes_communication() {
         .spawn(SpawnParams::new(PASSIVE).in_memory().passive())
         .unwrap();
 
-    let mut alice = network_controller.wallet(ALICE).unwrap();
-    let mut bob = network_controller.wallet(BOB).unwrap();
+    let mut alice = network_controller.controlled_wallet(ALICE).unwrap();
+    let mut bob = network_controller.controlled_wallet(BOB).unwrap();
 
     FragmentSender::from(&network_controller.settings().block0)
         .send_transactions_round_trip(5, &mut alice, &mut bob, &passive, 100.into())
@@ -96,8 +96,8 @@ pub fn transaction_to_passive() {
         .spawn(SpawnParams::new(PASSIVE).in_memory().passive())
         .unwrap();
 
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let mut bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let mut bob = controller.controlled_wallet(BOB).unwrap();
 
     FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(10, &mut alice, &mut bob, &passive, 1_000.into())
@@ -169,8 +169,8 @@ pub fn leader_restart() {
         )
         .unwrap();
 
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let mut bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let mut bob = controller.controlled_wallet(BOB).unwrap();
 
     FragmentSender::from(&controller.settings().block0)
         .clone_with_setup(FragmentSenderSetup::resend_3_times())
@@ -246,8 +246,8 @@ pub fn passive_node_is_updated() {
         .spawn(SpawnParams::new(PASSIVE).in_memory().passive())
         .unwrap();
 
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let mut bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let mut bob = controller.controlled_wallet(BOB).unwrap();
 
     FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(40, &mut alice, &mut bob, &leader, 1_000.into())

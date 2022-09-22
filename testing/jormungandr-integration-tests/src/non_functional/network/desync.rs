@@ -1,8 +1,8 @@
 use crate::non_functional::network::*;
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use hersir::builder::{
-    blockchain::BlockchainBuilder, wallet::template::builder::WalletTemplateBuilder,
-    NetworkBuilder, Node, SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{BlockchainBuilder, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::jormungandr::FaketimeConfig;
 use thor::{FragmentSender, Wallet};
@@ -55,8 +55,8 @@ pub fn bft_forks() {
         }))
         .unwrap();
 
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let bob = controller.controlled_wallet(BOB).unwrap();
 
     for i in 0..n_transactions {
         // Sooner or later this will fail because a transaction will settle
