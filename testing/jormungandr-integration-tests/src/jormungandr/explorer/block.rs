@@ -113,9 +113,7 @@ pub fn explorer_block_test() {
         .block()
         .get(fragment_block_id.to_string(), jormungandr.rest_uri());
 
-    let bytes_block = hex::decode(encoded_block.trim()).unwrap();
-    let reader = std::io::Cursor::new(&bytes_block);
-    let decoded_block = Block::deserialize(&mut Codec::new(reader)).unwrap();
+    let decoded_block = ExplorerVerifier::decode_block(encoded_block);
 
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
     let explorer_process = jormungandr.explorer(params);
@@ -272,9 +270,7 @@ pub fn explorer_last_block_test() {
         .block()
         .get(&explorer_block_response.block().id, jormungandr.rest_uri());
 
-    let bytes_block = hex::decode(encoded_block.trim()).unwrap();
-    let reader = std::io::Cursor::new(&bytes_block);
-    let decoded_block = Block::deserialize(&mut Codec::new(reader)).unwrap();
+    let decoded_block = ExplorerVerifier::decode_block(encoded_block);
 
     assert_eq!(
         explorer_block_response.block_date(),
@@ -284,4 +280,125 @@ pub fn explorer_last_block_test() {
     let explorer_last_block = explorer_block_response.block();
 
     ExplorerVerifier::assert_last_block(decoded_block, explorer_last_block).unwrap();
+}
+
+#[should_panic]
+#[test] //NPG-3274
+pub fn explorer_all_blocks_test() {
+    let max_blocks_number = 100;
+    let jcli: JCli = Default::default();
+    let sender = thor::Wallet::default();
+    let receiver = thor::Wallet::default();
+
+    let (jormungandr, _) = startup::start_stake_pool(
+        &[sender.clone()],
+        &[receiver.clone()],
+        ConfigurationBuilder::new()
+            .with_block0_consensus(ConsensusType::GenesisPraos)
+            .with_slots_per_epoch(20)
+            .with_block_content_max_size(100000.into())
+            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+            .with_slot_duration(3)
+            .with_linear_fees(LinearFee::new(1, 1, 1))
+            .with_mempool(Mempool {
+                pool_max_entries: 1_000_000usize.into(),
+                log_max_entries: 1_000_000usize.into(),
+                persistent_log: None,
+            })
+            .with_token(InitialToken {
+                // FIXME: this works because I know it's the VotePlanBuilder's default, but
+                // probably should me more explicit.
+                token_id: TokenIdentifier::from_str(
+                    "00000000000000000000000000000000000000000000000000000000.00000000",
+                )
+                .unwrap()
+                .into(),
+                policy: MintingPolicy::new().into(),
+                to: vec![sender.to_initial_token(1_000_000)],
+            }),
+    )
+    .unwrap();
+
+    let fragment_sender = FragmentSender::from_with_setup(
+        jormungandr.block0_configuration(),
+        FragmentSenderSetup::no_verify(),
+    );
+
+    let time_era = jormungandr.time_era();
+
+    let mut fragment_generator = FragmentGenerator::new(
+        sender,
+        receiver,
+        jormungandr.to_remote(),
+        time_era.slots_per_epoch(),
+        2,
+        2,
+        2,
+        fragment_sender,
+    );
+
+    fragment_generator.prepare(BlockDate::new(1, 0));
+
+    time::wait_for_epoch(2, jormungandr.rest());
+
+    let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
+    FragmentVerifier::wait_and_verify_all_are_in_block(
+        Duration::from_secs(2),
+        mem_checks.clone(),
+        &jormungandr,
+    )
+    .unwrap();
+
+    time::wait_for_epoch(3, jormungandr.rest());
+
+    let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
+    FragmentVerifier::wait_and_verify_all_are_in_block(
+        Duration::from_secs(2),
+        mem_checks.clone(),
+        &jormungandr,
+    )
+    .unwrap();
+
+    let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
+    let explorer_process = jormungandr.explorer(params);
+    let explorer = explorer_process.client();
+
+    let explorer_block_response = explorer.blocks(max_blocks_number).unwrap();
+
+    assert!(
+        explorer_block_response.errors.is_none(),
+        "{:?}",
+        explorer_block_response.errors.unwrap()
+    );
+
+    let explorer_blocks_data = explorer_block_response.data.unwrap();
+    let explorer_blocks_raw = explorer_blocks_data.tip.blocks.edges.unwrap();
+    let explorer_blocks: Vec<_> = explorer_blocks_raw.into_iter().flatten().collect();
+
+    let block0_id = jormungandr.genesis_block_hash();
+
+    let mut block_ids = jcli.rest().v0().block().next(
+        block0_id.to_string(),
+        (max_blocks_number - 1) as u32,
+        jormungandr.rest_uri(),
+    );
+
+    block_ids.insert(0, block0_id);
+
+    assert_eq!(
+        explorer_blocks_data.tip.blocks.total_count,
+        (block_ids.len() + 1) as i64
+    );
+
+    assert_eq!(explorer_blocks.len(), block_ids.len());
+
+    for (n, explorer_block) in explorer_blocks.iter().enumerate() {
+        let encoded_block = jcli
+            .rest()
+            .v0()
+            .block()
+            .get(block_ids[n].to_string(), jormungandr.rest_uri());
+        let decoded_block = ExplorerVerifier::decode_block(encoded_block);
+        ExplorerVerifier::assert_all_blocks(decoded_block, &explorer_block.node).unwrap();
+    }
 }
