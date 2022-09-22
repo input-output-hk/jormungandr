@@ -2,7 +2,6 @@ use crate::{
     args::parse_shift,
     build_monitor,
     generators::{AdversaryFragmentGenerator, FragmentStatusProvider},
-    mjolnir_lib::DiscriminationExtensions,
     MjolnirError,
 };
 use chain_addr::Discrimination;
@@ -16,7 +15,9 @@ use jortestkit::{
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
-use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
+use thor::{
+    BlockDateGenerator, DiscriminationExtension, FragmentSender, FragmentSenderSetup, Wallet,
+};
 #[derive(StructOpt, Debug)]
 pub struct AdversaryAll {
     /// Number of threads
