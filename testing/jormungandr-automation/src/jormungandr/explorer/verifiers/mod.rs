@@ -1,11 +1,13 @@
+pub mod all_blocks_verifier;
 pub mod block_by_id_verifier;
 pub mod last_block_verifier;
 pub mod transaction_by_id_verifier;
 
 use crate::jormungandr::explorer::data::settings::SettingsSettingsFees;
 use bech32::FromBase32;
+use chain_core::{packer::Codec, property::Deserialize};
 use chain_crypto::{Ed25519, PublicKey};
-use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::{block::Block, fee::LinearFee};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -83,9 +85,15 @@ impl ExplorerVerifier {
         );
     }
 
-    fn decode_bech32_pk(bech32_public_key: &str) -> PublicKey<Ed25519> {
+    pub fn decode_bech32_pk(bech32_public_key: &str) -> PublicKey<Ed25519> {
         let (_, data, _variant) = bech32::decode(bech32_public_key).unwrap();
         let dat = Vec::from_base32(&data).unwrap();
         PublicKey::<Ed25519>::from_binary(&dat).unwrap()
+    }
+
+    pub fn decode_block(encoded_block: String) -> Block {
+        let bytes_block = hex::decode(encoded_block.trim()).unwrap();
+        let reader = std::io::Cursor::new(&bytes_block);
+        Block::deserialize(&mut Codec::new(reader)).unwrap()
     }
 }
