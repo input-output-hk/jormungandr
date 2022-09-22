@@ -8,7 +8,7 @@ use chain_impl_mockchain::{
 };
 use jormungandr_automation::{
     jormungandr::{
-        explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
+        explorer::{configuration::ExplorerParams, verifiers::ExplorerVerifier},
         ConfigurationBuilder, Starter,
     },
     testing::{
