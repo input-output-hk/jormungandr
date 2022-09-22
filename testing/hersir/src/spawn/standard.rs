@@ -1,18 +1,13 @@
-use crate::{
-    args::Args,
-    builder::{NetworkBuilder, Topology},
-    config::Config,
-    error::Error,
-};
+use crate::{args::Args, builder::NetworkBuilder, config::Config, error::Error};
 use jormungandr_automation::jormungandr::{JormungandrProcess, NodeAlias};
 use std::{collections::HashMap, time::Duration};
 
-pub fn spawn_network(config: Config, mut topology: Topology, args: Args) -> Result<(), Error> {
+pub fn spawn_network(config: Config, args: Args) -> Result<(), Error> {
+    let mut topology = config.build_topology();
+
     println!("Building network...");
     let mut controller = NetworkBuilder::default()
-        .topology(topology.clone())
-        .session_settings(config.session.clone())
-        .blockchain_config(config.build_blockchain())
+        .apply_config(config.clone())
         .build()?;
 
     let mut processes: HashMap<NodeAlias, JormungandrProcess> = HashMap::new();

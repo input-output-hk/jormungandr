@@ -1,17 +1,33 @@
+mod blockchain;
+mod committee;
+mod spawn_params;
+mod vote_plan;
+mod wallet;
+
+pub use crate::config::{
+    blockchain::{Blockchain, BlockchainBuilder},
+    committee::CommitteeTemplate,
+    spawn_params::SpawnParams,
+    wallet::{WalletTemplate, WalletTemplateBuilder},
+};
 use crate::{
-    builder::{Blockchain, Node, NodeAlias, SpawnParams, Topology},
+    builder::{Node, NodeAlias, Topology},
     error::Error,
 };
 use jormungandr_automation::jormungandr::{LogLevel, TestingDirectory};
 use serde::Deserialize;
 use std::{collections::HashSet, path::PathBuf, str::FromStr};
+pub use vote_plan::VotePlanTemplate;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
-    blockchain: Blockchain,
+    pub blockchain: Blockchain,
     pub nodes: Vec<NodeConfig>,
     #[serde(default)]
     pub session: SessionSettings,
+    pub wallets: Vec<WalletTemplate>,
+    pub committees: Vec<CommitteeTemplate>,
+    pub vote_plans: Vec<VotePlanTemplate>,
 }
 
 impl Config {
@@ -54,7 +70,7 @@ impl Config {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct NodeConfig {
     pub spawn_params: SpawnParams,
     #[serde(default)]
