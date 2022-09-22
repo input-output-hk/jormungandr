@@ -8,7 +8,7 @@ pub type NonZero = String;
 pub type TimeOffsetSeconds = String;
 pub type PublicKey = String;
 pub type ExternalProposalId = String;
-
+pub type Weight = String;
 use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]
@@ -21,11 +21,27 @@ pub struct Address;
 
 #[derive(GraphQLQuery)]
 #[graphql(
+    query_path = "resources/explorer/graphql/transactions_by_address.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug"
+)]
+pub struct TransactionsByAddress;
+
+#[derive(GraphQLQuery)]
+#[graphql(
     query_path = "resources/explorer/graphql/allblocks.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",
     response_derives = "Debug"
 )]
 pub struct AllBlocks;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    query_path = "resources/explorer/graphql/block.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug"
+)]
+pub struct Block;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -108,3 +124,12 @@ pub struct AllVotePlans;
     response_derives = "Debug,Clone"
 )]
 pub struct BlockById;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    query_path = "resources/explorer/graphql/voteplan_by_id.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug,Clone"
+)]
+pub struct VotePlanById;
+

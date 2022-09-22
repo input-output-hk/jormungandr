@@ -380,7 +380,7 @@ async fn handle_propagation_msg(
     let prop_state = state.clone();
     let unreached_nodes = match &msg {
         PropagateMsg::Block(header) => {
-            Span::current().record("hash", &format_args!("{}", header.description()));
+            Span::current().record("hash", format_args!("{}", header.description()));
             tracing::debug!("received new block to propagate");
             let header = header.encode();
             propagate_message(
@@ -394,7 +394,7 @@ async fn handle_propagation_msg(
             .await?
         }
         PropagateMsg::Fragment(fragment) => {
-            Span::current().record("hash", &format_args!("{}", fragment.hash()));
+            Span::current().record("hash", format_args!("{}", fragment.hash()));
             tracing::debug!(hash = %fragment.hash(), "fragment to propagate");
             let fragment = fragment.encode();
             propagate_message(
@@ -408,8 +408,8 @@ async fn handle_propagation_msg(
             .await?
         }
         PropagateMsg::Gossip(peer, gossips) => {
-            Span::current().record("addr", &peer.address().to_string().as_str());
-            Span::current().record("id", &peer.address().to_string().as_str());
+            Span::current().record("addr", peer.address().to_string().as_str());
+            Span::current().record("id", peer.address().to_string().as_str());
             tracing::debug!("gossip to propagate");
             let gossip = gossips.encode();
             match prop_state
