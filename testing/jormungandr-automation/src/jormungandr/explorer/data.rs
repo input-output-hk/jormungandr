@@ -8,7 +8,7 @@ pub type NonZero = String;
 pub type TimeOffsetSeconds = String;
 pub type PublicKey = String;
 pub type ExternalProposalId = String;
-
+pub type Weight = String;
 use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]
@@ -115,3 +115,11 @@ pub struct TransactionByIdCertificates;
     response_derives = "Debug"
 )]
 pub struct AllVotePlans;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    query_path = "resources/explorer/graphql/voteplan_by_id.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug,Clone"
+)]
+pub struct VotePlanById;

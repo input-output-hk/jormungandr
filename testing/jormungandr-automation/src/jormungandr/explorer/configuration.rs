@@ -21,6 +21,10 @@ impl ExplorerParams {
 
 #[allow(clippy::derivable_impls)]
 impl Default for ExplorerParams {
+    //Passing None we use the default values of the explorer
+    //DEFAULT_QUERY_DEPTH_LIMIT= 15
+    //DEFAULT_QUERY_COMPLEXITY_LIMIT= 40
+    //address_bech32_prefix= addr
     fn default() -> Self {
         ExplorerParams {
             query_complexity_limit: None,
