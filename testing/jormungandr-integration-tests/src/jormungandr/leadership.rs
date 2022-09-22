@@ -41,12 +41,14 @@ fn verify_leadership_logs_parent_hash(jormungandr: JormungandrProcess) {
     // leadership logs are fetched in reverse order (newest first)
     for leadership in leadership_logs.iter().take(10).rev() {
         if let LeadershipLogStatus::Block { block, parent, .. } = leadership.status() {
-            let actual_block =
+            let actual_blocks =
                 jcli.rest()
                     .v0()
                     .block()
                     .next(parent.to_string(), 1, jormungandr.rest_uri());
-            assert_eq!(actual_block, *block, "wrong parent block");
+            let actual_block = actual_blocks.first().unwrap();
+            
+            assert_eq!(actual_block, block, "wrong parent block");
         }
     }
 }
