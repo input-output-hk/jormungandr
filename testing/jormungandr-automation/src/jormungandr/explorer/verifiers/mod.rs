@@ -2,16 +2,16 @@ pub mod block_by_id_verifier;
 pub mod transaction_by_id_verifier;
 pub mod vote_plan_verifier;
 
-use std::collections::HashMap;
-
+use super::data::{
+    address::AddressAddress, transactions_by_address::TransactionsByAddressTipTransactionsByAddress,
+};
 use crate::jormungandr::explorer::data::settings::SettingsSettingsFees;
 use bech32::FromBase32;
 use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::interfaces::{Address, FragmentStatus};
+use std::collections::HashMap;
 use thiserror::Error;
-
-use super::data::{address::AddressAddress, transactions_by_address::TransactionsByAddressTipTransactionsByAddress};
 
 #[derive(Debug, Error)]
 pub enum VerifierError {

@@ -9,10 +9,8 @@ use chain_impl_mockchain::{
     chaintypes::ConsensusType,
     config::{ConfigParam::*, RewardParams},
     fragment::Fragment,
-    testing::data::Wallet,
     transaction::{AccountIdentifier, InputEnum, Transaction},
-    vote,
-    vote::{Choice, PayloadType},
+    vote::PayloadType,
 };
 use std::num::NonZeroU64;
 

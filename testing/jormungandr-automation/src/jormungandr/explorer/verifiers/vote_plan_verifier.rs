@@ -1,22 +1,11 @@
-use super::{ExplorerVerifier};
-
-use crate::jormungandr::explorer::{
-    data::vote_plan_by_id::{*, self},
+use super::ExplorerVerifier;
+use crate::jormungandr::explorer::data::vote_plan_by_id::{
+    self, VotePlanByIdVotePlanProposalsTally::*,
+    VotePlanByIdVotePlanProposalsVotesEdgesNodePayload::*, *,
 };
-
-use crate::jormungandr::explorer::data::vote_plan_by_id::VotePlanByIdVotePlanProposalsTally::*;
-use crate::jormungandr::explorer::data::vote_plan_by_id::VotePlanByIdVotePlanProposalsVotesEdgesNodePayload::*;
-use chain_impl_mockchain::{
-
-    testing::data::Wallet,
-
-    vote,
-    vote::{Choice},
-};
-use jormungandr_lib::interfaces::{
-    PrivateTallyState, Tally, VotePlanStatus,
-};
-use std::{collections::HashMap};
+use chain_impl_mockchain::{testing::data::Wallet, vote, vote::Choice};
+use jormungandr_lib::interfaces::{PrivateTallyState, Tally, VotePlanStatus};
+use std::collections::HashMap;
 
 impl ExplorerVerifier {
     pub fn assert_vote_plan_by_id(
@@ -169,8 +158,4 @@ impl ExplorerVerifier {
             }
         }
     }
-
-
-
-
 }

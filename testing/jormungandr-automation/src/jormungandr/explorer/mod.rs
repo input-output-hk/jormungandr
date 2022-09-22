@@ -2,11 +2,12 @@ use self::{
     client::GraphQlClient,
     configuration::ExplorerParams,
     data::{
-        address, all_blocks, all_stake_pools, all_vote_plans, block, block_by_id, blocks_by_chain_length, epoch,
-        last_block, settings, stake_pool, transaction_by_id, transaction_by_id_certificates,
-        transactions_by_address, vote_plan_by_id, Address, AllBlocks, AllStakePools, AllVotePlans,
-        Block, BlocksByChainLength, Epoch, LastBlock, Settings, StakePool, TransactionById,
-        TransactionByIdCertificates, TransactionsByAddress, VotePlanById, BlockById,
+        address, all_blocks, all_stake_pools, all_vote_plans, block, block_by_id,
+        blocks_by_chain_length, epoch, last_block, settings, stake_pool, transaction_by_id,
+        transaction_by_id_certificates, transactions_by_address, vote_plan_by_id, Address,
+        AllBlocks, AllStakePools, AllVotePlans, Block, BlockById, BlocksByChainLength, Epoch,
+        LastBlock, Settings, StakePool, TransactionById, TransactionByIdCertificates,
+        TransactionsByAddress, VotePlanById,
     },
 };
 use crate::testing::configuration::get_explorer_app;
@@ -225,7 +226,10 @@ impl Explorer {
         Ok(response_body)
     }
 
-    pub fn block_by_id(&self, id: String) -> Result<Response<block_by_id::ResponseData>, ExplorerError> {
+    pub fn block_by_id(
+        &self,
+        id: String,
+    ) -> Result<Response<block_by_id::ResponseData>, ExplorerError> {
         let query = BlockById::build_query(block_by_id::Variables { id });
         self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;

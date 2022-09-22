@@ -14,7 +14,10 @@ use chain_impl_mockchain::{
 use std::num::NonZeroU64;
 
 impl ExplorerVerifier {
-    pub fn assert_block_by_id(block: Block, explorer_block: BlockByIdBlock) -> Result<(), VerifierError> {
+    pub fn assert_block_by_id(
+        block: Block,
+        explorer_block: BlockByIdBlock,
+    ) -> Result<(), VerifierError> {
         assert_eq!(explorer_block.id, block.header().id().to_string());
         assert_eq!(
             explorer_block.date.epoch.id.parse::<u32>().unwrap(),

@@ -132,4 +132,3 @@ pub struct BlockById;
     response_derives = "Debug,Clone"
 )]
 pub struct VotePlanById;
-
