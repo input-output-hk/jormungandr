@@ -156,7 +156,6 @@ pub fn explorer_block0_test() {
     ExplorerVerifier::assert_block_by_id(block0, explorer_block0).unwrap();
 }
 
-#[should_panic] //NPG-2899
 #[test]
 pub fn explorer_block_incorrect_id_test() {
     let incorrect_block_ids = vec![
