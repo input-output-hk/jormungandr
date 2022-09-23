@@ -20,8 +20,8 @@ use jormungandr_lib::interfaces::{InitialToken, KesUpdateSpeed};
 use rand_core::OsRng;
 use std::collections::HashMap;
 use thor::{
-    vote_plan_cert, FragmentBuilder, FragmentSender, FragmentSenderSetup,
-    PrivateVoteCommitteeDataManager, Wallet,
+    vote_plan_cert, CommitteeDataManager, FragmentBuilder, FragmentSender, FragmentSenderSetup,
+    Wallet,
 };
 
 const INITIAL_FUND_PER_WALLET_1: u64 = 1_000_000;
@@ -394,11 +394,8 @@ pub fn explorer_vote_plan_private_flow_test() {
     let mut voters = vec![alice, bob];
     let proposals = vec![VOTE_FOR_MARIO, VOTE_FOR_LUIGI, VOTE_FOR_ANTONIO];
     let proposal_count = proposals.len();
-    let private_vote_committee_data_manager = PrivateVoteCommitteeDataManager::new(
-        &mut OsRng,
-        vec![("Alice".to_owned(), voters[0].account_id())],
-        threshold,
-    );
+    let private_vote_committee_data_manager =
+        CommitteeDataManager::private(&mut OsRng, vec![(voters[0].account_id())], threshold);
     let mut vote_for_mario: Vec<(chainWallet, Choice)> = Vec::new();
     let mut vote_for_luigi: Vec<(chainWallet, Choice)> = Vec::new();
     let vote_for_antonio: Vec<(chainWallet, Choice)> = Vec::new();
