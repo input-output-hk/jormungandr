@@ -36,7 +36,7 @@ pub fn explorer_settings() {
     )
     .unwrap();
 
-    let explorer_process = jormungandr.explorer(ExplorerParams::default());
+    let explorer_process = jormungandr.explorer(ExplorerParams::default()).unwrap();
     let explorer = explorer_process.client();
     let explorer_settings = explorer.settings().unwrap().data.unwrap().settings;
 

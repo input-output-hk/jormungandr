@@ -33,7 +33,7 @@ pub fn explorer_test_context(
 
     let params = ExplorerParams::new(test_config.query_complexity_limit, None, None);
 
-    (jormungandr.explorer(params), jormungandr)
+    (jormungandr.explorer(params).unwrap(), jormungandr)
 }
 
 pub fn get_invalid_block(explorer: &Explorer) {
