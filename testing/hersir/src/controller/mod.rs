@@ -18,11 +18,7 @@ pub use interactive::{
     do_for_all_alias, InteractiveCommandError, JormungandrInteractiveCommandExec,
     UserInteractionController,
 };
-use jormungandr_automation::jormungandr::{
-    ConfiguredStarter, JormungandrParams, JormungandrProcess, LegacyNodeConfig,
-    LegacyNodeConfigConverter, LogLevel, NodeAlias, PersistenceMode, Starter, TestingDirectory,
-    Version,
-};
+use jormungandr_automation::jormungandr::{ConfiguredStarter, ExplorerProcess, JormungandrParams, JormungandrProcess, LegacyNodeConfig, LegacyNodeConfigConverter, LogLevel, NodeAlias, PersistenceMode, Starter, TestingDirectory, Version};
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 pub use monitor::{
     LegacyNode as MonitorLegacyNode, MonitorController, MonitorControllerBuilder,
@@ -195,6 +191,10 @@ impl Controller {
             builder.with_proposal(&mut proposal_builder);
         }
         builder.build()
+    }
+
+    pub fn spawn_explorer(&mut self) -> Result<ExplorerProcess,Error> {
+        ExplorerProcess::new(self.settings.explorer.clone().ok_or(Error::NoExplorerConfigurationDefined)?).map_err(Into::into)
     }
 
     pub fn spawn_node_async(&mut self, alias: &str) -> Result<JormungandrProcess, Error> {

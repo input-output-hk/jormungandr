@@ -64,4 +64,6 @@ pub enum Error {
     SettingsWallet(#[from] crate::builder::settings::wallet::Error),
     #[error(transparent)]
     Settings(#[from] crate::builder::settings::Error),
+    #[error("no explorer configuration defined")]
+    NoExplorerConfigurationDefined
 }

@@ -5,6 +5,7 @@ mod stake_pool;
 pub mod topology;
 pub mod vote;
 pub mod wallet;
+mod explorer;
 
 pub use crate::controller::Error as ControllerError;
 use crate::{
@@ -29,12 +30,14 @@ use std::{
 };
 pub use topology::{Node, Topology};
 pub use vote::VotePlanKey;
+use crate::config::ExplorerTemplate;
 
 #[derive(Default)]
 pub struct NetworkBuilder {
     topology: Topology,
     blockchain: Blockchain,
     session_settings: SessionSettings,
+    explorer_template: Option<ExplorerTemplate>,
     wallet_templates: Vec<WalletTemplate>,
     committee_templates: Vec<CommitteeTemplate>,
     vote_plan_templates: Vec<VotePlanTemplate>,
@@ -72,6 +75,7 @@ impl NetworkBuilder {
             .wallet_templates(config.wallets)
             .vote_plan_templates(config.vote_plans)
             .committees(config.committees)
+            .explorer(config.explorer)
     }
 
     pub fn topology(mut self, topology: Topology) -> Self {
@@ -142,6 +146,7 @@ impl NetworkBuilder {
             &self.blockchain,
             &self.wallet_templates,
             &self.committee_templates,
+            &self.explorer_template,
             &self.vote_plan_templates,
             &mut random,
         )?;
@@ -154,6 +159,11 @@ impl NetworkBuilder {
 
         self.finish_all();
         Controller::new(settings, self.session_settings.root)
+    }
+
+    pub fn explorer(mut self, explorer: Option<ExplorerTemplate>) -> Self {
+        self.explorer_template = explorer;
+        self
     }
 }
 

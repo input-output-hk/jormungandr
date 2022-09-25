@@ -23,7 +23,10 @@ use jormungandr_lib::{
 };
 use rand_core::{CryptoRng, RngCore};
 use std::collections::{HashMap, HashSet};
+use jormungandr_automation::jormungandr::explorer::configuration::ExplorerConfiguration;
 use thor::StakePool;
+use crate::builder::explorer::generate_explorer;
+use crate::config::ExplorerTemplate;
 
 #[derive(Debug, Clone)]
 pub struct Settings {
@@ -31,6 +34,7 @@ pub struct Settings {
     pub wallets: Vec<Wallet>,
     pub committees: Vec<CommitteeIdDef>,
     pub block0: Block0Configuration,
+    pub explorer: Option<ExplorerConfiguration>,
     pub stake_pools: HashMap<NodeAlias, StakePool>,
     pub vote_plans: HashMap<VotePlanKey, VotePlanSettings>,
 }
@@ -41,6 +45,7 @@ impl Settings {
         blockchain: &Blockchain,
         wallets: &[WalletTemplate],
         committees: &[CommitteeTemplate],
+        explorer: &Option<ExplorerTemplate>,
         vote_plans: &[VotePlanTemplate],
         rng: &mut Random<RNG>,
     ) -> Result<Self, Error>
@@ -59,6 +64,7 @@ impl Settings {
                 ),
                 initial: Vec::new(),
             },
+            explorer: None,
             stake_pools: HashMap::new(),
             vote_plans: HashMap::new(),
         };
@@ -71,6 +77,12 @@ impl Settings {
 
         settings.vote_plans = vote_plans;
         let discrimination = settings.block0.blockchain_configuration.discrimination;
+
+
+        if let Some(explorer) = explorer {
+            settings.explorer = Some(generate_explorer(&settings.nodes,explorer)?);
+        }
+
         settings.block0.initial.extend(
             fragments
                 .iter()
@@ -198,4 +210,6 @@ pub enum Error {
     Settings(#[from] wallet::Error),
     #[error(transparent)]
     Committee(#[from] crate::builder::committee::Error),
+    #[error(transparent)]
+    Explorer(#[from] crate:: builder::explorer::Error),
 }
