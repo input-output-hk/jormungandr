@@ -3,8 +3,12 @@ use crate::{
     mjolnir_lib::{args::parse_shift, build_monitor, DiscriminationExtensions, MjolnirError},
 };
 use chain_addr::Discrimination;
+use chain_crypto::Ed25519;
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_automation::{jormungandr::RemoteJormungandrBuilder, testing::time};
+use jormungandr_automation::{
+    jormungandr::RemoteJormungandrBuilder,
+    testing::{keys::create_new_key_pair, time},
+};
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::{
     load::ConfigurationBuilder,
@@ -101,11 +105,15 @@ impl AllFragments {
             FragmentSenderSetup::no_verify(),
         );
 
+        let bft_secret_alice = create_new_key_pair::<Ed25519>();
+
         let mut generator = FragmentGenerator::new(
             faucet,
             receiver,
+            Some(bft_secret_alice),
             remote_jormungandr,
             settings.slots_per_epoch,
+            30,
             30,
             30,
             30,
