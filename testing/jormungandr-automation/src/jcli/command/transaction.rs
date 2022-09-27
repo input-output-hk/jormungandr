@@ -29,7 +29,7 @@ impl TransactionCommand {
     ) -> Self {
         self.command
             .arg("add-input")
-            .arg(&tx_id)
+            .arg(tx_id)
             .arg(tx_index.to_string())
             .arg(amount)
             .arg("--staging")
@@ -68,7 +68,7 @@ impl TransactionCommand {
     pub fn add_output<P: AsRef<Path>>(mut self, addr: &str, amount: &str, staging_file: P) -> Self {
         self.command
             .arg("add-output")
-            .arg(&addr)
+            .arg(addr)
             .arg(amount)
             .arg("--staging")
             .arg(staging_file.as_ref());
@@ -119,7 +119,7 @@ impl TransactionCommand {
             .arg(block0_hash)
             .arg("--type")
             .arg(addr_type.to_string())
-            .arg(&tx_id)
+            .arg(tx_id)
             .arg(witness_file.as_ref())
             .arg("--account-spending-counter")
             .arg(spending_counter.unlaned_counter().to_string())
@@ -156,7 +156,7 @@ impl TransactionCommand {
             .arg("--staging")
             .arg(staging_file.as_ref())
             .arg("--key")
-            .arg(&signing_key.as_ref());
+            .arg(signing_key.as_ref());
         self
     }
 

@@ -21,7 +21,7 @@ impl From<Bytes> for Box<[u8]> {
 
 impl AsRef<[u8]> for Bytes {
     fn as_ref(&self) -> &[u8] {
-        &*self.0
+        &self.0
     }
 }
 

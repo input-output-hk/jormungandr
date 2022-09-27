@@ -21,7 +21,7 @@ pub struct LogSettings {
 /// some code executes before the logs are initialized.
 pub type LogInfoMsg = Option<Vec<String>>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LogSettingsEntry {
     pub level: LevelFilter,
     pub format: LogFormat,

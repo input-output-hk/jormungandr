@@ -1,11 +1,17 @@
 pub mod block_by_id_verifier;
 pub mod last_block_verifier;
 pub mod transaction_by_id_verifier;
+pub mod vote_plan_verifier;
 
+use super::data::{
+    address::AddressAddress, transactions_by_address::TransactionsByAddressTipTransactionsByAddress,
+};
 use crate::jormungandr::explorer::data::settings::SettingsSettingsFees;
 use bech32::FromBase32;
 use chain_crypto::{Ed25519, PublicKey};
-use chain_impl_mockchain::fee::LinearFee;
+use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
+use jormungandr_lib::interfaces::{Address, FragmentStatus};
+use std::collections::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -83,6 +89,43 @@ impl ExplorerVerifier {
         );
     }
 
+    pub fn assert_address(address: Address, explorer_address: AddressAddress) {
+        assert_eq!(address.to_string(), explorer_address.id);
+    }
+
+    pub fn assert_transactions_address(
+        fragment_statuses: HashMap<String, (&Fragment, &FragmentStatus)>,
+        explorer_transactions: TransactionsByAddressTipTransactionsByAddress,
+    ) {
+        if fragment_statuses.is_empty() {
+            assert!(explorer_transactions.total_count == 0);
+        } else {
+            assert_eq!(
+                fragment_statuses.len() as i64 + 1,
+                explorer_transactions.total_count
+            );
+        };
+
+        assert!(explorer_transactions.edges.is_some());
+
+        assert_eq!(
+            fragment_statuses.len(),
+            explorer_transactions.edges.as_ref().unwrap().len()
+        );
+
+        for edges in explorer_transactions.edges.unwrap().iter() {
+            let node = &edges.as_ref().unwrap().node;
+            assert!(fragment_statuses.get(&node.id.to_string()).is_some());
+            let fragment_status = fragment_statuses.get(&node.id.to_string()).unwrap().1;
+            assert!(
+                matches!(fragment_status, FragmentStatus::InABlock { date, block: _ } if
+                    date.epoch() == node.blocks[0].date.epoch.id.parse::<u32>().unwrap() && date.slot() == node.blocks[0].date.slot.parse::<u32>().unwrap()
+                )
+            );
+            let fragment = fragment_statuses.get(&node.id.to_string()).unwrap().0;
+            assert_eq!(fragment.hash().to_string(), node.id.to_string());
+        }
+    }
     fn decode_bech32_pk(bech32_public_key: &str) -> PublicKey<Ed25519> {
         let (_, data, _variant) = bech32::decode(bech32_public_key).unwrap();
         let dat = Vec::from_base32(&data).unwrap();
