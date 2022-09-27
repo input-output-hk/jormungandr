@@ -155,4 +155,3 @@ fragment configParam on ConfigParam
                                                     }
                         ... on TransactionMaxExpiryEpochs { transactionMaxExpiryEpochs }
                     }
-                    
