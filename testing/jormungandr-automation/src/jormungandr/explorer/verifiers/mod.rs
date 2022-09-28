@@ -1,6 +1,6 @@
-pub mod block_by_id_verifier;
 pub mod transaction_by_id_verifier;
 pub mod vote_plan_verifier;
+pub mod block_by_id_verifier;
 pub mod last_block_verifier;
 
 use super::data::{
