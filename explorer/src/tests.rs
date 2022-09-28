@@ -67,6 +67,23 @@ pub fn get_valid_block(explorer: &Explorer, genesis_block: Hash) {
     assert_eq!(block_id, genesis_block.to_string());
 }
 
+pub fn verify_config_params_present(explorer: &Explorer, jormungandr: JormungandrProcess) {
+    let binding = jormungandr.block0_configuration().to_block();
+
+    // first fragment txs should contain config params
+    let block0fragment = binding.fragments().next().unwrap();
+
+    let params = explorer
+        .transaction(Hash::from_str(&block0fragment.hash().to_string()).unwrap())
+        .unwrap()
+        .data
+        .unwrap()
+        .transaction
+        .initial_configuration_params;
+
+    assert!(params.is_some());
+}
+
 #[test]
 pub fn explorer_tests() {
     let config = ExplorerTestConfig::default();
@@ -75,4 +92,5 @@ pub fn explorer_tests() {
 
     get_invalid_block(explorer.client());
     get_valid_block(explorer.client(), jormungandr.genesis_block_hash());
+    verify_config_params_present(explorer.client(), jormungandr);
 }

@@ -109,8 +109,8 @@ impl ExplorerVerifier {
 
         if !block.contents().is_empty() {
             for fragment in block.fragments() {
-                for edge in explorer_block.transactions.edges.as_ref().unwrap() {
-                    let explorer_transaction = &edge.as_ref().unwrap().node;
+                for edge in &explorer_block.transactions.edges {
+                    let explorer_transaction = &edge.node;
                     if fragment.hash().to_string() == explorer_transaction.id {
                         matching_fragments_count += 1;
                         match &explorer_transaction.certificate {
