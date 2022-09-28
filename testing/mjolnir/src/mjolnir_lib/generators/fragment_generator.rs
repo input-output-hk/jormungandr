@@ -3,7 +3,7 @@ use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
     certificate::{UpdateProposal, UpdateVote, VotePlan, VoteTallyPayload},
     fragment::FragmentId,
-    vote::Choice,
+    vote::Choice, chaintypes::ConsensusVersion,
 };
 use chain_time::TimeEra;
 use jormungandr_automation::{
@@ -97,7 +97,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         let settings = self.node.rest().settings().unwrap();
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
-        if settings.consensus_version == "bft" {
+        if settings.consensus_version == ConsensusVersion::Bft.to_string() {
             assert!(
                 self.bft_leader.is_some(),
                 "Consensus version bft, bft leader needed"
@@ -140,7 +140,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             self.update_proposals_for_casting = fragments.iter().map(|f| f.hash()).collect();
         }
 
-        if settings.consensus_version == "genesis" {
+        if settings.consensus_version == ConsensusVersion::GenesisPraos.to_string() {
             assert!(
                 self.bft_leader.is_none(),
                 "Consesus version genesis praos, bft leader will be ignored"
