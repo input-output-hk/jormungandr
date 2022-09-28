@@ -1,239 +1,312 @@
-use super::data::{
-    address::AddressAddress, settings::SettingsSettingsFees, transaction_by_id_certificates::*,
-    transactions_by_address::TransactionsByAddressTipTransactionsByAddress,
-    vote_plan_by_id::VotePlanByIdVotePlan,
-};
-use crate::jormungandr::explorer::{
-    data::{transaction_by_id_certificates::PayloadType as expPayloadType, vote_plan_by_id},
-    vote_plan_by_id::VotePlanByIdVotePlanProposalsTally::*,
-};
-use bech32::FromBase32;
+use super::{ExplorerVerifier, VerifierError};
+use crate::jormungandr::explorer::data::block_by_id::{PayloadType as expPayloadType, *};
 use chain_addr::AddressReadable;
-use chain_crypto::{Ed25519, PublicKey};
 use chain_impl_mockchain::{
     account::DelegationType,
+    block::Block,
     certificate::*,
     chaintypes::ConsensusType,
     config::{ConfigParam::*, RewardParams},
-    fee::LinearFee,
     fragment::Fragment,
-    testing::data::Wallet,
     transaction::{AccountIdentifier, InputEnum, Transaction},
-    vote,
-    vote::{Choice, PayloadType},
+    vote::PayloadType,
 };
-use jormungandr_lib::interfaces::{
-    Address, FragmentStatus, PrivateTallyState, Tally, VotePlanStatus,
-};
-use std::{collections::HashMap, num::NonZeroU64};
-use thiserror::Error;
-use vote_plan_by_id::VotePlanByIdVotePlanProposalsVotesEdgesNodePayload::*;
-
-#[derive(Debug, Error)]
-pub enum VerifierError {
-    #[error("Not implemented")]
-    Unimplemented,
-    #[error("Invalid certificate, received: {received}")]
-    InvalidCertificate { received: String },
-}
-pub struct ExplorerVerifier;
+use std::num::NonZeroU64;
 
 impl ExplorerVerifier {
-    pub fn assert_transaction_certificates(
-        fragment: Fragment,
-        explorer_transaction: TransactionByIdCertificatesTransaction,
+    pub fn assert_block_by_id(
+        block: Block,
+        explorer_block: BlockByIdBlock,
     ) -> Result<(), VerifierError> {
-        if explorer_transaction.certificate.is_none() {
-            if let Fragment::Transaction(fragment_transaction) = fragment {
-                Self::assert_transaction_params(fragment_transaction, explorer_transaction)
-                    .unwrap();
-                Ok(())
-            } else {
-                Err(VerifierError::InvalidCertificate {
-                    received: "Transaction".to_string(),
-                })
+        assert_eq!(explorer_block.id, block.header().id().to_string());
+        assert_eq!(
+            explorer_block.date.epoch.id.parse::<u32>().unwrap(),
+            block.header().block_date().epoch
+        );
+        assert_eq!(
+            explorer_block.date.slot.parse::<u32>().unwrap(),
+            block.header().block_date().slot_id
+        );
+        assert_eq!(
+            explorer_block.chain_length,
+            block.header().chain_length().to_string()
+        );
+        assert_eq!(
+            explorer_block.previous_block.id,
+            block.header().block_parent_hash().to_string()
+        );
+        match explorer_block.leader {
+            Some(leader) => match leader {
+                BlockByIdBlockLeader::Pool(leader) => assert_eq!(
+                    leader.id,
+                    block.header().get_stakepool_id().unwrap().to_string()
+                ),
+                BlockByIdBlockLeader::BftLeader(leader) => assert_eq!(
+                    Self::decode_bech32_pk(leader.id.as_str()),
+                    *block.header().get_bft_leader_id().unwrap().as_public_key()
+                ),
+            },
+            None => {
+                assert!(block.header().get_stakepool_id().is_none());
+                assert!(block.header().get_bft_leader_id().is_none());
             }
-        } else {
-            let explorer_certificate = explorer_transaction.certificate.as_ref().unwrap();
-            match explorer_certificate {
-                TransactionByIdCertificatesTransactionCertificate::StakeDelegation(
-                    explorer_cert,
-                ) => {
-                    if let Fragment::StakeDelegation(fragment_cert) = fragment {
-                        Self::assert_transaction_params(
-                            fragment_cert.clone(),
-                            explorer_transaction.clone(),
-                        )
-                        .unwrap();
-                        Self::assert_stake_delegation(fragment_cert, explorer_cert.clone())
-                            .unwrap();
-                        Ok(())
-                    } else {
-                        Err(VerifierError::InvalidCertificate {
-                            received: "StakeDelegation".to_string(),
-                        })
-                    }
+        }
+        //Logging the fragments in the block
+        for f in block.fragments() {
+            match f {
+                Fragment::Initial(_) => println!("Fragment::Initial hash {}", f.hash()),
+                Fragment::OldUtxoDeclaration(_) => {
+                    println!("Fragment::OldUtxoDeclaration hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::OwnerStakeDelegation(
-                    explorer_cert,
-                ) => {
-                    if let Fragment::OwnerStakeDelegation(fragment_cert) = fragment {
-                        Self::assert_transaction_params(
-                            fragment_cert.clone(),
-                            explorer_transaction.clone(),
-                        )
-                        .unwrap();
-                        Self::assert_owner_delegation(fragment_cert, explorer_cert.clone())
-                            .unwrap();
-                        Ok(())
-                    } else {
-                        Err(VerifierError::InvalidCertificate {
-                            received: "OwnerStakeDelegation".to_string(),
-                        })
-                    }
+                Fragment::Transaction(_) => {
+                    println!("Fragment::Transaction hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::PoolRegistration(
-                    explorer_cert,
-                ) => {
-                    if let Fragment::PoolRegistration(fragment_cert) = fragment {
-                        Self::assert_transaction_params(
-                            fragment_cert.clone(),
-                            explorer_transaction.clone(),
-                        )
-                        .unwrap();
-                        Self::assert_pool_registration(fragment_cert, explorer_cert.clone());
-                        Ok(())
-                    } else {
-                        Err(VerifierError::InvalidCertificate {
-                            received: "PoolRegistration".to_string(),
-                        })
-                    }
+                Fragment::OwnerStakeDelegation(_) => {
+                    println!("Fragment::OwnerStakeDelegation hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::PoolRetirement(
-                    explorer_cert,
-                ) => {
-                    if let Fragment::PoolRetirement(fragment_cert) = fragment {
-                        Self::assert_transaction_params(
-                            fragment_cert.clone(),
-                            explorer_transaction.clone(),
-                        )
-                        .unwrap();
-                        Self::assert_pool_retirement(fragment_cert, explorer_cert.clone());
-                        Ok(())
-                    } else {
-                        Err(VerifierError::InvalidCertificate {
-                            received: "PoolRetirement".to_string(),
-                        })
-                    }
+                Fragment::StakeDelegation(_) => {
+                    println!("Fragment::StakeDelegation hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::PoolUpdate(explorer_cert) => {
-                    if let Fragment::PoolUpdate(fragment_cert) = fragment {
-                        Self::assert_transaction_params(
-                            fragment_cert.clone(),
-                            explorer_transaction.clone(),
-                        )
-                        .unwrap();
-                        Self::assert_pool_update(fragment_cert, explorer_cert.clone());
-                        Ok(())
-                    } else {
-                        Err(VerifierError::InvalidCertificate {
-                            received: "PoolUpdate".to_string(),
-                        })
-                    }
+                Fragment::PoolRegistration(_) => {
+                    println!("Fragment::PoolRegistration hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::VotePlan(explorer_cert) => {
-                    if let Fragment::VotePlan(fragment_cert) = fragment {
-                        Self::assert_transaction_params(
-                            fragment_cert.clone(),
-                            explorer_transaction.clone(),
-                        )
-                        .unwrap();
-                        Self::assert_vote_plan(fragment_cert, explorer_cert.clone());
-                        Ok(())
-                    } else {
-                        Err(VerifierError::InvalidCertificate {
-                            received: "VotePlan".to_string(),
-                        })
-                    }
+                Fragment::PoolRetirement(_) => {
+                    println!("Fragment::PoolRetirement hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::VoteCast(explorer_cert) => {
-                    if let Fragment::VoteCast(fragment_cert) = fragment {
-                        Self::assert_transaction_params(
-                            fragment_cert.clone(),
-                            explorer_transaction.clone(),
-                        )
-                        .unwrap();
-                        Self::assert_vote_cast(fragment_cert, explorer_cert.clone());
-                        Ok(())
-                    } else {
-                        Err(VerifierError::InvalidCertificate {
-                            received: "VoteCast".to_string(),
-                        })
-                    }
+                Fragment::PoolUpdate(_) => {
+                    println!("Fragment::PoolUpdate hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::VoteTally(explorer_cert) => {
-                    if let Fragment::VoteTally(fragment_cert) = fragment {
-                        Self::assert_transaction_params(
-                            fragment_cert.clone(),
-                            explorer_transaction.clone(),
-                        )
-                        .unwrap();
-                        Self::assert_vote_tally(fragment_cert, explorer_cert.clone());
-                        Ok(())
-                    } else {
-                        Err(VerifierError::InvalidCertificate {
-                            received: "VoteTally".to_string(),
-                        })
-                    }
+                Fragment::UpdateProposal(_) => {
+                    println!("Fragment::UpdateProposal hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::UpdateProposal(
-                    explorer_cert,
-                ) => {
-                    if let Fragment::UpdateProposal(fragment_cert) = fragment {
-                        Self::assert_transaction_params(
-                            fragment_cert.clone(),
-                            explorer_transaction.clone(),
-                        )
-                        .unwrap();
-                        Self::assert_update_proposal(fragment_cert, explorer_cert.clone());
-                        Ok(())
-                    } else {
-                        Err(VerifierError::InvalidCertificate {
-                            received: "UpdateProposal".to_string(),
-                        })
-                    }
+                Fragment::UpdateVote(_) => {
+                    println!("Fragment::UpdateVote hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::UpdateVote(explorer_cert) => {
-                    if let Fragment::UpdateVote(fragment_cert) = fragment {
-                        Self::assert_transaction_params(
-                            fragment_cert.clone(),
-                            explorer_transaction.clone(),
-                        )
-                        .unwrap();
-                        Self::assert_update_vote(fragment_cert, explorer_cert.clone());
-                        Ok(())
-                    } else {
-                        Err(VerifierError::InvalidCertificate {
-                            received: "UpdateVote".to_string(),
-                        })
-                    }
+                Fragment::VotePlan(_) => {
+                    println!("Fragment::VotePlan hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::MintToken(_) => {
-                    Err(VerifierError::InvalidCertificate {
-                        received: "MintToken can be only in block0".to_string(),
-                    })
+                Fragment::VoteCast(_) => {
+                    println!("Fragment::VoteCast hash {}", f.hash())
                 }
-                TransactionByIdCertificatesTransactionCertificate::EvmMapping(_) => {
-                    //Not implemented because of the bug EAS-238
-                    Err(VerifierError::Unimplemented)
+                Fragment::VoteTally(_) => {
+                    println!("Fragment::VoteTall hash {}", f.hash())
+                }
+                Fragment::MintToken(_) => {
+                    println!("Fragment::MintToken hash {}", f.hash())
+                }
+                Fragment::Evm(_) => println!("Fragment::Evm hash {}", f.hash()),
+                Fragment::EvmMapping(_) => {
+                    println!("Fragment::EvmMapping hash {}", f.hash())
                 }
             }
         }
+
+        assert_eq!(
+            explorer_block.transactions.total_count,
+            block.contents().len() as i64
+        );
+        let mut matching_fragments_count = 0;
+
+        if !block.contents().is_empty() {
+            for fragment in block.fragments() {
+                for edge in explorer_block.transactions.edges.as_ref().unwrap() {
+                    let explorer_transaction = &edge.as_ref().unwrap().node;
+                    if fragment.hash().to_string() == explorer_transaction.id {
+                        matching_fragments_count += 1;
+                        match &explorer_transaction.certificate {
+                            None => {
+                                if let Fragment::Transaction(fragment_transaction) = fragment {
+                                    Self::assert_block_transaction_param(
+                                        fragment_transaction,
+                                        explorer_transaction,
+                                    )
+                                    .unwrap();
+                                } else if let Fragment::Initial(_config_params) = fragment {
+                                    //Not implemented because of the bug //NPG-3274
+                                    return Err(VerifierError::Unimplemented);
+                                } else {
+                                    return Err(VerifierError::InvalidCertificate {
+                                        received: "Transaction".to_string(),
+                                    });
+                                };
+                            }
+                            Some(certificate) => {
+                                match certificate{
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::StakeDelegation(
+                                            explorer_cert,
+                                        ) => {
+                                            if let Fragment::StakeDelegation(fragment_cert) = fragment {
+                                                Self::assert_block_transaction_param(
+                                                    &fragment_cert.clone(),
+                                                    explorer_transaction,
+                                                )
+                                                .unwrap();
+                                                Self::assert_block_stake_delegation(fragment_cert, explorer_cert)
+                                                    .unwrap();
+                                            } else {
+                                                return Err(VerifierError::InvalidCertificate {
+                                                    received: "StakeDelegation".to_string(),
+                                                });
+                                            }
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::OwnerStakeDelegation(
+                                            explorer_cert,
+                                        ) => {
+                                            if let Fragment::OwnerStakeDelegation(fragment_cert) = fragment {
+                                                Self::assert_block_transaction_param(
+                                                    &fragment_cert.clone(),
+                                                    explorer_transaction,
+                                                )
+                                                .unwrap();
+                                               Self::assert_block_owner_delegation(fragment_cert, explorer_cert)
+                                                    .unwrap();
+                                            } else {
+                                                return Err(VerifierError::InvalidCertificate {
+                                                    received: "OwnerStakeDelegation".to_string(),
+                                                });
+                                            }
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::PoolRegistration(
+                                            explorer_cert,
+                                        ) => {
+                                            if let Fragment::PoolRegistration(fragment_cert) = fragment {
+                                                Self::assert_block_transaction_param(
+                                                    &fragment_cert.clone(),
+                                                    explorer_transaction,
+                                                )
+                                                .unwrap();
+                                              Self::assert_block_pool_registration(fragment_cert, explorer_cert);
+                                            } else {
+                                               return Err(VerifierError::InvalidCertificate {
+                                                    received: "PoolRegistration".to_string(),
+                                                });
+                                            }
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::PoolRetirement(
+                                            explorer_cert,
+                                        ) => {
+                                            if let Fragment::PoolRetirement(fragment_cert) = fragment {
+                                                Self::assert_block_transaction_param(
+                                                    &fragment_cert.clone(),
+                                                    explorer_transaction,
+                                                )
+                                                .unwrap();
+                                                Self::assert_block_pool_retirement(fragment_cert, explorer_cert);
+                                            } else {
+                                               return Err(VerifierError::InvalidCertificate {
+                                                    received: "PoolRetirement".to_string(),
+                                                });
+                                            }
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::PoolUpdate(explorer_cert) => {
+                                            if let Fragment::PoolUpdate(fragment_cert) = fragment {
+                                                Self::assert_block_transaction_param(
+                                                    &fragment_cert.clone(),
+                                                    explorer_transaction,
+                                                )
+                                                .unwrap();
+                                               Self::assert_block_pool_update(fragment_cert, explorer_cert);
+                                            } else {
+                                               return Err(VerifierError::InvalidCertificate {
+                                                    received: "PoolUpdate".to_string(),
+                                                });
+                                            }
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::VotePlan(explorer_cert) => {
+                                            if let Fragment::VotePlan(fragment_cert) = fragment {
+                                                Self::assert_block_transaction_param(
+                                                    &fragment_cert.clone(),
+                                                    explorer_transaction,
+                                                )
+                                                .unwrap();
+                                                Self::assert_block_vote_plan(fragment_cert, explorer_cert);
+                                            } else {
+                                               return Err(VerifierError::InvalidCertificate {
+                                                    received: "VotePlan".to_string(),
+                                                });
+                                            }
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::VoteCast(explorer_cert) => {
+                                            if let Fragment::VoteCast(fragment_cert) = fragment {
+                                                Self::assert_block_transaction_param(
+                                                    &fragment_cert.clone(),
+                                                    explorer_transaction,
+                                                )
+                                                .unwrap();
+                                               Self::assert_block_vote_cast(fragment_cert, explorer_cert);
+                                            } else {
+                                               return Err(VerifierError::InvalidCertificate {
+                                                    received: "VoteCast".to_string(),
+                                                });
+                                            }
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::VoteTally(explorer_cert) => {
+                                            if let Fragment::VoteTally(fragment_cert) = fragment {
+                                                Self::assert_block_transaction_param(
+                                                    &fragment_cert.clone(),
+                                                    explorer_transaction,
+                                                )
+                                                .unwrap();
+                                              Self::assert_block_vote_tally(fragment_cert, explorer_cert);
+                                            } else {
+                                               return Err(VerifierError::InvalidCertificate {
+                                                    received: "VoteTally".to_string(),
+                                                });
+                                            }
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::UpdateProposal(
+                                            explorer_cert,
+                                        ) => {
+                                            if let Fragment::UpdateProposal(fragment_cert) = fragment {
+                                                Self::assert_block_transaction_param(
+                                                    &fragment_cert.clone(),
+                                                    explorer_transaction,
+                                                )
+                                                .unwrap();
+                                             Self::assert_block_update_proposal(fragment_cert, explorer_cert);
+                                            } else {
+                                             return  Err(VerifierError::InvalidCertificate {
+                                                    received: "UpdateProposal".to_string(),
+                                                });
+                                            }
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::UpdateVote(explorer_cert) => {
+                                            if let Fragment::UpdateVote(fragment_cert) = fragment {
+                                                Self::assert_block_transaction_param(
+                                                    &fragment_cert.clone(),
+                                                    explorer_transaction,
+                                                )
+                                                .unwrap();
+                                            Self::assert_block_update_vote(fragment_cert, explorer_cert);
+                                            } else {
+                                              return Err(VerifierError::InvalidCertificate {
+                                                    received: "UpdateVote".to_string(),
+                                                });
+                                            }
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::MintToken(_) => {
+                                           return Err(VerifierError::InvalidCertificate {
+                                                received: "MintToken can be only in block0".to_string(),
+                                            });
+                                        }
+                                        BlockByIdBlockTransactionsEdgesNodeCertificate::EvmMapping(_) => {
+                                            //Not implemented because of the bug EAS-238
+                                           return Err(VerifierError::Unimplemented);
+                                        }
+                                    }
+                            }
+                        }
+                    }
+                }
+            }
+            assert_eq!(matching_fragments_count, block.contents().len() as i32);
+        }
+        Ok(())
     }
 
-    fn assert_transaction_params<P>(
-        fragment_transaction: Transaction<P>,
-        explorer_transaction: TransactionByIdCertificatesTransaction,
+    fn assert_block_transaction_param<P>(
+        fragment_transaction: &Transaction<P>,
+        explorer_transaction: &BlockByIdBlockTransactionsEdgesNode,
     ) -> Result<(), VerifierError> {
         assert_eq!(
             fragment_transaction.as_slice().nb_inputs(),
@@ -312,9 +385,9 @@ impl ExplorerVerifier {
         Ok(())
     }
 
-    fn assert_pool_registration(
-        fragment_cert: Transaction<PoolRegistration>,
-        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnPoolRegistration,
+    fn assert_block_pool_registration(
+        fragment_cert: &Transaction<PoolRegistration>,
+        explorer_cert: &BlockByIdBlockTransactionsEdgesNodeCertificateOnPoolRegistration,
     ) {
         let pool_cert = fragment_cert.as_slice().payload().into_payload();
 
@@ -325,7 +398,10 @@ impl ExplorerVerifier {
         );
         if pool_cert.reward_account.is_some() {
             if let AccountIdentifier::Single(id) = pool_cert.reward_account.as_ref().unwrap() {
-                assert_eq!(id.to_string(), explorer_cert.reward_account.unwrap().id);
+                assert_eq!(
+                    id.to_string(),
+                    explorer_cert.reward_account.as_ref().unwrap().id
+                );
             }
         }
 
@@ -353,6 +429,7 @@ impl ExplorerVerifier {
                 explorer_cert
                     .rewards
                     .max_limit
+                    .as_ref()
                     .unwrap()
                     .parse::<NonZeroU64>()
                     .unwrap()
@@ -385,13 +462,11 @@ impl ExplorerVerifier {
             .count();
 
         assert_eq!(pool_cert.operators.len(), operators_matching);
-
-        assert!(explorer_cert.pool.retirement.is_none());
     }
 
-    fn assert_stake_delegation(
-        fragment_cert: Transaction<StakeDelegation>,
-        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnStakeDelegation,
+    fn assert_block_stake_delegation(
+        fragment_cert: &Transaction<StakeDelegation>,
+        explorer_cert: &BlockByIdBlockTransactionsEdgesNodeCertificateOnStakeDelegation,
     ) -> Result<(), VerifierError> {
         let deleg_cert = fragment_cert.as_slice().payload().into_payload();
         let adr = AddressReadable::from_string_anyprefix(&explorer_cert.account.id).unwrap();
@@ -424,9 +499,9 @@ impl ExplorerVerifier {
             }
         }
     }
-    fn assert_owner_delegation(
-        fragment_cert: Transaction<OwnerStakeDelegation>,
-        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnOwnerStakeDelegation,
+    fn assert_block_owner_delegation(
+        fragment_cert: &Transaction<OwnerStakeDelegation>,
+        explorer_cert: &BlockByIdBlockTransactionsEdgesNodeCertificateOnOwnerStakeDelegation,
     ) -> Result<(), VerifierError> {
         let owner_cert = fragment_cert.as_slice().payload().into_payload();
 
@@ -451,9 +526,9 @@ impl ExplorerVerifier {
         }
     }
 
-    fn assert_pool_retirement(
-        fragment_cert: Transaction<PoolRetirement>,
-        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnPoolRetirement,
+    fn assert_block_pool_retirement(
+        fragment_cert: &Transaction<PoolRetirement>,
+        explorer_cert: &BlockByIdBlockTransactionsEdgesNodeCertificateOnPoolRetirement,
     ) {
         let ret_cert = fragment_cert.as_slice().payload().into_payload();
         assert_eq!(ret_cert.pool_id.to_string(), explorer_cert.pool_id);
@@ -463,9 +538,9 @@ impl ExplorerVerifier {
         );
     }
 
-    fn assert_pool_update(
-        fragment_cert: Transaction<PoolUpdate>,
-        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnPoolUpdate,
+    fn assert_block_pool_update(
+        fragment_cert: &Transaction<PoolUpdate>,
+        explorer_cert: &BlockByIdBlockTransactionsEdgesNodeCertificateOnPoolUpdate,
     ) {
         let update_cert = fragment_cert.as_slice().payload().into_payload();
         assert_eq!(update_cert.pool_id.to_string(), explorer_cert.pool_id);
@@ -475,9 +550,9 @@ impl ExplorerVerifier {
         );
     }
 
-    fn assert_vote_plan(
-        fragment_cert: Transaction<VotePlan>,
-        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnVotePlan,
+    fn assert_block_vote_plan(
+        fragment_cert: &Transaction<VotePlan>,
+        explorer_cert: &BlockByIdBlockTransactionsEdgesNodeCertificateOnVotePlan,
     ) {
         let vote_plan_cert = fragment_cert.as_slice().payload().into_payload();
         assert_eq!(
@@ -528,9 +603,9 @@ impl ExplorerVerifier {
         assert_eq!(explorer_cert.proposals.len(), matching_proposal);
     }
 
-    fn assert_vote_cast(
-        fragment_cert: Transaction<VoteCast>,
-        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnVoteCast,
+    fn assert_block_vote_cast(
+        fragment_cert: &Transaction<VoteCast>,
+        explorer_cert: &BlockByIdBlockTransactionsEdgesNodeCertificateOnVoteCast,
     ) {
         let vote_cast_cert = fragment_cert.as_slice().payload().into_payload();
 
@@ -544,17 +619,17 @@ impl ExplorerVerifier {
         );
     }
 
-    fn assert_vote_tally(
-        fragment_cert: Transaction<VoteTally>,
-        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnVoteTally,
+    fn assert_block_vote_tally(
+        fragment_cert: &Transaction<VoteTally>,
+        explorer_cert: &BlockByIdBlockTransactionsEdgesNodeCertificateOnVoteTally,
     ) {
         let vote_tally_cert = fragment_cert.as_slice().payload().into_payload();
         assert_eq!(explorer_cert.vote_plan, vote_tally_cert.id().to_string());
     }
 
-    fn assert_update_proposal(
-        fragment_cert: Transaction<UpdateProposal>,
-        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnUpdateProposal,
+    fn assert_block_update_proposal(
+        fragment_cert: &Transaction<UpdateProposal>,
+        explorer_cert: &BlockByIdBlockTransactionsEdgesNodeCertificateOnUpdateProposal,
     ) {
         let update_proposal_cert = fragment_cert.as_slice().payload().into_payload();
         assert_eq!(
@@ -849,9 +924,9 @@ impl ExplorerVerifier {
         }
     }
 
-    fn assert_update_vote(
-        fragment_cert: Transaction<UpdateVote>,
-        explorer_cert: TransactionByIdCertificatesTransactionCertificateOnUpdateVote,
+    fn assert_block_update_vote(
+        fragment_cert: &Transaction<UpdateVote>,
+        explorer_cert: &BlockByIdBlockTransactionsEdgesNodeCertificateOnUpdateVote,
     ) {
         let update_vote_cert = fragment_cert.as_slice().payload().into_payload();
         assert_eq!(
@@ -862,265 +937,5 @@ impl ExplorerVerifier {
             Self::decode_bech32_pk(&explorer_cert.voter_id.id),
             *update_vote_cert.voter_id().as_public_key()
         );
-    }
-
-    pub fn assert_epoch_stability_depth(depth: u32, explorer_depth: i64) {
-        assert_eq!(depth as u64, explorer_depth as u64);
-    }
-
-    pub fn assert_fees(fees: LinearFee, explorer_fees: SettingsSettingsFees) {
-        assert_eq!(explorer_fees.certificate as u64, fees.certificate);
-        assert_eq!(explorer_fees.coefficient as u64, fees.coefficient);
-        assert_eq!(explorer_fees.constant as u64, fees.constant);
-        assert_eq!(
-            explorer_fees
-                .per_certificate_fees
-                .certificate_owner_stake_delegation
-                .unwrap() as u64,
-            u64::from(
-                fees.per_certificate_fees
-                    .certificate_owner_stake_delegation
-                    .unwrap()
-            )
-        );
-        assert_eq!(
-            explorer_fees
-                .per_certificate_fees
-                .certificate_pool_registration
-                .unwrap() as u64,
-            u64::from(
-                fees.per_certificate_fees
-                    .certificate_pool_registration
-                    .unwrap()
-            )
-        );
-        assert_eq!(
-            explorer_fees
-                .per_certificate_fees
-                .certificate_stake_delegation
-                .unwrap() as u64,
-            u64::from(
-                fees.per_certificate_fees
-                    .certificate_stake_delegation
-                    .unwrap()
-            )
-        );
-        assert_eq!(
-            explorer_fees
-                .per_vote_certificate_fees
-                .certificate_vote_cast
-                .unwrap() as u64,
-            u64::from(
-                fees.per_vote_certificate_fees
-                    .certificate_vote_cast
-                    .unwrap()
-            )
-        );
-        assert_eq!(
-            explorer_fees
-                .per_vote_certificate_fees
-                .certificate_vote_plan
-                .unwrap() as u64,
-            u64::from(
-                fees.per_vote_certificate_fees
-                    .certificate_vote_plan
-                    .unwrap()
-            )
-        );
-    }
-
-    pub fn assert_address(address: Address, explorer_address: AddressAddress) {
-        assert_eq!(address.to_string(), explorer_address.id);
-    }
-
-    pub fn assert_transactions_address(
-        fragment_statuses: HashMap<String, (&Fragment, &FragmentStatus)>,
-        explorer_transactions: TransactionsByAddressTipTransactionsByAddress,
-    ) {
-        if fragment_statuses.is_empty() {
-            assert!(explorer_transactions.total_count == 0);
-        } else {
-            assert_eq!(
-                fragment_statuses.len() as i64 + 1,
-                explorer_transactions.total_count
-            );
-        };
-
-        assert!(explorer_transactions.edges.is_some());
-
-        assert_eq!(
-            fragment_statuses.len(),
-            explorer_transactions.edges.as_ref().unwrap().len()
-        );
-
-        for edges in explorer_transactions.edges.unwrap().iter() {
-            let node = &edges.as_ref().unwrap().node;
-            assert!(fragment_statuses.get(&node.id.to_string()).is_some());
-            let fragment_status = fragment_statuses.get(&node.id.to_string()).unwrap().1;
-            assert!(
-                matches!(fragment_status, FragmentStatus::InABlock { date, block: _ } if
-                    date.epoch() == node.blocks[0].date.epoch.id.parse::<u32>().unwrap() && date.slot() == node.blocks[0].date.slot.parse::<u32>().unwrap()
-                )
-            );
-            let fragment = fragment_statuses.get(&node.id.to_string()).unwrap().0;
-            assert_eq!(fragment.hash().to_string(), node.id.to_string());
-        }
-    }
-
-    pub fn assert_vote_plan_by_id(
-        explorer_vote_plan: VotePlanByIdVotePlan,
-        vote_plan_status: VotePlanStatus,
-        proposal_votes: HashMap<String, Vec<(Wallet, Choice)>>,
-    ) {
-        assert_eq!(explorer_vote_plan.id, vote_plan_status.id.to_string());
-        assert_eq!(
-            explorer_vote_plan.vote_start.epoch.id,
-            vote_plan_status.vote_start.epoch().to_string()
-        );
-        assert_eq!(
-            explorer_vote_plan.vote_start.slot,
-            vote_plan_status.vote_start.slot().to_string()
-        );
-        assert_eq!(
-            explorer_vote_plan.vote_end.epoch.id,
-            vote_plan_status.vote_end.epoch().to_string()
-        );
-        assert_eq!(
-            explorer_vote_plan.vote_end.slot,
-            vote_plan_status.vote_end.slot().to_string()
-        );
-        assert_eq!(
-            explorer_vote_plan.committee_end.epoch.id,
-            vote_plan_status.committee_end.epoch().to_string()
-        );
-        assert_eq!(
-            explorer_vote_plan.committee_end.slot,
-            vote_plan_status.committee_end.slot().to_string()
-        );
-        match explorer_vote_plan.payload_type {
-            vote_plan_by_id::PayloadType::PUBLIC => assert!(matches!(
-                vote_plan_status.payload,
-                vote::PayloadType::Public
-            )),
-            vote_plan_by_id::PayloadType::PRIVATE => assert!(matches!(
-                vote_plan_status.payload,
-                vote::PayloadType::Private
-            )),
-            vote_plan_by_id::PayloadType::Other(_) => panic!("Wrong payload type"),
-        }
-
-        assert_eq!(
-            explorer_vote_plan.proposals.len(),
-            vote_plan_status.proposals.len()
-        );
-        for explorer_proposal in explorer_vote_plan.proposals {
-            let vote_proposal_status =
-                match vote_plan_status.proposals.iter().position(|proposal| {
-                    explorer_proposal.proposal_id == proposal.proposal_id.to_string()
-                }) {
-                    Some(index) => vote_plan_status.proposals[index].clone(),
-                    None => panic!("Proposal id not found"),
-                };
-            assert_eq!(
-                vote_proposal_status.options.start,
-                explorer_proposal.options.start as u8
-            );
-            assert_eq!(
-                vote_proposal_status.options.end,
-                explorer_proposal.options.end as u8
-            );
-            match &vote_proposal_status.tally {
-                Tally::Public { result } => {
-                    if let TallyPublicStatus(explorer_tally_status) =
-                        explorer_proposal.tally.unwrap()
-                    {
-                        assert_eq!(result.results.len(), explorer_tally_status.results.len());
-                        let matching_results = result
-                            .results
-                            .iter()
-                            .zip(explorer_tally_status.results.iter())
-                            .filter(|&(a, b)| &a.to_string() == b)
-                            .count();
-                        assert_eq!(matching_results, result.results.len());
-                        assert_eq!(result.options.len(), explorer_tally_status.results.len());
-                        assert_eq!(
-                            result.options.start,
-                            explorer_tally_status.options.start as u8
-                        );
-                        assert_eq!(result.options.end, explorer_tally_status.options.end as u8);
-                    } else {
-                        panic!("Wrong tally status. Expected Public")
-                    }
-                }
-                Tally::Private { state } => {
-                    assert!(explorer_proposal.tally.is_some());
-                    if let TallyPrivateStatus(explorer_tally_status) =
-                        explorer_proposal.tally.unwrap()
-                    {
-                        match state {
-                            PrivateTallyState::Encrypted { encrypted_tally: _ } => assert!(
-                                explorer_tally_status.results.is_none(),
-                                "BUG NPG-3369 fixed"
-                            ),
-                            PrivateTallyState::Decrypted { result } => {
-                                let explorer_tally_result = explorer_tally_status.results.unwrap();
-                                assert_eq!(result.results.len(), explorer_tally_result.len());
-                                let matching_results = result
-                                    .results
-                                    .iter()
-                                    .zip(explorer_tally_result.iter())
-                                    .filter(|&(a, b)| &a.to_string() == b)
-                                    .count();
-                                assert_eq!(matching_results, result.results.len());
-                                assert_eq!(result.options.len(), explorer_tally_result.len());
-                                assert_eq!(
-                                    result.options.start,
-                                    explorer_tally_status.options.start as u8
-                                );
-                                assert_eq!(
-                                    result.options.end,
-                                    explorer_tally_status.options.end as u8
-                                );
-                            }
-                        }
-                    } else {
-                        panic!("Wrong tally status. Expected Private")
-                    }
-                }
-            }
-            assert_eq!(
-                vote_proposal_status.votes_cast,
-                explorer_proposal.votes.total_count as usize
-            );
-            if vote_proposal_status.votes_cast == 0 {
-                assert!(explorer_proposal.votes.edges.unwrap().is_empty());
-            } else {
-                let explorer_votes = explorer_proposal.votes.edges.unwrap();
-                assert_eq!(explorer_votes.len(), vote_proposal_status.votes_cast);
-                let votes = proposal_votes
-                    .get(&vote_proposal_status.proposal_id.to_string())
-                    .unwrap();
-                for vote in votes {
-                    for explorer_vote in &explorer_votes {
-                        if vote.0.public_key().to_string()
-                            == explorer_vote.as_ref().unwrap().node.address.id
-                        {
-                            match &explorer_vote.as_ref().unwrap().node.payload {
-                                VotePayloadPublicStatus(choice) => {
-                                    assert_eq!(choice.choice as u8, vote.1.as_byte())
-                                }
-                                VotePayloadPrivateStatus(_) => todo!(),
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fn decode_bech32_pk(bech32_public_key: &str) -> PublicKey<Ed25519> {
-        let (_, data, _variant) = bech32::decode(bech32_public_key).unwrap();
-        let dat = Vec::from_base32(&data).unwrap();
-        PublicKey::<Ed25519>::from_binary(&dat).unwrap()
     }
 }

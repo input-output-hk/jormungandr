@@ -16,7 +16,7 @@ use chain_impl_mockchain::{
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
-        explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
+        explorer::{configuration::ExplorerParams, verifiers::ExplorerVerifier},
         ConfigurationBuilder, Starter,
     },
     testing::{
