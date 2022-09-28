@@ -254,7 +254,7 @@ pub fn explorer_last_block_test() {
     let mem_checks: Vec<MemPoolCheck> = fragment_generator.send_all().unwrap();
     FragmentVerifier::wait_and_verify_all_are_in_block(
         Duration::from_secs(2),
-        mem_checks.clone(),
+        mem_checks,
         &jormungandr,
     )
     .unwrap();
