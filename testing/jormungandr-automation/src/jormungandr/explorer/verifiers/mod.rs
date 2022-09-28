@@ -105,15 +105,10 @@ impl ExplorerVerifier {
             );
         };
 
-        assert!(explorer_transactions.edges.is_some());
+        assert_eq!(fragment_statuses.len(), explorer_transactions.edges.len());
 
-        assert_eq!(
-            fragment_statuses.len(),
-            explorer_transactions.edges.as_ref().unwrap().len()
-        );
-
-        for edges in explorer_transactions.edges.unwrap().iter() {
-            let node = &edges.as_ref().unwrap().node;
+        for edges in explorer_transactions.edges.iter() {
+            let node = &edges.node;
             assert!(fragment_statuses.get(&node.id.to_string()).is_some());
             let fragment_status = fragment_statuses.get(&node.id.to_string()).unwrap().1;
             assert!(

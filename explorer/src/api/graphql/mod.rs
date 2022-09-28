@@ -855,6 +855,18 @@ impl Transaction {
         Ok(blocks.iter().map(|b| Block::from(Arc::clone(b))).collect())
     }
 
+    /// Initial bootstrap config params (initial fragments), only present in Block0
+    pub async fn initial_configuration_params(
+        &self,
+        context: &Context<'_>,
+    ) -> FieldResult<Option<config_param::ConfigParams>> {
+        let transaction = self.get_contents(context).await?;
+        match transaction.config_params {
+            Some(params) => Ok(Some(config_param::ConfigParams::from(&params))),
+            None => Ok(None),
+        }
+    }
+
     pub async fn inputs(&self, context: &Context<'_>) -> FieldResult<Vec<TransactionInput>> {
         let transaction = self.get_contents(context).await?;
         Ok(transaction
