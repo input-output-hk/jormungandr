@@ -4,7 +4,7 @@ use chain_impl_mockchain::{block::BlockDate, fragment::Fragment};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
-        explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
+        explorer::{configuration::ExplorerParams, verifiers::ExplorerVerifier},
         ConfigurationBuilder, Starter,
     },
 };

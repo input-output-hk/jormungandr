@@ -2,11 +2,12 @@ use self::{
     client::GraphQlClient,
     configuration::ExplorerParams,
     data::{
-        address, all_blocks, all_stake_pools, all_vote_plans, block, blocks_by_chain_length, epoch,
-        last_block, settings, stake_pool, transaction_by_id, transaction_by_id_certificates,
-        transactions_by_address, Address, AllBlocks, AllStakePools, AllVotePlans, Block,
-        BlocksByChainLength, Epoch, LastBlock, Settings, StakePool, TransactionById,
-        TransactionByIdCertificates, TransactionsByAddress,
+        address, all_blocks, all_stake_pools, all_vote_plans, block, block_by_id,
+        blocks_by_chain_length, epoch, last_block, settings, stake_pool, transaction_by_id,
+        transaction_by_id_certificates, transactions_by_address, vote_plan_by_id, Address,
+        AllBlocks, AllStakePools, AllVotePlans, Block, BlockById, BlocksByChainLength, Epoch,
+        LastBlock, Settings, StakePool, TransactionById, TransactionByIdCertificates,
+        TransactionsByAddress, VotePlanById,
     },
 };
 use crate::testing::configuration::get_explorer_app;
@@ -19,8 +20,8 @@ use std::{
 };
 mod client;
 pub mod configuration;
-mod data;
-pub mod verifier;
+pub mod data;
+pub mod verifiers;
 mod wrappers;
 
 use super::get_available_port;
@@ -225,6 +226,18 @@ impl Explorer {
         Ok(response_body)
     }
 
+    pub fn block_by_id(
+        &self,
+        id: String,
+    ) -> Result<Response<block_by_id::ResponseData>, ExplorerError> {
+        let query = BlockById::build_query(block_by_id::Variables { id });
+        self.print_request(&query);
+        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response_body: Response<block_by_id::ResponseData> = response.json()?;
+        self.print_log(&response_body);
+        Ok(response_body)
+    }
+
     pub fn blocks(&self, limit: i64) -> Result<Response<all_blocks::ResponseData>, ExplorerError> {
         let query = AllBlocks::build_query(all_blocks::Variables { last: limit });
         self.print_request(&query);
@@ -303,6 +316,18 @@ impl Explorer {
         self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
+        self.print_log(&response_body);
+        Ok(response_body)
+    }
+
+    pub fn vote_plan(
+        &self,
+        id: String,
+    ) -> Result<Response<vote_plan_by_id::ResponseData>, ExplorerError> {
+        let query = VotePlanById::build_query(vote_plan_by_id::Variables { id });
+        self.print_request(&query);
+        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response_body: Response<vote_plan_by_id::ResponseData> = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
     }

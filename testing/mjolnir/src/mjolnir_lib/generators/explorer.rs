@@ -29,10 +29,10 @@ impl ExplorerRequestGen {
     pub fn do_setup(&mut self, addresses: Vec<String>) -> Result<(), ExplorerError> {
         self.addresses = addresses;
         let stake_pools = self.explorer.stake_pools(1000)?;
-        let explorer_stake_pools = stake_pools.data.unwrap().tip.all_stake_pools.edges.unwrap();
+        let explorer_stake_pools = stake_pools.data.unwrap().tip.all_stake_pools.edges;
         self.stake_pools = explorer_stake_pools
             .iter()
-            .map(|edge| edge.as_ref().unwrap().node.id.clone())
+            .map(|edge| edge.node.id.clone())
             .collect::<Vec<String>>();
         Ok(())
     }
