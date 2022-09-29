@@ -1,7 +1,7 @@
 use crate::startup;
 use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
 use jormungandr_automation::jormungandr::{
-    explorer::{configuration::ExplorerParams, verifier::ExplorerVerifier},
+    explorer::{configuration::ExplorerParams, verifiers::ExplorerVerifier},
     ConfigurationBuilder,
 };
 use jormungandr_lib::interfaces::DEFAULT_EPOCH_STABILITY_DEPTH;
