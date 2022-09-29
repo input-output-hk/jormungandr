@@ -2,8 +2,9 @@ use chain_core::property::FromStr;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
     certificate::{UpdateProposal, UpdateVote, VotePlan, VoteTallyPayload},
+    chaintypes::ConsensusVersion,
     fragment::FragmentId,
-    vote::Choice, chaintypes::ConsensusVersion,
+    vote::Choice,
 };
 use chain_time::TimeEra;
 use jormungandr_automation::{
