@@ -1,16 +1,17 @@
 mod committee;
+mod explorer;
 pub mod rng;
 pub mod settings;
 mod stake_pool;
 pub mod topology;
 pub mod vote;
 pub mod wallet;
-mod explorer;
 
 pub use crate::controller::Error as ControllerError;
 use crate::{
     config::{
-        Blockchain, CommitteeTemplate, Config, SessionSettings, VotePlanTemplate, WalletTemplate,
+        Blockchain, CommitteeTemplate, Config, ExplorerTemplate, SessionSettings, VotePlanTemplate,
+        WalletTemplate,
     },
     controller::{Controller, Error},
     utils::Dotifier,
@@ -30,7 +31,6 @@ use std::{
 };
 pub use topology::{Node, Topology};
 pub use vote::VotePlanKey;
-use crate::config::ExplorerTemplate;
 
 #[derive(Default)]
 pub struct NetworkBuilder {

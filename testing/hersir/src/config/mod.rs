@@ -14,10 +14,11 @@ use crate::{
     builder::{Node, NodeAlias, Topology},
     error::Error,
 };
-use jormungandr_automation::jormungandr::{LogLevel, PersistenceMode, TestingDirectory};
+use jormungandr_automation::jormungandr::{
+    explorer::configuration::ExplorerParams, LogLevel, PersistenceMode, TestingDirectory,
+};
 use serde::Deserialize;
 use std::{collections::HashSet, path::PathBuf, str::FromStr};
-use jormungandr_automation::jormungandr::explorer::configuration::ExplorerParams;
 pub use vote_plan::VotePlanTemplate;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -113,7 +114,7 @@ fn default_title() -> String {
 #[derive(Debug, Deserialize, Clone)]
 pub struct ExplorerTemplate {
     pub connect_to: NodeAlias,
-    #[serde(default= "default_persistence_mode")]
+    #[serde(default = "default_persistence_mode")]
     pub persistence_mode: PersistenceMode,
     pub address_bech32_prefix: Option<String>,
     pub query_depth_limit: Option<u64>,
@@ -126,10 +127,10 @@ fn default_persistence_mode() -> PersistenceMode {
 
 impl ExplorerTemplate {
     pub fn to_explorer_params(&self) -> ExplorerParams {
-        ExplorerParams{
+        ExplorerParams {
             address_bech32_prefix: self.address_bech32_prefix.clone(),
             query_complexity_limit: self.query_complexity_limit,
-            query_depth_limit: self.query_depth_limit
+            query_depth_limit: self.query_depth_limit,
         }
     }
 }

@@ -35,7 +35,6 @@ pub fn spawn_network(config: Config, args: Args) -> Result<(), Error> {
         println!("Node '{}' started", alias);
     }
 
-
     let _maybe_explorer = {
         if controller.settings().explorer.is_some() {
             let explorer = Some(controller.spawn_explorer()?);

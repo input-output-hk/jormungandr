@@ -65,5 +65,5 @@ pub enum Error {
     #[error(transparent)]
     Settings(#[from] crate::builder::settings::Error),
     #[error("no explorer configuration defined")]
-    NoExplorerConfigurationDefined
+    NoExplorerConfigurationDefined,
 }

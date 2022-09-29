@@ -118,7 +118,7 @@ pub fn explorer_block_test() {
     let decoded_block = Block::deserialize(&mut Codec::new(reader)).unwrap();
 
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let explorer_block_response = explorer.block_by_id(fragment_block_id.to_string()).unwrap();
@@ -140,7 +140,7 @@ pub fn explorer_block0_test() {
     let jormungandr = Starter::new().start().unwrap();
     let block0_id = jormungandr.genesis_block_hash().to_string();
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let explorer_block0_response = explorer.block_by_id(block0_id).unwrap();
@@ -176,7 +176,7 @@ pub fn explorer_block_incorrect_id_test() {
     let jormungandr = Starter::new().start().unwrap();
 
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     for (incorrect_block_id, error_message) in incorrect_block_ids {
