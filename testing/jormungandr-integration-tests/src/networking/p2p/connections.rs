@@ -1,7 +1,7 @@
 use crate::networking::utils;
-use hersir::builder::{
-    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
-    SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::jormungandr::LogLevel;
 use jormungandr_lib::{
@@ -302,8 +302,8 @@ pub fn topics_of_interest_influences_node_sync_ability() {
         )
         .unwrap();
 
-    let mut alice = network_controller.wallet(ALICE).unwrap();
-    let mut bob = network_controller.wallet(BOB).unwrap();
+    let mut alice = network_controller.controlled_wallet(ALICE).unwrap();
+    let mut bob = network_controller.controlled_wallet(BOB).unwrap();
 
     let fragment_sender: FragmentSender<DummySyncNode> =
         FragmentSender::from(&network_controller.settings().block0);

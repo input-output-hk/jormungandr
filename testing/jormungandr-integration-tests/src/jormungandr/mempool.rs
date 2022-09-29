@@ -10,9 +10,9 @@ use chain_impl_mockchain::{
     fee::LinearFee,
     tokens::{identifier::TokenIdentifier, minting_policy::MintingPolicy},
 };
-use hersir::builder::{
-    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
-    SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::{
     jormungandr::{ConfigurationBuilder, FragmentNode, LeadershipMode, MemPoolCheck, Starter},
@@ -599,8 +599,8 @@ fn avg_block_size_stats() {
         .build()
         .unwrap();
 
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let bob = controller.controlled_wallet(BOB).unwrap();
 
     let node = controller.spawn(SpawnParams::new(LEADER).leader()).unwrap();
 

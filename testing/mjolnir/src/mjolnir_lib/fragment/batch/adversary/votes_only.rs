@@ -1,6 +1,6 @@
 use crate::{
     generators::{AdversaryVoteCastsGenerator, FragmentStatusProvider},
-    mjolnir_lib::{args::parse_shift, build_monitor, DiscriminationExtensions, MjolnirError},
+    mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError},
 };
 use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
@@ -15,7 +15,9 @@ use jortestkit::{
 };
 use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
-use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
+use thor::{
+    BlockDateGenerator, DiscriminationExtension, FragmentSender, FragmentSenderSetup, Wallet,
+};
 
 #[derive(StructOpt, Debug)]
 pub struct VotesOnly {

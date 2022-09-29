@@ -2026,6 +2026,7 @@ dependencies = [
  "chain-core",
  "chain-crypto",
  "chain-impl-mockchain",
+ "chain-vote",
  "ctrlc",
  "custom_debug",
  "hex",

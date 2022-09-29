@@ -66,6 +66,15 @@ pub struct Destination {
     pub value: Value,
 }
 
+impl From<InitialUTxO> for Destination {
+    fn from(utxo: InitialUTxO) -> Self {
+        Self {
+            address: utxo.address,
+            value: utxo.value,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct InitialToken {
     pub token_id: TokenIdentifier,

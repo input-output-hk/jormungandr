@@ -14,6 +14,7 @@ chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-crypto      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 indicatif = "0.15"
 jormungandr-automation = { path = "../jormungandr-automation" }
 jormungandr-lib = { path = "../../jormungandr-lib" }

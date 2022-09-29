@@ -1,6 +1,6 @@
-use hersir::builder::{
-    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
-    SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::testing::{
     benchmark::sync::{measure_and_log_sync_time, MeasurementReportInterval},
@@ -46,8 +46,8 @@ pub fn two_transaction_to_two_leaders() {
         .spawn(SpawnParams::new(LEADER_1).in_memory())
         .unwrap();
 
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let mut bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let mut bob = controller.controlled_wallet(BOB).unwrap();
 
     let fragment_sender = FragmentSender::from(&controller.settings().block0);
 
