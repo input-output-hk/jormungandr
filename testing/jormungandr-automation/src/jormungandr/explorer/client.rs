@@ -43,7 +43,7 @@ impl GraphQlClient {
         if self.print_out {
             println!(
                 "running query: {:#?}, against: {}",
-                query.query, self.base_url
+                query.operation_name, self.base_url
             );
         }
         reqwest::blocking::Client::new()
