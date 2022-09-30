@@ -7,7 +7,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tonic = "0.6"
+tonic = "0.8"
 prost = "0.9"
 tokio = { version = "1.15", features = ["macros","rt","rt-multi-thread"] }
 tokio-stream = "0.1"
