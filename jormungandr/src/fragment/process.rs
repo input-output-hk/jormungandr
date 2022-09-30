@@ -8,7 +8,6 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
-use chain_core::property::Fragment;
 use futures::{future, TryFutureExt};
 use std::{
     collections::HashMap,
@@ -138,10 +137,7 @@ impl Process {
                                     async {
                                         let stats_counter = stats_counter.clone();
                                         let summary = pool
-                                            .insert_and_propagate_all(origin, fragments.into_iter().map(|el| {
-                                                let id = el.id();
-                                                (el, id)
-                                            }).collect(), fail_fast)
+                                            .insert_and_propagate_all(origin, fragments, fail_fast)
                                             .await?;
 
                                         stats_counter.add_tx_recv_cnt(summary.accepted.len());

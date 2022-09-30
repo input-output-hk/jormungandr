@@ -58,11 +58,13 @@ pub fn send_all_fragments() {
     let mut fragment_generator = FragmentGenerator::new(
         sender,
         receiver,
+        None,
         jormungandr.to_remote(),
         time_era.slots_per_epoch(),
         2,
         2,
         2,
+        0,
         fragment_sender,
     );
 

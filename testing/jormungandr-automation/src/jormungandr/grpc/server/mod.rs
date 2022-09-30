@@ -37,7 +37,7 @@ pub use data::MockServerData;
 pub use logger::{MethodType, MockLogger};
 pub use verifier::MockVerifier;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MockExitCode {
     Timeout,
     Success,

@@ -134,19 +134,17 @@ impl ExplorerVerifier {
                 explorer_proposal.votes.total_count as usize
             );
             if vote_proposal_status.votes_cast == 0 {
-                assert!(explorer_proposal.votes.edges.unwrap().is_empty());
+                assert!(explorer_proposal.votes.edges.is_empty());
             } else {
-                let explorer_votes = explorer_proposal.votes.edges.unwrap();
+                let explorer_votes = explorer_proposal.votes.edges;
                 assert_eq!(explorer_votes.len(), vote_proposal_status.votes_cast);
                 let votes = proposal_votes
                     .get(&vote_proposal_status.proposal_id.to_string())
                     .unwrap();
                 for vote in votes {
                     for explorer_vote in &explorer_votes {
-                        if vote.0.public_key().to_string()
-                            == explorer_vote.as_ref().unwrap().node.address.id
-                        {
-                            match &explorer_vote.as_ref().unwrap().node.payload {
+                        if vote.0.public_key().to_string() == explorer_vote.node.address.id {
+                            match &explorer_vote.node.payload {
                                 VotePayloadPublicStatus(choice) => {
                                     assert_eq!(choice.choice as u8, vote.1.as_byte())
                                 }

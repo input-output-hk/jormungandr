@@ -2,7 +2,10 @@ mod error;
 pub mod interactive;
 mod monitor;
 
-use crate::builder::{NodeSetting, Settings, SpawnParams, VotePlanKey, Wallet as WalletSettings};
+use crate::{
+    builder::{NodeSetting, Settings, VotePlanKey, Wallet as WalletSettings},
+    config::SpawnParams,
+};
 use assert_fs::prelude::*;
 use chain_core::packer::Codec;
 use chain_impl_mockchain::{
@@ -57,12 +60,22 @@ impl Controller {
         })
     }
 
-    pub fn wallet(&mut self, wallet: &str) -> Result<Wallet, Error> {
-        if let Some(wallet) = self.settings.wallets.remove(wallet) {
-            Ok(wallet.into())
-        } else {
-            Err(Error::WalletNotFound(wallet.to_owned()))
-        }
+    pub fn wallet(&mut self, wallet: &str) -> Option<crate::builder::Wallet> {
+        self.settings
+            .wallets
+            .iter()
+            .cloned()
+            .find(|w| w.has_alias(&wallet.to_string()))
+    }
+
+    pub fn controlled_wallet(&self, wallet: &str) -> Option<Wallet> {
+        self.settings
+            .wallets
+            .iter()
+            .cloned()
+            .filter(|x| x.template().is_generated())
+            .find(|w| w.has_alias(&wallet.to_string()))
+            .map(|w| w.try_into().unwrap())
     }
 
     pub fn working_directory(&self) -> &TestingDirectory {
@@ -100,8 +113,11 @@ impl Controller {
             .ok_or_else(|| Error::NodeNotFound(alias.to_string()))
     }
 
-    pub fn defined_wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSettings)> {
-        self.settings().wallets.iter()
+    pub fn defined_wallets(&self) -> impl Iterator<Item = (WalletAlias, &WalletSettings)> {
+        self.settings()
+            .wallets
+            .iter()
+            .map(|w| (w.template().id(), w))
     }
 
     pub fn defined_nodes(&self) -> impl Iterator<Item = (&NodeAlias, &NodeSetting)> {
@@ -253,7 +269,7 @@ impl Controller {
         }
 
         config.log = Some(Log(LogEntry {
-            format: "json".into(),
+            format: "json".to_string(),
             level: spawn_params
                 .get_log_level()
                 .unwrap_or(&LogLevel::DEBUG)

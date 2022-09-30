@@ -1,12 +1,12 @@
 use chain_impl_mockchain::certificate::VotePlanId;
 use jormungandr_lib::interfaces::VotePlan;
-use thor::PrivateVoteCommitteeDataManager;
+use thor::wallet::committee::CommitteeDataManager;
 
 #[derive(Debug, Clone)]
 pub enum VotePlanSettings {
     Public(VotePlan),
     Private {
-        keys: PrivateVoteCommitteeDataManager,
+        keys: CommitteeDataManager,
         vote_plan: VotePlan,
     },
 }
