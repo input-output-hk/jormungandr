@@ -79,7 +79,7 @@ pub fn retire_stake_pool_explorer() {
 
     time::wait_for_date(BlockDate::new(wait_epoch, wait_slot_id), leader_1.rest());
 
-    let explorer_process = leader_1.explorer(ExplorerParams::default());
+    let explorer_process = leader_1.explorer(ExplorerParams::default()).unwrap();
     let explorer = explorer_process.client();
     let stake_pool_3 = controller.stake_pool(LEADER_3).unwrap().clone();
 

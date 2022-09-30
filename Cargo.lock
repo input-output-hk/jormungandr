@@ -2501,6 +2501,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "serde_yaml",
+ "structopt",
  "strum",
  "sysinfo 0.23.13",
  "tar",
@@ -2514,6 +2515,7 @@ dependencies = [
  "tracing-subscriber",
  "typed-bytes",
  "url",
+ "versionisator",
  "warp",
  "zip",
 ]

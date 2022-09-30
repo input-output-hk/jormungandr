@@ -36,7 +36,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
-    let explorer_process = jormungandr.explorer(ExplorerParams::default());
+    let explorer_process = jormungandr.explorer(ExplorerParams::default()).unwrap();
 
     let output_value = 1_u64;
     let benchmark = benchmark_endurance("test_explorer_is_in_sync_with_node_for_15_minutes")
@@ -144,7 +144,7 @@ pub fn explorer_load_test() {
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
-    let explorer = jormungandr.explorer(ExplorerParams::default());
+    let explorer = jormungandr.explorer(ExplorerParams::default()).unwrap();
 
     let mut request_gen = ExplorerRequestGen::new(explorer.client().clone());
     request_gen
