@@ -50,11 +50,13 @@ pub fn fragment_load_test() {
     let mut request_generator = FragmentGenerator::new(
         faucet,
         receiver,
+        None,
         jormungandr.to_remote(),
         60,
         30,
         30,
         30,
+        0,
         FragmentSender::new(
             jormungandr.genesis_block_hash(),
             jormungandr.fees(),

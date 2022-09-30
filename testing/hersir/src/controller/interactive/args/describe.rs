@@ -72,7 +72,7 @@ impl DescribeWallets {
             println!(
                 "\t{}: address: {}, initial_funds: {}, delegated to: {:?}",
                 alias,
-                wallet.address(),
+                wallet.address()?,
                 wallet.template().value(),
                 wallet.template().delegate()
             );

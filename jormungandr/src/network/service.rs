@@ -238,7 +238,7 @@ impl BlockService for NodeService {
         stream: PushStream<Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let peer_id = self.peer_id(subscriber.addr()).await?;
-        Span::current().record("id", &peer_id.to_string().as_str());
+        Span::current().record("id", peer_id.to_string().as_str());
         self.global_state.spawn(
             subscription::process_block_announcements(
                 stream,
@@ -274,7 +274,7 @@ impl FragmentService for NodeService {
         stream: PushStream<Fragment>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let peer_id = self.peer_id(subscriber.addr()).await?;
-        Span::current().record("id", &peer_id.to_string().as_str());
+        Span::current().record("id", peer_id.to_string().as_str());
         self.global_state.spawn(
             subscription::process_fragments(
                 stream,
@@ -305,7 +305,7 @@ impl GossipService for NodeService {
         stream: PushStream<Gossip>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let peer_id = self.peer_id(subscriber.addr()).await?;
-        Span::current().record("id", &peer_id.to_string().as_str());
+        Span::current().record("id", peer_id.to_string().as_str());
         self.global_state.spawn(
             subscription::process_gossip(
                 stream,

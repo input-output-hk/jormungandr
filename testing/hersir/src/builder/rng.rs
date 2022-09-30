@@ -10,7 +10,7 @@ pub struct Seed([u8; 32]);
 
 impl Display for Seed {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        hex::encode(&self.0).fmt(f)
+        hex::encode(self.0).fmt(f)
     }
 }
 

@@ -4,19 +4,20 @@ use assert_fs::{
     TempDir,
 };
 use chain_core::property::{FromStr, Serialize};
+use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
     block::BlockDate,
     chaintypes::ConsensusVersion,
     fee::LinearFee,
     tokens::{identifier::TokenIdentifier, minting_policy::MintingPolicy},
 };
-use hersir::builder::{
-    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
-    SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::{
     jormungandr::{ConfigurationBuilder, FragmentNode, LeadershipMode, MemPoolCheck, Starter},
-    testing::time,
+    testing::{keys::create_new_key_pair, time},
 };
 use jormungandr_lib::interfaces::{
     BlockDate as BlockDateDto, InitialToken, InitialUTxO, Mempool, PersistentLog, SlotDuration,
@@ -36,6 +37,7 @@ pub fn dump_send_correct_fragments() {
     let persistent_log_path = temp_dir.child("persistent_log");
     let receiver = thor::Wallet::default();
     let sender = thor::Wallet::default();
+    let first_bft_leader = create_new_key_pair::<Ed25519>();
 
     let jormungandr = startup::start_bft(
         vec![&sender, &receiver],
@@ -43,6 +45,7 @@ pub fn dump_send_correct_fragments() {
             .with_slots_per_epoch(60)
             .with_block_content_max_size(100000.into())
             .with_slot_duration(1)
+            .with_consensus_leaders_ids(vec![first_bft_leader.identifier().into()])
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
                 log_max_entries: 1_000_000usize.into(),
@@ -72,8 +75,10 @@ pub fn dump_send_correct_fragments() {
     let mut fragment_generator = FragmentGenerator::new(
         sender,
         receiver,
+        Some(first_bft_leader),
         jormungandr.to_remote(),
         time_era.slots_per_epoch(),
+        2,
         2,
         2,
         2,
@@ -171,7 +176,7 @@ pub fn non_existing_folder() {
 
     assert!(path.exists());
     assert!(metadata(path).unwrap().is_dir());
-    assert!(std::fs::read_dir(&path).unwrap().count() > 0);
+    assert!(std::fs::read_dir(path).unwrap().count() > 0);
 }
 
 #[test]
@@ -599,8 +604,8 @@ fn avg_block_size_stats() {
         .build()
         .unwrap();
 
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let bob = controller.controlled_wallet(BOB).unwrap();
 
     let node = controller.spawn(SpawnParams::new(LEADER).leader()).unwrap();
 

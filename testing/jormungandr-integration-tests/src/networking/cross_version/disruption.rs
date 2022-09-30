@@ -3,11 +3,8 @@ use crate::networking::utils;
 use assert_fs::fixture::PathChild;
 use function_name::named;
 use hersir::{
-    builder::{
-        wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
-        SpawnParams, Topology,
-    },
-    config::SessionSettings,
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SessionSettings, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::{
     jormungandr::{download_last_n_releases, get_jormungandr_bin, Version},
@@ -79,8 +76,8 @@ fn test_legacy_release(legacy_app: PathBuf, version: Version) {
         .spawn(SpawnParams::new(LEADER_4).in_memory())
         .unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
 
     FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(10, &mut wallet1, &mut wallet2, &leader2, 1_000.into())
@@ -151,8 +148,8 @@ fn test_legacy_disruption_release(legacy_app: PathBuf, version: Version) {
     let leader3 = controller.spawn(SpawnParams::new(LEADER_3)).unwrap();
     let mut leader4 = controller.spawn(SpawnParams::new(LEADER_4)).unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
 
     let sender = FragmentSender::from(&controller.settings().block0);
     sender
@@ -248,8 +245,8 @@ pub fn newest_node_enters_legacy_network() {
         )
         .unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
 
     // do some transaction and allow network to spin off a bit
     let sender = FragmentSender::from(&controller.settings().block0)

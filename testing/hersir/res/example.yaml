@@ -10,6 +10,11 @@ nodes:
         leadership_mode: leader
         persistence_mode: inmemory
 
+explorer:
+    connect_to: passive
+    persistence_mode: inmemory
+
+
 blockchain:
     discrimination: test
     consensus: bft
@@ -17,3 +22,31 @@ blockchain:
       constant: 1
       coefficient: 1
       certificate: 1
+
+wallets:
+  - alias: alice
+    value: 100
+    discrimination: test
+    wallet_type: account
+    delegate: passive
+    tokens:
+      00000000000000000000000000000000000000000000000000000000.f9b18e37d9b7e42d594fa1d697414fdedecea7398f7e60bb2d6317c596beb884: 1000
+
+committees:
+     - alias: alice
+vote_plans:
+  - committees:
+    - alias: alice
+    vote_start: '0.1'
+    vote_end: '0.2'
+    committee_end: '0.3'
+    proposals:
+      - external_id: 1c641eac9e5e5008b974edf4892e55fd7b65c6c5e14d589a4fb59785f042d055
+        options: 2
+        action: off_chain
+    voting_token: 00000000000000000000000000000000000000000000000000000000.f9b18e37d9b7e42d594fa1d697414fdedecea7398f7e60bb2d6317c596beb884
+    private:
+      crs: voting
+      threshold: 1
+    alias: fund9
+    owner_alias: alice

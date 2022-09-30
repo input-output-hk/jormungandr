@@ -54,7 +54,7 @@ pub fn explorer_sanity_test() {
     let jcli: JCli = Default::default();
     let faucet = thor::Wallet::default();
     let receiver = thor::Wallet::default();
-    let query_complexity_limit = 70;
+    let query_complexity_limit = 100;
     let attempts_number = 20;
 
     let mut config = ConfigurationBuilder::new();
@@ -64,7 +64,7 @@ pub fn explorer_sanity_test() {
         startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
 
     let params = ExplorerParams::new(query_complexity_limit, None, None);
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let transaction = thor::FragmentBuilder::new(
@@ -112,10 +112,9 @@ fn blocks(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
         .tip
         .blocks
         .edges
-        .unwrap()
         .iter()
         .skip(1)
-        .map(|x| Hash::from_str(&x.as_ref().unwrap().node.id).unwrap())
+        .map(|x| Hash::from_str(&x.node.id).unwrap())
         .collect::<Vec<Hash>>();
 
     let mut common_blocks = blocks_from_logs.clone();
@@ -133,7 +132,7 @@ fn blocks(explorer: &Explorer, blocks_from_logs: Vec<Hash>) {
 
 fn stake_pools(explorer: &Explorer, initial_stake_pools: &[StakePool]) {
     let stake_pools = explorer.stake_pools(1000).unwrap();
-    let explorer_stake_pools = stake_pools.data.unwrap().tip.all_stake_pools.edges.unwrap();
+    let explorer_stake_pools = stake_pools.data.unwrap().tip.all_stake_pools.edges;
     // we are skipping first block because log doesn't contains genesis block
     assert_eq!(
         initial_stake_pools
@@ -142,7 +141,7 @@ fn stake_pools(explorer: &Explorer, initial_stake_pools: &[StakePool]) {
             .collect::<Vec<String>>(),
         explorer_stake_pools
             .iter()
-            .map(|x| x.as_ref().unwrap().node.id.clone())
+            .map(|x| x.node.id.clone())
             .collect::<Vec<String>>(),
         "blocks are empty"
     );

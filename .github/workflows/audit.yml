@@ -22,7 +22,7 @@ jobs:
       volumes:
         - cargo-registry-index:/usr/local/cargo/registry/index
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - id: ls-crates-io-index
         name: Get head commit hash of crates.io registry index
@@ -34,7 +34,7 @@ jobs:
           echo "::set-output name=head::$commit"
 
       - name: Cache cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: /usr/local/cargo/registry/index
           key: cargo-index-${{ steps.ls-crates-io-index.outputs.head }}

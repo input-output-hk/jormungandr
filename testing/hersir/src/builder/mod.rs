@@ -1,19 +1,21 @@
-pub mod blockchain;
+mod committee;
+mod explorer;
 pub mod rng;
 pub mod settings;
-pub mod spawn_params;
+mod stake_pool;
 pub mod topology;
 pub mod vote;
-mod vote_plan_settings;
 pub mod wallet;
 
 pub use crate::controller::Error as ControllerError;
 use crate::{
-    config::SessionSettings,
+    config::{
+        Blockchain, CommitteeTemplate, Config, ExplorerTemplate, SessionSettings, VotePlanTemplate,
+        WalletTemplate,
+    },
     controller::{Controller, Error},
     utils::Dotifier,
 };
-pub use blockchain::Blockchain;
 pub use jormungandr_automation::jormungandr::NodeAlias;
 use jormungandr_automation::{
     jormungandr::NodeConfigBuilder,
@@ -21,8 +23,7 @@ use jormungandr_automation::{
 };
 use jormungandr_lib::{crypto::key::SigningKey, interfaces::NodeSecret};
 pub use rng::{Random, Seed};
-pub use settings::{NodeSetting, Settings};
-pub use spawn_params::SpawnParams;
+pub use settings::{vote_plan::VotePlanSettings, wallet::Wallet, NodeSetting, Settings};
 use std::{
     collections::HashMap,
     path::Path,
@@ -30,15 +31,16 @@ use std::{
 };
 pub use topology::{Node, Topology};
 pub use vote::VotePlanKey;
-pub use vote_plan_settings::VotePlanSettings;
-pub use wallet::{ExternalWalletTemplate, Wallet, WalletTemplate, WalletType};
 
 #[derive(Default)]
 pub struct NetworkBuilder {
     topology: Topology,
     blockchain: Blockchain,
     session_settings: SessionSettings,
+    explorer_template: Option<ExplorerTemplate>,
     wallet_templates: Vec<WalletTemplate>,
+    committee_templates: Vec<CommitteeTemplate>,
+    vote_plan_templates: Vec<VotePlanTemplate>,
     observers: Vec<Weak<dyn Observer>>,
 }
 
@@ -66,6 +68,16 @@ impl Observable for NetworkBuilder {
 }
 
 impl NetworkBuilder {
+    pub fn apply_config(self, config: Config) -> Self {
+        self.topology(config.build_topology())
+            .blockchain_config(config.build_blockchain())
+            .session_settings(config.session)
+            .wallet_templates(config.wallets)
+            .vote_plan_templates(config.vote_plans)
+            .committees(config.committees)
+            .explorer(config.explorer)
+    }
+
     pub fn topology(mut self, topology: Topology) -> Self {
         self.topology = topology;
         self
@@ -76,8 +88,23 @@ impl NetworkBuilder {
         self
     }
 
+    pub fn wallet_templates(mut self, wallets: Vec<WalletTemplate>) -> Self {
+        self.wallet_templates = wallets;
+        self
+    }
+
     pub fn wallet_template(mut self, wallet: WalletTemplate) -> Self {
         self.wallet_templates.push(wallet);
+        self
+    }
+
+    pub fn vote_plan_templates(mut self, vote_plans: Vec<VotePlanTemplate>) -> Self {
+        self.vote_plan_templates = vote_plans;
+        self
+    }
+
+    pub fn committees(mut self, committee_templates: Vec<CommitteeTemplate>) -> Self {
+        self.committee_templates = committee_templates;
         self
     }
 
@@ -86,7 +113,7 @@ impl NetworkBuilder {
         self
     }
 
-    pub fn build(mut self) -> Result<Controller, ControllerError> {
+    pub fn build(self) -> Result<Controller, ControllerError> {
         self.notify_all(Event::new("building topology..."));
         let nodes: HashMap<NodeAlias, NodeSetting> = self
             .topology
@@ -113,12 +140,16 @@ impl NetworkBuilder {
         let seed = Seed::generate(rand::rngs::OsRng);
         let mut random = Random::new(seed);
 
-        for wallet in &self.wallet_templates {
-            self.blockchain = self.blockchain.with_wallet(wallet.clone());
-        }
-
         self.notify_all(Event::new("building block0.."));
-        let settings = Settings::new(nodes, self.blockchain.clone(), &mut random);
+        let settings = Settings::new(
+            nodes,
+            &self.blockchain,
+            &self.wallet_templates,
+            &self.committee_templates,
+            &self.explorer_template,
+            &self.vote_plan_templates,
+            &mut random,
+        )?;
 
         self.notify_all(Event::new("dumping wallet secret keys.."));
 
@@ -129,6 +160,11 @@ impl NetworkBuilder {
         self.finish_all();
         Controller::new(settings, self.session_settings.root)
     }
+
+    pub fn explorer(mut self, explorer: Option<ExplorerTemplate>) -> Self {
+        self.explorer_template = explorer;
+        self
+    }
 }
 
 fn document(path: &Path, settings: &Settings) -> Result<(), Error> {
@@ -137,7 +173,7 @@ fn document(path: &Path, settings: &Settings) -> Result<(), Error> {
     let dotifier = Dotifier;
     dotifier.dottify(settings, file)?;
 
-    for wallet in settings.wallets.values() {
+    for wallet in &settings.wallets {
         wallet.save_to(path)?;
     }
 

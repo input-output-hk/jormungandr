@@ -66,7 +66,7 @@ pub fn explorer_stake_pool_registration_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let stake_pool_reg_fragment =
@@ -136,7 +136,7 @@ pub fn explorer_owner_delegation_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let owner_deleg_fragment = fragment_builder.owner_delegation(&stake_pool_owner, &stake_pool);
@@ -210,7 +210,7 @@ pub fn explorer_full_delegation_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let full_deleg_fragment = fragment_builder.delegation(&full_delegator, &stake_pool);
@@ -302,7 +302,7 @@ pub fn explorer_split_delegation_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let split_delegation_fragment = fragment_builder.delegation_to_many(
@@ -369,7 +369,7 @@ pub fn explorer_pool_update_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let stake_pool_reg_fragment =
@@ -453,7 +453,7 @@ pub fn explorer_pool_retire_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let stake_pool_reg_fragment =
@@ -527,7 +527,7 @@ pub fn explorer_evm_mapping_certificates_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let evm_mapping = TestGen::evm_mapping_for_wallet(&first_stake_pool_owner.clone().into());
@@ -603,7 +603,7 @@ pub fn explorer_vote_plan_certificates_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let vote_plan_fragment = fragment_builder.vote_plan(&first_stake_pool_owner, &vote_plan);
@@ -688,7 +688,7 @@ pub fn explorer_vote_cast_certificates_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let vote_cast_fragment = fragment_builder.vote_cast(&alice, &vote_plan, 2, &Choice::new(0));
@@ -774,7 +774,7 @@ pub fn explorer_vote_tally_certificate_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let vote_cast_fragment = fragment_builder.vote_cast(&alice, &vote_plan, 2, &Choice::new(0));
@@ -867,7 +867,7 @@ pub fn explorer_update_proposal_certificate_test() {
         TRANSACTION_CERTIFICATE_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let proposal_update_fragment = fragment_builder.update_proposal(

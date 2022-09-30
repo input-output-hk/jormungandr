@@ -44,7 +44,10 @@ type BlockConnection {
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [BlockEdge]
+  edges: [BlockEdge!]!
+
+  """A list of nodes."""
+  nodes: [Block!]!
   totalCount: Int!
 }
 
@@ -60,11 +63,11 @@ type BlockDate {
 
 """An edge in a connection."""
 type BlockEdge {
-  """The item at the end of the edge"""
-  node: Block!
-
   """A cursor for use in pagination"""
   cursor: String!
+
+  """The item at the end of the edge"""
+  node: Block!
 }
 
 type Branch {
@@ -222,17 +225,20 @@ type PoolConnection {
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [PoolEdge]
+  edges: [PoolEdge!]!
+
+  """A list of nodes."""
+  nodes: [Pool!]!
   totalCount: Int!
 }
 
 """An edge in a connection."""
 type PoolEdge {
-  """The item at the end of the edge"""
-  node: Pool!
-
   """A cursor for use in pagination"""
   cursor: String!
+
+  """The item at the end of the edge"""
+  node: Pool!
 }
 
 scalar PoolId
@@ -283,7 +289,6 @@ type Proposal {
 
   """
   get the vote options range
-
   this is the available range of choices to make for the given
   proposal. all casted votes for this proposals ought to be in
   within the given range
@@ -409,6 +414,11 @@ type Transaction {
 
   """All the blocks this transaction is included in"""
   blocks: [Block!]!
+
+  """
+  Initial bootstrap config params (initial fragments), only present in Block0
+  """
+  initialConfigurationParams: ConfigParams
   inputs: [TransactionInput!]!
   outputs: [TransactionOutput!]!
   certificate: Certificate
@@ -419,17 +429,20 @@ type TransactionConnection {
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [TransactionEdge]
+  edges: [TransactionEdge!]!
+
+  """A list of nodes."""
+  nodes: [Transaction!]!
   totalCount: Int!
 }
 
 """An edge in a connection."""
 type TransactionEdge {
-  """The item at the end of the edge"""
-  node: Transaction!
-
   """A cursor for use in pagination"""
   cursor: String!
+
+  """The item at the end of the edge"""
+  node: Transaction!
 }
 
 type TransactionInput {
@@ -534,17 +547,20 @@ type VotePlanStatusConnection {
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [VotePlanStatusEdge]
+  edges: [VotePlanStatusEdge!]!
+
+  """A list of nodes."""
+  nodes: [VotePlanStatus!]!
   totalCount: Int!
 }
 
 """An edge in a connection."""
 type VotePlanStatusEdge {
-  """The item at the end of the edge"""
-  node: VotePlanStatus!
-
   """A cursor for use in pagination"""
   cursor: String!
+
+  """The item at the end of the edge"""
+  node: VotePlanStatus!
 }
 
 type VoteProposalStatus {
@@ -564,17 +580,20 @@ type VoteStatusConnection {
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [VoteStatusEdge]
+  edges: [VoteStatusEdge!]!
+
+  """A list of nodes."""
+  nodes: [VoteStatus!]!
   totalCount: Int!
 }
 
 """An edge in a connection."""
 type VoteStatusEdge {
-  """The item at the end of the edge"""
-  node: VoteStatus!
-
   """A cursor for use in pagination"""
   cursor: String!
+
+  """The item at the end of the edge"""
+  node: VoteStatus!
 }
 
 type VoteTally {

@@ -2,9 +2,9 @@ use crate::networking::{
     p2p::{assert_are_in_quarantine, assert_empty_quarantine, assert_node_stats},
     utils,
 };
-use hersir::builder::{
-    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
-    SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_lib::{interfaces::Policy, time::Duration};
 

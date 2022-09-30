@@ -1,6 +1,5 @@
 use crate::{
     args::Args,
-    builder::Topology,
     config::Config,
     controller::{MonitorControllerBuilder, MonitorNode},
     error::Error,
@@ -8,7 +7,8 @@ use crate::{
 use jormungandr_automation::jormungandr::NodeAlias;
 use std::{collections::HashMap, sync::mpsc::channel};
 
-pub fn spawn_network(config: Config, mut topology: Topology, args: Args) -> Result<(), Error> {
+pub fn spawn_network(config: Config, args: Args) -> Result<(), Error> {
+    let mut topology = config.build_topology();
     let (tx, rx) = channel();
 
     let mut monitor_controller = MonitorControllerBuilder::new(&config.session.title)

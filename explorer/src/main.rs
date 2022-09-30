@@ -4,6 +4,9 @@ mod indexer;
 mod logging;
 mod settings;
 
+#[cfg(test)]
+mod tests;
+
 use crate::indexer::Indexer;
 use anyhow::Context;
 use chain_core::{packer::Codec, property::Deserialize};

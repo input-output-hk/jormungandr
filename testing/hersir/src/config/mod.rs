@@ -1,17 +1,36 @@
+mod blockchain;
+mod committee;
+mod spawn_params;
+mod vote_plan;
+mod wallet;
+
+pub use crate::config::{
+    blockchain::{Blockchain, BlockchainBuilder},
+    committee::CommitteeTemplate,
+    spawn_params::SpawnParams,
+    wallet::{WalletTemplate, WalletTemplateBuilder},
+};
 use crate::{
-    builder::{Blockchain, Node, NodeAlias, SpawnParams, Topology},
+    builder::{Node, NodeAlias, Topology},
     error::Error,
 };
-use jormungandr_automation::jormungandr::{LogLevel, TestingDirectory};
+use jormungandr_automation::jormungandr::{
+    explorer::configuration::ExplorerParams, LogLevel, PersistenceMode, TestingDirectory,
+};
 use serde::Deserialize;
 use std::{collections::HashSet, path::PathBuf, str::FromStr};
+pub use vote_plan::VotePlanTemplate;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
-    blockchain: Blockchain,
+    pub blockchain: Blockchain,
     pub nodes: Vec<NodeConfig>,
+    pub explorer: Option<ExplorerTemplate>,
     #[serde(default)]
     pub session: SessionSettings,
+    pub wallets: Vec<WalletTemplate>,
+    pub committees: Vec<CommitteeTemplate>,
+    pub vote_plans: Vec<VotePlanTemplate>,
 }
 
 impl Config {
@@ -54,7 +73,7 @@ impl Config {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct NodeConfig {
     pub spawn_params: SpawnParams,
     #[serde(default)]
@@ -90,6 +109,30 @@ fn default_root() -> TestingDirectory {
 
 fn default_title() -> String {
     "unnamed_scenario".to_owned()
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct ExplorerTemplate {
+    pub connect_to: NodeAlias,
+    #[serde(default = "default_persistence_mode")]
+    pub persistence_mode: PersistenceMode,
+    pub address_bech32_prefix: Option<String>,
+    pub query_depth_limit: Option<u64>,
+    pub query_complexity_limit: Option<u64>,
+}
+
+fn default_persistence_mode() -> PersistenceMode {
+    PersistenceMode::InMemory
+}
+
+impl ExplorerTemplate {
+    pub fn to_explorer_params(&self) -> ExplorerParams {
+        ExplorerParams {
+            address_bech32_prefix: self.address_bech32_prefix.clone(),
+            query_complexity_limit: self.query_complexity_limit,
+            query_depth_limit: self.query_depth_limit,
+        }
+    }
 }
 
 impl Default for SessionSettings {

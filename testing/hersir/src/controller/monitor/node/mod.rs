@@ -170,7 +170,7 @@ impl Node {
         multiaddr::to_tcp_socket_addr(&self.process.p2p_public_address()).unwrap()
     }
 
-    pub fn explorer(&self) -> ExplorerProcess {
+    pub fn explorer(&self) -> Result<ExplorerProcess, ExplorerError> {
         self.process.explorer(ExplorerParams::default())
     }
 
@@ -310,6 +310,7 @@ impl Node {
     }
 }
 
+use jormungandr_automation::jormungandr::ExplorerError;
 use std::fmt::Display;
 
 impl ProgressBarController {

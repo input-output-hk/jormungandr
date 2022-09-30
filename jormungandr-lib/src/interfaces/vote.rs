@@ -149,15 +149,15 @@ impl Serialize for SerdeMemberPublicKey {
 
 #[derive(Clone, Deserialize, Serialize, Debug, Eq, PartialEq)]
 pub struct VotePlan {
-    payload_type: VotePrivacy,
-    vote_start: BlockDate,
-    vote_end: BlockDate,
-    committee_end: BlockDate,
+    pub payload_type: VotePrivacy,
+    pub vote_start: BlockDate,
+    pub vote_end: BlockDate,
+    pub committee_end: BlockDate,
     #[serde(with = "serde_proposals")]
-    proposals: Proposals,
+    pub proposals: Proposals,
     #[serde(with = "serde_committee_member_public_keys", default = "Vec::new")]
     pub committee_member_public_keys: Vec<chain_vote::MemberPublicKey>,
-    voting_token: TokenIdentifier,
+    pub voting_token: TokenIdentifier,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -233,7 +233,7 @@ impl From<VotePlan> for certificate::VotePlan {
     }
 }
 
-mod serde_committee_member_public_keys {
+pub mod serde_committee_member_public_keys {
     use crate::interfaces::vote::SerdeMemberPublicKey;
     use serde::{
         de::{SeqAccess, Visitor},
@@ -291,7 +291,7 @@ impl From<VoteProposalDef> for Proposal {
     }
 }
 
-mod serde_external_proposal_id {
+pub mod serde_external_proposal_id {
     use super::*;
     use serde::{Deserializer, Serialize, Serializer};
     pub fn deserialize<'de, D>(deserializer: D) -> Result<ExternalProposalId, D::Error>
@@ -352,7 +352,7 @@ mod serde_external_proposal_id {
     }
 }
 
-mod serde_choices {
+pub mod serde_choices {
     use super::*;
     use serde::{Deserializer, Serialize, Serializer};
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Options, D::Error>
@@ -391,7 +391,7 @@ mod serde_choices {
     }
 }
 
-mod serde_proposals {
+pub mod serde_proposals {
     use super::*;
     use serde::{ser::SerializeSeq, Deserialize, Serialize, Serializer};
     #[derive(Deserialize, Serialize)]

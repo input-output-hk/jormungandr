@@ -462,7 +462,6 @@ impl ExplorerVerifier {
             .count();
 
         assert_eq!(pool_cert.operators.len(), operators_matching);
-
         assert!(explorer_cert.pool.retirement.is_none());
     }
 

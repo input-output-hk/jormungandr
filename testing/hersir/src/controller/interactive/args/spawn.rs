@@ -1,5 +1,5 @@
 use crate::{
-    builder::SpawnParams,
+    config::SpawnParams,
     controller::{Error, UserInteractionController},
     style,
 };
