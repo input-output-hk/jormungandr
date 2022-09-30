@@ -112,7 +112,10 @@ impl ExplorerProcess {
                     .spawn()
                     .expect("failed to execute explorer process"),
             ),
-            client: Explorer::new(configuration.explorer_listen_address.clone()),
+            client: Explorer::new(format!(
+                "{}:{}",
+                configuration.explorer_listen_address, configuration.explorer_port
+            )),
             configuration: configuration.clone(),
         };
 
@@ -125,7 +128,6 @@ impl ExplorerProcess {
             {
                 break;
             };
-
             wait_bootstrap.advance();
         }
 
