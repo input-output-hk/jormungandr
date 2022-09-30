@@ -38,10 +38,10 @@ pub fn explorer_block_test() {
         &[receiver.clone()],
         ConfigurationBuilder::new()
             .with_block0_consensus(ConsensusType::GenesisPraos)
-            .with_slots_per_epoch(20)
+            .with_slots_per_epoch(25)
             .with_block_content_max_size(100000.into())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(3)
+            .with_slot_duration(6)
             .with_linear_fees(LinearFee::new(1, 1, 1))
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
@@ -61,6 +61,9 @@ pub fn explorer_block_test() {
             }),
     )
     .unwrap();
+
+    let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
+    let explorer_process = jormungandr.explorer(params);
 
     let fragment_sender = FragmentSender::from_with_setup(
         jormungandr.block0_configuration(),
@@ -117,11 +120,18 @@ pub fn explorer_block_test() {
     let reader = std::io::Cursor::new(&bytes_block);
     let decoded_block = Block::deserialize(&mut Codec::new(reader)).unwrap();
 
-    let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
-    let explorer_process = jormungandr.explorer(params);
+    time::wait_for_epoch(3, jormungandr.rest());
+
     let explorer = explorer_process.client();
 
-    let explorer_block_response = explorer.block_by_id(fragment_block_id.to_string()).unwrap();
+    let explorer_block_response = match explorer.block_by_id(fragment_block_id.to_string()) {
+        Ok(response) => response,
+        Err(_) => {
+            time::wait_for_date(BlockDate::new(3, 10), jormungandr.rest());
+            println!("finish waiting");
+            explorer.block_by_id(fragment_block_id.to_string()).unwrap()
+        }
+    };
 
     assert!(
         explorer_block_response.errors.is_none(),
@@ -205,10 +215,10 @@ pub fn explorer_last_block_test() {
         &[receiver.clone()],
         ConfigurationBuilder::new()
             .with_block0_consensus(ConsensusType::GenesisPraos)
-            .with_slots_per_epoch(20)
+            .with_slots_per_epoch(25)
             .with_block_content_max_size(100000.into())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(3)
+            .with_slot_duration(6)
             .with_linear_fees(LinearFee::new(1, 1, 1))
             .with_mempool(Mempool {
                 pool_max_entries: 1_000_000usize.into(),
@@ -228,6 +238,9 @@ pub fn explorer_last_block_test() {
             }),
     )
     .unwrap();
+
+    let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
+    let explorer_process = jormungandr.explorer(params);
 
     let fragment_sender = FragmentSender::from_with_setup(
         jormungandr.block0_configuration(),
@@ -259,11 +272,18 @@ pub fn explorer_last_block_test() {
     )
     .unwrap();
 
-    let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
-    let explorer_process = jormungandr.explorer(params);
+    time::wait_for_epoch(3, jormungandr.rest());
+
     let explorer = explorer_process.client();
 
-    let explorer_block_response = explorer.last_block().unwrap();
+    let explorer_block_response = match explorer.last_block() {
+        Ok(response) => response,
+        Err(_) => {
+            time::wait_for_date(BlockDate::new(3, 10), jormungandr.rest());
+            println!("finish waiting");
+            explorer.last_block().unwrap()
+        }
+    };
 
     let encoded_block = jcli
         .rest()
