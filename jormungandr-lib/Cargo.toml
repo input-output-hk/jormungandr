@@ -26,7 +26,7 @@ humantime = "2.0"
 thiserror = "1.0"
 multiaddr = { package = "parity-multiaddr", version = "0.11", default-features = false }
 hex = "0.4"
-bech32 = "0.8"
+bech32 = "0.9"
 base64 = "0.13.0"
 http = "0.2.2"
 

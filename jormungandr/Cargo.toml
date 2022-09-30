@@ -27,7 +27,7 @@ imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "
 arc-swap = "^1.5.0"
 async-trait = "0.1.51"
 base64 = "0.13.0"
-bech32 = "0.8"
+bech32 = "0.9"
 futures = "0.3.21"
 hex = "0.4"
 jormungandr-lib = { path = "../jormungandr-lib" }
