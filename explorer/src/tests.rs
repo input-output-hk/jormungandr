@@ -33,7 +33,9 @@ pub fn explorer_test_context(
 
     let params = ExplorerParams::new(test_config.query_complexity_limit, None, None);
 
-    (jormungandr.explorer(params), jormungandr)
+    let explorer_process = jormungandr.explorer(params).unwrap();
+    println!("{:?}", explorer_process.client().current_time());
+    (explorer_process, jormungandr)
 }
 
 pub fn get_invalid_block(explorer: &Explorer) {

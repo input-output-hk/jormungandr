@@ -10,6 +10,11 @@ nodes:
         leadership_mode: leader
         persistence_mode: inmemory
 
+explorer:
+    connect_to: passive
+    persistence_mode: inmemory
+
+
 blockchain:
     discrimination: test
     consensus: bft

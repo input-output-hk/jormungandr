@@ -25,7 +25,7 @@ pub fn explorer_address_test() {
         startup::start_stake_pool(&[sender.clone()], &[], &mut config).unwrap();
 
     let params = ExplorerParams::new(None, None, address_bech32_prefix);
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let explorer_address = explorer.address(sender.address().to_string()).unwrap();
@@ -68,7 +68,7 @@ pub fn explorer_transactions_not_existing_address_test() {
         .send(&transaction.encode())
         .assert_in_block_with_wait(&wait);
 
-    let explorer_process = jormungandr.explorer(ExplorerParams::default());
+    let explorer_process = jormungandr.explorer(ExplorerParams::default()).unwrap();
     let explorer = explorer_process.client();
 
     let explorer_address = explorer
@@ -174,7 +174,7 @@ pub fn explorer_transactions_address_test() {
         (block0fragment, &block0_fragment_status),
     );
 
-    let explorer_process = jormungandr.explorer(ExplorerParams::default());
+    let explorer_process = jormungandr.explorer(ExplorerParams::default()).unwrap();
     let explorer = explorer_process.client();
 
     assert!(explorer

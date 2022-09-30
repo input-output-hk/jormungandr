@@ -75,7 +75,7 @@ pub fn explorer_vote_plan_not_existing() {
         VOTE_PLAN_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let query_response = explorer
@@ -185,7 +185,7 @@ pub fn explorer_vote_plan_public_flow_test() {
         VOTE_PLAN_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     //1.Vote plan started
@@ -476,7 +476,7 @@ pub fn explorer_vote_plan_private_flow_test() {
         VOTE_PLAN_QUERY_DEPTH_LIMIT,
         None,
     );
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let rewards_before: u64 = jormungandr.rest().remaining_rewards().unwrap().into();

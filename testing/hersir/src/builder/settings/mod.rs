@@ -5,15 +5,18 @@ pub(crate) mod wallet;
 pub use crate::{builder::settings::node::NodeSetting, config::Blockchain};
 use crate::{
     builder::{
-        committee::generate_committee_data, stake_pool, vote::generate_vote_plans,
-        wallet::generate, Node as NodeTemplate, Random, VotePlanKey, VotePlanSettings, Wallet,
+        committee::generate_committee_data, explorer::generate_explorer, stake_pool,
+        vote::generate_vote_plans, wallet::generate, Node as NodeTemplate, Random, VotePlanKey,
+        VotePlanSettings, Wallet,
     },
-    config::{CommitteeTemplate, VotePlanTemplate, WalletTemplate},
+    config::{CommitteeTemplate, ExplorerTemplate, VotePlanTemplate, WalletTemplate},
 };
 use assert_fs::fixture::{ChildPath, PathChild};
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
-use jormungandr_automation::jormungandr::NodeAlias;
+use jormungandr_automation::jormungandr::{
+    explorer::configuration::ExplorerConfiguration, NodeAlias,
+};
 use jormungandr_lib::{
     crypto::key::SigningKey,
     interfaces::{
@@ -31,6 +34,7 @@ pub struct Settings {
     pub wallets: Vec<Wallet>,
     pub committees: Vec<CommitteeIdDef>,
     pub block0: Block0Configuration,
+    pub explorer: Option<ExplorerConfiguration>,
     pub stake_pools: HashMap<NodeAlias, StakePool>,
     pub vote_plans: HashMap<VotePlanKey, VotePlanSettings>,
 }
@@ -41,6 +45,7 @@ impl Settings {
         blockchain: &Blockchain,
         wallets: &[WalletTemplate],
         committees: &[CommitteeTemplate],
+        explorer: &Option<ExplorerTemplate>,
         vote_plans: &[VotePlanTemplate],
         rng: &mut Random<RNG>,
     ) -> Result<Self, Error>
@@ -59,6 +64,7 @@ impl Settings {
                 ),
                 initial: Vec::new(),
             },
+            explorer: None,
             stake_pools: HashMap::new(),
             vote_plans: HashMap::new(),
         };
@@ -71,6 +77,11 @@ impl Settings {
 
         settings.vote_plans = vote_plans;
         let discrimination = settings.block0.blockchain_configuration.discrimination;
+
+        if let Some(explorer) = explorer {
+            settings.explorer = Some(generate_explorer(&settings.nodes, explorer)?);
+        }
+
         settings.block0.initial.extend(
             fragments
                 .iter()
@@ -198,4 +209,6 @@ pub enum Error {
     Settings(#[from] wallet::Error),
     #[error(transparent)]
     Committee(#[from] crate::builder::committee::Error),
+    #[error(transparent)]
+    Explorer(#[from] crate::builder::explorer::Error),
 }

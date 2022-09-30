@@ -19,7 +19,7 @@ pub use interactive::{
     UserInteractionController,
 };
 use jormungandr_automation::jormungandr::{
-    ConfiguredStarter, JormungandrParams, JormungandrProcess, LegacyNodeConfig,
+    ConfiguredStarter, ExplorerProcess, JormungandrParams, JormungandrProcess, LegacyNodeConfig,
     LegacyNodeConfigConverter, LogLevel, NodeAlias, PersistenceMode, Starter, TestingDirectory,
     Version,
 };
@@ -195,6 +195,16 @@ impl Controller {
             builder.with_proposal(&mut proposal_builder);
         }
         builder.build()
+    }
+
+    pub fn spawn_explorer(&mut self) -> Result<ExplorerProcess, Error> {
+        ExplorerProcess::new(
+            self.settings
+                .explorer
+                .clone()
+                .ok_or(Error::NoExplorerConfigurationDefined)?,
+        )
+        .map_err(Into::into)
     }
 
     pub fn spawn_node_async(&mut self, alias: &str) -> Result<JormungandrProcess, Error> {
