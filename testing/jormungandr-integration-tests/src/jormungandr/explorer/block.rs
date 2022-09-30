@@ -129,7 +129,7 @@ pub fn explorer_block_test() {
     let explorer_block_response = match explorer.block_by_id(fragment_block_id.to_string()) {
         Ok(response) => response,
         Err(_) => {
-            time::wait_for_date(BlockDate::new(3, 10), jormungandr.rest());
+            time::wait_for_date(BlockDate::new(3, 15), jormungandr.rest());
             println!("finish waiting");
             explorer.block_by_id(fragment_block_id.to_string()).unwrap()
         }
@@ -283,7 +283,7 @@ pub fn explorer_last_block_test() {
     let explorer_block_response = match explorer.last_block() {
         Ok(response) => response,
         Err(_) => {
-            time::wait_for_date(BlockDate::new(3, 10), jormungandr.rest());
+            time::wait_for_date(BlockDate::new(3, 15), jormungandr.rest());
             println!("finish waiting");
             explorer.last_block().unwrap()
         }

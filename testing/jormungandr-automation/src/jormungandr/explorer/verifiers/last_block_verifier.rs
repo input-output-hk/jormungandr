@@ -144,7 +144,7 @@ impl ExplorerVerifier {
                                                     explorer_transaction,
                                                 )
                                                 .unwrap();
-                                                Self::assert_last_block_stake_delegation(fragment_cert, &explorer_cert)
+                                                Self::assert_last_block_stake_delegation(fragment_cert, explorer_cert)
                                                     .unwrap();
                                             } else {
                                                 return Err(VerifierError::InvalidCertificate {
@@ -161,7 +161,7 @@ impl ExplorerVerifier {
                                                     explorer_transaction,
                                                 )
                                                 .unwrap();
-                                               Self::assert_last_block_owner_delegation(fragment_cert, &explorer_cert)
+                                               Self::assert_last_block_owner_delegation(fragment_cert, explorer_cert)
                                                     .unwrap();
                                             } else {
                                                 return Err(VerifierError::InvalidCertificate {
@@ -178,7 +178,7 @@ impl ExplorerVerifier {
                                                     explorer_transaction,
                                                 )
                                                 .unwrap();
-                                              Self::assert_last_block_pool_registration(fragment_cert, &explorer_cert);
+                                              Self::assert_last_block_pool_registration(fragment_cert, explorer_cert);
                                             } else {
                                                return Err(VerifierError::InvalidCertificate {
                                                     received: "PoolRegistration".to_string(),
@@ -194,7 +194,7 @@ impl ExplorerVerifier {
                                                     explorer_transaction,
                                                 )
                                                 .unwrap();
-                                                Self::assert_last_block_pool_retirement(fragment_cert, &explorer_cert);
+                                                Self::assert_last_block_pool_retirement(fragment_cert, explorer_cert);
                                             } else {
                                                return Err(VerifierError::InvalidCertificate {
                                                     received: "PoolRetirement".to_string(),
@@ -208,7 +208,7 @@ impl ExplorerVerifier {
                                                     explorer_transaction,
                                                 )
                                                 .unwrap();
-                                               Self::assert_last_block_pool_update(fragment_cert, &explorer_cert);
+                                               Self::assert_last_block_pool_update(fragment_cert, explorer_cert);
                                             } else {
                                                return Err(VerifierError::InvalidCertificate {
                                                     received: "PoolUpdate".to_string(),
@@ -222,7 +222,7 @@ impl ExplorerVerifier {
                                                     explorer_transaction,
                                                 )
                                                 .unwrap();
-                                                Self::assert_last_block_vote_plan(fragment_cert, &explorer_cert);
+                                                Self::assert_last_block_vote_plan(fragment_cert, explorer_cert);
                                             } else {
                                                return Err(VerifierError::InvalidCertificate {
                                                     received: "VotePlan".to_string(),
@@ -236,7 +236,7 @@ impl ExplorerVerifier {
                                                     explorer_transaction,
                                                 )
                                                 .unwrap();
-                                               Self::assert_last_block_vote_cast(fragment_cert, &explorer_cert);
+                                               Self::assert_last_block_vote_cast(fragment_cert, explorer_cert);
                                             } else {
                                                return Err(VerifierError::InvalidCertificate {
                                                     received: "VoteCast".to_string(),
@@ -250,7 +250,7 @@ impl ExplorerVerifier {
                                                     explorer_transaction,
                                                 )
                                                 .unwrap();
-                                              Self::assert_last_block_vote_tally(fragment_cert, &explorer_cert);
+                                              Self::assert_last_block_vote_tally(fragment_cert, explorer_cert);
                                             } else {
                                                return Err(VerifierError::InvalidCertificate {
                                                     received: "VoteTally".to_string(),
@@ -263,10 +263,10 @@ impl ExplorerVerifier {
                                             if let Fragment::UpdateProposal(fragment_cert) = fragment {
                                                 Self::assert_last_block_transaction_param(
                                                     &fragment_cert.clone(),
-                                                    &explorer_transaction,
+                                                    explorer_transaction,
                                                 )
                                                 .unwrap();
-                                             Self::assert_last_block_update_proposal(fragment_cert, &explorer_cert);
+                                             Self::assert_last_block_update_proposal(fragment_cert, explorer_cert);
                                             } else {
                                              return  Err(VerifierError::InvalidCertificate {
                                                     received: "UpdateProposal".to_string(),
@@ -280,7 +280,7 @@ impl ExplorerVerifier {
                                                     explorer_transaction,
                                                 )
                                                 .unwrap();
-                                            Self::assert_last_block_update_vote(fragment_cert, &explorer_cert);
+                                            Self::assert_last_block_update_vote(fragment_cert, explorer_cert);
                                             } else {
                                               return Err(VerifierError::InvalidCertificate {
                                                     received: "UpdateVote".to_string(),
