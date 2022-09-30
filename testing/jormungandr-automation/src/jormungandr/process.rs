@@ -6,12 +6,14 @@ use super::{
 use crate::{
     jcli::JCli,
     jormungandr::{
-        grpc::JormungandrClient, rest::uri_from_socket_addr, FragmentNode, FragmentNodeError,
+        explorer::configuration::ExplorerConfigurationBuilder, grpc::JormungandrClient,
+        rest::uri_from_socket_addr, ExplorerError, FragmentNode, FragmentNodeError,
         JormungandrLogger, JormungandrRest, JormungandrStateVerifier, LogLevel, MemPoolCheck,
         NodeAlias, RemoteJormungandr, RemoteJormungandrBuilder, StartupVerificationMode,
         TestConfig, TestingDirectory,
     },
     testing::SyncNode,
+    utils::MultiaddrExtension,
 };
 use ::multiaddr::Multiaddr;
 use chain_core::property::Fragment as _;
@@ -38,7 +40,7 @@ use std::{
 };
 use thiserror::Error;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Eq)]
 pub enum Status {
     Running,
     Starting,
@@ -299,22 +301,15 @@ impl JormungandrProcess {
         self.child.id()
     }
 
-    pub fn explorer(&self, params: ExplorerParams) -> ExplorerProcess {
-        let mut p2p_public_address = self.p2p_public_address.clone();
-        let port = match p2p_public_address.pop().unwrap() {
-            multiaddr::Protocol::Tcp(port) => port,
-            _ => todo!("explorer can only be attached through grpc(http)"),
-        };
-
-        let address = match p2p_public_address.pop().unwrap() {
-            multiaddr::Protocol::Ip4(address) => address,
-            _ => todo!("only ipv4 supported for now"),
-        };
+    pub fn explorer(&self, params: ExplorerParams) -> Result<ExplorerProcess, ExplorerError> {
+        let addr = self.p2p_public_address.clone().to_http_addr();
 
         ExplorerProcess::new(
-            format!("http://{}:{}/", address, port),
-            self.temp_dir(),
-            params,
+            ExplorerConfigurationBuilder::default()
+                .address(addr)
+                .log_dir(self.temp_dir())
+                .params(params)
+                .build(),
         )
     }
 

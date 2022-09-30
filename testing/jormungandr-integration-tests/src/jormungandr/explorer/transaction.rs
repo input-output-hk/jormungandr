@@ -28,7 +28,7 @@ pub fn explorer_transaction_test() {
         startup::start_stake_pool(&[sender.clone()], &[], &mut config).unwrap();
 
     let params = ExplorerParams::new(query_complexity_limit, None, None);
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     let transaction = thor::FragmentBuilder::new(

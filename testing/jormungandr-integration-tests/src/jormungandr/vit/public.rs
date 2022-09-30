@@ -53,10 +53,10 @@ pub fn test_get_committee_id() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let mut rng = OsRng;
+    let rng = OsRng;
     let (_, mut expected_committee_ids) = generate_wallets_and_committee();
 
-    let leader_key_pair = KeyPair::generate(&mut rng);
+    let leader_key_pair = KeyPair::generate(rng);
 
     let config = ConfigurationBuilder::new()
         .with_leader_key_pair(leader_key_pair.clone())
@@ -298,7 +298,7 @@ fn assert_first_proposal_has_votes(stake: u64, vote_plan_statuses: Vec<VotePlanS
     match &proposal.tally {
         Tally::Public { result } => {
             let results = result.results();
-            assert_eq!(*results.get(0).unwrap(), 0);
+            assert_eq!(*results.first().unwrap(), 0);
             assert_eq!(*results.get(1).unwrap(), stake);
             assert_eq!(*results.get(2).unwrap(), 0);
         }

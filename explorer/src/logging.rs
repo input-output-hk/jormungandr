@@ -23,6 +23,7 @@ pub struct LogSettings {
 /// some code executes before the logs are initialized.
 pub type LogInfoMsg = Option<Vec<String>>;
 
+#[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, Debug, PartialEq)]
 pub struct LogSettingsEntry {
     pub level: LevelFilter,
@@ -122,7 +123,7 @@ impl LogSettings {
                     .create(true)
                     .write(true)
                     .append(true)
-                    .open(&path)
+                    .open(path)
                     .map_err(|cause| Error::File {
                         path: path.clone(),
                         cause,

@@ -60,4 +60,10 @@ pub enum Error {
 
     #[error(transparent)]
     Serialization(#[from] serde_yaml::Error),
+    #[error(transparent)]
+    SettingsWallet(#[from] crate::builder::settings::wallet::Error),
+    #[error(transparent)]
+    Settings(#[from] crate::builder::settings::Error),
+    #[error("no explorer configuration defined")]
+    NoExplorerConfigurationDefined,
 }

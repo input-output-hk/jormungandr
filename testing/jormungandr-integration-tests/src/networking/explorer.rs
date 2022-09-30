@@ -1,6 +1,6 @@
-use hersir::builder::{
-    blockchain::BlockchainBuilder, wallet::template::builder::WalletTemplateBuilder,
-    NetworkBuilder, Node, SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{BlockchainBuilder, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::{jormungandr::explorer::configuration::ExplorerParams, testing::time};
 use jormungandr_lib::interfaces::BlockDate;
@@ -71,8 +71,8 @@ pub fn passive_node_explorer() {
     let passive = controller
         .spawn(SpawnParams::new(PASSIVE).passive().in_memory())
         .unwrap();
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let bob = controller.controlled_wallet(BOB).unwrap();
 
     let mem_pool_check = FragmentSender::from(&controller.settings().block0)
         .send_transaction(&mut alice, &bob, &leader_1, 1_000.into())
@@ -83,6 +83,7 @@ pub fn passive_node_explorer() {
 
     let transaction_id = passive
         .explorer(ExplorerParams::default())
+        .unwrap()
         .client()
         .transaction((*mem_pool_check.fragment_id()).into())
         .unwrap()

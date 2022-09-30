@@ -81,7 +81,9 @@ pub use self::{
     utxo_info::{UTxOInfo, UTxOOutputInfo},
     value::{Value, ValueDef},
     vote::{
-        serde_base64_bytes, AccountVotes, PrivateTallyState, Tally, TallyResult, VotePayload,
-        VotePlan, VotePlanId, VotePlanStatus, VotePrivacy, VoteProposalStatus,
+        serde_base64_bytes, serde_choices, serde_committee_member_public_keys,
+        serde_external_proposal_id, serde_proposals, AccountVotes, PrivateTallyState, Tally,
+        TallyResult, VotePayload, VotePlan, VotePlanId, VotePlanStatus, VotePrivacy,
+        VoteProposalStatus,
     },
 };

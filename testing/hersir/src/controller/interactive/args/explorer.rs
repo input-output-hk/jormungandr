@@ -34,7 +34,7 @@ impl ExplorerTip {
             })?;
         println!(
             "{:#?}",
-            node.explorer(ExplorerParams::default())
+            node.explorer(ExplorerParams::default())?
                 .client()
                 .last_block()?
         );

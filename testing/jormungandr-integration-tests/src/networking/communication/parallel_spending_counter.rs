@@ -1,7 +1,7 @@
 use chain_impl_mockchain::testing::WitnessMode;
-use hersir::builder::{
-    wallet::template::builder::WalletTemplateBuilder, Blockchain, NetworkBuilder, Node,
-    SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
 };
 use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
 
@@ -63,8 +63,8 @@ pub fn account_send_4_parallel_transaction_through_4_proxies() {
         .spawn(SpawnParams::new(PASSIVE_4).in_memory())
         .unwrap();
 
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let bob = controller.controlled_wallet(BOB).unwrap();
 
     let mut fragment_sender = FragmentSender::from(&controller.settings().block0)
         .clone_with_setup(FragmentSenderSetup::no_verify());

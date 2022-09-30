@@ -33,7 +33,6 @@ use chain_impl_mockchain::{
     value::Value as ValueLib,
     vote::CommitteeId,
 };
-pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
 use jormungandr_automation::jcli::WitnessData;
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},

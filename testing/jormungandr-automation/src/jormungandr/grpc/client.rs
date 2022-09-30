@@ -33,7 +33,7 @@ use tonic::transport::Channel;
 
 const CLIENT_RETRY_WAIT: Duration = Duration::from_millis(500);
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum MockClientError {
     #[error("request failed with message '{0}'")]
     InvalidRequest(String),

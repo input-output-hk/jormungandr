@@ -1,10 +1,8 @@
 mod node;
 
 use crate::{
-    builder::{
-        Blockchain, NetworkBuilder, Settings, SpawnParams, Topology, Wallet as WalletSetting,
-    },
-    config::SessionSettings,
+    builder::{NetworkBuilder, Settings, Topology, Wallet as WalletSetting},
+    config::{Blockchain, SessionSettings, SpawnParams},
     controller::{Controller as InnerController, Error},
     style,
 };
@@ -136,17 +134,22 @@ impl MonitorController {
         self.inner.settings().block0.clone()
     }
 
-    pub fn wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSetting)> {
-        self.inner.settings().wallets.iter()
+    pub fn defined_wallets(&self) -> impl Iterator<Item = (WalletAlias, &WalletSetting)> {
+        self.inner.defined_wallets()
     }
 
-    pub fn get_all_wallets(&mut self) -> Vec<Wallet> {
-        let mut wallets = vec![];
-
-        for alias in self.inner.settings().wallets.keys() {
-            wallets.push(self.wallet(alias).unwrap());
-        }
-        wallets
+    pub fn controlled_wallets(&mut self) -> Vec<Wallet> {
+        self.inner
+            .settings()
+            .wallets
+            .iter()
+            .cloned()
+            .filter(|x| x.template().is_generated())
+            .map(|x| {
+                x.try_into()
+                    .expect("internal error.. generated wallet should have inner wallet")
+            })
+            .collect()
     }
 
     pub fn settings(&self) -> &Settings {
@@ -169,12 +172,14 @@ impl MonitorController {
         self.inner.block0_file()
     }
 
-    pub fn wallet(&self, wallet: &str) -> Result<Wallet, Error> {
-        if let Some(wallet) = self.settings().wallets.get(wallet) {
-            Ok(wallet.clone().into())
-        } else {
-            Err(Error::WalletNotFound(wallet.to_owned()))
-        }
+    pub fn controlled_wallet(&self, wallet: &str) -> Result<Wallet, Error> {
+        self.settings()
+            .wallets
+            .iter()
+            .cloned()
+            .find(|w| w.template().alias() == Some(wallet.to_string()))
+            .map(|w| w.into())
+            .ok_or_else(|| Error::WalletNotFound(wallet.to_owned()))
     }
 
     pub fn new_spawn_params(&self, node_alias: &str) -> SpawnParams {

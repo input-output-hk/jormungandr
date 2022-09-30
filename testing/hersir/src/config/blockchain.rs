@@ -1,4 +1,4 @@
-use super::{ExternalWalletTemplate, NodeAlias, WalletTemplate};
+use super::NodeAlias;
 use crate::builder::VotePlanKey;
 use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
@@ -13,7 +13,6 @@ use jormungandr_lib::{
 };
 use serde::Deserialize;
 use std::collections::HashMap;
-use thor::WalletAlias;
 
 #[derive(Clone, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
@@ -22,8 +21,6 @@ pub struct Blockchain {
     block0_date: SecondsSinceUnixEpoch,
     #[serde(default)]
     block_content_max_size: BlockContentMaxSize,
-    #[serde(default)]
-    committees: Vec<WalletAlias>,
     #[serde(with = "ConsensusVersionDef")]
     consensus: ConsensusVersion,
     #[serde(default)]
@@ -31,11 +28,9 @@ pub struct Blockchain {
     #[serde(with = "DiscriminationDef")]
     discrimination: Discrimination,
     #[serde(default)]
-    external_committees: Vec<CommitteeIdDef>,
+    committees: Vec<CommitteeIdDef>,
     #[serde(default)]
     external_consensus_leader_ids: Vec<ConsensusLeaderId>,
-    #[serde(default)]
-    external_wallets: Vec<ExternalWalletTemplate>,
     #[serde(default)]
     kes_update_speed: KesUpdateSpeed,
     #[serde(default)]
@@ -50,8 +45,6 @@ pub struct Blockchain {
     tx_max_expiry_epochs: Option<u8>,
     #[serde(default)]
     vote_plans: HashMap<VotePlanKey, VotePlan>,
-    #[serde(default)]
-    wallets: HashMap<WalletAlias, WalletTemplate>,
 }
 
 impl Blockchain {
@@ -73,20 +66,6 @@ impl Blockchain {
         block_content_max_size: BlockContentMaxSize,
     ) -> Self {
         self.block_content_max_size = block_content_max_size;
-        self
-    }
-
-    pub fn committees(&self) -> Vec<WalletAlias> {
-        self.committees.clone()
-    }
-
-    pub fn with_committes(mut self, committees: Vec<WalletAlias>) -> Self {
-        self.committees = committees;
-        self
-    }
-
-    pub fn with_committee<S: Into<NodeAlias>>(mut self, alias: S) -> Self {
-        self.committees.push(alias.into());
         self
     }
 
@@ -120,17 +99,17 @@ impl Blockchain {
         self
     }
 
-    pub fn external_committees(&self) -> Vec<CommitteeIdDef> {
-        self.external_committees.clone()
+    pub fn committees(&self) -> Vec<CommitteeIdDef> {
+        self.committees.clone()
     }
 
-    pub fn with_external_committees(mut self, external_committees: Vec<CommitteeIdDef>) -> Self {
-        self.external_committees = external_committees;
+    pub fn with_committees(mut self, committees: Vec<CommitteeIdDef>) -> Self {
+        self.committees = committees;
         self
     }
 
-    pub fn with_external_committee(mut self, committee: CommitteeIdDef) -> Self {
-        self.external_committees.push(committee);
+    pub fn with_committee(mut self, committee: CommitteeIdDef) -> Self {
+        self.committees.push(committee);
         self
     }
 
@@ -148,15 +127,6 @@ impl Blockchain {
 
     pub fn has_external_consensus_leader_ids(&self) -> bool {
         !self.external_consensus_leader_ids().is_empty()
-    }
-
-    pub fn external_wallets(&self) -> Vec<ExternalWalletTemplate> {
-        self.external_wallets.clone()
-    }
-
-    pub fn with_external_wallets(mut self, external_wallets: Vec<ExternalWalletTemplate>) -> Self {
-        self.external_wallets = external_wallets;
-        self
     }
 
     pub fn kes_update_speed(&self) -> &KesUpdateSpeed {
@@ -227,15 +197,6 @@ impl Blockchain {
             .insert(VotePlanKey { alias, owner_alias }, vote_plan_template);
         self
     }
-
-    pub fn wallets(&self) -> impl Iterator<Item = &WalletTemplate> {
-        self.wallets.values()
-    }
-
-    pub fn with_wallet(mut self, wallet: WalletTemplate) -> Self {
-        self.wallets.insert(wallet.alias().clone(), wallet);
-        self
-    }
 }
 
 impl Default for Blockchain {
@@ -250,9 +211,7 @@ impl Default for Blockchain {
             )
             .unwrap(),
             discrimination: Discrimination::Test,
-            external_committees: Vec::new(),
             external_consensus_leader_ids: Vec::new(),
-            external_wallets: Vec::new(),
             kes_update_speed: KesUpdateSpeed::new(46800).unwrap(),
             leaders: Vec::new(),
             linear_fee: LinearFee::new(1, 1, 1),
@@ -260,7 +219,6 @@ impl Default for Blockchain {
             slots_per_epoch: NumberOfSlotsPerEpoch::new(60).unwrap(),
             tx_max_expiry_epochs: None,
             vote_plans: HashMap::new(),
-            wallets: HashMap::new(),
         }
     }
 }
@@ -283,8 +241,8 @@ impl BlockchainBuilder {
         self
     }
 
-    pub fn committee<S: Into<NodeAlias>>(mut self, alias: S) -> Self {
-        self.blockchain = self.blockchain.with_committee(alias);
+    pub fn committee(mut self, committee_id: CommitteeIdDef) -> Self {
+        self.blockchain = self.blockchain.with_committee(committee_id);
         self
     }
 
@@ -308,15 +266,8 @@ impl BlockchainBuilder {
         self
     }
 
-    pub fn external_committees(mut self, external_committees: Vec<CommitteeIdDef>) -> Self {
-        self.blockchain = self
-            .blockchain
-            .with_external_committees(external_committees);
-        self
-    }
-
-    pub fn external_committee(mut self, committee: CommitteeIdDef) -> Self {
-        self.blockchain = self.blockchain.with_external_committee(committee);
+    pub fn committees(mut self, committees: Vec<CommitteeIdDef>) -> Self {
+        self.blockchain = self.blockchain.with_committees(committees);
         self
     }
 
@@ -327,11 +278,6 @@ impl BlockchainBuilder {
         self.blockchain = self
             .blockchain
             .with_external_consensus_leader_ids(external_consensus_leader_ids);
-        self
-    }
-
-    pub fn external_wallets(mut self, external_wallets: Vec<ExternalWalletTemplate>) -> Self {
-        self.blockchain = self.blockchain.with_external_wallets(external_wallets);
         self
     }
 
@@ -379,11 +325,6 @@ impl BlockchainBuilder {
         self.blockchain = self
             .blockchain
             .with_vote_plan(alias, owner_alias, vote_plan_template);
-        self
-    }
-
-    pub fn wallet(mut self, wallet: WalletTemplate) -> Self {
-        self.blockchain = self.blockchain.with_wallet(wallet);
         self
     }
 

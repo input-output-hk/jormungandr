@@ -72,11 +72,13 @@ pub fn explorer_block_test() {
     let mut fragment_generator = FragmentGenerator::new(
         sender,
         receiver,
+        None,
         jormungandr.to_remote(),
         time_era.slots_per_epoch(),
         2,
         2,
         2,
+        0,
         fragment_sender,
     );
 
@@ -113,13 +115,15 @@ pub fn explorer_block_test() {
         .block()
         .get(fragment_block_id.to_string(), jormungandr.rest_uri());
 
-    let decoded_block = ExplorerVerifier::decode_block(encoded_block);
+    let bytes_block = hex::decode(encoded_block.trim()).unwrap();
+    let reader = std::io::Cursor::new(&bytes_block);
+    let decoded_block = Block::deserialize(&mut Codec::new(reader)).unwrap();
 
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
-    let explorer_block_response = explorer.block(fragment_block_id.to_string()).unwrap();
+    let explorer_block_response = explorer.block_by_id(fragment_block_id.to_string()).unwrap();
 
     assert!(
         explorer_block_response.errors.is_none(),
@@ -138,10 +142,10 @@ pub fn explorer_block0_test() {
     let jormungandr = Starter::new().start().unwrap();
     let block0_id = jormungandr.genesis_block_hash().to_string();
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
-    let explorer_block0_response = explorer.block(block0_id).unwrap();
+    let explorer_block0_response = explorer.block_by_id(block0_id).unwrap();
 
     assert!(
         explorer_block0_response.errors.is_none(),
@@ -175,11 +179,11 @@ pub fn explorer_block_incorrect_id_test() {
     let jormungandr = Starter::new().start().unwrap();
 
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
-    let explorer_process = jormungandr.explorer(params);
+    let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
     for (incorrect_block_id, error_message) in incorrect_block_ids {
-        let response = explorer.block(incorrect_block_id.to_string());
+        let response = explorer.block_by_id(incorrect_block_id.to_string());
         assert!(response.as_ref().unwrap().errors.is_some());
         assert!(response.as_ref().unwrap().data.is_none());
         assert!(response

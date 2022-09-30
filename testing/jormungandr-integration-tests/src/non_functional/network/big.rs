@@ -2,7 +2,8 @@ use crate::networking::utils;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli, value::Value};
 use function_name::named;
 use hersir::{
-    builder::{Blockchain, NetworkBuilder, Node, SpawnParams, Topology, WalletTemplate},
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplate},
     controller::Controller,
 };
 use jormungandr_automation::{
@@ -96,7 +97,7 @@ fn prepare_real_scenario(
             HashMap::new(),
         );
         *wallet.delegate_mut() = Some(leader_name(i).to_owned());
-        blockchain = blockchain.with_wallet(wallet);
+        builder = builder.wallet_template(wallet);
     }
 
     for i in 1..legacy_nodes_counter {
@@ -108,7 +109,7 @@ fn prepare_real_scenario(
             HashMap::new(),
         );
         *wallet.delegate_mut() = Some(legacy_name(i).to_owned());
-        blockchain = blockchain.with_wallet(wallet);
+        builder = builder.wallet_template(wallet);
     }
 
     builder.blockchain_config(blockchain).build().unwrap()
@@ -219,8 +220,8 @@ pub fn real_network(
     )
     .unwrap();
 
-    let mut wallet = controller.wallet(&wallet_name(1)).unwrap();
-    let wallet2 = controller.wallet(&wallet_name(2)).unwrap();
+    let mut wallet = controller.controlled_wallet(&wallet_name(1)).unwrap();
+    let wallet2 = controller.controlled_wallet(&wallet_name(2)).unwrap();
 
     let fragment_nodes: Vec<&JormungandrProcess> = leaders.iter().collect();
 

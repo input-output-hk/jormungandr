@@ -1,11 +1,12 @@
 use self::{
     client::GraphQlClient,
-    configuration::ExplorerParams,
     data::{
-        address, all_blocks, all_stake_pools, all_vote_plans, block_by_id, blocks_by_chain_length,
-        epoch, last_block, settings, stake_pool, transaction_by_id, transaction_by_id_certificates,
-        Address, AllBlocks, AllStakePools, AllVotePlans, BlockById, BlocksByChainLength, Epoch,
+        address, all_blocks, all_stake_pools, all_vote_plans, block, block_by_id,
+        blocks_by_chain_length, epoch, last_block, settings, stake_pool, transaction_by_id,
+        transaction_by_id_certificates, transactions_by_address, vote_plan_by_id, Address,
+        AllBlocks, AllStakePools, AllVotePlans, Block, BlockById, BlocksByChainLength, Epoch,
         LastBlock, Settings, StakePool, TransactionById, TransactionByIdCertificates,
+        TransactionsByAddress, VotePlanById,
     },
 };
 use crate::testing::configuration::get_explorer_app;
@@ -18,11 +19,11 @@ use std::{
 };
 mod client;
 pub mod configuration;
-mod data;
+pub mod data;
 pub mod verifiers;
 mod wrappers;
 
-use super::get_available_port;
+use crate::jormungandr::explorer::configuration::ExplorerConfiguration;
 use data::PoolId;
 use jortestkit::{file, process::Wait};
 use serde::Serialize;
@@ -38,6 +39,8 @@ pub enum ExplorerError {
     SerializationError(#[from] serde_json::Error),
     #[error("request error")]
     ReqwestError(#[from] reqwest::Error),
+    #[error("cannot bootstrap explorer")]
+    Bootstrap,
 }
 
 #[derive(Clone)]
@@ -48,50 +51,58 @@ pub struct Explorer {
 
 pub struct ExplorerProcess {
     handler: Option<std::process::Child>,
-    logs_dir: Option<std::path::PathBuf>,
+    configuration: ExplorerConfiguration,
     client: Explorer,
 }
 
 impl ExplorerProcess {
-    pub fn new(
-        node_address: String,
-        logs_dir: Option<std::path::PathBuf>,
-        params: ExplorerParams,
-    ) -> Self {
+    pub fn new(configuration: ExplorerConfiguration) -> Result<Self, ExplorerError> {
         let path = get_explorer_app();
-        let explorer_port = get_available_port();
-        let explorer_listen_address = format!("127.0.0.1:{}", explorer_port);
 
         let mut explorer_cmd = Command::new(path);
-        explorer_cmd.args(&[
+        explorer_cmd.args([
             "--node",
-            node_address.as_ref(),
+            configuration.node_address.as_ref(),
             "--binding-address",
-            explorer_listen_address.as_ref(),
+            &format!(
+                "{}:{}",
+                &configuration.explorer_listen_address, &configuration.explorer_port
+            ),
             "--log-output",
             "stdout",
         ]);
 
-        if params.address_bech32_prefix.is_some() {
+        if let Some(storage) = &configuration.storage_dir {
+            explorer_cmd.arg("--storage-dir");
+            explorer_cmd.arg(&storage);
+        }
+
+        if configuration.params.address_bech32_prefix.is_some() {
             explorer_cmd.args([
                 "--address-bech32-prefix",
-                params.address_bech32_prefix.unwrap().as_ref(),
+                configuration.params.address_bech32_prefix.as_ref().unwrap(),
             ]);
         }
 
-        if params.query_depth_limit.is_some() {
+        if configuration.params.query_depth_limit.is_some() {
             explorer_cmd.args([
                 "--query-depth-limit",
-                &params.query_depth_limit.unwrap().to_string(),
+                &configuration.params.query_depth_limit.unwrap().to_string(),
             ]);
         }
 
-        if params.query_complexity_limit.is_some() {
+        if configuration.params.query_complexity_limit.is_some() {
             explorer_cmd.args([
                 "--query-complexity-limit",
-                &params.query_complexity_limit.unwrap().to_string(),
+                &configuration
+                    .params
+                    .query_complexity_limit
+                    .unwrap()
+                    .to_string(),
             ]);
         }
+
+        println!("starting explorer: {:?}", explorer_cmd);
 
         let process = ExplorerProcess {
             handler: Some(
@@ -101,24 +112,30 @@ impl ExplorerProcess {
                     .spawn()
                     .expect("failed to execute explorer process"),
             ),
-            logs_dir,
-            client: Explorer::new(explorer_listen_address.clone()),
+            client: Explorer::new(format!(
+                "{}:{}",
+                configuration.explorer_listen_address, configuration.explorer_port
+            )),
+            configuration: configuration.clone(),
         };
 
         let mut wait_bootstrap = Wait::new(Duration::from_secs(1), 10);
         while !wait_bootstrap.timeout_reached() {
             if reqwest::blocking::Client::new()
-                .head(format!("http://{}/", &explorer_listen_address))
+                .head(configuration.explorer_listen_http_address())
                 .send()
                 .is_ok()
             {
                 break;
             };
-
             wait_bootstrap.advance();
         }
 
-        process
+        if wait_bootstrap.timeout_reached() {
+            Err(ExplorerError::Bootstrap)
+        } else {
+            Ok(process)
+        }
     }
 
     /// get an explorer client configured to use this instance.
@@ -144,7 +161,7 @@ impl Drop for ExplorerProcess {
         };
 
         if std::thread::panicking() {
-            if let Some(logs_dir) = &self.logs_dir {
+            if let Some(logs_dir) = &self.configuration.logs_dir {
                 println!(
                     "persisting explorer logs after panic: {}",
                     logs_dir.display()
@@ -209,6 +226,29 @@ impl Explorer {
         self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body = response.json()?;
+        self.print_log(&response_body);
+        Ok(response_body)
+    }
+
+    pub fn block(&self, hash: Hash) -> Result<Response<block::ResponseData>, ExplorerError> {
+        let query = Block::build_query(block::Variables {
+            id: hash.to_string(),
+        });
+        self.print_request(&query);
+        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response_body: Response<block::ResponseData> = response.json()?;
+        self.print_log(&response_body);
+        Ok(response_body)
+    }
+
+    pub fn block_by_id(
+        &self,
+        id: String,
+    ) -> Result<Response<block_by_id::ResponseData>, ExplorerError> {
+        let query = BlockById::build_query(block_by_id::Variables { id });
+        self.print_request(&query);
+        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response_body: Response<block_by_id::ResponseData> = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
     }
@@ -295,6 +335,18 @@ impl Explorer {
         Ok(response_body)
     }
 
+    pub fn vote_plan(
+        &self,
+        id: String,
+    ) -> Result<Response<vote_plan_by_id::ResponseData>, ExplorerError> {
+        let query = VotePlanById::build_query(vote_plan_by_id::Variables { id });
+        self.print_request(&query);
+        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response_body: Response<vote_plan_by_id::ResponseData> = response.json()?;
+        self.print_log(&response_body);
+        Ok(response_body)
+    }
+
     pub fn transaction(
         &self,
         hash: Hash,
@@ -330,6 +382,16 @@ impl Explorer {
         self.print_request(&query);
         let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
         let response_body: Response<block_by_id::ResponseData> = response.json()?;
+    pub fn transactions_address<S: Into<String>>(
+        &self,
+        bech32_address: S,
+    ) -> Result<Response<transactions_by_address::ResponseData>, ExplorerError> {
+        let query = TransactionsByAddress::build_query(transactions_by_address::Variables {
+            bech32: bech32_address.into(),
+        });
+        self.print_request(&query);
+        let response = self.client.run(query).map_err(ExplorerError::ClientError)?;
+        let response_body: Response<transactions_by_address::ResponseData> = response.json()?;
         self.print_log(&response_body);
         Ok(response_body)
     }

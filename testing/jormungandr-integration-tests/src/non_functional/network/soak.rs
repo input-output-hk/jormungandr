@@ -2,9 +2,9 @@ use crate::{
     networking::{p2p::connections::parse_timestamp, utils::wait},
     non_functional::network::*,
 };
-use hersir::builder::{
-    blockchain::BlockchainBuilder, wallet::template::builder::WalletTemplateBuilder,
-    NetworkBuilder, Node, SpawnParams, Topology,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{BlockchainBuilder, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::{
     jormungandr::LogLevel,
@@ -128,13 +128,13 @@ pub fn relay_soak() {
         .spawn(SpawnParams::new(LEADER_7).in_memory())
         .unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
-    let mut wallet3 = controller.wallet(CLARICE).unwrap();
-    let mut wallet4 = controller.wallet(DAVID).unwrap();
-    let mut wallet5 = controller.wallet(EDGAR).unwrap();
-    let mut wallet6 = controller.wallet(FILIP).unwrap();
-    let mut wallet7 = controller.wallet(GRACE).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
+    let mut wallet3 = controller.controlled_wallet(CLARICE).unwrap();
+    let mut wallet4 = controller.controlled_wallet(DAVID).unwrap();
+    let mut wallet5 = controller.controlled_wallet(EDGAR).unwrap();
+    let mut wallet6 = controller.controlled_wallet(FILIP).unwrap();
+    let mut wallet7 = controller.controlled_wallet(GRACE).unwrap();
 
     let now = SystemTime::now();
 

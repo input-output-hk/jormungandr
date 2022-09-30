@@ -18,7 +18,7 @@ const DEFAULT_LOG_SETTINGS_ENTRY: LogSettingsEntry = LogSettingsEntry {
 };
 
 const DEFAULT_QUERY_DEPTH_LIMIT: usize = 15;
-const DEFAULT_QUERY_COMPLEXITY_LIMIT: usize = 40;
+const DEFAULT_QUERY_COMPLEXITY_LIMIT: usize = 100;
 
 lazy_static! {
     pub static ref LOG_FILTER_LEVEL_POSSIBLE_VALUES: Vec<&'static str> = {
@@ -252,7 +252,7 @@ mod filter_level_opt_serde {
         Option::<String>::deserialize(deserializer)?
             .map(|variant| {
                 variant.parse().map_err(|_| {
-                    D::Error::unknown_variant(&variant, &**LOG_FILTER_LEVEL_POSSIBLE_VALUES)
+                    D::Error::unknown_variant(&variant, &LOG_FILTER_LEVEL_POSSIBLE_VALUES)
                 })
             })
             .transpose()

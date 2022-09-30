@@ -33,7 +33,7 @@ jobs:
       cargo-lock-hash: ${{ steps.hash-cargo-lock.outputs.hash }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - id: ls-crates-io-index
         name: Get head commit hash of crates.io registry index
@@ -69,7 +69,7 @@ jobs:
           default: true
 
       - name: Cache cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
@@ -77,7 +77,7 @@ jobs:
 
       - id: cargo-deps
         name: Cache cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/cache
@@ -85,7 +85,7 @@ jobs:
           key: cargo-deps-v1-${{ needs.cache_info.outputs.cargo-lock-hash }}
 
       - name: Check out the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
 
@@ -142,10 +142,10 @@ jobs:
           components: rustfmt
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Restore cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
@@ -154,7 +154,7 @@ jobs:
           restore-keys: cargo-index-
 
       - name: Restore cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/cache
@@ -207,7 +207,7 @@ jobs:
 
       - name: Pack logs from failed tests
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
           path: ${{ runner.temp }}/jormungandr_*

@@ -557,7 +557,7 @@ pub fn test_input_with_smaller_value_than_initial_utxo_is_rejected_by_node() {
         .config(config.clone())
         .start()
         .unwrap();
-    let block0_hash = jcli.genesis().hash(&config.genesis_block_path());
+    let block0_hash = jcli.genesis().hash(config.genesis_block_path());
     let utxo = config.block0_utxo_for_address(&sender.address());
     let transaction_message = jcli
         .transaction_builder(block0_hash)
@@ -594,7 +594,7 @@ pub fn test_transaction_with_non_existing_id_should_be_rejected_by_node() {
         .config(config.clone())
         .start()
         .unwrap();
-    let block0_hash = jcli.genesis().hash(&config.genesis_block_path());
+    let block0_hash = jcli.genesis().hash(config.genesis_block_path());
     let transaction_message = jcli
         .transaction_builder(block0_hash)
         .new_transaction()
