@@ -254,11 +254,13 @@ pub fn explorer_last_block_test() {
     let mut fragment_generator = FragmentGenerator::new(
         sender,
         receiver,
+        None,
         jormungandr.to_remote(),
         time_era.slots_per_epoch(),
         2,
         2,
         2,
+        0,
         fragment_sender,
     );
 
