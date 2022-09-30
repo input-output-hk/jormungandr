@@ -2,35 +2,36 @@
 
 mod legacy;
 
-use jormungandr_automation::jormungandr::ExplorerProcess;
-pub use legacy::LegacyNode;
-
 use crate::style;
 use chain_core::property::Fragment as _;
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use jormungandr_automation::jormungandr::LogLevel;
-use jormungandr_automation::jormungandr::NodeAlias;
+use indicatif::ProgressBar;
 pub use jormungandr_automation::jormungandr::{
     grpc::{client::MockClientError, JormungandrClient},
     uri_from_socket_addr, FragmentNode, FragmentNodeError, JormungandrLogger, JormungandrRest,
     MemPoolCheck, RestError,
 };
-use jormungandr_automation::jormungandr::{
-    JormungandrProcess, ShutdownError, StartupError, StartupVerificationMode, Status,
+use jormungandr_automation::{
+    jormungandr::{
+        explorer::configuration::ExplorerParams, ExplorerProcess, JormungandrProcess, LogLevel,
+        NodeAlias, ShutdownError, StartupError, StartupVerificationMode, Status,
+    },
+    testing::SyncNode,
 };
-use jormungandr_automation::testing::SyncNode;
-use jormungandr_lib::interfaces::NodeState;
-use jormungandr_lib::interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary};
-use jormungandr_lib::{crypto::hash::Hash, multiaddr};
-use std::collections::HashMap;
-
-use indicatif::ProgressBar;
-use std::net::SocketAddr;
-
-use std::io::{self, BufRead, BufReader};
-use std::path::PathBuf;
-use std::process::ExitStatus;
-use std::time::Duration;
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary, NodeState},
+    multiaddr,
+};
+pub use legacy::LegacyNode;
+use std::{
+    collections::HashMap,
+    io::{self, BufRead, BufReader},
+    net::SocketAddr,
+    path::PathBuf,
+    process::ExitStatus,
+    time::Duration,
+};
 
 #[derive(custom_debug::Debug, thiserror::Error)]
 pub enum Error {
@@ -169,8 +170,8 @@ impl Node {
         multiaddr::to_tcp_socket_addr(&self.process.p2p_public_address()).unwrap()
     }
 
-    pub fn explorer(&self) -> ExplorerProcess {
-        self.process.explorer()
+    pub fn explorer(&self) -> Result<ExplorerProcess, ExplorerError> {
+        self.process.explorer(ExplorerParams::default())
     }
 
     pub fn log(&self, info: &str) {
@@ -309,6 +310,7 @@ impl Node {
     }
 }
 
+use jormungandr_automation::jormungandr::ExplorerError;
 use std::fmt::Display;
 
 impl ProgressBarController {

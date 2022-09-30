@@ -19,12 +19,10 @@ use crate::{
     },
 };
 use chain_core::property::{Block as _, Header as _};
-
 use futures::prelude::*;
+use std::{sync::Arc, time::Duration};
 use tracing::{span, Level};
 use tracing_futures::Instrument;
-
-use std::{sync::Arc, time::Duration};
 
 type PullHeadersScheduler = FireForgetScheduler<HeaderHash, NodeId, Checkpoints>;
 type GetNextBlockScheduler = FireForgetScheduler<HeaderHash, NodeId, ()>;
@@ -530,8 +528,7 @@ async fn process_network_block(
                 Err(Error::MissingParentBlock(parent_hash))
             }
             PreCheckedHeader::HeaderWithCache { parent_ref, .. } => {
-                let r = check_and_apply_block(blockchain, parent_ref, block, watch_msg_box).await;
-                r
+                check_and_apply_block(blockchain, parent_ref, block, watch_msg_box).await
             }
         }
     }

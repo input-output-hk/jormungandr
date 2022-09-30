@@ -17,6 +17,9 @@ const DEFAULT_LOG_SETTINGS_ENTRY: LogSettingsEntry = LogSettingsEntry {
     output: DEFAULT_LOG_OUTPUT,
 };
 
+const DEFAULT_QUERY_DEPTH_LIMIT: usize = 15;
+const DEFAULT_QUERY_COMPLEXITY_LIMIT: usize = 100;
+
 lazy_static! {
     pub static ref LOG_FILTER_LEVEL_POSSIBLE_VALUES: Vec<&'static str> = {
         [
@@ -48,6 +51,8 @@ pub struct Settings {
     pub node: Uri,
     pub binding_address: SocketAddr,
     pub address_bech32_prefix: String,
+    pub query_depth_limit: usize,
+    pub query_complexity_limit: usize,
     pub tls: Option<Tls>,
     pub cors: Option<Cors>,
     pub log_settings: Option<LogSettings>,
@@ -82,6 +87,16 @@ impl Settings {
             .or_else(|| file.address_bech32_prefix.clone())
             .unwrap_or_else(|| "addr".to_string());
 
+        let query_depth_limit = cmd
+            .query_depth_limit
+            .or(file.query_depth_limit)
+            .unwrap_or(DEFAULT_QUERY_DEPTH_LIMIT);
+
+        let query_complexity_limit = cmd
+            .query_complexity_limit
+            .or(file.query_complexity_limit)
+            .unwrap_or(DEFAULT_QUERY_COMPLEXITY_LIMIT);
+
         let log_settings = Some(Self::log_settings(&cmd, &file));
 
         let tls = file.tls;
@@ -91,6 +106,8 @@ impl Settings {
             node,
             binding_address,
             address_bech32_prefix,
+            query_depth_limit,
+            query_complexity_limit,
             tls,
             cors,
             log_settings,
@@ -167,6 +184,11 @@ struct CommandLine {
     pub binding_address: Option<SocketAddr>,
     #[structopt(long)]
     pub address_bech32_prefix: Option<String>,
+    #[structopt(long)]
+    pub query_depth_limit: Option<usize>,
+    #[structopt(long)]
+    pub query_complexity_limit: Option<usize>,
+
     pub config: Option<PathBuf>,
     /// Set log messages minimum severity. If not configured anywhere, defaults to "info".
     #[structopt(
@@ -199,6 +221,8 @@ pub struct Config {
     pub node: Option<Uri>,
     pub binding_address: Option<SocketAddr>,
     pub address_bech32_prefix: Option<String>,
+    pub query_depth_limit: Option<usize>,
+    pub query_complexity_limit: Option<usize>,
     pub logs: Option<ConfigLogSettings>,
 }
 
@@ -228,7 +252,7 @@ mod filter_level_opt_serde {
         Option::<String>::deserialize(deserializer)?
             .map(|variant| {
                 variant.parse().map_err(|_| {
-                    D::Error::unknown_variant(&variant, &**LOG_FILTER_LEVEL_POSSIBLE_VALUES)
+                    D::Error::unknown_variant(&variant, &LOG_FILTER_LEVEL_POSSIBLE_VALUES)
                 })
             })
             .transpose()

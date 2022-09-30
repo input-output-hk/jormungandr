@@ -1,7 +1,7 @@
-use crate::generators::AdversaryFragmentGenerator;
-use crate::generators::FragmentStatusProvider;
-use crate::mjolnir_lib::DiscriminationExtensions;
-use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
+use crate::{
+    generators::{AdversaryFragmentGenerator, FragmentStatusProvider},
+    mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError},
+};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
@@ -11,18 +11,19 @@ use jortestkit::{
     prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
 };
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
-use std::time::Duration;
-use std::{path::PathBuf, str::FromStr};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
-use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
+use thor::{
+    BlockDateGenerator, DiscriminationExtension, FragmentSender, FragmentSenderSetup, Wallet,
+};
 #[derive(StructOpt, Debug)]
 pub struct AllAdversary {
     /// Number of threads
     #[structopt(short = "c", long = "count", default_value = "3")]
     pub count: usize,
 
-    /// address in format:
-    /// /ip4/54.193.75.55/tcp/3000
+    /// Address in format:
+    /// `/ip4/54.193.75.55/tcp/3000`
     #[structopt(short = "a", long = "address")]
     pub endpoint: String,
 
@@ -34,7 +35,7 @@ pub struct AllAdversary {
     #[structopt(short = "d", long = "duration")]
     pub duration: u64,
 
-    // show progress
+    /// Show progress bar during tests
     #[structopt(
         long = "progress-bar-mode",
         short = "b",
@@ -43,12 +44,15 @@ pub struct AllAdversary {
     )]
     progress_bar_mode: ProgressBarMode,
 
+    /// Prints post load measurements
     #[structopt(short = "m", long = "measure")]
     pub measure: bool,
 
+    /// Secret key file for source address from which requests will be send
     #[structopt(long = "key", short = "k")]
     faucet_key_file: PathBuf,
 
+    /// Source address spending counter
     #[structopt(long = "spending-counter", short = "s")]
     faucet_spending_counter: u32,
 
@@ -80,7 +84,7 @@ impl AllAdversary {
         let settings = remote_jormungandr.rest().settings().unwrap();
 
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
-        let fees = settings.fees;
+        let fees = settings.fees.clone();
 
         let expiry_generator = self
             .valid_until
@@ -89,7 +93,7 @@ impl AllAdversary {
 
         let transaction_sender = FragmentSender::new(
             block0_hash,
-            fees,
+            fees.clone(),
             expiry_generator.clone(),
             FragmentSenderSetup::no_verify(),
         );

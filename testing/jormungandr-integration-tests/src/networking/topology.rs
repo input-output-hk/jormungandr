@@ -1,14 +1,10 @@
 use crate::networking::utils;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_automation::testing::benchmark::MeasurementReportInterval;
-use jormungandr_automation::testing::SyncWaitParams;
-use thor::FragmentSender;
-use thor::FragmentSenderSetup;
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+};
+use jormungandr_automation::testing::{benchmark::MeasurementReportInterval, SyncWaitParams};
+use thor::{FragmentSender, FragmentSenderSetup};
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
@@ -70,8 +66,8 @@ pub fn fully_connected() {
         .spawn(SpawnParams::new(LEADER_4).in_memory())
         .unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
 
     let fragment_sender = FragmentSender::from(&controller.settings().block0);
 
@@ -145,8 +141,8 @@ pub fn star() {
         .spawn(SpawnParams::new(LEADER_1).in_memory())
         .unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
 
     FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
@@ -228,8 +224,8 @@ pub fn mesh() {
         .spawn(SpawnParams::new(LEADER_5).in_memory())
         .unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
 
     FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(4, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
@@ -296,8 +292,8 @@ pub fn point_to_point() {
         .spawn(SpawnParams::new(LEADER_1).in_memory())
         .unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
 
     FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(5, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
@@ -356,8 +352,8 @@ pub fn point_to_point_on_file_storage() {
     let leader2 = controller.spawn(SpawnParams::new(LEADER_2)).unwrap();
     let leader1 = controller.spawn(SpawnParams::new(LEADER_1)).unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
 
     FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
@@ -436,8 +432,8 @@ pub fn tree() {
         .spawn(SpawnParams::new(LEADER_7).in_memory())
         .unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
 
     FragmentSender::from(&controller.settings().block0)
         .send_transactions_round_trip(40, &mut wallet1, &mut wallet2, &leader1, 1_000.into())
@@ -541,8 +537,8 @@ pub fn relay() {
         .spawn(SpawnParams::new(LEADER_7).in_memory())
         .unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
 
     let setup = FragmentSenderSetup::resend_3_times_and_sync_with(vec![&core, &relay1, &relay2]);
 

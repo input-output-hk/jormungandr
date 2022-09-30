@@ -1,9 +1,10 @@
 use crate::jcli_lib::{debug::Error, utils::io};
-use chain_core::packer::Codec;
-use chain_core::property::Deserialize as _;
+use chain_core::{packer::Codec, property::Deserialize as _};
 use chain_impl_mockchain::block::Block as BlockMock;
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::{
+    io::{BufRead, BufReader},
+    path::PathBuf,
+};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]

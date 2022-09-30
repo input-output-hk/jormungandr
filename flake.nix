@@ -1,10 +1,10 @@
 {
   nixConfig.extra-substituters = [
-    "https://vit.cachix.org"
+    "https://iog.cachix.org"
     "https://hydra.iohk.io"
   ];
   nixConfig.extra-trusted-public-keys = [
-    "vit.cachix.org-1:tuLYwbnzbxLzQHHN0fvZI2EMpVm/+R7AKUGqukc6eh8="
+    "iog.cachix.org-1:nYO0M9xTk/s5t1Bs9asZ/Sww/1Kt/hRhkLP0Hhv/ctY="
     "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
   ];
 
@@ -12,8 +12,6 @@
   inputs.flake-compat.url = "github:edolstra/flake-compat";
   inputs.flake-compat.flake = false;
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.gitignore.url = "github:hercules-ci/gitignore.nix";
-  inputs.gitignore.inputs.nixpkgs.follows = "nixpkgs";
   inputs.pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
   inputs.pre-commit-hooks.inputs.nixpkgs.follows = "nixpkgs";
   inputs.pre-commit-hooks.inputs.flake-utils.follows = "flake-utils";
@@ -28,7 +26,6 @@
     nixpkgs,
     flake-compat,
     flake-utils,
-    gitignore,
     pre-commit-hooks,
     rust-overlay,
     naersk,
@@ -48,8 +45,8 @@
           overlays = [(import rust-overlay)];
         };
 
-        rust = let
-          _rust = pkgs.rust-bin.stable.latest.default.override {
+        mkRust = {channel ? "stable"}: let
+          _rust = pkgs.rust-bin.${channel}.latest.default.override {
             extensions = [
               "rust-src"
               "rust-analysis"
@@ -75,12 +72,23 @@
             '';
           };
 
-        naersk-lib = naersk.lib."${system}".override {
-          cargo = rust;
-          rustc = rust;
+        rust-stable = mkRust {channel = "stable";};
+        rust-nightly = mkRust {channel = "nightly";};
+
+        naersk-lib-stable = naersk.lib."${system}".override {
+          cargo = rust-stable;
+          rustc = rust-stable;
         };
 
-        mkPackage = name: let
+        naersk-lib-nighlty = naersk.lib."${system}".override {
+          cargo = rust-nightly;
+          rustc = rust-nightly;
+        };
+
+        mkPackage = {
+          naersk-lib ? naersk-lib-stable,
+          name,
+        }: let
           pkgCargo = readTOML ./${name}/Cargo.toml;
           cargoOptions =
             [
@@ -95,7 +103,7 @@
           naersk-lib.buildPackage {
             inherit (pkgCargo.package) name version;
 
-            root = gitignore.lib.gitignoreSource self;
+            root = self;
 
             cargoBuildOptions = x: x ++ cargoOptions;
             cargoTestOptions = x: x ++ cargoOptions;
@@ -120,7 +128,21 @@
             builtins.map
             (name: {
               inherit name;
-              value = mkPackage name;
+              value = mkPackage {inherit name;};
+            })
+            workspaceCargo.workspace.members
+          );
+
+        workspace-nightly =
+          builtins.listToAttrs
+          (
+            builtins.map
+            (name: {
+              name = "nightly-${name}";
+              value = mkPackage {
+                inherit name;
+                naersk-lib = naersk-lib-nighlty;
+              };
             })
             workspaceCargo.workspace.members
           );
@@ -228,7 +250,7 @@
             };
             rustfmt = {
               enable = true;
-              entry = pkgs.lib.mkForce "${rust}/bin/cargo-fmt fmt -- --check --color always";
+              entry = pkgs.lib.mkForce "${rust-nightly}/bin/cargo-fmt fmt -- --check --color always";
             };
           };
         };
@@ -237,8 +259,9 @@
       in rec {
         packages =
           workspace
+          // workspace-nightly
           // {
-            inherit jormungandr-entrypoint;
+            inherit jormungandr-entrypoint pre-commit;
             default = workspace.jormungandr;
           };
 
@@ -246,7 +269,7 @@
           PROTOC = "${pkgs.protobuf}/bin/protoc";
           PROTOC_INCLUDE = "${pkgs.protobuf}/include";
           buildInputs =
-            [rust]
+            [rust-stable]
             ++ (with pkgs; [
               pkg-config
               openssl

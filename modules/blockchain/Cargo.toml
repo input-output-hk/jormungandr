@@ -2,7 +2,7 @@
 name = "blockchain"
 version = "0.1.0"
 authors = ["Nicolas Di Prima <nicolas.diprima@iohk.io>"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }

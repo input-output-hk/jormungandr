@@ -1,13 +1,14 @@
-use crate::builder::NetworkBuilder;
-use crate::builder::Topology;
-use crate::controller::JormungandrInteractiveCommandExec;
-use crate::controller::UserInteractionController;
-use crate::{config::Config, error::Error};
+use crate::{
+    builder::NetworkBuilder,
+    config::Config,
+    controller::{JormungandrInteractiveCommandExec, UserInteractionController},
+    error::Error,
+};
 use jortestkit::prelude::UserInteraction;
 
-pub fn spawn_network(config: Config, topology: Topology) -> Result<(), Error> {
+pub fn spawn_network(config: Config) -> Result<(), Error> {
     let controller = NetworkBuilder::default()
-        .topology(topology)
+        .topology(config.build_topology())
         .blockchain_config(config.build_blockchain())
         .session_settings(config.session)
         .build()?;

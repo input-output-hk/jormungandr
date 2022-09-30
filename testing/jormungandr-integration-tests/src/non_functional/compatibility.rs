@@ -1,10 +1,11 @@
-use assert_fs::fixture::PathChild;
-use assert_fs::TempDir;
+use assert_fs::{fixture::PathChild, TempDir};
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_automation::jormungandr::{
-    download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter, Version,
+use jormungandr_automation::{
+    jormungandr::{
+        download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter, Version,
+    },
+    testing::Release,
 };
-use jormungandr_automation::testing::Release;
 use jormungandr_lib::interfaces::InitialUTxO;
 use thor::{FragmentSender, TransactionHash};
 

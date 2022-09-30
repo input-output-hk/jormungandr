@@ -1,26 +1,34 @@
 mod peer_map;
 use super::Address;
-use crate::metrics::Metrics;
-use crate::network::{client::ConnectHandle, security_params::NONCE_LEN};
-use crate::topology::NodeId;
-use chain_network::data::block::{BlockEvent, ChainPullRequest};
-use chain_network::data::{BlockId, BlockIds, Fragment, Gossip, Header};
-use chain_network::error::Error;
-use futures::channel::mpsc;
-use futures::lock::{Mutex, MutexLockFuture};
-use futures::prelude::*;
-use futures::stream;
+use crate::{
+    metrics::Metrics,
+    network::{client::ConnectHandle, security_params::NONCE_LEN},
+    topology::NodeId,
+};
+use chain_network::{
+    data::{
+        block::{BlockEvent, ChainPullRequest},
+        BlockId, BlockIds, Fragment, Gossip, Header,
+    },
+    error::Error,
+};
+use futures::{
+    channel::mpsc,
+    lock::{Mutex, MutexLockFuture},
+    prelude::*,
+    stream,
+};
 use peer_map::{CommStatus, PeerMap};
-use std::fmt::Debug;
-use tracing::debug_span;
-
-use std::fmt;
-use std::mem;
-use std::net::SocketAddr;
-use std::pin::Pin;
-use std::task::{Context, Poll};
-use std::time::SystemTime;
-use tracing::Span;
+use std::{
+    fmt,
+    fmt::Debug,
+    mem,
+    net::SocketAddr,
+    pin::Pin,
+    task::{Context, Poll},
+    time::SystemTime,
+};
+use tracing::{debug_span, Span};
 use tracing_futures::Instrument;
 
 // Buffer size determines the number of stream items pending processing that
@@ -691,7 +699,7 @@ impl Peers {
             let mut map = self.inner().await;
             match map.peer_comms(peer) {
                 Some(comms) => {
-                    Span::current().record("peer_addr", &format_args!("{}", comms.remote_addr));
+                    Span::current().record("peer_addr", format_args!("{}", comms.remote_addr));
                     tracing::debug!("sending block solicitation");
                     comms
                         .block_solicitations
@@ -726,7 +734,7 @@ impl Peers {
             let mut map = self.inner().await;
             match map.peer_comms(peer) {
                 Some(comms) => {
-                    Span::current().record("peer_addr", &format_args!("{}", comms.remote_addr));
+                    Span::current().record("peer_addr", format_args!("{}", comms.remote_addr));
                     tracing::debug!("sending header pull request");
                     comms
                         .chain_pulls

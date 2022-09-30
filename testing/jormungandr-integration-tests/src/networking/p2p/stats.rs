@@ -1,17 +1,12 @@
 use crate::networking::utils;
 use chain_impl_mockchain::header::BlockDate;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+};
 use jormungandr_automation::jormungandr::JormungandrProcess;
-use jormungandr_lib::interfaces::NodeStats;
-use jormungandr_lib::interfaces::Policy;
-use jormungandr_lib::interfaces::SlotDuration;
-use std::fmt::Display;
-use std::time::Duration;
+use jormungandr_lib::interfaces::{NodeStats, Policy, SlotDuration};
+use std::{fmt::Display, time::Duration};
 use thor::FragmentSender;
 
 const LEADER1: &str = "LEADER1";
@@ -188,8 +183,8 @@ pub fn passive_node_last_block_info() {
         .spawn(SpawnParams::new(PASSIVE).in_memory().passive())
         .unwrap();
 
-    let mut alice = network_controller.wallet("alice").unwrap();
-    let mut bob = network_controller.wallet("bob").unwrap();
+    let mut alice = network_controller.controlled_wallet("alice").unwrap();
+    let mut bob = network_controller.controlled_wallet("bob").unwrap();
 
     let stats_before = passive
         .rest()
@@ -238,8 +233,8 @@ pub fn leader_node_last_block_info() {
         .spawn(SpawnParams::new(LEADER_CLIENT).in_memory())
         .unwrap();
 
-    let mut alice = network_controller.wallet("alice").unwrap();
-    let mut bob = network_controller.wallet("bob").unwrap();
+    let mut alice = network_controller.controlled_wallet("alice").unwrap();
+    let mut bob = network_controller.controlled_wallet("bob").unwrap();
 
     let stats_before = leader_client
         .rest()

@@ -1,5 +1,3 @@
-use std::convert::TryFrom;
-
 use crate::interfaces::{
     mint_token::{MintingPolicy, TokenIdentifier},
     Address, OldAddress, SignedCertificate, Value,
@@ -14,6 +12,7 @@ use chain_impl_mockchain::{
     transaction::{NoExtra, Output, Payload, Transaction, TransactionSlice, TxBuilder},
 };
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use thiserror::Error;
 
 #[allow(clippy::large_enum_variant)]
@@ -65,6 +64,15 @@ pub enum Error {
 pub struct Destination {
     pub address: Address,
     pub value: Value,
+}
+
+impl From<InitialUTxO> for Destination {
+    fn from(utxo: InitialUTxO) -> Self {
+        Self {
+            address: utxo.address,
+            value: utxo.value,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -280,8 +288,9 @@ fn pack_tokens_in_mint_token_fragments(token: &InitialToken) -> Result<Vec<Fragm
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::crypto::key::KeyPair;
-    use crate::interfaces::ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT;
+    use crate::{
+        crypto::key::KeyPair, interfaces::ARBITRARY_MAX_NUMBER_ENTRIES_PER_INITIAL_FRAGMENT,
+    };
     use quickcheck::{Arbitrary, Gen, TestResult};
 
     impl Arbitrary for Initial {

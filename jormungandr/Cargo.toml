@@ -9,7 +9,7 @@ documentation = "https://github.com/input-output-hk/jormungandr#USAGE.md"
 description = """
 Midgard Serpent
 """
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
@@ -20,6 +20,7 @@ chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", bra
 chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-evm = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", optional = true }
 cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 
@@ -39,7 +40,7 @@ rand = "0.8"
 rand_chacha = "0.3"
 serde = "1.0"
 serde_derive = "1.0"
-serde_json = "1.0.74"
+serde_json = "1.0.81"
 serde_yaml = "0.8"
 structopt = "^0.3"
 time = { version = "0.3", features = ["macros"] }
@@ -60,11 +61,9 @@ warp = { version = "0.3.2", features = ["tls"] }
 serde_with = { version = "1.12", features = ["macros"] }
 http-zipkin = "0.3.0"
 prometheus = { version = "0.13", optional = true }
-
-[dependencies.reqwest]
-version = "0.11"
-default-features = false
-features = ["rustls-tls"]
+jsonrpsee-http-server = { version = "0.11.0" }
+jsonrpsee-core = { version = "0.11.0" }
+reqwest = { version = "0.11",  default-features = false, features = ["rustls-tls"] }
 
 [dev-dependencies]
 tokio = { version = "^1.15", features = ["full"] }
@@ -84,7 +83,7 @@ harness = false
 versionisator = "1.0.2"
 
 [target.'cfg(unix)'.dependencies]
-libc = "0.2.117"
+libc = "0.2.124"
 nix = "0.23.0"
 
 [features]
@@ -96,4 +95,4 @@ soak-test = []
 systemd = ["tracing-journald"]
 gelf = ["tracing-gelf"]
 prometheus-metrics = ["prometheus"]
-evm = [ "chain-impl-mockchain/evm", "jormungandr-lib/evm" ]
+evm = [ "chain-impl-mockchain/evm", "jormungandr-lib/evm", "chain-evm" ]

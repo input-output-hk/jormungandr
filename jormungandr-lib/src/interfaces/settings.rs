@@ -3,10 +3,12 @@ use crate::{
     time::SystemTime,
 };
 use chain_addr::Discrimination;
-use chain_impl_mockchain::block::Epoch;
-use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::rewards::{CompoundingType, Limit, Parameters, Ratio, TaxType};
-use chain_impl_mockchain::value::Value;
+use chain_impl_mockchain::{
+    block::Epoch,
+    fee::LinearFee,
+    rewards::{CompoundingType, Limit, Parameters, Ratio, TaxType},
+    value::Value,
+};
 use serde::{Deserialize, Serialize};
 use std::num::{NonZeroU32, NonZeroU64};
 

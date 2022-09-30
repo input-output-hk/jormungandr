@@ -1,8 +1,6 @@
+use assert_fs::{prelude::*, TempDir};
 use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput};
-
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
 
 #[test]
 pub fn test_jormungandr_leader_node_starts_successfully() {

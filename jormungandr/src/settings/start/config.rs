@@ -1,22 +1,21 @@
 use crate::{
     network::p2p::Address,
-    settings::logging::{LogFormat, LogOutput},
-    settings::LOG_FILTER_LEVEL_POSSIBLE_VALUES,
+    settings::{
+        logging::{LogFormat, LogOutput},
+        LOG_FILTER_LEVEL_POSSIBLE_VALUES,
+    },
     topology::QuarantineConfig,
 };
-pub use jormungandr_lib::interfaces::{Cors, LayersConfig, Rest, Tls, TrustedPeer};
+pub use jormungandr_lib::interfaces::{Cors, JRpc, LayersConfig, Rest, Tls, TrustedPeer};
 use jormungandr_lib::{interfaces::Mempool, time::Duration};
-
 use multiaddr::Multiaddr;
 use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
-use tracing::level_filters::LevelFilter;
-
 use std::path::PathBuf;
+use tracing::level_filters::LevelFilter;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
-    #[serde(default)]
     pub secret_file: Option<PathBuf>,
     pub storage: Option<PathBuf>,
     pub log: Option<ConfigLogSettings>,
@@ -29,6 +28,8 @@ pub struct Config {
     pub leadership: Leadership,
 
     pub rest: Option<Rest>,
+
+    pub jrpc: Option<JRpc>,
 
     #[serde(default)]
     pub p2p: P2pConfig,
@@ -165,7 +166,7 @@ mod filter_level_opt_serde {
         Option::<String>::deserialize(deserializer)?
             .map(|variant| {
                 variant.parse().map_err(|_| {
-                    D::Error::unknown_variant(&variant, &**LOG_FILTER_LEVEL_POSSIBLE_VALUES)
+                    D::Error::unknown_variant(&variant, &LOG_FILTER_LEVEL_POSSIBLE_VALUES)
                 })
             })
             .transpose()

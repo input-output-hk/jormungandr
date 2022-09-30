@@ -2,8 +2,8 @@
 
 use jormungandr_lib::{
     interfaces::{
-        Cors, LayersConfig, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls, TopicsOfInterest,
-        TrustedPeer,
+        Cors, JRpc, LayersConfig, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls,
+        TopicsOfInterest, TrustedPeer,
     },
     time::Duration,
 };
@@ -15,11 +15,13 @@ pub struct NodeConfigBuilder {
     pub storage: Option<PathBuf>,
     pub log: Option<Log>,
     pub rest: Rest,
+    pub jrpc: JRpc,
     pub p2p: P2p,
     pub mempool: Option<Mempool>,
 }
 
 const DEFAULT_HOST: &str = "127.0.0.1";
+const DEFAULT_RPC_THREADS_AMOUNT: usize = 1;
 
 impl Default for NodeConfigBuilder {
     fn default() -> Self {
@@ -31,6 +33,7 @@ impl NodeConfigBuilder {
     pub fn new() -> NodeConfigBuilder {
         let rest_port = super::get_available_port();
         let public_address_port = super::get_available_port();
+        let jrpc_port = super::get_available_port();
         let grpc_public_address: Multiaddr =
             format!("/ip4/{}/tcp/{}", DEFAULT_HOST, public_address_port)
                 .parse()
@@ -43,6 +46,9 @@ impl NodeConfigBuilder {
                 listen: format!("{}:{}", DEFAULT_HOST, rest_port).parse().unwrap(),
                 tls: None,
                 cors: None,
+            },
+            jrpc: JRpc {
+                listen: format!("{}:{}", DEFAULT_HOST, jrpc_port).parse().unwrap(),
             },
             p2p: P2p {
                 node_key_file: None,
@@ -121,6 +127,7 @@ impl NodeConfigBuilder {
             storage: self.storage.clone(),
             log: self.log.clone(),
             rest: self.rest.clone(),
+            jrpc: self.jrpc.clone(),
             p2p: self.p2p.clone(),
             mempool: self.mempool.clone(),
             bootstrap_from_trusted_peers: Some(!self.p2p.trusted_peers.is_empty()),

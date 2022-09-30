@@ -2,9 +2,10 @@ use super::{
     chain::{self, Blockchain, HeaderChainVerifyError, PreCheckedHeader},
     chunk_sizes,
 };
-use crate::blockcfg::{Header, HeaderHash};
-use crate::utils::async_msg::MessageQueue;
-
+use crate::{
+    blockcfg::{Header, HeaderHash},
+    utils::async_msg::MessageQueue,
+};
 use futures::{
     future::poll_fn,
     prelude::*,
@@ -12,7 +13,6 @@ use futures::{
     task::{Context, Poll},
 };
 use std::{marker::Unpin, pin::Pin};
-
 // derive
 use thiserror::Error;
 

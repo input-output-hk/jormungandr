@@ -11,8 +11,10 @@ use crate::topology::{NodeId, Peer, PeerInfo};
 use jormungandr_lib::time::Duration;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::time::{Duration as StdDuration, Instant, SystemTime};
+use std::{
+    collections::HashSet,
+    time::{Duration as StdDuration, Instant, SystemTime},
+};
 
 /// default quarantine duration is 10min
 const DEFAULT_QUARANTINE_DURATION: StdDuration = StdDuration::from_secs(10 * 60);

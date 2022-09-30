@@ -4,37 +4,37 @@ pub mod multiverse;
 pub mod persistent_sequence;
 mod tally;
 
-use self::error::{BlockNotFound, ExplorerError as Error};
-use self::indexing::{
-    Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
-    ExplorerVote, ExplorerVotePlan, ExplorerVoteProposal, StakePool, StakePoolBlocks,
-    StakePoolData, Transactions, VotePlans,
+use self::{
+    error::{BlockNotFound, ExplorerError as Error},
+    indexing::{
+        Addresses, Blocks, ChainLengths, EpochData, Epochs, ExplorerAddress, ExplorerBlock,
+        ExplorerVote, ExplorerVotePlan, ExplorerVoteProposal, StakePool, StakePoolBlocks,
+        StakePoolData, Transactions, VotePlans,
+    },
+    persistent_sequence::PersistentSequence,
 };
-use self::persistent_sequence::PersistentSequence;
-use crate::db::tally::compute_private_tally;
-use crate::db::tally::compute_public_tally;
+use crate::db::tally::{compute_private_tally, compute_public_tally};
 use chain_addr::Discrimination;
 use chain_core::property::Block as _;
 use chain_impl_mockchain::{
-    block::HeaderId as HeaderHash,
-    certificate::VotePlanId,
-    stake::{Stake, StakeControl},
-};
-use chain_impl_mockchain::{
-    block::{Block, ChainLength, Epoch},
-    certificate::{Certificate, PoolId},
+    block::{Block, ChainLength, Epoch, HeaderId as HeaderHash},
+    certificate::{Certificate, PoolId, VotePlanId},
     chaintypes::ConsensusVersion,
     config::ConfigParam,
+    fee::LinearFee,
     fragment::{ConfigParams, Fragment, FragmentId},
+    stake::{Stake, StakeControl},
+    vote::PayloadType,
 };
-use chain_impl_mockchain::{fee::LinearFee, vote::PayloadType};
 use futures::prelude::*;
 use multiverse::Multiverse;
 pub use multiverse::Ref;
-use std::convert::Infallible;
-use std::sync::{
-    atomic::{AtomicU32, Ordering},
-    Arc,
+use std::{
+    convert::Infallible,
+    sync::{
+        atomic::{AtomicU32, Ordering},
+        Arc,
+    },
 };
 use tokio::sync::{broadcast, RwLock};
 
@@ -99,6 +99,9 @@ pub struct Settings {
     /// also be used, but the `Address` struct doesn't have a deserialization method right
     /// now
     pub address_bech32_prefix: String,
+
+    pub query_depth_limit: usize,
+    pub query_complexity_limit: usize,
 }
 
 impl ExplorerDb {
@@ -566,16 +569,14 @@ fn apply_block_to_stake_pools(
                         }),
                     )
                     .expect("pool was registered more than once"),
-                Certificate::PoolRetirement(retirement) => {
-                    data.update::<_, Infallible>(&retirement.pool_id, |pool_data| {
+                Certificate::PoolRetirement(retirement) => data
+                    .update::<_, Infallible>(&retirement.pool_id, |pool_data| {
                         Ok(Some(Arc::new(StakePoolData {
                             registration: pool_data.registration.clone(),
                             retirement: Some(retirement.clone()),
                         })))
                     })
-                    .expect("pool was retired before registered");
-                    data
-                }
+                    .expect("pool was retired before registered"),
                 _ => data,
             };
         }
@@ -782,7 +783,7 @@ impl BlockchainConfig {
                     consensus_version.replace(*v);
                 }
                 ConfigParam::LinearFee(fee) => {
-                    fees.replace(*fee);
+                    fees.replace(fee.clone());
                 }
                 ConfigParam::EpochStabilityDepth(d) => {
                     epoch_stability_depth.replace(*d);

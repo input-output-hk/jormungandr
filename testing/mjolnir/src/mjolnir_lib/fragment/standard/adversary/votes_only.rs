@@ -1,11 +1,13 @@
-use crate::generators::AdversaryVoteCastsGenerator;
-use crate::generators::FragmentStatusProvider;
-use crate::mjolnir_lib::DiscriminationExtensions;
-use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
+use crate::{
+    generators::{AdversaryVoteCastsGenerator, FragmentStatusProvider},
+    mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError},
+};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
-use jormungandr_automation::testing::block0::{get_block, Block0ConfigurationExtension};
+use jormungandr_automation::{
+    jormungandr::RemoteJormungandrBuilder,
+    testing::block0::{get_block, Block0ConfigurationExtension},
+};
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::{
     load::ConfigurationBuilder,
@@ -13,7 +15,9 @@ use jortestkit::{
 };
 use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
-use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
+use thor::{
+    BlockDateGenerator, DiscriminationExtension, FragmentSender, FragmentSenderSetup, Wallet,
+};
 
 #[derive(StructOpt, Debug)]
 pub struct VotesOnly {
@@ -86,7 +90,7 @@ impl VotesOnly {
         let settings = remote_jormungandr.rest().settings().unwrap();
 
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
-        let fees = settings.fees;
+        let fees = settings.fees.clone();
 
         let expiry_generator = self
             .valid_until

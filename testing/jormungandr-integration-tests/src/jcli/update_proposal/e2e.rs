@@ -4,10 +4,10 @@ use assert_fs::{
 };
 use chain_crypto::bech32::Bech32;
 use chain_impl_mockchain::value::Value;
-use jormungandr_automation::testing::time::{get_current_date, wait_for_epoch};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{ConfigurationBuilder, Starter},
+    testing::time::{get_current_date, wait_for_epoch},
 };
 use jormungandr_lib::interfaces::{
     BlockContentMaxSize, BlockDate, ConfigParam, ConfigParams, ConsensusLeaderId,
@@ -93,7 +93,7 @@ fn basic_change_config_test() {
         .set_expiry_date(BlockDate::new(3, 0))
         .finalize()
         .seal_with_witness_data(alice.witness_data())
-        .add_auth(&alice_sk.path())
+        .add_auth(alice_sk.path())
         .to_message();
     alice.confirm_transaction();
     jcli.fragment_sender(&jormungandr)

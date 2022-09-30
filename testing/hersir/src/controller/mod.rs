@@ -2,34 +2,27 @@ mod error;
 pub mod interactive;
 mod monitor;
 
-use crate::builder::NodeSetting;
-use crate::builder::Settings;
-use crate::builder::SpawnParams;
-use crate::builder::VotePlanKey;
-use crate::builder::Wallet as WalletSettings;
+use crate::{
+    builder::{NodeSetting, Settings, VotePlanKey, Wallet as WalletSettings},
+    config::SpawnParams,
+};
 use assert_fs::prelude::*;
 use chain_core::packer::Codec;
-use chain_impl_mockchain::certificate::{VoteAction, VotePlan};
-use chain_impl_mockchain::ledger::governance::{
-    ParametersGovernanceAction, TreasuryGovernanceAction,
-};
-use chain_impl_mockchain::testing::scenario::template::{
-    ProposalDefBuilder, VotePlanDef, VotePlanDefBuilder,
+use chain_impl_mockchain::{
+    certificate::{VoteAction, VotePlan},
+    ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
+    testing::scenario::template::{ProposalDefBuilder, VotePlanDef, VotePlanDefBuilder},
 };
 pub use error::Error;
 pub use interactive::{
     do_for_all_alias, InteractiveCommandError, JormungandrInteractiveCommandExec,
     UserInteractionController,
 };
-use jormungandr_automation::jormungandr::ConfiguredStarter;
-use jormungandr_automation::jormungandr::JormungandrParams;
-use jormungandr_automation::jormungandr::LegacyNodeConfig;
-use jormungandr_automation::jormungandr::LegacyNodeConfigConverter;
-use jormungandr_automation::jormungandr::NodeAlias;
-use jormungandr_automation::jormungandr::PersistenceMode;
-use jormungandr_automation::jormungandr::TestingDirectory;
-use jormungandr_automation::jormungandr::Version;
-use jormungandr_automation::jormungandr::{JormungandrProcess, LogLevel, Starter};
+use jormungandr_automation::jormungandr::{
+    ConfiguredStarter, ExplorerProcess, JormungandrParams, JormungandrProcess, LegacyNodeConfig,
+    LegacyNodeConfigConverter, LogLevel, NodeAlias, PersistenceMode, Starter, TestingDirectory,
+    Version,
+};
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 pub use monitor::{
     LegacyNode as MonitorLegacyNode, MonitorController, MonitorControllerBuilder,
@@ -67,12 +60,22 @@ impl Controller {
         })
     }
 
-    pub fn wallet(&mut self, wallet: &str) -> Result<Wallet, Error> {
-        if let Some(wallet) = self.settings.wallets.remove(wallet) {
-            Ok(wallet.into())
-        } else {
-            Err(Error::WalletNotFound(wallet.to_owned()))
-        }
+    pub fn wallet(&mut self, wallet: &str) -> Option<crate::builder::Wallet> {
+        self.settings
+            .wallets
+            .iter()
+            .cloned()
+            .find(|w| w.has_alias(&wallet.to_string()))
+    }
+
+    pub fn controlled_wallet(&self, wallet: &str) -> Option<Wallet> {
+        self.settings
+            .wallets
+            .iter()
+            .cloned()
+            .filter(|x| x.template().is_generated())
+            .find(|w| w.has_alias(&wallet.to_string()))
+            .map(|w| w.try_into().unwrap())
     }
 
     pub fn working_directory(&self) -> &TestingDirectory {
@@ -110,8 +113,11 @@ impl Controller {
             .ok_or_else(|| Error::NodeNotFound(alias.to_string()))
     }
 
-    pub fn defined_wallets(&self) -> impl Iterator<Item = (&WalletAlias, &WalletSettings)> {
-        self.settings().wallets.iter()
+    pub fn defined_wallets(&self) -> impl Iterator<Item = (WalletAlias, &WalletSettings)> {
+        self.settings()
+            .wallets
+            .iter()
+            .map(|w| (w.template().id(), w))
     }
 
     pub fn defined_nodes(&self) -> impl Iterator<Item = (&NodeAlias, &NodeSetting)> {
@@ -191,6 +197,16 @@ impl Controller {
         builder.build()
     }
 
+    pub fn spawn_explorer(&mut self) -> Result<ExplorerProcess, Error> {
+        ExplorerProcess::new(
+            self.settings
+                .explorer
+                .clone()
+                .ok_or(Error::NoExplorerConfigurationDefined)?,
+        )
+        .map_err(Into::into)
+    }
+
     pub fn spawn_node_async(&mut self, alias: &str) -> Result<JormungandrProcess, Error> {
         let mut starter = self.make_starter_for(
             SpawnParams::new(alias).persistence_mode(PersistenceMode::InMemory),
@@ -263,7 +279,7 @@ impl Controller {
         }
 
         config.log = Some(Log(LogEntry {
-            format: "json".into(),
+            format: "json".to_string(),
             level: spawn_params
                 .get_log_level()
                 .unwrap_or(&LogLevel::DEBUG)

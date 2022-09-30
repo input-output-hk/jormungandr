@@ -16,11 +16,14 @@ mod simplified;
 mod staging;
 
 use self::staging::StagingKind;
-use crate::jcli_lib::{
-    certificate,
-    utils::{key_parser, output_format},
+use crate::{
+    block,
+    jcli_lib::{
+        certificate,
+        utils::{key_parser, output_format},
+    },
+    rest, utils,
 };
-use crate::{block, rest, utils};
 use chain_core::property::{ReadError, Serialize as _, WriteError};
 use chain_impl_mockchain as chain;
 use std::path::PathBuf;

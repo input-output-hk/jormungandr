@@ -1,14 +1,14 @@
 use crate::jormungandr::{
-    grpc::node::{
-        node_server::{Node, NodeServer},
-        {
+    grpc::{
+        node::{
+            node_server::{Node, NodeServer},
             BlockEvent, ClientAuthRequest, ClientAuthResponse, Gossip, HandshakeRequest,
             HandshakeResponse, PeersRequest, PeersResponse, PullBlocksRequest,
             PullBlocksToTipRequest, PullHeadersRequest, PushHeadersResponse, TipRequest,
             TipResponse, UploadBlocksResponse,
         },
+        types::{Block, BlockIds, Fragment, FragmentIds, Header},
     },
-    grpc::types::{Block, BlockIds, Fragment, FragmentIds, Header},
     Block0ConfigurationBuilder,
 };
 use chain_core::{
@@ -16,9 +16,10 @@ use chain_core::{
     property::{DeserializeFromSlice, Header as BlockHeader, Serialize},
 };
 use chain_impl_mockchain::{block::BlockVersion, chaintypes::ConsensusVersion, key::Hash};
-use std::fmt;
-use std::sync::Arc;
-use std::sync::RwLock;
+use std::{
+    fmt,
+    sync::{Arc, RwLock},
+};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tonic::{Request, Response, Status};
@@ -36,7 +37,7 @@ pub use data::MockServerData;
 pub use logger::{MethodType, MockLogger};
 pub use verifier::MockVerifier;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum MockExitCode {
     Timeout,
     Success,
@@ -141,8 +142,8 @@ impl Node for JormungandrServerImpl {
                 .unwrap()
                 .tip()
                 .map_err(|e| tonic::Status::internal(format!("invalid tip {}", e)))?
-                .to_raw()
-                .to_vec(),
+                .serialize_as_vec()
+                .map_err(|e| tonic::Status::internal(format!("cannot serialize header {}", e)))?,
         };
         Ok(Response::new(tip_response))
     }

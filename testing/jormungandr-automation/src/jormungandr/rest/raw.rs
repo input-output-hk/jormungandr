@@ -3,11 +3,15 @@ use crate::jormungandr::RestError;
 use bech32::FromBase32;
 use chain_core::property::Serialize;
 use chain_crypto::PublicKey;
-use chain_impl_mockchain::account;
-use chain_impl_mockchain::fragment::Fragment;
-use chain_impl_mockchain::header::HeaderId;
-use jormungandr_lib::crypto::account::Identifier;
-use jormungandr_lib::interfaces::{Address, FragmentsBatch, VotePlanId};
+#[cfg(feature = "evm")]
+use chain_evm::Address as EvmAddress;
+#[cfg(feature = "evm")]
+use chain_impl_mockchain::account::Identifier as JorAddress;
+use chain_impl_mockchain::{account, fragment::Fragment, header::HeaderId};
+use jormungandr_lib::{
+    crypto::account::Identifier,
+    interfaces::{Address, FragmentsBatch, VotePlanId},
+};
 use jortestkit::process::Wait;
 use reqwest::{
     blocking::{Client, Response},
@@ -103,6 +107,19 @@ impl RawRest {
         self.get(&request)
     }
 
+    #[cfg(feature = "evm")]
+    pub fn jor_address(&self, evm_address: &EvmAddress) -> Result<Response, reqwest::Error> {
+        let encoded_evm = hex::encode(evm_address.as_ref());
+        let request = format!("address_mapping/jormungandr_address/{}", encoded_evm);
+        self.get(&request)
+    }
+
+    #[cfg(feature = "evm")]
+    pub fn evm_address(&self, jor_address: &JorAddress) -> Result<Response, reqwest::Error> {
+        let request = format!("address_mapping/evm_address/{}", jor_address);
+        self.get(&request)
+    }
+
     fn print_request_path(&self, text: &str) {
         if self.rest_settings().enable_debug {
             println!("Request: {}", text);
@@ -183,9 +200,9 @@ impl RawRest {
         self.get(&request)
     }
 
-    pub fn account_votes_count(&self) -> Result<Response, reqwest::Error> {
+    pub fn account_votes_all(&self) -> Result<Response, reqwest::Error> {
         self.client
-            .get(&self.path(ApiVersion::V1, "votes/plan/accounts-votes-count"))
+            .get(&self.path(ApiVersion::V1, "votes/plan/accounts-votes-all"))
             .send()
     }
 

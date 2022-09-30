@@ -1,7 +1,6 @@
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{account::SpendingCounter, header::BlockDate, testing::TestGen};
-use jormungandr_automation::jcli::JCli;
-use jormungandr_automation::jcli::{Witness, WitnessData, WitnessType};
+use jormungandr_automation::jcli::{JCli, Witness, WitnessData, WitnessType};
 use jormungandr_lib::crypto::hash::Hash;
 use std::path::PathBuf;
 
@@ -17,7 +16,7 @@ pub fn test_utxo_transation_with_more_than_one_witness_per_input_is_rejected() {
     let mut transaction_wrapper = JCli::default().transaction_builder(TestGen::hash().into());
     transaction_wrapper
         .new_transaction()
-        .add_input(&*FAKE_INPUT_TRANSACTION_ID, 0, "100")
+        .add_input(&FAKE_INPUT_TRANSACTION_ID, 0, "100")
         .add_output(&receiver.address_bech32(Discrimination::Test), 100.into())
         .set_expiry_date(BlockDate::first().into())
         .finalize();

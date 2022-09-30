@@ -20,6 +20,7 @@ tags:
   - name: stake
   - name: utils
   - name: vote
+  - name: address_mapping
 
 paths:
   '/api/v0/account/{account_id}':
@@ -2358,6 +2359,55 @@ paths:
                           ],
                       },
                     ]
+
+
+  # it is only enabled with the "evm" feature included during the build
+  '/api/v0/address_mapping/jormungandr_address/{evm_hex_id}':
+    get:
+      description: Gets corresponded, mapped jormungadr address for the provided evm address
+      operationId: AddressMappingJorId
+      tags:
+        - address_mapping
+      parameters:
+        - in: path
+          name: evm_hex_id
+          required: true
+          description: Hex-encoded evm address.
+          schema:
+            type: string
+            pattern: '[0-9a-f]+'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+                description: hex encoded jormungandr address
+
+  # it is only enabled with the "evm" feature included during the build
+  '/api/v0/address_mapping/evm_address/{jor_hex_id}':
+    get:
+      description: Gets corresponded, mapped evm address for the provided jormungandr address
+      operationId: AddressMappingEvmId
+      tags:
+        - address_mapping
+      parameters:
+        - in: path
+          name: jor_hex_id
+          required: true
+          description: Hex-encoded jormungandr address.
+          schema:
+            type: string
+            pattern: '[0-9a-f]+'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: string
+                description: hex encoded evm address
 
 components:
   schemas:

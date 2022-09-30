@@ -1,4 +1,4 @@
-pub use crate::secure::enclave::LeaderEvent;
+pub use crate::secure::enclave::{LeaderEvent, Schedule};
 use crate::{
     blockcfg::{
         HeaderBft, HeaderBftBuilder, HeaderGenesisPraos, HeaderGenesisPraosBuilder,
@@ -8,8 +8,6 @@ use crate::{
 };
 use std::sync::Arc;
 use thiserror::Error;
-
-pub use crate::secure::enclave::Schedule;
 
 #[derive(Debug, Clone, Error)]
 pub enum EnclaveError {

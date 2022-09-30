@@ -1,37 +1,5 @@
 query Address($bech32: String!){
     address(bech32: $bech32) {
-        id,
-        delegation{
-            id
-        }
-    }
-    tip {
-        transactionsByAddress(addressBech32: $bech32, last: 10) {
-                edges {
-                node {
-                    id,
-                    blocks {
-                        date{
-                            epoch{
-                                id
-                            },
-                            slot
-                        }
-                    }
-                    inputs{
-                        amount,
-                        address {
-                            id
-                        }
-                    }
-                    outputs{
-                        amount,
-                        address {
-                            id
-                        }
-                    }
-                }
-            }
-        }
+        id #delegation{... poolInfo} not implemented yet NPG-2247
     }
 }

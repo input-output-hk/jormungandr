@@ -1,18 +1,17 @@
-use crate::networking::p2p::connections::parse_timestamp;
-use crate::networking::utils::wait;
-use crate::non_functional::network::*;
-use hersir::builder::blockchain::BlockchainBuilder;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_automation::jormungandr::LogLevel;
-use jormungandr_automation::testing::ensure_nodes_are_in_sync;
-use jormungandr_automation::testing::SyncWaitParams;
+use crate::{
+    networking::{p2p::connections::parse_timestamp, utils::wait},
+    non_functional::network::*,
+};
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{BlockchainBuilder, SpawnParams, WalletTemplateBuilder},
+};
+use jormungandr_automation::{
+    jormungandr::LogLevel,
+    testing::{ensure_nodes_are_in_sync, SyncWaitParams},
+};
 use std::time::{Duration, SystemTime};
-use thor::FragmentSender;
-use thor::FragmentVerifier;
+use thor::{FragmentSender, FragmentVerifier};
 
 const CORE_NODE: &str = "Core";
 const RELAY_NODE_1: &str = "Relay1";
@@ -129,13 +128,13 @@ pub fn relay_soak() {
         .spawn(SpawnParams::new(LEADER_7).in_memory())
         .unwrap();
 
-    let mut wallet1 = controller.wallet(ALICE).unwrap();
-    let mut wallet2 = controller.wallet(BOB).unwrap();
-    let mut wallet3 = controller.wallet(CLARICE).unwrap();
-    let mut wallet4 = controller.wallet(DAVID).unwrap();
-    let mut wallet5 = controller.wallet(EDGAR).unwrap();
-    let mut wallet6 = controller.wallet(FILIP).unwrap();
-    let mut wallet7 = controller.wallet(GRACE).unwrap();
+    let mut wallet1 = controller.controlled_wallet(ALICE).unwrap();
+    let mut wallet2 = controller.controlled_wallet(BOB).unwrap();
+    let mut wallet3 = controller.controlled_wallet(CLARICE).unwrap();
+    let mut wallet4 = controller.controlled_wallet(DAVID).unwrap();
+    let mut wallet5 = controller.controlled_wallet(EDGAR).unwrap();
+    let mut wallet6 = controller.controlled_wallet(FILIP).unwrap();
+    let mut wallet7 = controller.controlled_wallet(GRACE).unwrap();
 
     let now = SystemTime::now();
 

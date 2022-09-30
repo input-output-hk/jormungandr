@@ -1,19 +1,23 @@
-use crate::generators::AdversaryFragmentGenerator;
-use crate::generators::FragmentStatusProvider;
-use crate::mjolnir_lib::DiscriminationExtensions;
-use crate::{args::parse_shift, build_monitor, MjolnirError};
+use crate::{
+    args::parse_shift,
+    build_monitor,
+    generators::{AdversaryFragmentGenerator, FragmentStatusProvider},
+    MjolnirError,
+};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::jormungandr::RemoteJormungandrBuilder;
 use jormungandr_lib::crypto::hash::Hash;
 use jortestkit::{
-    load::ConfigurationBuilder, prelude::parse_progress_bar_mode_from_str, prelude::ProgressBarMode,
+    load::ConfigurationBuilder,
+    prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
 };
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
-use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
-
 use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
+use thor::{
+    BlockDateGenerator, DiscriminationExtension, FragmentSender, FragmentSenderSetup, Wallet,
+};
 #[derive(StructOpt, Debug)]
 pub struct AdversaryAll {
     /// Number of threads
@@ -79,7 +83,7 @@ impl AdversaryAll {
         let settings = remote_jormungandr.rest().settings().unwrap();
 
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
-        let fees = settings.fees;
+        let fees = settings.fees.clone();
 
         let expiry_generator = self
             .valid_until
@@ -88,7 +92,7 @@ impl AdversaryAll {
 
         let transaction_sender = FragmentSender::new(
             block0_hash,
-            fees,
+            fees.clone(),
             expiry_generator.clone(),
             FragmentSenderSetup::no_verify(),
         );

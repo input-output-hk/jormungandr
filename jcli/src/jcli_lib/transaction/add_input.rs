@@ -41,9 +41,8 @@ mod tests {
     use self::common::CommonTransaction;
     use super::*;
     use crate::jcli_lib::transaction::staging::Staging;
-    use chain_impl_mockchain::{key::Hash, value::Value};
-
     use assert_fs::NamedTempFile;
+    use chain_impl_mockchain::{key::Hash, value::Value};
     use std::str::FromStr;
 
     #[test]

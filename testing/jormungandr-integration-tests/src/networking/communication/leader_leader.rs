@@ -1,13 +1,11 @@
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_automation::testing::benchmark::sync::{
-    measure_and_log_sync_time, MeasurementReportInterval,
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
 };
-use jormungandr_automation::testing::SyncWaitParams;
+use jormungandr_automation::testing::{
+    benchmark::sync::{measure_and_log_sync_time, MeasurementReportInterval},
+    SyncWaitParams,
+};
 use thor::FragmentSender;
 
 const LEADER_1: &str = "Leader1";
@@ -48,8 +46,8 @@ pub fn two_transaction_to_two_leaders() {
         .spawn(SpawnParams::new(LEADER_1).in_memory())
         .unwrap();
 
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let mut bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let mut bob = controller.controlled_wallet(BOB).unwrap();
 
     let fragment_sender = FragmentSender::from(&controller.settings().block0);
 

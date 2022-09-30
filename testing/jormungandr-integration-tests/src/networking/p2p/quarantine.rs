@@ -1,15 +1,12 @@
-use crate::networking::p2p::assert_are_in_quarantine;
-use crate::networking::p2p::assert_empty_quarantine;
-use crate::networking::p2p::assert_node_stats;
-use crate::networking::utils;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_lib::interfaces::Policy;
-use jormungandr_lib::time::Duration;
+use crate::networking::{
+    p2p::{assert_are_in_quarantine, assert_empty_quarantine, assert_node_stats},
+    utils,
+};
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+};
+use jormungandr_lib::{interfaces::Policy, time::Duration};
 
 const CLIENT: &str = "CLIENT";
 const CLIENT_2: &str = "CLIENT_2";

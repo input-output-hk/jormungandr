@@ -1,5 +1,7 @@
-use crate::controller::{Error, UserInteractionController};
-use crate::style;
+use crate::{
+    controller::{Error, UserInteractionController},
+    style,
+};
 use chain_impl_mockchain::certificate::VotePlan;
 use structopt::StructOpt;
 
@@ -70,7 +72,7 @@ impl DescribeWallets {
             println!(
                 "\t{}: address: {}, initial_funds: {}, delegated to: {:?}",
                 alias,
-                wallet.address(),
+                wallet.address()?,
                 wallet.template().value(),
                 wallet.template().delegate()
             );

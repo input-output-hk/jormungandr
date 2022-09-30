@@ -1,8 +1,6 @@
 use crate::blockchain::Ref;
-
 use chain_impl_mockchain::block::Block;
 use jormungandr_lib::time::SecondsSinceUnixEpoch;
-
 use std::sync::Arc;
 
 pub mod backends;

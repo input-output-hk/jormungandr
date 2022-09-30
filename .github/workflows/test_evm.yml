@@ -1,0 +1,211 @@
+name: CI-Evm-Tests
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - doc/api/**.yaml
+      - jormungandr-lib/**
+      - jormungandr/**
+      - jcli/**
+      - modules/**
+      - testing/**
+      - Cargo.*
+      - .github/workflows/test_evm.yml
+  pull_request:
+    paths:
+      - doc/api/**.yaml
+      - jormungandr-lib/**
+      - jormungandr/**
+      - jcli/**
+      - modules/**
+      - testing/**
+      - Cargo.*
+      - .github/workflows/test_evm.yml
+
+jobs:
+  cache_info:
+    name: Bootstrap cache
+    runs-on: ubuntu-latest
+    outputs:
+      crates-io-index-head: ${{ steps.ls-crates-io-index.outputs.head }}
+      cargo-lock-hash: ${{ steps.hash-cargo-lock.outputs.hash }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - id: ls-crates-io-index
+        name: Get head commit hash of crates.io registry index
+        run: |
+          commit=$(
+            git ls-remote --heads https://github.com/rust-lang/crates.io-index.git master |
+            cut -f 1
+          )
+          echo "$commit"
+          echo "::set-output name=head::$commit"
+
+      - id: hash-cargo-lock
+        name: Calculate dependency cache key
+        run: |
+          hash=$(
+            ci/strip-own-version-from-cargo-lock.pl Cargo.lock |
+            sha1sum | cut -d ' ' -f 1
+          )
+          echo "$hash"
+          echo "::set-output name=hash::$hash"
+
+  update_deps:
+    name: Update dependencies
+    needs: cache_info
+    runs-on: ubuntu-latest
+    steps:
+      # This is only needed because a crate manifest uses edition2021
+      # that has been stabilized in a very recent Rust release.
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          default: true
+
+      - name: Cache cargo registry index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry/index
+          key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
+          restore-keys: cargo-index-
+
+      - id: cargo-deps
+        name: Cache cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-deps-v1-${{ needs.cache_info.outputs.cargo-lock-hash }}
+
+      - name: Check out the repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Fetch dependencies and update cargo registry
+        run: cargo fetch --locked
+
+  tests:
+    name: Evm Tests
+    needs: [cache_info, update_deps]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        profile: [debug, release]
+        toolchain: [stable]
+        include:
+          - os: ubuntu-latest
+            profile: debug
+            toolchain: nightly
+    env:
+      RUSTFLAGS: -D warnings
+      RUST_BACKTRACE: 1
+      CARGO_FLAGS: --verbose --locked
+      CARGO_INCREMENTAL: 0
+    steps:
+      - name: Set up environment variables and cargo config
+        shell: bash
+        run: |
+          if [ '${{ matrix.profile }}' == release ]; then
+            echo "CARGO_FLAGS=$CARGO_FLAGS --release" >> $GITHUB_ENV
+          fi
+          case '${{ matrix.os }}' in
+            ubuntu-latest)  features=systemd,gelf ;;
+            *)              features=gelf ;;
+          esac
+          echo "JORMUNGANDR_FEATURES=$features" >> $GITHUB_ENV
+
+          if [ '${{ matrix.profile }}' == debug ] && [ '${{ matrix.os }}' == windows-latest ]; then
+            echo "RUSTFLAGS=$RUSTFLAGS -C link-args=/STACK:2000000" >> $GITHUB_ENV
+          fi
+
+          mkdir .cargo
+          cat > .cargo/config.toml <<EOF
+          [profile.release]
+          lto = "thin"
+          EOF
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+          default: true
+          components: rustfmt
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Restore cargo registry index
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/registry/index
+          key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
+          # Caches on Windows and Unix do not interop:
+          # https://github.com/actions/cache/issues/362
+          restore-keys: cargo-index-
+
+      - name: Restore cargo dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+          key: cargo-deps-v1-${{ needs.cache_info.outputs.cargo-lock-hash }}
+
+      - name: Build jormungandr
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 30
+        with:
+          command: build
+          args: |
+            --manifest-path jormungandr/Cargo.toml
+            --features=evm
+            ${{ env.CARGO_FLAGS }}
+
+      - name: Build jcli
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 30
+        with:
+          command: build
+          args: -p jcli ${{ env.CARGO_FLAGS }}
+
+      - name: Build tests
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 30
+        with:
+          command: build
+          args: --tests --features=evm ${{ env.CARGO_FLAGS }}
+
+      - name: Build explorer
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 30
+        with:
+          command: build
+          args: -p explorer ${{ env.CARGO_FLAGS }}
+
+      - name: Run evm tests
+        uses: actions-rs/cargo@v1
+        timeout-minutes: 90
+        with:
+          command: test
+          args: --tests ${{ env.CARGO_FLAGS }} --features evm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TMPDIR: ${{ runner.temp }}
+
+      - name: Pack logs from failed tests
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
+          path: ${{ runner.temp }}/jormungandr_*
+          retention-days: 30

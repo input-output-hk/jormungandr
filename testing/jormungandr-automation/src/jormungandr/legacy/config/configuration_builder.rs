@@ -1,9 +1,9 @@
 use super::{P2p, TrustedPeer};
-use crate::jormungandr::legacy::config::NodeConfig;
-use crate::jormungandr::JormungandrParams;
-use crate::jormungandr::{legacy::version_0_13_0, Version};
-use jormungandr_lib::interfaces::NodeId;
-use jormungandr_lib::interfaces::{NodeConfig as NewestNodeConfig, Rest};
+use crate::jormungandr::{
+    legacy::{config::NodeConfig, version_0_13_0},
+    JormungandrParams, Version,
+};
+use jormungandr_lib::interfaces::{NodeConfig as NewestNodeConfig, NodeId, Rest};
 use rand::RngCore;
 use rand_core::OsRng;
 use thiserror::Error;
@@ -76,7 +76,7 @@ impl LegacyNodeConfigConverter {
     }
 
     fn build_node_config_after_0_13_0(&self, source: &NewestNodeConfig) -> NodeConfig {
-        let mut rng = OsRng;
+        let rng = OsRng;
 
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
@@ -84,8 +84,7 @@ impl LegacyNodeConfigConverter {
             .iter()
             .map(|peer| {
                 let id = NodeId::from(
-                    <chain_crypto::SecretKey<chain_crypto::Ed25519>>::generate(&mut rng)
-                        .to_public(),
+                    <chain_crypto::SecretKey<chain_crypto::Ed25519>>::generate(rng).to_public(),
                 );
 
                 TrustedPeer {
@@ -104,6 +103,7 @@ impl LegacyNodeConfigConverter {
                 cors: None,
                 tls: None,
             },
+            jrpc: source.jrpc.clone(),
             p2p: P2p {
                 trusted_peers,
                 public_address: source.p2p.public_address.clone(),
@@ -142,6 +142,7 @@ impl LegacyNodeConfigConverter {
                 cors: None,
                 tls: None,
             },
+            jrpc: source.jrpc.clone(),
             p2p: P2p {
                 trusted_peers,
                 public_address: source.p2p.public_address.clone(),
@@ -163,7 +164,7 @@ impl LegacyNodeConfigConverter {
     fn generate_legacy_poldercast_id(rng: &mut OsRng) -> String {
         let mut bytes: [u8; 24] = [0; 24];
         rng.fill_bytes(&mut bytes);
-        hex::encode(&bytes)
+        hex::encode(bytes)
     }
 
     fn build_node_config_before_0_8_19(&self, source: &NewestNodeConfig) -> NodeConfig {
@@ -197,6 +198,7 @@ impl LegacyNodeConfigConverter {
                 cors: None,
                 tls: None,
             },
+            jrpc: source.jrpc.clone(),
             p2p: P2p {
                 trusted_peers,
                 public_address: source.p2p.public_address.clone(),

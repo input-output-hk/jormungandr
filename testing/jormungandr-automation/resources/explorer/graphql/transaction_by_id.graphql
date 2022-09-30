@@ -1,5 +1,93 @@
 query TransactionById($id: String!){
     transaction(id: $id) {
         id
+        __typename
+        initialConfigurationParams { configParams {...configParam}}
+        blocks{id date{...blockDate}}
+        inputs{amount address{id}}
+        outputs{amount address{id}}}}
+
+fragment blockDate on BlockDate{
+                            epoch{id}
+                            slot
+                        }
+
+fragment configParam on ConfigParam
+{
+ __typename
+    ... on Block0Date { block0Date }
+    ... on Discrimination { discrimination }
+    ... on ConsensusType { consensusType }
+    ... on SlotsPerEpoch { slotsPerEpoch }
+    ... on SlotDuration { slotDuration}
+    ... on EpochStabilityDepth { epochStabilityDepth }
+    ... on Milli { milli}
+    ... on BlockContentMaxSize { blockContentMaxSize}
+    ... on AddBftLeader { addBftLeader{ id }}
+    ... on RemoveBftLeader { removeBftLeader { id }}
+    ... on LinearFee {
+                    constant
+                    coefficient
+                    certificate
+                    perCertificateFees {
+                        certificatePoolRegistration
+                        certificateStakeDelegation
+                        certificateOwnerStakeDelegation
+                    }
+                    perVoteCertificateFees {
+                        certificateVotePlan
+                        certificateVoteCast
+                    }}
+    ... on ProposalExpiration{ proposalExpiration }
+    ... on KesUpdateSpeed { kesUpdateSpeed}
+    ... on TreasuryAdd { treasuryAdd }
+    ... on TreasuryParams { treasuryParams {
+                                            fixed
+                                            ratio {
+                                                numerator
+                                                denominator
+                                                }
+                                            maxLimit
+                            }}
+    ... on RewardPot { rewardPot }
+    ... on RewardParams { rewardParams {
+                                    __typename
+                                    ... on LinearRewardParams{
+                                        constant
+                                        ratio {
+                                                numerator
+                                                denominator
+                                            }
+                                        epochStart
+                                        epochRate
+                                    }
+                                    ... on HalvingRewardParams {
+                                        constant
+                                        ratio {
+                                                numerator
+                                                denominator
+                                            }
+                                        epochStart
+                                        epochRate
+                                    }
+                                }}
+    ... on PerCertificateFee{
+            certificatePoolRegistration
+            certificateStakeDelegation
+            certificateOwnerStakeDelegation
     }
+    ... on FeesInTreasury { feesInTreasury}
+    ... on RewardLimitNone { rewardLimitNone }
+    ... on RewardLimitByAbsoluteStake { rewardLimitByAbsoluteStake {
+                                        numerator
+                                        denominator
+                                    }}
+    ... on PoolRewardParticipationCapping { min max }
+    ... on AddCommitteeId { addCommitteeId}
+    ... on RemoveCommitteeId { removeCommitteeId }
+    ... on PerVoteCertificateFee {
+                                    certificateVotePlan
+                                    certificateVoteCast
+                                }
+    ... on TransactionMaxExpiryEpochs { transactionMaxExpiryEpochs }
 }

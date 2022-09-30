@@ -1,21 +1,27 @@
 use chain_core::property::FromStr;
+use chain_crypto::Ed25519;
 use chain_impl_mockchain::{
-    certificate::{VotePlan, VoteTallyPayload},
+    certificate::{UpdateProposal, UpdateVote, VotePlan, VoteTallyPayload},
+    chaintypes::ConsensusVersion,
+    fragment::FragmentId,
     vote::Choice,
 };
 use chain_time::TimeEra;
-use jormungandr_automation::jormungandr::MemPoolCheck;
-use jormungandr_automation::jormungandr::RemoteJormungandr;
-use jormungandr_automation::testing::SyncNode;
-use jormungandr_automation::testing::{VoteCastCounter, VotePlanBuilder};
-use jormungandr_lib::crypto::hash::Hash;
-use jormungandr_lib::interfaces::BlockDate as BlockDateDto;
+use jormungandr_automation::{
+    jormungandr::{MemPoolCheck, RemoteJormungandr},
+    testing::{SyncNode, VoteCastCounter, VotePlanBuilder},
+};
+use jormungandr_lib::{
+    crypto::{hash::Hash, key::KeyPair},
+    interfaces::{BlockContentMaxSize, BlockDate as BlockDateDto, ConfigParam, ConfigParams},
+};
 use jortestkit::load::{Request, RequestFailure, RequestGenerator};
 use rand::RngCore;
 use rand_core::OsRng;
-use std::iter;
-use std::time::Duration;
-use std::time::Instant;
+use std::{
+    iter,
+    time::{Duration, Instant},
+};
 use thor::{
     FragmentBuilder, FragmentSender, FragmentSenderError, FragmentVerifier, StakePool, Wallet,
 };
@@ -26,6 +32,8 @@ pub struct FragmentGenerator<'a, S: SyncNode + Send> {
     active_stake_pools: Vec<StakePool>,
     vote_plans_for_casting: Vec<VotePlan>,
     vote_plans_for_tally: Vec<VotePlan>,
+    update_proposals_for_casting: Vec<FragmentId>,
+    bft_leader: Option<KeyPair<Ed25519>>,
     node: RemoteJormungandr,
     rand: OsRng,
     vote_cast_register: Option<VoteCastCounter>,
@@ -34,6 +42,8 @@ pub struct FragmentGenerator<'a, S: SyncNode + Send> {
     stake_pools_count: usize,
     vote_plans_for_tally_count: usize,
     vote_plans_for_casting_count: usize,
+    update_proposals_for_casting_count: usize,
+    fragment_options_count: usize,
 }
 
 impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
@@ -41,16 +51,21 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
     pub fn new(
         sender: Wallet,
         receiver: Wallet,
+        bft_leader: Option<KeyPair<Ed25519>>,
         node: RemoteJormungandr,
         slots_per_epoch: u32,
         stake_pools_count: usize,
         vote_plans_for_tally_count: usize,
         vote_plans_for_casting_count: usize,
+        update_proposals_for_casting_count: usize,
         fragment_sender: FragmentSender<'a, S>,
     ) -> Self {
         assert!(vote_plans_for_casting_count > 1);
         assert!(stake_pools_count > 1);
         assert!(vote_plans_for_tally_count > 1);
+        if bft_leader.is_some() {
+            assert!(update_proposals_for_casting_count > 1);
+        }
 
         Self {
             sender,
@@ -58,6 +73,8 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             active_stake_pools: vec![],
             vote_plans_for_casting: vec![],
             vote_plans_for_tally: vec![],
+            update_proposals_for_casting: vec![],
+            bft_leader,
             node,
             vote_cast_register: None,
             rand: OsRng,
@@ -66,6 +83,8 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             stake_pools_count,
             vote_plans_for_tally_count,
             vote_plans_for_casting_count,
+            update_proposals_for_casting_count,
+            fragment_options_count: 0,
         }
     }
 
@@ -79,6 +98,56 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
         let settings = self.node.rest().settings().unwrap();
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
         let fees = settings.fees;
+        if settings.consensus_version == ConsensusVersion::Bft.to_string() {
+            assert!(
+                self.bft_leader.is_some(),
+                "Consensus version bft, bft leader needed"
+            );
+            self.fragment_options_count = 12;
+
+            let update_proposals: Vec<UpdateProposal> = iter::from_fn(|| {
+                Some(UpdateProposal::new(
+                    ConfigParams::new(vec![ConfigParam::BlockContentMaxSize(
+                        BlockContentMaxSize::from(self.rand.next_u32()),
+                    )])
+                    .into(),
+                    self.bft_leader
+                        .as_ref()
+                        .unwrap()
+                        .identifier()
+                        .into_public_key()
+                        .into(),
+                ))
+            })
+            .take(self.update_proposals_for_casting_count)
+            .collect();
+
+            for update_proposal in update_proposals {
+                fragments.push(
+                    FragmentBuilder::new(&block0_hash, &fees, self.fragment_sender.date())
+                        .update_proposal(
+                            &self.sender,
+                            update_proposal,
+                            &self
+                                .bft_leader
+                                .as_ref()
+                                .unwrap()
+                                .signing_key()
+                                .into_secret_key(),
+                        ),
+                );
+                self.sender.confirm_transaction();
+            }
+            self.update_proposals_for_casting = fragments.iter().map(|f| f.hash()).collect();
+        }
+
+        if settings.consensus_version == ConsensusVersion::GenesisPraos.to_string() {
+            assert!(
+                self.bft_leader.is_none(),
+                "Consesus version genesis praos, bft leader will be ignored"
+            );
+            self.fragment_options_count = 10;
+        }
 
         let stake_pools: Vec<StakePool> = iter::from_fn(|| Some(StakePool::new(&self.sender)))
             .take(self.stake_pools_count)
@@ -116,6 +185,7 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
             );
             self.sender.confirm_transaction();
         }
+
         for vote_plan_for_casting in &votes_plan_for_casting {
             fragments.push(
                 FragmentBuilder::new(&block0_hash, &fees, self.fragment_sender.date())
@@ -155,14 +225,15 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
 
     pub fn send_all(&mut self) -> Result<Vec<MemPoolCheck>, FragmentSenderError> {
         let mut checks = Vec::new();
-        for i in 0..10 {
+
+        for i in 0..self.fragment_options_count {
             checks.push(self.send_one(i as u8)?);
         }
         Ok(checks)
     }
 
     pub fn send_one(&mut self, option: u8) -> Result<MemPoolCheck, FragmentSenderError> {
-        match option % 10 {
+        match option % self.fragment_options_count as u8 {
             0 => self.fragment_sender.send_transaction(
                 &mut self.sender,
                 &self.receiver,
@@ -278,6 +349,54 @@ impl<'a, S: SyncNode + Send> FragmentGenerator<'a, S> {
                     vote_plan,
                     &self.node,
                     VoteTallyPayload::Public,
+                )
+            }
+            10 => {
+                let change_params = ConfigParams::new(vec![ConfigParam::BlockContentMaxSize(
+                    BlockContentMaxSize::from(self.rand.next_u32()),
+                )]);
+
+                let update_proposal = UpdateProposal::new(
+                    change_params.into(),
+                    self.bft_leader
+                        .as_ref()
+                        .unwrap()
+                        .identifier()
+                        .into_public_key()
+                        .into(),
+                );
+
+                self.fragment_sender.send_update_proposal(
+                    &mut self.sender,
+                    &self.bft_leader.as_ref().unwrap().signing_key().into(),
+                    update_proposal,
+                    &self.node,
+                )
+            }
+            11 => {
+                let index = self.rand.next_u32() as usize % self.update_proposals_for_casting.len();
+                let update_proposal = self.update_proposals_for_casting.get(index).unwrap();
+
+                let update_vote = UpdateVote::new(
+                    *update_proposal,
+                    self.bft_leader
+                        .as_ref()
+                        .unwrap()
+                        .identifier()
+                        .into_public_key()
+                        .into(),
+                );
+
+                self.fragment_sender.send_update_vote(
+                    &mut self.sender,
+                    &self
+                        .bft_leader
+                        .as_ref()
+                        .unwrap()
+                        .signing_key()
+                        .into_secret_key(),
+                    update_vote,
+                    &self.node,
                 )
             }
             _ => unreachable!(),

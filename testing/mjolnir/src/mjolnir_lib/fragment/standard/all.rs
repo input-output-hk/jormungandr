@@ -1,18 +1,24 @@
-use crate::generators::FragmentGenerator;
-use crate::generators::FragmentStatusProvider;
-use crate::mjolnir_lib::DiscriminationExtensions;
-use crate::mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError};
+use crate::{
+    generators::{FragmentGenerator, FragmentStatusProvider},
+    mjolnir_lib::{args::parse_shift, build_monitor, MjolnirError},
+};
 use chain_addr::Discrimination;
+use chain_crypto::Ed25519;
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_automation::{jormungandr::RemoteJormungandrBuilder, testing::time};
+use jormungandr_automation::{
+    jormungandr::RemoteJormungandrBuilder,
+    testing::{keys::create_new_key_pair, time},
+};
 use jormungandr_lib::crypto::hash::Hash;
-use jortestkit::load::ConfigurationBuilder;
-use jortestkit::prelude::parse_progress_bar_mode_from_str;
-use jortestkit::prelude::ProgressBarMode;
-use std::time::Duration;
-use std::{path::PathBuf, str::FromStr};
+use jortestkit::{
+    load::ConfigurationBuilder,
+    prelude::{parse_progress_bar_mode_from_str, ProgressBarMode},
+};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 use structopt::StructOpt;
-use thor::{BlockDateGenerator, FragmentSender, FragmentSenderSetup, Wallet};
+use thor::{
+    BlockDateGenerator, DiscriminationExtension, FragmentSender, FragmentSenderSetup, Wallet,
+};
 
 #[derive(StructOpt, Debug)]
 pub struct AllFragments {
@@ -90,7 +96,7 @@ impl AllFragments {
         let settings = rest.settings().unwrap();
 
         let block0_hash = Hash::from_str(&settings.block0_hash).unwrap();
-        let fees = settings.fees;
+        let fees = settings.fees.clone();
 
         let fragment_sender = FragmentSender::new(
             block0_hash,
@@ -101,11 +107,15 @@ impl AllFragments {
             FragmentSenderSetup::no_verify(),
         );
 
+        let bft_secret_alice = create_new_key_pair::<Ed25519>();
+
         let mut generator = FragmentGenerator::new(
             faucet,
             receiver,
+            Some(bft_secret_alice),
             remote_jormungandr,
             settings.slots_per_epoch,
+            30,
             30,
             30,
             30,

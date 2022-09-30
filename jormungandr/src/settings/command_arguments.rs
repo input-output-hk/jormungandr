@@ -1,14 +1,15 @@
-use crate::settings::{start::config::TrustedPeer, LOG_FILTER_LEVEL_POSSIBLE_VALUES};
-use multiaddr::Multiaddr;
-use std::net::SocketAddr;
-use std::path::PathBuf;
-use structopt::StructOpt;
-use tracing::level_filters::LevelFilter;
-
 use crate::{
     blockcfg::HeaderHash,
-    settings::logging::{LogFormat, LogOutput},
+    settings::{
+        logging::{LogFormat, LogOutput},
+        start::config::TrustedPeer,
+        LOG_FILTER_LEVEL_POSSIBLE_VALUES,
+    },
 };
+use multiaddr::Multiaddr;
+use std::{net::SocketAddr, path::PathBuf};
+use structopt::StructOpt;
+use tracing::level_filters::LevelFilter;
 
 fn trusted_peer_from_json(json: &str) -> Result<TrustedPeer, serde_json::Error> {
     serde_json::from_str(json)
@@ -66,7 +67,15 @@ pub struct StartArguments {
 pub struct RestArguments {
     /// REST API listening address.
     /// If not configured anywhere, defaults to REST API being disabled
-    #[structopt(long = "rest-listen")]
+    #[structopt(name = "rest-listen")]
+    pub listen: Option<SocketAddr>,
+}
+
+#[derive(StructOpt, Debug)]
+pub struct JRpcArguments {
+    /// JRPC API listening address.
+    /// If not configured anywhere, defaults to JRPC API being disabled
+    #[structopt(name = "jrpc-listen")]
     pub listen: Option<SocketAddr>,
 }
 
@@ -105,6 +114,9 @@ pub struct CommandLine {
 
     #[structopt(flatten)]
     pub rest_arguments: RestArguments,
+
+    #[structopt(flatten)]
+    pub jrpc_arguments: JRpcArguments,
 
     #[structopt(flatten)]
     pub start_arguments: StartArguments,

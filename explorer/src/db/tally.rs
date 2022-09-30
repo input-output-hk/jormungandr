@@ -1,7 +1,6 @@
-use chain_impl_mockchain::{certificate::DecryptedPrivateTallyProposal, stake::StakeControl};
-
 use super::indexing::ExplorerVoteProposal;
 use crate::db::indexing::{ExplorerVote, ExplorerVoteTally};
+use chain_impl_mockchain::{certificate::DecryptedPrivateTallyProposal, stake::StakeControl};
 
 pub fn compute_private_tally(
     proposal: &ExplorerVoteProposal,

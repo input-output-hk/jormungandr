@@ -8,8 +8,7 @@ use serde::{
     ser::Serializer,
     Serialize,
 };
-use std::fmt;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 pub fn serialize_secret<S, A>(key: &SecretKey<A>, serializer: S) -> Result<S::Ok, S::Error>
 where

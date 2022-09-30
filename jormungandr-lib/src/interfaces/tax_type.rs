@@ -3,7 +3,7 @@ use chain_impl_mockchain::rewards;
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU64;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Copy)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub struct TaxType {
     pub fixed: Value,

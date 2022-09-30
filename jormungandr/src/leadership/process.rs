@@ -1,8 +1,5 @@
 use crate::{
-    blockcfg::{
-        block_builder, ApplyBlockLedger, BlockVersion, Contents, LeaderOutput, Leadership,
-        LedgerParameters,
-    },
+    blockcfg::{block_builder, ApplyBlockLedger, BlockVersion, Contents, LeaderOutput, Leadership},
     blockchain::{new_epoch_leadership_from, EpochLeadership, LeadershipBlock, Ref, Tip},
     intercom::{unary_reply, BlockMsg, Error as IntercomError, TransactionMsg},
     leadership::{
@@ -20,8 +17,7 @@ use jormungandr_lib::{
     interfaces::{LeadershipLog, LeadershipLogStatus},
     time::SystemTime,
 };
-use std::cmp::Ordering;
-use std::{sync::Arc, time::Instant};
+use std::{cmp::Ordering, sync::Arc, time::Instant};
 use thiserror::Error;
 use tracing::{span, Level, Span};
 use tracing_futures::Instrument;
@@ -484,20 +480,13 @@ impl Module {
             self.rewards_report_all,
         );
         let ledger = leadership.state.clone();
-        let ledger_parameters = leadership.ledger_parameters.clone();
 
         let ledger = ledger
             .begin_block(chain_length, event.date)
             .map_err(Box::new)?;
 
-        let (contents, ledger) = prepare_block(
-            pool,
-            ledger,
-            ledger_parameters,
-            soft_deadline_future,
-            hard_deadline_future,
-        )
-        .await?;
+        let (contents, ledger) =
+            prepare_block(pool, ledger, soft_deadline_future, hard_deadline_future).await?;
 
         let event_logs_error = event_logs.clone();
         let signing = {
@@ -702,7 +691,6 @@ impl Entry {
 async fn prepare_block(
     mut fragment_pool: MessageBox<TransactionMsg>,
     ledger: ApplyBlockLedger,
-    epoch_parameters: Arc<LedgerParameters>,
     soft_deadline_future: futures::channel::oneshot::Receiver<()>,
     hard_deadline_future: futures::channel::oneshot::Receiver<()>,
 ) -> Result<(Contents, ApplyBlockLedger), LeadershipError> {
@@ -712,7 +700,6 @@ async fn prepare_block(
 
     let msg = TransactionMsg::SelectTransactions {
         ledger,
-        ledger_params: epoch_parameters.as_ref().clone(),
         selection_alg: FragmentSelectionAlgorithmParams::OldestFirst,
         reply_handle,
         soft_deadline_future,

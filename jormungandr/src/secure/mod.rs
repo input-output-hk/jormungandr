@@ -31,8 +31,10 @@ pub struct OwnerKey(Identifier<Ed25519>);
 /// Node Secret(s)
 #[derive(Clone, Deserialize)]
 pub struct NodeSecret {
-    pub bft: Option<Bft>,
-    pub genesis: Option<GenesisPraos>,
+    bft: Option<Bft>,
+    genesis: Option<GenesisPraos>,
+    #[cfg(feature = "evm")]
+    evm_keys: Option<Vec<chain_evm::ethereum_types::H256>>,
 }
 
 /// Node Secret's Public parts
@@ -67,5 +69,17 @@ impl NodeSecret {
             sig_key: genesis.sig_key.into_secret_key(),
             vrf_key: genesis.vrf_key.into_secret_key(),
         })
+    }
+
+    #[cfg(feature = "evm")]
+    pub fn evm_keys(&self) -> Vec<chain_evm::util::Secret> {
+        self.evm_keys
+            .as_ref()
+            .map(|keys| {
+                keys.iter()
+                    .map(chain_evm::util::Secret::from_hash)
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 }

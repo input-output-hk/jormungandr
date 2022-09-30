@@ -1,5 +1,4 @@
 use chain_impl_mockchain::fragment::FragmentId;
-
 use serde::{Deserialize, Serialize};
 use serde_with::{serde_as, DisplayFromStr};
 
@@ -68,7 +67,6 @@ impl FragmentsProcessingSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use quickcheck::{Arbitrary, Gen};
     use quickcheck_macros::quickcheck;
 

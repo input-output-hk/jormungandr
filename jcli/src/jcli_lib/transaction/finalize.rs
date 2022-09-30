@@ -1,5 +1,7 @@
-use crate::jcli_lib::transaction::{common, Error};
-use crate::transaction::staging::Staging;
+use crate::{
+    jcli_lib::transaction::{common, Error},
+    transaction::staging::Staging,
+};
 use chain_impl_mockchain::transaction::OutputPolicy;
 use jormungandr_lib::interfaces;
 use structopt::StructOpt;

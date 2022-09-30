@@ -1,10 +1,9 @@
-use crate::style;
+use crate::{
+    builder::{settings::wallet::WalletType, NodeSetting, Settings},
+    config::WalletTemplate,
+    style,
+};
 use std::io::Write;
-
-use crate::builder::NodeSetting;
-use crate::builder::Settings;
-use crate::builder::WalletTemplate;
-use crate::builder::WalletType;
 
 pub struct Dotifier;
 
@@ -34,7 +33,7 @@ impl Dotifier {
         }
         writeln!(&mut w, "  }}")?;
 
-        for wallet in settings.wallets.values() {
+        for wallet in &settings.wallets {
             let template = wallet.template();
             let label = self.dot_wallet_label(template);
             writeln!(&mut w, "  {}", &label)?;
@@ -55,13 +54,13 @@ impl Dotifier {
     }
 
     pub(crate) fn dot_wallet_label(&self, wallet: &WalletTemplate) -> String {
-        let t: crate::style::icons::Icon = if *wallet.wallet_type() == WalletType::Account {
+        let t: crate::style::icons::Icon = if wallet.wallet_type() == Some(WalletType::Account) {
             *crate::style::icons::account
         } else {
             *crate::style::icons::wallet
         };
 
-        format!("\"{}{}\\nfunds = {}\"", &wallet.alias(), t, wallet.value())
+        format!("\"{}{}\\nfunds = {}\"", &wallet.id(), t, wallet.value())
     }
 
     pub(crate) fn dot_node_label(&self, node_settings: &NodeSetting) -> String {

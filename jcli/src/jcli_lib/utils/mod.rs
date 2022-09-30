@@ -5,9 +5,7 @@ pub mod output_file;
 pub mod output_format;
 pub mod vote;
 
-pub use self::account_id::AccountId;
-pub use self::output_format::OutputFormat;
-
+pub use self::{account_id::AccountId, output_format::OutputFormat};
 use structopt::StructOpt;
 use thiserror::Error;
 
@@ -39,7 +37,7 @@ impl Utils {
     pub fn exec(self) -> Result<(), Error> {
         match self {
             Utils::Bech32Convert(convert_args) => {
-                convert_prefix(convert_args.from_bech32, convert_args.new_hrp).map_err(|e| e)
+                convert_prefix(convert_args.from_bech32, convert_args.new_hrp)
             }
         }
     }

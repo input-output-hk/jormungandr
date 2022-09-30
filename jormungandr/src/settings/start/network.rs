@@ -1,12 +1,11 @@
 use super::config;
-use crate::network::p2p::Address;
-use crate::topology::{layers::LayersConfig, NodeId, QuarantineConfig};
-
+use crate::{
+    network::p2p::Address,
+    topology::{layers::LayersConfig, NodeId, QuarantineConfig},
+};
 use chain_crypto::Ed25519;
 use jormungandr_lib::{crypto::key::SigningKey, multiaddr};
-use std::net::SocketAddr;
-use std::str;
-use std::time::Duration;
+use std::{net::SocketAddr, str, time::Duration};
 
 /// Protocol to use for a connection.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]

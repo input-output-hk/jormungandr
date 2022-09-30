@@ -1,7 +1,7 @@
 use crate::controller::InteractiveCommandError;
-use jormungandr_automation::jormungandr::ExplorerError;
-use jormungandr_automation::jormungandr::LegacyConfigConverterError;
-use jormungandr_automation::jormungandr::StartupError;
+use jormungandr_automation::jormungandr::{
+    ExplorerError, LegacyConfigConverterError, StartupError,
+};
 use thiserror::Error;
 use thor::FragmentSenderError;
 
@@ -60,4 +60,10 @@ pub enum Error {
 
     #[error(transparent)]
     Serialization(#[from] serde_yaml::Error),
+    #[error(transparent)]
+    SettingsWallet(#[from] crate::builder::settings::wallet::Error),
+    #[error(transparent)]
+    Settings(#[from] crate::builder::settings::Error),
+    #[error("no explorer configuration defined")]
+    NoExplorerConfigurationDefined,
 }

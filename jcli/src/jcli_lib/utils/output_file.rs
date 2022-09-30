@@ -1,9 +1,6 @@
 use crate::jcli_lib::utils::io;
-
+use std::{io::Write, path::PathBuf};
 use structopt::StructOpt;
-
-use std::io::Write;
-use std::path::PathBuf;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

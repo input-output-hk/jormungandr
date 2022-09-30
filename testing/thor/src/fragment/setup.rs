@@ -1,8 +1,9 @@
-use jormungandr_automation::jormungandr::{FragmentNode, NodeAlias};
-use jormungandr_automation::testing::SyncNode;
+use jormungandr_automation::{
+    jormungandr::{FragmentNode, NodeAlias},
+    testing::SyncNode,
+};
 use jormungandr_lib::crypto::hash::Hash;
-use std::fmt;
-use std::path::PathBuf;
+use std::{fmt, path::PathBuf};
 
 #[derive(Clone)]
 pub enum VerifyStrategy<'a> {

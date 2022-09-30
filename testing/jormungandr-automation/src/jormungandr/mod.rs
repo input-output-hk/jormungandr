@@ -1,5 +1,7 @@
+#![allow(clippy::derive_partial_eq_without_eq)]
+
 mod configuration;
-mod explorer;
+pub mod explorer;
 mod fragment_node;
 mod legacy;
 mod logger;

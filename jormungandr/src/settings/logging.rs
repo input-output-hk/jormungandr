@@ -1,15 +1,13 @@
-use std::fmt::{self, Display};
-use std::fs;
-use std::io;
 #[cfg(feature = "gelf")]
 use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::str::FromStr;
-
-use tracing::level_filters::LevelFilter;
+use std::{
+    fmt::{self, Display},
+    fs, io,
+    path::PathBuf,
+    str::FromStr,
+};
+use tracing::{level_filters::LevelFilter, subscriber::SetGlobalDefaultError};
 use tracing_appender::non_blocking::WorkerGuard;
-
-use tracing::subscriber::SetGlobalDefaultError;
 #[allow(unused_imports)]
 use tracing_subscriber::layer::SubscriberExt;
 
@@ -23,7 +21,7 @@ pub struct LogSettings {
 /// some code executes before the logs are initialized.
 pub type LogInfoMsg = Option<Vec<String>>;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LogSettingsEntry {
     pub level: LevelFilter,
     pub format: LogFormat,

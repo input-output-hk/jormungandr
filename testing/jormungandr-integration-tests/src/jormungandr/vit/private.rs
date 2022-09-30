@@ -1,35 +1,43 @@
-use assert_fs::NamedTempFile;
 use assert_fs::{
     fixture::{FileWriteStr, PathChild},
-    TempDir,
+    NamedTempFile, TempDir,
 };
 use bech32::FromBase32;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as _;
-use chain_impl_mockchain::header::BlockDate;
-use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{
-    certificate::VoteAction, chaintypes::ConsensusType,
-    ledger::governance::TreasuryGovernanceAction, value::Value, vote::Choice,
+    certificate::VoteAction, chaintypes::ConsensusType, header::BlockDate,
+    ledger::governance::TreasuryGovernanceAction, tokens::minting_policy::MintingPolicy,
+    value::Value, vote::Choice,
 };
 use chain_vote::MemberPublicKey;
-use jormungandr_automation::jcli::JCli;
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_automation::testing::time;
-use jormungandr_automation::testing::{VotePlanBuilder, VotePlanExtension};
-use jormungandr_lib::interfaces::{BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed};
+use core::time::Duration;
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{ConfigurationBuilder, Starter},
+    testing::{time, time::wait_for_epoch, VotePlanBuilder, VotePlanExtension},
+};
+use jormungandr_lib::interfaces::{
+    BlockDate as BlockDateDto, InitialToken, KesUpdateSpeed, NodeState,
+};
 use rand::rngs::OsRng;
-use thor::Wallet;
+use thor::{
+    vote_plan_cert, CommitteeDataManager, FragmentSender, FragmentSenderSetup, FragmentVerifier,
+    Wallet,
+};
+
+const INITIAL_FUND_PER_WALLET: u64 = 1_000_000;
+const INITIAL_TREASURY: u64 = 1000;
+const REWARD_INCREASE: u64 = 10;
+const SLOTS_PER_EPOCH: u32 = 10;
+const SLOT_DURATION: u8 = 4;
 
 #[test]
 pub fn jcli_e2e_flow_private_vote() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap().into_persistent();
-    let rewards_increase = 10;
     let yes_choice = Choice::new(1);
     let no_choice = Choice::new(2);
-
-    let wallet_initial_funds = 1_000_000;
 
     let mut rng = OsRng;
     let mut alice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
@@ -67,7 +75,7 @@ pub fn jcli_e2e_flow_private_vote() {
         .proposals_count(1)
         .action_type(VoteAction::Treasury {
             action: TreasuryGovernanceAction::TransferToRewards {
-                value: Value(rewards_increase),
+                value: Value(REWARD_INCREASE),
             },
         })
         .private()
@@ -88,26 +96,26 @@ pub fn jcli_e2e_flow_private_vote() {
 
     let config = ConfigurationBuilder::new()
         .with_funds(vec![
-            alice.to_initial_fund(wallet_initial_funds),
-            bob.to_initial_fund(wallet_initial_funds),
-            clarice.to_initial_fund(wallet_initial_funds),
+            alice.to_initial_fund(INITIAL_FUND_PER_WALLET),
+            bob.to_initial_fund(INITIAL_FUND_PER_WALLET),
+            clarice.to_initial_fund(INITIAL_FUND_PER_WALLET),
         ])
         .with_token(InitialToken {
             token_id: token_id.clone().into(),
             policy: minting_policy.into(),
             to: vec![
-                alice.to_initial_token(wallet_initial_funds),
-                bob.to_initial_token(wallet_initial_funds),
-                clarice.to_initial_token(wallet_initial_funds),
+                alice.to_initial_token(INITIAL_FUND_PER_WALLET),
+                bob.to_initial_token(INITIAL_FUND_PER_WALLET),
+                clarice.to_initial_token(INITIAL_FUND_PER_WALLET),
             ],
         })
         .with_block0_consensus(ConsensusType::Bft)
-        .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
-        .with_treasury(1000.into())
+        .with_kes_update_speed(KesUpdateSpeed::MAXIMUM) //KesUpdateSpeed::new(43200).unwrap()
+        .with_treasury(INITIAL_TREASURY.into())
         .with_discrimination(Discrimination::Production)
         .with_committees(&[alice.to_committee_id()])
-        .with_slot_duration(4)
-        .with_slots_per_epoch(10)
+        .with_slot_duration(SLOT_DURATION)
+        .with_slots_per_epoch(SLOTS_PER_EPOCH)
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config).start().unwrap();
@@ -261,7 +269,7 @@ pub fn jcli_e2e_flow_private_vote() {
 
     // We want to make sure that our small rewards increase is reflected in current rewards amount
     assert!(
-        rewards_after == rewards_before + rewards_increase,
+        rewards_after == rewards_before + REWARD_INCREASE,
         "Vote was unsuccessful"
     );
 }
@@ -270,7 +278,6 @@ pub fn jcli_e2e_flow_private_vote() {
 pub fn jcli_private_vote_invalid_proof() {
     let jcli: JCli = Default::default();
     let temp_dir = TempDir::new().unwrap().into_persistent();
-    let wallet_initial_funds = 1_000_000;
 
     let mut rng = OsRng;
     let mut alice = Wallet::new_account_with_discrimination(&mut rng, Discrimination::Production);
@@ -335,19 +342,19 @@ pub fn jcli_private_vote_invalid_proof() {
     let token_id = vote_plan.voting_token();
 
     let config = ConfigurationBuilder::new()
-        .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
+        .with_funds(vec![alice.to_initial_fund(INITIAL_FUND_PER_WALLET)])
         .with_token(InitialToken {
             token_id: token_id.clone().into(),
             policy: minting_policy.into(),
-            to: vec![alice.to_initial_token(wallet_initial_funds)],
+            to: vec![alice.to_initial_token(INITIAL_FUND_PER_WALLET)],
         })
         .with_block0_consensus(ConsensusType::Bft)
-        .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
-        .with_treasury(1000.into())
+        .with_kes_update_speed(KesUpdateSpeed::MAXIMUM)
+        .with_treasury(INITIAL_TREASURY.into())
         .with_discrimination(Discrimination::Production)
         .with_committees(&[alice.to_committee_id()])
-        .with_slot_duration(4)
-        .with_slots_per_epoch(10)
+        .with_slot_duration(SLOT_DURATION)
+        .with_slots_per_epoch(SLOTS_PER_EPOCH)
         .build(&temp_dir);
 
     let jormungandr = Starter::new().config(config).start().unwrap();
@@ -414,4 +421,115 @@ pub fn jcli_private_vote_invalid_proof() {
         1,
         "Incorrect decryption shares",
     );
+}
+
+#[test]
+pub fn private_tally_no_vote_cast() {
+    let temp_dir = TempDir::new().unwrap();
+    let mut alice = Wallet::default();
+    let threshold = 1;
+
+    let private_vote_committee_data_manager =
+        CommitteeDataManager::private(&mut OsRng, vec![alice.account_id()], threshold);
+
+    let vote_plan = VotePlanBuilder::new()
+        .proposals_count(1)
+        .action_type(VoteAction::Treasury {
+            action: TreasuryGovernanceAction::TransferToRewards {
+                value: Value(REWARD_INCREASE),
+            },
+        })
+        .private()
+        .vote_start(BlockDate::from_epoch_slot_id(1, 0))
+        .tally_start(BlockDate::from_epoch_slot_id(2, 0))
+        .tally_end(BlockDate::from_epoch_slot_id(3, 0))
+        .member_public_keys(private_vote_committee_data_manager.member_public_keys())
+        .options_size(3)
+        .build();
+
+    let vote_plan_cert = vote_plan_cert(
+        &alice,
+        chain_impl_mockchain::block::BlockDate {
+            epoch: 1,
+            slot_id: 0,
+        },
+        &vote_plan,
+    )
+    .into();
+    let wallets = [&alice];
+
+    let minting_policy = MintingPolicy::new();
+    let token_id = vote_plan.voting_token();
+
+    let config = ConfigurationBuilder::new()
+        .with_funds(
+            wallets
+                .iter()
+                .map(|x| x.to_initial_fund(INITIAL_FUND_PER_WALLET))
+                .collect(),
+        )
+        .with_token(InitialToken {
+            token_id: token_id.clone().into(),
+            policy: minting_policy.into(),
+            to: vec![alice.to_initial_token(INITIAL_FUND_PER_WALLET)],
+        })
+        .with_committees(&[alice.to_committee_id()])
+        .with_slots_per_epoch(SLOTS_PER_EPOCH)
+        .with_certs(vec![vote_plan_cert])
+        .with_slot_duration(SLOT_DURATION)
+        .with_treasury(INITIAL_TREASURY.into())
+        .build(&temp_dir);
+
+    let jormungandr = Starter::new()
+        .temp_dir(temp_dir)
+        .config(config)
+        .start()
+        .unwrap();
+
+    let transaction_sender = FragmentSender::new(
+        jormungandr.genesis_block_hash(),
+        jormungandr.fees(),
+        chain_impl_mockchain::block::BlockDate::first()
+            .next_epoch()
+            .into(),
+        FragmentSenderSetup::resend_3_times(),
+    );
+
+    wait_for_epoch(2, jormungandr.rest());
+
+    let transaction_sender =
+        transaction_sender.set_valid_until(chain_impl_mockchain::block::BlockDate {
+            epoch: 3,
+            slot_id: 0,
+        });
+
+    let vote_plan_statuses = jormungandr
+        .rest()
+        .vote_plan_statuses()
+        .unwrap()
+        .first()
+        .unwrap()
+        .clone();
+
+    let decrypted_shares = private_vote_committee_data_manager
+        .decrypt_tally(&vote_plan_statuses.into())
+        .unwrap();
+
+    let mempool_check = transaction_sender
+        .send_private_vote_tally(&mut alice, &vote_plan, decrypted_shares, &jormungandr)
+        .unwrap();
+
+    assert!(FragmentVerifier::wait_and_verify_is_in_block(
+        Duration::from_secs(5),
+        mempool_check,
+        &jormungandr,
+    )
+    .is_ok());
+
+    assert_eq!(
+        NodeState::Running,
+        jormungandr.rest().stats().unwrap().state
+    );
+
+    assert!(jormungandr.check_no_errors_in_log().is_ok());
 }

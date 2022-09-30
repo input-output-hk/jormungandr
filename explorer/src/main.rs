@@ -4,6 +4,9 @@ mod indexer;
 mod logging;
 mod settings;
 
+#[cfg(test)]
+mod tests;
+
 use crate::indexer::Indexer;
 use anyhow::Context;
 use chain_core::{packer::Codec, property::Deserialize};
@@ -287,6 +290,8 @@ async fn rest_service(mut state: broadcast::Receiver<GlobalState>, settings: Set
         db,
         crate::db::Settings {
             address_bech32_prefix: settings.address_bech32_prefix,
+            query_depth_limit: settings.query_depth_limit,
+            query_complexity_limit: settings.query_complexity_limit,
         },
     );
 

@@ -42,3 +42,12 @@
 
 - [Specs](./specs/introduction.md)
   - [Network](./specs/network.md)
+
+- [Testing](./testing/introduction.md)
+  - [Jormungandr Automation](./testing/automation.md)
+  - [Hersir](./testing/hersir.md)
+  - [Thor](./testing/thor.md)
+  - [Mjolnir](./testing/mjolnir.md)
+  - [Loki](./testing/loki.md)
+  - [Integration tests](./testing/integration_tests.md)
+

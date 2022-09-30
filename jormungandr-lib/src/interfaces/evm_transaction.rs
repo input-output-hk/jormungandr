@@ -1,13 +1,11 @@
 use chain_core::{
     packer::Codec,
-    property::{DeserializeFromSlice, ReadError},
+    property::{DeserializeFromSlice, ReadError, Serialize as _},
 };
 use chain_impl_mockchain::evm;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 use thiserror::Error;
-use typed_bytes::ByteBuilder;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvmTransaction(pub evm::EvmTransaction);
 
@@ -36,7 +34,7 @@ impl fmt::Display for EvmTransaction {
         write!(
             f,
             "{}",
-            hex::encode(self.0.serialize_in(ByteBuilder::new()).finalize_as_vec())
+            hex::encode(self.0.serialize_as_vec().map_err(|_| fmt::Error)?)
         )
     }
 }
@@ -44,7 +42,7 @@ impl fmt::Display for EvmTransaction {
 impl FromStr for EvmTransaction {
     type Err = EvmTransactionFromStrError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let data = hex::decode(&s)?;
+        let data = hex::decode(s)?;
         Ok(Self(evm::EvmTransaction::deserialize_from_slice(
             &mut Codec::new(data.as_slice()),
         )?))
@@ -56,7 +54,10 @@ impl Serialize for EvmTransaction {
     where
         S: serde::Serializer,
     {
-        let data = self.0.serialize_in(ByteBuilder::new()).finalize_as_vec();
+        let data = self
+            .0
+            .serialize_as_vec()
+            .map_err(|e| serde::ser::Error::custom(e.to_string()))?;
         if serializer.is_human_readable() {
             hex::encode(data).serialize(serializer)
         } else {

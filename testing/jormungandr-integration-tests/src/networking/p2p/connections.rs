@@ -1,16 +1,14 @@
 use crate::networking::utils;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+};
 use jormungandr_automation::jormungandr::LogLevel;
-use jormungandr_lib::interfaces::TopicsOfInterest;
-use jormungandr_lib::interfaces::TrustedPeer;
-use jormungandr_lib::time::Duration;
-use thor::DummySyncNode;
-use thor::FragmentSender;
+use jormungandr_lib::{
+    interfaces::{TopicsOfInterest, TrustedPeer},
+    time::Duration,
+};
+use thor::{DummySyncNode, FragmentSender};
 
 const LEADER1: &str = "LEADER1";
 const LEADER2: &str = "LEADER2";
@@ -19,6 +17,8 @@ const LEADER4: &str = "LEADER4";
 
 const CLIENT: &str = "CLIENT";
 const SERVER: &str = "SERVER";
+const SERVER_1: &str = "SERVER_1";
+const SERVER_2: &str = "SERVER_2";
 
 const ALICE: &str = "ALICE";
 const BOB: &str = "BOB";
@@ -110,7 +110,8 @@ pub fn node_trust_itself() {
 #[test]
 /// Ensures intervals between gossip attempts respect the `gossip_interval` timing parameter
 fn gossip_interval() {
-    const INTERVAL_SECS: u64 = 3;
+    const SERVER_GOSSIP_INTERVAL_SECS: u64 = 3;
+    const DEFAULT_GOSSIP_INTERVAL_SECS: u64 = 10;
 
     let mut network_controller = NetworkBuilder::default()
         .topology(
@@ -137,7 +138,7 @@ fn gossip_interval() {
     let server = network_controller
         .spawn(
             SpawnParams::new(SERVER)
-                .gossip_interval(Duration::new(INTERVAL_SECS, 0))
+                .gossip_interval(Duration::new(SERVER_GOSSIP_INTERVAL_SECS, 0))
                 .log_level(LogLevel::TRACE),
         )
         .unwrap();
@@ -146,7 +147,34 @@ fn gossip_interval() {
         .spawn(SpawnParams::new(CLIENT).in_memory())
         .unwrap();
 
-    utils::wait(10);
+    //check server gets the gossip sent by client every default gossip_interval
+    let last_gossip = server
+        .rest()
+        .network_stats()
+        .unwrap()
+        .last()
+        .unwrap()
+        .last_gossip_received
+        .unwrap();
+
+    utils::wait(DEFAULT_GOSSIP_INTERVAL_SECS);
+
+    let next_last_gossip = server
+        .rest()
+        .network_stats()
+        .unwrap()
+        .last()
+        .unwrap()
+        .last_gossip_received
+        .unwrap();
+
+    let client_gossip_interval = next_last_gossip
+        .duration_since(last_gossip)
+        .unwrap()
+        .as_secs_f64()
+        .round() as u64;
+
+    assert_eq!(DEFAULT_GOSSIP_INTERVAL_SECS, client_gossip_interval);
 
     let log_timestamps: Vec<u64> = server
         .logger
@@ -162,7 +190,7 @@ fn gossip_interval() {
         match prev {
             None => prev = Some(log_timestamp),
             Some(p) => {
-                assert!(log_timestamp - p >= INTERVAL_SECS);
+                assert!(log_timestamp - p >= SERVER_GOSSIP_INTERVAL_SECS);
                 prev = Some(log_timestamp);
             }
         }
@@ -274,8 +302,8 @@ pub fn topics_of_interest_influences_node_sync_ability() {
         )
         .unwrap();
 
-    let mut alice = network_controller.wallet(ALICE).unwrap();
-    let mut bob = network_controller.wallet(BOB).unwrap();
+    let mut alice = network_controller.controlled_wallet(ALICE).unwrap();
+    let mut bob = network_controller.controlled_wallet(BOB).unwrap();
 
     let fragment_sender: FragmentSender<DummySyncNode> =
         FragmentSender::from(&network_controller.settings().block0);
@@ -366,4 +394,63 @@ fn log_parser() {
     assert_eq!(parse_timestamp("00:45:12"), 45 * 60 + 12);
     assert_eq!(parse_timestamp("01:34:02"), 3600 + 34 * 60 + 2);
     assert_eq!(parse_timestamp("10:02:31"), 10 * 3600 + 2 * 60 + 31);
+}
+
+#[test]
+fn gossip_new_node_bootstrap() {
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(SERVER_1))
+                .with_node(Node::new(SERVER_2).with_trusted_peer(SERVER_1))
+                .with_node(Node::new(CLIENT).with_trusted_peer(SERVER_2)),
+        )
+        .blockchain_config(Blockchain::default().with_leaders(vec![SERVER_1]))
+        .build()
+        .unwrap();
+
+    let server1 = controller
+        .spawn(SpawnParams::new(SERVER_1).in_memory())
+        .unwrap();
+
+    let server2 = controller
+        .spawn(SpawnParams::new(SERVER_2).in_memory())
+        .unwrap();
+
+    utils::wait(2);
+    super::assert_are_in_network_view(&server1, vec![&server2], "Before second node bootstrap");
+    super::assert_connected_cnt(&server1, 1, "Before second node bootstrap");
+
+    let is_gossiping_with_one_node = server1
+        .logger
+        .get_lines_as_string()
+        .iter()
+        .any(|s| s.contains("received gossip on 1 nodes"));
+
+    let is_gossiping_with_two_nodes = server1
+        .logger
+        .get_lines_as_string()
+        .iter()
+        .any(|s| s.contains("received gossip on 2 nodes"));
+
+    assert!(is_gossiping_with_one_node, "Before second node bootstrap");
+    assert!(!is_gossiping_with_two_nodes, "Before second node bootstrap");
+
+    let client = controller.spawn(SpawnParams::new(CLIENT)).unwrap();
+
+    utils::wait(2);
+    super::assert_are_in_network_view(
+        &server1,
+        vec![&server2, &client],
+        "After second node bootstrap",
+    );
+    super::assert_connected_cnt(&server1, 2, "After second node bootstrap");
+
+    let is_gossiping_with_two_nodes = server1
+        .logger
+        .get_lines_as_string()
+        .iter()
+        .any(|s| s.contains("received gossip on 2 nodes"));
+
+    assert!(is_gossiping_with_two_nodes, "After second node bootstrap");
 }

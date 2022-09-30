@@ -1,3 +1,4 @@
+use assert_fs::{fixture::ChildPath, prelude::*, TempDir};
 use chain_addr::Discrimination;
 use chain_impl_mockchain::{
     fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee},
@@ -8,12 +9,7 @@ use jormungandr_automation::{
     jormungandr::{Block0ConfigurationBuilder, ConfigurationBuilder, JormungandrParams},
 };
 use jormungandr_lib::interfaces::{Block0Configuration, Initial, InitialUTxO, LegacyUTxO};
-
-use assert_fs::fixture::ChildPath;
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
-use std::num::NonZeroU64;
-use std::path::Path;
+use std::{num::NonZeroU64, path::Path};
 
 struct Fixture {
     temp_dir: TempDir,

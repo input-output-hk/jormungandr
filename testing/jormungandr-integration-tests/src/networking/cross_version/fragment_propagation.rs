@@ -1,17 +1,15 @@
-use super::{ALICE, BOB, CLARICE, DAVID};
-use super::{LEADER, PASSIVE};
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use hersir::config::SessionSettings;
-use hersir::controller::Controller;
-use jormungandr_automation::jormungandr::{
-    download_last_n_releases, get_jormungandr_bin, version_0_8_19, FragmentNode, Version,
+use super::{ALICE, BOB, CLARICE, DAVID, LEADER, PASSIVE};
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SessionSettings, SpawnParams, WalletTemplateBuilder},
+    controller::Controller,
 };
-use jormungandr_automation::testing::SyncNode;
+use jormungandr_automation::{
+    jormungandr::{
+        download_last_n_releases, get_jormungandr_bin, version_0_8_19, FragmentNode, Version,
+    },
+    testing::SyncNode,
+};
 use std::path::PathBuf;
 use thor::{FragmentSender, StakePool};
 
@@ -157,10 +155,10 @@ fn send_all_fragment_types<A: FragmentNode + SyncNode + Sized + Send>(
     passive: &A,
     version: Option<Version>,
 ) {
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let mut bob = controller.wallet(BOB).unwrap();
-    let clarice = controller.wallet(CLARICE).unwrap();
-    let mut david = controller.wallet(DAVID).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let mut bob = controller.controlled_wallet(BOB).unwrap();
+    let clarice = controller.controlled_wallet(CLARICE).unwrap();
+    let mut david = controller.controlled_wallet(DAVID).unwrap();
 
     let leader_stake_pool = controller.stake_pool(LEADER).unwrap();
     let david_stake_pool = StakePool::new(&david);

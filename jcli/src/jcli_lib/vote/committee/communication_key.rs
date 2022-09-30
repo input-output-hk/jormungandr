@@ -2,8 +2,7 @@ use crate::jcli_lib::vote::{Error, OutputFile, Seed};
 use chain_crypto::bech32::Bech32;
 use chain_vote::MemberCommunicationKey;
 use rand::rngs::OsRng;
-use rand_chacha::rand_core::SeedableRng;
-use rand_chacha::ChaCha20Rng;
+use rand_chacha::{rand_core::SeedableRng, ChaCha20Rng};
 use std::{io::Write, path::PathBuf};
 use structopt::StructOpt;
 

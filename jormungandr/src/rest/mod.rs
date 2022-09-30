@@ -1,16 +1,12 @@
 //! REST API of the node
-
-pub mod context;
 #[cfg(feature = "prometheus-metrics")]
 mod prometheus;
 pub mod v0;
 mod v1;
 
-pub use self::context::{Context, ContextLock, FullContext};
-
-use jormungandr_lib::interfaces::{Cors, Tls};
-
+use crate::context::{Context, ContextLock, ServerStopper};
 use futures::{channel::mpsc, prelude::*};
+use jormungandr_lib::interfaces::{Cors, Tls};
 use std::{error::Error, net::SocketAddr, time::Duration};
 use warp::Filter;
 
@@ -22,25 +18,17 @@ pub struct Config {
     pub enable_prometheus: bool,
 }
 
-#[derive(Clone)]
-pub struct ServerStopper(mpsc::Sender<()>);
-
-impl ServerStopper {
-    pub fn stop(&self) {
-        self.0.clone().try_send(()).unwrap();
-    }
-}
-
 pub async fn start_rest_server(config: Config, context: ContextLock) {
     let (stopper_tx, stopper_rx) = mpsc::channel::<()>(0);
     let stopper_rx = stopper_rx.into_future().map(|_| ());
     context
         .write()
         .await
-        .set_server_stopper(ServerStopper(stopper_tx));
+        .set_rest_server_stopper(ServerStopper::new(stopper_tx));
+    let api = v0::filter(context.clone()).or(v1::filter(context.clone()));
 
     let api = warp::path!("api" / ..)
-        .and(v0::filter(context.clone()).or(v1::filter(context.clone())))
+        .and(api)
         .with(warp::filters::trace::trace(|info| {
             use http_zipkin::get_trace_context;
             use tracing::field::Empty;
@@ -56,13 +44,13 @@ pub async fn start_rest_server(config: Config, context: ContextLock) {
                 parent_span_id = Empty,
             );
             if let Some(remote_addr) = info.remote_addr() {
-                span.record("remote_addr", &remote_addr.to_string().as_str());
+                span.record("remote_addr", remote_addr.to_string().as_str());
             }
             if let Some(trace_context) = get_trace_context(info.request_headers()) {
-                span.record("trace_id", &trace_context.trace_id().to_string().as_str());
-                span.record("span_id", &trace_context.span_id().to_string().as_str());
+                span.record("trace_id", trace_context.trace_id().to_string().as_str());
+                span.record("span_id", trace_context.span_id().to_string().as_str());
                 if let Some(parent_span_id) = trace_context.parent_id() {
-                    span.record("parent_span_id", &parent_span_id.to_string().as_str());
+                    span.record("parent_span_id", parent_span_id.to_string().as_str());
                 }
             }
             span

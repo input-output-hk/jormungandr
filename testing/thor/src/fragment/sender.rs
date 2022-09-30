@@ -1,13 +1,9 @@
 use super::{FragmentExporter, FragmentExporterError};
-use crate::DummySyncNode;
-use crate::FragmentBuilder;
-use crate::FragmentSenderSetup;
-use crate::FragmentVerifier;
-use crate::StakePool;
-use crate::Wallet;
+use crate::{
+    DummySyncNode, FragmentBuilder, FragmentSenderSetup, FragmentVerifier, StakePool, Wallet,
+};
 use chain_core::property::Fragment as _;
-use chain_crypto::Ed25519;
-use chain_crypto::SecretKey;
+use chain_crypto::{Ed25519, SecretKey};
 use chain_impl_mockchain::{
     block::BlockDate,
     certificate::{DecryptedPrivateTally, UpdateProposal, UpdateVote, VotePlan, VoteTallyPayload},
@@ -20,12 +16,12 @@ use jormungandr_automation::{
     jormungandr::{FragmentNode, MemPoolCheck},
     testing::{ensure_node_is_in_sync_with_others, SyncNode, SyncNodeError, SyncWaitParams},
 };
-use jormungandr_lib::interfaces::Block0Configuration;
-use jormungandr_lib::interfaces::BlockchainConfiguration;
-use jormungandr_lib::interfaces::{Address, FragmentsProcessingSummary};
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{FragmentStatus, SettingsDto, Value},
+    interfaces::{
+        Address, Block0Configuration, BlockchainConfiguration, FragmentStatus,
+        FragmentsProcessingSummary, SettingsDto, Value,
+    },
     time::SystemTime,
 };
 use std::time::Duration;
@@ -110,7 +106,7 @@ impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
     }
 
     pub fn fees(&self) -> LinearFee {
-        self.fees
+        self.fees.clone()
     }
 
     pub fn date(&self) -> BlockDate {
@@ -663,7 +659,7 @@ impl<'a> From<&Block0Configuration> for FragmentSender<'a, DummySyncNode> {
     fn from(block0: &Block0Configuration) -> Self {
         Self::new(
             block0.to_block().header().hash().into(),
-            block0.blockchain_configuration.linear_fees,
+            block0.blockchain_configuration.linear_fees.clone(),
             BlockDateGenerator::rolling_from_blockchain_config(
                 &block0.blockchain_configuration,
                 BlockDate {
@@ -681,7 +677,7 @@ impl<'a> From<&SettingsDto> for FragmentSender<'a, DummySyncNode> {
     fn from(settings: &SettingsDto) -> Self {
         Self::new(
             settings.block0_hash.parse().unwrap(),
-            settings.fees,
+            settings.fees.clone(),
             BlockDateGenerator::rolling(
                 settings,
                 BlockDate {

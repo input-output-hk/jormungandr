@@ -2,7 +2,7 @@
 name = "jormungandr-lib"
 version = "0.13.0"
 authors = ["dev@iohk.io"]
-edition = "2018"
+edition = "2021"
 
 description = "Data structures and formats used by Jormungandr node API and configuration files"
 
@@ -15,6 +15,7 @@ chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master"}
 chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
+chain-evm = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", optional = true }
 cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 rand = "0.8"
@@ -43,4 +44,4 @@ serde_yaml = "0.8"
 serde_json = "1.0"
 
 [features]
-evm = ["chain-impl-mockchain/evm"]
+evm = ["chain-impl-mockchain/evm", "chain-evm"]

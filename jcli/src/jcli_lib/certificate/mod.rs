@@ -1,3 +1,5 @@
+#[cfg(feature = "evm")]
+mod new_evm_mapping;
 mod new_owner_stake_delegation;
 mod new_stake_delegation;
 mod new_stake_pool_registration;
@@ -15,7 +17,6 @@ pub(crate) use self::sign::{
     committee_vote_plan_sign, committee_vote_tally_sign, evm_mapping_sign, pool_owner_sign,
     stake_delegation_account_binding_sign, update_proposal_sign, update_vote_sign,
 };
-
 use crate::jcli_lib::utils::{
     io, key_parser,
     vote::{SharesError, VotePlanError},
@@ -174,6 +175,9 @@ pub enum NewArgs {
     UpdateProposal(new_update_proposal::UpdateProposal),
     /// create a vote cast certificate
     VoteCast(new_vote_cast::VoteCastCmd),
+    #[cfg(feature = "evm")]
+    /// create an EVM address mapping certificate
+    EvmMapping(new_evm_mapping::EvmMapCmd),
 }
 
 #[derive(StructOpt)]
@@ -206,6 +210,8 @@ impl NewArgs {
             NewArgs::VoteCast(args) => args.exec()?,
             NewArgs::UpdateVote(args) => args.exec()?,
             NewArgs::UpdateProposal(args) => args.exec()?,
+            #[cfg(feature = "evm")]
+            NewArgs::EvmMapping(args) => args.exec()?,
         }
         Ok(())
     }

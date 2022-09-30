@@ -1,9 +1,8 @@
 use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use hersir::builder::blockchain::BlockchainBuilder;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{BlockchainBuilder, SpawnParams},
+};
 use jormungandr_automation::testing::time;
 use jormungandr_lib::interfaces::BlockDate;
 const LEADER_1: &str = "Leader1";

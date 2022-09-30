@@ -1,7 +1,9 @@
 use multiaddr::{Multiaddr, Protocol};
-use std::borrow::Borrow;
-use std::io;
-use std::net::{IpAddr, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
+use std::{
+    borrow::Borrow,
+    io,
+    net::{IpAddr, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs},
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
