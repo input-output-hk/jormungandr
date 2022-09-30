@@ -1,9 +1,10 @@
-use super::scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId};
 use super::{
-    config_param::ConfigParams, Address, BftLeader, BlockDate, ExplorerAddress, Pool, Proposal,
-    TaxType,
+    config_param::ConfigParams,
+    error::ApiError,
+    extract_context,
+    scalars::{PayloadType, PoolId, PublicKey, TimeOffsetSeconds, VotePlanId},
+    Address, BftLeader, BlockDate, ExplorerAddress, Pool, Proposal, TaxType,
 };
-use super::{error::ApiError, extract_context};
 use async_graphql::{Context, FieldResult, Object, Union};
 use chain_impl_mockchain::certificate;
 
@@ -21,6 +22,7 @@ pub enum Certificate {
     UpdateProposal(UpdateProposal),
     UpdateVote(UpdateVote),
     MintToken(MintToken),
+    EvmMapping(EvmMapping),
 }
 
 pub struct StakeDelegation(certificate::StakeDelegation);
@@ -45,6 +47,8 @@ pub struct UpdateProposal(certificate::UpdateProposal);
 pub struct UpdateVote(certificate::UpdateVote);
 
 pub struct MintToken(certificate::MintToken);
+
+pub struct EvmMapping(certificate::EvmMapping);
 
 #[Object]
 impl StakeDelegation {
@@ -262,6 +266,13 @@ impl MintToken {
     }
 }
 
+#[Object]
+impl EvmMapping {
+    pub async fn address(&self) -> String {
+        format!("{:?}", self.0)
+    }
+}
+
 /*------------------------------*/
 /*------- Conversions ---------*/
 /*----------------------------*/
@@ -290,6 +301,7 @@ impl From<chain_impl_mockchain::certificate::Certificate> for Certificate {
             }
             certificate::Certificate::UpdateVote(c) => Certificate::UpdateVote(UpdateVote(c)),
             certificate::Certificate::MintToken(c) => Certificate::MintToken(MintToken(c)),
+            certificate::Certificate::EvmMapping(c) => Certificate::EvmMapping(EvmMapping(c)),
         }
     }
 }
@@ -345,5 +357,11 @@ impl From<certificate::UpdateProposal> for UpdateProposal {
 impl From<certificate::UpdateVote> for UpdateVote {
     fn from(update_vote: certificate::UpdateVote) -> Self {
         UpdateVote(update_vote)
+    }
+}
+
+impl From<certificate::EvmMapping> for EvmMapping {
+    fn from(evm_mapping: certificate::EvmMapping) -> Self {
+        EvmMapping(evm_mapping)
     }
 }

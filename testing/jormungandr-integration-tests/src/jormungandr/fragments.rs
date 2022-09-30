@@ -1,10 +1,14 @@
 use crate::startup;
 use chain_core::property::FromStr;
-use chain_impl_mockchain::tokens::identifier::TokenIdentifier;
-use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
-use chain_impl_mockchain::{chaintypes::ConsensusType, fee::LinearFee};
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, MemPoolCheck};
-use jormungandr_automation::testing::time;
+use chain_impl_mockchain::{
+    chaintypes::ConsensusType,
+    fee::LinearFee,
+    tokens::{identifier::TokenIdentifier, minting_policy::MintingPolicy},
+};
+use jormungandr_automation::{
+    jormungandr::{ConfigurationBuilder, MemPoolCheck},
+    testing::time,
+};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, BlockDate, InitialToken, Mempool};
 use mjolnir::generators::FragmentGenerator;
 use std::time::Duration;
@@ -54,11 +58,13 @@ pub fn send_all_fragments() {
     let mut fragment_generator = FragmentGenerator::new(
         sender,
         receiver,
+        None,
         jormungandr.to_remote(),
         time_era.slots_per_epoch(),
         2,
         2,
         2,
+        0,
         fragment_sender,
     );
 

@@ -3,8 +3,7 @@ use crate::jormungandr::{
     starter::FromGenesis, FaketimeConfig, JormungandrParams, LeadershipMode, TestConfig,
 };
 use serde::Serialize;
-use std::path::Path;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 pub struct CommandBuilder<'a> {
     bin: &'a Path,
@@ -73,7 +72,7 @@ impl<'a> CommandBuilder<'a> {
     pub fn command(self) -> Command {
         let mut command = if let Some(faketime) = &self.faketime {
             let mut cmd = Command::new("faketime");
-            cmd.args(&["-f", &format!("{:+}s", faketime.offset)]);
+            cmd.args(["-f", &format!("{:+}s", faketime.offset)]);
             cmd.arg(self.bin);
             cmd
         } else {

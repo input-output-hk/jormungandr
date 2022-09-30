@@ -1,10 +1,7 @@
-use assert_fs::fixture::PathChild;
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
+use assert_fs::{fixture::PathChild, prelude::*, TempDir};
 use chain_impl_mockchain::account::SpendingCounter;
 use jormungandr_lib::crypto::hash::Hash;
-use std::fmt;
-use std::path::PathBuf;
+use std::{fmt, path::PathBuf};
 
 #[derive(Debug, Copy, Clone)]
 pub enum WitnessType {

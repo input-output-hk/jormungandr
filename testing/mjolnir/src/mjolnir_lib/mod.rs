@@ -6,7 +6,6 @@ pub mod fragment;
 pub mod generators;
 pub mod rest;
 
-use chain_addr::Discrimination;
 pub use error::MjolnirError;
 use jortestkit::{load::Monitor, prelude::ProgressBarMode};
 use std::error::Error;
@@ -77,19 +76,5 @@ pub fn build_monitor(progress_bar_mode: &ProgressBarMode) -> Monitor {
         ProgressBarMode::Monitor => Monitor::Progress(100),
         ProgressBarMode::Standard => Monitor::Standard(100),
         ProgressBarMode::None => Monitor::Disabled(10),
-    }
-}
-
-pub trait DiscriminationExtensions {
-    fn from_testing_bool(testing: bool) -> Self;
-}
-
-impl DiscriminationExtensions for Discrimination {
-    fn from_testing_bool(testing: bool) -> Discrimination {
-        if testing {
-            Discrimination::Test
-        } else {
-            Discrimination::Production
-        }
     }
 }

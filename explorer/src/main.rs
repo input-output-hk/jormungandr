@@ -4,15 +4,15 @@ mod indexer;
 mod logging;
 mod settings;
 
+#[cfg(test)]
+mod tests;
+
 use crate::indexer::Indexer;
 use anyhow::Context;
+use chain_core::{packer::Codec, property::Deserialize};
 use chain_impl_mockchain::block::Block;
 use chain_network::grpc::watch::client::{
     BlockSubscription, Client, SyncMultiverseStream, TipSubscription,
-};
-use chain_ser::{
-    deser::Deserialize,
-    mempack::{ReadBuf, Readable},
 };
 use db::ExplorerDb;
 use futures::stream::StreamExt;
@@ -233,9 +233,9 @@ async fn bootstrap(mut sync_stream: SyncMultiverseStream) -> Result<ExplorerDb, 
             .context("failed to decode Block received through bootstrap subscription")
             .map_err(Error::UnrecoverableError)?;
 
-        let reader = std::io::BufReader::new(bytes.as_ref());
+        let mut codec = Codec::new(bytes.as_ref());
 
-        let block = Block::deserialize(reader)
+        let block = Block::deserialize(&mut codec)
             .context("failed to decode Block received through bootstrap subscription")
             .map_err(Error::UnrecoverableError)?;
 
@@ -290,6 +290,8 @@ async fn rest_service(mut state: broadcast::Receiver<GlobalState>, settings: Set
         db,
         crate::db::Settings {
             address_bech32_prefix: settings.address_bech32_prefix,
+            query_depth_limit: settings.query_depth_limit,
+            query_complexity_limit: settings.query_complexity_limit,
         },
     );
 
@@ -308,8 +310,8 @@ async fn rest_service(mut state: broadcast::Receiver<GlobalState>, settings: Set
 }
 
 async fn handle_tip(raw_tip: chain_network::data::Header, indexer: Indexer) -> Result<(), Error> {
-    let mut buf = ReadBuf::from(raw_tip.as_bytes());
-    let header = chain_impl_mockchain::block::Header::read(&mut buf)
+    let mut codec = Codec::new(raw_tip.as_bytes());
+    let header = chain_impl_mockchain::block::Header::deserialize(&mut codec)
         .context("failed to decode tip header")
         .map_err(Error::Other)?;
 
@@ -322,8 +324,8 @@ async fn handle_block(
     raw_block: chain_network::data::Block,
     indexer: Indexer,
 ) -> Result<(), Error> {
-    let reader = std::io::BufReader::new(raw_block.as_bytes());
-    let block = Block::deserialize(reader)
+    let mut codec = chain_core::packer::Codec::new(raw_block.as_bytes());
+    let block = Block::deserialize(&mut codec)
         .context("Failed to deserialize block from block subscription")
         .map_err(Error::Other)?;
 

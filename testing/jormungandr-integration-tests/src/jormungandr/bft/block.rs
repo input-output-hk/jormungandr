@@ -4,9 +4,14 @@ use chain_impl_mockchain::{
     chaintypes::{ConsensusType, ConsensusVersion},
     fee::LinearFee,
 };
-use hersir::builder::{Blockchain, NetworkBuilder, Node, SpawnParams, Topology};
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_automation::testing::keys;
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams},
+};
+use jormungandr_automation::{
+    jormungandr::{ConfigurationBuilder, Starter},
+    testing::keys,
+};
 use jormungandr_lib::interfaces::SlotDuration;
 use loki::{block::BlockBuilder, process::AdversaryNodeBuilder};
 use thor::FragmentBuilder;

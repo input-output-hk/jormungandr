@@ -1,5 +1,7 @@
-use crate::jcli_lib::utils::io;
-use crate::jcli_lib::utils::output_file::{self, OutputFile};
+use crate::jcli_lib::utils::{
+    io,
+    output_file::{self, OutputFile},
+};
 use bech32::{self, u5, FromBase32};
 use chain_crypto::{
     bech32::{Bech32, Error as Bech32Error},

@@ -1,10 +1,11 @@
-use chain_core::mempack::{ReadBuf, ReadError, Readable};
+use chain_core::{
+    packer::Codec,
+    property::{DeserializeFromSlice, ReadError, Serialize as _},
+};
 use chain_impl_mockchain::evm;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 use thiserror::Error;
-use typed_bytes::ByteBuilder;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvmTransaction(pub evm::EvmTransaction);
 
@@ -33,7 +34,7 @@ impl fmt::Display for EvmTransaction {
         write!(
             f,
             "{}",
-            hex::encode(self.0.serialize_in(ByteBuilder::new()).finalize_as_vec())
+            hex::encode(self.0.serialize_as_vec().map_err(|_| fmt::Error)?)
         )
     }
 }
@@ -41,8 +42,10 @@ impl fmt::Display for EvmTransaction {
 impl FromStr for EvmTransaction {
     type Err = EvmTransactionFromStrError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let data = hex::decode(&s)?;
-        Ok(Self(evm::EvmTransaction::read(&mut ReadBuf::from(&data))?))
+        let data = hex::decode(s)?;
+        Ok(Self(evm::EvmTransaction::deserialize_from_slice(
+            &mut Codec::new(data.as_slice()),
+        )?))
     }
 }
 
@@ -51,7 +54,10 @@ impl Serialize for EvmTransaction {
     where
         S: serde::Serializer,
     {
-        let data = self.0.serialize_in(ByteBuilder::new()).finalize_as_vec();
+        let data = self
+            .0
+            .serialize_as_vec()
+            .map_err(|e| serde::ser::Error::custom(e.to_string()))?;
         if serializer.is_human_readable() {
             hex::encode(data).serialize(serializer)
         } else {
@@ -69,14 +75,14 @@ impl<'de> Deserialize<'de> for EvmTransaction {
             let s = String::deserialize(deserializer)?;
             let data = hex::decode(&s).map_err(<D::Error as serde::de::Error>::custom)?;
             Ok(Self(
-                evm::EvmTransaction::read(&mut ReadBuf::from(&data))
+                evm::EvmTransaction::deserialize_from_slice(&mut Codec::new(data.as_slice()))
                     .map_err(<D::Error as serde::de::Error>::custom)?,
             ))
         } else {
             let data = <Vec<u8>>::deserialize(deserializer)
                 .map_err(<D::Error as serde::de::Error>::custom)?;
             Ok(Self(
-                evm::EvmTransaction::read(&mut ReadBuf::from(&data))
+                evm::EvmTransaction::deserialize_from_slice(&mut Codec::new(data.as_slice()))
                     .map_err(<D::Error as serde::de::Error>::custom)?,
             ))
         }

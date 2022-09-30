@@ -53,7 +53,7 @@ use super::reference_cache::RefCache;
 use crate::{
     blockcfg::{
         Block, Block0Error, BlockDate, ChainLength, Epoch, EpochRewardsInfo, Header, HeaderDesc,
-        HeaderHash, Leadership, Ledger, LedgerParameters, RewardsInfoParameters,
+        HeaderHash, Leadership, Ledger, RewardsInfoParameters,
     },
     blockchain::{Branch, Checkpoints, Multiverse, Ref, Storage, StorageError, Tip},
 };
@@ -217,7 +217,6 @@ pub enum PreCheckedHeader {
 pub struct PostCheckedHeader {
     header: Header,
     epoch_leadership_schedule: Arc<Leadership>,
-    epoch_ledger_parameters: Arc<LedgerParameters>,
     parent_ledger_state: Arc<Ledger>,
     time_frame: Arc<TimeFrame>,
     previous_epoch_state: Option<Arc<Ref>>,
@@ -299,7 +298,7 @@ impl Blockchain {
     }
 
     pub async fn gc(&self, tip: Arc<Ref>) -> Result<()> {
-        let depth = tip.epoch_ledger_parameters().epoch_stability_depth;
+        let depth = tip.ledger().settings().epoch_stability_depth;
         self.ledgers.gc(depth).await;
         self.storage.gc(depth, tip.hash().as_ref())?;
         Ok(())
@@ -315,7 +314,6 @@ impl Blockchain {
         time_frame: Arc<TimeFrame>,
         leadership: Arc<Leadership>,
         epoch_rewards_info: Option<Arc<EpochRewardsInfo>>,
-        ledger_parameters: Arc<LedgerParameters>,
         previous_epoch_state: Option<Arc<Ref>>,
     ) -> Arc<Ref> {
         let chain_length = header.chain_length();
@@ -328,7 +326,6 @@ impl Blockchain {
             ledger_ref,
             time_frame,
             leadership,
-            ledger_parameters,
             epoch_rewards_info,
             header,
             previous_epoch_state,
@@ -433,7 +430,6 @@ impl Blockchain {
         let EpochLeadership {
             state: parent_ledger_state,
             leadership: epoch_leadership_schedule,
-            ledger_parameters: epoch_ledger_parameters,
             rewards_info: epoch_rewards_info,
             time_frame,
             previous_state: previous_epoch_state,
@@ -451,7 +447,6 @@ impl Blockchain {
         Ok(PostCheckedHeader {
             header,
             epoch_leadership_schedule,
-            epoch_ledger_parameters,
             parent_ledger_state,
             time_frame,
             previous_epoch_state,
@@ -466,7 +461,6 @@ impl Blockchain {
     ) -> Result<Ledger> {
         let header = &post_checked_header.header;
         let block_id = header.hash();
-        let epoch_ledger_parameters = &post_checked_header.epoch_ledger_parameters;
 
         debug_assert!(block.header().hash() == block_id);
 
@@ -474,11 +468,7 @@ impl Blockchain {
 
         let ledger = post_checked_header
             .parent_ledger_state
-            .apply_block(
-                (**epoch_ledger_parameters).clone(),
-                block.contents(),
-                &metadata,
-            )
+            .apply_block(block.contents(), &metadata)
             .map_err(Error::CannotApplyBlock)?;
 
         Ok(ledger)
@@ -501,11 +491,7 @@ impl Blockchain {
             };
 
             ledger
-                .distribute_rewards(
-                    distribution,
-                    &post_checked_header.epoch_ledger_parameters,
-                    reward_info_dist,
-                )
+                .distribute_rewards(distribution, reward_info_dist)
                 .map_err(Error::CannotApplyBlock)?;
         }
 
@@ -521,7 +507,6 @@ impl Blockchain {
         let block_id = header.hash();
         let epoch_leadership_schedule = post_checked_header.epoch_leadership_schedule;
         let epoch_rewards_info = post_checked_header.epoch_rewards_info;
-        let epoch_ledger_parameters = post_checked_header.epoch_ledger_parameters;
         let time_frame = post_checked_header.time_frame;
         let previous_epoch_state = post_checked_header.previous_epoch_state;
 
@@ -532,7 +517,6 @@ impl Blockchain {
             time_frame,
             epoch_leadership_schedule,
             epoch_rewards_info,
-            epoch_ledger_parameters,
             previous_epoch_state,
         )
         .await
@@ -594,7 +578,6 @@ impl Blockchain {
         let EpochLeadership {
             state: parent_ledger_state,
             leadership: epoch_leadership_schedule,
-            ledger_parameters: epoch_ledger_parameters,
             rewards_info: epoch_rewards_info,
             time_frame,
             previous_state: previous_epoch_state,
@@ -603,7 +586,6 @@ impl Blockchain {
         let post_checked_header = PostCheckedHeader {
             header,
             epoch_leadership_schedule,
-            epoch_ledger_parameters,
             parent_ledger_state,
             time_frame,
             previous_epoch_state,
@@ -649,7 +631,6 @@ impl Blockchain {
         let block0_ledger = Ledger::new(block0_id, block0.contents().iter())
             .map_err(Error::Block0InitialLedgerError)?;
         let block0_leadership = Leadership::new(block0_date.epoch, &block0_ledger);
-        let ledger_parameters = block0_leadership.ledger_parameters().clone();
 
         let b = self
             .create_and_store_reference(
@@ -659,7 +640,6 @@ impl Blockchain {
                 Arc::new(time_frame),
                 Arc::new(block0_leadership),
                 None, // block0 has no reward distribution
-                Arc::new(ledger_parameters),
                 None,
             )
             .await;
@@ -799,8 +779,7 @@ fn write_reward_info(
 ) -> std::io::Result<()> {
     use std::{
         env::var,
-        fs::rename,
-        fs::File,
+        fs::{rename, File},
         io::{BufWriter, Write},
         path::PathBuf,
     };
@@ -842,7 +821,6 @@ fn write_reward_info(
 pub struct EpochLeadership {
     pub state: Arc<Ledger>,
     pub leadership: Arc<Leadership>,
-    pub ledger_parameters: Arc<LedgerParameters>,
     pub rewards_info: Option<Arc<EpochRewardsInfo>>,
     pub time_frame: Arc<TimeFrame>,
     pub previous_state: Option<Arc<Ref>>,
@@ -855,7 +833,6 @@ pub fn new_epoch_leadership_from(
 ) -> EpochLeadership {
     let parent_ledger_state = parent.ledger();
     let parent_epoch_leadership_schedule = parent.epoch_leadership_schedule().clone();
-    let parent_epoch_ledger_parameters = parent.epoch_ledger_parameters().clone();
     let parent_epoch_rewards_info = parent.epoch_rewards_info().cloned();
     let parent_time_frame = parent.time_frame().clone();
 
@@ -881,11 +858,7 @@ pub fn new_epoch_leadership_from(
                 };
 
                 let (ledger, rewards_info) = ledger
-                    .distribute_rewards(
-                        distribution,
-                        parent.epoch_ledger_parameters(),
-                        reward_info_dist,
-                    )
+                    .distribute_rewards(distribution, reward_info_dist)
                     .expect("Distribution of rewards will not overflow");
                 if let Err(err) = write_reward_info(epoch, parent.hash(), &rewards_info) {
                     panic!("Error while storing the reward dump, err {}", err)
@@ -910,12 +883,10 @@ pub fn new_epoch_leadership_from(
         };
 
         let leadership = Arc::new(Leadership::new(epoch, &epoch_state));
-        let ledger_parameters = Arc::new(leadership.ledger_parameters().clone());
         let previous_epoch_state = Some(parent);
         EpochLeadership {
             state: transition_state,
             leadership,
-            ledger_parameters,
             rewards_info: epoch_rewards_info,
             time_frame: parent_time_frame,
             previous_state: previous_epoch_state,
@@ -924,7 +895,6 @@ pub fn new_epoch_leadership_from(
         EpochLeadership {
             state: parent_ledger_state,
             leadership: parent_epoch_leadership_schedule,
-            ledger_parameters: parent_epoch_ledger_parameters,
             rewards_info: parent_epoch_rewards_info,
             time_frame: parent_time_frame,
             previous_state: parent.last_ref_previous_epoch().map(Arc::clone),

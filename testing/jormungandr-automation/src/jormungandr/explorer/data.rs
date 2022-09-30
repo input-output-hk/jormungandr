@@ -4,7 +4,11 @@ pub type ChainLength = String;
 pub type PoolId = String;
 pub type Value = String;
 pub type VotePlanId = String;
-
+pub type NonZero = String;
+pub type TimeOffsetSeconds = String;
+pub type PublicKey = String;
+pub type ExternalProposalId = String;
+pub type Weight = String;
 use graphql_client::GraphQLQuery;
 
 #[derive(GraphQLQuery)]
@@ -17,11 +21,27 @@ pub struct Address;
 
 #[derive(GraphQLQuery)]
 #[graphql(
+    query_path = "resources/explorer/graphql/transactions_by_address.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug"
+)]
+pub struct TransactionsByAddress;
+
+#[derive(GraphQLQuery)]
+#[graphql(
     query_path = "resources/explorer/graphql/allblocks.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",
     response_derives = "Debug"
 )]
 pub struct AllBlocks;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    query_path = "resources/explorer/graphql/block.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug"
+)]
+pub struct Block;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -75,9 +95,17 @@ pub struct Settings;
 #[graphql(
     query_path = "resources/explorer/graphql/transaction_by_id.graphql",
     schema_path = "resources/explorer/graphql/schema.graphql",
-    response_derives = "Debug"
+    response_derives = "Debug,Clone"
 )]
 pub struct TransactionById;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    query_path = "resources/explorer/graphql/transaction_by_id_certificates.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug,Clone"
+)]
+pub struct TransactionByIdCertificates;
 
 #[derive(GraphQLQuery)]
 #[allow(clippy::upper_case_acronyms)]
@@ -87,3 +115,20 @@ pub struct TransactionById;
     response_derives = "Debug"
 )]
 pub struct AllVotePlans;
+
+#[derive(GraphQLQuery)]
+#[allow(clippy::upper_case_acronyms)]
+#[graphql(
+    query_path = "resources/explorer/graphql/block_by_id.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug,Clone"
+)]
+pub struct BlockById;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    query_path = "resources/explorer/graphql/voteplan_by_id.graphql",
+    schema_path = "resources/explorer/graphql/schema.graphql",
+    response_derives = "Debug,Clone"
+)]
+pub struct VotePlanById;

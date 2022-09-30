@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 
-use std::path::Path;
-use std::process::Command;
+use std::{path::Path, process::Command};
 
 pub mod committee;
 mod crs;
@@ -40,7 +39,7 @@ impl VotesCommand {
     ) -> Self {
         self.command
             .arg("election-key")
-            .arg(&output_file.as_ref())
+            .arg(output_file.as_ref())
             .arg("--keys")
             .arg(member_key.into());
         self

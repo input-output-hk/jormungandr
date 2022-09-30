@@ -1,7 +1,7 @@
 use super::ProtocolVersion;
 use chain_core::{
-    mempack::{ReadBuf, ReadError, Readable},
-    property::Serialize,
+    packer::Codec,
+    property::{DeserializeFromSlice, ReadError, Serialize, WriteError},
 };
 use chain_crypto::{Ed25519, KeyPair, PublicKey, Signature, Verification};
 use chain_impl_mockchain::{
@@ -32,7 +32,7 @@ pub enum Error {
     #[error(transparent)]
     Read(#[from] ReadError),
     #[error(transparent)]
-    Io(#[from] std::io::Error),
+    Write(#[from] WriteError),
 }
 
 impl MockServerData {
@@ -63,7 +63,7 @@ impl MockServerData {
     }
 
     pub fn get_block(&self, header_id: Hash) -> Result<Block, Error> {
-        Ok(Block::read(&mut ReadBuf::from(
+        Ok(Block::deserialize_from_slice(&mut Codec::new(
             self.storage()
                 .get_block(header_id.as_ref())
                 .unwrap()
@@ -83,7 +83,7 @@ impl MockServerData {
             .ok_or(chain_storage::Error::BlockNotFound)?;
 
         Ok(self
-            .get_block(Hash::read(&mut ReadBuf::from(header_id.as_ref())).unwrap())?
+            .get_block(Hash::deserialize_from_slice(&mut Codec::new(header_id.as_ref())).unwrap())?
             .header()
             .clone())
     }

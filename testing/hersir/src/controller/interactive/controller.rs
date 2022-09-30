@@ -1,10 +1,9 @@
-use crate::builder::SpawnParams;
-use crate::controller::interactive::ControllerError;
-use crate::controller::Controller;
-use crate::controller::Error;
+use crate::{
+    config::SpawnParams,
+    controller::{Controller, Error},
+};
 use chain_impl_mockchain::vote::Choice;
-use jormungandr_automation::jormungandr::JormungandrProcess;
-use jormungandr_automation::jormungandr::Version;
+use jormungandr_automation::jormungandr::{JormungandrProcess, Version};
 use jormungandr_lib::interfaces::Value;
 use jortestkit::prelude::InteractiveCommandError;
 use thor::{FragmentSender, Wallet};
@@ -63,12 +62,8 @@ impl UserInteractionController {
         &mut self.controller
     }
 
-    pub fn wallet(&self, wallet: &str) -> Result<Wallet, Error> {
-        if let Some(wallet) = self.controller.settings().wallets.get(wallet) {
-            Ok(wallet.clone().into())
-        } else {
-            Err(ControllerError::WalletNotFound(wallet.to_owned())).map_err(Into::into)
-        }
+    pub fn controlled_wallet(&self, wallet: &str) -> Option<Wallet> {
+        self.controller.controlled_wallet(wallet)
     }
 
     // It is easier to convert to test::Result with ?, or we would have to individually
@@ -80,7 +75,11 @@ impl UserInteractionController {
         vote_plan_alias: &str,
         node_alias: &str,
     ) -> Result<jormungandr_automation::jormungandr::MemPoolCheck, Error> {
-        let committee_address = self.controller.wallet(committee_alias)?.address();
+        let committee_address = self
+            .controller
+            .controlled_wallet(committee_alias)
+            .ok_or_else(|| Error::WalletNotFound(committee_alias.to_string()))?
+            .address();
         let vote_plan_def = self.controller.defined_vote_plan(vote_plan_alias)?;
 
         let mut temp_wallets = self.wallets_mut().clone();
@@ -122,7 +121,11 @@ impl UserInteractionController {
         proposal_index: usize,
         choice: u8,
     ) -> Result<jormungandr_automation::jormungandr::MemPoolCheck, Error> {
-        let address = self.controller.wallet(wallet_alias)?.address();
+        let address = self
+            .controller
+            .controlled_wallet(wallet_alias)
+            .ok_or_else(|| Error::WalletNotFound(wallet_alias.to_string()))?
+            .address();
         let vote_plan_def = self.controller.defined_vote_plan(vote_plan_alias)?;
 
         let mut temp_wallets = self.wallets_mut().clone();
@@ -170,8 +173,16 @@ impl UserInteractionController {
         node_alias: &str,
         value: Value,
     ) -> Result<jormungandr_automation::jormungandr::MemPoolCheck, Error> {
-        let from_address = self.controller.wallet(from_str)?.address();
-        let to_address = self.controller.wallet(to_str)?.address();
+        let from_address = self
+            .controller
+            .controlled_wallet(from_str)
+            .ok_or_else(|| Error::WalletNotFound(from_str.to_string()))?
+            .address();
+        let to_address = self
+            .controller
+            .wallet(to_str)
+            .ok_or_else(|| Error::WalletNotFound(from_str.to_string()))?
+            .address()?;
 
         let to = self
             .wallets()

@@ -3,6 +3,7 @@ pub mod v0;
 pub mod v1;
 
 use crate::jcli_lib::utils::{io::ReadYamlError, output_format};
+use chain_core::property::{ReadError, WriteError};
 pub use config::RestArgs;
 use hex::FromHexError;
 use structopt::StructOpt;
@@ -21,7 +22,9 @@ pub enum Rest {
 #[derive(Debug, Error)]
 pub enum Error {
     #[error("input is not a valid fragment")]
-    InputFragmentMalformed(#[source] std::io::Error),
+    InputFragmentMalformed(#[from] ReadError),
+    #[error("output is not a valid fragment")]
+    OutputFragmentMalformed(#[from] WriteError),
     #[error("formatting output failed")]
     OutputFormatFailed(#[from] output_format::Error),
     #[error("could not read input file")]

@@ -4,19 +4,18 @@ use crate::jormungandr::{
 };
 use assert_fs::fixture::{ChildPath, PathChild};
 use chain_addr::Discrimination;
-use chain_core::property::Serialize;
+use chain_core::{packer::Codec, property::Serialize};
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee};
-use jormungandr_lib::crypto::key::KeyPair;
-use jormungandr_lib::interfaces::Block0Configuration;
-use jormungandr_lib::interfaces::BlockContentMaxSize;
-use jormungandr_lib::interfaces::InitialToken;
-use jormungandr_lib::interfaces::ProposalExpiration;
-use jormungandr_lib::interfaces::{
-    ActiveSlotCoefficient, CommitteeIdDef, ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo,
-    Initial, InitialUTxO, KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig,
-    NodeSecret, NumberOfSlotsPerEpoch, Policy, SignedCertificate, SlotDuration, Tls, TrustedPeer,
-    Value,
+use jormungandr_lib::{
+    crypto::key::KeyPair,
+    interfaces::{
+        ActiveSlotCoefficient, Block0Configuration, BlockContentMaxSize, CommitteeIdDef,
+        ConsensusLeaderId, Cors, EpochStabilityDepth, FeesGoTo, Initial, InitialToken, InitialUTxO,
+        KesUpdateSpeed, Log, LogEntry, LogOutput, Mempool, NodeConfig, NodeSecret,
+        NumberOfSlotsPerEpoch, Policy, ProposalExpiration, RewardParams, SignedCertificate,
+        SlotDuration, TaxType, Tls, TrustedPeer, Value,
+    },
 };
 use std::path::PathBuf;
 const DEFAULT_SLOT_DURATION: u8 = 2;
@@ -38,7 +37,9 @@ pub struct ConfigurationBuilder {
     secret: Option<NodeSecret>,
     fees_go_to: Option<FeesGoTo>,
     total_reward_supply: Option<Value>,
+    reward_parameters: Option<RewardParams>,
     treasury: Option<Value>,
+    treasury_parameters: Option<TaxType>,
     node_config_builder: NodeConfigBuilder,
     rewards_history: bool,
     configure_default_log: bool,
@@ -81,7 +82,9 @@ impl ConfigurationBuilder {
             proposal_expiry_epochs: Default::default(),
             fees_go_to: None,
             treasury: None,
+            treasury_parameters: None,
             total_reward_supply: None,
+            reward_parameters: None,
             discrimination: Discrimination::Test,
             block_content_max_size: 4092.into(),
             tx_max_expiry_epochs: None,
@@ -293,6 +296,16 @@ impl ConfigurationBuilder {
         self
     }
 
+    pub fn with_treasury_parameters(&mut self, treasury_parameters: TaxType) -> &mut Self {
+        self.treasury_parameters = Some(treasury_parameters);
+        self
+    }
+
+    pub fn with_reward_parameters(&mut self, reward_parameters: RewardParams) -> &mut Self {
+        self.reward_parameters = Some(reward_parameters);
+        self
+    }
+
     pub fn with_total_rewards_supply(&mut self, total_reward_supply: Value) -> &mut Self {
         self.total_reward_supply = Some(total_reward_supply);
         self
@@ -325,6 +338,18 @@ impl ConfigurationBuilder {
                 .to_owned();
         }
 
+        if let Some(treasury_parameters) = self.treasury_parameters {
+            block0_config_builder = block0_config_builder
+                .with_treasury_parameters(Some(treasury_parameters))
+                .to_owned();
+        }
+
+        if let Some(reward_parameters) = self.reward_parameters {
+            block0_config_builder = block0_config_builder
+                .with_reward_parameters(Some(reward_parameters))
+                .to_owned();
+        }
+
         block0_config_builder
             .with_discrimination(self.discrimination)
             .with_initial(initial)
@@ -337,7 +362,7 @@ impl ConfigurationBuilder {
             .with_treasury(self.treasury)
             .with_epoch_stability_depth(self.epoch_stability_depth)
             .with_active_slot_coeff(self.consensus_genesis_praos_active_slot_coeff)
-            .with_linear_fees(self.linear_fees)
+            .with_linear_fees(self.linear_fees.clone())
             .with_proposal_expiration(self.proposal_expiry_epochs)
             .with_block_content_max_size(self.block_content_max_size)
             .with_committee_ids(self.committee_ids.clone())
@@ -377,7 +402,10 @@ impl ConfigurationBuilder {
 
         let path_to_output_block = temp_dir.child("block0.bin");
         let file = std::fs::File::create(path_to_output_block.path()).unwrap();
-        block0_config.to_block().serialize(file).unwrap();
+        block0_config
+            .to_block()
+            .serialize(&mut Codec::new(file))
+            .unwrap();
 
         fn write_secret(secret: &NodeSecret, output_file: ChildPath) -> PathBuf {
             configuration::write_secret(secret, &output_file);

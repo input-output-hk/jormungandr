@@ -1,41 +1,46 @@
-use super::{starter::StartupError, JormungandrError};
-use crate::jcli::JCli;
-use crate::jormungandr::grpc::JormungandrClient;
-use crate::jormungandr::NodeAlias;
-use crate::jormungandr::StartupVerificationMode;
-use crate::jormungandr::TestingDirectory;
-use crate::jormungandr::{
-    rest::uri_from_socket_addr, Explorer, JormungandrLogger, JormungandrRest,
-    JormungandrStateVerifier, TestConfig,
+use super::{
+    explorer::{configuration::ExplorerParams, ExplorerProcess},
+    starter::StartupError,
+    JormungandrError,
 };
-use crate::jormungandr::{
-    FragmentNode, FragmentNodeError, LogLevel, MemPoolCheck, RemoteJormungandr,
-    RemoteJormungandrBuilder,
+use crate::{
+    jcli::JCli,
+    jormungandr::{
+        explorer::configuration::ExplorerConfigurationBuilder, grpc::JormungandrClient,
+        rest::uri_from_socket_addr, ExplorerError, FragmentNode, FragmentNodeError,
+        JormungandrLogger, JormungandrRest, JormungandrStateVerifier, LogLevel, MemPoolCheck,
+        NodeAlias, RemoteJormungandr, RemoteJormungandrBuilder, StartupVerificationMode,
+        TestConfig, TestingDirectory,
+    },
+    testing::SyncNode,
+    utils::MultiaddrExtension,
 };
-use crate::testing::SyncNode;
 use ::multiaddr::Multiaddr;
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::fee::LinearFee;
-use chain_impl_mockchain::fragment::Fragment;
-use chain_impl_mockchain::fragment::FragmentId;
+use chain_impl_mockchain::{
+    fee::LinearFee,
+    fragment::{Fragment, FragmentId},
+};
 use chain_time::TimeEra;
-use jormungandr_lib::interfaces::FragmentLog;
-use jormungandr_lib::interfaces::NodeState;
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{Block0Configuration, BlockDate, FragmentsProcessingSummary, TrustedPeer},
+    interfaces::{
+        Block0Configuration, BlockDate, FragmentLog, FragmentsProcessingSummary, NodeState,
+        TrustedPeer,
+    },
 };
 use jortestkit::prelude::NamedProcess;
-use std::collections::HashMap;
-use std::net::SocketAddr;
-use std::path::Path;
-use std::process::Child;
-use std::process::ExitStatus;
-use std::str::FromStr;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    path::Path,
+    process::{Child, ExitStatus},
+    str::FromStr,
+    time::{Duration, Instant},
+};
 use thiserror::Error;
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Eq)]
 pub enum Status {
     Running,
     Starting,
@@ -281,6 +286,7 @@ impl JormungandrProcess {
         self.block0_configuration()
             .blockchain_configuration
             .linear_fees
+            .clone()
     }
 
     pub fn genesis_block_hash(&self) -> Hash {
@@ -295,19 +301,16 @@ impl JormungandrProcess {
         self.child.id()
     }
 
-    pub fn explorer(&self) -> Explorer {
-        let mut p2p_public_address = self.p2p_public_address.clone();
-        let port = match p2p_public_address.pop().unwrap() {
-            multiaddr::Protocol::Tcp(port) => port,
-            _ => todo!("explorer can only be attached through grpc(http)"),
-        };
+    pub fn explorer(&self, params: ExplorerParams) -> Result<ExplorerProcess, ExplorerError> {
+        let addr = self.p2p_public_address.clone().to_http_addr();
 
-        let address = match p2p_public_address.pop().unwrap() {
-            multiaddr::Protocol::Ip4(address) => address,
-            _ => todo!("only ipv4 supported for now"),
-        };
-
-        Explorer::new(format!("http://{}:{}/", address, port), self.temp_dir())
+        ExplorerProcess::new(
+            ExplorerConfigurationBuilder::default()
+                .address(addr)
+                .log_dir(self.temp_dir())
+                .params(params)
+                .build(),
+        )
     }
 
     pub fn to_trusted_peer(&self) -> TrustedPeer {

@@ -12,7 +12,10 @@ use chain_impl_mockchain::{
     transaction::UnspecifiedAccountIdentifier,
     value::ValueError,
 };
-use futures::{channel::mpsc::SendError, channel::mpsc::TrySendError, prelude::*};
+use futures::{
+    channel::mpsc::{SendError, TrySendError},
+    prelude::*,
+};
 use hex::ToHex;
 use jormungandr_lib::interfaces::{
     AccountVotes, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsBatch,
@@ -26,7 +29,7 @@ use tracing_futures::Instrument;
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Context(#[from] crate::rest::context::Error),
+    Context(#[from] crate::context::Error),
     #[error(transparent)]
     PublicKey(#[from] PublicKeyFromStrError),
     #[error(transparent)]
@@ -200,11 +203,13 @@ pub async fn get_account_votes(
     .await
 }
 
-pub async fn get_accounts_votes_count(context: &Context) -> Result<HashMap<String, u64>, Error> {
+pub async fn get_accounts_votes_all(
+    context: &Context,
+) -> Result<HashMap<String, Vec<AccountVotes>>, Error> {
     let span = span!(parent: context.span()?, Level::TRACE, "get_accounts_votes", request = "get_accounts_votes");
 
     async {
-        let mut result = HashMap::new();
+        let mut result = HashMap::<String, HashMap<VotePlanId, Vec<u8>>>::new();
         for vote_plan in context
             .blockchain_tip()?
             .get_ref()
@@ -213,19 +218,36 @@ pub async fn get_accounts_votes_count(context: &Context) -> Result<HashMap<Strin
             .active_vote_plans()
             .into_iter()
         {
-            for status in vote_plan.proposals.into_iter() {
+            for (i, status) in vote_plan.proposals.into_iter().enumerate() {
                 for (account, _) in status.votes.iter() {
-                    *result
+                    result
                         .entry(
                             UnspecifiedAccountIdentifier::from_single_account(account.clone())
                                 .encode_hex(),
                         )
-                        .or_insert(0) += 1;
+                        .or_default()
+                        .entry(vote_plan.id.clone().into())
+                        .or_default()
+                        .push(i.try_into().expect("too many proposals in voteplan"));
                 }
             }
         }
 
-        Ok(result)
+        Ok(result
+            .into_iter()
+            .map(|(account, votes)| {
+                (
+                    account,
+                    votes
+                        .into_iter()
+                        .map(|(vote_plan_id, votes)| AccountVotes {
+                            vote_plan_id,
+                            votes,
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect())
     }
     .instrument(span)
     .await

@@ -258,3 +258,27 @@ pub async fn get_active_vote_plans(context: ContextLock) -> Result<impl Reply, R
         .map(|r| warp::reply::json(&r))
         .map_err(warp::reject::custom)
 }
+
+#[cfg(feature = "evm")]
+pub async fn get_jor_address(
+    evm_id_hex: String,
+    context: ContextLock,
+) -> Result<impl Reply, Rejection> {
+    let context = context.read().await;
+    logic::get_jor_address(&context, &evm_id_hex)
+        .await
+        .map(|r| warp::reply::json(&r))
+        .map_err(warp::reject::custom)
+}
+
+#[cfg(feature = "evm")]
+pub async fn get_evm_address(
+    evm_id_hex: String,
+    context: ContextLock,
+) -> Result<impl Reply, Rejection> {
+    let context = context.read().await;
+    logic::get_evm_address(&context, &evm_id_hex)
+        .await
+        .map(|r| warp::reply::json(&r))
+        .map_err(warp::reject::custom)
+}

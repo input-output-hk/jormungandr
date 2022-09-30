@@ -2,7 +2,7 @@
 name = "jormungandr-integration-tests"
 version = "0.13.0"
 authors = [ "dev@iohk.io" ]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 tonic = "0.6"
@@ -36,7 +36,7 @@ lazy_static = "1.4"
 assert_fs = "1.0"
 predicates = "2.0"
 assert_cmd = "2.0.4"
-regex = "1.4"
+regex = "1.6"
 poldercast = "1.2"
 thiserror = "1.0"
 url = "2.2.0"
@@ -63,3 +63,4 @@ soak = []
 sanity = []
 cross-version = []
 explorer-schema-gen = []
+evm = ["chain-impl-mockchain/evm"]

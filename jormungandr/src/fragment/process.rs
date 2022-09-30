@@ -8,17 +8,16 @@ use crate::{
         task::TokioServiceInfo,
     },
 };
-
-use chain_core::property::Fragment;
-use std::collections::HashMap;
-use std::convert::TryInto;
-use std::io;
-use std::path::{Path, PathBuf};
-use tokio::fs::{self, File};
-
 use futures::{future, TryFutureExt};
+use std::{
+    collections::HashMap,
+    convert::TryInto,
+    io,
+    path::{Path, PathBuf},
+};
 use thiserror::Error;
 use time::{macros::format_description, Duration, OffsetDateTime, Time};
+use tokio::fs::{self, File};
 use tokio_stream::StreamExt;
 use tracing::{debug_span, span, Level};
 use tracing_futures::Instrument;
@@ -138,10 +137,7 @@ impl Process {
                                     async {
                                         let stats_counter = stats_counter.clone();
                                         let summary = pool
-                                            .insert_and_propagate_all(origin, fragments.into_iter().map(|el| {
-                                                let id = el.id();
-                                                (el, id)
-                                            }).collect(), fail_fast)
+                                            .insert_and_propagate_all(origin, fragments, fail_fast)
                                             .await?;
 
                                         stats_counter.add_tx_recv_cnt(summary.accepted.len());
@@ -183,7 +179,6 @@ impl Process {
                                 }
                                 TransactionMsg::SelectTransactions {
                                     ledger,
-                                    ledger_params,
                                     selection_alg,
                                     reply_handle,
                                     soft_deadline_future,
@@ -198,7 +193,6 @@ impl Process {
                                         let contents = pool
                                         .select(
                                             ledger,
-                                            ledger_params,
                                             selection_alg,
                                             soft_deadline_future,
                                             hard_deadline_future,

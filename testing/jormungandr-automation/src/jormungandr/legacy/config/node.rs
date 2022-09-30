@@ -2,8 +2,7 @@ use super::NodeConfig;
 use crate::jormungandr::configuration::TestConfig;
 use jormungandr_lib::multiaddr::to_tcp_socket_addr;
 use multiaddr::Multiaddr;
-use std::net::SocketAddr;
-use std::path::Path;
+use std::{net::SocketAddr, path::Path};
 
 impl TestConfig for NodeConfig {
     fn log_file_path(&self) -> Option<&Path> {

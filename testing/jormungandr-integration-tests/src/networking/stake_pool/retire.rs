@@ -1,10 +1,8 @@
-use hersir::builder::blockchain::BlockchainBuilder;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_automation::testing::time;
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{BlockchainBuilder, SpawnParams, WalletTemplateBuilder},
+};
+use jormungandr_automation::{jormungandr::explorer::configuration::ExplorerParams, testing::time};
 use jormungandr_lib::interfaces::BlockDate;
 use thor::FragmentSender;
 const LEADER_1: &str = "Leader_1";
@@ -22,6 +20,8 @@ const DAVID: &str = "DAVID";
 #[test]
 #[ignore]
 pub fn retire_stake_pool_explorer() {
+    let wait_epoch = 0;
+    let wait_slot_id = 30;
     let mut controller = NetworkBuilder::default()
         .topology(
             Topology::default()
@@ -77,9 +77,10 @@ pub fn retire_stake_pool_explorer() {
         .spawn(SpawnParams::new(LEADER_4).in_memory())
         .unwrap();
 
-    time::wait_for_date(BlockDate::new(0, 30), leader_1.rest());
+    time::wait_for_date(BlockDate::new(wait_epoch, wait_slot_id), leader_1.rest());
 
-    let explorer = leader_1.explorer();
+    let explorer_process = leader_1.explorer(ExplorerParams::default()).unwrap();
+    let explorer = explorer_process.client();
     let stake_pool_3 = controller.stake_pool(LEADER_3).unwrap().clone();
 
     let stake_pool_state_before = explorer
@@ -95,7 +96,7 @@ pub fn retire_stake_pool_explorer() {
         "retirement field in explorer should be empty",
     );
 
-    let mut david = controller.wallet(DAVID).unwrap();
+    let mut david = controller.controlled_wallet(DAVID).unwrap();
     let mut spo_3 = stake_pool_3.owner().clone();
 
     let fragment_sender = FragmentSender::from(&controller.settings().block0);

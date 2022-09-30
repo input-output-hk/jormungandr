@@ -4,13 +4,11 @@ pub mod delegation;
 pub mod discrimination;
 pub mod utxo;
 
-use crate::wallet::discrimination::DiscriminationExtension;
-use crate::FragmentBuilder;
-use crate::FragmentBuilderError;
-use chain_addr::AddressReadable;
-use chain_addr::Discrimination;
+use crate::{
+    wallet::discrimination::DiscriminationExtension, FragmentBuilder, FragmentBuilderError,
+};
+use chain_addr::{AddressReadable, Discrimination};
 use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey, Signature};
-use chain_impl_mockchain::accounting::account::SpendingCounterIncreasing;
 pub use chain_impl_mockchain::{
     account::SpendingCounter,
     block::Block,
@@ -23,6 +21,7 @@ pub use chain_impl_mockchain::{
     transaction::{Input, TransactionBindingAuthData},
 };
 use chain_impl_mockchain::{
+    accounting::account::SpendingCounterIncreasing,
     block::BlockDate,
     fee::FeeAlgorithm,
     key::EitherEd25519SecretKey,
@@ -34,7 +33,6 @@ use chain_impl_mockchain::{
     value::Value as ValueLib,
     vote::CommitteeId,
 };
-pub use committee::{PrivateVoteCommitteeData, PrivateVoteCommitteeDataManager};
 use jormungandr_automation::jcli::WitnessData;
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash, key::Identifier},
@@ -93,7 +91,7 @@ impl Wallet {
         spending_counter: Option<SpendingCounter>,
         discrimination: Discrimination,
     ) -> Wallet {
-        let bech32_str = jortestkit::file::read_file(secret_key_file);
+        let bech32_str = jortestkit::file::read_file(secret_key_file).unwrap();
         Wallet::Account(account::Wallet::from_existing_account(
             &bech32_str,
             spending_counter.map(Into::into),
@@ -217,6 +215,10 @@ impl Wallet {
 
     pub fn public_key(&self) -> PublicKey<Ed25519> {
         self.address().1.public_key().unwrap().clone()
+    }
+
+    pub fn public_key_bech32(&self) -> String {
+        hex::encode(Identifier::from(self.public_key()).as_ref())
     }
 
     pub fn address_bech32(&self, discrimination: Discrimination) -> String {

@@ -1,8 +1,11 @@
-use assert_fs::fixture::PathChild;
-use assert_fs::TempDir;
-use jormungandr_automation::jormungandr::{download_last_n_releases, get_jormungandr_bin};
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode};
-use jormungandr_automation::testing::{BranchCount, StopCriteria, StorageBuilder};
+use assert_fs::{fixture::PathChild, TempDir};
+use jormungandr_automation::{
+    jormungandr::{
+        download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter,
+        StartupVerificationMode,
+    },
+    testing::{BranchCount, StopCriteria, StorageBuilder},
+};
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use std::time::Duration;
 
@@ -81,7 +84,7 @@ pub fn legacy_bootstrap_from_1_gb_storage() {
         .with_storage(&child)
         .build(&temp_dir);
 
-    let legacy_release = download_last_n_releases(1).iter().cloned().next().unwrap();
+    let legacy_release = download_last_n_releases(1).get(0).cloned().unwrap();
     let jormungandr_app = get_jormungandr_bin(&legacy_release, &temp_dir);
 
     let jormungandr = Starter::new()

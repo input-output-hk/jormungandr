@@ -7,24 +7,25 @@ use super::{
     },
     subscription, Channels, GlobalStateR,
 };
-use crate::blockcfg as app_data;
-use crate::intercom::{self, BlockMsg, ClientMsg, RequestSink, TopologyMsg};
-use crate::topology::{self, Gossips, NodeId};
-use crate::utils::async_msg::MessageBox;
-use chain_network::core::server::{BlockService, FragmentService, GossipService, Node, PushStream};
-use chain_network::data::p2p::{AuthenticatedNodeId, Peer};
-use chain_network::data::{
-    Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, HandshakeResponse, Header,
+use crate::{
+    blockcfg as app_data,
+    intercom::{self, BlockMsg, ClientMsg, RequestSink, TopologyMsg},
+    topology::{self, Gossips, NodeId},
+    utils::async_msg::MessageBox,
 };
-use chain_network::error::{Code as ErrorCode, Error};
-
 use async_trait::async_trait;
-use futures::prelude::*;
-use futures::try_join;
+use chain_network::{
+    core::server::{BlockService, FragmentService, GossipService, Node, PushStream},
+    data::{
+        p2p::{AuthenticatedNodeId, Peer},
+        Block, BlockId, BlockIds, Fragment, FragmentIds, Gossip, HandshakeResponse, Header,
+    },
+    error::{Code as ErrorCode, Error},
+};
+use futures::{prelude::*, try_join};
+use std::convert::TryFrom;
 use tracing::{instrument, Span};
 use tracing_futures::Instrument;
-
-use std::convert::TryFrom;
 
 #[derive(Clone)]
 pub struct NodeService {
@@ -237,7 +238,7 @@ impl BlockService for NodeService {
         stream: PushStream<Header>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let peer_id = self.peer_id(subscriber.addr()).await?;
-        Span::current().record("id", &peer_id.to_string().as_str());
+        Span::current().record("id", peer_id.to_string().as_str());
         self.global_state.spawn(
             subscription::process_block_announcements(
                 stream,
@@ -273,7 +274,7 @@ impl FragmentService for NodeService {
         stream: PushStream<Fragment>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let peer_id = self.peer_id(subscriber.addr()).await?;
-        Span::current().record("id", &peer_id.to_string().as_str());
+        Span::current().record("id", peer_id.to_string().as_str());
         self.global_state.spawn(
             subscription::process_fragments(
                 stream,
@@ -304,7 +305,7 @@ impl GossipService for NodeService {
         stream: PushStream<Gossip>,
     ) -> Result<Self::SubscriptionStream, Error> {
         let peer_id = self.peer_id(subscriber.addr()).await?;
-        Span::current().record("id", &peer_id.to_string().as_str());
+        Span::current().record("id", peer_id.to_string().as_str());
         self.global_state.spawn(
             subscription::process_gossip(
                 stream,

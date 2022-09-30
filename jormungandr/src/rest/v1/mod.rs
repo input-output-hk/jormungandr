@@ -2,9 +2,7 @@ mod handlers;
 mod logic;
 
 use crate::rest::{display_internal_server_error, ContextLock};
-
 use jormungandr_lib::interfaces::VotePlanId;
-
 use warp::{http::StatusCode, Filter, Rejection, Reply};
 
 pub fn filter(
@@ -49,16 +47,14 @@ pub fn filter(
         .and(with_context.clone())
         .and_then(handlers::get_account_votes);
 
-    let votes_count = warp::path!("votes" / "plan" / "accounts-votes-count")
+    let votes_count = warp::path!("votes" / "plan" / "accounts-votes-all")
         .and(warp::get())
         .and(with_context)
-        .and_then(handlers::get_accounts_votes_count);
+        .and_then(handlers::get_accounts_votes_all);
 
-    let routes = fragments;
+    let routes = fragments.or(votes_with_plan).or(votes).or(votes_count);
 
-    root.and(routes.or(votes_with_plan).or(votes).or(votes_count))
-        .recover(handle_rejection)
-        .boxed()
+    root.and(routes).recover(handle_rejection).boxed()
 }
 
 /// Convert rejections to actual HTTP errors

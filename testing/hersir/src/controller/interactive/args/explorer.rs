@@ -1,4 +1,5 @@
 use crate::controller::{Error, UserInteractionController};
+use jormungandr_automation::jormungandr::explorer::configuration::ExplorerParams;
 use jortestkit::prelude::InteractiveCommandError;
 use structopt::StructOpt;
 
@@ -31,7 +32,12 @@ impl ExplorerTip {
             .ok_or_else(|| {
                 InteractiveCommandError::UserError(format!("Node '{}' not found", self.alias))
             })?;
-        println!("{:#?}", node.explorer().last_block()?);
+        println!(
+            "{:#?}",
+            node.explorer(ExplorerParams::default())?
+                .client()
+                .last_block()?
+        );
         Ok(())
     }
 }

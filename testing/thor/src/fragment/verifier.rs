@@ -1,10 +1,8 @@
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_automation::jormungandr::{FragmentNode, FragmentNodeError, MemPoolCheck};
-use jormungandr_lib::interfaces::FragmentLog;
-use jormungandr_lib::interfaces::FragmentStatus;
+use jormungandr_lib::interfaces::{FragmentLog, FragmentStatus};
 use jortestkit::prelude::Wait;
-use std::collections::HashMap;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 #[derive(custom_debug::Debug, thiserror::Error)]
 pub enum FragmentVerifierError {
@@ -197,7 +195,7 @@ impl FragmentVerifier {
     ) -> Result<(), FragmentVerifierError> {
         if let FragmentStatus::Rejected { reason } = status {
             let expected_part = expected_part.into();
-            reason.contains(&expected_part).then(|| ()).ok_or(
+            reason.contains(&expected_part).then_some(()).ok_or(
                 FragmentVerifierError::UnexpectedRejectionReason {
                     message: reason,
                     expected_part,

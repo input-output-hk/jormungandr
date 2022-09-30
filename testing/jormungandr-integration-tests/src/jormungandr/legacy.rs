@@ -4,10 +4,10 @@ use chain_impl_mockchain::{
     block::BlockDate,
     transaction::AccountIdentifier,
 };
-use jormungandr_automation::testing::time;
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter},
+    testing::time,
 };
 use thor::{FragmentSender, StakePool, TransactionHash};
 
@@ -19,7 +19,7 @@ pub fn test_legacy_node_all_fragments() {
     let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
 
-    let legacy_release = download_last_n_releases(1).iter().cloned().next().unwrap();
+    let legacy_release = download_last_n_releases(1).get(0).cloned().unwrap();
     let jormungandr = get_jormungandr_bin(&legacy_release, &temp_dir);
 
     let mut first_stake_pool_owner = thor::Wallet::default();

@@ -1,145 +1,10 @@
-"""Directs the executor to query only when the field exists."""
-directive @ifdef on FIELD
-
-type Block0Date {
-  block0_date: Int!
-}
-
-enum DiscriminationEnum {
-  PRODUCTION,
-  TEST,
-}
-
-type Discrimination {
-  discrimination: DiscriminationEnum!
-}
-
-enum ConsensusTypeEnum {
-  BFT,
-  GENESISPRAOS,
-}
-
-type ConsensusType {
-  consensus_type: ConsensusTypeEnum!
-}
-
-type SlotsPerEpoch {
-  slots_per_epoch: Int!
-}
-
-type SlotDuration {
-  slot_duration: Int!
-}
-
-type EpochStabilityDepth {
-  epoch_stability_depth: Int!
-}
-
-type Milli {
-  milli: Int!
-}
-
-type BlockContentMaxSize {
-  block_content_max_size: Int!
-}
-
 type AddBftLeader {
-  add_bft_leader: BftLeader!
-}
-
-type RemoveBftLeader {
-  remove_bft_leader: BftLeader!
-}
-
-type PerCertificateFee {
-  certificate_pool_registration: NonZero
-  certificate_stake_delegation: NonZero
-  certificate_owner_stake_delegation: NonZero
-}
-
-type PerVoteCertificateFee {
-  certificate_vote_plan: NonZero
-  certificate_vote_cast: NonZero
-}
-
-type LinearFee {
-  constant: Int!
-  coefficient: Int!
-  certificate: Int!
-  per_certificate_fees: PerCertificateFee!
-  per_vote_certificate_fees: PerVoteCertificateFee!
-}
-
-type ProposalExpiration {
-  proposal_expiration: Int!
-}
-
-type KesUpdateSpeed {
-  kes_update_speed: Int!
-}
-
-type TreasuryAdd {
-  treasury_add: Value!
-}
-
-type TreasuryParams {
-  treasury_params: TaxType!
-}
-
-type RewardPot {
-  reward_pot: Value!
-}
-
-type Linear {
-    constant: Int!
-    ratio: Ratio!
-    epoch_start: Int!
-    epoch_rate: NonZero!
-}
-
-type Halving {
-    constant: Int!
-    ratio: Ratio!
-    epoch_start: Int!
-    epoch_rate: NonZero!
-}
-
-union RewardParamsUnion = Linear | Halving
-
-type RewardParams {
-  reward_params: RewardParamsUnion!
-}
-
-type FeesInTreasury {
-  fees_in_treasury: Boolean!
-}
-
-type RewardLimitNone {
-  reward_limit_none: Boolean!
-}
-
-type RewardLimitByAbsoluteStake {
-  reward_limit_by_absolute_stake: Ratio!
-}
-
-type PoolRewardParticipationCapping {
-  min: NonZero!
-  max: NonZero!
+  addBftLeader: BftLeader!
 }
 
 type AddCommitteeId {
-  add_committee_id: String!
+  addCommitteeId: String!
 }
-
-type RemoveCommitteeId {
-  remove_committee_id: String!
-}
-
-type TransactionMaxExpiryEpochs {
-  transaction_max_expiry_epochs: Int!
-}
-
-union ConfigParam = Block0Date | Discrimination | ConsensusType | SlotsPerEpoch | SlotDuration | EpochStabilityDepth | Milli | BlockContentMaxSize | AddBftLeader | RemoveBftLeader | LinearFee | ProposalExpiration | KesUpdateSpeed | TreasuryAdd | TreasuryParams | RewardPot | RewardParams | PerCertificateFee | FeesInTreasury | RewardLimitNone | RewardLimitByAbsoluteStake | PoolRewardParticipationCapping | AddCommitteeId | RemoveCommitteeId | PerVoteCertificateFee | TransactionMaxExpiryEpochs
 
 type Address {
   """The base32 representation of an address"""
@@ -170,13 +35,24 @@ type Block {
   branches: [Branch!]!
 }
 
+type Block0Date {
+  block0Date: Int!
+}
+
 type BlockConnection {
   """Information to aid in pagination."""
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [BlockEdge]
+  edges: [BlockEdge!]!
+
+  """A list of nodes."""
+  nodes: [Block!]!
   totalCount: Int!
+}
+
+type BlockContentMaxSize {
+  blockContentMaxSize: Int!
 }
 
 """Block's date, composed of an Epoch and a Slot"""
@@ -187,11 +63,11 @@ type BlockDate {
 
 """An edge in a connection."""
 type BlockEdge {
-  """The item at the end of the edge"""
-  node: Block!
-
   """A cursor for use in pagination"""
   cursor: String!
+
+  """The item at the end of the edge"""
+  node: Block!
 }
 
 type Branch {
@@ -206,7 +82,7 @@ type Branch {
   blocksByEpoch(epoch: EpochNumber!, first: Int, last: Int, before: String, after: String): BlockConnection
 }
 
-union Certificate = StakeDelegation | OwnerStakeDelegation | PoolRegistration | PoolRetirement | PoolUpdate | VotePlan | VoteCast | VoteTally | EncryptedVoteTally
+union Certificate = StakeDelegation | OwnerStakeDelegation | PoolRegistration | PoolRetirement | PoolUpdate | VotePlan | VoteCast | VoteTally | UpdateProposal | UpdateVote | MintToken | EvmMapping
 
 """
 Custom scalar type that represents a block's position in the blockchain.
@@ -214,8 +90,28 @@ It's either 0 (the genesis block) or a positive number
 """
 scalar ChainLength
 
-type EncryptedVoteTally {
-  votePlan: VotePlanId!
+union ConfigParam = Block0Date | Discrimination | ConsensusType | SlotsPerEpoch | SlotDuration | EpochStabilityDepth | Milli | BlockContentMaxSize | AddBftLeader | RemoveBftLeader | LinearFee | ProposalExpiration | KesUpdateSpeed | TreasuryAdd | TreasuryParams | RewardPot | RewardParams | PerCertificateFee | FeesInTreasury | RewardLimitNone | RewardLimitByAbsoluteStake | PoolRewardParticipationCapping | AddCommitteeId | RemoveCommitteeId | PerVoteCertificateFee | TransactionMaxExpiryEpochs
+
+type ConfigParams {
+  configParams: [ConfigParam!]!
+}
+
+type ConsensusType {
+  consensusType: ConsensusTypeEnum!
+}
+
+enum ConsensusTypeEnum {
+  BFT
+  GENESIS_PRAOS
+}
+
+type Discrimination {
+  discrimination: DiscriminationEnum!
+}
+
+enum DiscriminationEnum {
+  PRODUCTION
+  TEST
 }
 
 type Epoch {
@@ -230,9 +126,55 @@ type Epoch {
 
 scalar EpochNumber
 
+type EpochStabilityDepth {
+  epochStabilityDepth: Int!
+}
+
+type EvmMapping {
+  address: String!
+}
+
 scalar ExternalProposalId
 
+type FeesInTreasury {
+  feesInTreasury: Boolean!
+}
+
+type HalvingRewardParams {
+  constant: Int!
+  ratio: Ratio!
+  epochStart: Int!
+  epochRate: Int!
+}
+
+type KesUpdateSpeed {
+  kesUpdateSpeed: Int!
+}
+
 union Leader = Pool | BftLeader
+
+type LinearFee {
+  constant: Int!
+  coefficient: Int!
+  certificate: Int!
+  perCertificateFees: PerCertificateFee!
+  perVoteCertificateFees: PerVoteCertificateFee!
+}
+
+type LinearRewardParams {
+  constant: Int!
+  ratio: Ratio!
+  epochStart: Int!
+  epochRate: Int!
+}
+
+type Milli {
+  milli: Int!
+}
+
+type MintToken {
+  name: String!
+}
 
 scalar NonZero
 
@@ -260,6 +202,17 @@ enum PayloadType {
   PRIVATE
 }
 
+type PerCertificateFee {
+  certificatePoolRegistration: Int
+  certificateStakeDelegation: Int
+  certificateOwnerStakeDelegation: Int
+}
+
+type PerVoteCertificateFee {
+  certificateVotePlan: Int
+  certificateVoteCast: Int
+}
+
 type Pool {
   id: PoolId!
   blocks(first: Int, last: Int, before: String, after: String): BlockConnection!
@@ -272,17 +225,20 @@ type PoolConnection {
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [PoolEdge]
+  edges: [PoolEdge!]!
+
+  """A list of nodes."""
+  nodes: [Pool!]!
   totalCount: Int!
 }
 
 """An edge in a connection."""
 type PoolEdge {
-  """The item at the end of the edge"""
-  node: Pool!
-
   """A cursor for use in pagination"""
   cursor: String!
+
+  """The item at the end of the edge"""
+  node: Pool!
 }
 
 scalar PoolId
@@ -313,6 +269,11 @@ type PoolRetirement {
   retirementTime: TimeOffsetSeconds!
 }
 
+type PoolRewardParticipationCapping {
+  min: Int!
+  max: Int!
+}
+
 type PoolStakeDistribution {
   pool: Pool!
   delegatedStake: Value!
@@ -328,12 +289,15 @@ type Proposal {
 
   """
   get the vote options range
-
   this is the available range of choices to make for the given
   proposal. all casted votes for this proposals ought to be in
   within the given range
   """
   options: VoteOptionRange!
+}
+
+type ProposalExpiration {
+  proposalExpiration: Int!
 }
 
 scalar PublicKey
@@ -364,12 +328,46 @@ type Ratio {
   denominator: NonZero!
 }
 
+type RemoveBftLeader {
+  removeBftLeader: BftLeader!
+}
+
+type RemoveCommitteeId {
+  removeCommitteeId: String!
+}
+
+type RewardLimitByAbsoluteStake {
+  rewardLimitByAbsoluteStake: Ratio!
+}
+
+type RewardLimitNone {
+  rewardLimitNone: Boolean!
+}
+
+type RewardParams {
+  rewardParams: RewardParamsUnion!
+}
+
+union RewardParamsUnion = LinearRewardParams | HalvingRewardParams
+
+type RewardPot {
+  rewardPot: Value!
+}
+
 type Settings {
   fees: LinearFee!
   epochStabilityDepth: EpochStabilityDepth!
 }
 
 scalar Slot
+
+type SlotDuration {
+  slotDuration: Int!
+}
+
+type SlotsPerEpoch {
+  slotsPerEpoch: Int!
+}
 
 type StakeDelegation {
   account: Address!
@@ -416,6 +414,11 @@ type Transaction {
 
   """All the blocks this transaction is included in"""
   blocks: [Block!]!
+
+  """
+  Initial bootstrap config params (initial fragments), only present in Block0
+  """
+  initialConfigurationParams: ConfigParams
   inputs: [TransactionInput!]!
   outputs: [TransactionOutput!]!
   certificate: Certificate
@@ -426,16 +429,20 @@ type TransactionConnection {
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [TransactionEdge]
+  edges: [TransactionEdge!]!
+
+  """A list of nodes."""
+  nodes: [Transaction!]!
+  totalCount: Int!
 }
 
 """An edge in a connection."""
 type TransactionEdge {
-  """The item at the end of the edge"""
-  node: Transaction!
-
   """A cursor for use in pagination"""
   cursor: String!
+
+  """The item at the end of the edge"""
+  node: Transaction!
 }
 
 type TransactionInput {
@@ -443,9 +450,31 @@ type TransactionInput {
   address: Address!
 }
 
+type TransactionMaxExpiryEpochs {
+  transactionMaxExpiryEpochs: Int!
+}
+
 type TransactionOutput {
   amount: Value!
   address: Address!
+}
+
+type TreasuryAdd {
+  treasuryAdd: Value!
+}
+
+type TreasuryParams {
+  treasuryParams: TaxType!
+}
+
+type UpdateProposal {
+  changes: ConfigParams!
+  proposerId: BftLeader!
+}
+
+type UpdateVote {
+  proposalId: String!
+  voterId: BftLeader!
 }
 
 scalar Value
@@ -518,17 +547,20 @@ type VotePlanStatusConnection {
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [VotePlanStatusEdge]
+  edges: [VotePlanStatusEdge!]!
+
+  """A list of nodes."""
+  nodes: [VotePlanStatus!]!
   totalCount: Int!
 }
 
 """An edge in a connection."""
 type VotePlanStatusEdge {
-  """The item at the end of the edge"""
-  node: VotePlanStatus!
-
   """A cursor for use in pagination"""
   cursor: String!
+
+  """The item at the end of the edge"""
+  node: VotePlanStatus!
 }
 
 type VoteProposalStatus {
@@ -548,17 +580,20 @@ type VoteStatusConnection {
   pageInfo: PageInfo!
 
   """A list of edges."""
-  edges: [VoteStatusEdge]
+  edges: [VoteStatusEdge!]!
+
+  """A list of nodes."""
+  nodes: [VoteStatus!]!
   totalCount: Int!
 }
 
 """An edge in a connection."""
 type VoteStatusEdge {
-  """The item at the end of the edge"""
-  node: VoteStatus!
-
   """A cursor for use in pagination"""
   cursor: String!
+
+  """The item at the end of the edge"""
+  node: VoteStatus!
 }
 
 type VoteTally {
@@ -566,4 +601,3 @@ type VoteTally {
 }
 
 scalar Weight
-

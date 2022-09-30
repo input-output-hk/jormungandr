@@ -4,14 +4,13 @@ mod node;
 mod utxo;
 mod vote;
 
+use crate::jcli::command::TransactionCommand;
 pub use block::BlockCommand;
 pub use message::MessageCommand;
 pub use node::NodeCommand;
+use std::process::Command;
 pub use utxo::UtxOCommand;
 pub use vote::VoteCommand;
-
-use crate::jcli::command::TransactionCommand;
-use std::process::Command;
 
 pub struct V0Command {
     command: Command,

@@ -1,0 +1,69 @@
+name: Nix CI
+on:
+  push:
+    branches:
+      - master
+      - catalyst-fund*
+  pull_request:
+
+jobs:
+  decision:
+    name: Decide what we need to build
+    runs-on: ubuntu-latest
+
+    outputs:
+      packages: ${{ steps.packages.outputs.packages }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup
+      uses: ./.github/actions/nix-common-setup
+      with:
+        CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+    - name: Packages
+      id: packages
+      run: |
+        packages=$(nix eval .#packages.x86_64-linux --apply builtins.attrNames --json)
+        echo "PACKAGES -> $packages"
+        echo "::set-output name=packages::$packages"
+
+  build:
+    name: Build ${{ matrix.package }} package
+    needs:
+      - decision
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(needs.decision.outputs.packages) }}
+        exclude:
+          - package: default
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup
+      uses: ./.github/actions/nix-common-setup
+      with:
+        CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+    - name: Build package
+      run: |
+        path=$(nix eval --raw .#packages.x86_64-linux.${{ matrix.package }})
+        hash=${path:11:32}
+        url="https://iog.cachix.org/$hash.narinfo";
+        if curl --output /dev/null --silent --head --fail "$url"; then
+          echo "Nothing to build!!!"
+          echo ""
+          echo "See build log with:"
+          echo "  nix log $path"
+          echo ""
+        else
+          nix build .#packages.x86_64-linux.${{ matrix.package }} --show-trace -L
+        fi

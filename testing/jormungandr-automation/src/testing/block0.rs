@@ -1,9 +1,13 @@
+use super::blockchain_config::BlockchainConfigurationExtension;
 use chain_core::{
-    mempack::{ReadBuf, Readable},
-    property::{Block as _, Deserialize, Serialize},
+    packer::Codec,
+    property::{Deserialize, DeserializeFromSlice, ReadError, Serialize, WriteError},
 };
 use chain_impl_mockchain::{block::Block, certificate::VotePlan, ledger::Ledger};
-use jormungandr_lib::interfaces::{Block0Configuration, Block0ConfigurationError, Initial};
+use jormungandr_lib::{
+    interfaces::{Block0Configuration, Block0ConfigurationError, Initial, SettingsDto},
+    time::SystemTime,
+};
 use std::{io::BufReader, path::Path};
 use thiserror::Error;
 use url::Url;
@@ -19,11 +23,11 @@ pub fn get_block<S: Into<String>>(block0: S) -> Result<Block0Configuration, Bloc
                 .append(false)
                 .open(&block0)?;
             let reader = BufReader::new(reader);
-            Block::deserialize(reader)?
+            Block::deserialize(&mut Codec::new(reader))?
         } else if Url::parse(&block0).is_ok() {
             let response = reqwest::blocking::get(&block0)?;
             let block0_bytes = response.bytes()?.to_vec();
-            Block::read(&mut ReadBuf::from(&block0_bytes))?
+            Block::deserialize_from_slice(&mut Codec::new(block0_bytes.as_slice()))?
         } else {
             panic!(" block0 should be either path to filesystem or url ");
         }
@@ -33,6 +37,7 @@ pub fn get_block<S: Into<String>>(block0: S) -> Result<Block0Configuration, Bloc
 
 pub trait Block0ConfigurationExtension {
     fn vote_plans(&self) -> Vec<VotePlan>;
+    fn settings(&self) -> SettingsDto;
 }
 
 impl Block0ConfigurationExtension for Block0Configuration {
@@ -48,6 +53,25 @@ impl Block0ConfigurationExtension for Block0Configuration {
             }
         }
         vote_plans
+    }
+
+    fn settings(&self) -> SettingsDto {
+        let blockchain_configuration = &self.blockchain_configuration;
+        SettingsDto {
+            block0_hash: self.to_block().header().id().to_string(),
+            block0_time: blockchain_configuration.block0_date.into(),
+            curr_slot_start_time: Some(SystemTime::from(blockchain_configuration.block0_date)),
+            consensus_version: blockchain_configuration.block0_consensus.to_string(),
+            fees: blockchain_configuration.linear_fees.clone(),
+            block_content_max_size: blockchain_configuration.block_content_max_size.into(),
+            epoch_stability_depth: blockchain_configuration.epoch_stability_depth.into(),
+            slot_duration: u8::from(blockchain_configuration.slot_duration).into(),
+            slots_per_epoch: blockchain_configuration.slots_per_epoch.into(),
+            treasury_tax: blockchain_configuration.treasury_parameters.unwrap().into(),
+            reward_params: blockchain_configuration.reward_parameters().unwrap(),
+            discrimination: blockchain_configuration.discrimination,
+            tx_max_expiry_epochs: blockchain_configuration.tx_max_expiry_epochs.unwrap(),
+        }
     }
 }
 
@@ -96,8 +120,8 @@ pub fn encode_block0<P: AsRef<Path>, Q: AsRef<Path>>(
 
     let genesis: Block0Configuration = serde_yaml::from_reader(input)?;
     let block = genesis.to_block();
-    Ledger::new(block.id(), block.fragments())?;
-    block.serialize(&output).map_err(Into::into)
+    Ledger::new(block.header().id(), block.fragments())?;
+    block.serialize(&mut Codec::new(output)).map_err(Into::into)
 }
 
 pub fn decode_block0<Q: AsRef<Path>>(block0: Vec<u8>, genesis_yaml: Q) -> Result<(), Block0Error> {
@@ -109,7 +133,8 @@ pub fn decode_block0<Q: AsRef<Path>>(block0: Vec<u8>, genesis_yaml: Q) -> Result
         .truncate(true)
         .open(&genesis_yaml)?;
 
-    let yaml = Block0Configuration::from_block(&Block::deserialize(&*block0)?)?;
+    let yaml =
+        Block0Configuration::from_block(&Block::deserialize(&mut Codec::new(block0.as_slice()))?)?;
     Ok(serde_yaml::to_writer(writer, &yaml)?)
 }
 
@@ -123,8 +148,10 @@ pub enum Block0Error {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
-    ReadError(#[from] chain_core::mempack::ReadError),
+    Write(#[from] WriteError),
     #[error(transparent)]
+    Read(#[from] ReadError),
+    #[error("bech32 error")]
     Bech32Error(#[from] bech32::Error),
     #[error(transparent)]
     SerdeYaml(#[from] serde_yaml::Error),

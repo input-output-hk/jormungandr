@@ -1,12 +1,10 @@
+use assert_fs::{fixture::ChildPath, prelude::*};
 use chain_core::property::FromStr;
 use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
 use jormungandr_lib::{
     crypto::{hash::Hash, key::SigningKey},
     interfaces::{Bft, GenesisPraos, NodeSecret},
 };
-
-use assert_fs::fixture::ChildPath;
-use assert_fs::prelude::*;
 use std::option::Option;
 
 #[derive(Debug, Clone)]

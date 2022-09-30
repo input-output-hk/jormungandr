@@ -1,10 +1,8 @@
-use hersir::builder::blockchain::BlockchainBuilder;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_automation::testing::time;
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{BlockchainBuilder, SpawnParams, WalletTemplateBuilder},
+};
+use jormungandr_automation::{jormungandr::explorer::configuration::ExplorerParams, testing::time};
 use jormungandr_lib::interfaces::BlockDate;
 use thor::FragmentSender;
 const LEADER_1: &str = "Leader_1";
@@ -18,6 +16,8 @@ const CLARICE: &str = "CLARICE";
 
 #[test]
 pub fn passive_node_explorer() {
+    let wait_epoch = 0;
+    let wait_slot_id = 30;
     let mut controller = NetworkBuilder::default()
         .topology(
             Topology::default()
@@ -71,18 +71,20 @@ pub fn passive_node_explorer() {
     let passive = controller
         .spawn(SpawnParams::new(PASSIVE).passive().in_memory())
         .unwrap();
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let bob = controller.controlled_wallet(BOB).unwrap();
 
     let mem_pool_check = FragmentSender::from(&controller.settings().block0)
         .send_transaction(&mut alice, &bob, &leader_1, 1_000.into())
         .unwrap();
 
     // give some time to update explorer
-    time::wait_for_date(BlockDate::new(0, 30), leader_1.rest());
+    time::wait_for_date(BlockDate::new(wait_epoch, wait_slot_id), leader_1.rest());
 
     let transaction_id = passive
-        .explorer()
+        .explorer(ExplorerParams::default())
+        .unwrap()
+        .client()
         .transaction((*mem_pool_check.fragment_id()).into())
         .unwrap()
         .data

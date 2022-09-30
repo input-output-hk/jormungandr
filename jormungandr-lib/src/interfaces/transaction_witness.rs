@@ -1,3 +1,4 @@
+use chain_core::{packer::Codec, property::DeserializeFromSlice};
 use chain_impl_mockchain::transaction::Witness;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
@@ -10,7 +11,7 @@ pub enum TransactionWitnessFromStrError {
     #[error("Invalid prefix, expected '{expected}' but received '{got}'")]
     InvalidHrp { expected: String, got: String },
     #[error("Invalid encoding")]
-    Invalid(#[from] chain_core::mempack::ReadError),
+    Invalid(#[from] chain_core::property::ReadError),
 }
 
 const HRP: &str = "witness";
@@ -31,7 +32,6 @@ impl TransactionWitness {
 
     pub fn from_bech32_str(s: &str) -> Result<Self, TransactionWitnessFromStrError> {
         use bech32::FromBase32;
-        use chain_core::mempack::{ReadBuf, Readable as _};
 
         let (hrp, data, _variant) = bech32::decode(s)?;
         if hrp != HRP {
@@ -42,8 +42,10 @@ impl TransactionWitness {
         }
         let bytes = Vec::<u8>::from_base32(&data)?;
 
-        let mut reader = ReadBuf::from(&bytes);
-        Ok(Witness::read(&mut reader).map(TransactionWitness)?)
+        Ok(
+            Witness::deserialize_from_slice(&mut Codec::new(bytes.as_slice()))
+                .map(TransactionWitness)?,
+        )
     }
 }
 
@@ -107,7 +109,6 @@ impl<'de> Deserialize<'de> for TransactionWitness {
     where
         D: Deserializer<'de>,
     {
-        use chain_core::mempack::{ReadBuf, Readable as _};
         use serde::de::{self, Visitor};
         struct TransactionWitnessVisitor;
         impl<'de> Visitor<'de> for TransactionWitnessVisitor {
@@ -137,8 +138,7 @@ impl<'de> Deserialize<'de> for TransactionWitness {
             where
                 E: de::Error,
             {
-                let mut reader = ReadBuf::from(bytes);
-                Witness::read(&mut reader)
+                Witness::deserialize_from_slice(&mut Codec::new(bytes))
                     .map_err(E::custom)
                     .map(TransactionWitness)
             }

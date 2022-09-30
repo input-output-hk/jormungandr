@@ -1,5 +1,4 @@
-use crate::generators::ExplorerRequestGen;
-use crate::mjolnir_lib::MjolnirError;
+use crate::{generators::ExplorerRequestGen, mjolnir_lib::MjolnirError};
 use jormungandr_automation::jormungandr::Explorer;
 use jortestkit::{
     load::{ConfigurationBuilder, Monitor},
@@ -20,20 +19,20 @@ pub struct ExplorerLoadCommand {
     /// Number of threads
     #[structopt(short = "c", long = "count", default_value = "3")]
     pub count: usize,
-    /// address in format:
+    /// Endpoint address in format:
     /// 127.0.0.1:80
     #[structopt(short = "e", long = "endpoint")]
     pub endpoint: String,
 
-    /// amount of delay [milliseconds] between sync attempts
+    /// Amount of delay [milliseconds] between sync attempts
     #[structopt(long = "delay", default_value = "50")]
     pub delay: u64,
 
-    /// load duration
+    /// Load duration
     #[structopt(short = "d", long = "duration")]
     pub duration: u64,
 
-    // show progress
+    /// Show progress
     #[structopt(
         long = "progress-bar-mode",
         short = "b",
@@ -42,13 +41,14 @@ pub struct ExplorerLoadCommand {
     )]
     progress_bar_mode: ProgressBarMode,
 
+    /// Prints post load measurements
     #[structopt(short = "m", long = "measure")]
     pub measure: bool,
 }
 
 impl ExplorerLoadCommand {
     pub fn exec(&self) -> Result<(), ExplorerLoadCommandError> {
-        let mut explorer = Explorer::new(self.endpoint.clone(), None);
+        let mut explorer = Explorer::new(self.endpoint.clone());
         explorer.disable_logs();
         let mut request_gen = ExplorerRequestGen::new(explorer);
         request_gen.do_setup(Vec::new()).unwrap();

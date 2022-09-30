@@ -8,8 +8,10 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{FragmentLog, FragmentStatus, FragmentsProcessingSummary},
 };
-use jortestkit::prelude::ProcessOutput;
-use jortestkit::process::{run_process_until_response_matches, Wait};
+use jortestkit::{
+    prelude::ProcessOutput,
+    process::{run_process_until_response_matches, Wait},
+};
 use std::process::Command;
 
 pub struct FragmentCheck<'a> {
@@ -152,7 +154,7 @@ impl<'a> FragmentCheck<'a> {
                     self.jormungandr.logger.get_log_content()
                 );
                 match x.status() {
-                    FragmentStatus::Rejected { reason } => assert!(reason.contains(&expected_msg)),
+                    FragmentStatus::Rejected { reason } => assert!(reason.contains(expected_msg)),
                     _ => panic!("Non expected state for for rejected log"),
                 }
             }

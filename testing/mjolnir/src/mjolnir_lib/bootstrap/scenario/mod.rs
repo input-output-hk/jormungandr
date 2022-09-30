@@ -1,8 +1,7 @@
 mod duration;
 mod iteration;
 use super::ClientLoadConfig;
-use assert_fs::fixture::PathChild;
-use assert_fs::TempDir;
+use assert_fs::{fixture::PathChild, TempDir};
 pub use duration::DurationBasedClientLoad;
 use indicatif::{ProgressBar, ProgressStyle};
 pub use iteration::IterationBasedClientLoad;
@@ -10,8 +9,7 @@ use jormungandr_automation::jormungandr::{
     ConfigurationBuilder, JormungandrProcess, Starter, StartupError,
 };
 use jortestkit::file;
-use std::path::PathBuf;
-use std::{fs, result::Result};
+use std::{fs, path::PathBuf, result::Result};
 
 pub fn copy_initial_storage_if_used(
     config: &ClientLoadConfig,
@@ -24,7 +22,7 @@ pub fn copy_initial_storage_if_used(
             fs::remove_dir_all(&client_storage).expect("cannot remove existing client storage");
         }
         fs::create_dir(&client_storage).expect("cannot create client storage");
-        file::copy_folder(storage, &client_storage, true);
+        file::copy_folder(storage, &client_storage, true).unwrap()
     }
 }
 

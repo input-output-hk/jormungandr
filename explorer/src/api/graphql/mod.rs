@@ -4,41 +4,45 @@ mod connections;
 mod error;
 mod scalars;
 
-use self::config_param::{EpochStabilityDepth, LinearFee};
-use self::scalars::{
-    BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero, PayloadType,
-    PoolCount, PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange,
-    VotePlanStatusCount,
-};
 use self::{
+    config_param::{EpochStabilityDepth, LinearFee},
     connections::{
         compute_interval, ConnectionFields, InclusivePaginationInterval, PaginationInterval,
         ValidatedPaginationArguments,
     },
-    scalars::VotePlanId,
+    error::ApiError,
+    scalars::{
+        BlockCount, ChainLength, EpochNumber, ExternalProposalId, IndexCursor, NonZero,
+        PayloadType, PoolCount, PoolId, PublicKey, Slot, TransactionCount, Value, VoteOptionRange,
+        VotePlanId, VotePlanStatusCount, Weight,
+    },
 };
-use self::{error::ApiError, scalars::Weight};
-use crate::db::indexing::{
-    BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction, ExplorerVote,
-    ExplorerVotePlan, ExplorerVoteTally, StakePoolData,
+use crate::db::{
+    indexing::{
+        BlockProducer, EpochData, ExplorerAddress, ExplorerBlock, ExplorerTransaction,
+        ExplorerVote, ExplorerVotePlan, ExplorerVoteTally, StakePoolData,
+    },
+    persistent_sequence::PersistentSequence,
+    ExplorerDb, Settings as ChainSettings,
 };
-use crate::db::persistent_sequence::PersistentSequence;
-use crate::db::{ExplorerDb, Settings as ChainSettings};
-use async_graphql::connection::{query, Connection, Edge, EmptyFields};
 use async_graphql::{
+    connection::{query, Connection, Edge, EmptyFields},
     Context, EmptyMutation, FieldError, FieldResult, Object, SimpleObject, Subscription, Union,
 };
 use cardano_legacy_address::Addr as OldAddress;
 use certificates::*;
-use chain_impl_mockchain::key::BftLeaderId;
 use chain_impl_mockchain::{
     block::{BlockDate as InternalBlockDate, Epoch as InternalEpoch, HeaderId as HeaderHash},
+    certificate,
+    fragment::FragmentId,
+    key::BftLeaderId,
     vote::{EncryptedVote, ProofOfCorrectVote},
 };
-use chain_impl_mockchain::{certificate, fragment::FragmentId};
-use std::convert::{TryFrom, TryInto};
-use std::str::FromStr;
-use std::sync::Arc;
+use std::{
+    convert::{TryFrom, TryInto},
+    str::FromStr,
+    sync::Arc,
+};
 
 pub struct Branch {
     state: crate::db::Ref,
@@ -122,14 +126,16 @@ impl Branch {
                     }
                 };
 
-                connection.append(edges.iter().map(|(h, chain_length)| {
-                    Edge::new(
-                        IndexCursor::from(u32::from(*chain_length)),
-                        Block::from_valid_hash(*h),
-                    )
-                }));
+                connection
+                    .edges
+                    .extend(edges.iter().map(|(h, chain_length)| {
+                        Edge::new(
+                            IndexCursor::from(u32::from(*chain_length)),
+                            Block::from_valid_hash(*h),
+                        )
+                    }));
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -197,11 +203,11 @@ impl Branch {
                         .collect(),
                 };
 
-                connection.append(edges.iter().map(|(h, i)| {
+                connection.edges.extend(edges.iter().map(|(h, i)| {
                     Edge::new(IndexCursor::from(*i), Transaction::from_valid_id(*h))
                 }));
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -275,13 +281,13 @@ impl Branch {
                     }
                 };
 
-                connection.append(
+                connection.edges.extend(
                     edges
                         .iter()
                         .map(|(vps, cursor)| Edge::new(IndexCursor::from(*cursor), vps.clone())),
                 );
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -361,13 +367,13 @@ impl Branch {
                     }
                 };
 
-                connection.append(
+                connection.edges.extend(
                     edges
                         .iter()
                         .map(|(pool, cursor)| Edge::new(IndexCursor::from(*cursor), pool.clone())),
                 );
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -452,11 +458,11 @@ impl Branch {
                             .collect::<Vec<_>>(),
                     };
 
-                    connection.append(edges.iter().map(|(id, cursor)| {
+                    connection.edges.extend(edges.iter().map(|(id, cursor)| {
                         Edge::new(IndexCursor::from(*cursor), Block::from_valid_hash(*id))
                     }));
 
-                    Ok(connection)
+                    Ok::<_, async_graphql::Error>(connection)
                 },
             )
             .await,
@@ -501,7 +507,7 @@ impl Block {
             Ok(Arc::clone(block))
         } else {
             let block = db.get_block(&self.hash).await.ok_or_else(|| {
-                ApiError::InternalError("Couldn't find block's contents in explorer".to_owned())
+                ApiError::InternalError("Couldn't find block in the explorer".to_owned())
             })?;
 
             *contents = Some(Arc::clone(&block));
@@ -514,7 +520,7 @@ impl Block {
             db.get_block_with_branches(&self.hash)
                 .await
                 .ok_or_else(|| {
-                    ApiError::InternalError("Couldn't find block's contents in explorer".to_owned())
+                    ApiError::InternalError("Couldn't find block in the explorer".to_owned())
                 })?;
 
         let mut contents = self.contents.lock().await;
@@ -619,13 +625,13 @@ impl Block {
                     }
                 };
 
-                connection.append(
+                connection.edges.extend(
                     edges
                         .iter()
                         .map(|(tx, cursor)| Edge::new(IndexCursor::from(*cursor), tx.clone())),
                 );
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -744,7 +750,7 @@ impl Transaction {
             .await;
 
         if block_hashes.is_empty() {
-            return Err(ApiError::NotFound(format!("transaction not found: {}", &id,)).into());
+            Err(ApiError::NotFound(format!("transaction not found: {}", &id,)).into())
         } else {
             Ok(Transaction {
                 id,
@@ -847,6 +853,18 @@ impl Transaction {
         let blocks = self.get_blocks(context).await?;
 
         Ok(blocks.iter().map(|b| Block::from(Arc::clone(b))).collect())
+    }
+
+    /// Initial bootstrap config params (initial fragments), only present in Block0
+    pub async fn initial_configuration_params(
+        &self,
+        context: &Context<'_>,
+    ) -> FieldResult<Option<config_param::ConfigParams>> {
+        let transaction = self.get_contents(context).await?;
+        match transaction.config_params {
+            Some(params) => Ok(Some(config_param::ConfigParams::from(&params))),
+            None => Ok(None),
+        }
     }
 
     pub async fn inputs(&self, context: &Context<'_>) -> FieldResult<Vec<TransactionInput>> {
@@ -1099,13 +1117,13 @@ impl Pool {
                     },
                 );
 
-                connection.append(
+                connection.edges.extend(
                     edges
                         .iter()
                         .map(|(h, i)| Edge::new(IndexCursor::from(*i), Block::from_valid_hash(*h))),
                 );
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await
@@ -1464,13 +1482,13 @@ impl VoteProposalStatus {
                     }
                 };
 
-                connection.append(
+                connection.edges.extend(
                     edges
                         .iter()
                         .map(|(vs, cursor)| Edge::new(IndexCursor::from(*cursor), vs.clone())),
                 );
 
-                Ok(connection)
+                Ok::<_, async_graphql::Error>(connection)
             },
         )
         .await

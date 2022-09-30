@@ -1,17 +1,17 @@
-use crate::jormungandr::NodeAlias;
-use crate::jormungandr::{
-    grpc::JormungandrClient, rest::uri_from_socket_addr, FragmentNode, FragmentNodeError,
-    JormungandrLogger, JormungandrRest, LogLevel, MemPoolCheck,
+use crate::{
+    jormungandr::{
+        grpc::JormungandrClient, rest::uri_from_socket_addr, FragmentNode, FragmentNodeError,
+        JormungandrLogger, JormungandrRest, LogLevel, MemPoolCheck, NodeAlias,
+    },
+    testing::SyncNode,
 };
-use crate::testing::SyncNode;
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::{fragment::Fragment, fragment::FragmentId};
+use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary, NodeConfig},
 };
-use std::process::Child;
-use std::{collections::HashMap, net::SocketAddr, path::PathBuf};
+use std::{collections::HashMap, net::SocketAddr, path::PathBuf, process::Child};
 
 pub struct RemoteJormungandr {
     rest: Option<JormungandrRest>,
@@ -211,7 +211,7 @@ impl RemoteJormungandrBuilder {
 
     pub fn with_node_config(mut self, node_config: PathBuf) -> Self {
         self.node_config =
-            Some(serde_yaml::from_str(&jortestkit::file::read_file(node_config)).unwrap());
+            Some(serde_yaml::from_str(&jortestkit::file::read_file(node_config).unwrap()).unwrap());
         self
     }
 

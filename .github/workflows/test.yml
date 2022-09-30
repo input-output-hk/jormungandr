@@ -1,4 +1,4 @@
-name: CI
+name: CI-Tests
 
 on:
   push:
@@ -12,7 +12,6 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - '!**.md'
       - .github/workflows/test.yml
   pull_request:
     paths:
@@ -23,7 +22,6 @@ on:
       - modules/**
       - testing/**
       - Cargo.*
-      - '!**.md'
       - .github/workflows/test.yml
 
 jobs:
@@ -35,7 +33,7 @@ jobs:
       cargo-lock-hash: ${{ steps.hash-cargo-lock.outputs.hash }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - id: ls-crates-io-index
         name: Get head commit hash of crates.io registry index
@@ -71,7 +69,7 @@ jobs:
           default: true
 
       - name: Cache cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
@@ -79,7 +77,7 @@ jobs:
 
       - id: cargo-deps
         name: Cache cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/cache
@@ -87,7 +85,7 @@ jobs:
           key: cargo-deps-v1-${{ needs.cache_info.outputs.cargo-lock-hash }}
 
       - name: Check out the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
 
@@ -151,10 +149,10 @@ jobs:
           components: rustfmt
 
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Restore cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
@@ -163,7 +161,7 @@ jobs:
           restore-keys: cargo-index-
 
       - name: Restore cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/cache
@@ -214,30 +212,16 @@ jobs:
           TMPDIR: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
 
-      - name: Run network tests
-        # Network tests are a bit flaky when run on debug builds
-        if: ${{ matrix.profile == 'release' }}
-        uses: actions-rs/cargo@v1
-        timeout-minutes: 90
-        with:
-          command: test
-          args: --tests ${{ env.CARGO_FLAGS }} --features network
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # TMPDIR and TMP are used respectively on unix and windows
-          TMPDIR: ${{ runner.temp }}
-          TMP: ${{ runner.temp }}
-
       - name: Pack logs from failed tests
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}-${{ matrix.profile }}-${{ matrix.toolchain }}-node-logs-from-failed-tests
           path: ${{ runner.temp }}/jormungandr_*
           retention-days: 30
 
-  lints:
-    name: Lints
+  clippy:
+    name: Clippy
     needs: [cache_info, update_deps]
     runs-on: ubuntu-latest
     steps:
@@ -247,25 +231,19 @@ jobs:
           profile: minimal
           override: true
           default: true
-          components: rustfmt, clippy
+          components: clippy
 
       - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: rustfmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
+        uses: actions/checkout@v3
 
       - name: Restore cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-${{ needs.cache_info.outputs.crates-io-index-head }}
 
       - name: Restore cargo dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/cache
@@ -278,12 +256,34 @@ jobs:
           command: clippy
           args: --all-features --all-targets -- -D warnings
 
+  fmt:
+    name: Fmt
+    needs: [cache_info, update_deps]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          profile: minimal
+          override: true
+          default: true
+          components: rustfmt
+
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: rustfmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
+
   test_coverage:
     name: Test Coverage
     needs: update_deps
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Install Rust toolchain
         uses: actions-rs/toolchain@v1
@@ -293,13 +293,13 @@ jobs:
           override: true
 
       - name: Restore cargo registry index
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/index
           key: cargo-index-v2-${{ needs.update_deps.outputs.crates-io-index-head }}
 
       - name: Restore dependency crates
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: ~/.cargo/registry/cache
           key: cargo-deps-v2-${{ hashFiles('Cargo.lock') }}

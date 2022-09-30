@@ -2,7 +2,10 @@ use super::NodeStuckError;
 use crate::startup;
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess},
+    jormungandr::{
+        explorer::configuration::ExplorerParams, ConfigurationBuilder, ExplorerProcess,
+        JormungandrProcess,
+    },
     testing::{
         benchmark_consumption, benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
     },
@@ -11,9 +14,8 @@ use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, BlockDate, KesUpdateSpeed},
 };
-use mjolnir::generators::ExplorerRequestGen;
-
 use jortestkit::load::{ConfigurationBuilder as LoadConfigurationBuilder, Monitor};
+use mjolnir::generators::ExplorerRequestGen;
 use std::{str::FromStr, time::Duration};
 use thor::{BlockDateGenerator, Wallet};
 
@@ -34,6 +36,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
+    let explorer_process = jormungandr.explorer(ExplorerParams::default()).unwrap();
 
     let output_value = 1_u64;
     let benchmark = benchmark_endurance("test_explorer_is_in_sync_with_node_for_15_minutes")
@@ -71,7 +74,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
             return;
         }
 
-        if let Err(err) = check_explorer_and_rest_are_in_sync(&jormungandr) {
+        if let Err(err) = check_explorer_and_rest_are_in_sync(&jormungandr, &explorer_process) {
             let message = format!("{:?}", err);
             finish_test_prematurely(message, benchmark);
             return;
@@ -100,11 +103,12 @@ fn finish_test_prematurely(error_message: String, benchmark: EnduranceBenchmarkR
 
 fn check_explorer_and_rest_are_in_sync(
     jormungandr: &JormungandrProcess,
+    explorer_process: &ExplorerProcess,
 ) -> Result<(), NodeStuckError> {
     let jcli: JCli = Default::default();
     let block_tip = Hash::from_str(&jcli.rest().v0().tip(&jormungandr.rest_uri())).unwrap();
 
-    let explorer = jormungandr.explorer();
+    let explorer = explorer_process.client();
     let last_block = explorer
         .last_block()
         .map_err(NodeStuckError::InternalExplorerError)?;
@@ -140,8 +144,9 @@ pub fn explorer_load_test() {
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
     )
     .unwrap();
+    let explorer = jormungandr.explorer(ExplorerParams::default()).unwrap();
 
-    let mut request_gen = ExplorerRequestGen::new(jormungandr.explorer());
+    let mut request_gen = ExplorerRequestGen::new(explorer.client().clone());
     request_gen
         .do_setup(addresses.iter().map(|x| x.address().to_string()).collect())
         .unwrap();

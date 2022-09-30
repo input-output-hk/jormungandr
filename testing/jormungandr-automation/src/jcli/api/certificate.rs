@@ -3,8 +3,7 @@ use assert_cmd::assert::OutputAssertExt;
 use assert_fs::{prelude::*, NamedTempFile};
 use chain_impl_mockchain::vote::Choice;
 use jormungandr_lib::interfaces::TaxType;
-use jortestkit::file;
-use jortestkit::process::output_extensions::ProcessOutput;
+use jortestkit::{file, process::output_extensions::ProcessOutput};
 use std::path::Path;
 
 #[derive(Debug)]
@@ -156,7 +155,7 @@ impl Certificate {
             .as_single_line()
     }
 
-    pub fn stake_pool_id<P: AsRef<Path>>(self, input_file: P) -> String {
+    pub fn stake_pool_id<P: AsRef<Path>>(self, input_file: P) -> Result<String, std::io::Error> {
         println!("Running get stake pool id...");
         let temp_file = NamedTempFile::new("stake_pool.id").unwrap();
         self.command
@@ -168,7 +167,7 @@ impl Certificate {
         file::read_file(temp_file.path())
     }
 
-    pub fn vote_plan_id<S: Into<String>>(self, cert: S) -> String {
+    pub fn vote_plan_id<S: Into<String>>(self, cert: S) -> Result<String, std::io::Error> {
         println!("Running get stake pool id...");
         let input_file = NamedTempFile::new("cert_file").unwrap();
         input_file.write_str(&cert.into()).unwrap();

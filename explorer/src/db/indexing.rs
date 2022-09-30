@@ -8,11 +8,8 @@ use chain_impl_mockchain::{
     certificate::{
         Certificate, ExternalProposalId, PoolId, PoolRegistration, PoolRetirement, VotePlanId,
     },
-    fragment::{Fragment, FragmentId},
-    header::BlockDate,
-    header::ChainLength,
-    header::Epoch,
-    header::HeaderId as HeaderHash,
+    fragment::{ConfigParams, Fragment, FragmentId},
+    header::{BlockDate, ChainLength, Epoch, HeaderId as HeaderHash},
     key::BftLeaderId,
     transaction::{InputEnum, TransactionSlice, Witness},
     value::Value,
@@ -73,6 +70,7 @@ pub struct ExplorerTransaction {
     pub outputs: Vec<ExplorerOutput>,
     pub certificate: Option<Certificate>,
     pub offset_in_block: u32,
+    pub config_params: Option<ConfigParams>,
 }
 
 /// Unified Input representation for utxo and account inputs as used in the graphql API
@@ -164,6 +162,14 @@ impl ExplorerBlock {
                 let fragment_id = fragment.id();
                 let offset: u32 = offset.try_into().unwrap();
                 let metx = match fragment {
+                    Fragment::Initial(config) => Some(ExplorerTransaction {
+                        id: fragment_id,
+                        inputs: vec![],
+                        outputs: vec![],
+                        certificate: None,
+                        offset_in_block: offset,
+                        config_params: Some(config.clone()),
+                    }),
                     Fragment::Transaction(tx) => {
                         let tx = tx.as_slice();
                         Some(ExplorerTransaction::from(
@@ -280,6 +286,7 @@ impl ExplorerBlock {
                             outputs,
                             certificate: None,
                             offset_in_block: offset,
+                            config_params: None,
                         })
                     }
                     _ => None,
@@ -432,6 +439,7 @@ impl ExplorerTransaction {
             outputs: new_outputs,
             certificate,
             offset_in_block,
+            config_params: None,
         }
     }
 

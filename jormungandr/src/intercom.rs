@@ -1,22 +1,22 @@
-use crate::blockcfg::{
-    ApplyBlockLedger, Block, Fragment, FragmentId, Header, HeaderHash, LedgerParameters,
+use crate::{
+    blockcfg::{ApplyBlockLedger, Block, Fragment, FragmentId, Header, HeaderHash},
+    blockchain::{Checkpoints, LeadershipBlock, StorageError},
+    fragment::selection::FragmentSelectionAlgorithmParams,
+    network::p2p::comm::PeerInfo,
+    topology::{Gossips, NodeId, Peer, PeerInfo as TopologyPeerInfo, View},
+    utils::async_msg::{self, MessageBox, MessageQueue},
 };
-use crate::blockchain::{Checkpoints, LeadershipBlock, StorageError};
-use crate::fragment::selection::FragmentSelectionAlgorithmParams;
-use crate::network::p2p::comm::PeerInfo;
-use crate::topology::{Gossips, NodeId, Peer, PeerInfo as TopologyPeerInfo, View};
-use crate::utils::async_msg::{self, MessageBox, MessageQueue};
 use chain_impl_mockchain::fragment::Contents as FragmentContents;
 use chain_network::error as net_error;
+use futures::{
+    channel::{mpsc, oneshot},
+    prelude::*,
+    ready,
+};
 use jormungandr_lib::interfaces::{
     BlockDate, FragmentLog, FragmentOrigin, FragmentStatus, FragmentsProcessingSummary,
 };
 use poldercast::layer::Selection;
-
-use futures::channel::{mpsc, oneshot};
-use futures::prelude::*;
-use futures::ready;
-
 use std::{
     collections::HashMap,
     error,
@@ -517,7 +517,6 @@ pub enum TransactionMsg {
     ),
     SelectTransactions {
         ledger: ApplyBlockLedger,
-        ledger_params: LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
         reply_handle: ReplyHandle<(FragmentContents, ApplyBlockLedger)>,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,

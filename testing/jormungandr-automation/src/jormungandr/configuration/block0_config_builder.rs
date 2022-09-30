@@ -15,9 +15,10 @@ use jormungandr_lib::{
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
 use serde_derive::{Deserialize, Serialize};
-
-use std::num::NonZeroU32;
-use std::vec::Vec;
+use std::{
+    num::{NonZeroU32, NonZeroU64},
+    vec::Vec,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Block0ConfigurationBuilder {
@@ -56,7 +57,7 @@ impl Block0ConfigurationBuilder {
                 treasury_parameters: Some(TaxType {
                     fixed: 10.into(),
                     ratio: Ratio::new_checked(1, 1_000).unwrap(),
-                    max_limit: None,
+                    max_limit: NonZeroU64::new(123),
                 }),
                 total_reward_supply: Some(1_000_000_000.into()),
                 reward_parameters: Some(RewardParams::Linear {
@@ -93,18 +94,22 @@ impl Block0ConfigurationBuilder {
         self.blockchain_configuration.consensus_leader_ids = leaders_ids;
         self
     }
+
     pub fn with_block0_consensus(&mut self, block0_consensus: ConsensusVersion) -> &mut Self {
         self.blockchain_configuration.block0_consensus = block0_consensus;
         self
     }
+
     pub fn with_kes_update_speed(&mut self, kes_update_speed: KesUpdateSpeed) -> &mut Self {
         self.blockchain_configuration.kes_update_speed = kes_update_speed;
         self
     }
+
     pub fn with_slots_per_epoch(&mut self, slots_per_epoch: NumberOfSlotsPerEpoch) -> &mut Self {
         self.blockchain_configuration.slots_per_epoch = slots_per_epoch;
         self
     }
+
     pub fn with_slot_duration(&mut self, slot_duration: SlotDuration) -> &mut Self {
         self.blockchain_configuration.slot_duration = slot_duration;
         self
@@ -122,6 +127,7 @@ impl Block0ConfigurationBuilder {
         self.blockchain_configuration.epoch_stability_depth = epoch_stability_depth;
         self
     }
+
     pub fn with_active_slot_coeff(
         &mut self,
         consensus_genesis_praos_active_slot_coeff: ActiveSlotCoefficient,
@@ -133,6 +139,11 @@ impl Block0ConfigurationBuilder {
 
     pub fn with_treasury(&mut self, treasury: Option<Value>) -> &mut Self {
         self.blockchain_configuration.treasury = treasury;
+        self
+    }
+
+    pub fn with_reward_parameters(&mut self, reward_parameters: Option<RewardParams>) -> &mut Self {
+        self.blockchain_configuration.reward_parameters = reward_parameters;
         self
     }
 
@@ -171,6 +182,11 @@ impl Block0ConfigurationBuilder {
 
     pub fn with_fees_go_to(&mut self, fees_go_to: Option<FeesGoTo>) -> &mut Self {
         self.blockchain_configuration.fees_go_to = fees_go_to;
+        self
+    }
+
+    pub fn with_treasury_parameters(&mut self, treasury_parameters: Option<TaxType>) -> &mut Self {
+        self.blockchain_configuration.treasury_parameters = treasury_parameters;
         self
     }
 

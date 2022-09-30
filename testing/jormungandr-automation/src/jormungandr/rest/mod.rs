@@ -1,26 +1,27 @@
 mod raw;
 mod settings;
 
-use crate::{jormungandr::legacy, jormungandr::MemPoolCheck};
-use chain_impl_mockchain::block::Block;
-use chain_impl_mockchain::fragment::{Fragment, FragmentId};
-use chain_impl_mockchain::header::HeaderId;
-use jormungandr_lib::crypto::account::Identifier;
-use jormungandr_lib::interfaces::{
-    AccountVotes, Address, FragmentStatus, FragmentsProcessingSummary, Value, VotePlanId,
+use crate::jormungandr::{legacy, MemPoolCheck};
+#[cfg(feature = "evm")]
+use chain_evm::Address as EvmAddress;
+#[cfg(feature = "evm")]
+use chain_impl_mockchain::account::Identifier as JorAddress;
+use chain_impl_mockchain::{
+    block::Block,
+    fragment::{Fragment, FragmentId},
+    header::HeaderId,
 };
 use jormungandr_lib::{
-    crypto::hash::Hash,
+    crypto::{account::Identifier, hash::Hash},
     interfaces::{
-        AccountState, EpochRewardsInfo, FragmentLog, LeadershipLog, NodeStatsDto, PeerRecord,
-        PeerStats, SettingsDto, StakeDistributionDto, VotePlanStatus,
+        AccountState, AccountVotes, Address, EpochRewardsInfo, FragmentLog, FragmentStatus,
+        FragmentsProcessingSummary, LeadershipLog, NodeStatsDto, PeerRecord, PeerStats,
+        SettingsDto, StakeDistributionDto, Value, VotePlanId, VotePlanStatus,
     },
 };
 pub use raw::RawRest;
 pub use settings::RestSettings;
-use std::collections::HashMap;
-use std::io::Read;
-use std::{fs::File, net::SocketAddr, path::Path};
+use std::{collections::HashMap, fs::File, io::Read, net::SocketAddr, path::Path};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -40,7 +41,7 @@ pub enum RestError {
         checks: Vec<MemPoolCheck>,
     },
     #[error(transparent)]
-    ReadBytes(#[from] chain_core::mempack::ReadError),
+    ReadBytes(#[from] chain_core::property::ReadError),
 }
 
 pub fn uri_from_socket_addr(addr: SocketAddr) -> String {
@@ -133,6 +134,10 @@ impl JormungandrRest {
             .map_err(RestError::CannotDeserialize)
     }
 
+    pub fn account_votes_all(&self) -> Result<HashMap<String, Vec<AccountVotes>>, RestError> {
+        serde_json::from_str(&self.inner.account_votes_all()?).map_err(RestError::CannotDeserialize)
+    }
+
     pub fn account_votes_with_plan_id(
         &self,
         vote_plan_id: VotePlanId,
@@ -195,6 +200,18 @@ impl JormungandrRest {
         serde_json::from_str(&self.inner.p2p_view()?).map_err(RestError::CannotDeserialize)
     }
 
+    #[cfg(feature = "evm")]
+    pub fn evm_address(&self, jor_address: &JorAddress) -> Result<String, RestError> {
+        serde_json::from_str(&self.inner.evm_address(jor_address)?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
+    #[cfg(feature = "evm")]
+    pub fn jor_address(&self, evm_address: &EvmAddress) -> Result<String, RestError> {
+        serde_json::from_str(&self.inner.jor_address(evm_address)?)
+            .map_err(RestError::CannotDeserialize)
+    }
+
     pub fn tip(&self) -> Result<Hash, RestError> {
         self.inner.tip()
     }
@@ -233,9 +250,11 @@ impl JormungandrRest {
     }
 
     pub fn block(&self, header_hash: &HeaderId) -> Result<Block, RestError> {
-        use chain_core::mempack::{ReadBuf, Readable as _};
         let bytes = self.block_as_bytes(header_hash)?;
-        Block::read(&mut ReadBuf::from(&bytes)).map_err(Into::into)
+        <Block as chain_core::property::DeserializeFromSlice>::deserialize_from_slice(
+            &mut chain_core::packer::Codec::new(bytes.as_slice()),
+        )
+        .map_err(Into::into)
     }
 
     pub fn fragments_statuses(

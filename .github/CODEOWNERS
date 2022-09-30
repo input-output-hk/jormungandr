@@ -1,0 +1,9 @@
+# DEVOPS
+
+/.github/action/nix-common-setup*        @input-output-hk/jormungandr-devops
+/.github/workflows/nix.yml               @input-output-hk/jormungandr-devops
+/.github/workflows/update-flake-lock.yml @input-output-hk/jormungandr-devops
+/default.nix                             @input-output-hk/jormungandr-devops
+/flake.lock                              @input-output-hk/jormungandr-devops
+/flake.nix                               @input-output-hk/jormungandr-devops
+/shell.nix                               @input-output-hk/jormungandr-devops

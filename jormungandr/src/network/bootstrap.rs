@@ -1,16 +1,15 @@
 use super::grpc;
-use crate::blockcfg::Block;
-use crate::blockchain::{self, Blockchain, BootstrapError, Error as BlockchainError, Tip};
-use crate::network::convert::Decode;
-use crate::settings::start::network::Peer;
-use crate::topology;
-use chain_core::property::Deserialize;
-use chain_network::data as net_data;
-use chain_network::error::Error as NetworkError;
+use crate::{
+    blockchain::{self, Blockchain, BootstrapError, Error as BlockchainError, Tip},
+    network::convert::Decode,
+    settings::start::network::Peer,
+    topology,
+};
+use chain_core::property::ReadError;
+use chain_network::{data as net_data, error::Error as NetworkError};
 use futures::prelude::*;
-use tokio_util::sync::CancellationToken;
-
 use std::fmt::Debug;
+use tokio_util::sync::CancellationToken;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -24,10 +23,10 @@ pub enum Error {
     PullRequestFailed(#[source] NetworkError),
     #[error("could not get the blockchain tip from a peer")]
     TipFailed(#[source] NetworkError),
-    #[error("decoding of a peer failed")]
-    PeerDecodingFailed(#[source] NetworkError),
+    #[error(transparent)]
+    PeerDecodingFailed(NetworkError),
     #[error("decoding of a block failed")]
-    BlockDecodingFailed(#[source] <Block as Deserialize>::Error),
+    BlockDecodingFailed(#[source] ReadError),
     #[error(transparent)]
     Blockchain(#[from] Box<BootstrapError>),
     #[error("failed to collect garbage and flush blocks to the permanent storage")]
@@ -69,7 +68,6 @@ pub async fn bootstrap_from_peer(
     cancellation_token: CancellationToken,
 ) -> Result<(), Error> {
     use chain_network::data::BlockId;
-    use std::convert::TryFrom;
 
     async fn with_cancellation_token<T>(
         future: impl Future<Output = T> + Unpin,

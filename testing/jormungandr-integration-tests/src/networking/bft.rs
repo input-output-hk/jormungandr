@@ -1,15 +1,11 @@
 use crate::networking::utils;
-use hersir::builder::wallet::template::builder::WalletTemplateBuilder;
-use hersir::builder::Blockchain;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::Topology;
-use jormungandr_automation::testing::benchmark::sync::MeasurementReportInterval;
-use jormungandr_automation::testing::SyncWaitParams;
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+};
+use jormungandr_automation::testing::{benchmark::sync::MeasurementReportInterval, SyncWaitParams};
 use std::time::Duration;
-use thor::FragmentSender;
-use thor::FragmentVerifier;
+use thor::{FragmentSender, FragmentVerifier};
 
 const LEADER_1: &str = "Leader1";
 const LEADER_2: &str = "Leader2";
@@ -91,8 +87,8 @@ pub fn bft_cascade() {
     )
     .unwrap();
 
-    let mut alice = controller.wallet(ALICE).unwrap();
-    let mut bob = controller.wallet(BOB).unwrap();
+    let mut alice = controller.controlled_wallet(ALICE).unwrap();
+    let mut bob = controller.controlled_wallet(BOB).unwrap();
 
     std::thread::sleep(std::time::Duration::from_secs(60));
 
@@ -164,8 +160,8 @@ pub fn bft_passive_propagation() {
     )
     .unwrap();
 
-    let mut alice_wallet = controller.wallet(ALICE).unwrap();
-    let bob_wallet = controller.wallet(BOB).unwrap();
+    let mut alice_wallet = controller.controlled_wallet(ALICE).unwrap();
+    let bob_wallet = controller.controlled_wallet(BOB).unwrap();
 
     let mem_pool_check = FragmentSender::from(&controller.settings().block0)
         .send_transaction(&mut alice_wallet, &bob_wallet, &leader2, 1_000.into())

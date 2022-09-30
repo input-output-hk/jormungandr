@@ -1,8 +1,6 @@
 use crate::jcli::command::votes::committee::MemberKeyCommand;
 use assert_cmd::assert::OutputAssertExt;
-use assert_fs::assert::PathAssert;
-use assert_fs::fixture::FileWriteStr;
-use assert_fs::NamedTempFile;
+use assert_fs::{assert::PathAssert, fixture::FileWriteStr, NamedTempFile};
 use jortestkit::prelude::ProcessOutput;
 use std::path::Path;
 
@@ -16,7 +14,10 @@ impl MemberKey {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_public<S: Into<String>>(self, member_secret_key: S) -> String {
+    pub fn to_public<S: Into<String>>(
+        self,
+        member_secret_key: S,
+    ) -> Result<String, std::io::Error> {
         let input_file = NamedTempFile::new("member_key.tmp").unwrap();
         input_file.write_str(&member_secret_key.into()).unwrap();
 

@@ -1,14 +1,12 @@
 pub mod graphql;
 
-use crate::db::ExplorerDb;
-
 use self::graphql::EContext;
+use crate::db::ExplorerDb;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use futures::Future;
 use jormungandr_lib::interfaces::{Cors, Tls};
 use std::{net::SocketAddr, time::Duration};
-use warp::http::Response as HttpResponse;
-use warp::{Filter, Rejection, Reply};
+use warp::{http::Response as HttpResponse, Filter, Rejection, Reply};
 
 pub async fn setup_cors<API>(
     api: API,
@@ -74,6 +72,8 @@ pub fn filter(
         async_graphql::EmptyMutation,
         crate::api::graphql::Subscription {},
     )
+    .limit_depth(settings.query_depth_limit)
+    .limit_complexity(settings.query_complexity_limit)
     .data(EContext { db, settings })
     .finish();
 
@@ -113,13 +113,13 @@ pub fn filter(
                 parent_span_id = Empty,
             );
             if let Some(remote_addr) = info.remote_addr() {
-                span.record("remote_addr", &remote_addr.to_string().as_str());
+                span.record("remote_addr", remote_addr.to_string().as_str());
             }
             if let Some(trace_context) = get_trace_context(info.request_headers()) {
-                span.record("trace_id", &trace_context.trace_id().to_string().as_str());
-                span.record("span_id", &trace_context.span_id().to_string().as_str());
+                span.record("trace_id", trace_context.trace_id().to_string().as_str());
+                span.record("span_id", trace_context.span_id().to_string().as_str());
                 if let Some(parent_span_id) = trace_context.parent_id() {
-                    span.record("parent_span_id", &parent_span_id.to_string().as_str());
+                    span.record("parent_span_id", parent_span_id.to_string().as_str());
                 }
             }
             span
@@ -130,7 +130,7 @@ pub async fn handler(
     schema: graphql::Schema,
     request: async_graphql::Request,
 ) -> Result<impl Reply, std::convert::Infallible> {
-    Ok::<_, std::convert::Infallible>(async_graphql_warp::Response::from(
+    Ok::<_, std::convert::Infallible>(async_graphql_warp::GraphQLResponse::from(
         schema.execute(request).await,
     ))
 }

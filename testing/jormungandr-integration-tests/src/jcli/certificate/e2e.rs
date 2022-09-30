@@ -1,9 +1,6 @@
-use jormungandr_automation::{jcli::JCli, testing::keys::create_new_key_pair};
-
+use assert_fs::{prelude::*, TempDir};
 use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
-
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
+use jormungandr_automation::{jcli::JCli, testing::keys::create_new_key_pair};
 
 #[test]
 pub fn test_create_and_sign_new_stake_delegation() {
@@ -25,7 +22,7 @@ pub fn test_create_and_sign_new_stake_delegation() {
 
     let input_file = temp_dir.child("certificate");
     input_file.write_str(&certificate).unwrap();
-    let stake_pool_id = jcli.certificate().stake_pool_id(input_file.path());
+    let stake_pool_id = jcli.certificate().stake_pool_id(input_file.path()).unwrap();
     let certificate = jcli
         .certificate()
         .new_stake_delegation(&stake_pool_id, &owner.identifier().to_bech32_str());

@@ -1,5 +1,6 @@
 mod block;
 mod message;
+use chain_core::property::ReadError;
 use hex::FromHexError;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -27,7 +28,7 @@ pub enum Error {
     #[error("hex encoding malformed")]
     HexMalformed(#[from] FromHexError),
     #[error("message malformed")]
-    MessageMalformed(#[source] std::io::Error),
+    MessageMalformed(#[source] ReadError),
 }
 
 impl Debug {

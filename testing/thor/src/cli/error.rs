@@ -1,6 +1,5 @@
 use super::config::Alias;
-use crate::FragmentSenderError;
-use crate::FragmentVerifierError;
+use crate::{FragmentSenderError, FragmentVerifierError};
 use chain_crypto::SecretKeyError;
 use chain_impl_mockchain::fragment::FragmentId;
 use jormungandr_automation::jormungandr::RestError;
@@ -28,7 +27,7 @@ pub enum Error {
     #[error(transparent)]
     Config(#[from] crate::cli::config::Error),
     #[error("cannot serialize secret key")]
-    CannotrSerializeSecretKey(#[from] bincode::ErrorKind),
+    CannotrSerializeSecretKey,
     #[error("cannot create spending counter")]
     SpendingCounter,
 
@@ -40,8 +39,8 @@ pub enum Error {
     NoDefaultAliasDefined,
     #[error("cannot read/write secret key")]
     Cocoon,
-    #[error(transparent)]
-    Bincode(#[from] Box<bincode::ErrorKind>),
+    #[error("Bincode error")]
+    Bincode,
     #[error(transparent)]
     Key(#[from] jcli_lib::key::Error),
 

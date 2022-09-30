@@ -1,34 +1,39 @@
+use super::{
+    node::{
+        node_client::NodeClient, HandshakeRequest, HandshakeResponse, PullBlocksRequest,
+        PullBlocksToTipRequest, PullHeadersRequest, TipRequest,
+    },
+    types::{Block, BlockIds, Fragment, FragmentIds, Header},
+    watch::{
+        watch_client::WatchClient, BlockSubscriptionRequest, SyncMultiverseRequest,
+        TipSubscriptionRequest,
+    },
+};
 use crate::jormungandr::grpc::read_into;
-
-use super::node::{
-    node_client::NodeClient, HandshakeRequest, HandshakeResponse, PullBlocksRequest,
-    PullBlocksToTipRequest, PullHeadersRequest, TipRequest,
+use chain_core::{
+    packer::Codec,
+    property::{FromStr, Serialize},
 };
-use super::types::{Block, BlockIds, Fragment, FragmentIds, Header};
-use super::watch::{
-    watch_client::WatchClient, BlockSubscriptionRequest, SyncMultiverseRequest,
-    TipSubscriptionRequest,
-};
-
-use chain_core::property::FromStr;
-use chain_core::property::Serialize;
 use chain_impl_mockchain::{
-    block::Block as LibBlock, fragment::Fragment as LibFragment, header::ChainLength,
-    header::Header as LibHeader, key::Hash,
+    block::Block as LibBlock,
+    fragment::Fragment as LibFragment,
+    header::{ChainLength, Header as LibHeader},
+    key::Hash,
 };
 use futures::stream;
-use std::fmt;
-use std::net::SocketAddr;
-use std::sync::{Arc, Condvar, Mutex};
-use std::time::Duration;
+use std::{
+    fmt,
+    net::SocketAddr,
+    sync::{Arc, Condvar, Mutex},
+    time::Duration,
+};
+use thiserror::Error;
 use tokio::runtime::{Builder, Runtime};
 use tonic::transport::Channel;
 
-use thiserror::Error;
-
 const CLIENT_RETRY_WAIT: Duration = Duration::from_millis(500);
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Eq)]
 pub enum MockClientError {
     #[error("request failed with message '{0}'")]
     InvalidRequest(String),
@@ -268,9 +273,12 @@ impl JormungandrClient {
     pub fn upload_blocks(&self, lib_block: LibBlock) -> Result<(), MockClientError> {
         let mut client = self.client();
 
-        let mut bytes = Vec::with_capacity(4096);
-        lib_block.serialize(&mut bytes).unwrap();
-        let block = Block { content: bytes };
+        let bytes = Vec::with_capacity(4096);
+        let mut codec = Codec::new(bytes);
+        lib_block.serialize(&mut codec).unwrap();
+        let block = Block {
+            content: codec.into_inner(),
+        };
 
         let request = tonic::Request::new(stream::iter(vec![block]));
         self.rt

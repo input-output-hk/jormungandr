@@ -1,12 +1,10 @@
+use assert_fs::{prelude::*, TempDir};
 use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::{
     certificate::PoolId, testing::builders::cert_builder::build_stake_pool_retirement_cert,
 };
 use jormungandr_automation::{jcli::JCli, testing::keys::create_new_key_pair};
 use jormungandr_lib::interfaces::Certificate;
-
-use assert_fs::prelude::*;
-use assert_fs::TempDir;
 use std::str::FromStr;
 
 #[test]
@@ -30,7 +28,7 @@ pub fn jcli_creates_correct_retirement_certificate() {
 
     let input_file = temp_dir.child("certificate");
     input_file.write_str(&certificate).unwrap();
-    let stake_pool_id = jcli.certificate().stake_pool_id(input_file.path());
+    let stake_pool_id = jcli.certificate().stake_pool_id(input_file.path()).unwrap();
 
     let expected_certificate = jcli.certificate().new_stake_pool_retirement(&stake_pool_id);
     let actual_certificate = assert_new_stake_pool_retirement(&stake_pool_id);
@@ -38,7 +36,8 @@ pub fn jcli_creates_correct_retirement_certificate() {
     retirement_cert_file.write_str(&actual_certificate).unwrap();
     let stake_pool_id_from_retirement = jcli
         .certificate()
-        .stake_pool_id(retirement_cert_file.path());
+        .stake_pool_id(retirement_cert_file.path())
+        .unwrap();
     assert_eq!(expected_certificate, actual_certificate);
     assert_eq!(stake_pool_id, stake_pool_id_from_retirement);
 }

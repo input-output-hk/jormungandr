@@ -1,13 +1,14 @@
 #![allow(dead_code)]
 
 use super::TestConfig;
-use chain_core::mempack;
 use chain_impl_mockchain::{block::Block, fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::interfaces::{Address, Block0Configuration, NodeConfig, UTxOInfo};
 use serde::Serialize;
-use std::fs::File;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::path::{Path, PathBuf};
+use std::{
+    fs::File,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Clone)]
 pub struct JormungandrParams<Conf = NodeConfig> {
@@ -110,6 +111,7 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
         self.block0_configuration
             .blockchain_configuration
             .linear_fees
+            .clone()
     }
 
     pub fn epoch_duration(&self) -> std::time::Duration {
@@ -138,35 +140,38 @@ impl<Conf: TestConfig> JormungandrParams<Conf> {
                 self.genesis_block_path().display()
             )
         });
-        mempack::read_from_raw::<Block>(&block0_bytes)
-            .unwrap_or_else(|_| {
-                panic!(
-                    "Failed to parse block in block 0 file '{}'",
-                    self.genesis_block_path().display()
-                )
-            })
-            .contents()
-            .iter()
-            .filter_map(|fragment| match fragment {
-                Fragment::Transaction(transaction) => Some((transaction, fragment.hash())),
-                _ => None,
-            })
-            .flat_map(|(transaction, fragment_id)| {
-                transaction
-                    .as_slice()
-                    .outputs()
-                    .iter()
-                    .enumerate()
-                    .map(move |(idx, output)| {
-                        UTxOInfo::new(
-                            fragment_id.into(),
-                            idx as u8,
-                            output.address.clone().into(),
-                            output.value.into(),
-                        )
-                    })
-            })
-            .collect()
+
+        <Block as chain_core::property::DeserializeFromSlice>::deserialize_from_slice(
+            &mut chain_core::packer::Codec::new(block0_bytes.as_slice()),
+        )
+        .unwrap_or_else(|_| {
+            panic!(
+                "Failed to parse block in block 0 file '{}'",
+                self.genesis_block_path().display()
+            )
+        })
+        .contents()
+        .iter()
+        .filter_map(|fragment| match fragment {
+            Fragment::Transaction(transaction) => Some((transaction, fragment.hash())),
+            _ => None,
+        })
+        .flat_map(|(transaction, fragment_id)| {
+            transaction
+                .as_slice()
+                .outputs()
+                .iter()
+                .enumerate()
+                .map(move |(idx, output)| {
+                    UTxOInfo::new(
+                        fragment_id.into(),
+                        idx as u8,
+                        output.address.clone().into(),
+                        output.value.into(),
+                    )
+                })
+        })
+        .collect()
     }
 
     pub fn block0_utxo_for_address(&self, address: &Address) -> UTxOInfo {

@@ -1,12 +1,11 @@
 #![allow(dead_code)]
 
 use crate::wallet::Wallet;
-use chain_core::property::Deserialize;
+use chain_core::{packer::Codec, property::DeserializeFromSlice};
 use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use jormungandr_automation::jormungandr::FragmentNode;
 use jormungandr_lib::interfaces::Address;
-use std::io::Write;
-use std::{fs, path::PathBuf};
+use std::{fs, io::Write, path::PathBuf};
 use thiserror::Error;
 use time::OffsetDateTime;
 
@@ -37,7 +36,9 @@ impl FragmentExporter {
     pub fn read(&self) -> Result<Vec<Fragment>, FragmentExporterError> {
         self.read_as_bytes()?
             .iter()
-            .map(|bytes| Ok(Fragment::deserialize(bytes.as_ref()).unwrap()))
+            .map(|bytes| {
+                Ok(Fragment::deserialize_from_slice(&mut Codec::new(bytes.as_ref())).unwrap())
+            })
             .collect()
     }
 
@@ -57,7 +58,7 @@ impl FragmentExporter {
                     .ends_with(".fragment")
             })
             .map(|path| {
-                let content = jortestkit::prelude::read_file(path);
+                let content = jortestkit::prelude::read_file(path).unwrap();
                 let bytes = hex::decode(content.trim()).unwrap();
                 Ok(bytes)
             })

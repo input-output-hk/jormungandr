@@ -14,7 +14,6 @@ mod service;
 mod subscription;
 
 use self::convert::Encode;
-
 use futures::{future, prelude::*};
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
@@ -69,31 +68,33 @@ mod security_params {
     pub const NONCE_LEN: usize = 32;
 }
 
-use self::client::ConnectError;
-use self::p2p::comm::Peers;
-use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::{Blockchain as NewBlockchain, Tip};
-use crate::intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TopologyMsg, TransactionMsg};
-use crate::metrics::Metrics;
-use crate::settings::start::network::{Configuration, Peer, Protocol};
-use crate::topology::{self, NodeId};
-use crate::utils::async_msg::{MessageBox, MessageQueue};
+pub use self::bootstrap::Error as BootstrapError;
+use self::{client::ConnectError, p2p::comm::Peers};
+use crate::{
+    blockcfg::{Block, HeaderHash},
+    blockchain::{Blockchain as NewBlockchain, Tip},
+    intercom::{BlockMsg, ClientMsg, NetworkMsg, PropagateMsg, TopologyMsg, TransactionMsg},
+    metrics::Metrics,
+    settings::start::network::{Configuration, Peer, Protocol},
+    topology::{self, NodeId},
+    utils::async_msg::{MessageBox, MessageQueue},
+};
 use chain_network::data::NodeKeyPair;
 use rand::seq::SliceRandom;
+use std::{
+    collections::HashSet,
+    error, fmt,
+    iter::FromIterator,
+    net::SocketAddr,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
 use tonic::transport;
 use tracing::{instrument, span, Level, Span};
 use tracing_futures::Instrument;
-
-use std::collections::HashSet;
-use std::error;
-use std::fmt;
-use std::iter::FromIterator;
-use std::net::SocketAddr;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
-
-pub use self::bootstrap::Error as BootstrapError;
 
 #[derive(Debug)]
 pub struct ListenError {
@@ -379,7 +380,7 @@ async fn handle_propagation_msg(
     let prop_state = state.clone();
     let unreached_nodes = match &msg {
         PropagateMsg::Block(header) => {
-            Span::current().record("hash", &format_args!("{}", header.description()));
+            Span::current().record("hash", format_args!("{}", header.description()));
             tracing::debug!("received new block to propagate");
             let header = header.encode();
             propagate_message(
@@ -393,7 +394,7 @@ async fn handle_propagation_msg(
             .await?
         }
         PropagateMsg::Fragment(fragment) => {
-            Span::current().record("hash", &format_args!("{}", fragment.hash()));
+            Span::current().record("hash", format_args!("{}", fragment.hash()));
             tracing::debug!(hash = %fragment.hash(), "fragment to propagate");
             let fragment = fragment.encode();
             propagate_message(
@@ -407,8 +408,8 @@ async fn handle_propagation_msg(
             .await?
         }
         PropagateMsg::Gossip(peer, gossips) => {
-            Span::current().record("addr", &peer.address().to_string().as_str());
-            Span::current().record("id", &peer.address().to_string().as_str());
+            Span::current().record("addr", peer.address().to_string().as_str());
+            Span::current().record("id", peer.address().to_string().as_str());
             tracing::debug!("gossip to propagate");
             let gossip = gossips.encode();
             match prop_state
@@ -473,7 +474,7 @@ fn connect_and_propagate(
     let cf = async move {
         let conn_state = ConnectionState::new(state.clone(), &peer, Span::current());
         tracing::info!("connecting to peer");
-        let (handle, connecting) = client::connect(conn_state, channels.clone());
+        let (handle, connecting) = client::connect(conn_state, channels.clone(), id);
         state.peers.add_connecting(id, addr, handle, options).await;
         match connecting.await {
             Err(e) => {

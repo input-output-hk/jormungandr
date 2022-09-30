@@ -1,17 +1,20 @@
 use super::tip::TipUpdater;
-use crate::blockcfg::{Block, HeaderHash};
-use crate::blockchain::{
-    chain::{CheckHeaderProof, StreamInfo, StreamReporter},
-    Blockchain, Ref, Tip,
+use crate::{
+    blockcfg::{Block, HeaderHash},
+    blockchain::{
+        chain::{CheckHeaderProof, StreamInfo, StreamReporter},
+        Blockchain, Ref, Tip,
+    },
+    metrics::Metrics,
 };
-use crate::metrics::Metrics;
-use chain_core::property::Deserialize;
-use chain_network::data as net_data;
-use chain_network::error::Error as NetworkError;
+use chain_core::{
+    packer::Codec,
+    property::{Deserialize, ReadError},
+};
+use chain_network::{data as net_data, error::Error as NetworkError};
 use futures::prelude::*;
-use tokio_util::sync::CancellationToken;
-
 use std::sync::Arc;
+use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -22,7 +25,7 @@ pub enum Error {
     #[error("bootstrap pull stream failed")]
     PullStreamFailed(#[source] NetworkError),
     #[error("failures while deserializing block from stream")]
-    BlockDeserialize(#[from] std::io::Error),
+    BlockDeserialize(#[from] ReadError),
     #[error("the bootstrap process was interrupted")]
     Interrupted,
 }
@@ -56,7 +59,9 @@ where
     tokio::pin!(cancel);
     let mut stream = stream
         .map_err(Error::PullStreamFailed)
-        .map(|maybe_block| maybe_block.and_then(|b| Ok(Block::deserialize(b.as_bytes())?)))
+        .map(|maybe_block| {
+            maybe_block.and_then(|b| Ok(Block::deserialize(&mut Codec::new(b.as_bytes()))?))
+        })
         .take_until(cancel);
 
     while let Some(block_result) = stream.next().await {

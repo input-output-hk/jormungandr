@@ -1,13 +1,13 @@
 use crate::jcli_lib::{
     certificate::{
-        self, committee_vote_plan_sign, committee_vote_tally_sign, pool_owner_sign,
-        stake_delegation_account_binding_sign, update_proposal_sign, update_vote_sign,
+        self, committee_vote_plan_sign, committee_vote_tally_sign, evm_mapping_sign,
+        pool_owner_sign, stake_delegation_account_binding_sign, update_proposal_sign,
+        update_vote_sign,
     },
     transaction::Error,
     utils::io,
 };
 use chain_addr::{Address, Kind};
-use chain_impl_mockchain::transaction::UnspecifiedAccountIdentifier;
 use chain_impl_mockchain::{
     self as chain,
     certificate::{Certificate, CertificatePayload, PoolSignature, SignedCertificate},
@@ -15,7 +15,7 @@ use chain_impl_mockchain::{
     fragment::Fragment,
     transaction::{
         self, Balance, InputOutputBuilder, Output, Payload, SetAuthData, SetTtl, Transaction,
-        TransactionSignDataHash, TxBuilder, TxBuilderState,
+        TransactionSignDataHash, TxBuilder, TxBuilderState, UnspecifiedAccountIdentifier,
     },
     value::{Value, ValueError},
 };
@@ -274,6 +274,19 @@ impl Staging {
                         .map_err(|error| Error::CertificateError { error })??;
                     self.extra_authed = Some(sc.into())
                 }
+                Certificate::EvmMapping(uv) => {
+                    let builder = self.builder_after_witness(TxBuilder::new().set_payload(&uv))?;
+                    let sc = keys
+                        .len()
+                        .eq(&1)
+                        .then(|| {
+                            evm_mapping_sign(uv, &keys[0], builder)
+                                .map_err(|e| Error::CertificateError { error: e })
+                        })
+                        .ok_or(certificate::Error::ExpectingOnlyOneSigningKey { got: keys.len() })
+                        .map_err(|error| Error::CertificateError { error })??;
+                    self.extra_authed = Some(sc.into())
+                }
                 Certificate::MintToken(_) => unreachable!(),
             },
         };
@@ -361,22 +374,9 @@ impl Staging {
         }
 
         match &self.extra {
-            None => match &self.evm_transaction {
-                None => self.finalize_payload(
-                    &chain::transaction::NoExtra,
-                    fee_algorithm,
-                    output_policy,
-                ),
-                Some(_tx) => {
-                    #[cfg(feature = "evm")]
-                    {
-                        let _tx: chain::evm::EvmTransaction = _tx.clone().into();
-                        self.finalize_payload(&_tx, fee_algorithm, output_policy)
-                    }
-                    #[cfg(not(feature = "evm"))]
-                    unreachable!()
-                }
-            },
+            None => {
+                self.finalize_payload(&chain::transaction::NoExtra, fee_algorithm, output_policy)
+            }
             Some(c) => match c.clone().into() {
                 Certificate::PoolRegistration(c) => {
                     self.finalize_payload(&c, fee_algorithm, output_policy)
@@ -406,6 +406,9 @@ impl Staging {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
                 Certificate::MintToken(vt) => {
+                    self.finalize_payload(&vt, fee_algorithm, output_policy)
+                }
+                Certificate::EvmMapping(vt) => {
                     self.finalize_payload(&vt, fee_algorithm, output_policy)
                 }
 
@@ -505,14 +508,9 @@ impl Staging {
                     return Err(Error::TxNeedPayloadAuth);
                 }
                 match &self.extra {
-                    None => match &self.evm_transaction {
-                        None => self.make_fragment(
-                            &chain::transaction::NoExtra,
-                            &(),
-                            Fragment::Transaction,
-                        ),
-                        Some(tx) => self.make_fragment(&tx.clone().into(), &(), Fragment::Evm),
-                    },
+                    None => {
+                        self.make_fragment(&chain::transaction::NoExtra, &(), Fragment::Transaction)
+                    }
                     Some(cert) => match cert.clone().into() {
                         Certificate::OwnerStakeDelegation(osd) => {
                             self.make_fragment(&osd, &(), Fragment::OwnerStakeDelegation)
@@ -559,6 +557,9 @@ impl Staging {
                     SignedCertificate::UpdateVote(vt, a) => {
                         self.make_fragment(&vt, &a, Fragment::UpdateVote)
                     }
+                    SignedCertificate::EvmMapping(vt, a) => {
+                        self.make_fragment(&vt, &a, Fragment::EvmMapping)
+                    }
                 }
             }
         }
@@ -588,18 +589,7 @@ impl Staging {
         }
 
         let res = match &self.extra {
-            None => match &self.evm_transaction {
-                None => self.transaction_sign_data_hash_on(TxBuilder::new().set_nopayload()),
-                Some(_tx) => {
-                    #[cfg(feature = "evm")]
-                    {
-                        let _tx: chain::evm::EvmTransaction = _tx.clone().into();
-                        self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&_tx))
-                    }
-                    #[cfg(not(feature = "evm"))]
-                    unreachable!()
-                }
-            },
+            None => self.transaction_sign_data_hash_on(TxBuilder::new().set_nopayload()),
             Some(c) => match c.clone().into() {
                 Certificate::PoolRegistration(c) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&c))
@@ -632,6 +622,9 @@ impl Staging {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
                 Certificate::MintToken(vt) => {
+                    self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
+                }
+                Certificate::EvmMapping(vt) => {
                     self.transaction_sign_data_hash_on(TxBuilder::new().set_payload(&vt))
                 }
             },

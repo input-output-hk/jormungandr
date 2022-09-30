@@ -1,14 +1,15 @@
 #![allow(dead_code)]
 
-use bincode::Options;
-use chain_core::property::Serialize;
+use chain_core::{packer::Codec, property::Serialize};
 use chain_impl_mockchain::fragment::Fragment;
 use jormungandr_lib::interfaces::{
     load_persistent_fragments_logs_from_folder_path, PersistentFragmentLog,
 };
-use std::fs::File;
-use std::io::{BufWriter, Write};
-use std::path::{Path, PathBuf};
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    path::{Path, PathBuf},
+};
 
 pub struct PersistentLogViewer {
     dir: PathBuf,
@@ -44,11 +45,11 @@ pub fn write_into_persistent_log<P: AsRef<Path>>(
     let mut output = BufWriter::with_capacity(128 * 1024, File::create(persistent_log.as_ref())?);
 
     for entry in entries {
-        let codec = bincode::DefaultOptions::new().with_fixint_encoding();
-        let serialized = codec
-            .serialize(&entry)
+        let mut codec = Codec::new(Vec::new());
+        entry
+            .serialize(&mut codec)
             .map_err(|_| Error::CannotSerializeEntry)?;
-        output.write_all(&serialized)?;
+        output.write_all(codec.into_inner().as_slice())?;
     }
     Ok(())
 }

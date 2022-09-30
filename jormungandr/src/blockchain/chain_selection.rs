@@ -14,7 +14,7 @@ pub enum ComparisonResult {
 /// i.e. if the two Ref points to the same block date: this allows to make a choice
 /// as to which Ref ought to be our preferred choice for a tip.
 pub fn compare_against(storage: &Storage, current: &Ref, candidate: &Ref) -> ComparisonResult {
-    let epoch_stability_depth = current.epoch_ledger_parameters().epoch_stability_depth;
+    let epoch_stability_depth = current.ledger().settings().epoch_stability_depth;
 
     let rollback_possible =
         check_rollback_up_to(epoch_stability_depth, storage, current, candidate);

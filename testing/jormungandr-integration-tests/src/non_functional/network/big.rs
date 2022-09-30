@@ -1,20 +1,18 @@
 use crate::networking::utils;
-use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use chain_impl_mockchain::milli::Milli;
-use chain_impl_mockchain::value::Value;
+use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli, value::Value};
 use function_name::named;
-use hersir::builder::NetworkBuilder;
-use hersir::builder::Node;
-use hersir::builder::SpawnParams;
-use hersir::builder::{Blockchain, Topology, WalletTemplate};
-use hersir::controller::Controller;
-use jormungandr_automation::jormungandr::{download_last_n_releases, get_jormungandr_bin};
-use jormungandr_automation::jormungandr::{JormungandrProcess, PersistenceMode};
-use jormungandr_automation::testing::benchmark::MeasurementReportInterval;
-use jormungandr_automation::testing::SyncNode;
-use jormungandr_automation::testing::SyncWaitParams;
-use jormungandr_lib::interfaces::ActiveSlotCoefficient;
-use jormungandr_lib::interfaces::SlotDuration;
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{Blockchain, SpawnParams, WalletTemplate},
+    controller::Controller,
+};
+use jormungandr_automation::{
+    jormungandr::{
+        download_last_n_releases, get_jormungandr_bin, JormungandrProcess, PersistenceMode,
+    },
+    testing::{benchmark::MeasurementReportInterval, SyncNode, SyncWaitParams},
+};
+use jormungandr_lib::interfaces::{ActiveSlotCoefficient, SlotDuration};
 use std::collections::HashMap;
 
 const CORE_NODE: &str = "Core";
@@ -99,7 +97,7 @@ fn prepare_real_scenario(
             HashMap::new(),
         );
         *wallet.delegate_mut() = Some(leader_name(i).to_owned());
-        blockchain = blockchain.with_wallet(wallet);
+        builder = builder.wallet_template(wallet);
     }
 
     for i in 1..legacy_nodes_counter {
@@ -111,7 +109,7 @@ fn prepare_real_scenario(
             HashMap::new(),
         );
         *wallet.delegate_mut() = Some(legacy_name(i).to_owned());
-        blockchain = blockchain.with_wallet(wallet);
+        builder = builder.wallet_template(wallet);
     }
 
     builder.blockchain_config(blockchain).build().unwrap()
@@ -222,8 +220,8 @@ pub fn real_network(
     )
     .unwrap();
 
-    let mut wallet = controller.wallet(&wallet_name(1)).unwrap();
-    let wallet2 = controller.wallet(&wallet_name(2)).unwrap();
+    let mut wallet = controller.controlled_wallet(&wallet_name(1)).unwrap();
+    let wallet2 = controller.controlled_wallet(&wallet_name(2)).unwrap();
 
     let fragment_nodes: Vec<&JormungandrProcess> = leaders.iter().collect();
 

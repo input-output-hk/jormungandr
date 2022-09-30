@@ -1,8 +1,10 @@
 use crate::jcli_lib::{debug::Error, utils::io};
-use chain_core::property::Deserialize as _;
+use chain_core::{packer::Codec, property::DeserializeFromSlice as _};
 use chain_impl_mockchain::fragment::Fragment as MockFragment;
-use std::io::{BufRead, BufReader};
-use std::path::PathBuf;
+use std::{
+    io::{BufRead, BufReader},
+    path::PathBuf,
+};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -21,7 +23,8 @@ impl Message {
         let mut hex_str = String::new();
         BufReader::new(reader).read_line(&mut hex_str)?;
         let bytes = hex::decode(hex_str.trim())?;
-        let message = MockFragment::deserialize(bytes.as_ref()).map_err(Error::MessageMalformed)?;
+        let message = MockFragment::deserialize_from_slice(&mut Codec::new(bytes.as_slice()))
+            .map_err(Error::MessageMalformed)?;
         println!("{:#?}", message);
         Ok(())
     }

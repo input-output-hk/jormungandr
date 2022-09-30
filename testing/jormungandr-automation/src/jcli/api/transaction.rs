@@ -1,8 +1,10 @@
-use crate::jcli::{command::TransactionCommand, data::Witness, WitnessData};
-use crate::testing::process::ProcessOutput;
+use crate::{
+    jcli::{command::TransactionCommand, data::Witness, WitnessData},
+    testing::process::ProcessOutput,
+};
 use assert_cmd::assert::OutputAssertExt;
 use assert_fs::TempDir;
-use chain_core::property::Deserialize;
+use chain_core::{packer::Codec, property::DeserializeFromSlice};
 use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -310,7 +312,7 @@ impl Transaction {
     pub fn fragment_id<P: AsRef<Path>>(self, staging_file: P) -> Hash {
         let fragment_hex = self.convert_to_message(staging_file);
         let fragment_bytes = hex::decode(&fragment_hex).expect("Failed to parse message hex");
-        Fragment::deserialize(fragment_bytes.as_slice())
+        Fragment::deserialize_from_slice(&mut Codec::new(fragment_bytes.as_slice()))
             .expect("Failed to parse message")
             .hash()
             .into()

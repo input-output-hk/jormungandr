@@ -4,38 +4,41 @@ pub use self::{
     initial_certificates::{signed_delegation_cert, signed_stake_pool_cert, vote_plan_cert},
     persistent_log::{write_into_persistent_log, PersistentLogViewer},
     sender::{BlockDateGenerator, FragmentSender, FragmentSenderError},
-    setup::DummySyncNode,
-    setup::{FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
+    setup::{DummySyncNode, FragmentSenderSetup, FragmentSenderSetupBuilder, VerifyStrategy},
     verifier::{ExitStrategy as VerifyExitStrategy, FragmentVerifier, FragmentVerifierError},
 };
-use crate::wallet::account::Wallet as AccountWallet;
-use crate::{stake_pool::StakePool, wallet::Wallet};
-use chain_crypto::Ed25519;
-use chain_crypto::SecretKey;
-use chain_impl_mockchain::fee::FeeAlgorithm;
-use chain_impl_mockchain::transaction::InputOutputBuilder;
-use chain_impl_mockchain::transaction::TxBuilder;
-use chain_impl_mockchain::{block::BlockDate, certificate::VoteTallyPayload};
+use crate::{
+    stake_pool::StakePool,
+    wallet::{account::Wallet as AccountWallet, Wallet},
+};
+use chain_crypto::{Ed25519, SecretKey};
+#[cfg(feature = "evm")]
+use chain_impl_mockchain::certificate::EvmMapping;
+#[cfg(feature = "evm")]
+use chain_impl_mockchain::evm::EvmTransaction;
 use chain_impl_mockchain::{
-    certificate::{PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally},
-    fee::LinearFee,
+    block::BlockDate,
+    certificate::{
+        PoolId, UpdateProposal, UpdateVote, VoteCast, VotePlan, VoteTally, VoteTallyPayload,
+    },
+    fee::{FeeAlgorithm, LinearFee},
     fragment::Fragment,
     testing::{
         data::{StakePool as StakePoolLib, Wallet as WalletLib},
         scenario::FragmentFactory,
         WitnessMode,
     },
+    transaction::{InputOutputBuilder, TxBuilder},
     vote::{Choice, Payload, PayloadType},
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{Address, Initial, Value},
 };
-pub use transaction_utils::TransactionHash;
-
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
 use thiserror::Error;
+pub use transaction_utils::TransactionHash;
 
 mod chain_sender;
 mod export;
@@ -66,7 +69,7 @@ pub struct FragmentBuilder {
 impl FragmentBuilder {
     pub fn new(block0_hash: &Hash, fees: &LinearFee, valid_until: BlockDate) -> Self {
         Self {
-            fragment_factory: FragmentFactory::new(block0_hash.into_hash(), *fees),
+            fragment_factory: FragmentFactory::new(block0_hash.into_hash(), fees.clone()),
             valid_until,
         }
     }
@@ -374,5 +377,17 @@ impl FragmentBuilder {
             &signer_wallet.into(),
             update_vote,
         )
+    }
+
+    #[cfg(feature = "evm")]
+    pub fn evm_mapping(&self, from: &Wallet, evm_mapping: &EvmMapping) -> Fragment {
+        let inner_wallet = from.clone().into();
+        self.fragment_factory
+            .evm_mapping(self.valid_until, &inner_wallet, evm_mapping.clone())
+    }
+
+    #[cfg(feature = "evm")]
+    pub fn evm_transaction(&self, evm_transaction: EvmTransaction) -> Fragment {
+        self.fragment_factory.evm_transaction(evm_transaction)
     }
 }

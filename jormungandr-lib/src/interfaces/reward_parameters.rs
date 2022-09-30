@@ -3,7 +3,7 @@ use chain_impl_mockchain::{block::Epoch, config::RewardParams as RewardParamsStd
 use serde::{Deserialize, Serialize};
 use std::num::NonZeroU32;
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Copy)]
 #[serde(deny_unknown_fields, rename_all = "snake_case")]
 pub enum RewardParams {
     Linear {

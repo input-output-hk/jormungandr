@@ -1,7 +1,5 @@
 mod error;
 
-use tracing::{span, Level};
-
 pub use self::error::{Error, ErrorKind};
 use crate::{
     blockcfg::{Block, HeaderId},
@@ -9,6 +7,8 @@ use crate::{
     network,
     settings::start::Settings,
 };
+use chain_core::packer::Codec;
+use tracing::{span, Level};
 
 /// prepare the block storage from the given settings
 pub fn prepare_storage(setting: &Settings) -> Result<Storage, Error> {
@@ -51,7 +51,7 @@ async fn fetch_block0_http(base_services: &[String], block0_id: &HeaderId) -> Op
             .bytes()
             .await
             .map_err(|e| format!("cannot get data {}", e))?;
-        let block = Block::deserialize(bytes.as_ref())
+        let block = Block::deserialize(&mut Codec::new(bytes.as_ref()))
             .map_err(|err| format!("parse error on data {}", err))?;
         let got = block.header().id();
         if &got != block0_id {
@@ -100,10 +100,11 @@ pub async fn prepare_block_0(settings: &Settings, storage: &Storage) -> Result<B
                 reason: ErrorKind::Block0,
             })?;
             let reader = std::io::BufReader::new(f);
-            let block = Block::deserialize(reader).map_err(|err| Error::ParseError {
-                source: err,
-                reason: ErrorKind::Block0,
-            })?;
+            let block =
+                Block::deserialize(&mut Codec::new(reader)).map_err(|err| Error::ParseError {
+                    source: err,
+                    reason: ErrorKind::Block0,
+                })?;
 
             // check if the block0 match, the optional expected hash value
             match opt_block0_id {

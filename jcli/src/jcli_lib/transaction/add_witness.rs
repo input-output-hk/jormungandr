@@ -3,7 +3,7 @@ use crate::jcli_lib::{
     utils::io,
 };
 use bech32::{self, FromBase32 as _};
-use chain_core::mempack::{ReadBuf, Readable as _};
+use chain_core::{packer::Codec, property::DeserializeFromSlice};
 use chain_impl_mockchain::transaction::Witness;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -56,7 +56,7 @@ impl AddWitness {
                 source,
                 path: self.witness.clone(),
             })?;
-        Witness::read(&mut ReadBuf::from(&bytes)).map_err(|source| {
+        Witness::deserialize_from_slice(&mut Codec::new(bytes.as_slice())).map_err(|source| {
             Error::WitnessFileDeserializationFailed {
                 source,
                 path: self.witness.clone(),

@@ -17,23 +17,22 @@ use crate::{
     utils::{async_msg, task::Services},
 };
 use chain_impl_mockchain::leadership::LeadershipConsensus;
-use futures::executor::block_on;
-use futures::prelude::*;
+use futures::{executor::block_on, prelude::*};
 use jormungandr_lib::interfaces::NodeState;
 use settings::{start::RawSettings, CommandLine};
+use std::{sync::Arc, time::Duration};
 use tokio::signal;
 use tokio_util::sync::CancellationToken;
 use tracing::{span, Level, Span};
 
-use std::sync::Arc;
-use std::time::Duration;
-
 pub mod blockcfg;
 pub mod blockchain;
 pub mod client;
+pub mod context;
 pub mod diagnostic;
 pub mod fragment;
 pub mod intercom;
+pub mod jrpc;
 pub mod leadership;
 pub mod log;
 pub mod metrics;
@@ -64,7 +63,7 @@ pub struct BootstrappedNode {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
-    rest_context: Option<rest::ContextLock>,
+    context: Option<context::ContextLock>,
     services: Services,
     initial_peers: Vec<topology::Peer>,
     _logger_guards: Vec<WorkerGuard>,
@@ -79,7 +78,7 @@ const WATCH_CLIENT_TASK_QUEUE_LEN: usize = 32;
 const BOOTSTRAP_RETRY_WAIT: Duration = Duration::from_secs(5);
 
 fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::Error> {
-    if let Some(context) = bootstrapped_node.rest_context.as_ref() {
+    if let Some(context) = bootstrapped_node.context.as_ref() {
         block_on(async {
             context
                 .write()
@@ -233,28 +232,39 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
             None
         }
     });
-    let leader_secret = bootstrapped_node
+    let node_secret = bootstrapped_node
         .settings
         .secret
         .map::<Result<_, start_up::Error>, _>(|secret_path| {
             let secret = secure::NodeSecret::load_from_file(secret_path.as_path())?;
-            if let (Some(leaders), Some(leader)) = (&bft_leaders, secret.bft()) {
-                let public_key = &leader.sig_key.to_public();
-                if !leaders.contains(public_key) {
-                    tracing::warn!(
-                        "node was started with a BFT secret key but the corresponding \
-                        public key {} is not listed among consensus leaders",
-                        public_key
-                    );
-                }
-            };
-            Ok(Leader {
-                bft_leader: secret.bft(),
-                genesis_leader: secret.genesis(),
-            })
+            Ok(secret)
         })
         .transpose()?;
+
+    let leader_secret = node_secret.as_ref().map(|secret| {
+        if let (Some(leaders), Some(leader)) = (&bft_leaders, secret.bft()) {
+            let public_key = &leader.sig_key.to_public();
+            if !leaders.contains(public_key) {
+                tracing::warn!(
+                    "node was started with a BFT secret key but the corresponding \
+                        public key {} is not listed among consensus leaders",
+                    public_key
+                );
+            }
+        };
+        Leader {
+            bft_leader: secret.bft(),
+            genesis_leader: secret.genesis(),
+        }
+    });
     let enclave = Enclave::new(leader_secret);
+
+    #[cfg(feature = "evm")]
+    let evm_keys = Arc::new(
+        node_secret
+            .map(|secret| secret.evm_keys())
+            .unwrap_or_default(),
+    );
 
     {
         let logs = leadership_logs.clone();
@@ -304,22 +314,24 @@ fn start_services(bootstrapped_node: BootstrappedNode) -> Result<(), start_up::E
         });
     };
 
-    if let Some(rest_context) = bootstrapped_node.rest_context {
-        let full_context = rest::FullContext {
+    if let Some(context) = bootstrapped_node.context {
+        let full_context = context::FullContext {
             stats_counter: simple_metrics_counter,
             network_task: network_msgbox,
             transaction_task: fragment_msgbox,
             topology_task: topology_msgbox,
             leadership_logs,
+            #[cfg(feature = "evm")]
+            evm_keys,
             enclave,
             network_state,
             #[cfg(feature = "prometheus-metrics")]
             prometheus: prometheus_metric,
         };
         block_on(async {
-            let mut rest_context = rest_context.write().await;
-            rest_context.set_full(full_context);
-            rest_context.set_node_state(NodeState::Running);
+            let mut context = context.write().await;
+            context.set_full(full_context);
+            context.set_node_state(NodeState::Running);
         })
     };
 
@@ -367,7 +379,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         settings,
         block0,
         storage,
-        rest_context,
+        context,
         mut services,
         cancellation_token,
         _logger_guards,
@@ -377,12 +389,12 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         blockchain,
         blockchain_tip,
         block0_hash,
-        rest_context,
+        context,
         settings,
         initial_peers,
     } = services.block_on_task("bootstrap", |info| {
         bootstrap_internal(
-            rest_context,
+            context,
             info.span().clone(),
             block0,
             storage,
@@ -396,7 +408,7 @@ fn bootstrap(initialized_node: InitializedNode) -> Result<BootstrappedNode, star
         blockchain,
         blockchain_tip,
         block0_hash,
-        rest_context,
+        context,
         services,
         initial_peers,
         _logger_guards,
@@ -407,13 +419,13 @@ struct BootstrapData {
     blockchain: Blockchain,
     blockchain_tip: blockchain::Tip,
     block0_hash: HeaderHash,
-    rest_context: Option<rest::ContextLock>,
+    context: Option<context::ContextLock>,
     settings: Settings,
     initial_peers: Vec<topology::Peer>,
 }
 
 async fn bootstrap_internal(
-    rest_context: Option<rest::ContextLock>,
+    context: Option<context::ContextLock>,
     span: Span,
     block0: blockcfg::Block,
     storage: blockchain::Storage,
@@ -422,7 +434,7 @@ async fn bootstrap_internal(
 ) -> Result<BootstrapData, start_up::Error> {
     use futures::future::FutureExt;
 
-    if let Some(context) = rest_context.as_ref() {
+    if let Some(context) = context.as_ref() {
         block_on(async {
             context
                 .write()
@@ -439,7 +451,7 @@ async fn bootstrap_internal(
         start_up::load_blockchain(block0, storage, cache_capacity, settings.rewards_report_all)
             .await?;
 
-    if let Some(context) = &rest_context {
+    if let Some(context) = &context {
         let mut context = context.write().await;
         context.set_blockchain(blockchain.clone());
         context.set_blockchain_tip(blockchain_tip.clone());
@@ -485,7 +497,7 @@ async fn bootstrap_internal(
         }
     };
 
-    if let Some(context) = &rest_context {
+    if let Some(context) = &context {
         let mut context = context.write().await;
         context.remove_bootstrap_stopper();
     };
@@ -494,7 +506,7 @@ async fn bootstrap_internal(
         block0_hash,
         blockchain,
         blockchain_tip,
-        rest_context,
+        context,
         settings,
         initial_peers: network_res
             .map(|res| res.initial_peers)
@@ -506,7 +518,7 @@ pub struct InitializedNode {
     pub settings: Settings,
     pub block0: blockcfg::Block,
     pub storage: blockchain::Storage,
-    pub rest_context: Option<rest::ContextLock>,
+    pub context: Option<context::ContextLock>,
     pub services: Services,
     pub cancellation_token: CancellationToken,
     pub _logger_guards: Vec<WorkerGuard>,
@@ -616,27 +628,30 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
     let cancellation_token = CancellationToken::new();
     init_os_signal_watchers(&mut services, cancellation_token.clone());
 
-    let rest_context = match settings.rest.clone() {
-        Some(rest) => {
-            use tokio::sync::RwLock;
+    let init_context = |diagnostic| {
+        use tokio::sync::RwLock;
 
-            let mut context = rest::Context::new();
-            context.set_diagnostic_data(diagnostic);
-            context.set_node_state(NodeState::PreparingStorage);
-            let context = Arc::new(RwLock::new(context));
+        let mut context = context::Context::new();
+        context.set_diagnostic_data(diagnostic);
+        context.set_node_state(NodeState::PreparingStorage);
+        Arc::new(RwLock::new(context))
+    };
 
-            let service_context = context.clone();
+    let context = match settings.rest.clone() {
+        Some(rest_config) => {
+            let context = init_context(diagnostic.clone());
 
-            let rest = rest::Config {
-                listen: rest.listen,
-                tls: rest.tls,
-                cors: rest.cors,
+            let rest_config = rest::Config {
+                listen: rest_config.listen,
+                tls: rest_config.tls,
+                cors: rest_config.cors,
                 #[cfg(feature = "prometheus-metrics")]
                 enable_prometheus: settings.prometheus,
             };
 
-            let server_handler = rest::start_rest_server(rest, context.clone());
-            services.spawn_future("rest", move |info| async move {
+            let server_handler = rest::start_rest_server(rest_config, context.clone());
+            let service_context = context.clone();
+            services.spawn_future("rest", |info| async move {
                 service_context.write().await.set_span(info.span().clone());
                 server_handler.await
             });
@@ -645,9 +660,29 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         None => None,
     };
 
+    #[cfg(feature = "evm")]
+    let context = match settings.jrpc.clone() {
+        Some(jrpc_config) => {
+            let context = context.unwrap_or_else(|| init_context(diagnostic));
+
+            let jrpc_config = jrpc::Config {
+                listen: jrpc_config.listen,
+            };
+            let server_handler = jrpc::start_jrpc_server(jrpc_config, context.clone());
+            let service_context = context.clone();
+            services.spawn_future("jrpc", |info| async move {
+                service_context.write().await.set_span(info.span().clone());
+                server_handler.await
+            });
+
+            Some(context)
+        }
+        None => context,
+    };
+
     // TODO: load network module here too (if needed)
 
-    if let Some(context) = rest_context.as_ref() {
+    if let Some(context) = context.as_ref() {
         block_on(async {
             context
                 .write()
@@ -662,7 +697,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
 
         let cancellation_token = CancellationToken::new();
 
-        if let Some(context) = rest_context.as_ref() {
+        if let Some(context) = context.as_ref() {
             let mut context = context.write().await;
             context.set_bootstrap_stopper(cancellation_token.clone());
         }
@@ -674,7 +709,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
             _ = cancellation_token.cancelled().fuse() => return Err(start_up::Error::Interrupted),
         };
 
-        if let Some(context) = rest_context.as_ref() {
+        if let Some(context) = context.as_ref() {
             let mut context = context.write().await;
             context.remove_bootstrap_stopper();
         }
@@ -687,7 +722,7 @@ fn initialize_node() -> Result<InitializedNode, start_up::Error> {
         settings,
         block0,
         storage,
-        rest_context,
+        context,
         services,
         cancellation_token,
         _logger_guards,
