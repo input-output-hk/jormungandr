@@ -126,28 +126,28 @@ pub fn explorer_block_test() {
 
     let explorer = explorer_process.client();
 
-    let explorer_block_response = explorer.block_by_id(fragment_block_id.to_string());
-    /*
-        let mut n_tries = 4;
-        let explorer_block_response = loop {
-            match explorer.block_by_id(fragment_block_id.to_string()) {
-                Ok(response) => {
-                    break Ok(response);
+    //let explorer_block_response = explorer.block_by_id(fragment_block_id.to_string());
+
+    let mut n_tries = 4;
+    let explorer_block_response = loop {
+        match explorer.block_by_id(fragment_block_id.to_string()) {
+            Ok(response) => {
+                break Ok(response);
+            }
+            Err(err) => {
+                if n_tries == 0 {
+                    break Err(err);
                 }
-                Err(err) => {
-                    if n_tries == 0 {
-                        break Err(err);
-                    }
-                    n_tries = -1;
-                    time::wait_for_date(
-                        time::get_current_date(&mut jormungandr.rest()).next_epoch(),
-                        jormungandr.rest(),
-                    );
-                    println!("waiting {:?}", n_tries);
-                }
-            };
+                n_tries = -1;
+                time::wait_for_date(
+                    time::get_current_date(&mut jormungandr.rest()).next_epoch(),
+                    jormungandr.rest(),
+                );
+                println!("waiting {:?}", n_tries);
+            }
         };
-    */
+    };
+
     assert!(
         explorer_block_response.as_ref().unwrap().errors.is_none(),
         "{:?}",
@@ -292,9 +292,9 @@ pub fn explorer_last_block_test() {
     time::wait_for_epoch(3, jormungandr.rest());
 
     let explorer = explorer_process.client();
-    let explorer_block_response = explorer.last_block();
+    //let explorer_block_response = explorer.last_block();
 
-    /*let mut n_tries = 4;
+    let mut n_tries = 4;
     let explorer_block_response = loop {
         match explorer.last_block() {
             Ok(response) => {
@@ -312,7 +312,7 @@ pub fn explorer_last_block_test() {
                 println!("waiting {:?}", n_tries);
             }
         };
-    };*/
+    };
 
     let explorer_last_block = explorer_block_response.unwrap();
 
