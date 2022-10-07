@@ -1,44 +1,42 @@
-mod node;
-
 use crate::jormungandr::starter::{CommunicationParams, ConfigurableNodeConfig};
-use jormungandr_lib::multiaddr::to_tcp_socket_addr;
+use jormungandr_lib::{interfaces::NodeConfig, multiaddr::to_tcp_socket_addr};
 use multiaddr::Multiaddr;
-pub use node::{
-    Error as LegacyConfigError, LegacyNodeConfig, LegacyNodeConfigBuilder,
-    LegacyNodeConfigConverter,
-};
-use serde::Serialize;
 use std::{
     fmt::{Debug, Formatter},
+    fs::File,
     net::SocketAddr,
     path::{Path, PathBuf},
 };
 
-#[derive(Clone, Serialize)]
-pub struct LegacyNodeConfigManager {
-    pub node_config: LegacyNodeConfig,
+pub struct NodeConfigManager {
+    pub node_config: NodeConfig,
     pub file: Option<PathBuf>,
 }
 
-impl Debug for LegacyNodeConfigManager {
+impl Debug for NodeConfigManager {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.node_config.fmt(f)
     }
 }
 
-impl ConfigurableNodeConfig for LegacyNodeConfigManager {
+impl ConfigurableNodeConfig for NodeConfigManager {
     fn log_file_path(&self) -> Option<&Path> {
-        todo!()
+        self.node_config
+            .log
+            .as_ref()
+            .and_then(|log| log.file_path())
     }
 
     fn write_node_config(&self) {
-        todo!()
+        let mut output_file = File::create(&self.node_config_path()).unwrap();
+        serde_yaml::to_writer(&mut output_file, &self.node_config)
+            .expect("cannot serialize node config");
     }
 
     fn node_config_path(&self) -> PathBuf {
         self.file
             .as_ref()
-            .expect("no legacy config path defined")
+            .expect("node config path not defined")
             .clone()
     }
 
@@ -47,10 +45,11 @@ impl ConfigurableNodeConfig for LegacyNodeConfigManager {
     }
 
     fn p2p_listen_address(&self) -> SocketAddr {
-        self.node_config
-            .p2p
-            .listen
-            .unwrap_or_else(|| to_tcp_socket_addr(&self.node_config.p2p.public_address).unwrap())
+        if let Some(address) = &self.node_config.p2p.listen {
+            *address
+        } else {
+            to_tcp_socket_addr(&self.node_config.p2p.public_address).unwrap()
+        }
     }
 
     fn p2p_public_address(&self) -> Multiaddr {
@@ -70,6 +69,10 @@ impl ConfigurableNodeConfig for LegacyNodeConfigManager {
     }
 
     fn as_communication_params(&self) -> CommunicationParams {
-        todo!()
+        CommunicationParams {
+            p2p_public_address: self.p2p_public_address(),
+            p2p_listen_address: self.p2p_listen_address(),
+            rest_socket_addr: self.rest_socket_addr(),
+        }
     }
 }

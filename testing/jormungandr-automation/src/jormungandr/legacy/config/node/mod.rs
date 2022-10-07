@@ -1,54 +1,82 @@
-use super::{P2p, TrustedPeer};
+mod data;
+
 use crate::jormungandr::{
-    legacy::{config::NodeConfig, version_0_13_0},
-    JormungandrParams, Version,
+    legacy::{
+        config::node::data::{P2p, TrustedPeer},
+        version_0_13_0,
+    },
+    NodeConfigBuilder, Version,
 };
-use jormungandr_lib::interfaces::{NodeConfig as NewestNodeConfig, NodeId, Rest};
+pub use data::LegacyNodeConfig;
+use jormungandr_lib::interfaces::{
+    Log, NodeConfig, NodeId, Rest, TrustedPeer as NewestTrustedPeer,
+};
 use rand::RngCore;
 use rand_core::OsRng;
+use std::path::PathBuf;
 use thiserror::Error;
+
 #[derive(Error, Debug)]
-pub enum LegacyConfigConverterError {
+pub enum Error {
     #[error("unsupported version")]
     UnsupportedVersion(Version),
+    #[error(transparent)]
+    SerdeYaml(#[from] serde_yaml::Error),
+    #[error(transparent)]
+    Fixture(#[from] assert_fs::fixture::FixtureError),
 }
 
 /// Used to build configuration for legacy nodes.
 /// It uses yaml_rust instead of serde yaml serializer
 /// beacuse config model is always up to date with newest config schema
 /// while legacy node requires na old one
-pub struct LegacyConfigConverter {
+pub struct LegacyNodeConfigBuilder {
+    #[allow(dead_code)]
     version: Version,
+    config: NodeConfig,
 }
 
-impl LegacyConfigConverter {
+impl LegacyNodeConfigBuilder {
+    pub fn with_trusted_peers(mut self, trusted_peer: Vec<NewestTrustedPeer>) -> Self {
+        self.config.p2p.trusted_peers = trusted_peer;
+        self
+    }
+}
+
+impl Default for LegacyNodeConfigBuilder {
+    fn default() -> Self {
+        Self {
+            version: Version::new(0, 11, 0),
+            config: NodeConfigBuilder::default().build(),
+        }
+    }
+}
+
+impl LegacyNodeConfigBuilder {
     pub fn new(version: Version) -> Self {
-        Self { version }
+        Self {
+            version,
+            ..Default::default()
+        }
     }
 
-    pub fn convert(
-        &self,
-        params: JormungandrParams<NewestNodeConfig>,
-    ) -> Result<JormungandrParams<NodeConfig>, LegacyConfigConverterError> {
-        let node_config_converter = LegacyNodeConfigConverter::new(self.version.clone());
-        let node_config = node_config_converter.convert(params.node_config())?;
-        Ok(self.build_configuration(params, node_config))
+    pub fn with_log(mut self, log: Log) -> Self {
+        self.config.log = Some(log);
+        self
     }
 
-    fn build_configuration(
-        &self,
-        params: JormungandrParams<NewestNodeConfig>,
-        backward_compatible_config: NodeConfig,
-    ) -> JormungandrParams<NodeConfig> {
-        JormungandrParams::new(
-            backward_compatible_config,
-            params.node_config_path(),
-            params.genesis_block_path(),
-            params.genesis_block_hash(),
-            params.secret_model_path(),
-            params.block0_configuration().clone(),
-            params.rewards_history(),
-        )
+    pub fn with_storage(mut self, storage: PathBuf) -> Self {
+        self.config.storage = Some(storage);
+        self
+    }
+
+    pub fn based_on(mut self, config: NodeConfig) -> Self {
+        self.config = config;
+        self
+    }
+
+    pub fn build(self) -> Result<LegacyNodeConfig, Error> {
+        LegacyNodeConfigConverter::new(self.version).convert(&self.config)
     }
 }
 
@@ -62,10 +90,7 @@ impl LegacyNodeConfigConverter {
     }
 
     ///0.8.19 is a breaking point where in trusted peer id was obsoleted
-    pub fn convert(
-        &self,
-        source: &NewestNodeConfig,
-    ) -> Result<NodeConfig, LegacyConfigConverterError> {
+    pub fn convert(&self, source: &NodeConfig) -> Result<LegacyNodeConfig, Error> {
         if self.version >= version_0_13_0() {
             return Ok(self.build_node_config_after_0_13_0(source));
         }
@@ -75,7 +100,7 @@ impl LegacyNodeConfigConverter {
         Ok(self.build_node_config_before_0_8_19(source))
     }
 
-    fn build_node_config_after_0_13_0(&self, source: &NewestNodeConfig) -> NodeConfig {
+    fn build_node_config_after_0_13_0(&self, source: &NodeConfig) -> LegacyNodeConfig {
         let rng = OsRng;
 
         let trusted_peers: Vec<TrustedPeer> = source
@@ -94,7 +119,7 @@ impl LegacyNodeConfigConverter {
             })
             .collect();
 
-        NodeConfig {
+        LegacyNodeConfig {
             storage: source.storage.clone(),
             single_log: source.log.clone().map(Into::into),
             log: None,
@@ -122,7 +147,7 @@ impl LegacyNodeConfigConverter {
         }
     }
 
-    fn build_node_config_after_0_12_0(&self, source: &NewestNodeConfig) -> NodeConfig {
+    fn build_node_config_after_0_12_0(&self, source: &NodeConfig) -> LegacyNodeConfig {
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
             .trusted_peers
@@ -133,7 +158,7 @@ impl LegacyNodeConfigConverter {
             })
             .collect();
 
-        NodeConfig {
+        LegacyNodeConfig {
             storage: source.storage.clone(),
             single_log: source.log.clone().map(Into::into),
             log: None,
@@ -167,7 +192,7 @@ impl LegacyNodeConfigConverter {
         hex::encode(bytes)
     }
 
-    fn build_node_config_before_0_8_19(&self, source: &NewestNodeConfig) -> NodeConfig {
+    fn build_node_config_before_0_8_19(&self, source: &NodeConfig) -> LegacyNodeConfig {
         let mut rng = OsRng;
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
@@ -189,10 +214,9 @@ impl LegacyNodeConfigConverter {
             })
             .collect();
 
-        NodeConfig {
+        LegacyNodeConfig {
             storage: source.storage.clone(),
-            log: source.log.clone().map(Into::into),
-            single_log: None,
+            log: None,
             rest: Rest {
                 listen: source.rest.listen,
                 cors: None,
@@ -218,6 +242,7 @@ impl LegacyNodeConfigConverter {
             mempool: source.mempool.clone(),
             bootstrap_from_trusted_peers: source.bootstrap_from_trusted_peers,
             skip_bootstrap: source.skip_bootstrap,
+            single_log: source.log.clone().map(Into::into),
         }
     }
 }

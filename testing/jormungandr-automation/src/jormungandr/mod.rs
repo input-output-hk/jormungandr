@@ -15,8 +15,8 @@ pub mod grpc;
 
 pub use self::{
     configuration::{
-        get_available_port, Block0ConfigurationBuilder, ConfigurationBuilder, JormungandrParams,
-        NodeConfigBuilder, SecretModelFactory, TestConfig,
+        get_available_port, Block0ConfigurationBuilder, EitherHashOrBlock0, NodeConfigBuilder,
+        NodeConfigManager, SecretModelFactory,
     },
     explorer::{
         compare_schema as compare_explorer_schema, Explorer, ExplorerError, ExplorerProcess,
@@ -24,15 +24,16 @@ pub use self::{
     fragment_node::{FragmentNode, FragmentNodeError, MemPoolCheck},
     legacy::{
         download_last_n_releases, get_jormungandr_bin, version_0_8_19, BackwardCompatibleRest,
-        LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfig,
-        LegacyNodeConfigConverter, Version,
+        LegacyConfigError, LegacyNodeConfig, LegacyNodeConfigBuilder, LegacyNodeConfigConverter,
+        LegacyNodeConfigManager, Version,
     },
     logger::{JormungandrLogger, Level as LogLevel},
     process::*,
     remote::{RemoteJormungandr, RemoteJormungandrBuilder},
     rest::{uri_from_socket_addr, JormungandrRest, RawRest, RestError, RestSettings},
     starter::{
-        ConfiguredStarter, FaketimeConfig, LeadershipMode, PersistenceMode, Starter, StartupError,
+        ConfigurableNodeConfig, ConfiguredStarter, FaketimeConfig, JormungandrBootstrapper,
+        JormungandrParams, LeadershipMode, NodeBlock0, PersistenceMode, Starter, StartupError,
         StartupVerificationMode, TestingDirectory,
     },
     verifier::{assert_accepted_rejected, assert_bad_request, JormungandrStateVerifier},

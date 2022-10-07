@@ -9,6 +9,7 @@ pub mod observer;
 pub mod panic;
 pub mod process;
 pub mod resources;
+pub mod settings;
 pub mod storage;
 pub mod time;
 pub mod verify;

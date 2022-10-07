@@ -1,32 +1,30 @@
 #![allow(dead_code)]
 use crate::jormungandr::{
-    starter::FromGenesis, FaketimeConfig, JormungandrParams, LeadershipMode, TestConfig,
+    starter::{JormungandrParams, NodeBlock0},
+    FaketimeConfig, LeadershipMode,
 };
-use serde::Serialize;
-use std::{path::Path, process::Command};
+use jormungandr_lib::crypto::hash::Hash;
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
-pub struct CommandBuilder<'a> {
-    bin: &'a Path,
-    config: Option<&'a Path>,
-    genesis_block: GenesisBlockOption<'a>,
-    secret: Option<&'a Path>,
-    log_file: Option<&'a Path>,
+pub struct CommandBuilder {
+    bin: PathBuf,
+    config: Option<PathBuf>,
+    genesis_block: Option<NodeBlock0>,
+    secret: Option<PathBuf>,
+    log_file: Option<PathBuf>,
     rewards_history: bool,
     faketime: Option<FaketimeConfig>,
 }
 
-enum GenesisBlockOption<'a> {
-    None,
-    Hash(&'a str),
-    Path(&'a Path),
-}
-
-impl<'a> CommandBuilder<'a> {
-    pub fn new(bin: &'a Path) -> Self {
+impl CommandBuilder {
+    pub fn new(bin: &Path) -> Self {
         CommandBuilder {
-            bin,
+            bin: bin.to_path_buf(),
             config: None,
-            genesis_block: GenesisBlockOption::None,
+            genesis_block: None,
             secret: None,
             log_file: None,
             rewards_history: false,
@@ -34,8 +32,8 @@ impl<'a> CommandBuilder<'a> {
         }
     }
 
-    pub fn config(mut self, path: &'a Path) -> Self {
-        self.config = Some(path);
+    pub fn config(mut self, path: &Path) -> Self {
+        self.config = Some(path.to_path_buf());
         self
     }
 
@@ -44,23 +42,23 @@ impl<'a> CommandBuilder<'a> {
         self
     }
 
-    pub fn genesis_block_hash(mut self, hash: &'a str) -> Self {
-        self.genesis_block = GenesisBlockOption::Hash(hash);
+    pub fn genesis_block_hash(mut self, hash: Hash) -> Self {
+        self.genesis_block = Some(NodeBlock0::Hash(hash));
         self
     }
 
-    pub fn genesis_block_path(mut self, path: &'a Path) -> Self {
-        self.genesis_block = GenesisBlockOption::Path(path);
+    pub fn genesis_block_path(mut self, path: &Path) -> Self {
+        self.genesis_block = Some(NodeBlock0::File(path.to_path_buf()));
         self
     }
 
-    pub fn leader_with_secret(mut self, secret: &'a Path) -> Self {
-        self.secret = Some(secret);
+    pub fn leader_with_secret(mut self, secret: &Path) -> Self {
+        self.secret = Some(secret.to_path_buf());
         self
     }
 
-    pub fn stderr_to_log_file(mut self, path: &'a Path) -> Self {
-        self.log_file = Some(path);
+    pub fn stderr_to_log_file(mut self, path: &Path) -> Self {
+        self.log_file = Some(path.to_path_buf());
         self
     }
 
@@ -92,16 +90,17 @@ impl<'a> CommandBuilder<'a> {
             .expect("configuration file path needs to be set");
         command.arg("--config").arg(config_path);
 
-        match self.genesis_block {
-            GenesisBlockOption::Hash(hash) => {
-                command.arg("--genesis-block-hash").arg(hash);
+        if let Some(node_block0) = &self.genesis_block {
+            match node_block0 {
+                NodeBlock0::Hash(hash) => {
+                    command.arg("--genesis-block-hash").arg(hash.to_string());
+                }
+                NodeBlock0::File(path) => {
+                    command.arg("--genesis-block").arg(path);
+                }
             }
-            GenesisBlockOption::Path(path) => {
-                command.arg("--genesis-block").arg(path);
-            }
-            GenesisBlockOption::None => {
-                panic!("one of the genesis block options needs to be specified")
-            }
+        } else {
+            panic!("one of the genesis block options needs to be specified")
         }
 
         command.stderr(std::process::Stdio::piped());
@@ -111,25 +110,35 @@ impl<'a> CommandBuilder<'a> {
     }
 }
 
-pub fn get_command<Conf: TestConfig + Serialize>(
-    params: &JormungandrParams<Conf>,
+pub fn get_command(
+    params: &JormungandrParams,
     bin_path: impl AsRef<Path>,
     leadership_mode: LeadershipMode,
-    from_genesis: FromGenesis,
 ) -> Command {
     let bin_path = bin_path.as_ref();
-    let builder = CommandBuilder::new(bin_path)
-        .config(params.node_config_path())
-        .rewards_history(params.rewards_history());
+    let node_config_path = params.node_config_path();
+    let secret_path = params.secret_path();
+    let builder = CommandBuilder::new(bin_path).config(&node_config_path);
 
-    let builder = match (leadership_mode, from_genesis) {
-        (LeadershipMode::Passive, _) => builder.genesis_block_hash(params.genesis_block_hash()),
-        (LeadershipMode::Leader, FromGenesis::File) => builder
-            .genesis_block_path(params.genesis_block_path())
-            .leader_with_secret(params.secret_model_path()),
-        (LeadershipMode::Leader, FromGenesis::Hash) => builder
-            .genesis_block_hash(params.genesis_block_hash())
-            .leader_with_secret(params.secret_model_path()),
+    let builder = match (leadership_mode, params.genesis()) {
+        (LeadershipMode::Passive, NodeBlock0::Hash(hash)) => builder.genesis_block_hash(*hash),
+        (LeadershipMode::Leader, NodeBlock0::File(block_path)) => {
+            builder.genesis_block_path(block_path).leader_with_secret(
+                secret_path
+                    .as_ref()
+                    .expect("no secrets defined for leader node"),
+            )
+        }
+        (LeadershipMode::Leader, NodeBlock0::Hash(block_hash)) => {
+            builder.genesis_block_hash(*block_hash).leader_with_secret(
+                secret_path
+                    .as_ref()
+                    .expect("no secrets defined for leader node"),
+            )
+        }
+        (LeadershipMode::Passive, NodeBlock0::File(block_path)) => {
+            builder.genesis_block_path(block_path)
+        }
     };
-    builder.command()
+    builder.rewards_history(params.rewards_history()).command()
 }

@@ -5,19 +5,15 @@ use std::{
     sync::atomic::{AtomicU16, Ordering},
 };
 
-mod block0_config_builder;
-mod configuration_builder;
+mod block0;
 mod jormungandr_config;
-mod node_config;
-mod node_config_builder;
-mod secret_model_factory;
+mod node;
+mod secret;
 
-pub use block0_config_builder::Block0ConfigurationBuilder;
-pub use configuration_builder::ConfigurationBuilder;
-pub use jormungandr_config::JormungandrParams;
-pub use node_config::TestConfig;
-pub use node_config_builder::NodeConfigBuilder;
-pub use secret_model_factory::{write_secret, SecretModelFactory};
+pub use block0::Block0ConfigurationBuilder;
+pub use jormungandr_config::EitherHashOrBlock0;
+pub use node::{NodeConfigBuilder, NodeConfigManager};
+pub use secret::{NodeSecretExtension, SecretModelFactory};
 
 lazy_static! {
     static ref NEXT_AVAILABLE_PORT_NUMBER: AtomicU16 = AtomicU16::new(10000);

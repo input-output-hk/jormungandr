@@ -3,9 +3,14 @@ use chain_core::{
     packer::Codec,
     property::{Deserialize, DeserializeFromSlice, ReadError, Serialize, WriteError},
 };
-use chain_impl_mockchain::{block::Block, certificate::VotePlan, ledger::Ledger};
+use chain_impl_mockchain::{
+    block::Block, certificate::VotePlan, fragment::Fragment, ledger::Ledger,
+};
 use jormungandr_lib::{
-    interfaces::{Block0Configuration, Block0ConfigurationError, Initial, SettingsDto},
+    crypto::hash::Hash,
+    interfaces::{
+        Address, Block0Configuration, Block0ConfigurationError, Initial, SettingsDto, UTxOInfo,
+    },
     time::SystemTime,
 };
 use std::{io::BufReader, path::Path};
@@ -38,6 +43,9 @@ pub fn get_block<S: Into<String>>(block0: S) -> Result<Block0Configuration, Bloc
 pub trait Block0ConfigurationExtension {
     fn vote_plans(&self) -> Vec<VotePlan>;
     fn settings(&self) -> SettingsDto;
+    fn utxos(&self) -> Vec<UTxOInfo>;
+    fn utxo_for_address(&self, address: &Address) -> UTxOInfo;
+    fn to_block_hash(&self) -> Hash;
 }
 
 impl Block0ConfigurationExtension for Block0Configuration {
@@ -53,6 +61,10 @@ impl Block0ConfigurationExtension for Block0Configuration {
             }
         }
         vote_plans
+    }
+
+    fn to_block_hash(&self) -> Hash {
+        self.to_block().header().hash().into()
     }
 
     fn settings(&self) -> SettingsDto {
@@ -72,6 +84,42 @@ impl Block0ConfigurationExtension for Block0Configuration {
             discrimination: blockchain_configuration.discrimination,
             tx_max_expiry_epochs: blockchain_configuration.tx_max_expiry_epochs.unwrap(),
         }
+    }
+
+    fn utxos(&self) -> Vec<UTxOInfo> {
+        self.to_block()
+            .contents()
+            .iter()
+            .filter_map(|fragment| match fragment {
+                Fragment::Transaction(transaction) => Some((transaction, fragment.hash())),
+                _ => None,
+            })
+            .flat_map(|(transaction, fragment_id)| {
+                transaction
+                    .as_slice()
+                    .outputs()
+                    .iter()
+                    .enumerate()
+                    .map(move |(idx, output)| {
+                        UTxOInfo::new(
+                            fragment_id.into(),
+                            idx as u8,
+                            output.address.clone().into(),
+                            output.value.into(),
+                        )
+                    })
+            })
+            .collect()
+    }
+
+    fn utxo_for_address(&self, address: &Address) -> UTxOInfo {
+        let utxo = self
+            .utxos()
+            .into_iter()
+            .find(|utxo| utxo.address() == address)
+            .unwrap_or_else(|| panic!("No UTxO found in block 0 for address '{:?}'", address));
+        println!("Utxo found for address {}: {:?}", address, &utxo);
+        utxo
     }
 }
 

@@ -74,6 +74,13 @@ impl From<SlotDuration> for u8 {
     }
 }
 
+impl TryFrom<u8> for SlotDuration {
+    type Error = TryFromSlotDurationError;
+    fn try_from(duration: u8) -> Result<Self, Self::Error> {
+        SlotDuration::new(duration).ok_or(TryFromSlotDurationError::Invalid { duration })
+    }
+}
+
 impl fmt::Display for SlotDuration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         Duration::new(self.0 as u64, 0).fmt(f)

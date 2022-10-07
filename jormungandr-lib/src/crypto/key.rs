@@ -79,6 +79,12 @@ where
 /// [`Identifier`]: ./struct.Identifier.html
 pub struct KeyPair<A: AsymmetricKey>(pub chain_crypto::KeyPair<A>);
 
+impl<A: AsymmetricKey> KeyPair<A> {
+    pub fn public_key(&self) -> &PublicKey<<A as AsymmetricKey>::PubAlg> {
+        self.0.public_key()
+    }
+}
+
 /// signature for the given cryptographic algorithm and associated type
 /// It can be created from a [`SigningKey`] and a value of type `T` and
 /// verified against an [`Identifier`] and the value of type `T`.

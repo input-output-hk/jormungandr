@@ -7,27 +7,20 @@ use crate::{
     jcli::JCli,
     jormungandr::{
         explorer::configuration::ExplorerConfigurationBuilder, grpc::JormungandrClient,
-        rest::uri_from_socket_addr, ExplorerError, FragmentNode, FragmentNodeError,
-        JormungandrLogger, JormungandrRest, JormungandrStateVerifier, LogLevel, MemPoolCheck,
-        NodeAlias, RemoteJormungandr, RemoteJormungandrBuilder, StartupVerificationMode,
-        TestConfig, TestingDirectory,
+        rest::uri_from_socket_addr, starter::CommunicationParams, ExplorerError, FragmentNode,
+        FragmentNodeError, JormungandrLogger, JormungandrRest, JormungandrStateVerifier, LogLevel,
+        MemPoolCheck, NodeAlias, RemoteJormungandr, RemoteJormungandrBuilder,
+        StartupVerificationMode, TestingDirectory,
     },
     testing::SyncNode,
-    utils::MultiaddrExtension,
 };
 use ::multiaddr::Multiaddr;
 use chain_core::property::Fragment as _;
-use chain_impl_mockchain::{
-    fee::LinearFee,
-    fragment::{Fragment, FragmentId},
-};
+use chain_impl_mockchain::fragment::{Fragment, FragmentId};
 use chain_time::TimeEra;
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{
-        Block0Configuration, BlockDate, FragmentLog, FragmentsProcessingSummary, NodeState,
-        TrustedPeer,
-    },
+    interfaces::{BlockDate, FragmentLog, FragmentsProcessingSummary, NodeState, TrustedPeer},
 };
 use jortestkit::prelude::NamedProcess;
 use std::{
@@ -40,7 +33,7 @@ use std::{
 };
 use thiserror::Error;
 
-#[derive(PartialEq, Debug, Clone, Eq)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Status {
     Running,
     Starting,
@@ -67,14 +60,12 @@ pub struct JormungandrProcess {
     p2p_public_address: Multiaddr,
     p2p_listen_address: SocketAddr,
     rest_socket_addr: SocketAddr,
-    block0_configuration: Block0Configuration,
 }
 
 impl JormungandrProcess {
-    pub fn new<Conf: TestConfig>(
+    pub fn new(
         mut child: Child,
-        node_config: &Conf,
-        block0_configuration: Block0Configuration,
+        comm_config: CommunicationParams,
         temp_dir: Option<TestingDirectory>,
         alias: String,
     ) -> Result<Self, StartupError> {
@@ -85,12 +76,11 @@ impl JormungandrProcess {
             child,
             temp_dir,
             alias,
-            grpc_client: JormungandrClient::new(node_config.p2p_listen_address()),
+            grpc_client: JormungandrClient::new(comm_config.p2p_listen_address),
             logger: JormungandrLogger::new(stdout, stderr),
-            p2p_public_address: node_config.p2p_public_address(),
-            p2p_listen_address: node_config.p2p_listen_address(),
-            rest_socket_addr: node_config.rest_socket_addr(),
-            block0_configuration,
+            p2p_public_address: comm_config.p2p_public_address,
+            p2p_listen_address: comm_config.p2p_listen_address,
+            rest_socket_addr: comm_config.rest_socket_addr,
         })
     }
 
@@ -164,10 +154,7 @@ impl JormungandrProcess {
     pub fn status(&self, strategy: &StartupVerificationMode) -> Result<Status, StartupError> {
         match strategy {
             StartupVerificationMode::Log => {
-                let bootstrap_completed_msgs = [
-                    "listening and accepting gRPC connections",
-                    "genesis block fetched",
-                ];
+                let bootstrap_completed_msgs = ["listening and accepting gRPC connections"];
 
                 self.check_startup_errors_in_logs()?;
 
@@ -180,7 +167,7 @@ impl JormungandrProcess {
             StartupVerificationMode::Rest => {
                 let output = self.rest().stats();
                 if let Err(err) = output {
-                    println!("{}", err);
+                    println!("Error while waiting for node to bootstrap: {:?}", err);
                     return Err(StartupError::CannotGetRestStatus(err));
                 }
 
@@ -282,32 +269,25 @@ impl JormungandrProcess {
         uri_from_socket_addr(self.rest_socket_addr)
     }
 
-    pub fn fees(&self) -> LinearFee {
-        self.block0_configuration()
-            .blockchain_configuration
-            .linear_fees
-            .clone()
-    }
-
-    pub fn genesis_block_hash(&self) -> Hash {
-        self.block0_configuration.to_block().header().id().into()
-    }
-
-    pub fn block0_configuration(&self) -> &Block0Configuration {
-        &self.block0_configuration
-    }
-
     pub fn pid(&self) -> u32 {
         self.child.id()
     }
 
     pub fn explorer(&self, params: ExplorerParams) -> Result<ExplorerProcess, ExplorerError> {
-        let addr = self.p2p_public_address.clone().to_http_addr();
+        let mut p2p_public_address = self.p2p_public_address.clone();
+        let port = match p2p_public_address.pop().unwrap() {
+            multiaddr::Protocol::Tcp(port) => port,
+            _ => todo!("explorer can only be attached through grpc(http)"),
+        };
+
+        let address = match p2p_public_address.pop().unwrap() {
+            multiaddr::Protocol::Ip4(address) => address,
+            _ => todo!("only ipv4 supported for now"),
+        };
 
         ExplorerProcess::new(
             ExplorerConfigurationBuilder::default()
-                .address(addr)
-                .log_dir(self.temp_dir())
+                .address(format!("http://{}:{}/", address, port))
                 .params(params)
                 .build(),
         )
@@ -336,10 +316,7 @@ impl JormungandrProcess {
         TimeEra::new(
             (block_date.slot() as u64).into(),
             chain_time::Epoch(block_date.epoch()),
-            self.block0_configuration
-                .blockchain_configuration
-                .slots_per_epoch
-                .into(),
+            self.rest().settings().unwrap().slots_per_epoch,
         )
     }
 

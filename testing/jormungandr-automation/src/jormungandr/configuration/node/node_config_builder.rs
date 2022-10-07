@@ -1,9 +1,10 @@
 #![allow(dead_code)]
 
+use crate::jormungandr::get_available_port;
 use jormungandr_lib::{
     interfaces::{
-        Cors, JRpc, LayersConfig, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls,
-        TopicsOfInterest, TrustedPeer,
+        Cors, JRpc, LayersConfig, Log, LogEntry, LogOutput, Mempool, NodeConfig, P2p, Policy, Rest,
+        Tls, TopicsOfInterest, TrustedPeer,
     },
     time::Duration,
 };
@@ -20,20 +21,25 @@ pub struct NodeConfigBuilder {
     pub mempool: Option<Mempool>,
 }
 
+impl NodeConfigBuilder {
+    pub fn with_log_level(mut self, level: impl Into<String>) -> Self {
+        self.log
+            .as_mut()
+            .expect("log not defined, so cannot set the level")
+            .0
+            .level = level.into();
+        self
+    }
+}
+
 const DEFAULT_HOST: &str = "127.0.0.1";
 const DEFAULT_RPC_THREADS_AMOUNT: usize = 1;
 
 impl Default for NodeConfigBuilder {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl NodeConfigBuilder {
-    pub fn new() -> NodeConfigBuilder {
-        let rest_port = super::get_available_port();
-        let public_address_port = super::get_available_port();
-        let jrpc_port = super::get_available_port();
+        let rest_port = get_available_port();
+        let public_address_port = get_available_port();
+        let jrpc_port = get_available_port();
         let grpc_public_address: Multiaddr =
             format!("/ip4/{}/tcp/{}", DEFAULT_HOST, public_address_port)
                 .parse()
@@ -41,7 +47,11 @@ impl NodeConfigBuilder {
 
         NodeConfigBuilder {
             storage: None,
-            log: None,
+            log: Some(Log(LogEntry {
+                level: "trace".to_string(),
+                format: "json".to_string(),
+                output: LogOutput::Stdout,
+            })),
             rest: Rest {
                 listen: format!("{}:{}", DEFAULT_HOST, rest_port).parse().unwrap(),
                 tls: None,
@@ -76,62 +86,74 @@ impl NodeConfigBuilder {
             mempool: Some(Mempool::default()),
         }
     }
+}
 
-    pub fn with_policy(&mut self, policy: Policy) -> &mut Self {
+impl NodeConfigBuilder {
+    pub fn with_policy(mut self, policy: Policy) -> Self {
         self.p2p.policy = Some(policy);
         self
     }
 
-    pub fn with_log(&mut self, log: Log) -> &mut Self {
+    pub fn with_log(mut self, log: Log) -> Self {
         self.log = Some(log);
         self
     }
 
-    pub fn with_trusted_peers(&mut self, trusted_peers: Vec<TrustedPeer>) -> &mut Self {
+    pub fn without_log(mut self) -> Self {
+        self.log = None;
+        self
+    }
+
+    pub fn with_trusted_peers(mut self, trusted_peers: Vec<TrustedPeer>) -> Self {
         self.p2p.trusted_peers = trusted_peers;
         self
     }
 
-    pub fn with_public_address(&mut self, public_address: String) -> &mut Self {
+    pub fn with_public_address(mut self, public_address: String) -> Self {
         self.p2p.public_address = public_address.parse().unwrap();
         self
     }
 
-    pub fn with_listen_address(&mut self, listen_address: String) -> &mut Self {
+    pub fn with_listen_address(mut self, listen_address: String) -> Self {
         self.p2p.listen = Some(listen_address.parse().unwrap());
         self
     }
 
-    pub fn with_rest_tls_config(&mut self, tls: Tls) -> &mut Self {
+    pub fn with_rest_tls_config(mut self, tls: Tls) -> Self {
         self.rest.tls = Some(tls);
         self
     }
 
-    pub fn with_rest_cors_config(&mut self, cors: Cors) -> &mut Self {
+    pub fn with_rest_cors_config(mut self, cors: Cors) -> Self {
         self.rest.cors = Some(cors);
         self
     }
 
-    pub fn with_mempool(&mut self, mempool: Mempool) -> &mut Self {
+    pub fn with_mempool(mut self, mempool: Mempool) -> Self {
         self.mempool = Some(mempool);
         self
     }
 
-    pub fn with_storage(&mut self, path: PathBuf) -> &mut Self {
+    pub fn with_storage(mut self, path: PathBuf) -> Self {
         self.storage = Some(path);
         self
     }
 
-    pub fn build(&self) -> NodeConfig {
+    pub fn build(mut self) -> NodeConfig {
+        //remove id from trusted peers
+        for trusted_peer in self.p2p.trusted_peers.iter_mut() {
+            trusted_peer.id = None;
+        }
+
         NodeConfig {
-            storage: self.storage.clone(),
-            log: self.log.clone(),
-            rest: self.rest.clone(),
-            jrpc: self.jrpc.clone(),
-            p2p: self.p2p.clone(),
-            mempool: self.mempool.clone(),
             bootstrap_from_trusted_peers: Some(!self.p2p.trusted_peers.is_empty()),
             skip_bootstrap: Some(self.p2p.trusted_peers.is_empty()),
+            storage: self.storage,
+            log: self.log,
+            rest: self.rest,
+            jrpc: self.jrpc,
+            p2p: self.p2p,
+            mempool: self.mempool,
         }
     }
 }

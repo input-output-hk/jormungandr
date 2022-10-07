@@ -196,7 +196,7 @@ impl Node for JormungandrServerImpl {
                     .map(|b| b.header().version() == BlockVersion::Genesis)
                     .unwrap_or(false)
             {
-                block = Ok(Block0ConfigurationBuilder::new().build().to_block());
+                block = Ok(Block0ConfigurationBuilder::default().build().to_block());
             }
 
             blocks.push(block);

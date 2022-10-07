@@ -67,6 +67,15 @@ impl From<NumberOfSlotsPerEpoch> for ConfigParam {
     }
 }
 
+impl TryFrom<u32> for NumberOfSlotsPerEpoch {
+    type Error = TryFromNumberOfSlotsPerEpochError;
+
+    fn try_from(slots: u32) -> Result<Self, Self::Error> {
+        NumberOfSlotsPerEpoch::new(slots)
+            .ok_or(TryFromNumberOfSlotsPerEpochError::Invalid { slots })
+    }
+}
+
 impl fmt::Display for NumberOfSlotsPerEpoch {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)

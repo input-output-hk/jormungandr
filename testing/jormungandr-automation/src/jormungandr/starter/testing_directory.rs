@@ -47,6 +47,17 @@ impl TestingDirectory {
     }
 }
 
+impl TryInto<TempDir> for TestingDirectory {
+    type Error = Error;
+
+    fn try_into(self) -> Result<TempDir, Self::Error> {
+        match self {
+            TestingDirectory::Temp(temp) => Ok(temp),
+            TestingDirectory::User(_) => Err(Error::CannotConvertToTempDir),
+        }
+    }
+}
+
 impl PathChild for TestingDirectory {
     fn child<P>(&self, path: P) -> ChildPath
     where
@@ -115,4 +126,6 @@ impl<'de> Deserialize<'de> for TestingDirectory {
 pub enum Error {
     #[error(transparent)]
     Fixture(#[from] FixtureError),
+    #[error("cannot convert to temp dir us user directory is used")]
+    CannotConvertToTempDir,
 }

@@ -2,7 +2,7 @@ use crate::crypto::{hash::Hash, key::SigningKey};
 use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct NodeSecret {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bft: Option<Bft>,

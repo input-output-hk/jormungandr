@@ -5,8 +5,8 @@ mod version;
 use crate::testing::{decompress, CachedReleases, GitHubApiBuilder, Release};
 use assert_fs::{fixture::PathChild, prelude::*};
 pub use config::{
-    LegacyConfigConverter, LegacyConfigConverterError, LegacyNodeConfigConverter,
-    NodeConfig as LegacyNodeConfig,
+    LegacyConfigError, LegacyNodeConfig, LegacyNodeConfigBuilder, LegacyNodeConfigConverter,
+    LegacyNodeConfigManager,
 };
 pub use jormungandr_lib::interfaces::{
     Log, Mempool, NodeConfig, P2p, Policy, Rest, TopicsOfInterest, TrustedPeer,
