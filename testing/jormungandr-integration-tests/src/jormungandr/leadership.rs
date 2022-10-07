@@ -1,7 +1,10 @@
-use crate::startup;
+use crate::{startup, startup::SingleNodeTestBootstrapper};
+use assert_fs::TempDir;
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, StartupVerificationMode},
+    jormungandr::{
+        Block0ConfigurationBuilder, JormungandrProcess, NodeConfigBuilder, StartupVerificationMode,
+    },
 };
 use jormungandr_lib::interfaces::LeadershipLogStatus;
 use std::time::Duration;
@@ -9,20 +12,24 @@ use std::time::Duration;
 #[test]
 fn verify_genesis_praos_leadership_logs_parent_hash() {
     let faucet = thor::Wallet::default();
-    let (jormungandr, _) =
-        startup::start_stake_pool(&[faucet], &[], &mut ConfigurationBuilder::new()).unwrap();
+    let (jormungandr, _) = startup::start_stake_pool(
+        &[faucet],
+        &[],
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default(),
+    )
+    .unwrap();
 
     verify_leadership_logs_parent_hash(jormungandr);
 }
 
 #[test]
 fn verify_bft_leadership_logs_parent_hash() {
-    let jormungandr = startup::start_bft(
-        vec![&thor::Wallet::default()],
-        &mut ConfigurationBuilder::new(),
-    )
-    .unwrap();
-
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build()
+        .start_node(TempDir::new().unwrap())
+        .unwrap();
     verify_leadership_logs_parent_hash(jormungandr);
 }
 

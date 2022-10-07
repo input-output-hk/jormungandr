@@ -1,4 +1,5 @@
-use crate::startup;
+use crate::startup::SingleNodeTestBootstrapper;
+use assert_fs::TempDir;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate;
 use chain_impl_mockchain::{
@@ -8,15 +9,16 @@ use chain_impl_mockchain::{
     vote::Choice,
 };
 use jormungandr_automation::{
-    jormungandr::ConfigurationBuilder,
+    jormungandr::Block0ConfigurationBuilder,
     testing::{time, VotePlanBuilder},
 };
 use jormungandr_lib::interfaces::{AccountVotes, InitialToken};
 use std::{collections::HashMap, time::Duration};
-use thor::FragmentSenderSetup;
+use thor::{Block0ConfigurationBuilderExtension, FragmentSenderSetup};
 
 #[test]
 pub fn list_cast_votes_for_active_vote_plan() {
+    let temp_dir = TempDir::new().unwrap();
     let mut alice = thor::Wallet::default();
     let bob = thor::Wallet::default();
     let wait_time = Duration::from_secs(2);
@@ -31,20 +33,24 @@ pub fn list_cast_votes_for_active_vote_plan() {
         .public()
         .build();
 
-    let jormungandr = startup::start_bft(
-        vec![&alice, &bob],
-        ConfigurationBuilder::new()
-            .with_discrimination(discrimination)
-            .with_slots_per_epoch(20)
-            .with_slot_duration(3)
-            .with_linear_fees(LinearFee::new(0, 0, 0))
-            .with_token(InitialToken {
-                token_id: vote_plan.voting_token().clone().into(),
-                policy: MintingPolicy::new().into(),
-                to: vec![alice.to_initial_token(1_000)],
-            }),
-    )
-    .unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallets_having_some_values(vec![&alice, &bob])
+                .with_discrimination(discrimination)
+                .with_slots_per_epoch(20.try_into().unwrap())
+                .with_slot_duration(3.try_into().unwrap())
+                .with_linear_fees(LinearFee::new(0, 0, 0))
+                .with_token(InitialToken {
+                    token_id: vote_plan.voting_token().clone().into(),
+                    policy: MintingPolicy::new().into(),
+                    to: vec![alice.to_initial_token(1_000)],
+                }),
+        )
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     assert!(jormungandr
         .rest()
@@ -58,7 +64,7 @@ pub fn list_cast_votes_for_active_vote_plan() {
     let proposals_ids = vec![0u8, 1u8, 2u8];
 
     thor::FragmentChainSender::from_with_setup(
-        jormungandr.block0_configuration(),
+        &jormungandr.rest().settings().unwrap(),
         jormungandr.to_remote(),
         FragmentSenderSetup::no_verify(),
     )
@@ -115,6 +121,7 @@ pub fn list_cast_votes_for_already_finished_vote_plan() {
     let mut alice = thor::Wallet::default();
     let wait_time = Duration::from_secs(2);
     let discrimination = Discrimination::Test;
+    let temp_dir = TempDir::new().unwrap();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
@@ -125,25 +132,31 @@ pub fn list_cast_votes_for_already_finished_vote_plan() {
         .public()
         .build();
 
-    let jormungandr = startup::start_bft(
-        vec![&alice],
-        ConfigurationBuilder::new()
-            .with_discrimination(discrimination)
-            .with_slots_per_epoch(20)
-            .with_slot_duration(3)
-            .with_linear_fees(LinearFee::new(0, 0, 0))
-            .with_token(InitialToken {
-                token_id: vote_plan.voting_token().clone().into(),
-                policy: MintingPolicy::new().into(),
-                to: vec![alice.to_initial_token(1_000_000)],
-            }),
-    )
-    .unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallets_having_some_values(vec![&alice])
+                .with_discrimination(discrimination)
+                .with_slots_per_epoch(20.try_into().unwrap())
+                .with_slot_duration(3.try_into().unwrap())
+                .with_linear_fees(LinearFee::new(0, 0, 0))
+                .with_token(InitialToken {
+                    token_id: vote_plan.voting_token().clone().into(),
+                    policy: MintingPolicy::new().into(),
+                    to: vec![alice.to_initial_token(1_000_000)],
+                }),
+        )
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     let proposals_ids = vec![0u8, 1u8, 2u8];
 
+    let settings = jormungandr.rest().settings().unwrap();
+
     thor::FragmentChainSender::from_with_setup(
-        jormungandr.block0_configuration(),
+        &settings,
         jormungandr.to_remote(),
         FragmentSenderSetup::no_verify(),
     )
@@ -187,18 +200,23 @@ pub fn list_cast_votes_for_already_finished_vote_plan() {
 
 #[test]
 pub fn list_casted_votes_for_non_voted() {
+    let temp_dir = TempDir::new().unwrap();
     let alice = thor::Wallet::default();
     let discrimination = Discrimination::Test;
 
-    let jormungandr = startup::start_bft(
-        vec![&alice],
-        ConfigurationBuilder::new()
-            .with_discrimination(discrimination)
-            .with_slots_per_epoch(20)
-            .with_slot_duration(3)
-            .with_linear_fees(LinearFee::new(0, 0, 0)),
-    )
-    .unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallets_having_some_values(vec![&alice])
+                .with_discrimination(discrimination)
+                .with_slots_per_epoch(20.try_into().unwrap())
+                .with_slot_duration(3.try_into().unwrap())
+                .with_linear_fees(LinearFee::new(0, 0, 0)),
+        )
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     let vote_plan = VotePlanBuilder::new()
         .proposals_count(3)
@@ -223,6 +241,7 @@ pub fn list_casted_votes_for_non_voted() {
 
 #[test]
 pub fn list_cast_votes_count() {
+    let temp_dir = TempDir::new().unwrap();
     let mut alice = thor::Wallet::default();
     let mut bob = thor::Wallet::default();
     let wait_time = Duration::from_secs(2);
@@ -246,26 +265,30 @@ pub fn list_cast_votes_count() {
         .public()
         .build();
 
-    let jormungandr = startup::start_bft(
-        vec![&alice, &bob],
-        ConfigurationBuilder::new()
-            .with_discrimination(discrimination)
-            .with_slots_per_epoch(20)
-            .with_slot_duration(3)
-            .with_linear_fees(LinearFee::new(0, 0, 0))
-            .with_token(InitialToken {
-                token_id: vote_plan_1.voting_token().clone().into(),
-                policy: MintingPolicy::new().into(),
-                to: vec![
-                    alice.to_initial_token(1_000_000),
-                    bob.to_initial_token(1_000_000),
-                ],
-            }),
-    )
-    .unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallets_having_some_values(vec![&alice, &bob])
+                .with_discrimination(discrimination)
+                .with_slots_per_epoch(20.try_into().unwrap())
+                .with_slot_duration(3.try_into().unwrap())
+                .with_linear_fees(LinearFee::new(0, 0, 0))
+                .with_token(InitialToken {
+                    token_id: vote_plan_1.voting_token().clone().into(),
+                    policy: MintingPolicy::new().into(),
+                    to: vec![
+                        alice.to_initial_token(1_000_000),
+                        bob.to_initial_token(1_000_000),
+                    ],
+                }),
+        )
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     thor::FragmentChainSender::from_with_setup(
-        jormungandr.block0_configuration(),
+        &jormungandr.rest().settings().unwrap(),
         jormungandr.to_remote(),
         FragmentSenderSetup::no_verify(),
     )

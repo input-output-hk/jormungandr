@@ -4,7 +4,7 @@ use crate::networking::{
 };
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+    config::{BlockchainConfiguration, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_lib::{interfaces::Policy, time::Duration};
 
@@ -23,7 +23,7 @@ pub fn node_whitelist_itself() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(SERVER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(SERVER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -66,7 +66,7 @@ pub fn node_does_not_quarantine_whitelisted_node() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER))
                 .with_node(Node::new(CLIENT_2).with_trusted_peer(SERVER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(SERVER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(SERVER))
         .build()
         .unwrap();
 
@@ -117,7 +117,7 @@ pub fn node_put_in_quarantine_nodes_which_are_not_whitelisted() {
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER))
                 .with_node(Node::new(CLIENT_2).with_trusted_peer(SERVER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(SERVER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(SERVER))
         .build()
         .unwrap();
 
@@ -182,7 +182,7 @@ pub fn node_does_not_quarantine_trusted_node() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(SERVER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(SERVER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)

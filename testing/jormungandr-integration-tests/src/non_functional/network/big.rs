@@ -3,7 +3,7 @@ use chain_impl_mockchain::{chaintypes::ConsensusVersion, milli::Milli, value::Va
 use function_name::named;
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SpawnParams, WalletTemplate},
+    config::{BlockchainConfiguration, SpawnParams, WalletTemplate},
     controller::Controller,
 };
 use jormungandr_automation::{
@@ -45,7 +45,7 @@ fn prepare_real_scenario(
     let mut builder = NetworkBuilder::default();
     let mut topology = Topology::default().with_node(Node::new(CORE_NODE));
 
-    let mut blockchain = Blockchain::default()
+    let mut blockchain = BlockchainConfiguration::default()
         .with_consensus(consensus)
         .with_slot_duration(SlotDuration::new(1).unwrap())
         .with_consensus_genesis_praos_active_slot_coeff(
@@ -187,21 +187,19 @@ pub fn real_network(
     let releases = download_last_n_releases(1);
     let last_release = releases.last().unwrap();
     let legacy_app = get_jormungandr_bin(last_release, controller.working_directory());
-    let version = last_release.version();
 
     let mut legacy_leaders = vec![];
 
     for i in 0..(relay_nodes_count * legacies_per_relay) {
         legacy_leaders.push(
             controller
-                .spawn_legacy(
+                .spawn(
                     SpawnParams::new(&legacy_name(i + 1))
                         .persistence_mode(persistence_mode)
-                        .jormungandr(legacy_app.clone()),
-                    &version,
+                        .jormungandr(legacy_app.clone())
+                        .version(last_release.version()),
                 )
-                .unwrap()
-                .0,
+                .unwrap(),
         );
     }
 

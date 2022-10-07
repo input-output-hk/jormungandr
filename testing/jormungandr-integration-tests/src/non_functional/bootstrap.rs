@@ -1,7 +1,9 @@
+use crate::startup::{LegacySingleNodeTestBootstrapper, SingleNodeTestBootstrapper};
 use assert_fs::{fixture::PathChild, TempDir};
 use jormungandr_automation::{
     jormungandr::{
-        download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter,
+        download_last_n_releases, get_jormungandr_bin, Block0ConfigurationBuilder,
+        JormungandrBootstrapper, LegacyNodeConfigBuilder, NodeConfigBuilder,
         StartupVerificationMode,
     },
     testing::{BranchCount, StopCriteria, StorageBuilder},
@@ -23,25 +25,36 @@ pub fn bootstrap_from_100_mb_storage() {
     );
     storage_builder.build();
 
-    let config = ConfigurationBuilder::new()
-        .with_slots_per_epoch(20)
-        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-        .with_storage(&child)
-        .build(&temp_dir);
+    let config = Block0ConfigurationBuilder::default()
+        .with_slots_per_epoch(20.try_into().unwrap())
+        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
 
-    let jormungandr = Starter::new()
+    let node_config = NodeConfigBuilder::default().with_storage(child.to_path_buf());
+
+    let test_context = SingleNodeTestBootstrapper::default()
+        .with_node_config(node_config)
+        .with_block0_config(config)
+        .as_bft_leader()
+        .build();
+
+    let mut jormungandr = test_context
+        .starter(temp_dir)
+        .unwrap()
         .timeout(Duration::from_secs(24_000))
-        .config(config.clone())
         .benchmark(&format!("bootstrap from {} MB storage", storage_size))
         .verify_by(StartupVerificationMode::Rest)
         .start()
         .unwrap();
 
+    let temp_dir = jormungandr.steal_temp_dir().unwrap().try_into().unwrap();
     jormungandr.shutdown();
 
-    let jormungandr = Starter::new()
+    let mut jormungandr = JormungandrBootstrapper::default()
+        .with_node_config(test_context.node_config())
+        .with_block0_configuration(test_context.block0_config())
+        .into_starter(temp_dir)
+        .unwrap()
         .timeout(Duration::from_secs(24_000))
-        .config(config.clone())
         .benchmark(&format!(
             "bootstrap from {} MB storage after restart",
             storage_size
@@ -50,11 +63,15 @@ pub fn bootstrap_from_100_mb_storage() {
         .start()
         .unwrap();
 
+    let temp_dir = jormungandr.steal_temp_dir().unwrap().try_into().unwrap();
     jormungandr.stop();
 
-    let _jormungandr = Starter::new()
+    let _jormungandr = JormungandrBootstrapper::default()
+        .with_node_config(test_context.node_config())
+        .with_block0_configuration(test_context.block0_config())
+        .into_starter(temp_dir)
+        .unwrap()
         .timeout(Duration::from_secs(24_000))
-        .config(config)
         .benchmark(&format!(
             "bootstrap from {} MB storage after kill",
             storage_size
@@ -78,19 +95,27 @@ pub fn legacy_bootstrap_from_1_gb_storage() {
     );
     storage_builder.build();
 
-    let config = ConfigurationBuilder::new()
-        .with_slots_per_epoch(20)
-        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-        .with_storage(&child)
-        .build(&temp_dir);
+    let block0_config = Block0ConfigurationBuilder::default()
+        .with_slots_per_epoch(20.try_into().unwrap())
+        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
+
+    let node_config = LegacyNodeConfigBuilder::default().with_storage(child.to_path_buf());
 
     let legacy_release = download_last_n_releases(1).get(0).cloned().unwrap();
     let jormungandr_app = get_jormungandr_bin(&legacy_release, &temp_dir);
 
-    let jormungandr = Starter::new()
+    let test_context = LegacySingleNodeTestBootstrapper::from(legacy_release.version())
+        .with_block0_config(block0_config)
+        .as_bft_leader()
+        .with_jormungandr_app(jormungandr_app.clone())
+        .with_node_config(node_config)
+        .build()
+        .unwrap();
+
+    let mut jormungandr = test_context
+        .starter(temp_dir)
+        .unwrap()
         .timeout(Duration::from_secs(24_000))
-        .config(config.clone())
-        .legacy(legacy_release.version())
         .jormungandr_app(jormungandr_app.clone())
         .benchmark(&format!(
             "legacy {} bootstrap from {} MB storage",
@@ -101,12 +126,15 @@ pub fn legacy_bootstrap_from_1_gb_storage() {
         .start()
         .unwrap();
 
+    let temp_dir = jormungandr.steal_temp_dir().unwrap().try_into().unwrap();
     jormungandr.shutdown();
 
-    let jormungandr = Starter::new()
+    let mut jormungandr = JormungandrBootstrapper::default()
+        .with_legacy_node_config(test_context.legacy_node_config.clone())
+        .with_block0_configuration(test_context.block0_config())
+        .into_starter(temp_dir)
+        .unwrap()
         .timeout(Duration::from_secs(24_000))
-        .config(config.clone())
-        .legacy(legacy_release.version())
         .jormungandr_app(jormungandr_app.clone())
         .benchmark(&format!(
             "legacy {} bootstrap from {} MB storage after restart",
@@ -117,12 +145,14 @@ pub fn legacy_bootstrap_from_1_gb_storage() {
         .start()
         .unwrap();
 
+    let temp_dir = jormungandr.steal_temp_dir().unwrap().try_into().unwrap();
     jormungandr.stop();
 
-    let _jormungandr = Starter::new()
-        .timeout(Duration::from_secs(24_000))
-        .config(config)
-        .legacy(legacy_release.version())
+    let _jormungandr = JormungandrBootstrapper::default()
+        .with_legacy_node_config(test_context.legacy_node_config.clone())
+        .with_block0_configuration(test_context.block0_config())
+        .into_starter(temp_dir)
+        .unwrap()
         .jormungandr_app(jormungandr_app)
         .benchmark(&format!(
             "legacy {} bootstrap from {} MB storage after kill",

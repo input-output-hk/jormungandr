@@ -1,21 +1,25 @@
+use crate::startup::SingleNodeTestBootstrapper;
 use assert_fs::TempDir;
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, JormungandrRest, Starter};
+use jormungandr_automation::jormungandr::{JormungandrRest, NodeConfigBuilder, StartupError};
 use jormungandr_lib::interfaces::Cors;
 
 #[test]
 pub fn cors_illegal_domain() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new().unwrap();
 
-    let config = ConfigurationBuilder::new()
-        .with_rest_cors_config(Cors {
-            allowed_origins: vec!["http://domain.com".to_owned().into()],
-            max_age_secs: None,
-            allowed_headers: vec![],
-            allowed_methods: vec![],
-        })
-        .build(&temp_dir);
+    let config = NodeConfigBuilder::default().with_rest_cors_config(Cors {
+        allowed_origins: vec!["http://domain.com".to_string().into()],
+        max_age_secs: None,
+        allowed_headers: vec![],
+        allowed_methods: vec![],
+    });
 
-    let jormungandr = Starter::new().config(config).start().unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_node_config(config)
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     let mut rest_client = jormungandr.rest();
     rest_client.set_origin("http://other_domain.com");
@@ -35,21 +39,22 @@ fn assert_request_failed_due_to_cors(
 }
 
 #[test]
-pub fn cors_malformed_domain_no_http() -> Result<(), Box<dyn std::error::Error>> {
+pub fn cors_malformed_domain_no_http() -> Result<(), StartupError> {
     let temp_dir = TempDir::new().unwrap();
-    let config = ConfigurationBuilder::new()
-        .with_rest_cors_config(Cors {
-            allowed_origins: vec!["domain.com".to_owned().into()],
-            max_age_secs: None,
-            allowed_headers: vec![],
-            allowed_methods: vec![],
-        })
-        .build(&temp_dir);
+    let config = NodeConfigBuilder::default().with_rest_cors_config(Cors {
+        allowed_origins: vec!["domain.com".to_owned().into()],
+        max_age_secs: None,
+        allowed_headers: vec![],
+        allowed_methods: vec![],
+    });
 
-    Starter::new()
-        .config(config)
-        .start_fail("invalid value: string \"domain.com\"");
-    Ok(())
+    SingleNodeTestBootstrapper::default()
+        .with_node_config(config)
+        .as_bft_leader()
+        .build()
+        .starter(temp_dir)
+        .unwrap()
+        .start_should_fail_with_message("invalid value: string \"domain.com\"")
 }
 
 #[test]
@@ -57,16 +62,19 @@ pub fn cors_malformed_domain_no_http() -> Result<(), Box<dyn std::error::Error>>
 pub fn cors_ip_versus_domain() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new().unwrap();
 
-    let config = ConfigurationBuilder::new()
-        .with_rest_cors_config(Cors {
-            allowed_origins: vec!["http://127.0.0.1".to_owned().into()],
-            max_age_secs: None,
-            allowed_headers: vec![],
-            allowed_methods: vec![],
-        })
-        .build(&temp_dir);
+    let config = NodeConfigBuilder::default().with_rest_cors_config(Cors {
+        allowed_origins: vec!["http://127.0.0.1".to_owned().into()],
+        max_age_secs: None,
+        allowed_headers: vec![],
+        allowed_methods: vec![],
+    });
 
-    let jormungandr = Starter::new().config(config).start_async().unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_node_config(config)
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     let mut rest_client = jormungandr.rest();
     rest_client.set_origin("http://localhost");
@@ -76,24 +84,24 @@ pub fn cors_ip_versus_domain() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-pub fn cors_wrong_delimiter() -> Result<(), Box<dyn std::error::Error>> {
+pub fn cors_wrong_delimiter() -> Result<(), StartupError> {
     let temp_dir = TempDir::new().unwrap();
 
-    let config = ConfigurationBuilder::new()
-        .with_rest_cors_config(Cors {
-            allowed_origins: vec!["http://domain.com,http://other_domain.com"
-                .to_owned()
-                .into()],
-            max_age_secs: None,
-            allowed_headers: vec![],
-            allowed_methods: vec![],
-        })
-        .build(&temp_dir);
+    let config = NodeConfigBuilder::default().with_rest_cors_config(Cors {
+        allowed_origins: vec!["http://domain.com,http://other_domain.com"
+            .to_owned()
+            .into()],
+        max_age_secs: None,
+        allowed_headers: vec![],
+        allowed_methods: vec![],
+    });
 
-    Starter::new()
-        .config(config)
-        .start_fail("rest.cors.allowed_origins[0]: invalid value");
-    Ok(())
+    SingleNodeTestBootstrapper::default()
+        .with_node_config(config)
+        .as_bft_leader()
+        .build()
+        .starter(temp_dir)?
+        .start_should_fail_with_message("rest.cors.allowed_origins[0]: invalid value")
 }
 
 #[test]
@@ -101,16 +109,19 @@ pub fn cors_wrong_delimiter() -> Result<(), Box<dyn std::error::Error>> {
 pub fn cors_single_domain() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new().unwrap();
 
-    let config = ConfigurationBuilder::new()
-        .with_rest_cors_config(Cors {
-            allowed_origins: vec!["http://domain.com".to_owned().into()],
-            max_age_secs: None,
-            allowed_headers: vec![],
-            allowed_methods: vec![],
-        })
-        .build(&temp_dir);
+    let config = NodeConfigBuilder::default().with_rest_cors_config(Cors {
+        allowed_origins: vec!["http://domain.com".to_owned().into()],
+        max_age_secs: None,
+        allowed_headers: vec![],
+        allowed_methods: vec![],
+    });
 
-    let jormungandr = Starter::new().config(config).start_async().unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_node_config(config)
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     let mut rest_client = jormungandr.rest();
     rest_client.set_origin("http://domain.com");
@@ -125,16 +136,21 @@ pub fn cors_single_domain() -> Result<(), Box<dyn std::error::Error>> {
 pub fn cors_https() -> Result<(), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new().unwrap();
 
-    let config = ConfigurationBuilder::new()
-        .with_rest_cors_config(Cors {
-            allowed_origins: vec!["https://domain.com".to_owned().into()],
-            max_age_secs: None,
-            allowed_headers: vec![],
-            allowed_methods: vec![],
-        })
-        .build(&temp_dir);
+    let config = NodeConfigBuilder::default().with_rest_cors_config(Cors {
+        allowed_origins: vec!["https://domain.com".to_owned().into()],
+        max_age_secs: None,
+        allowed_headers: vec![],
+        allowed_methods: vec![],
+    });
 
-    let jormungandr = Starter::new().config(config).start_async().unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_node_config(config)
+        .as_bft_leader()
+        .build()
+        .starter(temp_dir)
+        .unwrap()
+        .start_async()
+        .unwrap();
 
     let mut rest_client = jormungandr.rest();
     rest_client.set_origin("https://domain.com");
@@ -145,23 +161,25 @@ pub fn cors_https() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-pub fn cors_multi_domain() -> Result<(), Box<dyn std::error::Error>> {
+pub fn cors_multi_domain() -> Result<(), StartupError> {
     let temp_dir = TempDir::new().unwrap();
 
-    let config = ConfigurationBuilder::new()
-        .with_rest_cors_config(Cors {
-            allowed_origins: vec!["http://domain.com;http://other_domain.com"
-                .to_owned()
-                .into()],
-            max_age_secs: None,
-            allowed_headers: vec![],
-            allowed_methods: vec![],
-        })
-        .build(&temp_dir);
+    let config = NodeConfigBuilder::default().with_rest_cors_config(Cors {
+        allowed_origins: vec!["http://domain.com;http://other_domain.com"
+            .to_owned()
+            .into()],
+        max_age_secs: None,
+        allowed_headers: vec![],
+        allowed_methods: vec![],
+    });
 
-    Starter::new()
-        .config(config)
-        .start_fail("invalid value: string \"http://domain.com;http://other_domain.com\"");
-
-    Ok(())
+    SingleNodeTestBootstrapper::default()
+        .with_node_config(config)
+        .as_bft_leader()
+        .build()
+        .starter(temp_dir)
+        .unwrap()
+        .start_should_fail_with_message(
+            "invalid value: string \"http://domain.com;http://other_domain.com\"",
+        )
 }

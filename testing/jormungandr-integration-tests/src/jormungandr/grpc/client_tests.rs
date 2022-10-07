@@ -1,5 +1,5 @@
 use super::setup;
-use chain_core::property::{Block as _, FromStr};
+use chain_core::property::Block as _;
 use chain_crypto::{Ed25519, PublicKey, Signature, Verification};
 use chain_impl_mockchain::{
     block::{BlockDate, Header},
@@ -13,7 +13,8 @@ use chain_impl_mockchain::{
 use chain_time::{Epoch, TimeEra};
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{grpc::client::MockClientError, ConfigurationBuilder},
+    jormungandr::{grpc::client::MockClientError, Block0ConfigurationBuilder},
+    testing::block0::Block0ConfigurationExtension,
 };
 use jormungandr_lib::interfaces::InitialUTxO;
 use rand::Rng;
@@ -39,7 +40,7 @@ pub fn handshake_sanity() {
     let handshake_response = setup.client.handshake(&auth_nonce);
 
     assert_eq!(
-        *setup.config.genesis_block_hash(),
+        setup.block0_config.to_block_hash().to_string(),
         hex::encode(handshake_response.block0),
         "Genesis Block"
     );
@@ -60,9 +61,7 @@ pub fn handshake_sanity() {
 #[test]
 pub fn tip_request() {
     let setup = setup::client::bootstrap(
-        ConfigurationBuilder::new()
-            .with_slot_duration(15)
-            .to_owned(),
+        Block0ConfigurationBuilder::default().with_slot_duration(15.try_into().unwrap()),
     );
 
     setup
@@ -147,7 +146,7 @@ pub fn pull_blocks_to_tip_correct_hash() {
 
     let blocks = setup
         .client
-        .pull_blocks_to_tip(Hash::from_str(setup.config.genesis_block_hash()).unwrap())
+        .pull_blocks_to_tip(setup.block0_config.to_block_hash().into_hash())
         .unwrap();
 
     let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header().hash()).collect();
@@ -166,18 +165,18 @@ pub fn pull_range_invalid_params() {
     let setup = setup::client::default();
 
     std::thread::sleep(Duration::from_secs(10)); // wait for the server to produce some blocks
-    let gen_hash = Hash::from_str(setup.config.genesis_block_hash()).unwrap();
+    let gen_hash = setup.block0_config.to_block_hash();
     let client = setup.client;
     let tip_hash = client.tip().hash();
     let fake_hash = TestGen::hash();
     let error = MockClientError::InvalidRequest(
-        "not found (Could not find a known block in `from`)".into(),
+        "not found (Could not find a known block in `from`)".to_string(),
     );
 
     let invalid_params: [(&[Hash], Hash); 3] = [
         (&[], tip_hash),
         (&[fake_hash], tip_hash),
-        (&[gen_hash], fake_hash),
+        (&[gen_hash.into_hash()], fake_hash),
     ];
     for (from, to) in invalid_params.iter() {
         assert_eq!(error, client.pull_headers(from, *to).err().unwrap());
@@ -220,8 +219,7 @@ pub fn push_headers() {
         0u64.into(),
         Epoch(0u32),
         setup
-            .config
-            .block0_configuration()
+            .block0_config
             .blockchain_configuration
             .slots_per_epoch
             .into(),
@@ -245,8 +243,7 @@ pub fn upload_block_incompatible_protocol() {
         0u64.into(),
         Epoch(0u32),
         setup
-            .config
-            .block0_configuration()
+            .block0_config
             .blockchain_configuration
             .slots_per_epoch
             .into(),
@@ -258,7 +255,7 @@ pub fn upload_block_incompatible_protocol() {
 
     assert_eq!(
         MockClientError::InvalidRequest(
-            "invalid request data (the block header verification failed)".into()
+            "invalid request data (the block header verification failed)".to_string()
         ),
         setup.client.upload_blocks(block).err().unwrap()
     );
@@ -268,9 +265,7 @@ pub fn upload_block_incompatible_protocol() {
 #[test]
 pub fn upload_block_nonexisting_stake_pool() {
     let setup = setup::client::bootstrap(
-        ConfigurationBuilder::new()
-            .with_block0_consensus(ConsensusVersion::GenesisPraos)
-            .to_owned(),
+        Block0ConfigurationBuilder::default().with_block0_consensus(ConsensusVersion::GenesisPraos),
     );
     let tip_header = setup.client.tip();
     let stake_pool = StakePoolBuilder::new().build();
@@ -279,8 +274,7 @@ pub fn upload_block_nonexisting_stake_pool() {
         0u64.into(),
         Epoch(0u32),
         setup
-            .config
-            .block0_configuration()
+            .block0_config
             .blockchain_configuration
             .slots_per_epoch
             .into(),
@@ -292,7 +286,7 @@ pub fn upload_block_nonexisting_stake_pool() {
 
     assert_eq!(
         MockClientError::InvalidRequest(
-            "invalid request data (the block header verification failed)".into()
+            "invalid request data (the block header verification failed)".to_string()
         ),
         setup.client.upload_blocks(block).err().unwrap()
     );
@@ -303,20 +297,19 @@ pub fn upload_block_nonexisting_stake_pool() {
 pub fn get_fragments() {
     let sender = thor::Wallet::default();
     let receiver = thor::Wallet::default();
-    let config = ConfigurationBuilder::new()
-        .with_slot_duration(4)
-        .with_funds(vec![InitialUTxO {
+    let config = Block0ConfigurationBuilder::default()
+        .with_slot_duration(4.try_into().unwrap())
+        .with_utxos(vec![InitialUTxO {
             address: sender.address(),
             value: 100.into(),
-        }])
-        .to_owned();
+        }]);
 
     let setup = setup::client::bootstrap(config);
     let output_value = 1u64;
     let jcli: JCli = Default::default();
     let transaction = thor::FragmentBuilder::new(
-        &setup.server.genesis_block_hash(),
-        &setup.server.fees(),
+        &setup.block0_config.to_block_hash(),
+        &setup.block0_config.blockchain_configuration.linear_fees,
         BlockDate::first().next_epoch(),
     )
     .transaction(&sender, receiver.address(), output_value.into())
@@ -336,10 +329,10 @@ pub fn pull_blocks_correct_hashes_all_blocks() {
     let setup = setup::client::default();
     std::thread::sleep(Duration::from_secs(10)); // wait for the server to produce some blocks
 
-    let genesis_block_hash = Hash::from_str(setup.config.genesis_block_hash()).unwrap();
+    let genesis_block_hash = setup.block0_config.to_block_hash();
     let blocks = setup
         .client
-        .pull_blocks(&[genesis_block_hash], setup.client.tip().id())
+        .pull_blocks(&[genesis_block_hash.into_hash()], setup.client.tip().id())
         .unwrap();
 
     let blocks_hashes: Vec<Hash> = blocks.iter().map(|x| x.header().hash()).collect();
@@ -440,9 +433,7 @@ pub fn test_watch_block_subscription_blocks_are_in_logs() {
 #[test]
 pub fn test_watch_tip_subscription_is_current_tip() {
     let setup = setup::client::bootstrap(
-        ConfigurationBuilder::new()
-            .with_slot_duration(3u8)
-            .to_owned(),
+        Block0ConfigurationBuilder::default().with_slot_duration(3u8.try_into().unwrap()),
     );
     let rest = setup.server.rest();
     let watch_client = setup.watch_client;

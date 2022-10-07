@@ -4,7 +4,7 @@ use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
         explorer::{configuration::ExplorerParams, verifiers::ExplorerVerifier},
-        ConfigurationBuilder,
+        Block0ConfigurationBuilder,
     },
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
@@ -21,19 +21,18 @@ pub fn explorer_transaction_test() {
     let query_complexity_limit = 140;
     let attempts_number = 20;
 
-    let mut config = ConfigurationBuilder::new();
-    config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
+    let config = Block0ConfigurationBuilder::default()
+        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
 
     let (jormungandr, _initial_stake_pools) =
-        startup::start_stake_pool(&[sender.clone()], &[], &mut config).unwrap();
+        startup::start_stake_pool(&[sender.clone()], &[], config, Default::default()).unwrap();
 
     let params = ExplorerParams::new(query_complexity_limit, None, None);
     let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
-    let transaction = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let transaction = thor::FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     )
     .transaction(&sender, receiver.address(), transaction_value.into())

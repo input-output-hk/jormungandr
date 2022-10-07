@@ -3,7 +3,10 @@ mod noise;
 #[cfg(feature = "soak")]
 mod soak;
 
-use crate::non_functional::voting::config::PrivateVotingLoadTestConfig;
+use crate::{
+    non_functional::voting::config::PrivateVotingLoadTestConfig,
+    startup::SingleNodeTestBootstrapper,
+};
 use assert_fs::TempDir;
 use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::{
@@ -14,7 +17,7 @@ use chain_impl_mockchain::{
     value::Value,
 };
 use jormungandr_automation::{
-    jormungandr::{ConfigurationBuilder, Starter},
+    jormungandr::Block0ConfigurationBuilder,
     testing::{
         benchmark_consumption,
         time::{wait_for_date, wait_for_epoch},
@@ -82,11 +85,10 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
             slot_id: 0,
         },
         &vote_plan,
-    )
-    .into();
+    );
 
-    let config = ConfigurationBuilder::new()
-        .with_fund(committee.to_initial_fund(quick_config.initial_fund_per_wallet()))
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxo(committee.to_initial_fund(quick_config.initial_fund_per_wallet()))
         .with_funds_split_if_needed(
             voters
                 .iter()
@@ -94,17 +96,17 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
                 .collect(),
         )
         .with_committees(&[committee.to_committee_id()])
-        .with_slots_per_epoch(quick_config.slots_in_epoch())
-        .with_certs(vec![vote_plan_cert])
-        .with_slot_duration(quick_config.slot_duration())
+        .with_slots_per_epoch(quick_config.slots_in_epoch().try_into().unwrap())
+        .with_signed_certs(vec![vote_plan_cert.into()])
+        .with_slot_duration(quick_config.slot_duration().try_into().unwrap())
         .with_block_content_max_size(quick_config.block_content_max_size().into())
-        .with_treasury(1_000.into())
-        .build(&temp_dir);
+        .with_treasury(1_000.into());
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let settings = jormungandr.rest().settings().unwrap();
@@ -117,9 +119,8 @@ pub fn private_vote_load_scenario(quick_config: PrivateVotingLoadTestConfig) {
         false,
     );
 
-    let transaction_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+    let transaction_sender = FragmentSender::from_settings(
+        &settings,
         block_date_generator,
         FragmentSenderSetup::no_verify(),
     );
@@ -248,8 +249,8 @@ pub fn adversary_private_vote_load_scenario(
     )
     .into();
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(vec![
             noise_wallet_from.to_initial_fund(1_000_000_000),
             committee.to_initial_fund(quick_config.initial_fund_per_wallet()),
         ])
@@ -260,19 +261,18 @@ pub fn adversary_private_vote_load_scenario(
                 .collect(),
         )
         .with_committees(&[committee.to_committee_id()])
-        .with_slots_per_epoch(quick_config.slots_in_epoch())
-        .with_certs(vec![vote_plan_cert])
-        .with_slot_duration(quick_config.slot_duration())
+        .with_slots_per_epoch(quick_config.slots_in_epoch().try_into().unwrap())
+        .with_signed_certs(vec![vote_plan_cert])
+        .with_slot_duration(quick_config.slot_duration().try_into().unwrap())
         .with_block_content_max_size(quick_config.block_content_max_size().into())
-        .with_treasury(1_000.into())
-        .build(&temp_dir);
+        .with_treasury(1_000.into());
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
-
     let settings = jormungandr.rest().settings().unwrap();
     let block_date_generator = BlockDateGenerator::rolling(
         &settings,
@@ -283,23 +283,21 @@ pub fn adversary_private_vote_load_scenario(
         false,
     );
 
-    let transaction_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+    let transaction_sender = FragmentSender::from_settings(
+        &settings,
         block_date_generator,
         FragmentSenderSetup::no_verify(),
     );
 
-    let adversary_transaction_sender = AdversaryFragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+    let adversary_transaction_sender = AdversaryFragmentSender::try_from_jormungandr(
+        &jormungandr,
         chain_impl_mockchain::block::BlockDate {
             epoch: 1,
             slot_id: 0,
-        }
-        .into(),
+        },
         AdversaryFragmentSenderSetup::no_verify(),
-    );
+    )
+    .unwrap();
 
     let benchmark_consumption_monitor = benchmark_consumption(&quick_config.measurement_name())
         .target(quick_config.target_resources_usage())

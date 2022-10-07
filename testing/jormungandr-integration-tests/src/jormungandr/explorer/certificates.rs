@@ -1,4 +1,4 @@
-use crate::startup;
+use crate::startup::SingleNodeTestBootstrapper;
 use assert_fs::TempDir;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as propertyBlockDate;
@@ -17,7 +17,7 @@ use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
         explorer::{configuration::ExplorerParams, verifiers::ExplorerVerifier},
-        ConfigurationBuilder, Starter,
+        Block0ConfigurationBuilder,
     },
     testing::{
         keys::create_new_key_pair,
@@ -25,9 +25,12 @@ use jormungandr_automation::{
         VotePlanBuilder,
     },
 };
-use jormungandr_lib::interfaces::{BlockContentMaxSize, ConfigParam, ConfigParams, InitialToken};
+use jormungandr_lib::interfaces::{
+    BlockContentMaxSize, ConfigParam, ConfigParams, Initial, InitialToken,
+};
 use thor::{
-    BlockDateGenerator::Fixed, FragmentBuilder, FragmentSender, StakePool, TransactionHash,
+    Block0ConfigurationBuilderExtension, BlockDateGenerator::Fixed, FragmentBuilder,
+    FragmentSender, StakePool, TransactionHash,
 };
 
 const TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT: u64 = 140;
@@ -38,28 +41,22 @@ pub fn explorer_stake_pool_registration_test() {
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![first_stake_pool_owner.to_initial_fund(1_000_000)])
-        .build(&temp_dir);
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
-        .expect("Cannot start jormungandr");
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallet(&first_stake_pool_owner, 1_000_000.into()),
+        )
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
+    let settings = jormungandr.rest().settings().unwrap();
+    let fragment_sender = FragmentSender::from(&settings);
 
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let fragment_builder =
+        FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let params = ExplorerParams::new(
         TRANSACTION_CERTIFICATE_QUERY_COMPLEXITY_LIMIT,
@@ -101,28 +98,21 @@ pub fn explorer_owner_delegation_test() {
     let mut stake_pool_owner = thor::Wallet::default();
     let stake_pool = StakePool::new(&stake_pool_owner);
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![stake_pool_owner.to_initial_fund(1_000_000)])
-        .build(&temp_dir);
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default().with_wallet(&stake_pool_owner, 1_000_000.into()),
+        )
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
-        .expect("Cannot start jormungandr");
+    let settings = jormungandr.rest().settings().unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
+    let fragment_sender = FragmentSender::from(&settings);
 
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let fragment_builder =
+        FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let stake_pool_reg_fragment =
         fragment_builder.stake_pool_registration(&stake_pool_owner, &stake_pool);
@@ -172,29 +162,21 @@ pub fn explorer_full_delegation_test() {
 
     let stake_pool = StakePool::new(&stake_pool_owner);
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
-            stake_pool_owner.to_initial_fund(1_000_000),
-            full_delegator.to_initial_fund(2_000_000),
-        ])
-        .build(&temp_dir);
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallet(&stake_pool_owner, 1_000_000.into())
+                .with_wallet(&full_delegator, 2_000_000.into()),
+        )
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
-        .expect("Cannot start jormungandr");
+    let fragment_sender = FragmentSender::from(&jormungandr.rest().settings().unwrap());
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
-
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_builder = FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     );
 
@@ -248,33 +230,24 @@ pub fn explorer_split_delegation_test() {
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
     let second_stake_pool = StakePool::new(&second_stake_pool_owner);
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
-            first_stake_pool_owner.to_initial_fund(1_000_000),
-            second_stake_pool_owner.to_initial_fund(1_000_000),
-            split_delegator.to_initial_fund(2_000_000),
-        ])
-        .build(&temp_dir);
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallet(&first_stake_pool_owner, 1_000_000.into())
+                .with_wallet(&second_stake_pool_owner, 2_000_000.into())
+                .with_wallet(&split_delegator, 2_000_000.into()),
+        )
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
-        .expect("Cannot start jormungandr");
+    let fragment_sender = FragmentSender::from(&jormungandr.rest().settings().unwrap());
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
-
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_builder = FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     );
-
     let stake_pool_reg_fragment =
         fragment_builder.stake_pool_registration(&first_stake_pool_owner, &first_stake_pool);
 
@@ -341,26 +314,21 @@ pub fn explorer_pool_update_test() {
     let second_stake_pool_owner = thor::Wallet::default();
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![first_stake_pool_owner.to_initial_fund(1_000_000)])
-        .build(&temp_dir);
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallet(&first_stake_pool_owner, 1_000_000.into())
+                .with_wallet(&second_stake_pool_owner, 2_000_000.into()),
+        )
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
-        .expect("Cannot start jormungandr");
+    let fragment_sender = FragmentSender::from(&jormungandr.rest().settings().unwrap());
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
-
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_builder = FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     );
 
@@ -425,26 +393,22 @@ pub fn explorer_pool_retire_test() {
     let mut first_stake_pool_owner = thor::Wallet::default();
     let first_stake_pool = StakePool::new(&first_stake_pool_owner);
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![first_stake_pool_owner.to_initial_fund(1_000_000)])
-        .build(&temp_dir);
+    let second_stake_pool_owner = thor::Wallet::default();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallet(&first_stake_pool_owner, 1_000_000.into())
+                .with_wallet(&second_stake_pool_owner, 2_000_000.into()),
+        )
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
-        .expect("Cannot start jormungandr");
+    let fragment_sender = FragmentSender::from(&jormungandr.rest().settings().unwrap());
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
-
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_builder = FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     );
 
@@ -496,29 +460,24 @@ pub fn explorer_pool_retire_test() {
 #[should_panic] //BUG EAS-238
 #[test]
 pub fn explorer_evm_mapping_certificates_test() {
+    use thor::Block0ConfigurationBuilderExtension;
+
     let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallet(&first_stake_pool_owner, 1_000_000.into()),
+        )
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![first_stake_pool_owner.to_initial_fund(1_000_000)])
-        .build(&temp_dir);
+    let fragment_sender = FragmentSender::from(&jormungandr.rest().settings().unwrap());
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
-        .expect("cannot start jormungandr");
-
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
-
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_builder = FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     );
 
@@ -562,6 +521,7 @@ pub fn explorer_evm_mapping_certificates_test() {
 
 #[test]
 pub fn explorer_vote_plan_certificates_test() {
+    let temp_dir = TempDir::new().unwrap();
     let mut first_stake_pool_owner = thor::Wallet::default();
     let bob = thor::Wallet::default();
     let discrimination = Discrimination::Test;
@@ -575,26 +535,24 @@ pub fn explorer_vote_plan_certificates_test() {
         .public()
         .build();
 
-    let jormungandr = startup::start_bft(
-        vec![&first_stake_pool_owner, &bob],
-        ConfigurationBuilder::new()
-            .with_discrimination(discrimination)
-            .with_slots_per_epoch(20)
-            .with_slot_duration(3)
-            .with_linear_fees(LinearFee::new(0, 0, 0)),
-    )
-    .unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_wallets_having_some_values(vec![&first_stake_pool_owner, &bob])
+                .with_discrimination(discrimination)
+                .with_slots_per_epoch(20.try_into().unwrap())
+                .with_slot_duration(3.try_into().unwrap())
+                .with_linear_fees(LinearFee::new(0, 0, 0)),
+        )
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
+    let fragment_sender = FragmentSender::from(&jormungandr.rest().settings().unwrap());
 
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_builder = FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     );
 
@@ -641,45 +599,41 @@ pub fn explorer_vote_cast_certificates_test() {
         .public()
         .build();
 
-    let vote_plan_cert = thor::vote_plan_cert(
-        &alice,
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
-        &vote_plan,
-    )
-    .into();
+    let vote_plan_cert = Initial::Cert(
+        thor::vote_plan_cert(
+            &alice,
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            &vote_plan,
+        )
+        .into(),
+    );
     let wallets = [&alice];
-    let config = ConfigurationBuilder::new()
-        .with_funds(wallets.iter().map(|x| x.to_initial_fund(1000)).collect())
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(wallets.iter().map(|x| x.to_initial_fund(1000)).collect())
         .with_token(InitialToken {
             token_id: vote_plan.voting_token().clone().into(),
             policy: MintingPolicy::new().into(),
             to: vec![alice.to_initial_token(1000)],
         })
         .with_committees(&[alice.to_committee_id()])
-        .with_slots_per_epoch(60)
+        .with_slots_per_epoch(60.try_into().unwrap())
         .with_certs(vec![vote_plan_cert])
-        .with_treasury(1_000.into())
-        .build(&temp_dir);
+        .with_treasury(1_000.into());
 
-    let jormungandr = Starter::new()
-        .config(config)
-        .temp_dir(temp_dir)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
+    let fragment_sender = FragmentSender::from(&jormungandr.rest().settings().unwrap());
 
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_builder = FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     );
 
@@ -721,52 +675,42 @@ pub fn explorer_vote_tally_certificate_test() {
         .public()
         .build();
 
-    let vote_plan_cert = thor::vote_plan_cert(
-        &alice,
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
-        &vote_plan,
-    )
-    .into();
+    let vote_plan_cert = Initial::Cert(
+        thor::vote_plan_cert(
+            &alice,
+            chain_impl_mockchain::block::BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            &vote_plan,
+        )
+        .into(),
+    );
     let wallets = [&alice];
-    let config = ConfigurationBuilder::new()
-        .with_funds(wallets.iter().map(|x| x.to_initial_fund(1000)).collect())
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(wallets.iter().map(|x| x.to_initial_fund(1000)).collect())
         .with_token(InitialToken {
             token_id: vote_plan.voting_token().clone().into(),
             policy: MintingPolicy::new().into(),
             to: vec![alice.to_initial_token(1000)],
         })
         .with_committees(&[alice.to_committee_id()])
-        .with_slots_per_epoch(60)
+        .with_slots_per_epoch(60.try_into().unwrap())
         .with_certs(vec![vote_plan_cert])
-        .with_treasury(1_000.into())
-        .build(&temp_dir);
+        .with_treasury(1_000.into());
 
-    let jormungandr = Starter::new()
-        .config(config)
-        .temp_dir(temp_dir)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(config)
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        Fixed(BlockDate {
-            epoch: 2,
-            slot_id: 0,
-        }),
-        Default::default(),
-    );
+    let fragment_sender = FragmentSender::from(&jormungandr.rest().settings().unwrap());
 
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate {
-            epoch: 2,
-            slot_id: 0,
-        },
+    let fragment_builder = FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
+        BlockDate::first().next_epoch(),
     );
 
     let params = ExplorerParams::new(
@@ -813,8 +757,8 @@ pub fn explorer_update_proposal_certificate_test() {
     let bft_secret_bob = create_new_key_pair::<Ed25519>();
     let wallet_initial_funds = 5_000_000;
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(vec![
             alice.to_initial_fund(wallet_initial_funds),
             bob.to_initial_fund(wallet_initial_funds),
         ])
@@ -822,15 +766,15 @@ pub fn explorer_update_proposal_certificate_test() {
             bft_secret_alice.identifier().into(),
             bft_secret_bob.identifier().into(),
         ])
-        .with_proposal_expiry_epochs(20)
-        .with_slots_per_epoch(20)
-        .with_linear_fees(LinearFee::new(0, 0, 0))
-        .build(&temp_dir);
+        .with_proposal_expiration(20.try_into().unwrap())
+        .with_slots_per_epoch(20.try_into().unwrap())
+        .with_linear_fees(LinearFee::new(0, 0, 0));
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(config)
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let new_block_context_max_size = 1000;
@@ -843,9 +787,10 @@ pub fn explorer_update_proposal_certificate_test() {
         bft_secret_alice.identifier().into_public_key().into(),
     );
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let fragment_sender = FragmentSender::from_settings(
+        &settings,
         Fixed(BlockDate {
             epoch: 10,
             slot_id: 0,
@@ -853,9 +798,8 @@ pub fn explorer_update_proposal_certificate_test() {
         Default::default(),
     );
 
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_builder = FragmentBuilder::from_settings(
+        &settings,
         BlockDate {
             epoch: 10,
             slot_id: 0,

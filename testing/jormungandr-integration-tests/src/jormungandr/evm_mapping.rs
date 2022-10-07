@@ -1,6 +1,7 @@
 use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, testing::TestGen};
-use jormungandr_automation::jormungandr::ConfigurationBuilder;
+use jormungandr_automation::jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder};
+use thor::FragmentBuilder;
 
 #[test]
 pub fn test_evm_mapping() {
@@ -9,17 +10,15 @@ pub fn test_evm_mapping() {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
         &[alice.clone()],
-        &mut ConfigurationBuilder::new(),
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
-    let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
-
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let settings = jormungandr.rest().settings().unwrap();
+    let transaction_sender = thor::FragmentSender::from(&settings);
+    let fragment_builder =
+        FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let evm_mapping = TestGen::evm_mapping_for_wallet(&alice.clone().into());
 
@@ -68,17 +67,15 @@ pub fn test_evm_mapping_twice() {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
         &[bob.clone()],
-        &mut ConfigurationBuilder::new(),
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
-    let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
-
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let settings = jormungandr.rest().settings().unwrap();
+    let transaction_sender = thor::FragmentSender::from(&settings);
+    let fragment_builder =
+        FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let evm_mapping_alice = TestGen::evm_mapping_for_wallet(&alice.clone().into());
 
@@ -164,17 +161,15 @@ pub fn test_evm_mapping_already_mapped() {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
         &[alice.clone()],
-        &mut ConfigurationBuilder::new(),
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
-    let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
-
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let settings = jormungandr.rest().settings().unwrap();
+    let transaction_sender = thor::FragmentSender::from(&settings);
+    let fragment_builder =
+        FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let evm_mapping = TestGen::evm_mapping_for_wallet(&alice.clone().into());
 

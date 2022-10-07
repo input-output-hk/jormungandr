@@ -1,4 +1,5 @@
-use crate::startup;
+use crate::{startup, startup::SingleNodeTestBootstrapper};
+use assert_fs::TempDir;
 use chain_core::{
     packer::Codec,
     property::{Deserialize, FromStr},
@@ -13,9 +14,9 @@ use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
         explorer::{configuration::ExplorerParams, verifiers::ExplorerVerifier},
-        ConfigurationBuilder, MemPoolCheck, Starter,
+        Block0ConfigurationBuilder, MemPoolCheck, NodeConfigBuilder,
     },
-    testing::time,
+    testing::{block0::Block0ConfigurationExtension, time},
 };
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockDate, FragmentStatus, InitialToken, Mempool,
@@ -36,18 +37,13 @@ pub fn explorer_block_test() {
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[receiver.clone()],
-        ConfigurationBuilder::new()
+        Block0ConfigurationBuilder::default()
             .with_block0_consensus(ConsensusType::GenesisPraos)
-            .with_slots_per_epoch(20)
+            .with_slots_per_epoch(20.try_into().unwrap())
             .with_block_content_max_size(100000.into())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(3)
+            .with_slot_duration(3.try_into().unwrap())
             .with_linear_fees(LinearFee::new(1, 1, 1))
-            .with_mempool(Mempool {
-                pool_max_entries: 1_000_000usize.into(),
-                log_max_entries: 1_000_000usize.into(),
-                persistent_log: None,
-            })
             .with_token(InitialToken {
                 // FIXME: this works because I know it's the VotePlanBuilder's default, but
                 // probably should me more explicit.
@@ -59,13 +55,20 @@ pub fn explorer_block_test() {
                 policy: MintingPolicy::new().into(),
                 to: vec![sender.to_initial_token(1_000_000)],
             }),
+        NodeConfigBuilder::default().with_mempool(Mempool {
+            pool_max_entries: 1_000_000usize.into(),
+            log_max_entries: 1_000_000usize.into(),
+            persistent_log: None,
+        }),
     )
     .unwrap();
 
-    let fragment_sender = FragmentSender::from_with_setup(
-        jormungandr.block0_configuration(),
+    let fragment_sender = FragmentSender::try_from_with_setup(
+        &jormungandr,
+        BlockDate::new(1u32, 1u32).next_epoch().into(),
         FragmentSenderSetup::no_verify(),
-    );
+    )
+    .unwrap();
 
     let time_era = jormungandr.time_era();
 
@@ -139,8 +142,12 @@ pub fn explorer_block_test() {
 #[should_panic]
 #[test] //NPG-3274
 pub fn explorer_block0_test() {
-    let jormungandr = Starter::new().start().unwrap();
-    let block0_id = jormungandr.genesis_block_hash().to_string();
+    let temp_dir = TempDir::new().unwrap();
+    let test_context = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build();
+    let jormungandr = test_context.start_node(temp_dir).unwrap();
+    let block0_id = test_context.block0_config().to_block_hash().to_string();
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
     let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
@@ -154,12 +161,13 @@ pub fn explorer_block0_test() {
     );
 
     let explorer_block0 = explorer_block0_response.data.unwrap().block;
-    let block0 = jormungandr.block0_configuration().to_block();
+    let block0 = test_context.block0_config().to_block();
     ExplorerVerifier::assert_block_by_id(block0, explorer_block0).unwrap();
 }
 
 #[test]
 pub fn explorer_block_incorrect_id_test() {
+    let temp_dir = TempDir::new().unwrap();
     let incorrect_block_ids = vec![
         (
             "e1049ea45726f0b1fc473af54f706546b3331765abf89ae9e6a8333e49621641aa",
@@ -175,7 +183,11 @@ pub fn explorer_block_incorrect_id_test() {
         ),
     ];
 
-    let jormungandr = Starter::new().start().unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     let params = ExplorerParams::new(BLOCK_QUERY_COMPLEXITY_LIMIT, BLOCK_QUERY_DEPTH_LIMIT, None);
     let explorer_process = jormungandr.explorer(params).unwrap();

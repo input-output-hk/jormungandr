@@ -1,7 +1,7 @@
 use crate::networking::utils;
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+    config::{BlockchainConfiguration, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::testing::{benchmark::sync::MeasurementReportInterval, SyncWaitParams};
 use std::time::Duration;
@@ -41,7 +41,8 @@ pub fn bft_cascade() {
                 ),
         )
         .blockchain_config(
-            Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4]),
+            BlockchainConfiguration::default()
+                .with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4]),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
@@ -119,7 +120,9 @@ pub fn bft_passive_propagation() {
                         .with_trusted_peer(LEADER_3),
                 ),
         )
-        .blockchain_config(Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3]))
+        .blockchain_config(
+            BlockchainConfiguration::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3]),
+        )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_000_000_000)

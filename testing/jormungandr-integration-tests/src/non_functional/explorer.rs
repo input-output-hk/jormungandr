@@ -3,11 +3,12 @@ use crate::startup;
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
-        explorer::configuration::ExplorerParams, ConfigurationBuilder, ExplorerProcess,
-        JormungandrProcess,
+        explorer::configuration::ExplorerParams, Block0ConfigurationBuilder, ExplorerProcess,
+        JormungandrProcess, NodeConfigBuilder,
     },
     testing::{
-        benchmark_consumption, benchmark_endurance, Endurance, EnduranceBenchmarkRun, Thresholds,
+        benchmark_consumption, benchmark_endurance, settings::SettingsDtoExtension, Endurance,
+        EnduranceBenchmarkRun, Thresholds,
     },
 };
 use jormungandr_lib::{
@@ -28,12 +29,13 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(60.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(4)
-            .with_epoch_stability_depth(10)
+            .with_slot_duration(4.try_into().unwrap())
+            .with_epoch_stability_depth(10.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
     let explorer_process = jormungandr.explorer(ExplorerParams::default()).unwrap();
@@ -55,7 +57,7 @@ pub fn test_explorer_is_in_sync_with_node_for_15_minutes() {
 
     loop {
         let transaction = jcli
-            .transaction_builder(jormungandr.genesis_block_hash())
+            .transaction_builder(settings.genesis_block_hash())
             .new_transaction()
             .add_account(&sender.address().to_string(), &output_value.into())
             .add_output(&receiver.address().to_string(), output_value.into())
@@ -136,12 +138,13 @@ pub fn explorer_load_test() {
     let (jormungandr, _) = startup::start_stake_pool(
         &stake_pool_owners,
         &addresses,
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(60.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(4)
-            .with_epoch_stability_depth(10)
+            .with_slot_duration(4.try_into().unwrap())
+            .with_epoch_stability_depth(10.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
     let explorer = jormungandr.explorer(ExplorerParams::default()).unwrap();

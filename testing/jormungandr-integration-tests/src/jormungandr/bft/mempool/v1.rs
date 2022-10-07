@@ -1,8 +1,9 @@
+use crate::startup::SingleNodeTestBootstrapper;
 use assert_fs::TempDir;
 use chain_core::property::Fragment;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::{
-    jormungandr::{assert_accepted_rejected, ConfigurationBuilder, Starter},
+    jormungandr::{assert_accepted_rejected, Block0ConfigurationBuilder, NodeConfigBuilder},
     testing::time,
 };
 use jormungandr_lib::interfaces::{
@@ -18,8 +19,8 @@ pub fn test_mempool_pool_max_entries_limit() {
     let receiver = thor::Wallet::default();
     let mut sender = thor::Wallet::default();
 
-    let leader_config = ConfigurationBuilder::new()
-        .with_funds(vec![
+    let block0_config = Block0ConfigurationBuilder::default()
+        .with_utxos(vec![
             InitialUTxO {
                 address: sender.address(),
                 value: 100.into(),
@@ -29,29 +30,30 @@ pub fn test_mempool_pool_max_entries_limit() {
                 value: 100.into(),
             },
         ])
-        .with_slot_duration(2)
-        .with_mempool(Mempool {
-            pool_max_entries: 1.into(),
-            log_max_entries: 100.into(),
-            persistent_log: None,
-        })
-        .build(&temp_dir);
+        .with_slot_duration(2.try_into().unwrap());
 
-    let jormungandr = Starter::new()
-        .config(leader_config)
-        .temp_dir(temp_dir)
-        .start()
+    let leader_node_config = NodeConfigBuilder::default().with_mempool(Mempool {
+        pool_max_entries: 1.into(),
+        log_max_entries: 100.into(),
+        persistent_log: None,
+    });
+
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_node_config(leader_node_config)
+        .with_block0_config(block0_config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let verifier = jormungandr
         .correct_state_verifier()
         .record_address_state(vec![&sender.address(), &receiver.address()]);
 
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let first_transaction = fragment_builder
         .transaction(&sender, receiver.address(), 1.into())
@@ -108,39 +110,39 @@ pub fn test_mempool_pool_max_entries_equal_0() {
     let receiver = thor::Wallet::default();
     let mut sender = thor::Wallet::default();
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
-            InitialUTxO {
-                address: sender.address(),
-                value: 100.into(),
-            },
-            InitialUTxO {
-                address: receiver.address(),
-                value: 100.into(),
-            },
-        ])
-        .with_mempool(Mempool {
-            pool_max_entries: 0.into(),
-            log_max_entries: 100.into(),
-            persistent_log: None,
-        })
-        .build(&temp_dir);
+    let config = Block0ConfigurationBuilder::default().with_utxos(vec![
+        InitialUTxO {
+            address: sender.address(),
+            value: 100.into(),
+        },
+        InitialUTxO {
+            address: receiver.address(),
+            value: 100.into(),
+        },
+    ]);
 
-    let jormungandr = Starter::new()
-        .config(config)
-        .temp_dir(temp_dir)
-        .start()
+    let node_config = NodeConfigBuilder::default().with_mempool(Mempool {
+        pool_max_entries: 0.into(),
+        log_max_entries: 100.into(),
+        persistent_log: None,
+    });
+
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .with_node_config(node_config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let verifier = jormungandr
         .correct_state_verifier()
         .record_address_state(vec![&sender.address(), &receiver.address()]);
 
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let first_transaction = fragment_builder
         .transaction(&sender, receiver.address(), 1.into())
@@ -187,39 +189,39 @@ pub fn test_mempool_log_max_entries_only_one_fragment() {
     let receiver = thor::Wallet::default();
     let mut sender = thor::Wallet::default();
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
-            InitialUTxO {
-                address: sender.address(),
-                value: 100.into(),
-            },
-            InitialUTxO {
-                address: receiver.address(),
-                value: 100.into(),
-            },
-        ])
-        .with_mempool(Mempool {
-            pool_max_entries: 1.into(),
-            log_max_entries: 1.into(),
-            persistent_log: None,
-        })
-        .build(&temp_dir);
+    let config = Block0ConfigurationBuilder::default().with_utxos(vec![
+        InitialUTxO {
+            address: sender.address(),
+            value: 100.into(),
+        },
+        InitialUTxO {
+            address: receiver.address(),
+            value: 100.into(),
+        },
+    ]);
 
-    let jormungandr = Starter::new()
-        .config(config)
-        .temp_dir(temp_dir)
-        .start()
+    let node_config_builder = NodeConfigBuilder::default().with_mempool(Mempool {
+        pool_max_entries: 1.into(),
+        log_max_entries: 1.into(),
+        persistent_log: None,
+    });
+
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .with_node_config(node_config_builder)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let verifier = jormungandr
         .correct_state_verifier()
         .record_address_state(vec![&sender.address(), &receiver.address()]);
 
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let first_transaction = fragment_builder
         .transaction(&sender, receiver.address(), 1.into())
@@ -276,39 +278,39 @@ pub fn test_mempool_log_max_entries_equals_0() {
     let receiver = thor::Wallet::default();
     let mut sender = thor::Wallet::default();
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
-            InitialUTxO {
-                address: sender.address(),
-                value: 100.into(),
-            },
-            InitialUTxO {
-                address: receiver.address(),
-                value: 100.into(),
-            },
-        ])
-        .with_mempool(Mempool {
-            pool_max_entries: 0.into(),
-            log_max_entries: 0.into(),
-            persistent_log: None,
-        })
-        .build(&temp_dir);
+    let config = Block0ConfigurationBuilder::default().with_utxos(vec![
+        InitialUTxO {
+            address: sender.address(),
+            value: 100.into(),
+        },
+        InitialUTxO {
+            address: receiver.address(),
+            value: 100.into(),
+        },
+    ]);
 
-    let jormungandr = Starter::new()
-        .config(config)
-        .temp_dir(temp_dir)
-        .start()
+    let node_config_builder = NodeConfigBuilder::default().with_mempool(Mempool {
+        pool_max_entries: 0.into(),
+        log_max_entries: 0.into(),
+        persistent_log: None,
+    });
+
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .with_node_config(node_config_builder)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let verifier = jormungandr
         .correct_state_verifier()
         .record_address_state(vec![&sender.address(), &receiver.address()]);
 
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let first_transaction = fragment_builder
         .transaction(&sender, receiver.address(), 1.into())
@@ -356,41 +358,41 @@ pub fn test_mempool_pool_max_entries_overrides_log_max_entries() {
     let receiver = thor::Wallet::default();
     let mut sender = thor::Wallet::default();
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
-            InitialUTxO {
-                address: sender.address(),
-                value: 100.into(),
-            },
-            InitialUTxO {
-                address: receiver.address(),
-                value: 100.into(),
-            },
-        ])
-        .with_mempool(Mempool {
-            pool_max_entries: 2.into(),
-            log_max_entries: 0.into(),
-            persistent_log: None,
-        })
-        .build(&temp_dir);
+    let config = Block0ConfigurationBuilder::default().with_utxos(vec![
+        InitialUTxO {
+            address: sender.address(),
+            value: 100.into(),
+        },
+        InitialUTxO {
+            address: receiver.address(),
+            value: 100.into(),
+        },
+    ]);
 
-    let jormungandr = Starter::new()
-        .config(config)
-        .temp_dir(temp_dir)
-        .start()
+    let node_config_builder = NodeConfigBuilder::default().with_mempool(Mempool {
+        pool_max_entries: 2.into(),
+        log_max_entries: 0.into(),
+        persistent_log: None,
+    });
+
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .with_node_config(node_config_builder)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let verifier = jormungandr
         .correct_state_verifier()
         .record_address_state(vec![&sender.address(), &receiver.address()]);
 
-    let fragment_sender = FragmentSender::from(jormungandr.block0_configuration());
+    let settings = jormungandr.rest().settings().unwrap();
 
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let fragment_sender = FragmentSender::from(&settings);
+
+    let fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let first_transaction = fragment_builder
         .transaction(&sender, receiver.address(), 1.into())

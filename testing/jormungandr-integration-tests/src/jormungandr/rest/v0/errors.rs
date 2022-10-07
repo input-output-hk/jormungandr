@@ -1,7 +1,9 @@
 use crate::startup;
 use chain_core::property::Fragment;
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, JormungandrProcess};
+use jormungandr_automation::jormungandr::{
+    Block0ConfigurationBuilder, JormungandrProcess, NodeConfigBuilder,
+};
 use jormungandr_lib::interfaces::FragmentsProcessingSummary;
 use rstest::*;
 use thor::Wallet;
@@ -15,7 +17,8 @@ fn world() -> (JormungandrProcess, Wallet, Wallet, Wallet) {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
         &[bob.clone()],
-        &mut ConfigurationBuilder::new(),
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -26,9 +29,8 @@ fn world() -> (JormungandrProcess, Wallet, Wallet, Wallet) {
 pub fn fragment_already_in_log(world: (JormungandrProcess, Wallet, Wallet, Wallet)) {
     let (jormungandr, alice, bob, _) = world;
 
-    let alice_fragment = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let alice_fragment = thor::FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     )
     .transaction(&alice, bob.address(), 100.into())

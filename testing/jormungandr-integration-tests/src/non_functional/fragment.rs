@@ -2,8 +2,8 @@ use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::{
     jcli::{FragmentsCheck, JCli},
-    jormungandr::ConfigurationBuilder,
-    testing::time,
+    jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder},
+    testing::{settings::SettingsDtoExtension, time},
 };
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockDate as BlockDateDto, KesUpdateSpeed,
@@ -27,13 +27,14 @@ pub fn fragment_load_test() {
     let (mut jormungandr, _) = startup::start_stake_pool(
         &[faucet.clone()],
         &[receiver.clone()],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(30)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(30.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(4)
+            .with_slot_duration(4.try_into().unwrap())
             .with_block_content_max_size(204800.into())
-            .with_epoch_stability_depth(10)
+            .with_epoch_stability_depth(10.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -56,10 +57,9 @@ pub fn fragment_load_test() {
         30,
         30,
         30,
-        0,
-        FragmentSender::new(
-            jormungandr.genesis_block_hash(),
-            jormungandr.fees(),
+        30,
+        FragmentSender::from_settings(
+            &settings,
             BlockDateGenerator::rolling(
                 &settings,
                 BlockDate {
@@ -96,12 +96,13 @@ pub fn fragment_batch_load_test() {
     let (mut jormungandr, _) = startup::start_stake_pool(
         &[faucet.clone()],
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(60.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(4)
-            .with_epoch_stability_depth(10)
+            .with_slot_duration(4.try_into().unwrap())
+            .with_epoch_stability_depth(10.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -117,11 +118,9 @@ pub fn fragment_batch_load_test() {
 
     let settings = jormungandr.rest().settings().unwrap();
 
-    let mut request_generator = BatchFragmentGenerator::new(
+    let mut request_generator = BatchFragmentGenerator::from_node_with_setup(
         FragmentSenderSetup::no_verify(),
-        jormungandr.to_remote(),
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+        &jormungandr,
         BlockDateGenerator::rolling(
             &settings,
             BlockDate {
@@ -131,7 +130,8 @@ pub fn fragment_batch_load_test() {
             false,
         ),
         10,
-    );
+    )
+    .unwrap();
     request_generator.fill_from_faucet(&mut faucet);
 
     load::start_async(
@@ -149,12 +149,13 @@ pub fn transaction_load_test() {
     let (mut jormungandr, _) = startup::start_stake_pool(
         &[faucet.clone()],
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(60.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(4)
-            .with_epoch_stability_depth(10)
+            .with_slot_duration(4.try_into().unwrap())
+            .with_epoch_stability_depth(10.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -171,8 +172,8 @@ pub fn transaction_load_test() {
     let mut request_generator = TransactionGenerator::new(
         FragmentSenderSetup::no_verify(),
         jormungandr.to_remote(),
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+        settings.genesis_block_hash(),
+        settings.fees.clone(),
         BlockDateGenerator::rolling(
             &settings,
             BlockDate {

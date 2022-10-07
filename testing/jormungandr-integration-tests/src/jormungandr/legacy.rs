@@ -1,3 +1,4 @@
+use crate::startup::LegacySingleNodeTestBootstrapper;
 use assert_fs::TempDir;
 use chain_impl_mockchain::{
     accounting::account::{DelegationRatio, DelegationType},
@@ -6,7 +7,7 @@ use chain_impl_mockchain::{
 };
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter},
+    jormungandr::{download_last_n_releases, get_jormungandr_bin, Block0ConfigurationBuilder},
     testing::time,
 };
 use thor::{FragmentSender, StakePool, TransactionHash};
@@ -27,35 +28,32 @@ pub fn test_legacy_node_all_fragments() {
     let mut full_delegator = thor::Wallet::default();
     let mut split_delegator = thor::Wallet::default();
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
-            first_stake_pool_owner.to_initial_fund(1_000_000),
-            second_stake_pool_owner.to_initial_fund(2_000_000),
-            full_delegator.to_initial_fund(2_000_000),
-            split_delegator.to_initial_fund(2_000_000),
-        ])
-        .build(&temp_dir);
+    let config = Block0ConfigurationBuilder::default().with_utxos(vec![
+        first_stake_pool_owner.to_initial_fund(1_000_000),
+        second_stake_pool_owner.to_initial_fund(2_000_000),
+        full_delegator.to_initial_fund(2_000_000),
+        split_delegator.to_initial_fund(2_000_000),
+    ]);
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .jormungandr_app(jormungandr)
-        .legacy(legacy_release.version())
-        .config(config)
-        .start()
-        .expect("cannot start legacy jormungandr");
+    let jormungandr = LegacySingleNodeTestBootstrapper::from(legacy_release.version())
+        .with_block0_config(config)
+        .as_bft_leader()
+        .with_jormungandr_app(jormungandr)
+        .build()
+        .unwrap()
+        .start_node(temp_dir)
+        .unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
-
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_sender = FragmentSender::try_from_with_setup(
+        &jormungandr,
         BlockDate::first().next_epoch(),
-    );
+        Default::default(),
+    )
+    .unwrap();
+
+    let fragment_builder =
+        thor::FragmentBuilder::try_from_with_setup(&jormungandr, BlockDate::first().next_epoch())
+            .unwrap();
 
     // 1. send simple transaction
     let mut fragment = fragment_builder

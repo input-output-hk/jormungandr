@@ -1,6 +1,7 @@
+use crate::startup::SingleNodeTestBootstrapper;
 use assert_fs::TempDir;
 use jormungandr_automation::{
-    jormungandr::{ConfigurationBuilder, Starter, StartupVerificationMode},
+    jormungandr::{NodeConfigBuilder, StartupVerificationMode},
     testing::resources,
 };
 use jormungandr_lib::interfaces::Tls;
@@ -13,20 +14,21 @@ pub fn test_rest_tls_config() {
     let server_crt_file = resources::tls_server_crt();
     let ca_crt_file = resources::tls_ca_crt();
 
-    let config = ConfigurationBuilder::new()
-        .with_rest_tls_config(Tls {
-            cert_file: server_crt_file.as_os_str().to_str().unwrap().to_owned(),
-            priv_key_file: prv_key_file.as_os_str().to_str().unwrap().to_owned(),
-        })
-        .build(&temp_dir);
+    let config = NodeConfigBuilder::default().with_rest_tls_config(Tls {
+        cert_file: server_crt_file.as_os_str().to_str().unwrap().to_owned(),
+        priv_key_file: prv_key_file.as_os_str().to_str().unwrap().to_owned(),
+    });
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_node_config(config)
+        .build()
+        .starter(temp_dir)
+        .unwrap()
         .verify_by(StartupVerificationMode::Log)
         .start()
         .unwrap();
-    println!("Bootstrapped");
+
     jormungandr.assert_no_errors_in_log();
 
     println!(

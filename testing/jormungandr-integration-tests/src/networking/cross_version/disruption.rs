@@ -4,7 +4,7 @@ use assert_fs::fixture::PathChild;
 use function_name::named;
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SessionSettings, SpawnParams, WalletTemplateBuilder},
+    config::{BlockchainConfiguration, SessionSettings, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::{
     jormungandr::{download_last_n_releases, get_jormungandr_bin, Version},
@@ -66,8 +66,12 @@ fn test_legacy_release(legacy_app: PathBuf, version: Version) {
         .spawn(SpawnParams::new(LEADER_2).in_memory())
         .unwrap();
 
-    let (leader1, _) = controller
-        .spawn_legacy(SpawnParams::new(LEADER_1).jormungandr(legacy_app), &version)
+    let leader1 = controller
+        .spawn(
+            SpawnParams::new(LEADER_1)
+                .jormungandr(legacy_app)
+                .version(version.clone()),
+        )
         .unwrap();
     let leader2 = controller
         .spawn(SpawnParams::new(LEADER_2).in_memory())
@@ -137,10 +141,11 @@ fn test_legacy_disruption_release(legacy_app: PathBuf, version: Version) {
         .build()
         .unwrap();
 
-    let (leader1, _) = controller
-        .spawn_legacy(
-            SpawnParams::new(LEADER_1).jormungandr(legacy_app.clone()),
-            &version,
+    let leader1 = controller
+        .spawn(
+            SpawnParams::new(LEADER_1)
+                .jormungandr(legacy_app.clone())
+                .version(version.clone()),
         )
         .unwrap();
 
@@ -167,8 +172,12 @@ fn test_legacy_disruption_release(legacy_app: PathBuf, version: Version) {
         .unwrap();
 
     leader1.shutdown();
-    let (leader1, _) = controller
-        .spawn_legacy(SpawnParams::new(LEADER_1).jormungandr(legacy_app), &version)
+    let leader1 = controller
+        .spawn(
+            SpawnParams::new(LEADER_1)
+                .jormungandr(legacy_app)
+                .version(version.clone()),
+        )
         .unwrap();
 
     sender
@@ -207,7 +216,8 @@ pub fn newest_node_enters_legacy_network() {
                 .with_node(Node::new(LEADER_4).with_trusted_peer(LEADER_1)),
         )
         .blockchain_config(
-            Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4]),
+            BlockchainConfiguration::default()
+                .with_leaders(vec![LEADER_1, LEADER_2, LEADER_3, LEADER_4]),
         )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
@@ -224,24 +234,27 @@ pub fn newest_node_enters_legacy_network() {
         .build()
         .unwrap();
 
-    let (leader1, _) = controller
-        .spawn_legacy(
-            SpawnParams::new(LEADER_1).jormungandr(legacy_app.clone()),
-            &last_release.version(),
+    let leader1 = controller
+        .spawn(
+            SpawnParams::new(LEADER_1)
+                .jormungandr(legacy_app.clone())
+                .version(last_release.version()),
         )
         .unwrap();
 
-    let (leader2, _) = controller
-        .spawn_legacy(
-            SpawnParams::new(LEADER_2).jormungandr(legacy_app.clone()),
-            &last_release.version(),
+    let leader2 = controller
+        .spawn(
+            SpawnParams::new(LEADER_2)
+                .jormungandr(legacy_app.clone())
+                .version(last_release.version()),
         )
         .unwrap();
 
-    let (leader3, _) = controller
-        .spawn_legacy(
-            SpawnParams::new(LEADER_3).jormungandr(legacy_app.clone()),
-            &last_release.version(),
+    let leader3 = controller
+        .spawn(
+            SpawnParams::new(LEADER_3)
+                .jormungandr(legacy_app.clone())
+                .version(last_release.version()),
         )
         .unwrap();
 
@@ -285,10 +298,11 @@ pub fn newest_node_enters_legacy_network() {
     leader4.shutdown();
 
     //let assume that we are not satisfied how newest node behaves and we want to rollback
-    let (old_leader4, _) = controller
-        .spawn_legacy(
-            SpawnParams::new(LEADER_4).jormungandr(legacy_app),
-            &last_release.version(),
+    let old_leader4 = controller
+        .spawn(
+            SpawnParams::new(LEADER_4)
+                .jormungandr(legacy_app)
+                .version(last_release.version()),
         )
         .unwrap();
 

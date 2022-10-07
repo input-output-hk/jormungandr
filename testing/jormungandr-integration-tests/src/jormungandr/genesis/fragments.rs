@@ -4,7 +4,11 @@ use chain_impl_mockchain::{
     accounting::account::{DelegationRatio, DelegationType},
     block::BlockDate,
 };
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder, testing::time};
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder},
+    testing::time,
+};
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use loki::{AdversaryFragmentSender, AdversaryFragmentSenderSetup};
 use std::time::Duration;
@@ -25,15 +29,17 @@ pub fn test_all_fragments() {
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[faucet.clone()],
         &[full_delegator.clone(), split_delegator.clone()],
-        ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default().with_storage(temp_dir.child("storage").to_path_buf()),
     )
     .unwrap();
 
     let initial_stake_pool = stake_pools.get(0).unwrap();
 
-    let transaction_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let transaction_sender = FragmentSender::from_settings(
+        &settings,
         BlockDate {
             epoch: 10,
             slot_id: 0,
@@ -161,23 +167,24 @@ pub fn test_all_adversary_fragments() {
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner.clone()],
         &[full_delegator.clone(), split_delegator, faucet.clone()],
-        ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default().with_storage(temp_dir.child("storage").to_path_buf()),
     )
     .unwrap();
 
     let initial_stake_pool = stake_pools.get(0).unwrap();
 
-    let transaction_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let transaction_sender = FragmentSender::from_settings(
+        &settings,
         BlockDate::first().next_epoch().into(),
         FragmentSenderSetup::resend_3_times(),
     );
 
-    let adversary_sender = AdversaryFragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
+    let adversary_sender = AdversaryFragmentSender::from_settings(
+        settings,
+        BlockDate::first().next_epoch(),
         AdversaryFragmentSenderSetup::no_verify(),
     );
     let verifier = jormungandr
@@ -230,17 +237,17 @@ pub fn test_increased_block_content_max_size() {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner.clone()],
         &[],
-        ConfigurationBuilder::new()
+        Block0ConfigurationBuilder::default()
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_block_content_max_size(8192.into()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
     let settings = jormungandr.rest().settings().unwrap();
 
-    let transaction_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+    let transaction_sender = FragmentSender::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDateGenerator::rolling(
             &settings,
             BlockDate {
@@ -274,14 +281,17 @@ pub fn test_block_content_max_size_below_transaction_size() {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner.clone()],
         &[],
-        ConfigurationBuilder::new()
+        Block0ConfigurationBuilder::default()
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
             .with_block_content_max_size(4092.into()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
-    let fragment_sender = FragmentSender::from_with_setup(
-        jormungandr.block0_configuration(),
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let fragment_sender = FragmentSender::from_settings_with_setup(
+        &settings,
         FragmentSenderSetup::should_stop_at_error(),
     );
     assert!(fragment_sender

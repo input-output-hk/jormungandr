@@ -1,50 +1,70 @@
+use crate::startup::LegacySingleNodeTestBootstrapper;
 use assert_fs::{fixture::PathChild, TempDir};
 use chain_impl_mockchain::block::BlockDate;
+use hersir::{
+    builder::{NetworkBuilder, Node, Topology},
+    config::{BlockchainConfiguration, SessionSettings, SpawnParams, WalletTemplateBuilder},
+};
 use jormungandr_automation::{
     jormungandr::{
-        download_last_n_releases, get_jormungandr_bin, ConfigurationBuilder, Starter, Version,
+        download_last_n_releases, get_jormungandr_bin, Block0ConfigurationBuilder,
+        JormungandrBootstrapper, LegacyNodeConfigBuilder, NodeConfigBuilder, Version,
     },
     testing::Release,
 };
-use jormungandr_lib::interfaces::InitialUTxO;
 use thor::{FragmentSender, TransactionHash};
 
-fn test_connectivity_between_master_and_legacy_app(release: Release, temp_dir: &TempDir) {
+const LEADER_1: &str = "Leader1";
+const LEADER_2: &str = "Leader2";
+const ALICE: &str = "ALICE";
+
+fn test_connectivity_between_master_and_legacy_app(release: Release) {
     println!("Testing version: {}", release.version());
 
-    let sender = thor::Wallet::default();
+    let releases = download_last_n_releases(1);
+    let last_release = releases.last().unwrap();
+    let session_settings = SessionSettings::default();
+    let legacy_app = get_jormungandr_bin(last_release, &session_settings.root.child("jormungandr"));
+
+    let mut controller = NetworkBuilder::default()
+        .topology(
+            Topology::default()
+                .with_node(Node::new(LEADER_1))
+                .with_node(Node::new(LEADER_2).with_trusted_peer(LEADER_1)),
+        )
+        .blockchain_config(
+            BlockchainConfiguration::default().with_leaders(vec![LEADER_1, LEADER_2]),
+        )
+        .wallet_template(
+            WalletTemplateBuilder::new(ALICE)
+                .with(2_500_000_000)
+                .delegated_to(LEADER_2)
+                .build(),
+        )
+        .build()
+        .unwrap();
+
+    let leader_jormungandr = controller
+        .spawn(SpawnParams::new(LEADER_1).leader())
+        .unwrap();
+
+    let passive_jormungandr = controller
+        .spawn(
+            SpawnParams::new(LEADER_2)
+                .passive()
+                .jormungandr(legacy_app)
+                .version(last_release.version()),
+        )
+        .unwrap();
+
+    let sender = controller.controlled_wallet(ALICE).unwrap();
     let receiver = thor::Wallet::default();
 
-    let leader_config = ConfigurationBuilder::new()
-        .with_funds(vec![InitialUTxO {
-            address: sender.address(),
-            value: 100.into(),
-        }])
-        .build(temp_dir);
-
-    let leader_jormungandr = Starter::new()
-        .config(leader_config.clone())
-        .start()
-        .unwrap();
-
-    let trusted_node_config = ConfigurationBuilder::new()
-        .with_trusted_peers(vec![leader_jormungandr.to_trusted_peer()])
-        .with_block_hash(leader_config.genesis_block_hash())
-        .build(temp_dir);
-
-    let trusted_jormungandr = Starter::new()
-        .config(trusted_node_config)
-        .legacy(release.version())
-        .jormungandr_app(get_jormungandr_bin(&release, temp_dir))
-        .passive()
-        .start()
-        .unwrap();
-
-    let new_transaction = thor::FragmentBuilder::new(
-        &leader_jormungandr.genesis_block_hash(),
-        &leader_jormungandr.fees(),
+    let new_transaction = thor::FragmentBuilder::try_from_with_setup(
+        &leader_jormungandr,
         BlockDate::first().next_epoch(),
     )
+    .unwrap()
     .transaction(&sender, receiver.address(), 1.into())
     .unwrap()
     .encode();
@@ -60,8 +80,8 @@ fn test_connectivity_between_master_and_legacy_app(release: Release, temp_dir: &
         message
     );
 
-    trusted_jormungandr.assert_no_errors_in_log_with_message("newest master has errors in log");
-    leader_jormungandr.assert_no_errors_in_log_with_message(&format!(
+    leader_jormungandr.assert_no_errors_in_log_with_message("newest master has errors in log");
+    passive_jormungandr.assert_no_errors_in_log_with_message(&format!(
         "Legacy nodes from {} version, has errrors in logs",
         release.version()
     ));
@@ -72,9 +92,8 @@ fn test_connectivity_between_master_and_legacy_app(release: Release, temp_dir: &
 // backward compatible releases again.
 #[ignore]
 pub fn test_compability() {
-    let temp_dir = TempDir::new().unwrap();
     for release in download_last_n_releases(5) {
-        test_connectivity_between_master_and_legacy_app(release, &temp_dir);
+        test_connectivity_between_master_and_legacy_app(release);
     }
 }
 
@@ -88,31 +107,27 @@ pub fn test_upgrade_downgrade() {
 
 fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: &TempDir) {
     println!("Testing version: {}", version);
+    let node_temp_dir = TempDir::new().unwrap();
 
     let mut sender = thor::Wallet::default();
     let mut receiver = thor::Wallet::default();
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
+    let storage = temp_dir.child("storage").to_path_buf();
+
+    let legacy_test_context = LegacySingleNodeTestBootstrapper::from(version)
+        .as_bft_leader()
+        .with_block0_config(Block0ConfigurationBuilder::default().with_utxos(vec![
             sender.to_initial_fund(1_000_000),
             receiver.to_initial_fund(1_000_000),
-        ])
-        .with_storage(&temp_dir.child("storage"))
-        .build(temp_dir);
-
-    // build some storage data on legacy node
-    let legacy_jormungandr = Starter::new()
-        .config(config.clone())
-        .legacy(version.clone())
-        .start()
+        ]))
+        .with_node_config(LegacyNodeConfigBuilder::default().with_storage(storage.clone()))
+        .build()
         .unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        legacy_jormungandr.genesis_block_hash(),
-        legacy_jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
+    // build some storage data on legacy node
+    let mut legacy_jormungandr = legacy_test_context.start_node(node_temp_dir).unwrap();
+
+    let fragment_sender = FragmentSender::from(&legacy_jormungandr.rest().settings().unwrap());
 
     fragment_sender
         .send_transactions_round_trip(
@@ -128,9 +143,19 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
 
     legacy_jormungandr.shutdown();
 
+    let temp_dir = legacy_jormungandr
+        .steal_temp_dir()
+        .unwrap()
+        .try_into()
+        .unwrap();
     // upgrade node to newest
 
-    let jormungandr = Starter::new().config(config.clone()).start().unwrap();
+    let jormungandr = JormungandrBootstrapper::default()
+        .with_block0_configuration(legacy_test_context.block0_config())
+        .with_node_config(NodeConfigBuilder::default().with_storage(storage).build())
+        .with_secret(legacy_test_context.test_context.secret_factory.clone())
+        .start(temp_dir)
+        .unwrap();
 
     fragment_sender
         .send_transactions_round_trip(10, &mut sender, &mut receiver, &jormungandr, 100.into())
@@ -140,19 +165,20 @@ fn test_upgrade_and_downgrade_from_legacy_to_master(version: Version, temp_dir: 
     jormungandr.shutdown();
 
     // rollback node to legacy again
-
-    let legacy_jormungandr = Starter::new()
-        .config(config)
-        .legacy(version)
-        .start()
+    let temp_dir = legacy_jormungandr
+        .steal_temp_dir()
+        .unwrap()
+        .try_into()
         .unwrap();
 
-    let fragment_sender = FragmentSender::new(
-        legacy_jormungandr.genesis_block_hash(),
-        legacy_jormungandr.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
+    let legacy_jormungandr = JormungandrBootstrapper::default()
+        .with_block0_configuration(legacy_test_context.block0_config())
+        .with_legacy_node_config(legacy_test_context.legacy_node_config)
+        .with_secret(legacy_test_context.test_context.secret_factory)
+        .start(temp_dir)
+        .unwrap();
+
+    let fragment_sender = FragmentSender::from(&legacy_jormungandr.rest().settings().unwrap());
 
     fragment_sender
         .send_transactions_round_trip(

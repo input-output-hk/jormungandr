@@ -1,6 +1,10 @@
 use crate::startup;
 use chain_impl_mockchain::value::Value;
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder, testing::time};
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder},
+    testing::time,
+};
 use jormungandr_lib::{
     crypto::hash::Hash,
     interfaces::{ActiveSlotCoefficient, EpochRewardsInfo, StakePoolStats, Value as LibValue},
@@ -23,11 +27,12 @@ pub fn collect_reward() {
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &stake_pool_owners,
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(20)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(20.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(3)
-            .with_total_rewards_supply(1_000_000.into()),
+            .with_slot_duration(3.try_into().unwrap())
+            .with_total_rewards_supply(Some(1_000_000.into())),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -78,11 +83,12 @@ pub fn reward_history() {
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &stake_pool_owners,
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(20)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(20.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_rewards_history()
-            .with_slot_duration(3),
+            //.with_rewards_history()
+            .with_slot_duration(3.try_into().unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 

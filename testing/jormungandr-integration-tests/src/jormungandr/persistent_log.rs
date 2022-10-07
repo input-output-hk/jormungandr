@@ -1,7 +1,10 @@
 use crate::startup;
 use assert_fs::{fixture::PathChild, TempDir};
 use chain_impl_mockchain::block::BlockDate;
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder};
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder},
+};
 use jormungandr_lib::interfaces::{Mempool, PersistentLog};
 pub use jortestkit::console::progress_bar::{parse_progress_bar_mode_from_str, ProgressBarMode};
 use thor::{PersistentLogViewer, TransactionHash};
@@ -17,7 +20,8 @@ fn rejected_fragments_have_no_log() {
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[receiver.clone()],
-        ConfigurationBuilder::new().with_mempool(Mempool {
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default().with_mempool(Mempool {
             pool_max_entries: 1_000.into(),
             log_max_entries: 1_000.into(),
             persistent_log: Some(PersistentLog {
@@ -29,17 +33,13 @@ fn rejected_fragments_have_no_log() {
 
     let jcli = JCli::default();
 
-    let correct_fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let settings = jormungandr.rest().settings().unwrap();
 
-    let faulty_fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first(),
-    );
+    let correct_fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
+
+    let faulty_fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first());
 
     // Should be rejected without a log entry
     jcli.fragment_sender(&jormungandr)

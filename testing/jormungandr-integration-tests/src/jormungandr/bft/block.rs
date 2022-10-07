@@ -1,3 +1,4 @@
+use crate::startup::SingleNodeTestBootstrapper;
 use assert_fs::TempDir;
 use chain_impl_mockchain::{
     block::{BlockDate, ContentsBuilder},
@@ -6,11 +7,11 @@ use chain_impl_mockchain::{
 };
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SpawnParams},
+    config::{BlockchainConfiguration, SpawnParams},
 };
 use jormungandr_automation::{
-    jormungandr::{ConfigurationBuilder, Starter},
-    testing::keys,
+    jormungandr::{Block0ConfigurationBuilder, JormungandrBootstrapper},
+    testing::{block0::Block0ConfigurationExtension, keys},
 };
 use jormungandr_lib::interfaces::SlotDuration;
 use loki::{block::BlockBuilder, process::AdversaryNodeBuilder};
@@ -22,28 +23,30 @@ fn block_with_incorrect_signature() {
     let temp_dir = TempDir::new().unwrap();
     let keys = keys::create_new_key_pair();
 
-    let node_params = ConfigurationBuilder::default()
+    let block0 = Block0ConfigurationBuilder::default()
         .with_block0_consensus(ConsensusType::Bft)
-        .with_slot_duration(10)
-        .with_leader_key_pair(keys.clone())
-        .build(&temp_dir);
+        .with_slot_duration(SlotDuration::new(10).unwrap())
+        .with_leader_key_pair(&keys)
+        .build();
 
-    let block0 = node_params.block0_configuration().to_block();
-
-    let jormungandr = Starter::default().config(node_params).start().unwrap();
+    let jormungandr = JormungandrBootstrapper::default()
+        .with_leader_key(&keys)
+        .with_block0_configuration(block0.clone())
+        .start(temp_dir)
+        .unwrap();
 
     let block = BlockBuilder::bft(
         BlockDate {
             epoch: 0,
             slot_id: 1,
         },
-        block0.header().clone(),
+        block0.to_block().header().clone(),
     )
     .signing_key(keys.signing_key())
     .invalid_signature()
     .build();
 
-    assert!(AdversaryNodeBuilder::new(block0)
+    assert!(AdversaryNodeBuilder::new(block0.to_block())
         .build()
         .send_block_to_peer(jormungandr.address(), block)
         .is_err());
@@ -55,7 +58,7 @@ fn block_with_wrong_leader() {
     const LEADER_1: &str = "Abbott";
     const LEADER_2: &str = "Costello";
 
-    let blockchain_config = Blockchain::default()
+    let blockchain_config = BlockchainConfiguration::default()
         .with_consensus(ConsensusVersion::Bft)
         .with_slot_duration(SlotDuration::new(10).unwrap())
         .with_leader(LEADER_1)
@@ -75,7 +78,7 @@ fn block_with_wrong_leader() {
         .spawn(SpawnParams::new(LEADER_1).leader())
         .unwrap();
 
-    let block0 = leader.block0_configuration().to_block();
+    let block0 = controller.settings().block0.to_block();
 
     let wrong_leader_block = BlockBuilder::bft(
         BlockDate {
@@ -133,25 +136,25 @@ fn block_with_wrong_leader() {
 fn block_with_nonexistent_leader() {
     let temp_dir = TempDir::new().unwrap();
 
-    let node_params = ConfigurationBuilder::default()
-        .with_block0_consensus(ConsensusType::Bft)
-        .with_slot_duration(10)
-        .build(&temp_dir);
+    let block0_configurator =
+        Block0ConfigurationBuilder::default().with_slot_duration(SlotDuration::new(10).unwrap());
 
-    let block0 = node_params.block0_configuration().to_block();
-
-    let jormungandr = Starter::default().config(node_params).start().unwrap();
+    let context = SingleNodeTestBootstrapper::default()
+        .with_block0_config(block0_configurator)
+        .as_bft_leader()
+        .build();
+    let jormungandr = context.start_node(temp_dir).unwrap();
 
     let block = BlockBuilder::bft(
         BlockDate {
             epoch: 0,
             slot_id: 1,
         },
-        block0.header().clone(),
+        context.block0_config().to_block().header().clone(),
     )
     .build();
 
-    assert!(AdversaryNodeBuilder::new(block0)
+    assert!(AdversaryNodeBuilder::new(context.block0_config.to_block())
         .build()
         .send_block_to_peer(jormungandr.address(), block)
         .is_err());
@@ -164,21 +167,24 @@ fn block_with_invalid_fragment() {
     let temp_dir = TempDir::new().unwrap();
     let keys = keys::create_new_key_pair();
 
-    let node_params = ConfigurationBuilder::default()
+    let block0_config = Block0ConfigurationBuilder::default()
         .with_block0_consensus(ConsensusType::Bft)
-        .with_slot_duration(10)
-        .with_leader_key_pair(keys.clone())
-        .build(&temp_dir);
+        .with_slot_duration(SlotDuration::new(10).unwrap())
+        .with_leader_key_pair(&keys)
+        .build();
 
-    let block0 = node_params.block0_configuration().to_block();
-
-    let jormungandr = Starter::default().config(node_params).start().unwrap();
+    let block0 = block0_config.to_block();
+    let jormungandr = JormungandrBootstrapper::default()
+        .with_block0_configuration(block0_config.clone())
+        .with_leader_key(&keys)
+        .start(temp_dir)
+        .unwrap();
 
     let mut contents_builder = ContentsBuilder::default();
 
     contents_builder.push(
         FragmentBuilder::new(
-            &jormungandr.genesis_block_hash(),
+            &block0_config.to_block_hash(),
             &LinearFee::new(0, 0, 0),
             BlockDate::first().next_epoch(),
         )

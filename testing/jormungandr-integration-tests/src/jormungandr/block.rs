@@ -6,10 +6,11 @@ use chain_impl_mockchain::{
     testing::TestGen,
 };
 use jormungandr_automation::{
-    jormungandr::{Block0ConfigurationBuilder, ConfigurationBuilder, LeadershipMode, Starter},
+    jormungandr::{
+        Block0ConfigurationBuilder, JormungandrBootstrapper, NodeConfigBuilder, SecretModelFactory,
+    },
     testing::keys,
 };
-use jormungandr_lib::interfaces::SlotDuration;
 use loki::process::AdversaryNodeBuilder;
 
 #[test]
@@ -37,15 +38,19 @@ fn block_with_incorrect_hash(consensus: ConsensusType) {
     let temp_dir = TempDir::new().unwrap();
     let keys = keys::create_new_key_pair();
 
-    let node_params = ConfigurationBuilder::default()
+    let node_params = Block0ConfigurationBuilder::default()
         .with_block0_consensus(consensus)
-        .with_slot_duration(10)
-        .with_leader_key_pair(keys.clone())
-        .build(&temp_dir);
+        .with_slot_duration(10.try_into().unwrap())
+        .with_leader_key_pair(&keys)
+        .build();
 
-    let block0 = node_params.block0_configuration().to_block();
+    let block0 = node_params.to_block();
 
-    let jormungandr = Starter::default().config(node_params).start().unwrap();
+    let jormungandr = JormungandrBootstrapper::default()
+        .with_secret(SecretModelFactory::bft(keys.signing_key()))
+        .with_block0_configuration(node_params)
+        .start(temp_dir)
+        .unwrap();
 
     let contents = Contents::empty();
     let content_size = contents.compute_hash_size().1;
@@ -74,8 +79,8 @@ fn block_with_incorrect_hash(consensus: ConsensusType) {
 
 /// Ensures that the genesis block fetched during bootstrapping is the requested one.
 fn block0_with_incorrect_hash(consensus: ConsensusType) {
-    let block0 = Block0ConfigurationBuilder::new()
-        .with_slot_duration(SlotDuration::new(10).unwrap())
+    let block0 = Block0ConfigurationBuilder::default()
+        .with_slot_duration(10.try_into().unwrap())
         .with_block0_consensus(consensus)
         .build()
         .to_block();
@@ -88,15 +93,16 @@ fn block0_with_incorrect_hash(consensus: ConsensusType) {
 
     let passive_temp_dir = TempDir::new().unwrap();
 
-    let passive_params = ConfigurationBuilder::default()
-        .with_block0_consensus(consensus)
+    let passive_params = NodeConfigBuilder::default()
         .with_trusted_peers(vec![adversary.to_trusted_peer()])
-        .with_block_hash(format!("{}", adversary.genesis_block_hash()))
-        .build(&passive_temp_dir);
+        .build();
 
-    Starter::default()
-        .config(passive_params)
-        .leadership_mode(LeadershipMode::Passive)
+    JormungandrBootstrapper::default()
+        .passive()
+        .with_block0_hash(adversary.genesis_block_hash())
+        .with_node_config(passive_params)
+        .into_starter(passive_temp_dir)
+        .unwrap()
         .start_with_fail_in_logs("failed to download block")
         .unwrap();
 }

@@ -2,7 +2,7 @@ use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::ConfigurationBuilder,
+    jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder},
     testing::{benchmark_consumption, benchmark_endurance},
 };
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed, Mempool};
@@ -20,16 +20,16 @@ pub fn test_blocks_are_being_created_for_7_hours() {
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(20)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(20.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(3)
-            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
-            .with_mempool(Mempool {
-                pool_max_entries: 1_000_000usize.into(),
-                log_max_entries: 1_000_000usize.into(),
-                persistent_log: None,
-            }),
+            .with_slot_duration(3.try_into().unwrap())
+            .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default().with_mempool(Mempool {
+            pool_max_entries: 1_000_000usize.into(),
+            log_max_entries: 1_000_000usize.into(),
+            persistent_log: None,
+        }),
     )
     .unwrap();
 
@@ -44,11 +44,11 @@ pub fn test_blocks_are_being_created_for_7_hours() {
             .start();
 
     loop {
-        let new_transaction = thor::FragmentBuilder::new(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
+        let new_transaction = thor::FragmentBuilder::try_from_with_setup(
+            &jormungandr,
             BlockDate::first().next_epoch(),
         )
+        .unwrap()
         .transaction(&sender, receiver.address(), 1.into())
         .unwrap()
         .encode();

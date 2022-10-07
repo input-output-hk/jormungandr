@@ -2,7 +2,10 @@ use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId, key::Hash};
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{explorer::configuration::ExplorerParams, ConfigurationBuilder, Explorer},
+    jormungandr::{
+        explorer::configuration::ExplorerParams, Block0ConfigurationBuilder, Explorer,
+        NodeConfigBuilder,
+    },
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
 use jortestkit::process::Wait;
@@ -15,18 +18,16 @@ use thor::{StakePool, TransactionHash};
 /// read more: https://github.com/prisma-labs/get-graphql-schema
 #[test]
 #[cfg(feature = "explorer-schema-gen")]
-#[cfg(unix)]
+//#[cfg(unix)]
 pub fn explorer_schema_diff_test() {
+    use crate::startup::SingleNodeTestBootstrapper;
     use assert_fs::{fixture::PathChild, TempDir};
-    use jormungandr_automation::jormungandr::Starter;
 
     let temp_dir = TempDir::new().unwrap();
-    let config = ConfigurationBuilder::new().build(&temp_dir);
-
-    let _jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    let _jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let schema_temp_dir = TempDir::new().unwrap();
@@ -57,19 +58,19 @@ pub fn explorer_sanity_test() {
     let query_complexity_limit = 100;
     let attempts_number = 20;
 
-    let mut config = ConfigurationBuilder::new();
-    config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
+    let config = Block0ConfigurationBuilder::default()
+        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
 
     let (jormungandr, initial_stake_pools) =
-        startup::start_stake_pool(&[faucet.clone()], &[], &mut config).unwrap();
+        startup::start_stake_pool(&[faucet.clone()], &[], config, NodeConfigBuilder::default())
+            .unwrap();
 
     let params = ExplorerParams::new(query_complexity_limit, None, None);
     let explorer_process = jormungandr.explorer(params).unwrap();
     let explorer = explorer_process.client();
 
-    let transaction = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let transaction = thor::FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     )
     .transaction(&faucet, receiver.address(), 1_000.into())

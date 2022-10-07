@@ -1,3 +1,4 @@
+use crate::startup::SingleNodeTestBootstrapper;
 use assert_fs::{fixture::PathChild, TempDir};
 use chain_core::property::BlockDate as _;
 use chain_impl_mockchain::{
@@ -8,10 +9,12 @@ use chain_impl_mockchain::{
 };
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Starter},
+    jormungandr::Block0ConfigurationBuilder,
     testing::{time::wait_for_epoch, VotePlanBuilder},
 };
-use jormungandr_lib::interfaces::{InitialToken, Tally, TallyResult, VotePlanStatus};
+use jormungandr_lib::interfaces::{
+    Initial, InitialToken, NumberOfSlotsPerEpoch, SlotDuration, Tally, TallyResult, VotePlanStatus,
+};
 use std::{collections::BTreeSet, path::Path, str::FromStr};
 use thor::{vote_plan_cert, FragmentSender, FragmentSenderSetup, Wallet};
 
@@ -59,22 +62,24 @@ pub fn merge_two_voteplans() {
     let vote_plan_certs: Vec<_> = vec![first_vote_plan.clone(), second_vote_plan.clone()]
         .iter()
         .map(|vp| {
-            vote_plan_cert(
-                &alice,
-                chain_impl_mockchain::block::BlockDate {
-                    epoch: 1,
-                    slot_id: 0,
-                },
-                vp,
+            Initial::Cert(
+                vote_plan_cert(
+                    &alice,
+                    chain_impl_mockchain::block::BlockDate {
+                        epoch: 1,
+                        slot_id: 0,
+                    },
+                    vp,
+                )
+                .into(),
             )
-            .into()
         })
         .collect();
 
     let wallets = [&alice, &bob];
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(
             wallets
                 .iter()
                 .map(|x| x.to_initial_fund(INITIAL_FUND_PER_WALLET))
@@ -91,23 +96,18 @@ pub fn merge_two_voteplans() {
             to: vec![bob.to_initial_token(INITIAL_FUND_PER_WALLET)],
         })
         .with_committees(&[alice.to_committee_id()])
-        .with_slots_per_epoch(SLOTS_PER_EPOCH)
+        .with_slots_per_epoch(NumberOfSlotsPerEpoch::new(SLOTS_PER_EPOCH).unwrap())
         .with_certs(vote_plan_certs)
-        .with_slot_duration(SLOT_DURATION)
-        .build(&temp_dir);
+        .with_slot_duration(SlotDuration::new(SLOT_DURATION).unwrap());
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
-        .unwrap();
+    let test_config = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build();
+    let jormungandr = test_config.start_node(temp_dir).unwrap();
 
-    let transaction_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate::first()
-            .next_epoch()
-            .into(),
+    let transaction_sender = FragmentSender::from_with_setup(
+        &test_config.block0_config(),
         FragmentSenderSetup::resend_3_times(),
     );
 

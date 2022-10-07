@@ -1,7 +1,7 @@
 use crate::networking::utils;
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+    config::{BlockchainConfiguration, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::jormungandr::LogLevel;
 use jormungandr_lib::{
@@ -36,7 +36,8 @@ pub fn max_connections() {
                 .with_node(Node::new(LEADER4).with_trusted_peer(LEADER1)),
         )
         .blockchain_config(
-            Blockchain::default().with_leaders(vec![LEADER1, LEADER2, LEADER3, LEADER4]),
+            BlockchainConfiguration::default()
+                .with_leaders(vec![LEADER1, LEADER2, LEADER3, LEADER4]),
         )
         .build()
         .unwrap();
@@ -73,7 +74,7 @@ pub fn node_trust_itself() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(SERVER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(SERVER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -119,7 +120,7 @@ fn gossip_interval() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(SERVER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(SERVER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -261,7 +262,7 @@ pub fn topics_of_interest_influences_node_sync_ability() {
                 .with_node(Node::new(FAST_CLIENT).with_trusted_peer(SERVER))
                 .with_node(Node::new(SLOW_CLIENT).with_trusted_peer(SERVER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(SERVER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(SERVER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -346,7 +347,7 @@ fn max_bootstrap_attempts() {
                 .with_node(Node::new(SERVER))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(SERVER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(SERVER))
         .build()
         .unwrap();
 
@@ -405,7 +406,7 @@ fn gossip_new_node_bootstrap() {
                 .with_node(Node::new(SERVER_2).with_trusted_peer(SERVER_1))
                 .with_node(Node::new(CLIENT).with_trusted_peer(SERVER_2)),
         )
-        .blockchain_config(Blockchain::default().with_leaders(vec![SERVER_1]))
+        .blockchain_config(BlockchainConfiguration::default().with_leaders(vec![SERVER_1]))
         .build()
         .unwrap();
 

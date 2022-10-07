@@ -1,7 +1,7 @@
 use crate::networking::utils::wait;
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+    config::{BlockchainConfiguration, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::{
     jormungandr::{LogLevel, MemPoolCheck},
@@ -30,7 +30,7 @@ pub fn two_nodes_communication() {
                 .with_node(Node::new(LEADER))
                 .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(LEADER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(LEADER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(1_000_000)
@@ -77,7 +77,7 @@ pub fn transaction_to_passive() {
                 .with_node(Node::new(LEADER))
                 .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(LEADER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(LEADER))
         .wallet_template(WalletTemplateBuilder::new(ALICE).with(500_000_000).build())
         .wallet_template(
             WalletTemplateBuilder::new(BOB)
@@ -125,7 +125,7 @@ pub fn leader_restart() {
                         .with_trusted_peer(LEADER_2),
                 ),
         )
-        .blockchain_config(Blockchain::default().with_leaders(vec![LEADER, LEADER_2]))
+        .blockchain_config(BlockchainConfiguration::default().with_leaders(vec![LEADER, LEADER_2]))
         .wallet_template(WalletTemplateBuilder::new(ALICE).with(500_000_000).build())
         .wallet_template(
             WalletTemplateBuilder::new(BOB)
@@ -227,7 +227,7 @@ pub fn passive_node_is_updated() {
                 .with_node(Node::new(LEADER))
                 .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(LEADER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(LEADER))
         .wallet_template(WalletTemplateBuilder::new(ALICE).with(500_000_000).build())
         .wallet_template(
             WalletTemplateBuilder::new(BOB)

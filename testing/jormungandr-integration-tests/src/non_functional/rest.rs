@@ -1,5 +1,5 @@
 use crate::startup;
-use jormungandr_automation::jormungandr::ConfigurationBuilder;
+use jormungandr_automation::jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder};
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, KesUpdateSpeed};
 use jortestkit::load::{self, ConfigurationBuilder as LoadConfigurationBuilder, Monitor};
 use mjolnir::generators::RestRequestGen;
@@ -12,12 +12,13 @@ pub fn rest_load_quick() {
     let (mut jormungandr, _) = startup::start_stake_pool(
         &[faucet],
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(60.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(4)
-            .with_epoch_stability_depth(10)
+            .with_slot_duration(4.try_into().unwrap())
+            .with_epoch_stability_depth(10.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 

@@ -1,3 +1,4 @@
+use crate::startup::SingleNodeTestBootstrapper;
 use assert_fs::TempDir;
 use chain_addr::Discrimination;
 use chain_core::property::BlockDate as propertyBlockDate;
@@ -9,14 +10,14 @@ use chain_impl_mockchain::{
 use jormungandr_automation::{
     jormungandr::{
         explorer::{configuration::ExplorerParams, verifiers::ExplorerVerifier},
-        ConfigurationBuilder, Starter,
+        Block0ConfigurationBuilder,
     },
     testing::{
         time::{get_current_date, wait_for_date},
         VotePlanBuilder,
     },
 };
-use jormungandr_lib::interfaces::{InitialToken, KesUpdateSpeed};
+use jormungandr_lib::interfaces::{Initial, InitialToken, KesUpdateSpeed};
 use rand_core::OsRng;
 use std::collections::HashMap;
 use thor::{
@@ -52,22 +53,22 @@ pub fn explorer_vote_plan_not_existing() {
         .public()
         .build();
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![alice.to_initial_fund(INITIAL_FUND_PER_WALLET_1)])
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(vec![alice.to_initial_fund(INITIAL_FUND_PER_WALLET_1)])
         .with_token(InitialToken {
             token_id: vote_plan.voting_token().clone().into(),
             policy: MintingPolicy::new().into(),
             to: vec![alice.to_initial_token(INITIAL_FUND_PER_WALLET_1)],
         })
         .with_committees(&[alice.to_committee_id()])
-        .with_slots_per_epoch(SLOTS_PER_EPOCH)
-        .with_treasury(INITIAL_TREASURY.into())
-        .build(&temp_dir);
+        .with_slots_per_epoch(SLOTS_PER_EPOCH.try_into().unwrap())
+        .with_treasury(INITIAL_TREASURY.into());
 
-    let jormungandr = Starter::new()
-        .config(config)
-        .temp_dir(temp_dir)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let params = ExplorerParams::new(
@@ -132,18 +133,20 @@ pub fn explorer_vote_plan_public_flow_test() {
         .public()
         .build();
 
-    let vote_plan_cert = vote_plan_cert(
-        &voters[0],
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
-        &vote_plan,
-    )
-    .into();
+    let vote_plan_cert = Initial::Cert(
+        vote_plan_cert(
+            &voters[0],
+            BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            &vote_plan,
+        )
+        .into(),
+    );
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(
             voters
                 .iter()
                 .map(|x| x.to_initial_fund(INITIAL_TREASURY))
@@ -158,21 +161,20 @@ pub fn explorer_vote_plan_public_flow_test() {
             ],
         })
         .with_committees(&[voters[0].to_committee_id()])
-        .with_slots_per_epoch(SLOTS_PER_EPOCH)
+        .with_slots_per_epoch(SLOTS_PER_EPOCH.try_into().unwrap())
         .with_certs(vec![vote_plan_cert])
-        .with_treasury(INITIAL_TREASURY.into())
-        .build(&temp_dir);
+        .with_treasury(INITIAL_TREASURY.into());
 
-    let jormungandr = Starter::new()
-        .config(config)
-        .temp_dir(temp_dir)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
-    let transaction_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
-        chain_impl_mockchain::block::BlockDate {
+    let transaction_sender = FragmentSender::from_settings(
+        &jormungandr.rest().settings().unwrap(),
+        BlockDate {
             epoch: 3,
             slot_id: 0,
         }
@@ -416,18 +418,20 @@ pub fn explorer_vote_plan_private_flow_test() {
         .options_size(3)
         .build();
 
-    let vote_plan_cert = vote_plan_cert(
-        &voters[0],
-        chain_impl_mockchain::block::BlockDate {
-            epoch: 1,
-            slot_id: 0,
-        },
-        &vote_plan,
-    )
-    .into();
+    let vote_plan_cert = Initial::Cert(
+        vote_plan_cert(
+            &voters[0],
+            chain_impl_mockchain::block::BlockDate {
+                epoch: 1,
+                slot_id: 0,
+            },
+            &vote_plan,
+        )
+        .into(),
+    );
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(vec![
             voters[0].to_initial_fund(INITIAL_FUND_PER_WALLET_1),
             voters[1].to_initial_fund(INITIAL_FUND_PER_WALLET_2),
         ])
@@ -444,16 +448,19 @@ pub fn explorer_vote_plan_private_flow_test() {
         .with_treasury(INITIAL_TREASURY.into())
         .with_discrimination(Discrimination::Production)
         .with_committees(&[voters[0].to_committee_id()])
-        .with_slot_duration(SLOT_DURATION)
-        .with_slots_per_epoch(SLOTS_PER_EPOCH)
-        .with_certs(vec![vote_plan_cert])
-        .build(&temp_dir);
+        .with_slot_duration(SLOT_DURATION.try_into().unwrap())
+        .with_slots_per_epoch(SLOTS_PER_EPOCH.try_into().unwrap())
+        .with_certs(vec![vote_plan_cert]);
 
-    let jormungandr = Starter::new().config(config).start().unwrap();
-
-    let transaction_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        jormungandr.fees(),
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
+    let settings = &jormungandr.rest().settings().unwrap();
+    let transaction_sender = FragmentSender::from_settings(
+        settings,
         chain_impl_mockchain::block::BlockDate {
             epoch: 1,
             slot_id: 0,
@@ -462,9 +469,8 @@ pub fn explorer_vote_plan_private_flow_test() {
         FragmentSenderSetup::resend_3_times(),
     );
 
-    let fragment_builder = FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_builder = FragmentBuilder::from_settings(
+        settings,
         chain_impl_mockchain::block::BlockDate {
             epoch: 3,
             slot_id: 0,

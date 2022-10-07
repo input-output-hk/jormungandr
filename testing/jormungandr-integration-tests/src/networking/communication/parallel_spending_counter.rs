@@ -1,7 +1,7 @@
 use chain_impl_mockchain::testing::WitnessMode;
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+    config::{SpawnParams, WalletTemplateBuilder},
 };
 use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
 
@@ -14,6 +14,7 @@ const PASSIVE_4: &str = "Passive4";
 const ALICE: &str = "ALICE";
 const BOB: &str = "BOB";
 
+use hersir::config::BlockchainConfiguration;
 use rand::{seq::SliceRandom, thread_rng};
 
 #[test]
@@ -27,7 +28,7 @@ pub fn account_send_4_parallel_transaction_through_4_proxies() {
                 .with_node(Node::new(PASSIVE_3).with_trusted_peer(LEADER))
                 .with_node(Node::new(PASSIVE_4).with_trusted_peer(LEADER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(LEADER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(LEADER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_500_000_000)

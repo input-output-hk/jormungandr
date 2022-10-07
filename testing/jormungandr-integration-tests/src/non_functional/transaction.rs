@@ -1,11 +1,11 @@
 use crate::startup;
-use chain_impl_mockchain::{block::BlockDate, fee::LinearFee, fragment::Fragment};
+use chain_impl_mockchain::{block::BlockDate, fragment::Fragment};
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::ConfigurationBuilder,
+    jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder},
     testing::{
-        benchmark_efficiency, benchmark_endurance, benchmark_speed, time, EfficiencyBenchmarkDef,
-        EfficiencyBenchmarkFinish, Endurance, Thresholds,
+        benchmark_efficiency, benchmark_endurance, benchmark_speed, settings::SettingsDtoExtension,
+        time, EfficiencyBenchmarkDef, EfficiencyBenchmarkFinish, Endurance, Thresholds,
     },
 };
 use jormungandr_lib::interfaces::{
@@ -58,11 +58,12 @@ fn send_100_transaction_in_10_packs_for_recievers(
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(60.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(2)
+            .with_slot_duration(2.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -82,7 +83,7 @@ fn send_100_transaction_in_10_packs_for_recievers(
             .iter()
             .map(|receiver| {
                 let message = jcli
-                    .transaction_builder(jormungandr.genesis_block_hash())
+                    .transaction_builder(settings.genesis_block_hash())
                     .new_transaction()
                     .add_account(&sender.address().to_string(), &output_value.into())
                     .add_output(&receiver.address().to_string(), output_value.into())
@@ -118,11 +119,12 @@ pub fn test_100_transaction_is_processed_simple() {
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(60.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(4)
+            .with_slot_duration(4.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -142,7 +144,7 @@ pub fn test_100_transaction_is_processed_simple() {
 
     for i in 0..transaction_max_count {
         let transaction = jcli
-            .transaction_builder(jormungandr.genesis_block_hash())
+            .transaction_builder(settings.genesis_block_hash())
             .new_transaction()
             .add_account(&sender.address().to_string(), &output_value.into())
             .add_output(&receiver.address().to_string(), output_value.into())
@@ -182,12 +184,13 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(60.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(4)
-            .with_epoch_stability_depth(10)
+            .with_slot_duration(4.try_into().unwrap())
+            .with_epoch_stability_depth(10.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -208,7 +211,7 @@ pub fn test_blocks_are_being_created_for_more_than_15_minutes() {
 
     loop {
         let transaction = jcli
-            .transaction_builder(jormungandr.genesis_block_hash())
+            .transaction_builder(settings.genesis_block_hash())
             .new_transaction()
             .add_account(&sender.address().to_string(), &output_value.into())
             .add_output(&receiver.address().to_string(), output_value.into())
@@ -250,11 +253,12 @@ pub fn test_expired_transactions_processing_speed() {
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(60)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(60.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(4)
+            .with_slot_duration(4.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -263,14 +267,14 @@ pub fn test_expired_transactions_processing_speed() {
     let output_value = 1;
     let transactions: Vec<Fragment> = (0..N_TRANSACTIONS)
         .map(|_| {
-            let tx = thor::FragmentBuilder::new(
-                &jormungandr.genesis_block_hash(),
-                &jormungandr.fees(),
+            let tx = thor::FragmentBuilder::try_from_with_setup(
+                &jormungandr,
                 BlockDate {
                     epoch: 0,
                     slot_id: 0,
                 },
             )
+            .unwrap()
             .transaction(&sender, receiver.address(), output_value.into())
             .unwrap();
             sender.confirm_transaction();
@@ -278,12 +282,12 @@ pub fn test_expired_transactions_processing_speed() {
         })
         .collect();
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        LinearFee::new(0, 0, 0),
-        BlockDate::first().into(),
+    let fragment_sender = FragmentSender::try_from_with_setup(
+        &jormungandr,
+        BlockDate::first(),
         FragmentSenderSetup::ignore_errors(),
-    );
+    )
+    .unwrap();
 
     let benchmark = benchmark_speed("test_expired_transactions_processing_speed")
         .target(Duration::from_secs(10))
@@ -309,17 +313,17 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
     let (jormungandr, _) = startup::start_stake_pool(
         &[sender.clone()],
         &[],
-        ConfigurationBuilder::new()
-            .with_mempool(Mempool {
-                pool_max_entries: N_TRANSACTIONS.into(),
-                log_max_entries: N_TRANSACTIONS.into(),
-                persistent_log: None,
-            })
-            .with_slots_per_epoch(60)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(60.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(4)
+            .with_slot_duration(4.try_into().unwrap())
             .with_kes_update_speed(KesUpdateSpeed::new(43200).unwrap())
             .with_tx_max_expiry_epochs(MAX_EXPIRY_EPOCHS as u8),
+        NodeConfigBuilder::default().with_mempool(Mempool {
+            pool_max_entries: N_TRANSACTIONS.into(),
+            log_max_entries: N_TRANSACTIONS.into(),
+            persistent_log: None,
+        }),
     )
     .unwrap();
 
@@ -339,11 +343,11 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
 
     let transactions: Vec<Fragment> = (0..N_TRANSACTIONS)
         .map(|_| {
-            let tx = thor::FragmentBuilder::new(
-                &jormungandr.genesis_block_hash(),
-                &jormungandr.fees(),
+            let tx = thor::FragmentBuilder::try_from_with_setup(
+                &jormungandr,
                 block_date_generator.block_date(),
             )
+            .unwrap()
             .transaction(&sender, receiver.address(), output_value.into())
             .unwrap();
             sender.confirm_transaction();
@@ -351,12 +355,12 @@ pub fn test_transactions_with_long_ttl_processing_speed() {
         })
         .collect();
 
-    let fragment_sender = FragmentSender::new(
-        jormungandr.genesis_block_hash(),
-        LinearFee::new(0, 0, 0),
-        block_date_generator.block_date().into(),
+    let fragment_sender = FragmentSender::try_from_with_setup(
+        &jormungandr,
+        block_date_generator.block_date(),
         FragmentSenderSetup::ignore_errors(),
-    );
+    )
+    .unwrap();
 
     let benchmark = benchmark_speed("test_transactions_with_long_ttl_processing_speed")
         .target(Duration::from_secs(60))

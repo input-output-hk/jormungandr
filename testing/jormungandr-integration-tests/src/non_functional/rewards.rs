@@ -2,7 +2,7 @@ use crate::startup;
 use chain_impl_mockchain::block::BlockDate;
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::ConfigurationBuilder,
+    jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder},
     testing::{benchmark_consumption, benchmark_endurance, ResourcesUsage},
 };
 use jormungandr_lib::interfaces::ActiveSlotCoefficient;
@@ -31,10 +31,11 @@ pub fn collect_reward_for_15_minutes() {
     let (jormungandr, _stake_pool_ids) = startup::start_stake_pool(
         &stake_pool_owners,
         &[],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(20)
+        Block0ConfigurationBuilder::default()
+            .with_slots_per_epoch(20.try_into().unwrap())
             .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_slot_duration(3),
+            .with_slot_duration(3.try_into().unwrap()),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -49,11 +50,11 @@ pub fn collect_reward_for_15_minutes() {
             .start();
 
     loop {
-        let new_transaction = thor::FragmentBuilder::new(
-            &jormungandr.genesis_block_hash(),
-            &jormungandr.fees(),
+        let new_transaction = thor::FragmentBuilder::try_from_with_setup(
+            &jormungandr,
             BlockDate::first().next_epoch(),
         )
+        .unwrap()
         .transaction(&sender, receiver.address(), 10.into())
         .unwrap()
         .encode();

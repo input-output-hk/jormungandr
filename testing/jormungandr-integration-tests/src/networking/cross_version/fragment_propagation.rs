@@ -1,7 +1,7 @@
 use super::{ALICE, BOB, CLARICE, DAVID, LEADER, PASSIVE};
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SessionSettings, SpawnParams, WalletTemplateBuilder},
+    config::{BlockchainConfiguration, SessionSettings, SpawnParams, WalletTemplateBuilder},
     controller::Controller,
 };
 use jormungandr_automation::{
@@ -21,7 +21,7 @@ pub fn legacy_current_node_fragment_propagation() {
                 .with_node(Node::new(LEADER))
                 .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(LEADER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(LEADER))
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_500_000_000)
@@ -29,18 +29,9 @@ pub fn legacy_current_node_fragment_propagation() {
                 .build(),
         )
         .wallet_template(WalletTemplateBuilder::new(BOB).with(2_000_000_000).build())
-        .wallet_template(
-            WalletTemplateBuilder::new(CLARICE)
-                .with(2_000_000_000)
-                .build(),
-        )
-        .wallet_template(
-            WalletTemplateBuilder::new(DAVID)
-                .with(2_000_000_000)
-                .build(),
-        )
         .build()
         .unwrap();
+
     let session_settings = SessionSettings::default();
     let (legacy_app, version) = get_legacy_data(&session_settings);
 
@@ -48,12 +39,12 @@ pub fn legacy_current_node_fragment_propagation() {
         .spawn(SpawnParams::new(LEADER).in_memory())
         .unwrap();
 
-    let (passive, _) = controller
-        .spawn_legacy(
+    let passive = controller
+        .spawn(
             SpawnParams::new(PASSIVE)
                 .in_memory()
-                .jormungandr(legacy_app),
-            &version,
+                .jormungandr(legacy_app)
+                .version(version.clone()),
         )
         .unwrap();
 
@@ -91,9 +82,11 @@ pub fn current_node_legacy_fragment_propagation() {
     let (legacy_app, version) = get_legacy_data(&session_settings);
 
     let _leader = controller
-        .spawn_legacy(
-            SpawnParams::new(LEADER).in_memory().jormungandr(legacy_app),
-            &version,
+        .spawn(
+            SpawnParams::new(LEADER)
+                .in_memory()
+                .jormungandr(legacy_app)
+                .version(version.clone()),
         )
         .unwrap();
 

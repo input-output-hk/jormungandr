@@ -1,11 +1,11 @@
-use crate::startup;
+use crate::{startup, startup::SingleNodeTestBootstrapper};
 use assert_fs::TempDir;
 use chain_impl_mockchain::{block::BlockDate, fragment::Fragment};
 use jormungandr_automation::{
     jcli::JCli,
     jormungandr::{
         explorer::{configuration::ExplorerParams, verifiers::ExplorerVerifier},
-        ConfigurationBuilder, Starter,
+        Block0ConfigurationBuilder, NodeConfigBuilder,
     },
 };
 use jormungandr_lib::interfaces::{ActiveSlotCoefficient, FragmentStatus};
@@ -18,11 +18,12 @@ pub fn explorer_address_test() {
     let sender = thor::Wallet::default();
     let address_bech32_prefix = sender.address().0;
 
-    let mut config = ConfigurationBuilder::new();
-    config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
+    let config = Block0ConfigurationBuilder::default()
+        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
 
     let (jormungandr, _initial_stake_pools) =
-        startup::start_stake_pool(&[sender.clone()], &[], &mut config).unwrap();
+        startup::start_stake_pool(&[sender.clone()], &[], config, NodeConfigBuilder::default())
+            .unwrap();
 
     let params = ExplorerParams::new(None, None, address_bech32_prefix);
     let explorer_process = jormungandr.explorer(params).unwrap();
@@ -48,15 +49,19 @@ pub fn explorer_transactions_not_existing_address_test() {
     let transaction_value = 1_000;
     let attempts_number = 20;
 
-    let mut config = ConfigurationBuilder::new();
-    config.with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
+    let config = Block0ConfigurationBuilder::default()
+        .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM);
 
-    let (jormungandr, _initial_stake_pools) =
-        startup::start_stake_pool(&[sender.clone()], &[sender.clone()], &mut config).unwrap();
+    let (jormungandr, _initial_stake_pools) = startup::start_stake_pool(
+        &[sender.clone()],
+        &[sender.clone()],
+        config,
+        NodeConfigBuilder::default(),
+    )
+    .unwrap();
 
-    let transaction = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let transaction = thor::FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     )
     .transaction(&sender, receiver.address(), transaction_value.into())
@@ -101,21 +106,19 @@ pub fn explorer_transactions_address_test() {
     let temp_dir = TempDir::new().unwrap();
     let mut fragments = vec![];
 
-    let config = ConfigurationBuilder::default()
-        .with_funds(vec![sender.to_initial_fund(1_000_000)])
-        .build(&temp_dir);
+    let config =
+        Block0ConfigurationBuilder::default().with_utxos(vec![sender.to_initial_fund(1_000_000)]);
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
-        .expect("Cannot start jormungandr");
+    let test_context = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build();
+    let jormungandr = test_context.start_node(temp_dir).unwrap();
 
     let wait = Wait::new(Duration::from_secs(3), attempts_number);
 
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let fragment_builder = thor::FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     );
 
@@ -163,7 +166,7 @@ pub fn explorer_transactions_address_test() {
         .map(|(&a, b)| (a.hash().to_string(), (a, b.status())))
         .collect();
 
-    let block0 = jormungandr.block0_configuration().to_block();
+    let block0 = test_context.block0_config().to_block();
     let block0fragment: &Fragment = block0.fragments().last().unwrap();
     let block0_fragment_status = FragmentStatus::InABlock {
         date: block0.header().block_date().into(),

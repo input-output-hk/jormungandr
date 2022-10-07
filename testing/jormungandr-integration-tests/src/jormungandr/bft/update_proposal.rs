@@ -3,7 +3,7 @@ use chain_addr::Discrimination;
 use chain_crypto::Ed25519;
 use chain_impl_mockchain::certificate::{UpdateProposal, UpdateVote};
 use jormungandr_automation::{
-    jormungandr::{ConfigurationBuilder, Starter},
+    jormungandr::{Block0ConfigurationBuilder, JormungandrBootstrapper},
     testing::{
         keys::create_new_key_pair,
         time::{get_current_date, wait_for_epoch},
@@ -21,17 +21,16 @@ fn proposal_expired_after_proposal_expiration_deadline() {
     let bft_secret = create_new_key_pair::<Ed25519>();
     let wallet_initial_funds = 1_000_000;
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
+    let config = Block0ConfigurationBuilder::minimal_setup()
+        .with_utxos(vec![alice.to_initial_fund(wallet_initial_funds)])
         .with_consensus_leaders_ids(vec![bft_secret.identifier().into()])
-        .with_proposal_expiry_epochs(2)
-        .with_slots_per_epoch(10)
-        .build(&temp_dir);
+        .with_proposal_expiration(2.try_into().unwrap())
+        .with_slots_per_epoch(10.try_into().unwrap());
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    let jormungandr = JormungandrBootstrapper::default()
+        .with_block0_configuration(config.build())
+        .with_leader_key(&bft_secret)
+        .start(temp_dir)
         .unwrap();
 
     let new_block_context_max_size = 1000;
@@ -43,7 +42,9 @@ fn proposal_expired_after_proposal_expiration_deadline() {
 
     let current_epoch = get_current_date(&mut jormungandr.rest()).epoch();
 
-    let fragment_sender = FragmentSender::from(jormungandr.block0_configuration());
+    let settings = jormungandr.rest().settings().unwrap();
+
+    let fragment_sender = FragmentSender::from(&settings);
 
     let update_proposal = UpdateProposal::new(
         change_params.into(),
@@ -87,24 +88,24 @@ fn not_a_bft_leader() {
     let bft_secret = create_new_key_pair::<Ed25519>();
     let wallet_initial_funds = 1_000_000;
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(vec![alice.to_initial_fund(wallet_initial_funds)])
         .with_discrimination(Discrimination::Test)
         .with_consensus_leaders_ids(vec![ConsensusLeaderId::from(alice.public_key())])
-        .with_slots_per_epoch(10)
-        .build(&temp_dir);
+        .with_slots_per_epoch(10.try_into().unwrap())
+        .build();
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    let jormungandr = JormungandrBootstrapper::default()
+        .with_block0_configuration(config)
+        .with_leader_key(&bft_secret)
+        .start(temp_dir)
         .unwrap();
 
     let change_params = ConfigParams::new(vec![ConfigParam::Discrimination(
         Discrimination::Production,
     )]);
 
-    let fragment_sender = FragmentSender::from(jormungandr.block0_configuration());
+    let fragment_sender = FragmentSender::from(&jormungandr.rest().settings().unwrap());
 
     let update_proposal = UpdateProposal::new(
         change_params.into(),
@@ -127,27 +128,27 @@ fn proposal_changes_immutable_setting() {
     let bft_secret = create_new_key_pair::<Ed25519>();
     let wallet_initial_funds = 1_000_000;
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![alice.to_initial_fund(wallet_initial_funds)])
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(vec![alice.to_initial_fund(wallet_initial_funds)])
         .with_discrimination(Discrimination::Test)
         .with_consensus_leaders_ids(vec![ConsensusLeaderId::from(
             bft_secret.identifier().into_public_key(),
         )])
-        .with_slots_per_epoch(10)
-        .build(&temp_dir);
+        .with_slots_per_epoch(10.try_into().unwrap())
+        .build();
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    let jormungandr = JormungandrBootstrapper::default()
+        .with_block0_configuration(config)
+        .with_leader_key(&bft_secret)
+        .start(temp_dir)
         .unwrap();
 
     let change_params = ConfigParams::new(vec![ConfigParam::Discrimination(
         Discrimination::Production,
     )]);
 
-    let fragment_sender = FragmentSender::from_with_setup(
-        jormungandr.block0_configuration(),
+    let fragment_sender = FragmentSender::from_settings_with_setup(
+        &jormungandr.rest().settings().unwrap(),
         FragmentSenderSetup::no_verify(),
     );
 

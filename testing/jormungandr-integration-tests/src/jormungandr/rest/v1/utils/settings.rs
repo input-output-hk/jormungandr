@@ -1,25 +1,34 @@
-use crate::startup;
+use crate::startup::SingleNodeTestBootstrapper;
+use assert_fs::TempDir;
 use chain_impl_mockchain::fee::{LinearFee, PerCertificateFee, PerVoteCertificateFee};
 use jormungandr_automation::{
-    jormungandr::ConfigurationBuilder, testing::block0::Block0ConfigurationExtension,
+    jormungandr::Block0ConfigurationBuilder, testing::block0::Block0ConfigurationExtension,
 };
 use jormungandr_lib::interfaces::{Ratio, RewardParams, TaxType};
 use std::num::{NonZeroU32, NonZeroU64};
+use thor::Block0ConfigurationBuilderExtension;
 
 #[test]
 pub fn test_default_settings() {
-    let alice = thor::Wallet::default();
-    let bob = thor::Wallet::default();
-    let (jormungandr, _stake_pools) =
-        startup::start_stake_pool(&[alice], &[bob], &mut ConfigurationBuilder::new()).unwrap();
+    let temp_dir = TempDir::new().unwrap();
 
+    let config_builder = Block0ConfigurationBuilder::default();
+
+    let test_context = SingleNodeTestBootstrapper::default()
+        .with_block0_config(config_builder)
+        .as_bft_leader()
+        .build();
+    let jormungandr = test_context.start_node(temp_dir).unwrap();
+    let config = test_context.block0_config();
     let rest_settings = jormungandr.rest().settings().expect("Rest settings error");
-    let block0_settings = jormungandr.block0_configuration().settings();
+    let block0_settings = config.settings();
     assert_eq!(rest_settings, block0_settings);
 }
 
 #[test]
 pub fn test_custom_settings() {
+    let temp_dir = TempDir::new().unwrap();
+
     let alice = thor::Wallet::default();
 
     let mut linear_fees = LinearFee::new(1, 2, 1);
@@ -47,21 +56,25 @@ pub fn test_custom_settings() {
         epoch_rate: NonZeroU32::new(4).unwrap(),
     };
 
-    let jormungandr = startup::start_bft(
-        vec![&alice],
-        ConfigurationBuilder::new()
-            .with_linear_fees(linear_fees)
-            .with_block_content_max_size(2000.into())
-            .with_epoch_stability_depth(2000)
-            .with_slot_duration(1)
-            .with_slots_per_epoch(6)
-            .with_treasury_parameters(treasury_parameters)
-            .with_reward_parameters(reward_parameters)
-            .with_tx_max_expiry_epochs(50),
-    )
-    .unwrap();
+    let block0_config = Block0ConfigurationBuilder::default()
+        .with_linear_fees(linear_fees)
+        .with_block_content_max_size(2000.into())
+        .with_epoch_stability_depth(2000.try_into().unwrap())
+        .with_slot_duration(1.try_into().unwrap())
+        .with_slots_per_epoch(6.try_into().unwrap())
+        .with_treasury_parameters(Some(treasury_parameters))
+        .with_reward_parameters(Some(reward_parameters))
+        .with_tx_max_expiry_epochs(50)
+        .with_wallet(&alice, 100.into());
+
+    let test_context = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(block0_config)
+        .build();
+
+    let jormungandr = test_context.start_node(temp_dir).unwrap();
 
     let rest_settings = jormungandr.rest().settings().unwrap();
-    let block0_settings = jormungandr.block0_configuration().settings();
+    let block0_settings = test_context.block0_config().settings();
     assert_eq!(rest_settings, block0_settings);
 }

@@ -1,7 +1,11 @@
 use crate::startup;
 use assert_fs::{prelude::*, TempDir};
 use chain_impl_mockchain::rewards::TaxType;
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder, testing::time};
+use jormungandr_automation::{
+    jcli::JCli,
+    jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder},
+    testing::time,
+};
 use thor::TransactionHash;
 
 #[test]
@@ -14,7 +18,8 @@ pub fn update_pool_fees_is_not_allowed() {
     let (jormungandr, stake_pools) = startup::start_stake_pool(
         &[stake_pool_owner.clone()],
         &[],
-        ConfigurationBuilder::new().with_storage(&temp_dir.child("storage")),
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default().with_storage(temp_dir.child("storage").to_path_buf()),
     )
     .unwrap();
 
@@ -27,9 +32,8 @@ pub fn update_pool_fees_is_not_allowed() {
     // 6. send pool update certificate
     time::wait_for_epoch(2, jormungandr.rest());
 
-    let transaction = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let transaction = thor::FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         chain_impl_mockchain::block::BlockDate {
             epoch: 3,
             slot_id: 0,

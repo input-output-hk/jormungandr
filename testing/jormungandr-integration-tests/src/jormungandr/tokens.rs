@@ -1,3 +1,4 @@
+use crate::{startup, startup::SingleNodeTestBootstrapper};
 use assert_fs::TempDir;
 use chain_impl_mockchain::{
     fee::LinearFee,
@@ -5,9 +6,11 @@ use chain_impl_mockchain::{
     tokens::{identifier::TokenIdentifier, minting_policy::MintingPolicy},
     value::Value,
 };
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_lib::interfaces::InitialToken;
-use thor::{FragmentSender, FragmentVerifier};
+use jormungandr_automation::jormungandr::{
+    Block0ConfigurationBuilder, JormungandrBootstrapper, SecretModelFactory,
+};
+use jormungandr_lib::interfaces::{ConsensusLeaderId, InitialToken};
+use thor::{Block0ConfigurationBuilderExtension, FragmentSender, FragmentVerifier};
 
 #[test]
 pub fn rest_shows_initial_token_state() {
@@ -22,19 +25,19 @@ pub fn rest_shows_initial_token_state() {
         token_name: TestGen::token_name(),
     };
 
-    let config = ConfigurationBuilder::new()
-        .with_fund(alice.to_initial_fund(1_000))
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxo(alice.to_initial_fund(1_000))
         .with_token(InitialToken {
             token_id: token_id.clone().into(),
             policy: minting_policy.into(),
             to: vec![alice.to_initial_token(initial_token_value)],
-        })
-        .build(&temp_dir);
+        });
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(config)
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let alice_account_state = jormungandr
@@ -48,23 +51,32 @@ pub fn rest_shows_initial_token_state() {
 }
 
 #[test]
-pub fn can_assign_token_to_non_existing_account() {
+pub fn cannot_assign_token_to_non_existing_account() {
     let temp_dir = TempDir::new().unwrap();
     let alice = thor::Wallet::default();
-
+    let leader_key = startup::create_new_leader_key();
     let minting_policy = MintingPolicy::new();
     let token_id = TokenIdentifier {
         policy_hash: minting_policy.hash(),
         token_name: TestGen::token_name(),
     };
 
-    ConfigurationBuilder::new()
+    let block0 = Block0ConfigurationBuilder::default()
+        .with_consensus_leaders_ids(vec![ConsensusLeaderId::from(leader_key.identifier())])
         .with_token(InitialToken {
             token_id: token_id.into(),
             policy: minting_policy.into(),
             to: vec![alice.to_initial_token(1_000)],
         })
-        .build(&temp_dir);
+        .build();
+
+    JormungandrBootstrapper::default()
+        .with_block0_configuration(block0)
+        .with_secret(SecretModelFactory::bft(leader_key.signing_key()))
+        .into_starter(temp_dir)
+        .unwrap()
+        .start_should_fail_with_message("Account does not exist")
+        .unwrap();
 }
 
 #[test]
@@ -73,14 +85,21 @@ pub fn setup_wrong_policy_hash() {
     let temp_dir = TempDir::new().unwrap();
     let alice = thor::Wallet::default();
 
-    ConfigurationBuilder::new()
-        .with_fund(alice.to_initial_fund(1_000))
+    let block0_config = Block0ConfigurationBuilder::default()
+        .with_utxo(alice.to_initial_fund(1_000))
         .with_token(InitialToken {
             token_id: TestGen::token_id().into(),
             policy: MintingPolicy::new().into(),
             to: vec![alice.to_initial_token(1_000)],
         })
-        .build(&temp_dir);
+        .build();
+
+    JormungandrBootstrapper::default()
+        .with_block0_configuration(block0_config)
+        .into_starter(temp_dir)
+        .unwrap()
+        .start()
+        .unwrap();
 }
 
 #[test]
@@ -94,19 +113,19 @@ pub fn setup_0_token_assigned() {
         token_name: TestGen::token_name(),
     };
 
-    let config = ConfigurationBuilder::new()
-        .with_fund(alice.to_initial_fund(1_000))
+    let config = Block0ConfigurationBuilder::default()
+        .with_wallet(&alice, 1_000.into())
         .with_token(InitialToken {
             token_id: token_id.clone().into(),
             policy: minting_policy.into(),
             to: vec![alice.to_initial_token(0)],
-        })
-        .build(&temp_dir);
+        });
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .with_block0_config(config)
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let alice_account_state = jormungandr
@@ -133,8 +152,8 @@ pub fn transaction_does_not_influence_token_count() {
         token_name: TestGen::token_name(),
     };
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
+    let config = Block0ConfigurationBuilder::default()
+        .with_utxos(vec![
             alice.to_initial_fund(1_000),
             bob.to_initial_fund(1_000),
         ])
@@ -143,16 +162,16 @@ pub fn transaction_does_not_influence_token_count() {
             policy: minting_policy.into(),
             to: vec![alice.to_initial_token(initial_token_value)],
         })
-        .with_linear_fees(LinearFee::new(1, 1, 1))
-        .build(&temp_dir);
+        .with_linear_fees(LinearFee::new(1, 1, 1));
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
-    let fragment_sender = FragmentSender::from(jormungandr.block0_configuration());
+    let fragment_sender = FragmentSender::try_from(&jormungandr).unwrap();
 
     let check = fragment_sender
         .send_transaction(&mut alice, &bob, &jormungandr, 10.into())

@@ -1,6 +1,6 @@
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+    config::{BlockchainConfiguration, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::testing::{
     benchmark::sync::{measure_and_log_sync_time, MeasurementReportInterval},
@@ -22,7 +22,9 @@ pub fn two_transaction_to_two_leaders() {
                 .with_node(Node::new(LEADER_2))
                 .with_node(Node::new(LEADER_1).with_trusted_peer(LEADER_2)),
         )
-        .blockchain_config(Blockchain::default().with_leaders(vec![LEADER_1, LEADER_2]))
+        .blockchain_config(
+            BlockchainConfiguration::default().with_leaders(vec![LEADER_1, LEADER_2]),
+        )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_500_000_000)

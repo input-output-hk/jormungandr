@@ -2,7 +2,7 @@ use crate::networking::utils;
 use chain_impl_mockchain::header::BlockDate;
 use hersir::{
     builder::{NetworkBuilder, Node, Topology},
-    config::{Blockchain, SpawnParams, WalletTemplateBuilder},
+    config::{BlockchainConfiguration, SpawnParams, WalletTemplateBuilder},
 };
 use jormungandr_automation::jormungandr::JormungandrProcess;
 use jormungandr_lib::interfaces::{NodeStats, Policy, SlotDuration};
@@ -36,7 +36,9 @@ pub fn p2p_stats_test() {
                         .with_trusted_peer(LEADER3),
                 ),
         )
-        .blockchain_config(Blockchain::default().with_leaders(vec![LEADER1, LEADER2, LEADER3]))
+        .blockchain_config(
+            BlockchainConfiguration::default().with_leaders(vec![LEADER1, LEADER2, LEADER3]),
+        )
         .wallet_template(
             WalletTemplateBuilder::new(ALICE)
                 .with(2_000_000_000)
@@ -152,7 +154,7 @@ pub fn p2p_stats_test() {
 macro_rules! build_network {
     () => {{
         NetworkBuilder::default().blockchain_config(
-            Blockchain::default().with_slot_duration(SlotDuration::new(5).unwrap()),
+            BlockchainConfiguration::default().with_slot_duration(SlotDuration::new(5).unwrap()),
         )
     }};
 }
@@ -165,7 +167,7 @@ pub fn passive_node_last_block_info() {
                 .with_node(Node::new(LEADER))
                 .with_node(Node::new(PASSIVE).with_trusted_peer(LEADER)),
         )
-        .blockchain_config(Blockchain::default().with_leader(LEADER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(LEADER))
         .wallet_template(
             WalletTemplateBuilder::new("alice")
                 .with(1_000_000)
@@ -193,12 +195,7 @@ pub fn passive_node_last_block_info() {
         .stats
         .expect("empty stats");
 
-    let fragment_sender = FragmentSender::new(
-        leader.genesis_block_hash(),
-        leader.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
+    let fragment_sender = FragmentSender::from(&leader.rest().settings().unwrap());
 
     fragment_sender
         .send_transactions_round_trip(5, &mut alice, &mut bob, &leader, 100.into())
@@ -222,7 +219,7 @@ pub fn leader_node_last_block_info() {
                 .build(),
         )
         .wallet_template(WalletTemplateBuilder::new("bob").with(1_000_000).build())
-        .blockchain_config(Blockchain::default().with_leader(LEADER))
+        .blockchain_config(BlockchainConfiguration::default().with_leader(LEADER))
         .build()
         .unwrap();
 
@@ -243,12 +240,7 @@ pub fn leader_node_last_block_info() {
         .stats
         .expect("empty stats");
 
-    let fragment_sender = FragmentSender::new(
-        leader.genesis_block_hash(),
-        leader.fees(),
-        BlockDate::first().next_epoch().into(),
-        Default::default(),
-    );
+    let fragment_sender = FragmentSender::from(&leader.rest().settings().unwrap());
 
     fragment_sender
         .send_transactions_round_trip(5, &mut alice, &mut bob, &leader, 100.into())

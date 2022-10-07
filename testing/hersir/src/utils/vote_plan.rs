@@ -1,10 +1,12 @@
-use chain_impl_mockchain::certificate::{VoteAction, VotePlan};
-use chain_impl_mockchain::ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction};
-use chain_impl_mockchain::testing::scenario::template::{ProposalDefBuilder, VotePlanDef, VotePlanDefBuilder};
 use crate::builder::VotePlanKey;
+use chain_impl_mockchain::{
+    certificate::{VoteAction, VotePlan},
+    ledger::governance::{ParametersGovernanceAction, TreasuryGovernanceAction},
+    testing::scenario::template::{ProposalDefBuilder, VotePlanDef, VotePlanDefBuilder},
+};
 
 pub trait VotePlanExtension {
-    fn convert_to_def(self,key: &VotePlanKey) -> VotePlanDef;
+    fn convert_to_def(self, key: &VotePlanKey) -> VotePlanDef;
 }
 
 impl VotePlanExtension for VotePlan {

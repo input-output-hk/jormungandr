@@ -1,7 +1,8 @@
+use crate::startup::SingleNodeTestBootstrapper;
 use assert_fs::TempDir;
-use chain_impl_mockchain::{chaintypes::ConsensusType, testing::WitnessMode};
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
-use jormungandr_lib::interfaces::InitialUTxO;
+use chain_impl_mockchain::testing::WitnessMode;
+use jormungandr_automation::jormungandr::Block0ConfigurationBuilder;
+use jormungandr_lib::interfaces::{NumberOfSlotsPerEpoch, SlotDuration};
 use thor::{FragmentSender, FragmentSenderSetup, FragmentVerifier};
 
 #[test]
@@ -10,30 +11,23 @@ fn parallel_transaction_using_different_lanes() {
     let receiver = thor::Wallet::default();
     let mut sender = thor::Wallet::default();
 
-    let config = ConfigurationBuilder::new()
-        .with_slots_per_epoch(20)
-        .with_slot_duration(2)
-        .with_block0_consensus(ConsensusType::Bft)
-        .with_funds(vec![
-            InitialUTxO {
-                address: sender.address(),
-                value: 100_000.into(),
-            },
-            InitialUTxO {
-                address: receiver.address(),
-                value: 100_000.into(),
-            },
-        ])
-        .build(&temp_dir);
+    let config = Block0ConfigurationBuilder::default()
+        .with_slots_per_epoch(NumberOfSlotsPerEpoch::new(20).unwrap())
+        .with_slot_duration(SlotDuration::new(2).unwrap())
+        .with_utxos(vec![
+            sender.to_initial_fund(100_000),
+            receiver.to_initial_fund(100_000),
+        ]);
 
-    let jormungandr = Starter::new()
-        .config(config)
-        .temp_dir(temp_dir)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
-    let mut fragment_sender = FragmentSender::from_with_setup(
-        jormungandr.block0_configuration(),
+    let mut fragment_sender = FragmentSender::from_settings_with_setup(
+        &jormungandr.rest().settings().unwrap(),
         FragmentSenderSetup::no_verify(),
     );
 

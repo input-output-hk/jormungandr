@@ -1,6 +1,8 @@
 use crate::startup;
 use chain_impl_mockchain::{block::BlockDate, fragment::FragmentId};
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, JormungandrProcess, MemPoolCheck};
+use jormungandr_automation::jormungandr::{
+    Block0ConfigurationBuilder, JormungandrProcess, MemPoolCheck, NodeConfigBuilder,
+};
 use rstest::*;
 use thor::{FragmentSender, FragmentSenderSetup};
 
@@ -13,17 +15,16 @@ fn world() -> (JormungandrProcess, FragmentId, FragmentId, FragmentId) {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
         &[bob.clone()],
-        &mut ConfigurationBuilder::new(),
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
-    let transaction_sender = FragmentSender::from(jormungandr.block0_configuration());
+    let settings = jormungandr.rest().settings().unwrap();
+    let transaction_sender = FragmentSender::from(&settings);
 
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let alice_fragment = fragment_builder
         .transaction(&alice, bob.address(), 100.into())

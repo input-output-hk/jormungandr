@@ -1,9 +1,9 @@
-use crate::startup;
+use crate::{startup, startup::SingleNodeTestBootstrapper};
 use assert_fs::fixture::TempDir;
 use chain_impl_mockchain::{block::BlockDate, testing::TestGen};
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, Starter},
+    jormungandr::{Block0ConfigurationBuilder, NodeConfigBuilder},
 };
 use jormungandr_lib::interfaces::InitialUTxO;
 
@@ -23,7 +23,8 @@ pub fn evm_transaction() {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
         &[bob.clone()],
-        &mut ConfigurationBuilder::new(),
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
@@ -39,13 +40,12 @@ pub fn evm_transaction() {
     let alice_account_balance_before: u64 = (*alice_account_state_before.value()).into();
     let bob_account_balance_before: u64 = (*bob_account_state_before.value()).into();
 
-    let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
+    let settings = jormungandr.rest().settings().unwrap();
 
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let transaction_sender = thor::FragmentSender::from(&settings);
+
+    let fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let alice_evm_mapping = TestGen::evm_mapping_for_wallet(&alice.clone().into());
     let alice_mapping_fragment = fragment_builder.evm_mapping(&alice, &alice_evm_mapping);
@@ -109,17 +109,17 @@ pub fn evm_transaction_wrong_nonce() {
     let (jormungandr, _stake_pools) = startup::start_stake_pool(
         &[alice.clone()],
         &[bob.clone()],
-        &mut ConfigurationBuilder::new(),
+        Block0ConfigurationBuilder::default(),
+        NodeConfigBuilder::default(),
     )
     .unwrap();
 
-    let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
+    let settings = jormungandr.rest().settings().unwrap();
 
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let transaction_sender = thor::FragmentSender::from(&settings);
+
+    let fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let alice_evm_mapping = TestGen::evm_mapping_for_wallet(&alice.clone().into());
     let alice_mapping_fragment = fragment_builder.evm_mapping(&alice, &alice_evm_mapping);
@@ -162,23 +162,22 @@ pub fn evm_transaction_insufficient_funds() {
     let mut alice = thor::Wallet::default();
     let mut bob = thor::Wallet::default();
 
-    let config = ConfigurationBuilder::new()
-        .with_funds(vec![
-            InitialUTxO {
-                address: alice.address(),
-                value: INSUFFICIENT_FUNDS_INITIAL_BALANCE.into(),
-            },
-            InitialUTxO {
-                address: bob.address(),
-                value: INITIAL_BALANCE.into(),
-            },
-        ])
-        .build(&temp_dir);
+    let config = Block0ConfigurationBuilder::default().with_utxos(vec![
+        InitialUTxO {
+            address: alice.address(),
+            value: INSUFFICIENT_FUNDS_INITIAL_BALANCE.into(),
+        },
+        InitialUTxO {
+            address: bob.address(),
+            value: INITIAL_BALANCE.into(),
+        },
+    ]);
 
-    let jormungandr = Starter::new()
-        .config(config)
-        .temp_dir(temp_dir)
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 
     let alice_account_state_before = jcli
@@ -193,13 +192,12 @@ pub fn evm_transaction_insufficient_funds() {
     let alice_account_balance_before: u64 = (*alice_account_state_before.value()).into();
     let bob_account_balance_before: u64 = (*bob_account_state_before.value()).into();
 
-    let transaction_sender = thor::FragmentSender::from(jormungandr.block0_configuration());
+    let settings = jormungandr.rest().settings().unwrap();
 
-    let fragment_builder = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
-        BlockDate::first().next_epoch(),
-    );
+    let transaction_sender = thor::FragmentSender::from(&settings);
+
+    let fragment_builder =
+        thor::FragmentBuilder::from_settings(&settings, BlockDate::first().next_epoch());
 
     let alice_evm_mapping = TestGen::evm_mapping_for_wallet(&alice.clone().into());
     let alice_mapping_fragment = fragment_builder.evm_mapping(&alice, &alice_evm_mapping);

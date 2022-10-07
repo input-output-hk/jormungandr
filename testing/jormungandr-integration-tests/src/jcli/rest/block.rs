@@ -1,9 +1,16 @@
-use jormungandr_automation::{jcli::JCli, jormungandr::Starter};
+use crate::startup::SingleNodeTestBootstrapper;
+use assert_fs::TempDir;
+use jormungandr_automation::jcli::JCli;
 
 #[test]
 pub fn test_non_empty_hash_is_returned_for_block0() {
     let jcli: JCli = Default::default();
-    let jormungandr = Starter::new().start().unwrap();
+    let temp_dir = TempDir::new().unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
     let rest_uri = jormungandr.rest_uri();
     let block_id = jcli.rest().v0().tip(&rest_uri);
     jcli.rest().v0().block().get(block_id, rest_uri);
@@ -12,8 +19,13 @@ pub fn test_non_empty_hash_is_returned_for_block0() {
 #[test]
 pub fn test_correct_error_is_returned_for_incorrect_block_id() {
     let jcli: JCli = Default::default();
+    let temp_dir = TempDir::new().unwrap();
     let incorrect_block_id = "e1049ea45726f0b1fc473af54f706546b3331765abf89ae9e6a8333e49621641aa";
-    let jormungandr = Starter::new().start().unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     jcli.rest().v0().block().get_expect_fail(
         incorrect_block_id,
@@ -25,9 +37,14 @@ pub fn test_correct_error_is_returned_for_incorrect_block_id() {
 #[test]
 pub fn test_correct_error_is_returned_for_incorrect_block_id_in_next_block_id_request() {
     let jcli: JCli = Default::default();
+    let temp_dir = TempDir::new().unwrap();
     let incorrect_block_id = "e1049ea45726f0b1fc473af54f706546b3331765abf89ae9e6a8333e49621641aa";
 
-    let jormungandr = Starter::new().start().unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     jcli.rest().v0().block().next_expect_fail(
         incorrect_block_id,

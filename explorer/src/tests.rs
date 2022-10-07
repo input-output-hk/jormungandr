@@ -43,6 +43,7 @@ pub fn explorer_test_context(
 
     let context = SingleNodeTestBootstrapper::default()
         .as_genesis_praos_stake_pool(&stake_pool)
+        .as_bft_leader()
         .with_block0_config(config)
         .build();
     let jormungandr = context.start_node(temp_dir).unwrap();

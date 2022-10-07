@@ -1,10 +1,11 @@
+use crate::startup::SingleNodeTestBootstrapper;
 use assert_fs::{prelude::*, TempDir};
 use chain_crypto::{RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::fee::LinearFee;
 use jormungandr_automation::{
     jcli::JCli,
-    jormungandr::{ConfigurationBuilder, JormungandrProcess, Starter},
-    testing::keys,
+    jormungandr::{Block0ConfigurationBuilder, JormungandrProcess},
+    testing::{keys, settings::SettingsDtoExtension},
 };
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -20,23 +21,25 @@ pub fn create_delegate_retire_stake_pool() {
 
     let mut actor_account = thor::Wallet::default();
 
-    let config = ConfigurationBuilder::new()
+    let config = Block0ConfigurationBuilder::default()
         .with_linear_fees(LinearFee::new(100, 100, 200))
-        .with_funds(vec![InitialUTxO {
+        .with_utxos(vec![InitialUTxO {
             value: 1_000_000.into(),
             address: actor_account.address(),
-        }])
-        .build(&temp_dir);
+        }]);
 
-    let jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config.clone())
-        .start()
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_block0_config(config)
+        .build()
+        .start_node(temp_dir)
         .unwrap();
+
+    let settings = jormungandr.rest().settings().unwrap();
 
     let stake_pool_id = create_new_stake_pool(
         &mut actor_account,
-        config.genesis_block_hash(),
+        settings.genesis_block_hash(),
         BlockDate::new(1, 0),
         &jormungandr,
         &Default::default(),
@@ -44,7 +47,7 @@ pub fn create_delegate_retire_stake_pool() {
     delegate_stake(
         &mut actor_account,
         &stake_pool_id,
-        config.genesis_block_hash(),
+        settings.genesis_block_hash(),
         BlockDate::new(1, 0),
         &jormungandr,
         &Default::default(),
@@ -52,7 +55,7 @@ pub fn create_delegate_retire_stake_pool() {
     retire_stake_pool(
         &stake_pool_id,
         &mut actor_account,
-        config.genesis_block_hash(),
+        settings.genesis_block_hash(),
         BlockDate::new(1, 0),
         &jormungandr,
         &Default::default(),
@@ -61,7 +64,7 @@ pub fn create_delegate_retire_stake_pool() {
 
 pub fn create_new_stake_pool(
     account: &mut Wallet,
-    genesis_block_hash: &str,
+    genesis_block_hash: Hash,
     valid_until: BlockDate,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
@@ -97,9 +100,9 @@ pub fn create_new_stake_pool(
     stake_pool_certificate_file
         .write_str(&stake_pool_certificate)
         .unwrap();
-    let block0_hash = Hash::from_hex(genesis_block_hash).unwrap();
+
     let transaction = jcli
-        .transaction_builder(block0_hash)
+        .transaction_builder(genesis_block_hash)
         .new_transaction()
         .add_account(&account.address().to_string(), &fee_value)
         .add_certificate(&stake_pool_certificate)
@@ -133,7 +136,7 @@ pub fn create_new_stake_pool(
 pub fn delegate_stake(
     account: &mut Wallet,
     stake_pool_id: &str,
-    genesis_block_hash: &str,
+    block0_hash: Hash,
     valid_until: BlockDate,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
@@ -153,7 +156,6 @@ pub fn delegate_stake(
     let settings = jcli.rest().v0().settings(&jormungandr.rest_uri());
     let fees: LinearFee = settings.fees;
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
-    let block0_hash = Hash::from_hex(genesis_block_hash).unwrap();
 
     let transaction = jcli
         .transaction_builder(block0_hash)
@@ -190,7 +192,7 @@ pub fn delegate_stake(
 pub fn retire_stake_pool(
     stake_pool_id: &str,
     account: &mut Wallet,
-    genesis_block_hash: &str,
+    block0_hash: Hash,
     valid_until: BlockDate,
     jormungandr: &JormungandrProcess,
     wait: &Wait,
@@ -208,7 +210,6 @@ pub fn retire_stake_pool(
     let settings = jcli.rest().v0().settings(jormungandr.rest_uri());
     let fees: LinearFee = settings.fees;
     let fee_value: Value = (fees.certificate + fees.coefficient + fees.constant).into();
-    let block0_hash = Hash::from_hex(genesis_block_hash).unwrap();
 
     let transaction = jcli
         .transaction_builder(block0_hash)

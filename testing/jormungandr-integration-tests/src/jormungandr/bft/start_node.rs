@@ -1,37 +1,44 @@
-use assert_fs::{prelude::*, TempDir};
-use jormungandr_automation::jormungandr::{ConfigurationBuilder, Starter};
+use crate::startup::SingleNodeTestBootstrapper;
+use assert_fs::TempDir;
+use jormungandr_automation::{
+    jormungandr::{Block0ConfigurationBuilder, JormungandrBootstrapper, NodeConfigBuilder},
+    testing::block0::Block0ConfigurationExtension,
+};
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput};
 
 #[test]
 pub fn test_jormungandr_leader_node_starts_successfully() {
-    let jormungandr = Starter::new().start().unwrap();
+    let temp_dir = TempDir::new().unwrap();
+
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
     jormungandr.assert_no_errors_in_log();
 }
 
 #[test]
 pub fn test_jormungandr_passive_node_starts_successfully() {
-    let temp_dir = TempDir::new().unwrap();
+    let leader_temp_dir = TempDir::new().unwrap();
+    let passive_temp_dir = TempDir::new().unwrap();
 
-    let leader_dir = temp_dir.child("leader");
-    leader_dir.create_dir_all().unwrap();
-    let leader_config = ConfigurationBuilder::new().build(&leader_dir);
-    let jormungandr_leader = Starter::new()
-        .config(leader_config.clone())
-        .start()
-        .unwrap();
+    let test_context = SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build();
+    let jormungandr_leader = test_context.start_node(leader_temp_dir).unwrap();
 
-    let passive_dir = temp_dir.child("passive");
-    passive_dir.create_dir_all().unwrap();
-    let passive_config = ConfigurationBuilder::new()
-        .with_trusted_peers(vec![jormungandr_leader.to_trusted_peer()])
-        .with_block_hash(leader_config.genesis_block_hash())
-        .build(&passive_dir);
-
-    let jormungandr_passive = Starter::new()
-        .config(passive_config)
+    let jormungandr_passive = JormungandrBootstrapper::default()
         .passive()
-        .start()
+        .with_block0_hash(test_context.block0_config().to_block_hash())
+        .with_node_config(
+            NodeConfigBuilder::default()
+                .with_trusted_peers(vec![jormungandr_leader.to_trusted_peer()])
+                .build(),
+        )
+        .start(passive_temp_dir)
         .unwrap();
+
     jormungandr_passive.assert_no_errors_in_log();
     jormungandr_leader.assert_no_errors_in_log();
 }
@@ -40,66 +47,67 @@ pub fn test_jormungandr_passive_node_starts_successfully() {
 pub fn test_jormungandr_passive_node_without_trusted_peers_fails_to_start() {
     let temp_dir = TempDir::new().unwrap();
 
-    let config = ConfigurationBuilder::new()
-        .with_trusted_peers(vec![])
-        .build(&temp_dir);
+    let block0 = Block0ConfigurationBuilder::minimal_setup().build();
 
-    Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
+    JormungandrBootstrapper::default()
         .passive()
-        .start_fail("no trusted peers specified")
+        .with_block0_hash(block0.to_block_hash())
+        .with_node_config(
+            NodeConfigBuilder::default()
+                .with_trusted_peers(vec![])
+                .build(),
+        )
+        .into_starter(temp_dir)
+        .unwrap()
+        .start_should_fail_with_message("no trusted peers specified")
+        .unwrap();
 }
 
 #[test]
 pub fn test_jormungandr_without_initial_funds_starts_sucessfully() {
     let temp_dir = TempDir::new().unwrap();
-    let mut config = ConfigurationBuilder::new().build(&temp_dir);
-    let block0_configuration = config.block0_configuration_mut();
-    block0_configuration.initial.clear();
-    let _jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 }
 
 #[test]
 pub fn test_jormungandr_with_no_trusted_peers_starts_succesfully() {
     let temp_dir = TempDir::new().unwrap();
-    let config = ConfigurationBuilder::new()
-        .with_trusted_peers(vec![])
-        .build(&temp_dir);
-    let _jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 }
 
 #[test]
 pub fn test_jormungandr_with_wrong_logger_fails_to_start() {
     let temp_dir = TempDir::new().unwrap();
-    let config = ConfigurationBuilder::new()
-        .with_log(Log(LogEntry {
+
+    SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_node_config(NodeConfigBuilder::default().with_log(Log(LogEntry {
             format: "xml".to_string(),
             level: "info".to_string(),
             output: LogOutput::Stderr,
-        }))
-        .build(&temp_dir);
-    Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start_fail(r"Error in the overall configuration of the node");
+        })))
+        .build()
+        .starter(temp_dir)
+        .unwrap()
+        .start_should_fail_with_message(r"Error in the overall configuration of the node")
+        .unwrap();
 }
 
 #[test]
 pub fn test_jormungandr_without_logger_starts_successfully() {
     let temp_dir = TempDir::new().unwrap();
-    let config = ConfigurationBuilder::new().without_log().build(&temp_dir);
-    let _jormungandr = Starter::new()
-        .temp_dir(temp_dir)
-        .config(config)
-        .start()
+    SingleNodeTestBootstrapper::default()
+        .as_bft_leader()
+        .with_node_config(NodeConfigBuilder::default().without_log())
+        .build()
+        .start_node(temp_dir)
         .unwrap();
 }

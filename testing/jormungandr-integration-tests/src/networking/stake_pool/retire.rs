@@ -84,7 +84,7 @@ pub fn retire_stake_pool_explorer() {
     let stake_pool_3 = controller.stake_pool(LEADER_3).unwrap().clone();
 
     let stake_pool_state_before = explorer
-        .stake_pool(stake_pool_3.info().to_id().to_string(), 0)
+        .stake_pool(stake_pool_3.inner().info().to_id().to_string(), 0)
         .unwrap();
     assert!(
         stake_pool_state_before

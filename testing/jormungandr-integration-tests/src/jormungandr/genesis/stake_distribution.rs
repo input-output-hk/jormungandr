@@ -1,33 +1,44 @@
-use crate::startup;
-use chain_impl_mockchain::{block::BlockDate, fee::LinearFee};
-use jormungandr_automation::{jcli::JCli, jormungandr::ConfigurationBuilder, testing::time};
+use crate::startup::SingleNodeTestBootstrapper;
+use assert_fs::TempDir;
+use chain_impl_mockchain::{block::BlockDate, chaintypes::ConsensusType, fee::LinearFee};
+use jormungandr_automation::{jcli::JCli, jormungandr::Block0ConfigurationBuilder, testing::time};
 use jormungandr_lib::{
     crypto::{account::Identifier as AccountIdentifier, hash::Hash},
     interfaces::{ActiveSlotCoefficient, Stake, StakeDistributionDto},
 };
-use std::str::FromStr;
-use thor::TransactionHash;
+use thor::{Block0ConfigurationBuilderExtension, TransactionHash};
 
 #[test]
 pub fn stake_distribution() {
+    let temp_dir = TempDir::new().unwrap();
     let jcli: JCli = Default::default();
     let sender = thor::Wallet::default();
     let receiver = thor::Wallet::default();
-
     let stake_pool_owner_1 = thor::Wallet::default();
+    let stake_pool = thor::StakePool::new(&stake_pool_owner_1);
+
+    let initial_funds_per_account = 1_000_000_000;
     let fee = LinearFee::new(1, 1, 1);
-    let (jormungandr, stake_pools) = startup::start_stake_pool(
-        &[stake_pool_owner_1.clone()],
-        &[sender.clone(), receiver],
-        ConfigurationBuilder::new()
-            .with_slots_per_epoch(20)
-            .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
-            .with_rewards_history()
-            .with_linear_fees(fee.clone())
-            .with_total_rewards_supply(1_000_000.into())
-            .with_slot_duration(3),
-    )
-    .unwrap();
+    let jormungandr = SingleNodeTestBootstrapper::default()
+        .as_genesis_praos_stake_pool(&stake_pool)
+        .with_block0_config(
+            Block0ConfigurationBuilder::default()
+                .with_some_consensus_leader()
+                .with_block0_consensus(ConsensusType::GenesisPraos)
+                .with_wallet(&sender, initial_funds_per_account.into())
+                .with_wallet(&receiver, initial_funds_per_account.into())
+                .with_wallet(&stake_pool_owner_1, initial_funds_per_account.into())
+                .with_stake_pool_and_delegation(&stake_pool, vec![&stake_pool_owner_1])
+                .with_slots_per_epoch(20.try_into().unwrap())
+                .with_consensus_genesis_praos_active_slot_coeff(ActiveSlotCoefficient::MAXIMUM)
+                .with_linear_fees(fee.clone())
+                .with_total_rewards_supply(Some(1_000_000.into()))
+                .with_slot_duration(3.try_into().unwrap()),
+        )
+        .with_rewards_history()
+        .build()
+        .start_node(temp_dir)
+        .unwrap();
 
     assert!(
         jormungandr.rest().stake_distribution_at(1).is_err(),
@@ -36,19 +47,19 @@ pub fn stake_distribution() {
 
     let transaction_fee: u64 = fee.constant + fee.coefficient * 2;
     let transaction_amount = 1_000;
-    let initial_funds_per_account = 1_000_000_000;
-    let stake_pool_id = Hash::from_str(&stake_pools.get(0).unwrap().id().to_string()).unwrap();
+    let stake_pool_id = Hash::from(stake_pool.id());
+    let mut rest = jormungandr.rest();
+    rest.enable_logger();
 
     assert_distribution(
         initial_funds_per_account * 2,
         0,
         (stake_pool_id, initial_funds_per_account),
-        jormungandr.rest().stake_distribution().unwrap(),
+        rest.stake_distribution().unwrap(),
     );
 
-    let transaction = thor::FragmentBuilder::new(
-        &jormungandr.genesis_block_hash(),
-        &jormungandr.fees(),
+    let transaction = thor::FragmentBuilder::from_settings(
+        &jormungandr.rest().settings().unwrap(),
         BlockDate::first().next_epoch(),
     )
     .transaction(
