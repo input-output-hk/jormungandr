@@ -13,7 +13,7 @@ use jormungandr_automation::{
     jormungandr::{MemPoolCheck, RemoteJormungandr},
     testing::{time, SyncNode},
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::Block0Configuration};
+use jormungandr_lib::{crypto::hash::Hash, interfaces::SettingsDto};
 
 pub struct FragmentChainSender<'a, S: SyncNode + Send> {
     sender: FragmentSender<'a, S>,
@@ -23,12 +23,12 @@ pub struct FragmentChainSender<'a, S: SyncNode + Send> {
 
 impl<'a, S: SyncNode + Send> FragmentChainSender<'a, S> {
     pub fn from_with_setup(
-        block0_configuration: &Block0Configuration,
+        settings: &SettingsDto,
         node: RemoteJormungandr,
         setup: FragmentSenderSetup<'a, S>,
     ) -> Self {
         Self {
-            sender: FragmentSender::from(block0_configuration).clone_with_setup(setup),
+            sender: FragmentSender::from(settings).clone_with_setup(setup),
             node,
             last_mempool_check: None,
         }

@@ -2,9 +2,9 @@ use crate::mjolnir_lib::{
     bootstrap::scenario::{DurationBasedClientLoad, IterationBasedClientLoad},
     MjolnirError,
 };
-use chain_impl_mockchain::key::Hash;
-use jormungandr_lib::interfaces::TrustedPeer;
+use jormungandr_lib::{crypto::hash::Hash, interfaces::TrustedPeer};
 use std::{path::PathBuf, result::Result};
+
 pub struct PassiveBootstrapLoad {
     config: ClientLoadConfig,
 }

@@ -1,77 +1,55 @@
 use crate::wallet::Wallet;
-use chain_crypto::{Ed25519, RistrettoGroup2HashDh, SumEd25519_12};
+use chain_crypto::{RistrettoGroup2HashDh, SumEd25519_12};
 use chain_impl_mockchain::{
-    certificate::{PoolId, PoolPermissions, PoolRegistration},
-    rewards::{Ratio as RatioLib, TaxType},
-    testing::{builders::StakePoolBuilder, data::StakePool as StakePoolLib},
-    value::Value as ValueLib,
+    certificate::PoolRegistration, testing::data::StakePool as StakePoolLib,
 };
+use jormungandr_automation::utils::StakePool as InnerStakePool;
 use jormungandr_lib::crypto::key::KeyPair;
-use std::num::NonZeroU64;
 
 #[derive(Clone, Debug)]
 pub struct StakePool {
-    leader: KeyPair<Ed25519>,
+    inner: InnerStakePool,
     owner: Wallet,
-    inner: StakePoolLib,
 }
 
 impl StakePool {
     pub fn new(owner: &Wallet) -> Self {
-        let leader = KeyPair::<Ed25519>::generate(rand::rngs::OsRng);
-
-        let stake_pool = StakePoolBuilder::new()
-            .with_owners(vec![owner.identifier().into_public_key()])
-            .with_pool_permissions(PoolPermissions::new(1))
-            .with_reward_account(false)
-            .with_tax_type(TaxType {
-                fixed: ValueLib(100),
-                ratio: RatioLib {
-                    numerator: 1,
-                    denominator: NonZeroU64::new(10).unwrap(),
-                },
-                max_limit: None,
-            })
-            .build();
-
-        StakePool {
+        Self {
             owner: owner.clone(),
-            leader,
-            inner: stake_pool,
+            inner: InnerStakePool::new(&owner.identifier()),
         }
-    }
-
-    pub fn leader(&self) -> &KeyPair<Ed25519> {
-        &self.leader
-    }
-
-    pub fn owner(&self) -> &Wallet {
-        &self.owner
-    }
-
-    pub fn id(&self) -> PoolId {
-        self.inner.id()
     }
 
     pub fn info_mut(&mut self) -> &mut PoolRegistration {
         self.inner.info_mut()
     }
 
-    pub fn info(&self) -> PoolRegistration {
-        self.inner.info()
+    pub fn vrf(&self) -> KeyPair<RistrettoGroup2HashDh> {
+        self.inner().vrf()
     }
 
     pub fn kes(&self) -> KeyPair<SumEd25519_12> {
-        KeyPair::<SumEd25519_12>(self.inner.kes())
+        self.inner().kes()
     }
 
-    pub fn vrf(&self) -> KeyPair<RistrettoGroup2HashDh> {
-        KeyPair::<RistrettoGroup2HashDh>(self.inner.vrf())
+    pub fn id(&self) -> chain_impl_mockchain::certificate::PoolId {
+        self.inner.id()
+    }
+
+    pub fn owner(&self) -> &Wallet {
+        &self.owner
+    }
+
+    pub fn inner(&self) -> &InnerStakePool {
+        &self.inner
+    }
+    pub fn inner_mut(&mut self) -> &mut InnerStakePool {
+        &mut self.inner
     }
 }
 
 impl From<StakePool> for StakePoolLib {
     fn from(stake_pool: StakePool) -> StakePoolLib {
-        stake_pool.inner
+        stake_pool.inner.into()
     }
 }

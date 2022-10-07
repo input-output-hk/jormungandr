@@ -31,12 +31,14 @@ use chain_impl_mockchain::{
     transaction::{InputOutputBuilder, TxBuilder},
     vote::{Choice, Payload, PayloadType},
 };
+use jormungandr_automation::jormungandr::{JormungandrProcess, RestError};
 use jormungandr_lib::{
     crypto::hash::Hash,
-    interfaces::{Address, Initial, Value},
+    interfaces::{Address, Initial, SettingsDto, Value},
 };
 use rand_chacha::ChaCha20Rng;
 use rand_core::SeedableRng;
+use std::str::FromStr;
 use thiserror::Error;
 pub use transaction_utils::TransactionHash;
 
@@ -64,6 +66,26 @@ pub enum FragmentBuilderError {
 pub struct FragmentBuilder {
     fragment_factory: FragmentFactory,
     valid_until: BlockDate,
+}
+
+impl FragmentBuilder {
+    pub fn try_from_with_setup(
+        jormungandr: &JormungandrProcess,
+        block_date: BlockDate,
+    ) -> Result<Self, RestError> {
+        let settings = jormungandr.rest().settings()?;
+        Ok(Self::from_settings(&settings, block_date))
+    }
+}
+
+impl FragmentBuilder {
+    pub fn from_settings(settings: &SettingsDto, block_date: BlockDate) -> Self {
+        Self::new(
+            &Hash::from_str(&settings.block0_hash).unwrap(),
+            &settings.fees,
+            block_date,
+        )
+    }
 }
 
 impl FragmentBuilder {

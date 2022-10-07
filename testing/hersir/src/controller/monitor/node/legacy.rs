@@ -12,7 +12,7 @@ pub use jormungandr_automation::jormungandr::{
     Status,
 };
 use jormungandr_automation::{
-    jormungandr::{LegacyNodeConfig, LogLevel, NodeAlias, StartupError},
+    jormungandr::{LogLevel, NodeAlias, StartupError},
     testing::SyncNode,
 };
 use jormungandr_lib::{
@@ -30,19 +30,13 @@ use yaml_rust::{Yaml, YamlLoader};
 pub struct LegacyNode {
     pub process: JormungandrProcess,
     pub progress_bar: ProgressBarController,
-    pub legacy_settings: LegacyNodeConfig,
 }
 
 impl LegacyNode {
-    pub fn new(
-        process: JormungandrProcess,
-        progress_bar: ProgressBarController,
-        legacy_settings: LegacyNodeConfig,
-    ) -> Self {
-        let node = LegacyNode {
+    pub fn new(process: JormungandrProcess, progress_bar: ProgressBarController) -> Self {
+        let node = Self {
             process,
             progress_bar,
-            legacy_settings,
         };
         node.progress_bar_start();
         node
@@ -150,7 +144,7 @@ impl LegacyNode {
             "{} {} ... [{}]",
             *style::icons::jormungandr,
             style::binary.apply_to(self.alias()),
-            self.legacy_settings.rest.listen,
+            self.process.rest_address(),
         ));
     }
 

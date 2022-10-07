@@ -6,7 +6,7 @@ pub use duration::DurationBasedClientLoad;
 use indicatif::{ProgressBar, ProgressStyle};
 pub use iteration::IterationBasedClientLoad;
 use jormungandr_automation::jormungandr::{
-    ConfigurationBuilder, JormungandrProcess, Starter, StartupError,
+    JormungandrBootstrapper, JormungandrProcess, NodeConfigBuilder, Starter, StartupError,
 };
 use jortestkit::file;
 use std::{fs, path::PathBuf, result::Result};
@@ -33,13 +33,19 @@ pub fn start_node(
 ) -> Result<JormungandrProcess, StartupError> {
     copy_initial_storage_if_used(client_config, storage_folder_name, temp_dir);
 
-    let config = ConfigurationBuilder::new()
+    let node = NodeConfigBuilder::default()
         .with_trusted_peers(vec![client_config.trusted_peer()])
-        .with_block_hash(client_config.block0_hash().to_string())
-        .with_storage(&temp_dir.child(storage_folder_name))
-        .build(temp_dir);
+        .with_storage(temp_dir.child(storage_folder_name).to_path_buf())
+        .build();
 
-    Starter::new().config(config).passive().start_async()
+    let config = JormungandrBootstrapper::default()
+        .with_node_config(node)
+        .with_block0_hash(*client_config.block0_hash())
+        .passive()
+        .verbose()
+        .build(temp_dir)?;
+
+    Starter::default().config(config).start_async()
 }
 
 pub struct ScenarioProgressBar {

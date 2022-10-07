@@ -31,7 +31,7 @@ pub fn signed_delegation_cert(
 pub fn signed_stake_pool_cert(valid_until: BlockDate, stake_pool: &StakePool) -> SignedCertificate {
     let owner = stake_pool.owner().clone();
     let txb = TxBuilder::new()
-        .set_payload(&stake_pool.info())
+        .set_payload(&stake_pool.inner().info())
         .set_expiry_date(valid_until)
         .set_ios(&[], &[])
         .set_witnesses(&[]);
@@ -42,7 +42,10 @@ pub fn signed_stake_pool_cert(valid_until: BlockDate, stake_pool: &StakePool) ->
         signatures: vec![(0, sig0)],
     };
 
-    SignedCertificate::PoolRegistration(stake_pool.info(), PoolSignature::Owners(owner_signed))
+    SignedCertificate::PoolRegistration(
+        stake_pool.inner().info(),
+        PoolSignature::Owners(owner_signed),
+    )
 }
 
 pub fn vote_plan_cert(

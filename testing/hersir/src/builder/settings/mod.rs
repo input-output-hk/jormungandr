@@ -2,7 +2,9 @@ pub(crate) mod node;
 pub mod vote_plan;
 pub(crate) mod wallet;
 
-pub use crate::{builder::settings::node::NodeSetting, config::Blockchain};
+pub use crate::{
+    builder::settings::node::NodeSetting, config::BlockchainConfiguration as Blockchain,
+};
 use crate::{
     builder::{
         committee::generate_committee_data, explorer::generate_explorer, stake_pool,

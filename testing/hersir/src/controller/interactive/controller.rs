@@ -3,7 +3,7 @@ use crate::{
     controller::{Controller, Error},
 };
 use chain_impl_mockchain::vote::Choice;
-use jormungandr_automation::jormungandr::{JormungandrProcess, Version};
+use jormungandr_automation::jormungandr::JormungandrProcess;
 use jormungandr_lib::interfaces::Value;
 use jortestkit::prelude::InteractiveCommandError;
 use thor::{FragmentSender, Wallet};
@@ -217,17 +217,6 @@ impl UserInteractionController {
 
     pub fn spawn_node(&mut self, input_params: SpawnParams) -> Result<JormungandrProcess, Error> {
         self.controller.spawn(input_params).map_err(Into::into)
-    }
-
-    pub fn spawn_legacy_node(
-        &mut self,
-        input_params: SpawnParams,
-        version: &Version,
-    ) -> Result<JormungandrProcess, Error> {
-        self.controller
-            .spawn_legacy(input_params, version)
-            .map(|(process, _settings)| process)
-            .map_err(Into::into)
     }
 }
 

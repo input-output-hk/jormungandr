@@ -2,9 +2,9 @@ mod config;
 mod scenario;
 
 use crate::mjolnir_lib::MjolnirError;
-use chain_impl_mockchain::key::Hash;
 use config::{ClientLoadConfig, PassiveBootstrapLoad, ScenarioType};
 use jormungandr_automation::jormungandr::grpc::JormungandrClient;
+use jormungandr_lib::crypto::hash::Hash;
 use std::path::PathBuf;
 use structopt::StructOpt;
 use thiserror::Error;
@@ -68,6 +68,7 @@ impl ClientLoadCommand {
         JormungandrClient::from_address(&self.address)
             .unwrap()
             .get_genesis_block_hash()
+            .into()
     }
 
     fn build_config(&self) -> ClientLoadConfig {

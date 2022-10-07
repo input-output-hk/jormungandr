@@ -89,7 +89,7 @@ fn spawn_node(
             .find(|x| x.version() == version)
             .ok_or_else(|| InteractiveCommandError::UserError(version.to_string()))?;
 
-        let node = controller.spawn_legacy_node(spawn_params, &legacy_release.version())?;
+        let node = controller.spawn_node(spawn_params.version(legacy_release.version()))?;
         println!(
             "{}",
             style::info.apply_to(format!("node '{}' spawned", alias))

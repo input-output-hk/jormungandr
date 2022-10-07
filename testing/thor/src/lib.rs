@@ -1,6 +1,7 @@
 pub mod cli;
 mod fragment;
 mod stake_pool;
+mod utils;
 pub mod wallet;
 
 pub use fragment::{
@@ -11,6 +12,7 @@ pub use fragment::{
     PersistentLogViewer, TransactionHash, VerifyExitStrategy,
 };
 pub use stake_pool::StakePool;
+pub use utils::Block0ConfigurationBuilderExtension;
 pub use wallet::{
     account::Wallet as AccountWallet, committee::CommitteeDataManager,
     delegation::Wallet as DelegationWallet, discrimination::DiscriminationExtension,

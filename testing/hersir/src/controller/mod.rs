@@ -19,9 +19,9 @@ pub use interactive::{
     UserInteractionController,
 };
 use jormungandr_automation::jormungandr::{
-    ConfiguredStarter, ExplorerProcess, JormungandrParams, JormungandrProcess, LegacyNodeConfig,
-    LegacyNodeConfigConverter, LogLevel, NodeAlias, PersistenceMode, Starter, TestingDirectory,
-    Version,
+    ConfigurableNodeConfig, ExplorerProcess, JormungandrParams, JormungandrProcess,
+    LegacyNodeConfigConverter, LegacyNodeConfigManager, LogLevel, NodeAlias, NodeBlock0,
+    NodeConfigManager, PersistenceMode, Starter, TestingDirectory,
 };
 use jormungandr_lib::interfaces::{Log, LogEntry, LogOutput, NodeConfig};
 pub use monitor::{
@@ -208,11 +208,9 @@ impl Controller {
     }
 
     pub fn spawn_node_async(&mut self, alias: &str) -> Result<JormungandrProcess, Error> {
-        let mut starter = self.make_starter_for(
-            SpawnParams::new(alias).persistence_mode(PersistenceMode::InMemory),
-        )?;
-        let process = starter.start_async()?;
-        Ok(process)
+        self.make_starter_for(SpawnParams::new(alias).persistence_mode(PersistenceMode::InMemory))?
+            .start_async()
+            .map_err(Into::into)
     }
 
     pub fn expect_spawn_failed(
@@ -220,43 +218,13 @@ impl Controller {
         spawn_params: SpawnParams,
         expected_msg: &str,
     ) -> Result<(), Error> {
-        let mut starter = self.make_starter_for(spawn_params)?;
-        starter.start_with_fail_in_logs(expected_msg)?;
-        Ok(())
+        self.make_starter_for(spawn_params)?
+            .start_with_fail_in_logs(expected_msg)
+            .map_err(Into::into)
     }
 
     pub fn spawn(&mut self, spawn_params: SpawnParams) -> Result<JormungandrProcess, Error> {
         Ok(self.make_starter_for(spawn_params)?.start()?)
-    }
-
-    pub fn spawn_legacy(
-        &mut self,
-        input_params: SpawnParams,
-        version: &Version,
-    ) -> Result<(JormungandrProcess, LegacyNodeConfig), Error> {
-        let alias = input_params.get_alias().clone();
-        let mut starter = self.make_starter_for(input_params)?;
-        let (params, working_dir) = starter.build_configuration()?;
-        let node_config = params.node_config().clone();
-
-        let configurer_starter =
-            ConfiguredStarter::legacy(&starter, version.clone(), params, working_dir)?;
-
-        let mut command = configurer_starter.command();
-        let process = command.spawn()?;
-
-        let legacy_node_config =
-            LegacyNodeConfigConverter::new(version.clone()).convert(&node_config)?;
-
-        let process = JormungandrProcess::new(
-            process,
-            &legacy_node_config,
-            self.settings().block0.clone(),
-            None,
-            alias,
-        )?;
-
-        Ok((process, legacy_node_config))
     }
 
     pub fn make_starter_for(&mut self, mut spawn_params: SpawnParams) -> Result<Starter, Error> {
@@ -269,8 +237,9 @@ impl Controller {
 
         spawn_params = spawn_params.node_key_file(node_key_file);
 
-        let node_setting = self.node_settings(spawn_params.get_alias())?;
         let dir = self.working_directory.child(spawn_params.get_alias());
+
+        let node_setting = self.node_settings(spawn_params.get_alias())?;
         let mut config = node_setting.config.clone();
         spawn_params.override_settings(&mut config);
 
@@ -304,24 +273,34 @@ impl Controller {
         let topology_file = dir.child(NODE_TOPOLOGY_KEY_FILE);
         topology_file.write_str(&node_setting.topology_secret.to_bech32_str())?;
 
+        let config: Box<dyn ConfigurableNodeConfig> =
+            if let Some(version) = spawn_params.get_version() {
+                let legacy_node_config =
+                    LegacyNodeConfigConverter::new(version.clone()).convert(&config)?;
+
+                Box::new(LegacyNodeConfigManager {
+                    node_config: legacy_node_config,
+                    file: Some(config_file.to_owned()),
+                })
+            } else {
+                Box::new(NodeConfigManager {
+                    node_config: config,
+                    file: Some(config_file.to_owned()),
+                })
+            };
+
         let params = JormungandrParams::new(
             config,
-            config_file.path(),
-            &self.block0_file,
-            self.settings.block0.to_block().header().hash().to_string(),
-            secret_file.path(),
-            self.settings.block0.clone(),
+            NodeBlock0::File(self.block0_file.clone()),
+            Some(secret_file.to_path_buf()),
+            spawn_params.get_leadership_mode(),
             false,
         );
 
-        let mut starter = Starter::new();
-        starter
+        Ok(Starter::default()
             .config(params)
             .jormungandr_app_option(spawn_params.get_jormungandr())
             .verbose(spawn_params.get_verbose())
-            .alias(spawn_params.get_alias().clone())
-            .from_genesis(spawn_params.get_leadership_mode().into())
-            .leadership_mode(spawn_params.get_leadership_mode());
-        Ok(starter)
+            .alias(spawn_params.get_alias().clone()))
     }
 }

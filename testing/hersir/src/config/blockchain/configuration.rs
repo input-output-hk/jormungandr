@@ -1,8 +1,7 @@
-use super::NodeAlias;
 use crate::builder::VotePlanKey;
 use chain_addr::Discrimination;
-pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
-use chain_impl_mockchain::{fee::LinearFee, milli::Milli};
+use chain_impl_mockchain::{chaintypes::ConsensusVersion, fee::LinearFee, milli::Milli};
+use jormungandr_automation::jormungandr::NodeAlias;
 use jormungandr_lib::{
     interfaces::{
         ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
@@ -16,7 +15,7 @@ use std::collections::HashMap;
 
 #[derive(Clone, Deserialize, Debug)]
 #[serde(deny_unknown_fields)]
-pub struct Blockchain {
+pub struct BlockchainConfiguration {
     #[serde(default)]
     block0_date: SecondsSinceUnixEpoch,
     #[serde(default)]
@@ -47,7 +46,7 @@ pub struct Blockchain {
     vote_plans: HashMap<VotePlanKey, VotePlan>,
 }
 
-impl Blockchain {
+impl BlockchainConfiguration {
     pub fn block0_date(&self) -> SecondsSinceUnixEpoch {
         self.block0_date
     }
@@ -199,7 +198,7 @@ impl Blockchain {
     }
 }
 
-impl Default for Blockchain {
+impl Default for BlockchainConfiguration {
     fn default() -> Self {
         Self {
             block0_date: Default::default(),
@@ -225,7 +224,7 @@ impl Default for Blockchain {
 
 #[derive(Default)]
 pub struct BlockchainBuilder {
-    blockchain: Blockchain,
+    blockchain: BlockchainConfiguration,
 }
 
 impl BlockchainBuilder {
@@ -328,7 +327,7 @@ impl BlockchainBuilder {
         self
     }
 
-    pub fn build(self) -> Blockchain {
+    pub fn build(self) -> BlockchainConfiguration {
         self.blockchain
     }
 }

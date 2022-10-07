@@ -6,10 +6,10 @@ use crate::{
 };
 use jortestkit::prelude::UserInteraction;
 
-pub fn spawn_network(config: Config) -> Result<(), Error> {
+pub fn spawn_network(mut config: Config) -> Result<(), Error> {
     let controller = NetworkBuilder::default()
         .topology(config.build_topology())
-        .blockchain_config(config.build_blockchain())
+        .blockchain_config_or_hash(config.build_blockchain())
         .session_settings(config.session)
         .build()?;
 

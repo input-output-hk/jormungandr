@@ -10,10 +10,16 @@ use chain_impl_mockchain::{
     value::Value,
 };
 use jormungandr_automation::{
-    jormungandr::{FragmentNode, MemPoolCheck},
-    testing::{ensure_node_is_in_sync_with_others, SyncNode, SyncNodeError, SyncWaitParams},
+    jormungandr::{FragmentNode, JormungandrProcess, MemPoolCheck, RestError},
+    testing::{
+        ensure_node_is_in_sync_with_others, settings::SettingsDtoExtension, SyncNode,
+        SyncNodeError, SyncWaitParams,
+    },
 };
-use jormungandr_lib::{crypto::hash::Hash, interfaces::FragmentStatus};
+use jormungandr_lib::{
+    crypto::hash::Hash,
+    interfaces::{FragmentStatus, SettingsDto},
+};
 use rand::{thread_rng, Rng};
 use std::{path::PathBuf, time::Duration};
 use thor::{
@@ -120,6 +126,32 @@ pub struct AdversaryFragmentSender<'a, S: SyncNode + Send> {
     fees: LinearFee,
     setup: AdversaryFragmentSenderSetup<'a, S>,
     expiry_generator: BlockDateGenerator,
+}
+
+impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
+    pub fn try_from_jormungandr(
+        process: &JormungandrProcess,
+        block0: BlockDate,
+        setup: AdversaryFragmentSenderSetup<'a, S>,
+    ) -> Result<Self, RestError> {
+        let settings = process.rest().settings()?;
+        Ok(Self::from_settings(settings, block0, setup))
+    }
+}
+
+impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
+    pub fn from_settings(
+        settings: SettingsDto,
+        block0: BlockDate,
+        setup: AdversaryFragmentSenderSetup<'a, S>,
+    ) -> Self {
+        Self::new(
+            settings.genesis_block_hash(),
+            settings.fees,
+            block0.into(),
+            setup,
+        )
+    }
 }
 
 impl<'a, S: SyncNode + Send> AdversaryFragmentSender<'a, S> {
@@ -373,6 +405,16 @@ pub struct FaultyTransactionBuilder {
     block0_hash: Hash,
     fees: LinearFee,
     expiry_generator: BlockDateGenerator,
+}
+
+impl FaultyTransactionBuilder {
+    pub fn from_settings(settings: SettingsDto, block_date: BlockDate) -> Self {
+        Self::new(
+            settings.genesis_block_hash(),
+            settings.fees,
+            block_date.into(),
+        )
+    }
 }
 
 impl FaultyTransactionBuilder {

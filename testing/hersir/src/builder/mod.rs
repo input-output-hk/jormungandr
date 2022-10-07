@@ -10,8 +10,8 @@ pub mod wallet;
 pub use crate::controller::Error as ControllerError;
 use crate::{
     config::{
-        Blockchain, CommitteeTemplate, Config, ExplorerTemplate, SessionSettings, VotePlanTemplate,
-        WalletTemplate,
+        BlockchainConfiguration, BlockchainConfigurationOrHash, CommitteeTemplate, Config,
+        ExplorerTemplate, SessionSettings, VotePlanTemplate, WalletTemplate,
     },
     controller::{Controller, Error},
     utils::Dotifier,
@@ -35,7 +35,7 @@ pub use vote::VotePlanKey;
 #[derive(Default)]
 pub struct NetworkBuilder {
     topology: Topology,
-    blockchain: Blockchain,
+    blockchain: BlockchainConfigurationOrHash,
     session_settings: SessionSettings,
     explorer_template: Option<ExplorerTemplate>,
     wallet_templates: Vec<WalletTemplate>,
@@ -68,9 +68,9 @@ impl Observable for NetworkBuilder {
 }
 
 impl NetworkBuilder {
-    pub fn apply_config(self, config: Config) -> Self {
+    pub fn apply_config(self, mut config: Config) -> Self {
         self.topology(config.build_topology())
-            .blockchain_config(config.build_blockchain())
+            .blockchain_config_or_hash(config.build_blockchain())
             .session_settings(config.session)
             .wallet_templates(config.wallets)
             .vote_plan_templates(config.vote_plans)
@@ -83,8 +83,8 @@ impl NetworkBuilder {
         self
     }
 
-    pub fn blockchain_config(mut self, config: Blockchain) -> Self {
-        self.blockchain = config;
+    pub fn blockchain_config(mut self, config: BlockchainConfiguration) -> Self {
+        self.blockchain = BlockchainConfigurationOrHash::Block0(config);
         self
     }
 
@@ -120,16 +120,13 @@ impl NetworkBuilder {
             .nodes
             .iter()
             .map(|(alias, node)| {
-                let node_config = NodeConfigBuilder::new().build();
+                let node_config = NodeConfigBuilder::default().build();
                 (
                     alias.clone(),
                     NodeSetting {
                         alias: alias.clone(),
                         config: node_config,
-                        secret: NodeSecret {
-                            bft: None,
-                            genesis: None,
-                        },
+                        secret: NodeSecret::default(),
                         topology_secret: SigningKey::generate(&mut rand::thread_rng()),
                         node_topology: node.clone(),
                     },
@@ -141,15 +138,21 @@ impl NetworkBuilder {
         let mut random = Random::new(seed);
 
         self.notify_all(Event::new("building block0.."));
-        let settings = Settings::new(
-            nodes,
-            &self.blockchain,
-            &self.wallet_templates,
-            &self.committee_templates,
-            &self.explorer_template,
-            &self.vote_plan_templates,
-            &mut random,
-        )?;
+
+        let settings = match &self.blockchain {
+            BlockchainConfigurationOrHash::Block0(blockchain) => Settings::new(
+                nodes,
+                blockchain,
+                &self.wallet_templates,
+                &self.committee_templates,
+                &self.explorer_template,
+                &self.vote_plan_templates,
+                &mut random,
+            )?,
+            BlockchainConfigurationOrHash::Block0Hash(_) => {
+                unimplemented!("TODO: allow to start hersir based on blockhash")
+            }
+        };
 
         self.notify_all(Event::new("dumping wallet secret keys.."));
 
@@ -163,6 +166,10 @@ impl NetworkBuilder {
 
     pub fn explorer(mut self, explorer: Option<ExplorerTemplate>) -> Self {
         self.explorer_template = explorer;
+        self
+    }
+    pub fn blockchain_config_or_hash(mut self, config: BlockchainConfigurationOrHash) -> Self {
+        self.blockchain = config;
         self
     }
 }

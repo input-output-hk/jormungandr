@@ -7,7 +7,7 @@ use crate::{
 use jormungandr_automation::jormungandr::NodeAlias;
 use std::{collections::HashMap, sync::mpsc::channel};
 
-pub fn spawn_network(config: Config, args: Args) -> Result<(), Error> {
+pub fn spawn_network(mut config: Config, args: Args) -> Result<(), Error> {
     let mut topology = config.build_topology();
     let (tx, rx) = channel();
 

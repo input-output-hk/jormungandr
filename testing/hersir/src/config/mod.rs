@@ -5,7 +5,7 @@ mod vote_plan;
 mod wallet;
 
 pub use crate::config::{
-    blockchain::{Blockchain, BlockchainBuilder},
+    blockchain::{BlockchainBuilder, BlockchainConfiguration, BlockchainConfigurationOrHash},
     committee::CommitteeTemplate,
     spawn_params::SpawnParams,
     wallet::{WalletTemplate, WalletTemplateBuilder},
@@ -23,7 +23,7 @@ pub use vote_plan::VotePlanTemplate;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
-    pub blockchain: Blockchain,
+    pub blockchain: BlockchainConfigurationOrHash,
     pub nodes: Vec<NodeConfig>,
     pub explorer: Option<ExplorerTemplate>,
     #[serde(default)]
@@ -50,14 +50,21 @@ impl Config {
         topology
     }
 
-    pub fn build_blockchain(&self) -> Blockchain {
-        let mut blockchain = self.blockchain.clone();
+    pub fn build_blockchain(&mut self) -> BlockchainConfigurationOrHash {
+        let blockchain = match &mut self.blockchain {
+            BlockchainConfigurationOrHash::Block0(blockchain) => blockchain,
+            BlockchainConfigurationOrHash::Block0Hash(_) => {
+                unimplemented!("TODO: allow to start hersir based on blockhash")
+            }
+        };
         for node_config in &self.nodes {
             if node_config.spawn_params.is_leader() {
-                blockchain = blockchain.with_leader(node_config.spawn_params.get_alias());
+                *blockchain = blockchain
+                    .clone()
+                    .with_leader(node_config.spawn_params.get_alias());
             }
         }
-        blockchain
+        self.blockchain.clone()
     }
 
     pub fn node_spawn_params(&self, alias: &str) -> Result<SpawnParams, Error> {

@@ -1,7 +1,5 @@
 use crate::controller::InteractiveCommandError;
-use jormungandr_automation::jormungandr::{
-    ExplorerError, LegacyConfigConverterError, StartupError,
-};
+use jormungandr_automation::jormungandr::{ExplorerError, StartupError};
 use thiserror::Error;
 use thor::FragmentSenderError;
 
@@ -50,9 +48,6 @@ pub enum Error {
     CannotSpawnNode(#[source] std::io::Error),
 
     #[error(transparent)]
-    LegacyConfigConverter(#[from] LegacyConfigConverterError),
-
-    #[error(transparent)]
     InteractiveCommand(#[from] InteractiveCommandError),
 
     #[error(transparent)]
@@ -60,6 +55,8 @@ pub enum Error {
 
     #[error(transparent)]
     Serialization(#[from] serde_yaml::Error),
+    #[error(transparent)]
+    Legacy(#[from] jormungandr_automation::jormungandr::LegacyConfigError),
     #[error(transparent)]
     SettingsWallet(#[from] crate::builder::settings::wallet::Error),
     #[error(transparent)]

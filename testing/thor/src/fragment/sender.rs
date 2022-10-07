@@ -13,7 +13,7 @@ use chain_impl_mockchain::{
     vote::Choice,
 };
 use jormungandr_automation::{
-    jormungandr::{FragmentNode, MemPoolCheck},
+    jormungandr::{FragmentNode, JormungandrProcess, MemPoolCheck, RestError},
     testing::{ensure_node_is_in_sync_with_others, SyncNode, SyncNodeError, SyncWaitParams},
 };
 use jormungandr_lib::{
@@ -24,7 +24,7 @@ use jormungandr_lib::{
     },
     time::SystemTime,
 };
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 #[derive(custom_debug::Debug, thiserror::Error)]
 pub enum FragmentSenderError {
@@ -76,6 +76,52 @@ pub struct FragmentSender<'a, S: SyncNode + Send> {
     setup: FragmentSenderSetup<'a, S>,
     expiry_generator: BlockDateGenerator,
     witness_mode: WitnessMode,
+}
+
+impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
+    pub fn try_from_with_setup(
+        jormungandr: &JormungandrProcess,
+        block: BlockDate,
+        setup: FragmentSenderSetup<'a, S>,
+    ) -> Result<Self, RestError> {
+        let settings = jormungandr.rest().settings()?;
+        Ok(Self::from_settings(&settings, block.into(), setup))
+    }
+}
+
+impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
+    pub fn from_settings_with_setup(
+        settings: &SettingsDto,
+        setup: FragmentSenderSetup<'a, S>,
+    ) -> Self {
+        Self::from_settings(
+            settings,
+            BlockDateGenerator::rolling(
+                settings,
+                BlockDate {
+                    epoch: 1,
+                    slot_id: 0,
+                },
+                false,
+            ),
+            setup,
+        )
+    }
+}
+
+impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
+    pub fn from_settings(
+        settings: &SettingsDto,
+        generator: BlockDateGenerator,
+        setup: FragmentSenderSetup<'a, S>,
+    ) -> Self {
+        Self::new(
+            Hash::from_str(&settings.block0_hash).unwrap(),
+            settings.fees.clone(),
+            generator,
+            setup,
+        )
+    }
 }
 
 impl<'a, S: SyncNode + Send> FragmentSender<'a, S> {
@@ -688,6 +734,15 @@ impl<'a> From<&SettingsDto> for FragmentSender<'a, DummySyncNode> {
             ),
             Default::default(),
         )
+    }
+}
+
+impl<'a> TryFrom<&JormungandrProcess> for FragmentSender<'a, DummySyncNode> {
+    type Error = RestError;
+
+    fn try_from(jormungandr: &JormungandrProcess) -> Result<Self, Self::Error> {
+        let settings = jormungandr.rest().settings()?;
+        Ok(Self::from(&settings))
     }
 }
 
