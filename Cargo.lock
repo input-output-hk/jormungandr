@@ -1508,7 +1508,7 @@ dependencies = [
  "rand_chacha 0.3.1",
  "serde",
  "serde_json",
- "serde_yaml",
+ "serde_yaml 0.9.14",
  "structopt",
  "thiserror",
  "thor",
@@ -2042,7 +2042,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "serde_yaml",
+ "serde_yaml 0.9.14",
  "structopt",
  "thiserror",
  "thor",
@@ -2376,7 +2376,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "serde_yaml",
+ "serde_yaml 0.9.14",
  "structopt",
  "thiserror",
  "versionisator",
@@ -2435,7 +2435,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "serde_with",
- "serde_yaml",
+ "serde_yaml 0.9.14",
  "structopt",
  "thiserror",
  "time",
@@ -2500,7 +2500,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "serde_yaml",
+ "serde_yaml 0.9.14",
  "structopt",
  "strum",
  "sysinfo 0.23.13",
@@ -2560,7 +2560,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "serde_yaml",
+ "serde_yaml 0.9.14",
  "tempfile",
  "thiserror",
  "thor",
@@ -2600,7 +2600,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
- "serde_yaml",
+ "serde_yaml 0.9.14",
  "thiserror",
  "time",
  "typed-bytes",
@@ -2636,7 +2636,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
- "serde_yaml",
+ "serde_yaml 0.8.26",
  "sha-1",
  "sha2 0.9.9",
  "sysinfo 0.14.15",
@@ -2844,7 +2844,7 @@ dependencies = [
  "rand_core 0.6.3",
  "reqwest",
  "serde",
- "serde_yaml",
+ "serde_yaml 0.9.14",
  "structopt",
  "thiserror",
  "thor",
@@ -4350,6 +4350,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_yaml"
+version = "0.9.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d232d893b10de3eb7258ff01974d6ee20663d8e833263c99409d4b13a0209da"
+dependencies = [
+ "indexmap",
+ "itoa 1.0.3",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
+]
+
+[[package]]
 name = "settings"
 version = "0.1.0"
 dependencies = [
@@ -4779,7 +4792,7 @@ dependencies = [
  "rand_chacha 0.3.1",
  "rand_core 0.6.3",
  "serde",
- "serde_yaml",
+ "serde_yaml 0.9.14",
  "structopt",
  "thiserror",
  "time",
@@ -5341,6 +5354,12 @@ checksum = "382810877fe448991dfc7f0dd6e3ae5d58088fd0ea5e35189655f84e6814fa56"
 dependencies = [
  "void",
 ]
+
+[[package]]
+name = "unsafe-libyaml"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1e5fa573d8ac5f1a856f8d7be41d390ee973daf97c806b2c1a465e4e1406e68"
 
 [[package]]
 name = "unsigned-varint"
