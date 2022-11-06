@@ -341,31 +341,31 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: hub release delete ${{ needs.create_release.outputs.tag }}
 
-  send_slack_notification:
-    name: Notify the team Slack channel about this release
-    needs: [create_release, publish_release]
-    runs-on: ubuntu-latest
-    if: ${{ always() }}
-    steps:
-      - name: Produce action-slack-notify variables
-        run: |
-          status="${{ needs.publish_release.outputs.status }}"
-          release="${{ needs.create_release.outputs.tag }}"
-          if [ "$status" == "success" ]; then
-            SLACK_STATUS="success"
-            SLACK_MESSAGE=":rocket: Published release $release."
-          else
-            SLACK_STATUS="failure"
-            SLACK_MESSAGE=":x: Release $release *FAILED*."
-          fi
-          cat <<EOF >> $GITHUB_ENV
-          SLACK_STATUS=$SLACK_STATUS
-          SLACK_MESSAGE=$SLACK_MESSAGE
-          EOF
+  # send_slack_notification:
+  #   name: Notify the team Slack channel about this release
+  #   needs: [create_release, publish_release]
+  #   runs-on: ubuntu-latest
+  #   if: ${{ always() }}
+  #   steps:
+  #     - name: Produce action-slack-notify variables
+  #       run: |
+  #         status="${{ needs.publish_release.outputs.status }}"
+  #         release="${{ needs.create_release.outputs.tag }}"
+  #         if [ "$status" == "success" ]; then
+  #           SLACK_STATUS="success"
+  #           SLACK_MESSAGE=":rocket: Published release $release."
+  #         else
+  #           SLACK_STATUS="failure"
+  #           SLACK_MESSAGE=":x: Release $release *FAILED*."
+  #         fi
+  #         cat <<EOF >> $GITHUB_ENV
+  #         SLACK_STATUS=$SLACK_STATUS
+  #         SLACK_MESSAGE=$SLACK_MESSAGE
+  #         EOF
 
-      - name: Send notification
-        uses: eugene-babichenko/slack-notifier@v1
-        with:
-          webhook: ${{ secrets.SLACK_WEBHOOK }}
-          status: ${{ env.SLACK_STATUS  }}
-          text: ${{ env.SLACK_MESSAGE  }}
+  #     - name: Send notification
+  #       uses: eugene-babichenko/slack-notifier@v1
+  #       with:
+  #         webhook: ${{ secrets.SLACK_WEBHOOK }}
+  #         status: ${{ env.SLACK_STATUS  }}
+  #         text: ${{ env.SLACK_MESSAGE  }}
