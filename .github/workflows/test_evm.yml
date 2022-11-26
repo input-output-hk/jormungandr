@@ -197,7 +197,7 @@ jobs:
         timeout-minutes: 90
         with:
           command: test
-          args: --tests ${{ env.CARGO_FLAGS }} --features evm
+          args: --tests ${{ env.CARGO_FLAGS }} --features evm evm
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TMPDIR: ${{ runner.temp }}
