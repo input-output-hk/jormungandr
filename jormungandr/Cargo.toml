@@ -52,7 +52,7 @@ tracing-gelf = { version = "0.6", optional = true }
 tracing-journald = { version = "=0.2.0", optional = true }
 tracing-subscriber = { version = "0.3", features = ["fmt", "json", "time"] }
 tracing-appender = "0.2"
-tokio = { version = "^1.15", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
+tokio = { version = "^1.24", features = ["rt-multi-thread", "time", "sync", "rt", "signal", "test-util"] }
 tokio-stream = { version = "0.1.4", features = ["sync"] }
 tokio-util = { version = "0.6.0", features = ["time"] }
 tonic = "0.6"
@@ -66,7 +66,7 @@ jsonrpsee-core = { version = "0.11.0" }
 reqwest = { version = "0.11",  default-features = false, features = ["rustls-tls"] }
 
 [dev-dependencies]
-tokio = { version = "^1.15", features = ["full"] }
+tokio = { version = "^1.24", features = ["full"] }
 quickcheck = "0.9"
 quickcheck_macros = "0.9"
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
