@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: stoplightio/spectral-action@v0.8.8
+      - uses: stoplightio/spectral-action@v0.8.9
         with:
           file_glob: doc/api/*.yaml
           repo_token: ${{ secrets.GITHUB_TOKEN }}
