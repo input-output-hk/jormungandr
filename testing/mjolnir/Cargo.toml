@@ -23,7 +23,7 @@ chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", b
 chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
 chain-storage   = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = ["with-bench"] }
 chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master" }
-tokio = { version = "1.15", features = ["macros"] }
+tokio = { version = "1.26", features = ["macros"] }
 thor = { path = "../thor" }
 loki = { path = "../loki" }
 
