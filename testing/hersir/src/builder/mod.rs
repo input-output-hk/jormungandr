@@ -130,12 +130,14 @@ impl NetworkBuilder {
 
 fn document(path: &Path, settings: &Settings) -> Result<(), Error> {
     let file = std::fs::File::create(&path.join("initial_setup.dot"))?;
+    let secrets_folder = path.join("wallet_secrets");
+    std::fs::create_dir_all(&secrets_folder)?;
 
     let dotifier = Dotifier;
     dotifier.dottify(settings, file)?;
 
     for wallet in settings.wallets.values() {
-        wallet.save_to(path)?;
+        wallet.save_to(&secrets_folder)?;
     }
 
     let file = std::fs::File::create(&path.join("genesis.yaml"))?;
