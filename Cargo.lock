@@ -868,7 +868,7 @@ dependencies = [
 [[package]]
 name = "cocoon"
 version = "0.3.0"
-source = "git+https://github.com/dkijania/cocoon.git#1dfd975c3f0720d51c56fb297e7c92467bc3448a"
+source = "git+https://github.com/dkijania/cocoon.git?rev=1dfd975c3f0720d51c56fb297e7c92467bc3448a#1dfd975c3f0720d51c56fb297e7c92467bc3448a"
 dependencies = [
  "aes-gcm",
  "chacha20poly1305",
