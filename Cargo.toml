@@ -13,3 +13,17 @@ members = [
   "testing/hersir",
   "testing/thor",
 ]
+
+[patch."https://github.com/input-output-hk/chain-libs.git"]
+chain-core = { path = "../chain-libs/chain-core" }
+chain-addr = { path = "../chain-libs/chain-addr" }
+chain-crypto = { path = "../chain-libs/chain-crypto" }
+chain-impl-mockchain = { path = "../chain-libs/chain-impl-mockchain" }
+chain-time = { path = "../chain-libs/chain-time" }
+chain-vote = { path = "../chain-libs/chain-vote" }
+chain-network = { path = "../chain-libs/chain-network" }
+chain-ser = { path = "../chain-libs/chain-ser" }
+chain-storage = { path = "../chain-libs/chain-storage" }
+cardano-legacy-address = { path = "../chain-libs/cardano-legacy-address" }
+typed-bytes = { path = "../chain-libs/typed-bytes" }
+imhamt = { path = "../chain-libs/imhamt" }
