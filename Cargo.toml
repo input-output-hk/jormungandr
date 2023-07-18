@@ -27,3 +27,6 @@ chain-storage = { path = "../chain-libs/chain-storage" }
 cardano-legacy-address = { path = "../chain-libs/cardano-legacy-address" }
 typed-bytes = { path = "../chain-libs/typed-bytes" }
 imhamt = { path = "../chain-libs/imhamt" }
+
+[patch."https://github.com/input-output-hk/jortestkit.git"]
+jortestkit = { path = "../jortestkit" }
