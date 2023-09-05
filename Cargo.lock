@@ -396,26 +396,14 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitvec"
-version = "0.20.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7774144344a4faa177370406a7ff5f1da24303817368584c6206c8303eb07848"
-dependencies = [
- "funty 1.1.0",
- "radium 0.6.2",
- "tap",
- "wyz 0.2.0",
-]
-
-[[package]]
-name = "bitvec"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1489fcb93a5bb47da0462ca93ad252ad6af2145cce58d10d46a83931ba9f016b"
 dependencies = [
- "funty 2.0.0",
- "radium 0.7.0",
+ "funty",
+ "radium",
  "tap",
- "wyz 0.5.0",
+ "wyz",
 ]
 
 [[package]]
@@ -568,7 +556,7 @@ dependencies = [
 [[package]]
 name = "cardano-legacy-address"
 version = "0.1.1"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "cbor_event",
  "cryptoxide 0.4.2",
@@ -639,7 +627,7 @@ dependencies = [
 [[package]]
 name = "chain-addr"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "bech32 0.8.1",
  "chain-core",
@@ -653,7 +641,7 @@ dependencies = [
 [[package]]
 name = "chain-core"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "chain-ser",
 ]
@@ -661,7 +649,7 @@ dependencies = [
 [[package]]
 name = "chain-crypto"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "bech32 0.8.1",
  "cryptoxide 0.4.2",
@@ -683,7 +671,7 @@ dependencies = [
 [[package]]
 name = "chain-evm"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "aurora-bn",
  "base64",
@@ -712,7 +700,7 @@ dependencies = [
 [[package]]
 name = "chain-impl-mockchain"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "cardano-legacy-address",
  "chain-addr",
@@ -744,7 +732,7 @@ dependencies = [
 [[package]]
 name = "chain-network"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "async-trait",
  "chain-crypto",
@@ -761,7 +749,7 @@ dependencies = [
 [[package]]
 name = "chain-ser"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "thiserror",
 ]
@@ -769,7 +757,7 @@ dependencies = [
 [[package]]
 name = "chain-storage"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "criterion",
  "data-pile",
@@ -782,7 +770,7 @@ dependencies = [
 [[package]]
 name = "chain-time"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "chain-core",
  "chain-ser",
@@ -794,9 +782,9 @@ dependencies = [
 [[package]]
 name = "chain-vote"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "chain-core",
  "chain-crypto",
  "const_format",
@@ -1396,7 +1384,7 @@ checksum = "11da94e443c60508eb62cf256243a64da87304c2802ac2528847f79d750007ef"
 dependencies = [
  "crunchy",
  "fixed-hash",
- "impl-codec 0.6.0",
+ "impl-codec",
  "impl-rlp",
  "impl-serde",
  "scale-info",
@@ -1413,7 +1401,7 @@ dependencies = [
  "ethereum-types",
  "hash-db",
  "hash256-std-hasher",
- "parity-scale-codec 3.1.2",
+ "parity-scale-codec",
  "rlp",
  "rlp-derive",
  "scale-info",
@@ -1430,10 +1418,10 @@ checksum = "b2827b94c556145446fcce834ca86b7abf0c39a805883fe20e72c5bfdb5a0dc6"
 dependencies = [
  "ethbloom",
  "fixed-hash",
- "impl-codec 0.6.0",
+ "impl-codec",
  "impl-rlp",
  "impl-serde",
- "primitive-types 0.11.1",
+ "primitive-types",
  "scale-info",
  "uint",
 ]
@@ -1451,8 +1439,8 @@ dependencies = [
  "evm-gasometer",
  "evm-runtime",
  "log",
- "parity-scale-codec 3.1.2",
- "primitive-types 0.11.1",
+ "parity-scale-codec",
+ "primitive-types",
  "rlp",
  "scale-info",
  "serde",
@@ -1465,8 +1453,8 @@ version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d4537041d3a3438d59b2d01bd950ce89fb1ccb3cf21d9331193c10be12e849f"
 dependencies = [
- "parity-scale-codec 3.1.2",
- "primitive-types 0.11.1",
+ "parity-scale-codec",
+ "primitive-types",
  "scale-info",
  "serde",
 ]
@@ -1480,7 +1468,7 @@ dependencies = [
  "environmental",
  "evm-core",
  "evm-runtime",
- "primitive-types 0.11.1",
+ "primitive-types",
 ]
 
 [[package]]
@@ -1492,7 +1480,7 @@ dependencies = [
  "auto_impl",
  "environmental",
  "evm-core",
- "primitive-types 0.11.1",
+ "primitive-types",
  "sha3",
 ]
 
@@ -1695,12 +1683,6 @@ dependencies = [
  "quote 0.6.13",
  "syn 0.15.44",
 ]
-
-[[package]]
-name = "funty"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fed34cd105917e91daa4da6b3728c47b068749d6a62c59811f06ed2ac71d9da7"
 
 [[package]]
 name = "funty"
@@ -2261,7 +2243,7 @@ dependencies = [
 [[package]]
 name = "imhamt"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 dependencies = [
  "proptest",
  "rustc_version",
@@ -2271,20 +2253,11 @@ dependencies = [
 
 [[package]]
 name = "impl-codec"
-version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "161ebdfec3c8e3b52bf61c4f3550a1eea4f9579d10dc1b936f3171ebdcd6c443"
-dependencies = [
- "parity-scale-codec 2.3.1",
-]
-
-[[package]]
-name = "impl-codec"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba6a270039626615617f3f36d15fc827041df3b78c439da2cadfa47455a77f2f"
 dependencies = [
- "parity-scale-codec 3.1.2",
+ "parity-scale-codec",
 ]
 
 [[package]]
@@ -3301,42 +3274,16 @@ dependencies = [
 
 [[package]]
 name = "parity-scale-codec"
-version = "2.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "373b1a4c1338d9cd3d1fa53b3a11bdab5ab6bd80a20f7f7becd76953ae2be909"
-dependencies = [
- "arrayvec",
- "bitvec 0.20.4",
- "byte-slice-cast",
- "impl-trait-for-tuples",
- "parity-scale-codec-derive 2.3.1",
- "serde",
-]
-
-[[package]]
-name = "parity-scale-codec"
 version = "3.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8b44461635bbb1a0300f100a841e571e7d919c81c73075ef5d152ffdb521066"
 dependencies = [
  "arrayvec",
- "bitvec 1.0.0",
+ "bitvec",
  "byte-slice-cast",
  "impl-trait-for-tuples",
- "parity-scale-codec-derive 3.1.2",
+ "parity-scale-codec-derive",
  "serde",
-]
-
-[[package]]
-name = "parity-scale-codec-derive"
-version = "2.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1557010476e0595c9b568d16dcfb81b93cdeb157612726f5170d31aa707bed27"
-dependencies = [
- "proc-macro-crate 1.1.0",
- "proc-macro2 1.0.36",
- "quote 1.0.15",
- "syn 1.0.86",
 ]
 
 [[package]]
@@ -3637,23 +3584,12 @@ dependencies = [
 
 [[package]]
 name = "primitive-types"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05e4722c697a58a99d5d06a08c30821d7c082a4632198de1eaa5a6c22ef42373"
-dependencies = [
- "fixed-hash",
- "impl-codec 0.5.1",
- "uint",
-]
-
-[[package]]
-name = "primitive-types"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e28720988bff275df1f51b171e1b2a18c30d194c4d2b61defdacecd625a5d94a"
 dependencies = [
  "fixed-hash",
- "impl-codec 0.6.0",
+ "impl-codec",
  "impl-rlp",
  "impl-serde",
  "scale-info",
@@ -3739,14 +3675,14 @@ dependencies = [
 [[package]]
 name = "proptest"
 version = "1.0.0"
-source = "git+https://github.com/input-output-hk/proptest.git#38044d47b2e8eeab62408294aa9e78e393f13d6b"
+source = "git+https://github.com/input-output-hk/proptest.git#270ea99959dc4c4e5076047d79a9654f5f0ac74a"
 dependencies = [
  "bit-set",
  "bitflags",
  "byteorder",
  "lazy_static",
  "num-traits",
- "primitive-types 0.10.1",
+ "primitive-types",
  "quick-error 2.0.1",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -3891,12 +3827,6 @@ checksum = "864d3e96a899863136fc6e99f3d7cae289dafe43bf2c5ac19b70df7210c0a145"
 dependencies = [
  "proc-macro2 1.0.36",
 ]
-
-[[package]]
-name = "radium"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "643f8f41a8ebc4c5dc4515c82bb8abd397b527fc20fd681b7c011c2aee5d44fb"
 
 [[package]]
 name = "radium"
@@ -4395,10 +4325,10 @@ version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21fe4ca2b2295d5519b364579162b8e18f4902f6c9e8a975e7d05e7ef63622f5"
 dependencies = [
- "bitvec 1.0.0",
+ "bitvec",
  "cfg-if 1.0.0",
  "derive_more",
- "parity-scale-codec 3.1.2",
+ "parity-scale-codec",
  "scale-info-derive",
 ]
 
@@ -4705,7 +4635,7 @@ dependencies = [
 [[package]]
 name = "sparse-array"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 
 [[package]]
 name = "spin"
@@ -5466,7 +5396,7 @@ dependencies = [
 [[package]]
 name = "typed-bytes"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
 
 [[package]]
 name = "typenum"
@@ -5902,12 +5832,6 @@ dependencies = [
 
 [[package]]
 name = "wyz"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85e60b0d1b5f99db2556934e21937020776a5d31520bf169e851ac44e6420214"
-
-[[package]]
-name = "wyz"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30b31594f29d27036c383b53b59ed3476874d518f0efb151b27a4c275141390e"
@@ -6023,63 +5947,3 @@ dependencies = [
  "cc",
  "libc",
 ]
-
-[[patch.unused]]
-name = "cardano-legacy-address"
-version = "0.1.1"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "chain-addr"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "chain-core"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "chain-crypto"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "chain-impl-mockchain"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "chain-network"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "chain-ser"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "chain-storage"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "chain-time"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "chain-vote"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "imhamt"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
-
-[[patch.unused]]
-name = "typed-bytes"
-version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
