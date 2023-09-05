@@ -239,10 +239,7 @@ impl RawRest {
 
     fn construct_headers(&self) -> HeaderMap {
         let mut headers = HeaderMap::new();
-        headers.insert(
-            CONTENT_TYPE,
-            HeaderValue::from_static("application/octet-stream"),
-        );
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         headers
     }
 

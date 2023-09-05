@@ -1,10 +1,8 @@
-use crate::jormungandr::MemPoolCheck;
-use crate::jormungandr::{JormungandrRest, RestError};
-use chain_impl_mockchain::fragment::FragmentId;
-use chain_impl_mockchain::key::Hash;
-use jormungandr_lib::interfaces::FragmentRejectionReason;
-use jormungandr_lib::interfaces::FragmentStatus;
-use jormungandr_lib::interfaces::FragmentsProcessingSummary;
+use crate::jormungandr::{JormungandrRest, MemPoolCheck, RestError};
+use chain_impl_mockchain::{fragment::FragmentId, key::Hash};
+use jormungandr_lib::interfaces::{
+    FragmentRejectionReason, FragmentStatus, FragmentsProcessingSummary,
+};
 
 pub struct FragmentLogVerifier {
     rest: JormungandrRest,
@@ -19,7 +17,7 @@ impl FragmentLogVerifier {
         assert_eq!(
             self.rest.fragment_logs().unwrap().len(),
             size,
-            "only 1 transaction should be in fragment log"
+            "only {size} transactions should be in fragment log"
         );
         self
     }
