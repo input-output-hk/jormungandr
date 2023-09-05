@@ -544,7 +544,6 @@ fn pending_transaction_stats() {
         },
     );
 
-    let mut pending_size = 0;
     let mut pending_cnt = 0;
 
     for i in 0..10 {
@@ -552,7 +551,6 @@ fn pending_transaction_stats() {
             .transaction(&alice, bob.address(), i.into())
             .unwrap();
 
-        pending_size += transaction.serialized_size();
         pending_cnt += 1;
 
         let status =
@@ -566,7 +564,7 @@ fn pending_transaction_stats() {
             pending_cnt as f64 / mempool_max_entries as f64,
             stats.mempool_usage_ratio
         );
-        assert_eq!(pending_size, stats.mempool_total_size as usize);
+        assert_eq!(pending_cnt, stats.mempool_total_size as usize);
     }
 }
 
