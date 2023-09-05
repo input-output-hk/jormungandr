@@ -13,3 +13,17 @@ members = [
   "testing/hersir",
   "testing/thor",
 ]
+
+[patch.crates-io]
+chain-core = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+chain-time = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+chain-network = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+chain-ser = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+chain-storage = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }
+imhamt = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9.1-dev" }

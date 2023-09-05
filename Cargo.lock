@@ -6023,3 +6023,63 @@ dependencies = [
  "cc",
  "libc",
 ]
+
+[[patch.unused]]
+name = "cardano-legacy-address"
+version = "0.1.1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "chain-addr"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "chain-core"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "chain-crypto"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "chain-impl-mockchain"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "chain-network"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "chain-ser"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "chain-storage"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "chain-time"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "chain-vote"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "imhamt"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
+
+[[patch.unused]]
+name = "typed-bytes"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9.1-dev#efe089af522e424d1099407b6585efe042ad085f"
