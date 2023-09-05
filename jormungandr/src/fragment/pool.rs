@@ -25,13 +25,13 @@ use jormungandr_lib::{
     },
     time::SecondsSinceUnixEpoch,
 };
-use thiserror::Error;
-use tracing::Instrument;
-
 use std::mem;
-
-use tokio::fs::File;
-use tokio::io::{AsyncWriteExt, BufWriter};
+use thiserror::Error;
+use tokio::{
+    fs::File,
+    io::{AsyncWriteExt, BufWriter},
+};
+use tracing::Instrument;
 
 // It's a pretty big buffer, but common cloud based storage solutions (like EBS or GlusterFS) benefits from
 // this and it's currently flushed after every request, so the possibility of losing fragments due to a crash
@@ -101,27 +101,10 @@ impl Pool {
         &mut self,
         fragment: &Fragment,
         id: FragmentId,
-        ledger_settings: &Settings,
-        block_date: BlockDate,
     ) -> Result<(), FragmentRejectionReason> {
         if self.logs.exists(id) {
             tracing::debug!("fragment is already logged");
             return Err(FragmentRejectionReason::FragmentAlreadyInLog);
-        }
-
-        if let Some(valid_until) = get_transaction_expiry_date(fragment) {
-            use chain_impl_mockchain::ledger::check::{valid_transaction_date, TxValidityError};
-            match valid_transaction_date(ledger_settings, valid_until, block_date) {
-                Ok(_) => {}
-                Err(TxValidityError::TransactionExpired) => {
-                    tracing::debug!("fragment is expired at the time of receiving");
-                    return Err(FragmentRejectionReason::FragmentExpired);
-                }
-                Err(TxValidityError::TransactionValidForTooLong) => {
-                    tracing::debug!("fragment is valid for too long");
-                    return Err(FragmentRejectionReason::FragmentValidForTooLong);
-                }
-            }
         }
 
         if !is_fragment_valid(fragment) {
@@ -155,7 +138,7 @@ impl Pool {
     pub async fn insert_and_propagate_all(
         &mut self,
         origin: FragmentOrigin,
-        fragments: Vec<(Fragment, FragmentId)>,
+        fragments: Vec<Fragment>,
         fail_fast: bool,
     ) -> Result<FragmentsProcessingSummary, Error> {
         tracing::debug!(origin = ?origin, "received {} fragments", fragments.len());
@@ -163,21 +146,15 @@ impl Pool {
         let mut filtered_fragments = Vec::new();
         let mut rejected = Vec::new();
 
-        let mut fragments = fragments.into_iter();
-
-        let tip = self.tip.get_ref().await;
-        let ledger = tip.ledger();
-        let ledger_settings = ledger.settings();
-        let block_date = get_current_block_date(&tip);
+        let mut fragments = fragments.into_iter().map(|el| {
+            let id = el.hash();
+            (el, id)
+        });
 
         for (fragment, id) in fragments.by_ref() {
             let span = tracing::debug_span!("pool_incoming_fragment", fragment_id=?id);
 
-            match self
-                .filter_fragment(&fragment, id, ledger_settings, block_date)
-                .instrument(span)
-                .await
-            {
+            match self.filter_fragment(&fragment, id).instrument(span).await {
                 Err(reason @ FragmentRejectionReason::FragmentInvalid) => {
                     rejected.push(RejectedFragmentInfo { id, reason });
                     if fail_fast {
@@ -214,8 +191,10 @@ impl Pool {
 
         let mut fragments = filtered_fragments.into_iter();
         let new_fragments = self.pool.insert_all(fragments.by_ref());
-        let count = new_fragments.len();
-        tracing::debug!("{} of the received fragments were added to the pool", count);
+        tracing::debug!(
+            count = %new_fragments.len(),
+            "received fragments were added to the pool"
+        );
         let fragment_logs: Vec<_> = new_fragments
             .iter()
             .map(move |(_, id)| FragmentLog::new(*id, origin))
@@ -261,7 +240,7 @@ impl Pool {
     pub async fn select(
         &mut self,
         ledger: ApplyBlockLedger,
-        ledger_params: LedgerParameters,
+        ledger_params: &LedgerParameters,
         selection_alg: FragmentSelectionAlgorithmParams,
         soft_deadline_future: futures::channel::oneshot::Receiver<()>,
         hard_deadline_future: futures::channel::oneshot::Receiver<()>,
@@ -277,7 +256,7 @@ impl Pool {
                 selection_alg
                     .select(
                         ledger,
-                        &ledger_params,
+                        ledger_params,
                         logs,
                         pool,
                         soft_deadline_future,
@@ -297,21 +276,6 @@ impl Pool {
         self.update_metrics();
     }
 
-    pub async fn remove_expired_txs(&mut self) {
-        let tip = self.tip.get_ref().await;
-        let block_date = get_current_block_date(&tip);
-        let fragment_ids = self.pool.remove_expired_txs(block_date);
-        self.metrics.add_tx_rejected_cnt(fragment_ids.len());
-        self.logs.modify_all(
-            fragment_ids,
-            FragmentStatus::Rejected {
-                reason: "fragment expired".to_string(),
-            },
-            block_date.into(),
-        );
-        self.update_metrics();
-    }
-
     fn update_metrics(&self) {
         let mempool_usage_ratio = match self.pool.max_entries() {
             // a little arbitrary, but you could say the mempool is indeed full and it
@@ -320,23 +284,7 @@ impl Pool {
             n => self.pool.len() as f64 / n as f64,
         };
         self.metrics.set_mempool_usage_ratio(mempool_usage_ratio);
-        self.metrics
-            .set_mempool_total_size(self.pool.total_size_bytes());
-    }
-}
-
-fn get_current_block_date(tip: &Ref) -> BlockDate {
-    let time = std::time::SystemTime::now();
-    let era = tip.epoch_leadership_schedule().era();
-    let epoch_position = tip
-        .time_frame()
-        .slot_at(&time)
-        .and_then(|slot| era.from_slot_to_era(slot))
-        .expect("the current time and blockchain state should produce a valid blockchain date");
-    let block_date: BlockDate = epoch_position.into();
-    BlockDate {
-        slot_id: block_date.slot_id + 1,
-        ..block_date
+        self.metrics.set_mempool_total_size(self.pool.len());
     }
 }
 
@@ -370,60 +318,38 @@ fn is_transaction_valid<E>(tx: &Transaction<E>) -> bool {
     tx.verify_possibly_balanced().is_ok()
 }
 
-fn get_transaction_expiry_date(fragment: &Fragment) -> Option<BlockDate> {
-    match fragment {
-        Fragment::Initial(_) => None,
-        Fragment::OldUtxoDeclaration(_) => None,
-        Fragment::Evm(_) => None,
-        Fragment::Transaction(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::OwnerStakeDelegation(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::StakeDelegation(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::PoolRegistration(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::PoolRetirement(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::PoolUpdate(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::UpdateProposal(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::UpdateVote(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::VotePlan(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::VoteCast(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::VoteTally(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::MintToken(tx) => Some(tx.as_slice().valid_until()),
-        Fragment::EvmMapping(tx) => Some(tx.as_slice().valid_until()),
-    }
-}
-
 pub(super) mod internal {
     use super::*;
-
     use std::{
         cmp::Ordering,
-        collections::{BTreeSet, HashMap},
+        collections::HashMap,
         hash::{Hash, Hasher},
         ptr,
     };
 
-    /// Doubly-linked queue with the possibility to remove elements from the middle of the list by
+    /// Queue with the possibility to remove elements from the middle of the list by
     /// their keys.
-    struct IndexedDeqeue<K, V> {
-        head: *mut IndexedDequeueEntry<K, V>,
-        tail: *mut IndexedDequeueEntry<K, V>,
+    struct IndexedQueue<K, V> {
+        head: *mut IndexedQueueEntry<K, V>,
+        tail: *mut IndexedQueueEntry<K, V>,
 
-        index: HashMap<IndexedDequeueKeyRef<K>, Box<IndexedDequeueEntry<K, V>>>,
+        index: HashMap<IndexedQueueKeyRef<K>, Box<IndexedQueueEntry<K, V>>>,
     }
 
-    struct IndexedDequeueEntry<K, V> {
+    struct IndexedQueueEntry<K, V> {
         key: K,
         value: V,
 
-        prev: *mut IndexedDequeueEntry<K, V>,
-        next: *mut IndexedDequeueEntry<K, V>,
+        prev: *mut IndexedQueueEntry<K, V>,
+        next: *mut IndexedQueueEntry<K, V>,
     }
 
     /// A wrapper around the pointer to the key of the queue element. This wrapper forwards the
     /// implementations of `Eq` and `Hash` to `K`. This is required becuase by default the
     /// implementations of `Eq` and `Hash` from the pointer itself will be used.
-    struct IndexedDequeueKeyRef<K>(*const K);
+    struct IndexedQueueKeyRef<K>(*const K);
 
-    impl<K, V> IndexedDeqeue<K, V>
+    impl<K, V> IndexedQueue<K, V>
     where
         K: Eq + Hash,
     {
@@ -437,7 +363,7 @@ pub(super) mod internal {
         }
 
         fn push_front(&mut self, key: K, value: V) {
-            let mut entry = Box::new(IndexedDequeueEntry {
+            let mut entry = Box::new(IndexedQueueEntry {
                 key,
                 value,
                 prev: ptr::null_mut(),
@@ -451,29 +377,7 @@ pub(super) mod internal {
             self.head = &mut *entry;
             if self
                 .index
-                .insert(IndexedDequeueKeyRef(&entry.key), entry)
-                .is_some()
-            {
-                panic!("inserted an already existing key");
-            }
-        }
-
-        fn push_back(&mut self, key: K, value: V) {
-            let mut entry = Box::new(IndexedDequeueEntry {
-                key,
-                value,
-                prev: self.tail,
-                next: ptr::null_mut(),
-            });
-            if let Some(tail) = unsafe { self.tail.as_mut() } {
-                tail.next = &mut *entry;
-            } else {
-                self.head = &mut *entry;
-            }
-            self.tail = &mut *entry;
-            if self
-                .index
-                .insert(IndexedDequeueKeyRef(&entry.key), entry)
+                .insert(IndexedQueueKeyRef(&entry.key), entry)
                 .is_some()
             {
                 panic!("inserted an already existing key");
@@ -488,12 +392,12 @@ pub(super) mod internal {
             } else {
                 self.head = ptr::null_mut();
             }
-            let entry = self.index.remove(&IndexedDequeueKeyRef(&tail.key)).unwrap();
+            let entry = self.index.remove(&IndexedQueueKeyRef(&tail.key)).unwrap();
             Some((entry.key, entry.value))
         }
 
         fn remove(&mut self, key: &K) -> Option<V> {
-            let entry = self.index.remove(&IndexedDequeueKeyRef(key))?;
+            let entry = self.index.remove(&IndexedQueueKeyRef(key))?;
             if let Some(prev) = unsafe { entry.prev.as_mut() } {
                 prev.next = entry.next;
             } else {
@@ -512,25 +416,25 @@ pub(super) mod internal {
         }
 
         fn contains(&self, key: &K) -> bool {
-            self.index.contains_key(&IndexedDequeueKeyRef(key))
+            self.index.contains_key(&IndexedQueueKeyRef(key))
         }
     }
 
-    unsafe impl<K: Send, V: Send> Send for IndexedDeqeue<K, V> {}
-    unsafe impl<K: Sync, V: Sync> Sync for IndexedDeqeue<K, V> {}
+    unsafe impl<K: Send, V: Send> Send for IndexedQueue<K, V> {}
+    unsafe impl<K: Sync, V: Sync> Sync for IndexedQueue<K, V> {}
 
-    unsafe impl<K: Send, V: Send> Send for IndexedDequeueEntry<K, V> {}
-    unsafe impl<K: Send> Send for IndexedDequeueKeyRef<K> {}
+    unsafe impl<K: Send, V: Send> Send for IndexedQueueEntry<K, V> {}
+    unsafe impl<K: Send> Send for IndexedQueueKeyRef<K> {}
 
-    impl<K: PartialEq> PartialEq for IndexedDequeueKeyRef<K> {
-        fn eq(&self, other: &IndexedDequeueKeyRef<K>) -> bool {
+    impl<K: PartialEq> PartialEq for IndexedQueueKeyRef<K> {
+        fn eq(&self, other: &IndexedQueueKeyRef<K>) -> bool {
             unsafe { (*self.0).eq(&*other.0) }
         }
     }
 
-    impl<K: PartialEq> Eq for IndexedDequeueKeyRef<K> {}
+    impl<K: PartialEq> Eq for IndexedQueueKeyRef<K> {}
 
-    impl<K: Hash> Hash for IndexedDequeueKeyRef<K> {
+    impl<K: Hash> Hash for IndexedQueueKeyRef<K> {
         fn hash<H: Hasher>(&self, state: &mut H) {
             unsafe { (*self.0).hash(state) }
         }
@@ -559,21 +463,15 @@ pub(super) mod internal {
     }
 
     pub struct Pool {
-        entries: IndexedDeqeue<FragmentId, Fragment>,
-        timeout_queue: BTreeSet<TimeoutQueueItem>,
+        entries: IndexedQueue<FragmentId, Fragment>,
         max_entries: usize,
-        total_size_bytes: usize,
     }
 
     impl Pool {
         pub fn new(max_entries: usize) -> Self {
             Pool {
-                entries: IndexedDeqeue::new(),
-                // Using BTreeSet is a nasty hack so that we are able to to efficiently remove items
-                // out of their order in a queue. BinaryHeap does not allow that.
-                timeout_queue: BTreeSet::new(),
+                entries: IndexedQueue::new(),
                 max_entries,
-                total_size_bytes: 0,
             }
         }
 
@@ -582,101 +480,37 @@ pub(super) mod internal {
             &mut self,
             fragments: impl IntoIterator<Item = (Fragment, FragmentId)>,
         ) -> Vec<(Fragment, FragmentId)> {
-            let max_fragments = self.max_entries - self.entries.len();
             fragments
                 .into_iter()
                 .filter(|(fragment, id)| {
                     if self.entries.contains(id) {
                         false
                     } else {
-                        self.total_size_bytes += fragment.serialized_size();
-                        self.timeout_queue_insert(fragment, *id);
+                        if self.entries.len() >= self.max_entries && self.entries.len() != 0 {
+                            // Remove an oldest entry from the pool
+                            self.entries.pop_back().expect("entry must exist");
+                        }
                         self.entries.push_front(*id, fragment.clone());
                         true
                     }
                 })
-                .take(max_fragments)
+                // Truncate overflowing fragments
+                .take(self.max_entries)
                 .collect()
         }
 
         pub fn remove_all<'a>(&mut self, fragment_ids: impl IntoIterator<Item = &'a FragmentId>) {
             for fragment_id in fragment_ids {
-                let maybe_fragment = self.entries.remove(fragment_id);
-                if let Some(fragment) = maybe_fragment {
-                    self.timeout_queue_remove(&fragment, *fragment_id);
-                    self.total_size_bytes -= fragment.serialized_size();
-                }
+                self.entries.remove(fragment_id);
             }
         }
 
         pub fn remove_oldest(&mut self) -> Option<(Fragment, FragmentId)> {
-            let (id, fragment) = self.entries.pop_back().map(|(id, value)| (id, value))?;
-            self.timeout_queue_remove(&fragment, id);
-            self.total_size_bytes -= fragment.serialized_size();
-            Some((fragment, id))
-        }
-
-        pub fn return_to_pool(
-            &mut self,
-            fragments: impl IntoIterator<Item = (Fragment, FragmentId)>,
-        ) {
-            for (fragment, id) in fragments.into_iter() {
-                self.timeout_queue_insert(&fragment, id);
-                self.total_size_bytes += fragment.serialized_size();
-                self.entries.push_back(id, fragment);
-            }
-        }
-
-        fn timeout_queue_insert(&mut self, fragment: &Fragment, id: FragmentId) {
-            if let Some(valid_until) = get_transaction_expiry_date(fragment) {
-                let item = TimeoutQueueItem { valid_until, id };
-                self.timeout_queue.insert(item);
-            }
-        }
-
-        fn timeout_queue_remove(&mut self, fragment: &Fragment, id: FragmentId) {
-            if let Some(valid_until) = get_transaction_expiry_date(fragment) {
-                let item = TimeoutQueueItem { valid_until, id };
-                self.timeout_queue.remove(&item);
-            }
-        }
-
-        pub fn remove_expired_txs(&mut self, block_date: BlockDate) -> Vec<FragmentId> {
-            let to_remove: Vec<_> = self
-                .timeout_queue
-                .iter()
-                .take_while(|x| x.valid_until < block_date)
-                .cloned()
-                .collect();
-            for item in &to_remove {
-                self.timeout_queue.remove(item);
-                if let Some(fragment) = self.entries.remove(&item.id) {
-                    self.total_size_bytes -= fragment.serialized_size();
-                }
-            }
-            to_remove.into_iter().map(|x| x.id).collect()
-            // TODO convert to something like this when .first() and .pop_first() are stabilized. This does not have unnecessary clones.
-            // https://github.com/rust-lang/rust/issues/62924
-            // loop {
-            //     if let Some(item) = self.timeout_queue.first() {
-            //         if item.valid_until < block_date {
-            //             break;
-            //         }
-            //     } else {
-            //         break;
-            //     }
-
-            //     let item = self.timeout_queue.pop_first().unwrap();
-            //     self.entries.remove(&item.id);
-            // }
+            self.entries.pop_back().map(|(id, value)| (value, id))
         }
 
         pub fn len(&self) -> usize {
             self.entries.len()
-        }
-
-        pub fn total_size_bytes(&self) -> usize {
-            self.total_size_bytes
         }
 
         pub fn max_entries(&self) -> usize {
@@ -688,15 +522,14 @@ pub(super) mod internal {
     mod tests {
         use super::*;
         use chain_core::property::Fragment as _;
-        use chain_impl_mockchain::transaction::TxBuilder;
         use quickcheck::TestResult;
         use quickcheck_macros::quickcheck;
         use std::collections::HashSet;
 
         #[quickcheck]
-        fn overflowing_pool_should_reject_new_fragments(
+        fn overflowing_pool_should_remove_oldest_fragments(
             fragments1_in: (Fragment, Fragment, Fragment),
-            fragments2_in: (Fragment, Fragment),
+            fragments2_in: (Fragment, Fragment, Fragment, Fragment, Fragment),
         ) -> TestResult {
             let fragments1 = vec![
                 (fragments1_in.0.clone(), fragments1_in.0.id()),
@@ -704,9 +537,13 @@ pub(super) mod internal {
                 (fragments1_in.2.clone(), fragments1_in.2.id()),
             ];
             let fragments2 = vec![
+                // duplicated fragment
                 (fragments1_in.2.clone(), fragments1_in.2.id()),
                 (fragments2_in.0.clone(), fragments2_in.0.id()),
                 (fragments2_in.1.clone(), fragments2_in.1.id()),
+                (fragments2_in.2.clone(), fragments2_in.2.id()),
+                (fragments2_in.3.clone(), fragments2_in.3.id()),
+                (fragments2_in.4.clone(), fragments2_in.4.id()),
             ];
 
             if fragments1
@@ -715,68 +552,31 @@ pub(super) mod internal {
                 .map(|(_, id)| id)
                 .collect::<HashSet<_>>()
                 .len()
-                != 5
+                != 8
             {
                 return TestResult::discard();
             }
 
-            let fragments2_expected = vec![(fragments2_in.0.clone(), fragments2_in.0.id())];
-            let final_expected = vec![
-                (fragments1_in.0.clone(), fragments1_in.0.id()),
-                (fragments1_in.1.clone(), fragments1_in.1.id()),
-                (fragments1_in.2.clone(), fragments1_in.2.id()),
+            let fragments2_expected = vec![
                 (fragments2_in.0.clone(), fragments2_in.0.id()),
+                (fragments2_in.1.clone(), fragments2_in.1.id()),
+                (fragments2_in.2.clone(), fragments2_in.2.id()),
+                (fragments2_in.3.clone(), fragments2_in.3.id()),
+            ];
+            let final_expected = vec![
+                (fragments2_in.0.clone(), fragments2_in.0.id()),
+                (fragments2_in.1.clone(), fragments2_in.1.id()),
+                (fragments2_in.2.clone(), fragments2_in.2.id()),
+                (fragments2_in.3.clone(), fragments2_in.3.id()),
             ];
             let mut pool = Pool::new(4);
             assert_eq!(fragments1, pool.insert_all(fragments1.clone()));
-            assert_eq!(
-                pool.total_size_bytes,
-                fragments1
-                    .iter()
-                    .map(|(f, _)| f.serialized_size())
-                    .sum::<usize>()
-            );
 
             assert_eq!(fragments2_expected, pool.insert_all(fragments2));
             for expected in final_expected.into_iter() {
                 assert_eq!(expected, pool.remove_oldest().unwrap());
             }
             TestResult::from_bool(pool.remove_oldest().is_none())
-        }
-
-        #[test]
-        fn expired_transactions_are_removed() {
-            let mut pool = Pool::new(1);
-
-            let tx = Fragment::Transaction(
-                TxBuilder::new()
-                    .set_nopayload()
-                    .set_expiry_date(BlockDate {
-                        epoch: 0,
-                        slot_id: 1,
-                    })
-                    .set_ios(&[], &[])
-                    .set_witnesses(&[])
-                    .set_payload_auth(&()),
-            );
-
-            pool.insert_all([(tx.clone(), tx.id())]);
-
-            assert_eq!(pool.entries.len(), 1, "Fragment should be in pool");
-
-            pool.remove_expired_txs(BlockDate {
-                epoch: 0,
-                slot_id: 1,
-            });
-
-            assert_eq!(pool.entries.len(), 1, "Fragment has not expired yet");
-
-            pool.remove_expired_txs(BlockDate {
-                epoch: 0,
-                slot_id: 2,
-            });
-
-            assert_eq!(pool.entries.len(), 0, "Expired fragment should be removed");
         }
     }
 }
