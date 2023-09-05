@@ -17,7 +17,7 @@ chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", b
 assert_fs = "1.0"
 chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9" }
 serde = { version = "1.0", features = ["derive"] }
-cocoon =  { git = "https://github.com/dkijania/cocoon.git" }
+cocoon =  { git = "https://github.com/dkijania/cocoon.git", rev = "1dfd975c3f0720d51c56fb297e7c92467bc3448a" }
 dirs = "4.0.0"
 serde_yaml = "0.8"
 structopt = "0.3"
