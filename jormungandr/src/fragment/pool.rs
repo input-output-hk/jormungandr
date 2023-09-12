@@ -1,6 +1,6 @@
 use crate::{
     blockcfg::{ApplyBlockLedger, LedgerParameters},
-    blockchain::{Ref, Tip},
+    blockchain::Tip,
     fragment::{
         selection::{
             FragmentSelectionAlgorithm, FragmentSelectionAlgorithmParams, FragmentSelectionResult,
@@ -13,9 +13,7 @@ use crate::{
     utils::async_msg::MessageBox,
 };
 use chain_core::{packer::Codec, property::Serialize};
-use chain_impl_mockchain::{
-    block::BlockDate, fragment::Contents, setting::Settings, transaction::Transaction,
-};
+use chain_impl_mockchain::{block::BlockDate, fragment::Contents, transaction::Transaction};
 use futures::channel::mpsc::SendError;
 use futures::sink::SinkExt;
 use jormungandr_lib::{
@@ -44,6 +42,7 @@ pub struct Pool {
     pool: internal::Pool,
     network_msg_box: MessageBox<NetworkMsg>,
     persistent_log: Option<BufWriter<File>>,
+    #[allow(dead_code)]
     tip: Tip,
     metrics: Metrics,
 }
