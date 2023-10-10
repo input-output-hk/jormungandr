@@ -66,6 +66,46 @@ pub struct ConfigLogSettings {
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct P2pConfig {
+    pub bootstrap: Bootstrap,
+
+    pub connection: Connection,
+
+    /// setting for the policy
+    #[serde(default)]
+    pub policy: QuarantineConfig,
+
+    /// settings for the different custom layers
+    #[serde(default)]
+    pub layers: LayersConfig,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Bootstrap {
+    /// File with the secret key used to advertise and authenticate the node
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub node_key_file: Option<PathBuf>,
+
+    /// the rendezvous points for the peer to connect to in order to initiate
+    /// the p2p discovery from.
+    pub trusted_peers: Option<Vec<TrustedPeer>>,
+
+    /// The number of times to retry bootstrapping from trusted peers. The default
+    /// value of None will result in the bootstrap process retrying indefinitely. A
+    /// value of zero will skip bootstrap all together -- even if trusted peers are
+    /// defined. If the node fails to bootstrap from any of the trusted peers and the
+    /// number of bootstrap retry attempts is exceeded, then the node will continue to
+    /// run without completing the bootstrap process. This will allow the node to act
+    /// as the first node in the p2p network (i.e. genesis node), or immediately begin
+    /// gossip with the trusted peers if any are defined.
+    #[serde(default)]
+    pub max_bootstrap_attempts: Option<usize>,
+}
+
+/// Start up connection configuration
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+pub struct Connection {
     /// The public address to which other peers may connect to
     pub public_address: Option<Multiaddr>,
 
@@ -74,14 +114,6 @@ pub struct P2pConfig {
     /// The IP address can be specified as 0.0.0.0 or :: to listen on
     /// all network interfaces.
     pub listen: Option<Address>,
-
-    /// File with the secret key used to advertise and authenticate the node
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub node_key_file: Option<PathBuf>,
-
-    /// the rendezvous points for the peer to connect to in order to initiate
-    /// the p2p discovery from.
-    pub trusted_peers: Option<Vec<TrustedPeer>>,
 
     /// Limit on the number of simultaneous connections.
     /// If not specified, an internal default limit is used.
@@ -99,13 +131,8 @@ pub struct P2pConfig {
     #[serde(default)]
     pub allow_private_addresses: bool,
 
-    /// setting for the policy
-    #[serde(default)]
-    pub policy: QuarantineConfig,
-
-    /// settings for the different custom layers
-    #[serde(default)]
-    pub layers: LayersConfig,
+    /// contains addrs of nodes which we can accept fragments from
+    pub whitelist: Option<Vec<SocketAddr>>,
 
     /// interval to start gossiping with new nodes, changing the value will
     /// affect the bandwidth. The more often the node will gossip the more
@@ -122,17 +149,6 @@ pub struct P2pConfig {
     /// The default value is 5 min.
     #[serde(default)]
     pub network_stuck_check: Option<Duration>,
-
-    /// The number of times to retry bootstrapping from trusted peers. The default
-    /// value of None will result in the bootstrap process retrying indefinitely. A
-    /// value of zero will skip bootstrap all together -- even if trusted peers are
-    /// defined. If the node fails to bootstrap from any of the trusted peers and the
-    /// number of bootstrap retry attempts is exceeded, then the node will continue to
-    /// run without completing the bootstrap process. This will allow the node to act
-    /// as the first node in the p2p network (i.e. genesis node), or immediately begin
-    /// gossip with the trusted peers if any are defined.
-    #[serde(default)]
-    pub max_bootstrap_attempts: Option<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

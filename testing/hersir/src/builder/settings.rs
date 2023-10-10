@@ -304,14 +304,14 @@ impl Settings {
                         .to_public(),
                 );
                 trusted_peers.push(TrustedPeer {
-                    address: trusted_peer.config.p2p.public_address.clone(),
+                    address: trusted_peer.config.p2p.connection.public_address.clone(),
                     id: Some(id),
                 })
             }
 
             node.config.skip_bootstrap = Some(trusted_peers.is_empty());
             node.config.bootstrap_from_trusted_peers = Some(!trusted_peers.is_empty());
-            node.config.p2p.trusted_peers = trusted_peers;
+            node.config.p2p.bootstrap.trusted_peers = trusted_peers;
         }
     }
 

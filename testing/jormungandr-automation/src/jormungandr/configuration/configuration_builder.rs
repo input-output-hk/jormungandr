@@ -378,7 +378,7 @@ impl ConfigurationBuilder {
         let mut node_config = self.node_config_builder.build();
 
         //remove id from trusted peers
-        for trusted_peer in node_config.p2p.trusted_peers.iter_mut() {
+        for trusted_peer in node_config.p2p.bootstrap.trusted_peers.iter_mut() {
             trusted_peer.id = None;
         }
 

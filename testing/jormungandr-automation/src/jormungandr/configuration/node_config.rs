@@ -20,19 +20,19 @@ impl TestConfig for NodeConfig {
     }
 
     fn p2p_listen_address(&self) -> SocketAddr {
-        if let Some(address) = &self.p2p.listen {
+        if let Some(address) = &self.p2p.connection.listen {
             *address
         } else {
-            to_tcp_socket_addr(&self.p2p.public_address).unwrap()
+            to_tcp_socket_addr(&self.p2p.connection.public_address).unwrap()
         }
     }
 
     fn p2p_public_address(&self) -> Multiaddr {
-        self.p2p.public_address.clone()
+        self.p2p.connection.public_address.clone()
     }
 
     fn set_p2p_public_address(&mut self, address: Multiaddr) {
-        self.p2p.public_address = address;
+        self.p2p.connection.public_address = address;
     }
 
     fn rest_socket_addr(&self) -> SocketAddr {

@@ -289,16 +289,16 @@ fn generate_network(
             (config::P2pConfig::default(), Vec::new(), false, false)
         };
 
-    if p2p.trusted_peers.is_some() {
-        if let Some(peers) = p2p.trusted_peers.as_mut() {
+    if p2p.bootstrap.trusted_peers.is_some() {
+        if let Some(peers) = p2p.bootstrap.trusted_peers.as_mut() {
             peers.extend(command_arguments.trusted_peer.clone())
         }
     } else if !command_arguments.trusted_peer.is_empty() {
-        p2p.trusted_peers = Some(command_arguments.trusted_peer.clone())
+        p2p.bootstrap.trusted_peers = Some(command_arguments.trusted_peer.clone())
     }
 
     let trusted_peers = p2p
-        .trusted_peers
+        .bootstrap.trusted_peers
         .as_ref()
         .map_or_else(Vec::new, |peers| resolve_trusted_peers(peers));
 
@@ -317,21 +317,21 @@ fn generate_network(
 
     // TODO: do we want to check that we end up with a valid address?
     // Is it possible for a node to specify no public address?
-    let config_addr = p2p.public_address;
+    let config_addr = p2p.connection.public_address;
     let public_address = command_arguments
         .public_address
         .clone()
         .or(config_addr)
         .and_then(|addr| multiaddr::to_tcp_socket_addr(&addr));
 
-    let node_key = match p2p.node_key_file {
+    let node_key = match p2p.bootstrap.node_key_file {
         Some(node_key_file) => {
             <SigningKey<Ed25519>>::from_bech32_str(&std::fs::read_to_string(&node_key_file)?)?
         }
         None => SigningKey::generate(rand::thread_rng()),
     };
 
-    let p2p_listen_address = p2p.listen.as_ref();
+    let p2p_listen_address = p2p.connection.listen.as_ref();
     let listen_address = command_arguments
         .listen_address
         .as_ref()
@@ -350,22 +350,22 @@ fn generate_network(
             rings,
         },
         max_connections: p2p
-            .max_connections
+            .connection.max_connections
             .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),
         max_client_connections: p2p
-            .max_client_connections
+            .connection.max_client_connections
             .unwrap_or(network::DEFAULT_MAX_CLIENT_CONNECTIONS),
         timeout: std::time::Duration::from_secs(15),
-        allow_private_addresses: p2p.allow_private_addresses,
+        allow_private_addresses: p2p.connection.allow_private_addresses,
         gossip_interval: p2p
-            .gossip_interval
+            .connection.gossip_interval
             .map(|d| d.into())
             .unwrap_or_else(|| std::time::Duration::from_secs(10)),
         network_stuck_check: p2p
-            .network_stuck_check
+            .connection.network_stuck_check
             .map(Into::into)
             .unwrap_or(crate::topology::DEFAULT_NETWORK_STUCK_INTERVAL),
-        max_bootstrap_attempts: p2p.max_bootstrap_attempts,
+        max_bootstrap_attempts: p2p.bootstrap.max_bootstrap_attempts,
         http_fetch_block0_service,
         bootstrap_from_trusted_peers,
         skip_bootstrap,

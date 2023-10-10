@@ -80,7 +80,7 @@ impl LegacyNodeConfigConverter {
 
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
-            .trusted_peers
+            .bootstrap.trusted_peers
             .iter()
             .map(|peer| {
                 let id = NodeId::from(
@@ -107,12 +107,12 @@ impl LegacyNodeConfigConverter {
             jrpc: source.jrpc.clone(),
             p2p: P2p {
                 trusted_peers,
-                public_address: source.p2p.public_address.clone(),
+                public_address: source.p2p.connection.public_address.clone(),
                 listen: None,
                 max_inbound_connections: None,
                 max_connections: None,
                 topics_of_interest: None,
-                allow_private_addresses: source.p2p.allow_private_addresses,
+                allow_private_addresses: source.p2p.connection.allow_private_addresses,
                 policy: source.p2p.policy.clone(),
                 layers: source.p2p.layers.clone(),
                 public_id: None,
@@ -126,7 +126,7 @@ impl LegacyNodeConfigConverter {
     fn build_node_config_after_0_12_0(&self, source: &NewestNodeConfig) -> NodeConfig {
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
-            .trusted_peers
+            .bootstrap.trusted_peers
             .iter()
             .map(|peer| TrustedPeer {
                 id: None,
@@ -146,12 +146,12 @@ impl LegacyNodeConfigConverter {
             jrpc: source.jrpc.clone(),
             p2p: P2p {
                 trusted_peers,
-                public_address: source.p2p.public_address.clone(),
+                public_address: source.p2p.connection.public_address.clone(),
                 listen: None,
                 max_inbound_connections: None,
                 max_connections: None,
                 topics_of_interest: None,
-                allow_private_addresses: source.p2p.allow_private_addresses,
+                allow_private_addresses: source.p2p.connection.allow_private_addresses,
                 policy: source.p2p.policy.clone(),
                 layers: source.p2p.layers.clone(),
                 public_id: None,
@@ -172,7 +172,7 @@ impl LegacyNodeConfigConverter {
         let mut rng = OsRng;
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
-            .trusted_peers
+            .bootstrap.trusted_peers
             .iter()
             .map(|peer| {
                 let id = {
@@ -202,7 +202,7 @@ impl LegacyNodeConfigConverter {
             jrpc: source.jrpc.clone(),
             p2p: P2p {
                 trusted_peers,
-                public_address: source.p2p.public_address.clone(),
+                public_address: source.p2p.connection.public_address.clone(),
                 listen: None,
                 max_inbound_connections: None,
                 max_connections: None,
@@ -211,7 +211,7 @@ impl LegacyNodeConfigConverter {
                     .layers
                     .as_ref()
                     .and_then(|c| c.topics_of_interest.clone()),
-                allow_private_addresses: source.p2p.allow_private_addresses,
+                allow_private_addresses: source.p2p.connection.allow_private_addresses,
                 policy: source.p2p.policy.clone(),
                 layers: None,
                 public_id: None,
