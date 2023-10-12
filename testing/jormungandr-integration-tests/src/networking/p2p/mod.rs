@@ -1,4 +1,5 @@
 pub mod connections;
+pub mod public_traffic;
 pub mod quarantine;
 pub mod stats;
 

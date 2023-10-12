@@ -80,7 +80,8 @@ impl LegacyNodeConfigConverter {
 
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
-            .bootstrap.trusted_peers
+            .bootstrap
+            .trusted_peers
             .iter()
             .map(|peer| {
                 let id = NodeId::from(
@@ -116,6 +117,7 @@ impl LegacyNodeConfigConverter {
                 policy: source.p2p.policy.clone(),
                 layers: source.p2p.layers.clone(),
                 public_id: None,
+                whitelist: source.p2p.connection.whitelist.clone(),
             },
             mempool: source.mempool.clone(),
             bootstrap_from_trusted_peers: source.bootstrap_from_trusted_peers,
@@ -126,7 +128,8 @@ impl LegacyNodeConfigConverter {
     fn build_node_config_after_0_12_0(&self, source: &NewestNodeConfig) -> NodeConfig {
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
-            .bootstrap.trusted_peers
+            .bootstrap
+            .trusted_peers
             .iter()
             .map(|peer| TrustedPeer {
                 id: None,
@@ -155,6 +158,7 @@ impl LegacyNodeConfigConverter {
                 policy: source.p2p.policy.clone(),
                 layers: source.p2p.layers.clone(),
                 public_id: None,
+                whitelist: source.p2p.connection.whitelist.clone(),
             },
             mempool: source.mempool.clone(),
             bootstrap_from_trusted_peers: source.bootstrap_from_trusted_peers,
@@ -172,7 +176,8 @@ impl LegacyNodeConfigConverter {
         let mut rng = OsRng;
         let trusted_peers: Vec<TrustedPeer> = source
             .p2p
-            .bootstrap.trusted_peers
+            .bootstrap
+            .trusted_peers
             .iter()
             .map(|peer| {
                 let id = {
@@ -215,6 +220,7 @@ impl LegacyNodeConfigConverter {
                 policy: source.p2p.policy.clone(),
                 layers: None,
                 public_id: None,
+                whitelist: source.p2p.connection.whitelist.clone(),
             },
             mempool: source.mempool.clone(),
             bootstrap_from_trusted_peers: source.bootstrap_from_trusted_peers,

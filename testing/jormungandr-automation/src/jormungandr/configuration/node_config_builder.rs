@@ -2,8 +2,8 @@
 
 use jormungandr_lib::{
     interfaces::{
-        Bootstrap, Connection,Cors, JRpc, LayersConfig, Log, Mempool, NodeConfig, P2p, Policy, Rest, Tls,
-        TopicsOfInterest, TrustedPeer,
+        Bootstrap, Connection, Cors, JRpc, LayersConfig, Log, Mempool, NodeConfig, P2p, Policy,
+        Rest, Tls, TopicsOfInterest, TrustedPeer,
     },
     time::Duration,
 };

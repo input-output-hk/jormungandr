@@ -79,7 +79,7 @@ impl CliController {
     }
 
     pub fn refresh_state(&mut self) -> Result<(), Error> {
-        let mut wallet = self.wallets.wallet_mut()?;
+        let wallet = self.wallets.wallet_mut()?;
         let new_state = self.client.account_state_by_pk(&wallet.pk_bech32())?;
         wallet.spending_counters = new_state.counters();
         wallet.value = (*new_state.value()).into();

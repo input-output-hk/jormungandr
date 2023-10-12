@@ -119,7 +119,7 @@ pub fn test_all_fragments() {
     );
 
     let mut new_stake_pool = stake_pool.clone();
-    let mut stake_pool_info = new_stake_pool.info_mut();
+    let stake_pool_info = new_stake_pool.info_mut();
     stake_pool_info.serial = 100u128;
 
     time::wait_for_epoch(1, jormungandr.rest());

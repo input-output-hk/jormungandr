@@ -34,6 +34,8 @@ pub struct P2p {
 
     pub allow_private_addresses: bool,
 
+    pub whitelist: Option<Vec<SocketAddr>>,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub topics_of_interest: Option<TopicsOfInterest>,
 

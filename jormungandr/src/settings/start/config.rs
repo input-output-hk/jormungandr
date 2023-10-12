@@ -11,7 +11,7 @@ use multiaddr::Multiaddr;
 use serde::{de::Error as _, Deserialize, Deserializer, Serialize, Serializer};
 use tracing::level_filters::LevelFilter;
 
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf};
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -132,7 +132,7 @@ pub struct Connection {
     pub allow_private_addresses: bool,
 
     /// contains addrs of nodes which we can accept fragments from
-    //pub whitelist: Option<Vec<SocketAddr>>,
+    pub whitelist: Option<Vec<SocketAddr>>,
 
     /// interval to start gossiping with new nodes, changing the value will
     /// affect the bandwidth. The more often the node will gossip the more

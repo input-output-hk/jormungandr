@@ -658,6 +658,11 @@ impl Peers {
         }
     }
 
+    pub async fn get_peer_addr(&self, peer: &NodeId) -> Option<SocketAddr> {
+        let mut map = self.inner().await;
+        map.peer_comms(peer).map(|peer| peer.remote_addr())
+    }
+
     pub async fn refresh_peer_on_gossip(&self, peer: &NodeId) -> bool {
         let timestamp = SystemTime::now();
         let mut map = self.inner().await;

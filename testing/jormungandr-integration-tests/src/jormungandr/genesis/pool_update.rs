@@ -24,7 +24,7 @@ pub fn update_pool_fees_is_not_allowed() {
     let stake_pool = stake_pools.get(0).unwrap();
 
     let mut new_stake_pool = stake_pool.clone();
-    let mut stake_pool_info = new_stake_pool.info_mut();
+    let stake_pool_info = new_stake_pool.info_mut();
     stake_pool_info.rewards = TaxType::zero();
 
     // 6. send pool update certificate

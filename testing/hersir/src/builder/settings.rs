@@ -136,7 +136,7 @@ impl Settings {
     ) where
         RNG: RngCore + CryptoRng,
     {
-        let mut blockchain_configuration = &mut self.block0.blockchain_configuration;
+        let blockchain_configuration = &mut self.block0.blockchain_configuration;
 
         // TODO blockchain_configuration.block0_date = ;
         blockchain_configuration.linear_fees = blockchain.linear_fee();

@@ -196,7 +196,6 @@ pub struct P2p {
     pub layers: Option<LayersConfig>,
 }
 
-
 /// Bootstrap contains meta data for initial startup
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bootstrap {

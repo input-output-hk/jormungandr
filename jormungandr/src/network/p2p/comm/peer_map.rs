@@ -265,7 +265,7 @@ impl PeerMap {
             .iter()
             .map(|(&id, data)| PeerInfo {
                 id,
-                addr: None,
+                addr: Some(data.comms.remote_addr),
                 stats: data.stats.clone(),
             })
             .collect()

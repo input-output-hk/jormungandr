@@ -298,7 +298,8 @@ fn generate_network(
     }
 
     let trusted_peers = p2p
-        .bootstrap.trusted_peers
+        .bootstrap
+        .trusted_peers
         .as_ref()
         .map_or_else(Vec::new, |peers| resolve_trusted_peers(peers));
 
@@ -350,19 +351,24 @@ fn generate_network(
             rings,
         },
         max_connections: p2p
-            .connection.max_connections
+            .connection
+            .max_connections
             .unwrap_or(network::DEFAULT_MAX_CONNECTIONS),
         max_client_connections: p2p
-            .connection.max_client_connections
+            .connection
+            .max_client_connections
             .unwrap_or(network::DEFAULT_MAX_CLIENT_CONNECTIONS),
         timeout: std::time::Duration::from_secs(15),
         allow_private_addresses: p2p.connection.allow_private_addresses,
+        whitelist: p2p.connection.whitelist,
         gossip_interval: p2p
-            .connection.gossip_interval
+            .connection
+            .gossip_interval
             .map(|d| d.into())
             .unwrap_or_else(|| std::time::Duration::from_secs(10)),
         network_stuck_check: p2p
-            .connection.network_stuck_check
+            .connection
+            .network_stuck_check
             .map(Into::into)
             .unwrap_or(crate::topology::DEFAULT_NETWORK_STUCK_INTERVAL),
         max_bootstrap_attempts: p2p.bootstrap.max_bootstrap_attempts,

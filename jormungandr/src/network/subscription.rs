@@ -8,11 +8,11 @@ use crate::{
 };
 use chain_network::data as net_data;
 use chain_network::error::{Code, Error};
-use jormungandr_lib::interfaces::FragmentOrigin;
-
+use futures::executor;
 use futures::future::BoxFuture;
 use futures::prelude::*;
 use futures::ready;
+use jormungandr_lib::interfaces::FragmentOrigin;
 
 use std::error::Error as _;
 use std::mem;
@@ -24,7 +24,7 @@ fn filter_gossip_node(node: &Gossip, config: &Configuration) -> bool {
     if config.allow_private_addresses {
         node.has_valid_address()
     } else {
-        node.is_global()
+        !node.is_global()
     }
 }
 
@@ -165,6 +165,12 @@ impl FragmentProcessor {
         }
     }
 
+    fn get_ingress_addr(&self) -> Option<std::net::SocketAddr> {
+        let state = self.global_state.clone();
+        let node_id = self.node_id;
+        executor::block_on(state.peers.get_peer_addr(&node_id))
+    }
+
     fn refresh_stat(&mut self) {
         let state = self.global_state.clone();
         let node_id = self.node_id;
@@ -301,7 +307,22 @@ impl Sink<net_data::Fragment> for FragmentProcessor {
             e
         })?;
         tracing::debug!(hash = %fragment.hash(), "received fragment");
-        self.buffered_fragments.push(fragment);
+        if let Some(whitelist) = &self.global_state.config.whitelist {
+            match self.get_ingress_addr() {
+                Some(ingress_addr) => {
+                    if whitelist.contains(&ingress_addr) {
+                        self.buffered_fragments.push(fragment);
+                    } else {
+                        tracing::info!("dropping fragments from {}", ingress_addr);
+                    }
+                }
+                None => tracing::warn!("unable to resolve address of ingress client"),
+            }
+        } else {
+            // if no whitelist config, normal behaviour, no filtering
+            self.buffered_fragments.push(fragment);
+        }
+
         Ok(())
     }
 

@@ -163,7 +163,7 @@ pub fn test_legacy_node_all_fragments() {
     );
 
     let mut new_stake_pool = first_stake_pool.clone();
-    let mut stake_pool_info = new_stake_pool.info_mut();
+    let stake_pool_info = new_stake_pool.info_mut();
 
     stake_pool_info.reward_account = Some(AccountIdentifier::Single(
         second_stake_pool_owner
