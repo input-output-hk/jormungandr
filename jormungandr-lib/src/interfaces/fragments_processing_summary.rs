@@ -13,7 +13,6 @@ pub enum FragmentRejectionReason {
     FragmentInvalid,
     PreviousFragmentInvalid,
     PoolOverflow,
-    FragmentExpired,
     FragmentValidForTooLong,
 }
 
