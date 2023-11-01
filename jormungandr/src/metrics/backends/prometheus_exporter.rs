@@ -80,11 +80,13 @@ impl Default for Prometheus {
         let tx_recv_cnt = IntCounter::new("txRecvCnt", "txRecvCnt").unwrap();
         registry.register(Box::new(tx_recv_cnt.clone())).unwrap();
         let mempool_usage_ratio = Gauge::new("mempoolUsageRatio", "mempoolUsageRatio").unwrap();
+        mempool_usage_ratio.set(0f64);
         registry
             .register(Box::new(mempool_usage_ratio.clone()))
             .unwrap();
         let mempool_size_bytes_total =
             UIntGauge::new("mempoolSizeBytesTotal", "mempoolSizeBytesTotal").unwrap();
+        mempool_size_bytes_total.set(0);
         registry
             .register(Box::new(mempool_size_bytes_total.clone()))
             .unwrap();
@@ -99,15 +101,18 @@ impl Default for Prometheus {
         let block_recv_cnt = IntCounter::new("blockRecvCnt", "blockRecvCnt").unwrap();
         registry.register(Box::new(block_recv_cnt.clone())).unwrap();
         let peer_connected_cnt = UIntGauge::new("peerConnectedCnt", "peerConnectedCnt").unwrap();
+        peer_connected_cnt.set(0);
         registry
             .register(Box::new(peer_connected_cnt.clone()))
             .unwrap();
         let peer_quarantined_cnt =
             UIntGauge::new("peerQuarantinedCnt", "peerQuarantinedCnt").unwrap();
+        peer_quarantined_cnt.set(0);
         registry
             .register(Box::new(peer_quarantined_cnt.clone()))
             .unwrap();
         let peer_available_cnt = UIntGauge::new("peerAvailableCnt", "peerAvailableCnt").unwrap();
+        peer_available_cnt.set(0);
         registry
             .register(Box::new(peer_available_cnt.clone()))
             .unwrap();
