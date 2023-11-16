@@ -1,6 +1,5 @@
 # Set the Earthly version to 0.7
 VERSION 0.7
-FROM debian:stable-slim
 
 rust-toolchain:
     FROM rust:1.71-slim-bullseye
@@ -71,3 +70,24 @@ build:
 
     SAVE ARTIFACT /src/target/release/jormungandr jormungandr
     SAVE ARTIFACT /src/target/release/jcli jcli
+
+publish:
+    FROM debian:stable-slim
+    WORKDIR /app
+
+    ARG tag=latest
+
+    # Install build dependencies
+    RUN apt-get update && \
+        apt-get install -y --no-install-recommends \
+        libssl-dev \
+        libpq-dev \
+        libsqlite3-dev
+
+    COPY +build/jormungandr .
+    COPY jormungandr/entrypoint.sh .
+    RUN chmod +x entrypoint.sh
+
+    ENTRYPOINT ["/app/entrypoint.sh"]
+
+    SAVE IMAGE jormungandr:${tag}
