@@ -24,13 +24,13 @@ bech32 = "0.8"
 hex = "0.4.2"
 rayon = "1.5"
 base64 = "0.13.0"
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9" }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9" }
-chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9" }
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9" }
-chain-evm = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9", optional = true }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-time    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-evm = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold", optional = true }
 jormungandr-lib = { path = "../jormungandr-lib" }
 gtmpl = "0.6.0"
 ed25519-bip32 = "0.4.1"
@@ -53,7 +53,7 @@ predicates = "2.0"
 quickcheck = "0.9"
 # FIXME required to work with quickcheck 0.9. Remove after migrating another crate or newer quickcheck
 rand07 = { package = "rand", version = "0.7" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold", features = [ "property-test-api" ] }
 
 [build-dependencies]
 versionisator = "1.0.2"
