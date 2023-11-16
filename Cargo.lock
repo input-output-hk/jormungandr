@@ -483,8 +483,8 @@ dependencies = [
 name = "blockchain"
 version = "0.1.0"
 dependencies = [
- "chain-impl-mockchain",
- "chain-time",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "lru",
  "thiserror",
 ]
@@ -571,6 +571,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cardano-legacy-address"
+version = "0.1.1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "cbor_event",
+ "cryptoxide 0.4.4",
+ "ed25519-bip32",
+]
+
+[[package]]
 name = "cast"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -634,8 +644,22 @@ version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
 dependencies = [
  "bech32 0.8.1",
- "chain-core",
- "chain-crypto",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "cryptoxide 0.4.4",
+ "proptest",
+ "quickcheck",
+ "test-strategy",
+]
+
+[[package]]
+name = "chain-addr"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "bech32 0.8.1",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
  "cryptoxide 0.4.4",
  "proptest",
  "quickcheck",
@@ -647,7 +671,15 @@ name = "chain-core"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
 dependencies = [
- "chain-ser",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+]
+
+[[package]]
+name = "chain-core"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
 ]
 
 [[package]]
@@ -669,7 +701,29 @@ dependencies = [
  "rayon",
  "sha2 0.10.8",
  "test-strategy",
- "typed-bytes",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+]
+
+[[package]]
+name = "chain-crypto"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "bech32 0.8.1",
+ "cryptoxide 0.4.4",
+ "curve25519-dalek-ng",
+ "ed25519-bip32",
+ "ed25519-dalek",
+ "generic-array",
+ "hex",
+ "proptest",
+ "quickcheck",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "rayon",
+ "sha2 0.10.8",
+ "test-strategy",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
 ]
 
 [[package]]
@@ -681,14 +735,14 @@ dependencies = [
  "base64 0.13.1",
  "blake2",
  "byte-slice-cast",
- "chain-core",
- "chain-ser",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "ethabi",
  "ethereum",
  "ethereum-types",
  "evm",
  "hex",
- "imhamt",
+ "imhamt 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "libsecp256k1",
  "num",
  "quickcheck",
@@ -698,7 +752,36 @@ dependencies = [
  "sha2 0.10.8",
  "sha3",
  "thiserror",
- "typed-bytes",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+]
+
+[[package]]
+name = "chain-evm"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "aurora-bn",
+ "base64 0.13.1",
+ "blake2",
+ "byte-slice-cast",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "ethabi",
+ "ethereum",
+ "ethereum-types",
+ "evm",
+ "hex",
+ "imhamt 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "libsecp256k1",
+ "num",
+ "quickcheck",
+ "ripemd",
+ "rlp",
+ "secp256k1",
+ "sha2 0.10.8",
+ "sha3",
+ "thiserror",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
 ]
 
 [[package]]
@@ -706,18 +789,18 @@ name = "chain-impl-mockchain"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
 dependencies = [
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-evm",
- "chain-ser",
- "chain-time",
- "chain-vote",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-evm 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "cryptoxide 0.4.4",
  "ed25519-bip32",
  "hex",
- "imhamt",
+ "imhamt 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "lazy_static",
  "proptest",
  "quickcheck",
@@ -725,12 +808,44 @@ dependencies = [
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "rand_core 0.6.4",
- "sparse-array",
+ "sparse-array 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "strum",
  "strum_macros",
  "test-strategy",
  "thiserror",
- "typed-bytes",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+]
+
+[[package]]
+name = "chain-impl-mockchain"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-evm 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "cryptoxide 0.4.4",
+ "ed25519-bip32",
+ "hex",
+ "imhamt 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "lazy_static",
+ "proptest",
+ "quickcheck",
+ "quickcheck_macros",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.4",
+ "sparse-array 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "strum",
+ "strum_macros",
+ "test-strategy",
+ "thiserror",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
 ]
 
 [[package]]
@@ -739,7 +854,24 @@ version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
 dependencies = [
  "async-trait",
- "chain-crypto",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "futures",
+ "http-body",
+ "pin-project",
+ "prost 0.9.0",
+ "rand_core 0.6.4",
+ "thiserror",
+ "tonic 0.6.2",
+ "tonic-build",
+]
+
+[[package]]
+name = "chain-network"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "async-trait",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
  "futures",
  "http-body",
  "pin-project",
@@ -759,6 +891,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "chain-ser"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "chain-storage"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
@@ -772,12 +912,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "chain-storage"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "data-pile",
+ "sled",
+ "thiserror",
+]
+
+[[package]]
 name = "chain-time"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
 dependencies = [
- "chain-core",
- "chain-ser",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "proptest",
+ "quickcheck",
+ "test-strategy",
+]
+
+[[package]]
+name = "chain-time"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
  "proptest",
  "quickcheck",
  "test-strategy",
@@ -789,8 +951,24 @@ version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
 dependencies = [
  "cfg-if 1.0.0",
- "chain-core",
- "chain-crypto",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "const_format",
+ "cryptoxide 0.4.4",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "rayon",
+ "thiserror",
+]
+
+[[package]]
+name = "chain-vote"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "cfg-if 0.1.10",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
  "const_format",
  "cryptoxide 0.4.4",
  "rand 0.8.5",
@@ -1531,20 +1709,20 @@ dependencies = [
  "async-graphql",
  "async-graphql-warp",
  "base64 0.13.1",
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-network",
- "chain-ser",
- "chain-time",
- "chain-vote",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-network 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "futures",
  "futures-channel",
  "futures-util",
  "http-zipkin",
- "imhamt",
+ "imhamt 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "jormungandr-lib",
  "lazy_static",
  "parity-multiaddr",
@@ -2073,10 +2251,10 @@ name = "hersir"
 version = "0.1.0"
 dependencies = [
  "assert_fs",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "ctrlc",
  "custom_debug",
  "hex",
@@ -2289,6 +2467,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "imhamt"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+dependencies = [
+ "proptest",
+ "rustc_version",
+ "test-strategy",
+ "thiserror",
+]
+
+[[package]]
 name = "impl-codec"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2436,13 +2625,13 @@ dependencies = [
  "bech32 0.8.1",
  "bincode",
  "bytes",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-evm",
- "chain-impl-mockchain",
- "chain-time",
- "chain-vote",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-evm 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "clap 3.2.25",
  "ed25519-bip32",
  "gtmpl",
@@ -2482,21 +2671,21 @@ dependencies = [
  "async-trait",
  "base64 0.13.1",
  "bech32 0.8.1",
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-evm",
- "chain-impl-mockchain",
- "chain-network",
- "chain-storage",
- "chain-time",
- "chain-vote",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-evm 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-network 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-storage 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
  "criterion",
  "futures",
  "hex",
  "http-zipkin",
- "imhamt",
+ "imhamt 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
  "jormungandr-lib",
  "jsonrpsee-core",
  "jsonrpsee-http-server",
@@ -2545,14 +2734,14 @@ dependencies = [
  "base64 0.13.1",
  "bech32 0.8.1",
  "bytesize",
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-storage",
- "chain-time",
- "chain-vote",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-storage 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "custom_debug",
  "flate2",
  "fs_extra",
@@ -2593,7 +2782,7 @@ dependencies = [
  "tonic-build",
  "tracing",
  "tracing-subscriber",
- "typed-bytes",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "url",
  "warp",
  "zip",
@@ -2607,12 +2796,12 @@ dependencies = [
  "assert_fs",
  "base64 0.13.1",
  "bech32 0.7.3",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
- "chain-vote",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "fs_extra",
  "function_name",
  "futures",
@@ -2657,13 +2846,13 @@ dependencies = [
  "base64 0.13.1",
  "bech32 0.8.1",
  "bincode",
- "cardano-legacy-address",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-time",
- "chain-vote",
+ "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "ed25519-bip32",
  "hex",
  "http",
@@ -2681,7 +2870,7 @@ dependencies = [
  "serde_yaml",
  "thiserror",
  "time",
- "typed-bytes",
+ "typed-bytes 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
 ]
 
 [[package]]
@@ -2924,10 +3113,10 @@ dependencies = [
 name = "loki"
 version = "0.1.0"
 dependencies = [
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "custom_debug",
  "jormungandr-automation",
  "jormungandr-lib",
@@ -3033,13 +3222,13 @@ name = "mjolnir"
 version = "0.1.0"
 dependencies = [
  "assert_fs",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-storage",
- "chain-time",
- "chain-vote",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-storage 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-time 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "indicatif",
  "jormungandr-automation",
  "jormungandr-lib",
@@ -4741,6 +4930,11 @@ version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
 
 [[package]]
+name = "sparse-array"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
+
+[[package]]
 name = "spin"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5048,11 +5242,11 @@ dependencies = [
  "assert_fs",
  "bech32 0.8.1",
  "bincode",
- "chain-addr",
- "chain-core",
- "chain-crypto",
- "chain-impl-mockchain",
- "chain-vote",
+ "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-impl-mockchain 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
+ "chain-vote 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9)",
  "cocoon",
  "custom_debug",
  "dirs",
@@ -5541,6 +5735,11 @@ dependencies = [
 name = "typed-bytes"
 version = "0.1.0"
 source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9#1b01f0dbf9282102f394727b4f8637fe4ce1728e"
+
+[[package]]
+name = "typed-bytes"
+version = "0.1.0"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#07f5e289e051c6a6bca9d699061d42eb94f48480"
 
 [[package]]
 name = "typenum"
