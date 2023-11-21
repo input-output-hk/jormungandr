@@ -173,7 +173,6 @@ impl Transaction {
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
                 witness.addr_type,
-                witness.account_spending_counter,
                 &witness.file,
                 &witness.private_key_path,
             )
@@ -188,7 +187,6 @@ impl Transaction {
                 &witness.block_hash.to_hex(),
                 &witness.transaction_id.to_hex(),
                 witness.addr_type,
-                witness.account_spending_counter,
                 &witness.file,
                 &witness.private_key_path,
             )

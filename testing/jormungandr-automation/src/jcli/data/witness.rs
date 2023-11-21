@@ -1,7 +1,6 @@
 use assert_fs::fixture::PathChild;
 use assert_fs::prelude::*;
 use assert_fs::TempDir;
-use chain_impl_mockchain::account::SpendingCounter;
 use jormungandr_lib::crypto::hash::Hash;
 use std::fmt;
 use std::path::PathBuf;
@@ -30,7 +29,6 @@ pub struct Witness {
     pub transaction_id: Hash,
     pub addr_type: WitnessType,
     pub private_key_path: PathBuf,
-    pub account_spending_counter: Option<SpendingCounter>,
     pub file: PathBuf,
 }
 
@@ -41,7 +39,6 @@ impl Witness {
         transaction_id: &Hash,
         addr_type: WitnessType,
         private_key: &str,
-        account_spending_counter: Option<SpendingCounter>,
     ) -> Witness {
         Witness {
             block_hash: *block_hash,
@@ -49,7 +46,6 @@ impl Witness {
             addr_type,
             private_key_path: write_witness_key(temp_dir, private_key),
             file: temp_dir.child("witness").path().into(),
-            account_spending_counter,
         }
     }
 }
@@ -65,15 +61,13 @@ fn write_witness_key(temp_dir: &impl PathChild, witness_key: &str) -> PathBuf {
 pub struct WitnessData {
     pub secret_bech32: String,
     pub addr_type: WitnessType,
-    pub spending_counter: Option<SpendingCounter>,
 }
 
 impl WitnessData {
-    pub fn new_account(signing_key: &str, spending_counter: SpendingCounter) -> Self {
+    pub fn new_account(signing_key: &str) -> Self {
         Self {
             secret_bech32: signing_key.to_owned(),
             addr_type: WitnessType::Account,
-            spending_counter: Some(spending_counter),
         }
     }
 
@@ -81,12 +75,7 @@ impl WitnessData {
         Self {
             secret_bech32: signing_key.to_owned(),
             addr_type: WitnessType::UTxO,
-            spending_counter: None,
         }
-    }
-
-    pub fn spending_counter(&self) -> Option<SpendingCounter> {
-        self.spending_counter
     }
 
     pub fn into_witness(
@@ -101,7 +90,6 @@ impl WitnessData {
             transaction_id,
             self.addr_type,
             &self.secret_bech32,
-            self.spending_counter(),
         )
     }
 }

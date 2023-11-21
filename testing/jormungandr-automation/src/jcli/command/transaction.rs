@@ -1,5 +1,5 @@
 use crate::jcli::WitnessType;
-use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee};
+use chain_impl_mockchain::fee::LinearFee;
 use std::path::Path;
 use std::process::Command;
 
@@ -109,11 +109,10 @@ impl TransactionCommand {
         block0_hash: &str,
         tx_id: &str,
         addr_type: WitnessType,
-        account_spending_counter: Option<SpendingCounter>,
+
         witness_file: P,
         witness_key: Q,
     ) -> Self {
-        let spending_counter = account_spending_counter.unwrap_or_else(SpendingCounter::zero);
         self.command
             .arg("make-witness")
             .arg("--genesis-block-hash")
@@ -122,10 +121,6 @@ impl TransactionCommand {
             .arg(addr_type.to_string())
             .arg(&tx_id)
             .arg(witness_file.as_ref())
-            .arg("--account-spending-counter")
-            .arg(spending_counter.unlaned_counter().to_string())
-            .arg("--account-spending-counter-lane")
-            .arg(spending_counter.lane().to_string())
             .arg(witness_key.as_ref());
         self
     }
