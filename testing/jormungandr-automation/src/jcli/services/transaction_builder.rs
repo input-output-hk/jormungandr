@@ -5,7 +5,7 @@ use assert_fs::fixture::ChildPath;
 use assert_fs::{prelude::*, TempDir};
 use chain_core::packer::Codec;
 use chain_core::property::DeserializeFromSlice;
-use chain_impl_mockchain::{fee::LinearFee, fragment::Fragment};
+use chain_impl_mockchain::{account::SpendingCounter, fee::LinearFee, fragment::Fragment};
 use jormungandr_lib::interfaces::Address;
 use jormungandr_lib::{
     crypto::hash::Hash,
@@ -224,10 +224,15 @@ impl TransactionBuilder {
         witness_data.into_witness(&self.staging_dir, &self.genesis_hash, &transaction_id)
     }
 
-    pub fn create_witness_default(&self, addr_type: WitnessType) -> Witness {
+    pub fn create_witness_default(
+        &self,
+        addr_type: WitnessType,
+        spending_counter: Option<SpendingCounter>,
+    ) -> Witness {
         self.create_witness(WitnessData {
             secret_bech32: self.jcli.key().generate_default(),
             addr_type: addr_type.to_owned(),
+            spending_counter,
         })
     }
 

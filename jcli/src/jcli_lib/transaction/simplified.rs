@@ -8,6 +8,7 @@ use crate::{rest, transaction};
 use chain_addr::Kind;
 use chain_core::property::FromStr;
 use chain_crypto::{Ed25519, Ed25519Extended, PublicKey, SecretKey};
+use chain_impl_mockchain::account::SpendingCounter;
 use chain_impl_mockchain::fee::FeeAlgorithm;
 use chain_impl_mockchain::key::EitherEd25519SecretKey;
 use chain_impl_mockchain::transaction::Output;
@@ -203,7 +204,7 @@ pub fn make_transaction(
     let transaction_sign_data_hash = transaction.transaction_sign_data_hash()?;
 
     // get spending counter
-    let _account_state = rest::v0::account::request_account_information(
+    let account_state = rest::v0::account::request_account_information(
         rest_args,
         AccountId::try_from_str(&sender_account.to_string())?,
     )?;
@@ -213,6 +214,7 @@ pub fn make_transaction(
         &WitnessType::Account,
         &block0_hash,
         &transaction_sign_data_hash,
+        Some(SpendingCounter::from(account_state.counters()[0])),
         &secret_key,
     )?;
 
