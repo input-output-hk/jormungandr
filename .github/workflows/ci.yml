@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+
+permissions:
+  id-token: write
+  contents: write
+  packages: write
+
+jobs:
+  ci:
+    uses: input-output-hk/catalyst-ci/.github/workflows/ci.yml@master
+    with:
+      aws_ecr_registry: 332405224602.dkr.ecr.eu-central-1.amazonaws.com
+      aws_role_arn: arn:aws:iam::332405224602:role/ci
+      aws_region: eu-central-1
+    secrets:
+      deployment_token: ${{ secrets.CI_BOT_TOKEN }}
+      dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
+      dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      earthly_runner_address: ${{ secrets.EARTHLY_SATELLITE_ADDRESS }}
+      earthly_runner_secret: ${{ secrets.EARTHLY_RUNNER_SECRET }}
