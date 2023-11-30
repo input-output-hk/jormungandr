@@ -1,5 +1,5 @@
 // Rustc default type_length_limit is too low for complex futures, which generate deeply nested
-// monomorphized structured with long signatures. This value is enough for current project.
+// monomorphized structured with long signatures. This value is enough for current project...
 #![type_length_limit = "10000000"]
 
 #[macro_use]
