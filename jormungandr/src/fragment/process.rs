@@ -161,6 +161,7 @@ impl Process {
                                             fragment_ids
                                         );
                                         pool.remove_added_to_block(fragment_ids, status);
+                                        pool.remove_expired_txs().await;
                                         
                                     }.instrument(span).await
                                 }
