@@ -573,7 +573,7 @@ dependencies = [
 [[package]]
 name = "cardano-legacy-address"
 version = "0.1.1"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "cbor_event",
  "cryptoxide 0.4.4",
@@ -655,7 +655,7 @@ dependencies = [
 [[package]]
 name = "chain-addr"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "bech32 0.8.1",
  "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
@@ -677,7 +677,7 @@ dependencies = [
 [[package]]
 name = "chain-core"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
 ]
@@ -707,7 +707,7 @@ dependencies = [
 [[package]]
 name = "chain-crypto"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "bech32 0.8.1",
  "cryptoxide 0.4.4",
@@ -758,7 +758,7 @@ dependencies = [
 [[package]]
 name = "chain-evm"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "aurora-bn",
  "base64 0.13.1",
@@ -819,7 +819,7 @@ dependencies = [
 [[package]]
 name = "chain-impl-mockchain"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "cardano-legacy-address 0.1.1 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
  "chain-addr 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
@@ -851,7 +851,7 @@ dependencies = [
 [[package]]
 name = "chain-network"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "async-trait",
  "chain-crypto 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
@@ -876,7 +876,7 @@ dependencies = [
 [[package]]
 name = "chain-ser"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "thiserror",
 ]
@@ -884,7 +884,7 @@ dependencies = [
 [[package]]
 name = "chain-storage"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "criterion",
  "data-pile",
@@ -909,7 +909,7 @@ dependencies = [
 [[package]]
 name = "chain-time"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
  "chain-ser 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
@@ -937,7 +937,7 @@ dependencies = [
 [[package]]
 name = "chain-vote"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "cfg-if 1.0.0",
  "chain-core 0.1.0 (git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold)",
@@ -1387,9 +1387,9 @@ dependencies = [
 
 [[package]]
 name = "deranged"
-version = "0.3.9"
+version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f32d04922c60427da6f9fef14d042d9edddef64cb9d4ce0d64d0685fbeb1fd3"
+checksum = "8eb30d70a07a3b04884d2677f06bec33509dc67ca60d92949e5535352d3191dc"
 dependencies = [
  "powerfmt",
  "serde",
@@ -1758,14 +1758,14 @@ checksum = "25cbce373ec4653f1a01a31e8a5e5ec0c622dc27ff9c4e6606eefef5cbbed4a5"
 
 [[package]]
 name = "filetime"
-version = "0.2.22"
+version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4029edd3e734da6fe05b6cd7bd2960760a616bd2ddd0d59a0124746d6272af0"
+checksum = "1ee447700ac8aa0b2f2bd7bc4462ad686ba06baa6727ac149a2d6277f0d240fd"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
- "redox_syscall 0.3.5",
- "windows-sys 0.48.0",
+ "redox_syscall 0.4.1",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2441,7 +2441,7 @@ dependencies = [
 [[package]]
 name = "imhamt"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 dependencies = [
  "proptest",
  "rustc_version",
@@ -2637,7 +2637,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr"
-version = "0.15.82"
+version = "0.15.84"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -3191,9 +3191,9 @@ dependencies = [
 
 [[package]]
 name = "mio"
-version = "0.8.9"
+version = "0.8.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dce281c5e46beae905d4de1870d8b1509a9142b62eedf18b443b011ca8343d0"
+checksum = "8f3d0b296e374a4e6f3c7b0a1f5a51d748a0d34c85e7dc48fc3fa9a87657fe09"
 dependencies = [
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
@@ -3537,7 +3537,7 @@ version = "3.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be30eaf4b0a9fba5336683b38de57bb86d179a35862ba6bfcf57625d006bde5b"
 dependencies = [
- "proc-macro-crate 2.0.0",
+ "proc-macro-crate 2.0.1",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -3882,11 +3882,12 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-crate"
-version = "2.0.0"
+version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e8366a6159044a37876a2b9817124296703c586a5c92e2c53751fa06d8d43e8"
+checksum = "97dc5fea232fc28d2f597b37c4876b348a40e33f3b02cc975c8d006d78d94b1a"
 dependencies = [
- "toml_edit 0.20.7",
+ "toml_datetime",
+ "toml_edit 0.20.2",
 ]
 
 [[package]]
@@ -4325,15 +4326,6 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "567664f262709473930a4bf9e51bf2ebf3348f2e748ccc50dea20646858f8f29"
-dependencies = [
- "bitflags 1.3.2",
-]
-
-[[package]]
-name = "redox_syscall"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4722d768eff46b75989dd134e5c353f0d6296e5aaa3132e776cbdb56be7731aa"
@@ -4429,9 +4421,9 @@ dependencies = [
 
 [[package]]
 name = "ring"
-version = "0.17.6"
+version = "0.17.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "684d5e6e18f669ccebf64a92236bb7db9a34f07be010e3627368182027180866"
+checksum = "688c63d65483050968b2a8937f7995f443e27041a0f7700aa59b0822aedebb74"
 dependencies = [
  "cc",
  "getrandom 0.2.11",
@@ -4923,7 +4915,7 @@ source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-
 [[package]]
 name = "sparse-array"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 
 [[package]]
 name = "spin"
@@ -5439,9 +5431,9 @@ dependencies = [
 
 [[package]]
 name = "toml_datetime"
-version = "0.6.5"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3550f4e9685620ac18a50ed434eb3aec30db8ba93b0287467bca5826ea25baf1"
+checksum = "7cda73e2f1397b1262d6dfdcef8aafae14d1de7748d66822d3bfeeb6d03e5e4b"
 
 [[package]]
 name = "toml_edit"
@@ -5456,9 +5448,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.20.7"
+version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70f427fce4d84c72b5b732388bf4a9f4531b53f74e2887e3ecb2481f68f66d81"
+checksum = "396e4d48bbb2b7554c944bde63101b5ae446cff6ec4a24227428f15eb72ef338"
 dependencies = [
  "indexmap 2.1.0",
  "toml_datetime",
@@ -5736,7 +5728,7 @@ source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-
 [[package]]
 name = "typed-bytes"
 version = "0.1.0"
-source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#6782a341cf496cdb4dece9cb2452c073b49471e1"
+source = "git+https://github.com/input-output-hk/chain-libs.git?branch=catalyst-fund9-gold#746e12f58c301d9f5d382b60909e4303af2d769c"
 
 [[package]]
 name = "typenum"
@@ -5773,9 +5765,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-bidi"
-version = "0.3.13"
+version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92888ba5573ff080736b3648696b70cafad7d250551175acbaa4e0385b3e1460"
+checksum = "6f2528f27a9eb2b21e69c95319b30bd0efd85d09c379741b0f78ea1d86be2416"
 
 [[package]]
 name = "unicode-ident"
@@ -6304,9 +6296,9 @@ checksum = "dff9641d1cd4be8d1a070daf9e3773c5f67e78b4d9d42263020c057706765c04"
 
 [[package]]
 name = "winnow"
-version = "0.5.19"
+version = "0.5.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "829846f3e3db426d4cee4510841b71a8e58aa2a76b1132579487ae430ccd9c7b"
+checksum = "b7e87b8dfbe3baffbe687eef2e164e32286eff31a5ee16463ce03d991643ec94"
 dependencies = [
  "memchr",
 ]
