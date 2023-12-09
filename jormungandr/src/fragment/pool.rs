@@ -270,7 +270,7 @@ impl Pool {
         let FragmentSelectionResult {
             contents,
             ledger,
-            rejected_fragments_cnt,
+            rejected_fragments_cnt: _,
         } = match selection_alg {
             FragmentSelectionAlgorithmParams::OldestFirst => {
                 let mut selection_alg = OldestFirst::new();
@@ -286,7 +286,7 @@ impl Pool {
                     .await
             }
         };
-        self.metrics.add_tx_rejected_cnt(rejected_fragments_cnt);
+
         self.update_metrics();
         (contents, ledger)
     }
@@ -301,6 +301,7 @@ impl Pool {
         let tip = self.tip.get_ref().await;
         let block_date = get_current_block_date(&tip);
         let fragment_ids = self.pool.remove_expired_txs(block_date);
+        self.metrics.add_tx_rejected_cnt(fragment_ids.len());
 
         self.logs.modify_all(
             fragment_ids,

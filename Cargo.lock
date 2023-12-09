@@ -2637,7 +2637,7 @@ dependencies = [
 
 [[package]]
 name = "jormungandr"
-version = "0.15.86"
+version = "0.15.87"
 dependencies = [
  "arc-swap",
  "async-trait",
