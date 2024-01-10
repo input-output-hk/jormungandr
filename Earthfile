@@ -84,7 +84,9 @@ publish:
         ca-certificates \
         libssl-dev \
         libpq-dev \
-        libsqlite3-dev
+        libsqlite3-dev \
+        tar \
+        zstd
 
     # Install fetcher
     IMPORT github.com/input-output-hk/catalyst-ci/tools/fetcher:v${fetcher_version} AS fetcher

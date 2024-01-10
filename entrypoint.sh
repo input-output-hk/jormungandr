@@ -10,11 +10,13 @@
 #
 # STORAGE_PATH - The path where the node's data will be stored
 # NODE_CONFIG_PATH - The path to the node's configuration file
+# ENV (optional) - The target environment. Used for fetching the node's configuration and archives from S3.
 # GENESIS_PATH (optional) - The path to the genesis block
 # GENESIS_BUCKET (optional) - The S3 bucket where the genesis block is stored.
-# GENESIS_ENV (optional) - The target environment. Used for fetching the genesis block from S3.
 # GENESIS_FUND (optional) - The fund name. Used for fetching the genesis block from S3.
 # GENESIS_VERSION (optional) - The genesis version. Used for fetching the genesis block from S3. If not set, the "default" version will be used.
+# ARCHIVE_BUCKET (optional) - The S3 bucket where archives are stored.
+# ARCHIVE_ID (optional) - If present, the node will attempt to fetch the archive with the specified ID from S3 and restore it.
 # BFT_PATH (optional) - The path to the BFT file. Only used by leader nodes.
 # LEADER (optional) - If set, the node will be configured as a leader node.
 # DEBUG_SLEEP (optional) - If set, the script will sleep for the specified number of seconds before starting the node.
@@ -51,6 +53,47 @@ debug_sleep() {
     fi
 }
 
+fetch_archive() {
+    local bucket=$1
+    local env=$2
+    local id=$3
+    local archive_path=$4
+
+    echo ">>> Fetching archive from S3 using the following parameters..."
+    echo "Bucket: $bucket"
+    echo "Environment: $env"
+    echo "Archive ID: $id"
+
+    fetcher --bucket "$bucket" archive -e "$env" -i "$id" "$archive_path"
+
+    echo ">>> Clearing storage path..."
+    rm -rf "${STORAGE_PATH:?}/*"
+
+    echo ">>> Extracting archive..."
+    zstd -cd "$archive_path" | tar xf - -C "$STORAGE_PATH"
+    rm "$archive_path"
+
+    echo ">>> Setting last restored archive to $ARCHIVE_ID"
+    echo "$id" >"$STORAGE_PATH/last_restored_archive"
+}
+
+fetch_genesis() {
+    local bucket=$1
+    local env=$2
+    local fund=$3
+    local version=$4
+    local path=$5
+
+    echo ">>> Fetching genesis block from S3 using the following parameters..."
+    echo "Bucket: $bucket"
+    echo "Environment: $env"
+    echo "Fund: $fund"
+    echo "Version: ${version}"
+
+    mkdir -p "$(dirname "$GENESIS_PATH")"
+    fetcher --bucket "$bucket" artifact -e "$env" -f "$fund" -t "genesis" -v "${version}" "$path"
+}
+
 echo ">>> Starting entrypoint script..."
 
 REQUIRED_ENV=(
@@ -79,22 +122,43 @@ if [[ -z "${GENESIS_PATH:=}" || ! -f "$GENESIS_PATH" ]]; then
     echo ">>> No genesis block provided. Attempting to fetch from S3..."
 
     REQUIRED_ENV=(
+        "ENV"
         "GENESIS_BUCKET"
-        "GENESIS_ENV"
         "GENESIS_FUND"
     )
     echo ">>> Checking required env vars for fetching from S3..."
     check_env_vars "${REQUIRED_ENV[@]}"
 
-    echo ">>> Fetching genesis block from S3 using the following parameters..."
-    echo "Bucket: $GENESIS_BUCKET"
-    echo "Environment: $GENESIS_ENV"
-    echo "Fund: $GENESIS_FUND"
-    echo "Version: ${GENESIS_VERSION:=}"
-
     GENESIS_PATH="$STORAGE_PATH/artifacts/block0.bin"
-    mkdir -p "$(dirname "$GENESIS_PATH")"
-    fetcher --bucket "$GENESIS_BUCKET" artifact -e "$GENESIS_ENV" -f "$GENESIS_FUND" -t "genesis" -v "${GENESIS_VERSION:=}" "$GENESIS_PATH"
+    fetch_genesis "$GENESIS_BUCKET" "$ENV" "$GENESIS_FUND" "${GENESIS_VERSION:=}" "$GENESIS_PATH"
+fi
+
+# Check if we need to pull an archive from S3
+if [[ -n "${ARCHIVE_ID:=}" ]]; then
+    echo ">>> Archive ID provided. Attempting to fetch from S3..."
+    ARCHIVE_PATH="/tmp/archive.tar.zstd"
+
+    REQUIRED_ENV=(
+        "ENV"
+        "ARCHIVE_BUCKET"
+        "ARCHIVE_ID"
+    )
+    echo ">>> Checking required env vars for fetching the archive from S3..."
+    check_env_vars "${REQUIRED_ENV[@]}"
+
+    echo ">>> Checking if the archive has already been restored..."
+    if [[ -f "$STORAGE_PATH/last_restored_archive" ]]; then
+
+        LAST_RESTORED_ARCHIVE=$(cat "$STORAGE_PATH/last_restored_archive")
+
+        if [[ "$LAST_RESTORED_ARCHIVE" == "$ARCHIVE_ID" ]]; then
+            echo ">>> Archive $ARCHIVE_ID has already been restored. Skipping..."
+        else
+            fetch_archive "$ARCHIVE_BUCKET" "$ENV" "$ARCHIVE_ID" "$ARCHIVE_PATH"
+        fi
+    else
+        fetch_archive "$ARCHIVE_BUCKET" "$ENV" "$ARCHIVE_ID" "$ARCHIVE_PATH"
+    fi
 fi
 
 echo ">>> Using the following parameters:"
