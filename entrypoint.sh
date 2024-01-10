@@ -14,6 +14,7 @@
 # GENESIS_PATH (optional) - The path to the genesis block
 # GENESIS_BUCKET (optional) - The S3 bucket where the genesis block is stored.
 # GENESIS_FUND (optional) - The fund name. Used for fetching the genesis block from S3.
+# GENESIS_SKIP_OVERRIDE (optional) - If set, the node will not override the genesis block if it already exists in the storage path.
 # GENESIS_VERSION (optional) - The genesis version. Used for fetching the genesis block from S3. If not set, the "default" version will be used.
 # ARCHIVE_BUCKET (optional) - The S3 bucket where archives are stored.
 # ARCHIVE_ID (optional) - If present, the node will attempt to fetch the archive with the specified ID from S3 and restore it.
@@ -117,51 +118,94 @@ if [[ ! -f "$NODE_CONFIG_PATH" ]]; then
     exit 1
 fi
 
-# Verify genesis block is present or attempt to fetch from S3
-if [[ -z "${GENESIS_PATH:=}" || ! -f "$GENESIS_PATH" ]]; then
-    echo ">>> No genesis block provided. Attempting to fetch from S3..."
+# The name of the file that indicates that fetching should be disabled
+DISABLE_FETCHING_FILE="$STORAGE_PATH/disable_fetching"
 
-    REQUIRED_ENV=(
-        "ENV"
-        "GENESIS_BUCKET"
-        "GENESIS_FUND"
-    )
-    echo ">>> Checking required env vars for fetching from S3..."
-    check_env_vars "${REQUIRED_ENV[@]}"
+# The path to the genesis block on the storage volume
+GENESIS_STORAGE_PATH="$STORAGE_PATH/artifacts/block0.bin"
 
-    GENESIS_PATH="$STORAGE_PATH/artifacts/block0.bin"
-    fetch_genesis "$GENESIS_BUCKET" "$ENV" "$GENESIS_FUND" "${GENESIS_VERSION:=}" "$GENESIS_PATH"
-fi
+if [[ -f "$DISABLE_FETCHING_FILE" ]]; then
+    echo ">>> $DISABLE_FETCHING_FILE file exists. Skipping fetching genesis file and/or archive..."
 
-# Check if we need to pull an archive from S3
-if [[ -n "${ARCHIVE_ID:=}" ]]; then
-    echo ">>> Archive ID provided. Attempting to fetch from S3..."
-    ARCHIVE_PATH="/tmp/archive.tar.zstd"
+    if [[ -z "${GENESIS_PATH:=}" || ! -f "$GENESIS_PATH" ]]; then
+        if [[ ! -f "$GENESIS_STORAGE_PATH" ]]; then
+            echo ">>> ERROR: No genesis block provided and genesis block is absent at: $GENESIS_STORAGE_PATH"
+            echo ">>> ERROR: Cannot continue without a genesis block. Aborting..."
+            exit 1
+        fi
+    fi
+else
+    # Verify genesis block is present or attempt to fetch from S3
+    if [[ -z "${GENESIS_PATH:=}" || ! -f "$GENESIS_PATH" ]]; then
+        echo ">>> No genesis block provided. Attempting to fetch from S3..."
 
-    REQUIRED_ENV=(
-        "ENV"
-        "ARCHIVE_BUCKET"
-        "ARCHIVE_ID"
-    )
-    echo ">>> Checking required env vars for fetching the archive from S3..."
-    check_env_vars "${REQUIRED_ENV[@]}"
+        REQUIRED_ENV=(
+            "ENV"
+            "GENESIS_BUCKET"
+            "GENESIS_FUND"
+        )
+        echo ">>> Checking required env vars for fetching from S3..."
+        check_env_vars "${REQUIRED_ENV[@]}"
 
-    echo ">>> Checking if the archive has already been restored..."
-    if [[ -f "$STORAGE_PATH/last_restored_archive" ]]; then
+        # Check if genesis block already exists in the storage path
+        GENESIS_PATH="$GENESIS_STORAGE_PATH"
+        if [[ -f "$GENESIS_PATH" ]]; then
+            echo ">>> Genesis block already exists at $GENESIS_PATH."
 
-        LAST_RESTORED_ARCHIVE=$(cat "$STORAGE_PATH/last_restored_archive")
+            if [[ -n "${GENESIS_SKIP_OVERRIDE:=}" ]]; then
+                echo ">>> GENESIS_SKIP_OVERRIDE is set. Skipping overriding the genesis block..."
+            else
+                echo ">>> Downloading newer version from S3..."
+                TMP_GENESIS_PATH="/tmp/block0.bin"
+                fetch_genesis "$GENESIS_BUCKET" "$ENV" "$GENESIS_FUND" "${GENESIS_VERSION:=}" "$TMP_GENESIS_PATH"
 
-        if [[ "$LAST_RESTORED_ARCHIVE" == "$ARCHIVE_ID" ]]; then
-            echo ">>> Archive $ARCHIVE_ID has already been restored. Skipping..."
+                if cmp -s "$GENESIS_PATH" "$TMP_GENESIS_PATH"; then
+                    echo ">>> The genesis blocks are the same. Skipping..."
+                    rm "$TMP_GENESIS_PATH"
+                else
+                    echo ">>> The genesis blocks are different."
+                    echo ">>> Clearing storage path..."
+                    rm -rf "${STORAGE_PATH:?}/*"
+
+                    echo ">>> Replacing genesis block..."
+                    mkdir -p "$(dirname "$GENESIS_PATH")"
+                    mv "$TMP_GENESIS_PATH" "$GENESIS_PATH"
+                fi
+            fi
+        else
+            fetch_genesis "$GENESIS_BUCKET" "$ENV" "$GENESIS_FUND" "${GENESIS_VERSION:=}" "$GENESIS_PATH"
+        fi
+    fi
+
+    # Check if we need to pull an archive from S3
+    if [[ -n "${ARCHIVE_ID:=}" ]]; then
+        echo ">>> Archive ID provided. Attempting to fetch from S3..."
+        ARCHIVE_PATH="/tmp/archive.tar.zstd"
+
+        REQUIRED_ENV=(
+            "ENV"
+            "ARCHIVE_BUCKET"
+            "ARCHIVE_ID"
+        )
+        echo ">>> Checking required env vars for fetching the archive from S3..."
+        check_env_vars "${REQUIRED_ENV[@]}"
+
+        echo ">>> Checking if the archive has already been restored..."
+        if [[ -f "$STORAGE_PATH/last_restored_archive" ]]; then
+
+            LAST_RESTORED_ARCHIVE=$(cat "$STORAGE_PATH/last_restored_archive")
+
+            if [[ "$LAST_RESTORED_ARCHIVE" == "$ARCHIVE_ID" ]]; then
+                echo ">>> Archive $ARCHIVE_ID has already been restored. Skipping..."
+            else
+                fetch_archive "$ARCHIVE_BUCKET" "$ENV" "$ARCHIVE_ID" "$ARCHIVE_PATH"
+            fi
         else
             fetch_archive "$ARCHIVE_BUCKET" "$ENV" "$ARCHIVE_ID" "$ARCHIVE_PATH"
         fi
-    else
-        fetch_archive "$ARCHIVE_BUCKET" "$ENV" "$ARCHIVE_ID" "$ARCHIVE_PATH"
     fi
 fi
-
-echo ">>> Using the following parameters:"
+echo ">>> Running the node with the following parameters:"
 echo "Storage path: $STORAGE_PATH"
 echo "Node config: $NODE_CONFIG_PATH"
 echo "Genesis block: $GENESIS_PATH"
