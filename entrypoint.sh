@@ -101,6 +101,7 @@ echo ">>> Using the following parameters:"
 echo "Storage path: $STORAGE_PATH"
 echo "Node config: $NODE_CONFIG_PATH"
 echo "Genesis block: $GENESIS_PATH"
+echo "Genesis block hash (SHA256): $(sha256sum "$GENESIS_PATH" | awk '{ print $1 }')"
 
 args+=()
 args+=("--storage" "$STORAGE_PATH")
