@@ -76,7 +76,7 @@ publish:
     WORKDIR /app
 
     ARG tag=latest
-    ARG fetcher_version=2.1.1
+    ARG fetcher_version=2.2.4
 
     # Install build dependencies
     RUN apt-get update && \
