@@ -7,10 +7,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold", features = [ "property-test-api" ] }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold", features = [ "property-test-api" ] }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test", features = [ "property-test-api" ] }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test", features = [ "property-test-api" ] }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
 jormungandr-automation = { path = "../jormungandr-automation" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 thor = {path = "../thor"}
