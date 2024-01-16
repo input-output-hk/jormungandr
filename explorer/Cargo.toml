@@ -41,16 +41,16 @@ http-zipkin = "0.3.0"
 
 jormungandr-lib = {path = "../jormungandr-lib"}
 
-cardano-legacy-address = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
-chain-addr = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
-chain-core = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
-chain-crypto = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
-chain-impl-mockchain = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
-chain-time = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
-chain-vote = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
-chain-ser = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
-chain-network = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
-imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
+cardano-legacy-address = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
+chain-addr = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
+chain-core = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
+chain-crypto = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
+chain-impl-mockchain = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
+chain-time = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
+chain-vote = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
+chain-ser = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
+chain-network = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
+imhamt = {git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
 
 [features]
 default = []

@@ -9,14 +9,14 @@ description = "Data structures and formats used by Jormungandr node API and conf
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_with = { version = "1.12", features = ["macros"] }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
-chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test"}
-chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
-cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
-typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-time           = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold"}
+chain-vote = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+cardano-legacy-address = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+typed-bytes = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
 rand = "0.8"
 rand_core = "0.6"
 rand_chacha = "0.3"
@@ -35,9 +35,9 @@ quickcheck = "0.9"
 quickcheck_macros = "0.9"
 # FIXME required to work with quickcheck 0.9. Remove after migrating another crate or newer quickcheck
 rand07 = { package = "rand", version = "0.7" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test", features = [ "property-test-api" ] }
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test", features = [ "property-test-api" ] }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test", features = [ "property-test-api" ] }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold", features = [ "property-test-api" ] }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold", features = [ "property-test-api" ] }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold", features = [ "property-test-api" ] }
 ed25519-bip32 = "0.4.1"
 serde_yaml = "0.8"
 serde_json = "1.0"
