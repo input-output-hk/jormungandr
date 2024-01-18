@@ -12,12 +12,12 @@ tokio = { version = "1.15", features = ["macros", "time"] }
 futures      = "0.3.21"
 base64 = "0.13"
 hex = "0.4.2"
-chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
-chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
-chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
-chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
-chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
-chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold" }
+chain-addr      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
+chain-core      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
+chain-crypto    = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
+chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
+chain-time      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
+chain-vote      = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "catalyst-fund9-gold-test" }
 jormungandr-lib = { path = "../../jormungandr-lib" }
 hersir = { path = "../hersir" }
 loki = { path = "../loki" }

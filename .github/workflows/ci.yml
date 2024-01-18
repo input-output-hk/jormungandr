@@ -15,7 +15,7 @@ jobs:
       aws_ecr_registry: 332405224602.dkr.ecr.eu-central-1.amazonaws.com
       aws_role_arn: arn:aws:iam::332405224602:role/ci
       aws_region: eu-central-1
-      default_branch: catalyst-fund9-gold
+      default_branch: catalyst-fund9-gold-test
       publish_docs: false
     secrets:
       deployment_token: ${{ secrets.CI_BOT_TOKEN }}
