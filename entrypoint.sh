@@ -68,7 +68,7 @@ fetch_archive() {
     fetcher --bucket "$bucket" archive -e "$env" -i "$id" "$archive_path"
 
     echo ">>> Clearing storage path..."
-    rm -rf "${STORAGE_PATH:?}/*"
+    rm -rf "${STORAGE_PATH:?}"/*
 
     echo ">>> Extracting archive..."
     zstd -cd "$archive_path" | tar xf - -C "$STORAGE_PATH"
@@ -165,7 +165,7 @@ else
                 else
                     echo ">>> The genesis blocks are different."
                     echo ">>> Clearing storage path..."
-                    rm -rf "${STORAGE_PATH:?}/*"
+                    rm -rf "${STORAGE_PATH:?}"/*
 
                     echo ">>> Replacing genesis block..."
                     mkdir -p "$(dirname "$GENESIS_PATH")"
