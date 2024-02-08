@@ -1,6 +1,4 @@
 on:
-  schedule:
-    - cron: '0 3 * * *' # Nightly, run at 03:00 UTC
   push:
     tags:
       - 'v[0-9]+.*' # Release tags matching v*, i.e. v1.0, v20.15.10
