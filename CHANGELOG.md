@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Discard incoming gossips with either the same address or id as the current node
 - Add /v1/account-votes-all endpoint to return the list of proposals a user has voted for
 - Remove /v1/account-votes-count endpoint
 - Validate server id is the expected one during gRPC handshake
