@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Change default value for `epoch_stability_depth` from 102400 to 2160
 - Add /v1/account-votes-all endpoint to return the list of proposals a user has voted for
 - Remove /v1/account-votes-count endpoint
 - Validate server id is the expected one during gRPC handshake
