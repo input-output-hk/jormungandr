@@ -8,7 +8,7 @@ rust-toolchain:
 # Installs Cargo chef
 install-chef:
     FROM +rust-toolchain
-    RUN cargo install --debug cargo-chef
+    RUN cargo install --locked --debug cargo-chef --version 0.1.62
 
 # Prepares the local cache
 prepare-cache:
