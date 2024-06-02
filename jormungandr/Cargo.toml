@@ -72,7 +72,7 @@ quickcheck_macros = "0.9"
 chain-impl-mockchain = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-addr = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
 chain-crypto = { git = "https://github.com/input-output-hk/chain-libs.git", branch = "master", features = [ "property-test-api" ] }
-criterion = { version = "0.3", features = ["html_reports", "async_tokio"] }
+criterion = { version = "0.4", features = ["html_reports", "async_tokio"] }
 
 [[bench]]
 name = "rest_v0"
