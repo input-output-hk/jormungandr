@@ -83,14 +83,20 @@ impl Settings {
             vote_plans: HashMap::new(),
         };
 
+        let minting_policy = blockchain.minting_policy();
+
         settings.populate_trusted_peers();
         settings.populate_block0_blockchain_initials(
             blockchain.wallets(),
             rng,
             blockchain.discrimination(),
+            &minting_policy,
         );
         settings.populate_block0_blockchain_configuration(&blockchain, rng);
-        settings.populate_block0_blockchain_external(blockchain.external_wallets());
+        settings.populate_block0_blockchain_external(
+            blockchain.external_wallets(),
+            &minting_policy,
+        );
         settings.populate_block0_blockchain_vote_plans(
             blockchain.vote_plans(),
             blockchain.committees(),
@@ -102,6 +108,7 @@ impl Settings {
     fn populate_block0_blockchain_external(
         &mut self,
         external_wallets: Vec<ExternalWalletTemplate>,
+        minting_policy: &MintingPolicy,
     ) {
         for template in external_wallets {
             let address: jormungandr_lib::interfaces::Address = template.address().parse().unwrap();
@@ -116,8 +123,7 @@ impl Settings {
             for (token_identifier, value) in template.tokens() {
                 let tokens_fragment = Initial::Token(InitialToken {
                     token_id: token_identifier.clone(),
-                    // TODO: there are no policies now, but this will need to be changed later
-                    policy: MintingPolicy::new().into(),
+                    policy: minting_policy.clone().into(),
                     to: vec![Destination {
                         address: address.clone(),
                         value: (*value).into(),
@@ -193,6 +199,7 @@ impl Settings {
         wallet_templates: I,
         rng: &mut Random<RNG>,
         discrimination: Discrimination,
+        minting_policy: &MintingPolicy,
     ) where
         RNG: RngCore + CryptoRng,
         I: Iterator<Item = &'a WalletTemplate>,
@@ -221,8 +228,7 @@ impl Settings {
             for (token_identifier, value) in wallet_template.tokens() {
                 let tokens_fragment = Initial::Token(InitialToken {
                     token_id: token_identifier.clone(),
-                    // TODO: there are no policies now, but this will need to be changed later
-                    policy: MintingPolicy::new().into(),
+                    policy: minting_policy.clone().into(),
                     to: vec![Destination {
                         address: initial_address.clone(),
                         value: (*value).into(),

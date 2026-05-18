@@ -2,6 +2,7 @@ use super::{ExternalWalletTemplate, NodeAlias, WalletTemplate};
 use crate::builder::VotePlanKey;
 use chain_addr::Discrimination;
 pub use chain_impl_mockchain::chaintypes::ConsensusVersion;
+use chain_impl_mockchain::tokens::minting_policy::MintingPolicy;
 use chain_impl_mockchain::{fee::LinearFee, milli::Milli};
 use jormungandr_lib::interfaces::{
     ActiveSlotCoefficient, BlockContentMaxSize, CommitteeIdDef, ConsensusLeaderId,
@@ -50,6 +51,11 @@ pub struct Blockchain {
     vote_plans: HashMap<VotePlanKey, VotePlan>,
     #[serde(default)]
     wallets: HashMap<WalletAlias, WalletTemplate>,
+    /// Minting policy used for token-bearing initial fragments. If not set,
+    /// hersir falls back to MintingPolicy::new() which makes runtime mints
+    /// impossible (their policy_hash would not match the genesis-baked one).
+    #[serde(skip)]
+    minting_policy: Option<MintingPolicy>,
 }
 
 impl Blockchain {
@@ -150,6 +156,15 @@ impl Blockchain {
 
     pub fn external_wallets(&self) -> Vec<ExternalWalletTemplate> {
         self.external_wallets.clone()
+    }
+
+    pub fn minting_policy(&self) -> MintingPolicy {
+        self.minting_policy.clone().unwrap_or_default()
+    }
+
+    pub fn with_minting_policy(mut self, policy: MintingPolicy) -> Self {
+        self.minting_policy = Some(policy);
+        self
     }
 
     pub fn with_external_wallets(mut self, external_wallets: Vec<ExternalWalletTemplate>) -> Self {
@@ -259,6 +274,7 @@ impl Default for Blockchain {
             tx_max_expiry_epochs: None,
             vote_plans: HashMap::new(),
             wallets: HashMap::new(),
+            minting_policy: None,
         }
     }
 }
