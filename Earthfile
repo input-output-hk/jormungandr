@@ -8,7 +8,10 @@ rust-toolchain:
 # Installs Cargo chef
 install-chef:
     FROM +rust-toolchain
-    RUN cargo install --debug cargo-chef
+    # Pin to a cargo-chef version compatible with the rust 1.71 toolchain.
+    # Newer cargo-chef releases pull in transitive deps that require
+    # edition-2024 (cargo 1.78+) which this toolchain cannot parse.
+    RUN cargo install --debug --locked --version 0.1.62 cargo-chef
 
 # Prepares the local cache
 prepare-cache:
@@ -89,7 +92,7 @@ publish:
         zstd
 
     # Install fetcher
-    IMPORT github.com/input-output-hk/catalyst-ci/tools/fetcher:v${fetcher_version} AS fetcher
+    IMPORT github.com/cardano-foundation/catalyst-ci/tools/fetcher:v${fetcher_version} AS fetcher
     COPY fetcher+build/fetcher /usr/local/bin/fetcher
 
     COPY +build/jormungandr .
